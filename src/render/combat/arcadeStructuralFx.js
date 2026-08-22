@@ -154,6 +154,7 @@ class StructuralPool {
     this.cursor = 0;
     this.serial = 0;
     this.live = 0;
+    this.highWater = 0;
     this.spawned = 0;
     this.evicted = 0;
     this.rejected = 0;
@@ -193,6 +194,7 @@ class StructuralPool {
       if (!this.slots[index].alive) {
         this.cursor = (index + 1) % this.capacity;
         this.live++;
+        this.highWater = Math.max(this.highWater, this.live);
         return index;
       }
     }
@@ -249,8 +251,8 @@ class StructuralPool {
     slot.minWidthPixels = Math.max(0, finite(spec.minWidthPixels));
     slot.minLengthPixels = Math.max(0, finite(spec.minLengthPixels));
     slot.intensity = Math.max(0, finite(spec.intensity, 1));
-    this._spawnStart.set(spec.color || '#ffffff');
-    this._spawnEnd.set(spec.endColor || spec.color || '#ffffff');
+    this._spawnStart.set(spec.color == null ? 0xffffff : spec.color);
+    this._spawnEnd.set(spec.endColor == null ? (spec.color == null ? 0xffffff : spec.color) : spec.endColor);
     slot.r0 = this._spawnStart.r; slot.g0 = this._spawnStart.g; slot.b0 = this._spawnStart.b;
     slot.r1 = this._spawnEnd.r; slot.g1 = this._spawnEnd.g; slot.b1 = this._spawnEnd.b;
     this.spawned++;
@@ -365,6 +367,7 @@ class StructuralPool {
       kind: this.kind,
       capacity: this.capacity,
       live: this.live,
+      highWater: this.highWater,
       spawned: this.spawned,
       evicted: this.evicted,
       rejected: this.rejected,
@@ -374,6 +377,7 @@ class StructuralPool {
 
   dispose() {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+    if (typeof this.mesh.dispose === 'function') this.mesh.dispose();
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
   }
@@ -478,6 +482,11 @@ export class ArcadeStructuralFx {
         blades: this.blades.live,
         arcs: this.arcs.live,
         shards: this.shards.live,
+      },
+      highWater: {
+        blades: this.blades.highWater,
+        arcs: this.arcs.highWater,
+        shards: this.shards.highWater,
       },
       pools: {
         blades: this.blades.inspect(),

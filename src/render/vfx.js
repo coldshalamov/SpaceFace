@@ -141,6 +141,7 @@ import {
   explosionPatternSigned,
   PhasedExplosionLifecycle,
 } from './combat/phasedExplosions.js';
+import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import {
   commitInstancedSpriteBuckets,
   createInstancedSpriteBuckets,
@@ -479,6 +480,103 @@ const VFX_LOOT_MAGNET_HZ = 24;
 const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
+const _arcadeStructuralCullPos = { x: 0, z: 0 };
+const _arcadeStructuralBurstReq = {
+  x: 0,
+  z: 0,
+  y: NaN,
+  classId: 'ordinary',
+  radius: 6,
+  dirX: 0,
+  dirZ: 0,
+  hasDir: 0,
+  velX: 0,
+  velY: 0,
+  velZ: 0,
+  priority: DEFAULT_VFX_ADMISSION_PRIORITY,
+  cause: 'kill',
+  victimId: null,
+  axisAngle: 0,
+  magnitude: 1,
+  dv: 0,
+  terrain: 0,
+};
+const _arcadeStructuralSpawnSpec = {
+  priority: DEFAULT_VFX_ADMISSION_PRIORITY,
+  life: 0.12,
+  x: 0,
+  y: NaN,
+  z: 0,
+  vx: 0,
+  vy: 0,
+  vz: 0,
+  drag: NaN,
+  gravity: NaN,
+  angle: 0,
+  angularVelocity: 0,
+  pitch: 0,
+  pitchVelocity: 0,
+  roll: 0,
+  rollVelocity: 0,
+  length: NaN,
+  length0: 1,
+  length1: 1,
+  width: NaN,
+  width0: 1,
+  width1: 1,
+  minWidthPixels: 0,
+  minLengthPixels: 0,
+  intensity: 1,
+  color: '#ffffff',
+  endColor: '#ffffff',
+};
+
+function mixArcadeVictimId(id) {
+  if (typeof id === 'number' && Number.isFinite(id)) return id | 0;
+  if (typeof id !== 'string' || id.length === 0) return 0;
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+  }
+  return hash | 0;
+}
+
+function writeArcadeSpawnSpec(
+  spec,
+  priority, life, x, y, z, vx, vy, vz, drag, gravity,
+  angle, angularVelocity, pitch, pitchVelocity, roll, rollVelocity,
+  length0, length1, width0, width1, minWidthPixels, minLengthPixels,
+  intensity, color, endColor,
+) {
+  spec.priority = priority;
+  spec.life = life;
+  spec.x = x;
+  spec.y = y;
+  spec.z = z;
+  spec.vx = vx;
+  spec.vy = vy;
+  spec.vz = vz;
+  spec.drag = drag;
+  spec.gravity = gravity;
+  spec.angle = angle;
+  spec.angularVelocity = angularVelocity;
+  spec.pitch = pitch;
+  spec.pitchVelocity = pitchVelocity;
+  spec.roll = roll;
+  spec.rollVelocity = rollVelocity;
+  spec.length = NaN;
+  spec.length0 = length0;
+  spec.length1 = length1;
+  spec.width = NaN;
+  spec.width0 = width0;
+  spec.width1 = width1;
+  spec.minWidthPixels = minWidthPixels;
+  spec.minLengthPixels = minLengthPixels;
+  spec.intensity = intensity;
+  spec.color = color;
+  spec.endColor = endColor;
+  return spec;
+}
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
@@ -762,6 +860,8 @@ export const vfx = {
     };
     this._beamDamageCueNext = new Map();
     this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
+    this._arcadeStructural = null;
+    this._arcadeStructuralSerial = 0;
     this._collisionContactTicks = new Map();
     this._collisionMediumTicks = new Map();
     this._collisionPresentationTick = -1;
@@ -975,6 +1075,8 @@ export const vfx = {
     this._weaponPresenter = null;
     if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
     this._combatBeams = null;
+    if (this._arcadeStructural?.dispose) this._arcadeStructural.dispose();
+    this._arcadeStructural = null;
   },
 
   _vfxOwnerRoots() {
@@ -999,6 +1101,10 @@ export const vfx = {
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
+    const arcadeRoots = this._arcadeStructural && (
+      this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
+    );
+    for (const root of arcadeRoots || []) add(root);
     const presenterRoots = this._weaponPresenter && (
       this._weaponPresenter.getOwnerRoots?.() || this._weaponPresenter.getMeshes?.()
     );
@@ -1170,6 +1276,7 @@ export const vfx = {
           lightKeys: LAW_HEAT_LIGHT_KEY,
         }
         : null,
+      arcadeStructuralFx: this._arcadeStructural ? this._arcadeStructural.inspect() : null,
     };
   },
 
@@ -1195,6 +1302,7 @@ export const vfx = {
     this._initMasslineReleaseArc();
     this._initSeamMarkers();
     this._initCombatBeams();
+    this._initArcadeStructural();
     this._initFieldGeometry();
     this._initWeaponPresenter();
     // ---- GPU point cloud ----
@@ -1569,12 +1677,12 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -1724,6 +1832,7 @@ export const vfx = {
       if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
         this._weaponPresenter.reproject(ox, oz);
       }
+      this._arcadeStructural?.reproject(dx, dz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
     if (this._frameMembrane) this._frameMembrane.reset(this.state);
@@ -2407,6 +2516,11 @@ export const vfx = {
       scene: this._scene,
     });
     this._scene.add(this._combatBeams.group);
+  },
+
+  _initArcadeStructural() {
+    if (!this._scene || this._arcadeStructural) return;
+    this._arcadeStructural = new ArcadeStructuralFx(this._scene);
   },
 
   _initWeaponPresenter() {
@@ -3683,11 +3797,12 @@ export const vfx = {
       ? presentation.targetVelocity
       : p && (p.targetVelocity || p.vel) || null;
     const admission = deriveVfxAdmissionMetadata(p || {}, this.state);
+    const radius = Math.max(2, Number(p && p.radius) || 6);
     const entry = this._explosions.start({
       classId,
       x: pos.x,
       z: pos.z,
-      radius: Math.max(2, Number(p && p.radius) || 6),
+      radius,
       direction,
       normal,
       targetVelocity,
@@ -3699,7 +3814,198 @@ export const vfx = {
       entry.hasDirection = !!(direction && Number.isFinite(direction.x)
         && Number.isFinite(direction.z) && Math.hypot(direction.x, direction.z) > 1e-8);
     }
+    const req = _arcadeStructuralBurstReq;
+    req.x = pos.x;
+    req.z = pos.z;
+    req.y = NaN;
+    req.classId = classId;
+    req.radius = radius;
+    if (direction && Number.isFinite(direction.x) && Number.isFinite(direction.z)) {
+      req.dirX = direction.x;
+      req.dirZ = direction.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = 0;
+      req.dirZ = 0;
+      req.hasDir = 0;
+    }
+    if (targetVelocity && Number.isFinite(targetVelocity.x)) {
+      req.velX = targetVelocity.x;
+      req.velY = Number.isFinite(targetVelocity.y) ? targetVelocity.y : 0;
+      req.velZ = Number.isFinite(targetVelocity.z) ? targetVelocity.z : 0;
+    } else {
+      req.velX = 0;
+      req.velY = 0;
+      req.velZ = 0;
+    }
+    req.priority = admission.admissionPriority;
+    req.cause = 'kill';
+    req.victimId = p && p.id;
+    req.axisAngle = 0;
+    req.magnitude = 1;
+    req.dv = 0;
+    req.terrain = 0;
+    this._spawnArcadeStructuralBurst(req);
     return !!entry;
+  },
+
+  // PQ-134.01 third causal family is a projectile bank / ricochet.
+  // No bank, ricochet, or deflect event exists at ce340812 under src/combat/ or src/systems/.
+  // Future combat owner: emit a real domain receipt, then call _spawnArcadeStructuralBurst
+  // with cause: 'bank' and a lower blade count. Do not synthesise that event in the renderer.
+  _spawnArcadeStructuralBurst(req) {
+    if (!this._arcadeStructural || !req) return false;
+    if (this.state?.render?.openingGraphPublicationFrozen === true) return false;
+    const x = req.x;
+    const z = req.z;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+
+    const player = this.helpers && this.helpers.player
+      ? this.helpers.player()
+      : this._ent(this.state && this.state.playerId);
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
+    if (player && player.pos) {
+      _arcadeStructuralCullPos.x = x;
+      _arcadeStructuralCullPos.z = z;
+      const look = tableLookAtDelta(this.state, player.pos, _arcadeStructuralCullPos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, drawWu)) return false;
+    }
+
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = !!(acc && acc.flashOpacityScale < 1) || this._isReduced();
+    const serial = (this._arcadeStructuralSerial | 0) + 1;
+    this._arcadeStructuralSerial = serial;
+    const mixed = (mixArcadeVictimId(req.victimId) ^ Math.imul(serial, 0x85ebca6b)) | 0;
+    const phase = req.cause === 'collision' ? 'collision-shear' : 'breakup';
+    const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
+    const lx = local.x;
+    const lz = local.z;
+    const ly = Number.isFinite(req.y) ? req.y : NaN;
+    const priority = normalizeVfxAdmissionPriority(req.priority);
+    const radius = Math.max(2, Number(req.radius) || 6);
+    const capital = req.classId === 'capital';
+    const collision = req.cause === 'collision';
+    const lifeScale = reduced ? 0.62 : 1;
+    const tvx = Number.isFinite(req.velX) ? req.velX : 0;
+    const tvy = Number.isFinite(req.velY) ? req.velY : 0;
+    const tvz = Number.isFinite(req.velZ) ? req.velZ : 0;
+    let baseAngle;
+    if (req.hasDir && (req.dirX * req.dirX + req.dirZ * req.dirZ) > 1e-16) {
+      baseAngle = Math.atan2(req.dirZ, req.dirX);
+    } else if (collision && Number.isFinite(req.axisAngle)) {
+      baseAngle = req.axisAngle;
+    } else {
+      baseAngle = explosionPattern01(mixed, phase, 0, 0) * Math.PI * 2;
+    }
+
+    let bladeCount;
+    let arcCount;
+    let shardCount;
+    if (collision) {
+      bladeCount = 0;
+      arcCount = 2;
+      const mag = Math.max(0.6, Number(req.magnitude) || 1);
+      shardCount = Math.round(4 * mag);
+      if (reduced) shardCount = Math.max(2, Math.round(shardCount * 0.5));
+      else shardCount = Math.max(4, Math.min(10, shardCount));
+      if (shardCount & 1) shardCount += 1;
+    } else {
+      bladeCount = capital ? (reduced ? 5 : 9) : (reduced ? 3 : 5);
+      arcCount = capital ? (reduced ? 1 : 2) : 1;
+      shardCount = capital ? (reduced ? 5 : 9) : (reduced ? 3 : 5);
+    }
+    if (!collision && bladeCount < 1) bladeCount = 1;
+    if (arcCount < 1) arcCount = 1;
+    if (shardCount < 1) shardCount = 1;
+
+    const spec = _arcadeStructuralSpawnSpec;
+    const terrain = req.terrain === 1;
+    const bladeColor = collision ? (terrain ? 0xffe9c4 : 0xdfefff) : 0xffffff;
+    const bladeEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff6a28;
+    const arcColor = collision ? (terrain ? 0xf0d0a0 : 0xd4e6f5) : 0xfff3d5;
+    const arcEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff8a38;
+    const shardColor = collision ? (terrain ? 0xffe1b2 : 0xdfefff) : 0xffe1b2;
+    const shardEnd = collision ? (terrain ? 0x8a6a52 : 0x8a6a52) : 0x8a341e;
+    let spawned = 0;
+
+    for (let k = 0; k < bladeCount; k++) {
+      const a = baseAngle + explosionPatternSigned(mixed, phase, k, 1) * 0.72
+        + (k - (bladeCount - 1) * 0.5) * 0.22;
+      const len = radius * (0.55 + explosionPattern01(mixed, phase, k, 2) * 0.40);
+      writeArcadeSpawnSpec(
+        spec,
+        priority,
+        Math.max(0.06, 0.16 * lifeScale),
+        lx, Number.isFinite(ly) ? ly : 0.45, lz,
+        0, 0, 0,
+        NaN, NaN,
+        a, explosionPatternSigned(mixed, phase, k, 3) * 1.8,
+        0, 0, 0, 0,
+        len, len * 1.32,
+        Math.max(0.12, radius * 0.10), Math.max(0.04, radius * 0.04),
+        2, 6,
+        1,
+        bladeColor, bladeEnd,
+      );
+      if (this._arcadeStructural.spawnBlade(spec)) spawned++;
+    }
+
+    for (let k = 0; k < arcCount; k++) {
+      const a = collision
+        ? baseAngle + k * Math.PI
+        : baseAngle + explosionPatternSigned(mixed, phase, k, 5) * 0.45;
+      const len = radius * (0.95 + explosionPattern01(mixed, phase, k, 6) * 0.35);
+      writeArcadeSpawnSpec(
+        spec,
+        priority,
+        Math.max(0.08, 0.20 * lifeScale),
+        lx, Number.isFinite(ly) ? ly : 0.45, lz,
+        0, 0, 0,
+        NaN, NaN,
+        a, explosionPatternSigned(mixed, phase, k, 7) * 0.9,
+        0, 0, 0, 0,
+        len, len * 1.40,
+        Math.max(0.16, radius * 0.14), Math.max(0.06, radius * 0.05),
+        2, 0,
+        1,
+        arcColor, arcEnd,
+      );
+      if (this._arcadeStructural.spawnArc(spec)) spawned++;
+    }
+
+    const radial = collision
+      ? (6 + (Number(req.dv) || 0) * 0.35) * (reduced ? 0.7 : 1)
+      : radius * (2.2 + explosionPattern01(mixed, phase, 0, 8) * 1.8);
+    for (let k = 0; k < shardCount; k++) {
+      const side = collision ? ((k & 1) ? 1 : -1) : 1;
+      const a = collision
+        ? baseAngle + (side < 0 ? Math.PI : 0) + explosionPatternSigned(mixed, phase, k, 9) * 0.32
+        : baseAngle + explosionPatternSigned(mixed, phase, k, 9) * 1.8;
+      const speed = radial * (0.65 + explosionPattern01(mixed, phase, k, 10) * 0.7);
+      const size = radius * (0.12 + explosionPattern01(mixed, phase, k, 11) * 0.10);
+      writeArcadeSpawnSpec(
+        spec,
+        priority,
+        Math.max(0.18, 0.62 * lifeScale),
+        lx, Number.isFinite(ly) ? ly : 0.65, lz,
+        tvx + Math.cos(a) * speed,
+        tvy + 2.4 + explosionPattern01(mixed, phase, k, 12) * 4.2,
+        tvz + Math.sin(a) * speed,
+        NaN, NaN,
+        a, explosionPatternSigned(mixed, phase, k, 13) * 8.5,
+        explosionPattern01(mixed, phase, k, 14) * 2.4,
+        explosionPatternSigned(mixed, phase, k, 15) * 6.5,
+        explosionPattern01(mixed, phase, k, 16) * 1.8,
+        explosionPatternSigned(mixed, phase, k, 17) * 7.2,
+        size, size,
+        size * 0.55, size * 0.55,
+        0, 0,
+        1,
+        shardColor, shardEnd,
+      );
+      if (this._arcadeStructural.spawnShard(spec)) spawned++;
+    }
+    return spawned > 0;
   },
 
   // destruction_light port (VFX NEXT recipe): the beats that make a light hull's death
@@ -7373,6 +7679,30 @@ export const vfx = {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
         2.6 * magnitude, 9, 120 + dv * 3);
     }
+    if (hard) {
+      const admission = deriveVfxAdmissionMetadata(p, this.state);
+      const victim = this._ent(p.targetId);
+      const req = _arcadeStructuralBurstReq;
+      req.x = pos.x;
+      req.z = pos.z;
+      req.y = NaN;
+      req.classId = 'ordinary';
+      req.radius = Math.max(2, Number(victim && victim.radius) || 6);
+      req.dirX = axisX;
+      req.dirZ = axisZ;
+      req.hasDir = 0;
+      req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
+      req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
+      req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
+      req.priority = admission.admissionPriority;
+      req.cause = 'collision';
+      req.victimId = p.targetId;
+      req.axisAngle = axisAngle;
+      req.magnitude = magnitude;
+      req.dv = dv;
+      req.terrain = terrain ? 1 : 0;
+      this._spawnArcadeStructuralBurst(req);
+    }
     return true;
   },
 
@@ -9045,10 +9375,13 @@ export const vfx = {
       sub.planetSkim = 0;
     }
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
+    const cam = this.state && this.state.render && this.state.render.camera;
+    const viewportH = this.state && this.state.render && this.state.render.viewport
+      && this.state.render.viewport.height || 1000;
+    if (this._arcadeStructural) {
+      this._arcadeStructural.update(dt, cam, viewportH);
+    }
     if (this._combatBeams) {
-      const cam = this.state && this.state.render && this.state.render.camera;
-      const viewportH = this.state && this.state.render && this.state.render.viewport
-        && this.state.render.viewport.height || 1000;
       const camDist = cam && cam.position
         ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
         : 144;
