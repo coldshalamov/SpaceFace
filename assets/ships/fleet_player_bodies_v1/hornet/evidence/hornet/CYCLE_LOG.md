@@ -155,5 +155,6 @@
 | 175 | yes | A2FC34A1 | REVISE/REVISE/REVISE | Side boxes gone; dark flaps read as TE bricks. Edge slots missed. Not wired. |
 | 176 | yes | 0FF67D81 | REVISE/REVISE/REVISE | Charcoal wings moved lum toward Hitch; still card fins. Not wired. |
 | 177 | yes | EF85DDD2 | REVISE/REVISE/REVISE | Flush flaps; visor shrank; wings read chrome cards. Not wired. |
+| 178 | yes | 04981730 | REVISE/REVISE/REVISE | Matte charcoal wings; visor is a nose stripe. No seat. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

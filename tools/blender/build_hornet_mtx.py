@@ -361,7 +361,7 @@ def create_materials():
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
         # C118 chrome-black came from metallic_from_map driving Metallic to 1; hull/armor/wing now
         # carry roughness+normal+AO relief with metallic pinned by the constant, not the map.
-        if name not in ("Material_Warning", "Material_Canopy", "Material_Ceramic", "Material_Hull", "Material_Thruster"):
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Ceramic", "Material_Hull", "Material_Armor", "Material_Thruster"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit, metallic_from_map=False)
         elif emit:
@@ -1583,18 +1583,15 @@ def build_lod(lod, mats):
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
     add_box("Tub_Floor", (3.95, 0.0, 0.32), (1.15, 0.30, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
+    # C178: fill the tub. Small panes were a smear (C177); add-on frames vanished into hull white.
     add_folded_sheet(
         "Canopy_Visor",
-        (4.42, -0.18, 0.48),
-        (4.42, 0.18, 0.48),
-        (3.28, 0.16, 0.50),
-        (3.28, -0.16, 0.50),
+        (5.12, -0.34, 0.58),
+        (5.12, 0.34, 0.58),
+        (2.72, 0.32, 0.60),
+        (2.72, -0.32, 0.60),
         0.014, canopy, collection, 0.002,
     )
-    add_box("CanopyFrame_Fore", (4.72, 0.0, 0.88), (0.090, 0.46, 0.060), hull, collection, 0.002)
-    add_box("CanopyFrame_Aft", (3.05, 0.0, 0.86), (0.090, 0.44, 0.060), hull, collection, 0.002)
-    add_box("CanopyFrame_P", (3.88, -0.48, 0.87), (0.78, 0.070, 0.060), hull, collection, 0.002)
-    add_box("CanopyFrame_S", (3.88, 0.48, 0.87), (0.78, 0.070, 0.060), hull, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)

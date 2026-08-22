@@ -1,0 +1,65 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 178,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 48007,
+      "hullTriangles": 16019,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Soot",
+        "Material_Thruster"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod0.glb",
+      "bytes": 10386688,
+      "sha256": "049817308DBD0472B6D2007692256A913D6524FA517B82EFBA08494A869AD397"
+    },
+    {
+      "lod": 1,
+      "triangles": 39207,
+      "hullTriangles": 16019,
+      "draws": 8,
+      "materials": [
+        "Material_Accent.001",
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Hull.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Soot.001",
+        "Material_Thruster.001"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod1.glb",
+      "bytes": 6971832,
+      "sha256": "FDAF547091705B9DA64D8665BFEFFACCD3F6184DD424982DC6ACE9886C716E52"
+    },
+    {
+      "lod": 2,
+      "triangles": 37015,
+      "hullTriangles": 16019,
+      "draws": 8,
+      "materials": [
+        "Material_Accent.002",
+        "Material_Armor.002",
+        "Material_Canopy.002",
+        "Material_Hull.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002",
+        "Material_Soot.002",
+        "Material_Thruster.002"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod2.glb",
+      "bytes": 6607096,
+      "sha256": "95B8B55AB8EFC3E0BF36C0DB58D71451A3CF69B2739C2EBCA30D7B3FE6DBA2D9"
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_178"
+}
