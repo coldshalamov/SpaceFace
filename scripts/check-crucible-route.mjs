@@ -340,7 +340,49 @@ async function main() {
   }));
   let draftDetail = `screen ${cards.top}, offers: ${cards.verbs.join(' / ')}`;
   let draftOk = cards.top === 'crucibleDraft' && cards.verbs.length === 3;
+
+  // The paid re-roll is the only thing run credits buy. Prove it exists, that spending it actually
+  // draws different cards, and that the wallet paid for it — in the real screen, not in node.
   if (draftOk) {
+    const before = await page.evaluate(() => ({
+      credits: window.SF.state.run.credits,
+      verbs: [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
+      label: (() => {
+        const b = [...document.querySelectorAll('#screens button')]
+          .find((x) => /re-?roll/i.test(x.textContent));
+        return b ? { text: b.textContent.replace(/\s+/g, ' ').trim(), disabled: b.disabled } : null;
+      })(),
+    }));
+    if (before.label && !before.label.disabled) {
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll('#screens button')].find((x) => /re-?roll/i.test(x.textContent));
+        if (b) b.click();
+      });
+      await page.waitForTimeout(400);
+      const after = await page.evaluate(() => ({
+        credits: window.SF.state.run.credits,
+        verbs: [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
+      }));
+      const paid = before.credits - after.credits;
+      const drew = JSON.stringify(after.verbs) !== JSON.stringify(before.verbs);
+      record('REROLL', paid > 0 && drew && after.verbs.length === 3,
+        `"${before.label.text}" · ${before.verbs.join('/')} -> ${after.verbs.join('/')} · `
+        + `wallet ${before.credits} -> ${after.credits} cr`);
+    } else {
+      record('REROLL', !!before.label,
+        before.label
+          ? `control present and correctly unaffordable at ${before.credits} cr: "${before.label.text}"`
+          : 'no re-roll control on the draft at all');
+    }
+  }
+
+  if (draftOk) {
+    // Re-read the cards: a re-roll above replaced them, and reporting the pre-roll verb would
+    // name a card the player never saw.
+    const onScreen = await page.evaluate(
+      () => [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
+    );
+    cards.verbs = onScreen.length ? onScreen : cards.verbs;
     await page.evaluate(() => { document.querySelector('#screens .sf-cru-card').click(); });
     await page.waitForTimeout(600);
     const after = await page.evaluate(() => {

@@ -7,7 +7,20 @@
 // leaf on sight for "modifier soup (stat-only drafts)".
 //
 // Pure data + pure function: no bus, no registry, no state, no DOM, no RNG source but the seed it
-// is handed. Same (seed, wave, hull, fittings, pick count) always yields the same three offers.
+// is handed. Same (seed, wave, hull, fittings, pick count, re-roll count) always yields the same
+// three offers.
+//
+// THE PAID RE-ROLL (CRU-016b). The run wallet used to buy nothing — a whole produced loop (drop,
+// magnetise, chase, settle) fed one row on the results screen. It now buys another draw, and the
+// price is arithmetic off the authored purse rather than a taste number: every wave in
+// src/data/survivalWaves.js pays exactly `8 + 4*wave` credits, so a re-roll at `6 + 3*wave` costs
+// exactly three quarters of what the wave you just cleared paid, at every wave in the block. Each
+// further re-roll inside the SAME draft costs that base again (1x, 2x, 3x), which is what stops a
+// late-run bank from buying an unlimited search. See rerollPrice below.
+//
+// A re-roll re-draws from the SAME eligible pool with a different seeded stream, and every id the
+// draft has already shown sinks to the back — so paying always changes the cards while any unshown
+// card exists, and the owner can peek at the next round to refuse a re-roll that would not.
 
 import { mulberry32 } from '../core/rng.js';
 import { SHIPS } from './ships.js';
@@ -93,9 +106,37 @@ export const SURVIVAL_DRAFT_OFFERS = freezeDeep([
   },
 ]);
 
-/** Deterministic stream for one draft. Pick history is mixed in, per review question 4. */
-export function draftStreamSeed(seed, wave, pickCount) {
-  const label = `survival-draft-v1|w${wave}|n${pickCount}`;
+/** Credits a re-roll costs before the same-draft multiplier — the fixed part of the price. */
+export const SURVIVAL_REROLL_BASE_CREDITS = 6;
+/** Credits the price rises per wave. Base + step*wave is 3/4 of that wave's authored purse. */
+export const SURVIVAL_REROLL_WAVE_CREDITS = 3;
+
+/**
+ * What one more draw costs, right now.
+ *
+ * Priced against what a run actually earns, not against a feeling: wave W pays `8 + 4*W` and a
+ * re-roll costs `6 + 3*W`, so the first re-roll of any draft is three quarters of the wave you
+ * just cleared. The multiplier is the number of re-rolls already taken in THIS draft, so a second
+ * look costs two waves' worth and a third costs three — a bank can buy depth, but never for free.
+ */
+export function rerollPrice(wave, rerollsTaken = 0) {
+  const w = Number.isInteger(wave) && wave > 1 ? wave : 1;
+  const n = Number.isInteger(rerollsTaken) && rerollsTaken > 0 ? rerollsTaken : 0;
+  return (SURVIVAL_REROLL_BASE_CREDITS + SURVIVAL_REROLL_WAVE_CREDITS * w) * (n + 1);
+}
+
+/**
+ * Deterministic stream for one draft ROUND. Pick history is mixed in, per review question 4, and
+ * so is the re-roll count — a paid re-roll must be reproducible, not random.
+ *
+ * The round-0 label is left byte-identical to the pre-re-roll one on purpose: a run seed that
+ * produced three particular cards before still produces them.
+ */
+export function draftStreamSeed(seed, wave, pickCount, rerollCount = 0) {
+  const r = Number.isInteger(rerollCount) && rerollCount > 0 ? rerollCount : 0;
+  const label = r > 0
+    ? `survival-draft-v1|w${wave}|n${pickCount}|r${r}`
+    : `survival-draft-v1|w${wave}|n${pickCount}`;
   let h = (seed >>> 0) ^ 0x85ebca6b;
   for (let i = 0; i < label.length; i++) {
     h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
@@ -140,17 +181,45 @@ function withinCapacity(hullId, fittings, slotIndex, defId) {
 }
 
 /**
+ * One round's three cards out of the eligible pool.
+ *
+ * Everything the draft has already shown sinks to the BACK of the shuffled pool, so a paid re-roll
+ * spends its money on cards the player has not seen. When fewer than `count` unshown cards remain
+ * the seen ones fill the tail — the surface always carries three choices rather than shrinking to
+ * nothing, and the owner refuses to charge for a round that would change none of them.
+ */
+function drawRound(eligible, seen, seed, wave, pickCount, round, count) {
+  const pool = eligible.slice();
+  const rng = mulberry32(draftStreamSeed(seed, wave, pickCount, round));
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = pool[i];
+    pool[i] = pool[j];
+    pool[j] = tmp;
+  }
+  if (seen.size === 0) return pool.slice(0, count);
+  const fresh = [];
+  const repeats = [];
+  for (const entry of pool) (seen.has(entry.id) ? repeats : fresh).push(entry);
+  return fresh.concat(repeats).slice(0, count);
+}
+
+/**
  * Three seeded offers for one draft.
  *
  * Returns { ok:false, reason } rather than throwing, and { ok:true, offers:[] } is a legal result
  * when nothing in the pool can legally land on this hull — the caller must still resolve the draft
  * so the run never stalls waiting for a pick that cannot exist.
+ *
+ * `rerollCount` selects which paid round to return. It is a pure function of the inputs: round N
+ * is derived by replaying rounds 0..N, so the same seed, pick history and re-roll count always
+ * land on the same three cards.
  */
 export function offerDraft(input) {
   try {
     return offerDraftInner(input);
   } catch {
-    return { ok: false, reason: 'invalid_input', offers: [] };
+    return { ok: false, reason: 'invalid_input', offers: [], rerollCount: 0, eligibleCount: 0 };
   }
 }
 
@@ -159,10 +228,13 @@ function offerDraftInner(input) {
   const seed = Number.isInteger(src.seed) ? src.seed : 0;
   const wave = Number.isInteger(src.wave) ? src.wave : 0;
   const pickCount = Number.isInteger(src.pickCount) && src.pickCount > 0 ? src.pickCount : 0;
+  const rerollCount = Number.isInteger(src.rerollCount) && src.rerollCount > 0 ? src.rerollCount : 0;
   const count = Number.isInteger(src.count) && src.count > 0 ? src.count : SURVIVAL_DRAFT_CHOICES;
   const hullId = typeof src.hullId === 'string' ? src.hullId : null;
   const shipDef = hullId ? SHIP_BY_ID.get(hullId) : null;
-  if (!shipDef) return { ok: false, reason: 'unknown_hull', offers: [] };
+  if (!shipDef) {
+    return { ok: false, reason: 'unknown_hull', offers: [], rerollCount, eligibleCount: 0 };
+  }
   const slots = buildSlotList(shipDef);
 
   const fittings = Array.isArray(src.fittings) ? src.fittings.slice() : [];
@@ -190,13 +262,13 @@ function offerDraftInner(input) {
   }
 
   // Seeded Fisher-Yates over the eligible set, then take the head. Deterministic in the eligible
-  // ORDER (catalog order), not in iteration accidents.
-  const rng = mulberry32(draftStreamSeed(seed, wave, pickCount));
-  for (let i = eligible.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const tmp = eligible[i];
-    eligible[i] = eligible[j];
-    eligible[j] = tmp;
+  // ORDER (catalog order), not in iteration accidents. Round 0 is the free draw; each paid round
+  // re-shuffles the same pool and pushes everything already shown to the back.
+  const seen = new Set();
+  let offers = [];
+  for (let round = 0; round <= rerollCount; round++) {
+    offers = drawRound(eligible, seen, seed, wave, pickCount, round, count);
+    for (const entry of offers) seen.add(entry.id);
   }
-  return { ok: true, reason: null, offers: eligible.slice(0, count) };
+  return { ok: true, reason: null, offers, rerollCount, eligibleCount: eligible.length };
 }

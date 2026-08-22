@@ -1,7 +1,10 @@
-// CRU-017 — the ten-wave refit goes through the real fitting authority, and a run's modifiers
-// never reach a persistent fitting.
+// CRU-017 — the ten-wave refit goes through the real fitting authority, reaches EVERY spare the
+// run has earned (not just the newest), says why a fit was refused, and a run's modifiers never
+// reach a persistent fitting.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -11,9 +14,19 @@ import { ships } from '../src/systems/ships.js';
 import { economy } from '../src/systems/economy.js';
 import { save } from '../src/save/saveSystem.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
+import { refitRowLines } from '../src/ui/screens/crucibleDraft.js';
 
 const ARENA = 'helios_core';
 const SEED = 7;
+const REFIT_SCREEN_SOURCE = readFileSync(
+  fileURLToPath(new URL('../src/ui/screens/crucibleDraft.js', import.meta.url)),
+  'utf8',
+);
+/** The same source with comment lines dropped — the header describes the old bug by name. */
+const REFIT_SCREEN_CODE = REFIT_SCREEN_SOURCE
+  .split('\n')
+  .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+  .join('\n');
 
 function boot({ seed = SEED, hullId = 'ship_hornet' } = {}) {
   const state = createGameState(seed);
@@ -185,6 +198,112 @@ test('a run\'s fittings are the run\'s own ephemeral hull and never reach the Ad
   withSave(harness.state, (s) => {
     assert.equal(s._campaignAutosaveSuppressed(), false);
   });
+});
+
+// ── CRU-017b: every spare is reachable, and a refusal is spoken ──────────────
+
+test('the refit reaches a spare that is not the newest', () => {
+  const harness = boot();
+  // Three drafted weapons, oldest first. The surface used to offer only the last one.
+  for (const defId of ['wpn_railgun_m', 'wpn_missile_rack_m', 'wpn_autocannon_m']) {
+    ships.grantModule({ defId, reason: 'crucible:draft' });
+  }
+  const inventory = harness.state.player.moduleInventory;
+  const oldest = inventory.find((m) => m.defId === 'wpn_railgun_m');
+  const newest = inventory.at(-1);
+  assert.notEqual(oldest.instanceId, newest.instanceId, 'the oldest spare is not the newest');
+
+  enterRefit(harness);
+  const rows = survivalDraft.refitRows();
+  const empty = rows.find((row) => !row.defId && row.spares.length > 0);
+  assert.ok(empty, 'an empty hardpoint is offered spares');
+  assert.ok(empty.spares.length >= 3, `all ${empty.spares.length} compatible spares are reachable`);
+  assert.ok(
+    empty.spares.some((spare) => spare.instanceId === oldest.instanceId),
+    'including the OLDEST — the whole run inventory, not just the last card drafted',
+  );
+
+  // And the screen renders every one of them as a choice.
+  const lines = refitRowLines(empty);
+  assert.equal(lines.action, 'Fit');
+  assert.equal(lines.disabled, false);
+  assert.equal(lines.options.length, empty.spares.length);
+  assert.ok(lines.options.some((option) => option.instanceId === oldest.instanceId));
+
+  // Fitting the one that is NOT newest actually lands.
+  harness.bus.emit('run:refitFitRequested', { slotIndex: empty.slotIndex, instanceId: oldest.instanceId });
+  assert.equal(activeShip(harness).fittings[empty.slotIndex], 'wpn_railgun_m');
+  assert.equal(named(harness.emitted, 'run:refitChanged').at(-1).payload.ok, true);
+});
+
+test('a spare that cannot enter a hardpoint is never offered for it', () => {
+  const harness = boot({ hullId: 'ship_kestrel' });
+  ships.grantModule({ defId: 'wpn_railgun_m', reason: 'test' });   // size M
+  enterRefit(harness);
+  const weaponRow = survivalDraft.refitRows().find((row) => row.slotType === 'weapon');
+  assert.ok(weaponRow, 'the Kestrel has a weapon hardpoint');
+  assert.equal(weaponRow.slotSize, 'S');
+  assert.ok(
+    !weaponRow.spares.some((spare) => spare.defId === 'wpn_railgun_m'),
+    'an M weapon is not listed for an S hardpoint',
+  );
+});
+
+test('a refused fit is reported in plain words, not by a button that does nothing', () => {
+  const harness = boot({ hullId: 'ship_kestrel' });
+  ships.grantModule({ defId: 'wpn_railgun_m', reason: 'test' });
+  const railgun = harness.state.player.moduleInventory.at(-1);
+  enterRefit(harness);
+
+  harness.bus.emit('run:refitFitRequested', { slotIndex: 0, instanceId: railgun.instanceId });
+
+  const changed = named(harness.emitted, 'run:refitChanged').at(-1);
+  assert.equal(changed.payload.ok, false);
+  assert.equal(typeof changed.payload.reason, 'string');
+  assert.ok(changed.payload.reason.length > 0, 'the refusal carries a reason');
+  assert.match(changed.payload.reason, /fit/i);
+  // The surface reads that same sentence back — this is the line the player sees.
+  assert.equal(survivalDraft.lastNotice(), changed.payload.reason);
+});
+
+test('a refused strip is reported too', () => {
+  const harness = boot();
+  enterRefit(harness);
+  const emptyIndex = activeShip(harness).fittings.findIndex((defId) => !defId);
+  assert.ok(emptyIndex >= 0, 'the hull has an empty hardpoint');
+
+  harness.bus.emit('run:refitStripRequested', { slotIndex: emptyIndex });
+
+  const changed = named(harness.emitted, 'run:refitChanged').at(-1);
+  assert.equal(changed.payload.ok, false);
+  assert.match(changed.payload.reason, /already empty/);
+  assert.equal(survivalDraft.lastNotice(), changed.payload.reason);
+});
+
+test('an empty hardpoint with nothing to put in it says so', () => {
+  const lines = refitRowLines({ slotIndex: 2, defId: null, name: null, spares: [] });
+  assert.equal(lines.label, 'Hardpoint 3');
+  assert.equal(lines.disabled, true);
+  assert.match(lines.value, /no spare/i);
+  assert.deepEqual(lines.options, []);
+
+  const filled = refitRowLines({ slotIndex: 0, defId: 'wpn_railgun_m', name: 'Railgun M', spares: [] });
+  assert.equal(filled.action, 'Strip');
+  assert.equal(filled.value, 'Railgun M');
+  assert.equal(refitRowLines(null), null);
+});
+
+test('the refit surface asks the owner for spares and never reaches for the newest one', () => {
+  assert.equal(typeof survivalDraft.refitRows, 'function');
+  assert.match(REFIT_SCREEN_SOURCE, /owner\.refitRows/, 'the screen draws rows from the owner');
+  assert.ok(
+    !/spares\[\s*spares\.length\s*-\s*1\s*\]/.test(REFIT_SCREEN_CODE),
+    'the newest-spare-only reach is gone from the code',
+  );
+  assert.match(REFIT_SCREEN_SOURCE, /run:refitFitRequested/, 'fits still go out as the run intent');
+  assert.match(REFIT_SCREEN_SOURCE, /run:refitStripRequested/, 'and so do strips');
+  assert.match(REFIT_SCREEN_SOURCE, /owner\.lastNotice/, 'a refusal is rendered, not swallowed');
+  assert.match(REFIT_SCREEN_SOURCE, /aria-live/, 'and it is announced');
 });
 
 test('the modifier record stays a note: no live reference into fittings, no stat delta', () => {

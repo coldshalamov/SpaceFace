@@ -6,16 +6,50 @@
 // nothing here writes state.run: the immutable pick record goes to runSession, which owns that
 // envelope.
 //
-// It also guarantees the run never stalls. A draft with no legal offer, a refused fit, or a missing
-// ships owner all still emit run:draftResolved, because survivalRun waits on that receipt forever.
+// It also guarantees the run never stalls. A draft with no legal offer, a refused fit, a refused
+// re-roll, or a missing ships owner all still end in exactly one run:draftResolved, because
+// survivalRun waits on that receipt forever. Buying a re-roll is never a resolution: it re-draws
+// and leaves the surface open, so the pick or the skip is still owed.
+//
+// THE RUN WALLET BUYS SOMETHING (CRU-016b). Credits are earned physically — chips drop, magnetise
+// and settle — and until now the only consumer was a row on the results screen. Here they buy one
+// thing: another draw. The charge goes out as run:spendRequested and the swap only happens on the
+// run:spent receipt that comes back, because runSession is the sole writer of state.run and it is
+// the authority on whether the wallet could stand it. Nothing here decrements a balance.
+//
+// Refusals are SAID, not swallowed. A refused fit, a refused pick and a refused re-roll each set a
+// plain-language notice the open surface reads back, so the player is never told "no" by a button
+// that simply did nothing.
 //
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 
 import { validateRunState } from '../core/runState.js';
-import { SURVIVAL_DRAFT_CHOICES, offerDraft } from '../data/survivalDraft.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { SURVIVAL_DRAFT_CHOICES, offerDraft, rerollPrice } from '../data/survivalDraft.js';
+import { WEAPONS } from '../data/weapons.js';
+import { buildSlotList, fits } from './ships.js';
 
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
 export const CRUCIBLE_REFIT_SCREEN_ID = 'crucibleRefit';
+
+/**
+ * Stamped on the wallet charge and checked on the way back. runSession echoes `reason` onto both
+ * run:spent and run:spendRejected, so this is what tells our own receipt apart from anyone else's
+ * — a re-roll can never be applied off a spend it did not ask for.
+ */
+export const CRUCIBLE_REROLL_SPEND_REASON = 'crucible:draftReroll';
+
+const MODULE_DEF_BY_ID = new Map([
+  ...MODULES.map((def) => [def.id, def]),
+  ...WEAPONS.map((def) => [def.id, def]),
+]);
+const SHIP_DEF_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
+
+function prettyDefId(defId) {
+  if (!defId) return 'empty';
+  return String(defId).replace(/^(wpn|mod)_/, '').replace(/_/g, ' ');
+}
 
 function liveSurvivalRun(state) {
   if (!state) return null;
@@ -44,6 +78,11 @@ export const survivalDraft = {
     this._unsubs.push(this.bus.on('run:refitCloseRequested', (p) => this.closeRefit(p)));
     this._unsubs.push(this.bus.on('run:refitFitRequested', (p) => this.refitFit(p)));
     this._unsubs.push(this.bus.on('run:refitStripRequested', (p) => this.refitStrip(p)));
+    this._unsubs.push(this.bus.on('run:draftRerollRequested', () => this.requestReroll()));
+    // The wallet's own receipts. We never read a balance and decide it was fine — runSession says
+    // whether the charge landed, and only then do the cards change.
+    this._unsubs.push(this.bus.on('run:spent', (p) => this._onSpent(p)));
+    this._unsubs.push(this.bus.on('run:spendRejected', (p) => this._onSpendRejected(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
   },
 
@@ -65,10 +104,27 @@ export const survivalDraft = {
     return this._wave;
   },
 
+  /** Paid re-rolls taken in the OPEN draft. Resets with every draft, not with the run. */
+  rerollCount() {
+    return this._rerolls || 0;
+  },
+
+  /**
+   * The last refusal, in words a player can read. The surfaces poll this instead of subscribing,
+   * so a re-render months after the event still says what happened rather than going quiet.
+   */
+  lastNotice() {
+    return this._notice || null;
+  },
+
   _reset() {
     this._offers = null;
     this._wave = 0;
     this._resolved = true;
+    this._rerolls = 0;
+    this._pendingReroll = null;
+    this._draftInput = null;
+    this._notice = null;
   },
 
   _onTransitioned(payload) {
@@ -92,14 +148,21 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
     const loadout = this._activeLoadout();
-    const result = offerDraft({
+    // Snapshot every input this draft was drawn from, INCLUDING count. A paid re-roll replays the
+    // same inputs with a higher round number; re-deriving them live would let a peek disagree with
+    // what the player gets after paying, and that equality is the whole determinism contract.
+    this._draftInput = {
       seed: run.seed,
       wave: run.wave,
       hullId: loadout.hullId,
       fittings: loadout.fittings,
       pickCount: Array.isArray(run.draftHistory) ? run.draftHistory.length : 0,
       count: SURVIVAL_DRAFT_CHOICES,
-    });
+    };
+    this._rerolls = 0;
+    this._pendingReroll = null;
+    this._notice = null;
+    const result = offerDraft(this._draftInput);
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     this._wave = run.wave;
     this._resolved = false;
@@ -112,16 +175,150 @@ export const survivalDraft = {
       return;
     }
     this._offers = offers;
-    this._emit('run:draftOffered', { wave: run.wave, offers: offers.map((o) => ({ ...o })) });
+    this._emit('run:draftOffered', {
+      wave: run.wave, offers: offers.map((o) => ({ ...o })), rerolls: 0,
+    });
     this._openScreen(CRUCIBLE_DRAFT_SCREEN_ID);
   },
 
   _openRefit() {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    this._notice = null;
     this._wave = run.wave;
     this._emit('run:refitOffered', { wave: run.wave, loadout: this._activeLoadout() });
     this._openScreen(CRUCIBLE_REFIT_SCREEN_ID);
+  },
+
+  /**
+   * Everything a surface needs to draw the re-roll control, including WHY it is unavailable.
+   *
+   * `available:false` is never silence: the reason travels with it so the button can be drawn
+   * plainly dead with the price and the balance beside it, rather than looking live and doing
+   * nothing when it is pressed.
+   */
+  rerollState() {
+    const run = liveSurvivalRun(this.state);
+    const offers = this._offers || [];
+    const rerolls = this._rerolls || 0;
+    if (!run || run.phase !== 'draft' || this._resolved || offers.length === 0 || !this._draftInput) {
+      return {
+        open: false, wave: this._wave, rerolls, price: 0, credits: 0,
+        available: false, reason: 'no_draft', note: '',
+      };
+    }
+    // Priced off the SNAPSHOT wave, the same one the cards were drawn from, so the price and the
+    // offers can never come from two different waves.
+    const wave = this._draftInput.wave;
+    const price = rerollPrice(wave, rerolls);
+    const credits = Number.isFinite(run.credits) ? run.credits : 0;
+    const base = { open: true, wave, rerolls, price, credits };
+    // Peek at the round the money would buy. Refusing to charge for cards the player has already
+    // been shown is the difference between a price and a tax.
+    const next = this._peekOffers(rerolls + 1);
+    const changes = next.some((entry) => !offers.some((shown) => shown.id === entry.id));
+    // The unavailable wording is built HERE so the sentence a player reads before pressing is the
+    // same sentence they read after pressing. Two spellings of one refusal is how a surface starts
+    // sounding like it is arguing with itself.
+    if (!changes) {
+      const info = { ...base, available: false, reason: 'pool_exhausted' };
+      return { ...info, note: this._rerollRefusalText(info) };
+    }
+    if (credits < price) {
+      const info = { ...base, available: false, reason: 'insufficient_credits' };
+      return { ...info, note: this._rerollRefusalText(info) };
+    }
+    return { ...base, available: true, reason: null, note: '' };
+  },
+
+  /**
+   * Buy another draw.
+   *
+   * The order matters: ASK the wallet, then act on its receipt. We do not read run.credits and
+   * decide the charge was fine — runSession owns that envelope and its refusal is authoritative.
+   * A re-roll never resolves the draft, so the pick or the skip is still owed afterwards and the
+   * run cannot stall on a purchase.
+   */
+  requestReroll() {
+    const info = this.rerollState();
+    if (!info.open) return false;
+    if (!info.available) {
+      this._notice = this._rerollRefusalText(info);
+      this._emit('run:draftRerollRejected', {
+        wave: info.wave, price: info.price, credits: info.credits, reason: info.reason,
+      });
+      return false;
+    }
+    // One charge, one token. The token is what stops a re-entrant or foreign run:spent from
+    // applying a second draw off a single payment.
+    this._pendingReroll = { price: info.price, next: info.rerolls + 1, wave: info.wave };
+    this._emit('run:spendRequested', {
+      credits: info.price, reason: CRUCIBLE_REROLL_SPEND_REASON,
+    });
+    if (this._pendingReroll) {
+      // No receipt came back at all — no run owner listening. Nothing was charged, so nothing
+      // changes and the draft is still answerable.
+      this._pendingReroll = null;
+      this._notice = 'The run wallet did not answer. Nothing was charged.';
+      this._emit('run:draftRerollRejected', {
+        wave: info.wave, price: info.price, credits: info.credits, reason: 'no_receipt',
+      });
+      return false;
+    }
+    return (this._rerolls || 0) === info.rerolls + 1;
+  },
+
+  _onSpent(payload) {
+    const pending = this._pendingReroll;
+    if (!pending) return;
+    if (!payload || payload.reason !== CRUCIBLE_REROLL_SPEND_REASON) return;
+    this._pendingReroll = null;
+    const offers = this._peekOffers(pending.next);
+    // Paid-for-nothing is not a state we ship. rerollState already refused an empty round, so this
+    // is belt and braces: keep the standing offers rather than blanking a surface the run waits on.
+    if (offers.length === 0) return;
+    this._rerolls = pending.next;
+    this._offers = offers;
+    this._notice = null;
+    this._emit('run:draftRerolled', {
+      wave: pending.wave,
+      rerolls: pending.next,
+      price: pending.price,
+      credits: Number.isFinite(payload.totalCredits) ? payload.totalCredits : null,
+    });
+    this._emit('run:draftOffered', {
+      wave: pending.wave, offers: offers.map((o) => ({ ...o })), rerolls: pending.next,
+    });
+  },
+
+  _onSpendRejected(payload) {
+    const pending = this._pendingReroll;
+    if (!pending) return;
+    if (!payload || payload.reason !== CRUCIBLE_REROLL_SPEND_REASON) return;
+    this._pendingReroll = null;
+    const credits = Number.isFinite(payload.available) ? payload.available : 0;
+    this._notice = this._rerollRefusalText({
+      reason: 'insufficient_credits', price: pending.price, credits,
+    });
+    this._emit('run:draftRerollRejected', {
+      wave: pending.wave, price: pending.price, credits, reason: 'insufficient_credits',
+    });
+  },
+
+  _rerollRefusalText(info) {
+    if (info && info.reason === 'pool_exhausted') {
+      return 'Nothing else in the pool fits this hull — a re-roll would deal the same three.';
+    }
+    const price = (info && info.price) || 0;
+    const credits = (info && info.credits) || 0;
+    return `A re-roll costs ${price} cr. The run wallet holds ${credits} cr.`;
+  },
+
+  /** Replay the draft's own inputs at a given round. Pure: no state is touched by a peek. */
+  _peekOffers(rerollCount) {
+    if (!this._draftInput) return [];
+    const result = offerDraft({ ...this._draftInput, rerollCount });
+    return result && result.ok && Array.isArray(result.offers) ? result.offers : [];
   },
 
   /**
@@ -137,6 +334,7 @@ export const survivalDraft = {
     const offerId = request && request.offerId;
     const offer = offers.find((entry) => entry.id === offerId) || null;
     this._offers = null;
+    this._pendingReroll = null;
     this._closeScreen(CRUCIBLE_DRAFT_SCREEN_ID);
 
     if (!offer) {
@@ -165,9 +363,14 @@ export const survivalDraft = {
         wave: run.wave,
       });
     } else {
+      // The surface has already closed and the run is moving on, so an inline notice would never
+      // be read. Say it on the shipped toast channel instead — a refusal the player never hears
+      // reads as a card that silently did nothing.
+      this._notice = `${offer.verb} could not be fitted. Your loadout is unchanged.`;
       this._emit('run:draftPickRejected', {
         wave: run.wave, offerId: offer.id, reason: applied.reason,
       });
+      this._emit('toast', { text: this._notice, kind: 'error', ttl: 4 });
     }
     this._finish({
       picked: applied.ok ? offer.id : null,
@@ -194,8 +397,13 @@ export const survivalDraft = {
     const slotIndex = request && request.slotIndex;
     const instanceId = request && request.instanceId;
     if (!Number.isInteger(slotIndex) || instanceId == null) return false;
+    // Read the def BEFORE the fit: a successful fit takes the spare out of inventory, and the
+    // refusal wording needs its name.
+    const def = this._spareDef(instanceId);
     const ok = !!ships.fitModule({ slotIndex, instanceId });
-    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'fit', ok });
+    const reason = ok ? null : this._fitRefusalText(ships, slotIndex, def);
+    this._notice = reason;
+    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'fit', ok, reason });
     return ok;
   },
 
@@ -207,9 +415,81 @@ export const survivalDraft = {
     if (!ships || typeof ships.unfitModule !== 'function') return false;
     const slotIndex = request && request.slotIndex;
     if (!Number.isInteger(slotIndex)) return false;
+    const held = this._activeLoadout().fittings[slotIndex] || null;
     const ok = !!ships.unfitModule({ slotIndex });
-    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'strip', ok });
+    const reason = ok ? null : this._stripRefusalText(slotIndex, held);
+    this._notice = reason;
+    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'strip', ok, reason });
     return ok;
+  },
+
+  /**
+   * Every hardpoint on the run's hull, with EVERY spare that could legally go in it.
+   *
+   * The surface used to reach one spare — the newest — so a player who had drafted five weapons
+   * could only ever refit the last one. Compatibility is decided here with the same buildSlotList
+   * and fits() the fitting authority uses, so the list a player is shown and the list ships will
+   * accept are the same list.
+   */
+  refitRows() {
+    const loadout = this._activeLoadout();
+    const shipDef = loadout.hullId ? SHIP_DEF_BY_ID.get(loadout.hullId) : null;
+    if (!shipDef) return [];
+    const slots = buildSlotList(shipDef);
+    const player = this.state && this.state.player;
+    const inventory = Array.isArray(player && player.moduleInventory) ? player.moduleInventory : [];
+    return slots.map((slot, slotIndex) => {
+      const defId = loadout.fittings[slotIndex] || null;
+      const spares = [];
+      if (!defId) {
+        for (const item of inventory) {
+          if (!item || item.instanceId == null) continue;
+          const def = MODULE_DEF_BY_ID.get(item.defId);
+          if (!def || !fits(slot, def)) continue;
+          spares.push({
+            instanceId: item.instanceId,
+            defId: item.defId,
+            name: def.name || prettyDefId(item.defId),
+          });
+        }
+      }
+      const heldDef = defId ? MODULE_DEF_BY_ID.get(defId) : null;
+      return {
+        slotIndex,
+        slotType: slot.type,
+        slotSize: slot.size,
+        defId,
+        name: defId ? ((heldDef && heldDef.name) || prettyDefId(defId)) : null,
+        spares,
+      };
+    });
+  },
+
+  _spareDef(instanceId) {
+    const player = this.state && this.state.player;
+    const inventory = Array.isArray(player && player.moduleInventory) ? player.moduleInventory : [];
+    for (const item of inventory) {
+      if (item && item.instanceId === instanceId) return MODULE_DEF_BY_ID.get(item.defId) || null;
+    }
+    return null;
+  },
+
+  /**
+   * Why the fitting authority said no, in its own words where it has them. moduleFitBlocker is the
+   * same check fitModule ran, so this reports the real reason rather than a guess made out here.
+   */
+  _fitRefusalText(ships, slotIndex, def) {
+    if (!def) return 'That spare is no longer in the run inventory.';
+    const blocker = typeof ships.moduleFitBlocker === 'function'
+      ? ships.moduleFitBlocker({ slotIndex, def })
+      : null;
+    if (blocker && blocker.text) return blocker.text;
+    return `${def.name || 'That spare'} cannot go in hardpoint ${slotIndex + 1}.`;
+  },
+
+  _stripRefusalText(slotIndex, held) {
+    if (!held) return `Hardpoint ${slotIndex + 1} is already empty.`;
+    return `${prettyDefId(held)} could not come off — the hold has no room for it.`;
   },
 
   /** Close the refit surface. survivalRun waits on run:refitClosed before the next wave. */
