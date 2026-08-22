@@ -477,9 +477,31 @@ async function main() {
     };
   });
   const headline = String(resultsView.headline || '');
+  // A plate that mounts but explains nothing is the failure this screen exists to prevent, so
+  // read what is actually on it rather than trusting that it rendered.
+  const plate = await page.evaluate(() => {
+    const root = document.querySelector('#screens .sf-crucible-results');
+    if (!root) return { present: false };
+    const text = root.textContent.replace(/\s+/g, ' ').trim();
+    return {
+      present: true,
+      chars: text.length,
+      saysKilledBy: /Killed by/i.test(text),
+      saysWeapon: /Its weapon/i.test(text),
+      saysDirection: /It came from/i.test(text),
+      saysLayer: /It got in/i.test(text),
+      minFontPx: Math.min(...[...root.querySelectorAll('*')]
+        .map((n) => parseFloat(getComputedStyle(n).fontSize) || 99)
+        .filter((v) => v < 99)),
+      buttons: [...root.querySelectorAll('button')].map((b) => b.textContent.trim()),
+    };
+  });
+  const explains = plate.present && plate.saysKilledBy && plate.saysWeapon
+    && plate.saysDirection && plate.saysLayer && plate.minFontPx >= 12;
   record('RESULTS',
-    resultsView.runPhase === 'ended' && headline.length > 10 && /killed you/.test(headline),
-    `"${headline}" · ${resultsView.result ? resultsView.result.kills : 0} kills, wave ${resultsView.result ? resultsView.result.wave : 0}`);
+    resultsView.runPhase === 'ended' && /killed you/.test(headline) && explains,
+    `"${headline}" · explains who/weapon/bearing/layer: ${explains} · `
+    + `${plate.chars} chars, smallest ${plate.minFontPx}px · ${(plate.buttons || []).join(' | ')}`);
 
   // ── RESTART ─────────────────────────────────────────────────────────────────────────────────
   if (!(await clickButton(page, 'Run it again'))) throw new Error('restart button did not click');

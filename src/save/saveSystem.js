@@ -149,9 +149,16 @@ export const save = {
     });
     bus.on('game:load', (p) => {
       // Loading out of a live run is legal — it is how a player leaves — but the run has to END,
-      // not silently vanish. runSession consumes game:exitToMenu and aborts the envelope; without
-      // it the loaded campaign would inherit a stale survival run and suppress its own saves.
-      if (this._campaignSaveSuppressed()) bus.emit('game:exitToMenu', { source: 'load_during_run' });
+      // not silently vanish: without a receipt the results owner never learns the run is over.
+      //
+      // Deliberately `run:endRequested` and NOT `game:exitToMenu`. Both abort the run, but
+      // exitToMenu also flips state.mode to 'menu' synchronously, and this handler is about to
+      // restore a save that will itself set the mode. Do not put a mode flip in the middle of a
+      // load. The envelope reset was already covered either way — runSession clears state.run on
+      // save:restoring — so this adds the receipt and nothing else.
+      if (this._campaignSaveSuppressed()) {
+        bus.emit('run:endRequested', { outcome: 'aborted', reason: 'load_during_run', tick: 0 });
+      }
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
       if (typeof defer === 'function' && defer(load) === true) return;
