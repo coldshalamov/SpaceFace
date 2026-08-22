@@ -6,6 +6,9 @@ import { controlPrompt } from '../src/ui/controlPrompts.js';
 
 const checks = [
   ['../src/ui/screens/stationHub.js', 'stationHub'],
+  // Live docked station ("Orbital Command") — the registered station screen def (wraps
+  // src/ui/station/stationApp.js); legacy screens/stationHub.js no longer registers as the screen.
+  ['../src/ui/station/stationScreen.js', 'stationScreen'],
   ['../src/ui/screens/starmap.js', 'starmapScreen'],
   ['../src/ui/screens/localmap.js', 'localmapScreen'],
   ['../src/ui/screens/techTree.js', 'techTreeScreen'],
@@ -46,6 +49,38 @@ for (const [path, exportName] of checks) {
       continue;
     }
     console.log(`ok   ${path} - ${exportName}:${def.id}`);
+    ok++;
+  } catch (err) {
+    console.log(`ERR  ${path} - ${err.message}`);
+    fail++;
+  }
+}
+
+// Live docked station screens are FACTORIES (create<Name>Screen(ctx)), not screen defs — they mount
+// through stationScreen/stationApp, so the id+mount def assertions above do not fit them. Assert
+// each named factory export is a function so a broken import or a renamed export fails here instead
+// of silently blanking a station tab at dock time.
+const factoryChecks = [
+  ['../src/ui/station/screens/market.js',       'createMarketScreen'],
+  ['../src/ui/station/screens/shipworks.js',    'createShipworksScreen'],
+  ['../src/ui/station/screens/industry.js',     'createIndustryScreen'],
+  ['../src/ui/station/screens/contracts.js',    'createContractsScreen'],
+  ['../src/ui/station/screens/factions.js',     'createFactionsScreen'],
+  ['../src/ui/station/screens/bar.js',          'createBarScreen'],
+  ['../src/ui/station/screens/ledger.js',       'createLedgerScreen'],
+  ['../src/ui/station/stationApp.js',           'createStationApp'],
+  ['../src/ui/station/dock.js',                 'createCommandDock'],
+];
+
+for (const [path, exportName] of factoryChecks) {
+  try {
+    const mod = await import(path);
+    if (typeof mod[exportName] !== 'function') {
+      console.log(`FAIL ${path} - missing ${exportName}`);
+      fail++;
+      continue;
+    }
+    console.log(`ok   ${path} - ${exportName}`);
     ok++;
   } catch (err) {
     console.log(`ERR  ${path} - ${err.message}`);

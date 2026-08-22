@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCREENS_DIR = 'src/ui/screens';
 
-// Captured surfaces. `file` is relative to SCREENS_DIR.
+// Captured surfaces. Legacy entries carry `file` relative to SCREENS_DIR; an entry may instead
+// carry an explicit repo-root-relative `path` (the live station lives under src/ui/station/**).
 // exportName: the top-level screen def to structurally verify (mount/onHide). Panels (market /
 // outfitting / shipyard / factions are stationHub children) have no top-level def → null.
 const SCREENS = [
@@ -36,7 +37,24 @@ const SCREENS = [
   { key: 'automation',  file: 'automationPanel.js', exportName: 'automationScreen' },
   { key: 'factions',    file: 'factions.js',        exportName: null },
   { key: 'anomaly',     file: 'codex.js',           exportName: 'codexScreen' },
+  // Live docked station ("Orbital Command", src/ui/station/**) — what the player actually sees on
+  // every dock. stationScreen is the registered screen def; the rest are the app shell, the seven
+  // destination screens (panel modules, each exporting a create<Name>Screen(ctx) factory), and the
+  // command dock fascia.
+  { key: 'station-shell',     path: 'src/ui/station/stationScreen.js',      exportName: 'stationScreen' },
+  { key: 'station-app',       path: 'src/ui/station/stationApp.js',         exportName: null },
+  { key: 'station-market',    path: 'src/ui/station/screens/market.js',     exportName: null },
+  { key: 'station-shipworks', path: 'src/ui/station/screens/shipworks.js',  exportName: null },
+  { key: 'station-industry',  path: 'src/ui/station/screens/industry.js',   exportName: null },
+  { key: 'station-contracts', path: 'src/ui/station/screens/contracts.js',  exportName: null },
+  { key: 'station-factions',  path: 'src/ui/station/screens/factions.js',   exportName: null },
+  { key: 'station-bar',       path: 'src/ui/station/screens/bar.js',        exportName: null },
+  { key: 'station-ledger',    path: 'src/ui/station/screens/ledger.js',     exportName: null },
+  { key: 'station-dock',      path: 'src/ui/station/dock.js',               exportName: null },
 ];
+
+// Repo-root-relative source path for an entry (legacy `file` entries resolve into SCREENS_DIR).
+function srcPath(s) { return s.path || join(SCREENS_DIR, s.file); }
 
 // Emoji-proper ranges. Deliberately EXCLUDES geometric shapes (U+25xx ▲▼—) and the
 // arrows block (U+2190-21FF) — those are legit non-emoji UI glyphs (market role marks, list carets).
@@ -55,18 +73,18 @@ function stripComments(src) {
 }
 
 const cache = new Map();
-function read(file) {
-  if (!cache.has(file)) {
-    const raw = readFileSync(join(ROOT, SCREENS_DIR, file), 'utf8');
-    cache.set(file, { raw, scan: stripComments(raw) });
+function read(path) {
+  if (!cache.has(path)) {
+    const raw = readFileSync(join(ROOT, path), 'utf8');
+    cache.set(path, { raw, scan: stripComments(raw) });
   }
-  return cache.get(file);
+  return cache.get(path);
 }
 
 // ── 1. No unauthorized idle animation: no free-running (infinite) CSS animation that is not gated ─
 //    by a state class (.is-*, .active, .trace-run, .sel, .done). Motion means state change (§1).
 for (const s of SCREENS) {
-  const src = read(s.file).scan;
+  const src = read(srcPath(s)).scan;
   const offenders = [];
   // Find each CSS rule-ish chunk that declares an infinite animation and check its selector prefix.
   const re = /([.#][^{};\n]{0,120}?)\{[^{}]*animation[^;{}]*\binfinite\b[^{}]*\}/g;
@@ -74,7 +92,7 @@ for (const s of SCREENS) {
   while ((m = re.exec(src))) {
     const selector = m[1];
     const gated = /(\.is-|\.active|\.trace-run|\.sel\b|--done|\.flowing|\.on\b|\.open\b|:hover|:focus|:active)/.test(selector);
-    if (!gated) offenders.push(`${s.file}: ${selector.trim().slice(0, 60)}`);
+    if (!gated) offenders.push(`${srcPath(s)}: ${selector.trim().slice(0, 60)}`);
   }
   want(offenders.length === 0, `[1] ${s.key} has no ungated infinite animation (offenders: ${offenders.join(' | ') || 'none'})`);
 }
@@ -82,7 +100,7 @@ for (const s of SCREENS) {
 // ── 2. No active rAF after hide: a screen that owns an rAF loop must cancel it; a screen that ─────
 //    activates effects must park them (setActive(false)) on hide.
 for (const s of SCREENS) {
-  const src = read(s.file).scan;
+  const src = read(srcPath(s)).scan;
   // Only an ASSIGNED handle (x = / this._raf = requestAnimationFrame) is a cancellable LOOP that must
   // be parked on hide. A one-shot deferred rAF — requestAnimationFrame(fn) whose id is not stored,
   // e.g. shipyard's "re-fit the 3D stage on the next frame" — self-completes and needs no cancel.
@@ -98,7 +116,7 @@ for (const s of SCREENS) {
 // ── 3. No duplicate top-center transient text surface (the one-voice floor lives in alerts.js). ──
 //    No captured SCREEN may define a centered-fixed transient pill (that would race the arbiter).
 for (const s of SCREENS) {
-  const src = read(s.file).scan;
+  const src = read(srcPath(s)).scan;
   const offenders = [];
   const re = /([.#][^{};\n]{0,80}?)\{([^{}]*)\}/g;
   let m;
@@ -108,14 +126,14 @@ for (const s of SCREENS) {
       /(left\s*:\s*50%|translateX\(-50%\)|translate\(-50%)/.test(body) &&
       /top\s*:/.test(body);
     const transient = /(voice|toast|floor|pill|banner|announce)/i.test(sel);
-    if (centeredFixed && transient) offenders.push(`${s.file}: ${sel.trim().slice(0, 50)}`);
+    if (centeredFixed && transient) offenders.push(`${srcPath(s)}: ${sel.trim().slice(0, 50)}`);
   }
   want(offenders.length === 0, `[3] ${s.key} defines no competing top-center transient surface (offenders: ${offenders.join(' | ') || 'none'})`);
 }
 
 // ── 4. Icon-only buttons carry an aria-label (an emoji/glyph button with no text is unlabelled). ──
 for (const s of SCREENS) {
-  const src = read(s.file).raw;
+  const src = read(srcPath(s)).raw;
   const offenders = [];
   // <button …>EMOJI</button> with no aria-label/aria-labelledby/title in the opening tag.
   const re = /<button\b([^>]*)>\s*([^<]{0,6})<\/button>/g;
@@ -123,7 +141,7 @@ for (const s of SCREENS) {
   while ((m = re.exec(src))) {
     const attrs = m[1]; const content = m[2];
     if (EMOJI_RE.test(content) && !/aria-label|aria-labelledby|title=/.test(attrs)) {
-      offenders.push(`${s.file}: <button>${content.trim()}</button>`);
+      offenders.push(`${srcPath(s)}: <button>${content.trim()}</button>`);
     }
   }
   want(offenders.length === 0, `[4] ${s.key} icon-only buttons are labelled (offenders: ${offenders.join(' | ') || 'none'})`);
@@ -133,7 +151,7 @@ for (const s of SCREENS) {
 //    must also disable it under prefers-reduced-motion / html.sf-reduce-motion. (Effects in
 //    src/ui/effects/* already ship this; screens must not introduce an unguarded one.)
 for (const s of SCREENS) {
-  const src = read(s.file).scan;
+  const src = read(srcPath(s)).scan;
   const definesMotion = /@keyframes\s+[\w-]*(shimmer|ripple|beam|march|flow|pulse|sweep)/i.test(src) ||
     /animation\s*:\s*[^;]*(shimmer|ripple|beam|march|flow|pulse|sweep)/i.test(src);
   if (!definesMotion) { ok(`[5] ${s.key} defines no shimmer/ripple/beam animation (nothing to guard)`); continue; }
@@ -145,15 +163,15 @@ for (const s of SCREENS) {
 {
   const seen = new Set();
   for (const s of SCREENS) {
-    const modKey = s.file;
+    const modKey = srcPath(s);
     if (seen.has(modKey)) continue;
     seen.add(modKey);
     let mod;
     try {
-      mod = await import(new URL(`../${SCREENS_DIR}/${s.file}`, import.meta.url));
-      ok(`[6] ${s.file} imports without throwing (module scope safe)`);
+      mod = await import(new URL(`../${srcPath(s)}`, import.meta.url));
+      ok(`[6] ${srcPath(s)} imports without throwing (module scope safe)`);
     } catch (e) {
-      bad(`[6] ${s.file} threw on import: ${String(e && e.message).split('\n')[0]}`);
+      bad(`[6] ${srcPath(s)} threw on import: ${String(e && e.message).split('\n')[0]}`);
       continue;
     }
     // Structural: a top-level screen def must expose mount() AND an unmount half (onHide/dispose);
@@ -166,7 +184,7 @@ for (const s of SCREENS) {
         `[6] ${s.exportName} exposes mount()+onHide/onShow/dispose contract (mount=${hasMount}, unmount=${hasUnmount})`);
     } else {
       const hasFactory = Object.values(mod).some((v) => typeof v === 'function');
-      want(hasFactory, `[6] ${s.file} exposes at least one callable panel builder`);
+      want(hasFactory, `[6] ${srcPath(s)} exposes at least one callable panel builder`);
     }
   }
 }
