@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "asset": "pod_cargo_container",
+  "revision": "chase_surgical_v2",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\pod_cargo_container.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\candidates\\pod_cargo_container_v2.glb",
+  "surgery": {
+    "boolean": [
+      {
+        "hatch": 0,
+        "ok": true
+      },
+      {
+        "hatch": 1,
+        "ok": true
+      }
+    ],
+    "joined": {
+      "hull": [
+        "Cargo_RoofLid"
+      ],
+      "mechanical": [
+        "Cargo_HatchFloor_0",
+        "Cargo_HatchFloor_1",
+        "Cargo_ISO_ASL",
+        "Cargo_ISO_ASU",
+        "Cargo_ISO_APL",
+        "Cargo_ISO_APU",
+        "Cargo_ISO_FSL",
+        "Cargo_ISO_FSU",
+        "Cargo_ISO_FPL",
+        "Cargo_ISO_FPU",
+        "Cargo_DoorBar",
+        "Cargo_DoorLatchP",
+        "Cargo_DoorLatchS"
+      ],
+      "accent": [
+        "Cargo_DaymarkP",
+        "Cargo_DaymarkS"
+      ]
+    }
+  },
+  "triangles": 4012,
+  "objects": [
+    "Cargo_ID_Plate",
+    "Cargo_Shell",
+    "pod_cargo_container_Material_Mechanical_Merged"
+  ],
+  "bytes": 375100
+}

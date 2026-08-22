@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\pod_cargo_container.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\cargo_source",
+  "focus": [
+    2.1,
+    0.0,
+    1.0
+  ],
+  "boundsMin": [
+    -0.5,
+    -1.5,
+    -0.125
+  ],
+  "boundsMax": [
+    4.7,
+    1.5,
+    2.125
+  ],
+  "size": [
+    5.2,
+    3.0,
+    2.25
+  ],
+  "lightScale": 0.4815,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "Cargo_ID_Plate",
+      "triangles": 48,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "Cargo_Shell",
+      "triangles": 192,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "pod_cargo_container_Material_Mechanical_Merged",
+      "triangles": 3536,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    }
+  ],
+  "triangles": 3776,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\cargo_source\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\cargo_source\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\cargo_source\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\unit2\\cargo_source\\clay_play_chase.png"
+}

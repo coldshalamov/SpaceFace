@@ -636,13 +636,13 @@
       "kind": "part:pods",
       "source": "assets/ships/parts/pods/pod_cargo_container.glb",
       "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "sourceSha256": "a7d05baf37223c7de34a0c52d8d558412cc2fb312017e6a3d4ac7c48e8e1f715",
-      "releaseSha256": "fd5b538629d17a9191a147be1a3ef6222d6fb890565f5cf4d11722c7ece0d5fa",
-      "sourceBytes": 334228,
-      "releaseBytes": 258868,
+      "sourceSha256": "27691f904e7e13586fc6c5e2d3f937a8668f8e3243f934d5ca3612be28aff940",
+      "releaseSha256": "1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b",
+      "sourceBytes": 372488,
+      "releaseBytes": 283748,
       "textures": 3,
       "ktx2Textures": 3,
-      "meshoptBufferViews": 13,
+      "meshoptBufferViews": 16,
       "contractNodeCount": 1
     },
     {

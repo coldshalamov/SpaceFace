@@ -2355,8 +2355,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 3776,
-      "bytes": 334228,
+      "tris": 3976,
+      "bytes": 372488,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
