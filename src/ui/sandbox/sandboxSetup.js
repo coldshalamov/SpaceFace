@@ -31,6 +31,12 @@ import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from '../../systems/combat.js';
 import { buildSlotList, makeShipEntitySpec } from '../../systems/ships.js';
 import { getCombatKernel } from '../../combat/kernel.js';
+import { mulberry32 } from '../../core/rng.js';
+import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
+import {
+  COMBAT_LAB_ARENAS,
+  COMBAT_LAB_ENEMY_PACKAGES,
+} from '../../data/combatLabSetups.js';
 
 // Module-scoped staging so the launch button (pure UI) and the game:started hook (pure logic)
 // don't need a shared object threaded through ctx. One pending config at a time.
@@ -115,6 +121,20 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
         ? { mass: Math.max(1, Math.min(1_000_000, overrides.anchorMass)) }
         : {}),
     };
+  }
+
+  if (overrides.combatLabSetup != null) {
+    const lab = validateCombatLabSetup(overrides.combatLabSetup);
+    if (lab.ok && lab.value) {
+      out.combatLabSetup = lab.value;
+      out.seed = lab.value.seed;
+      out.shipId = lab.value.hullId;
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === lab.value.arenaId);
+      if (arena) {
+        out.sectorId = arena.sectorId;
+        out.spawnPos = { x: arena.spawnPos.x, z: arena.spawnPos.z };
+      }
+    }
   }
   return out;
 }
@@ -767,6 +787,174 @@ function setupMasslineRange(ctx, opts = {}) {
   }
 }
 
+function resolveSpawnBudgetApi(ctx) {
+  const r = ctx && ctx.registry;
+  const registered = (r && typeof r.get === 'function') ? r.get('spawnBudget') : null;
+  if (!registered) return null;
+  if (typeof registered.request === 'function') return registered;
+  if (registered.api && typeof registered.api.request === 'function') return registered.api;
+  return null;
+}
+
+function spawnIdOf(spawned) {
+  if (spawned == null) return null;
+  if (typeof spawned === 'object' && spawned.id != null) return spawned.id;
+  return spawned;
+}
+
+/** Apply a validated Combat Lab hull + slot-exact loadout through ships.buyShip / grantModule / fitModule. */
+export function applyCombatLabSetup(ctx, validatedSetup) {
+  const receipt = { hullApplied: false, fitted: [], notFitted: [] };
+  if (!ctx || !ctx.state || !ctx.state.player || !validatedSetup || typeof validatedSetup !== 'object') {
+    return receipt;
+  }
+  const ships = sys(ctx, 'ships');
+  if (!ships || typeof ships.buyShip !== 'function') return receipt;
+
+  const hullId = validatedSetup.hullId;
+  const p = ctx.state.player;
+  const current = Array.isArray(p.ownedShips) ? p.ownedShips[p.activeShipIndex] : null;
+  if (current && current.defId === hullId) {
+    receipt.hullApplied = true;
+  } else if (hullId && ships.buyShip({ defId: hullId, setActive: true, grant: true })) {
+    receipt.hullApplied = true;
+  }
+
+  const loadout = Array.isArray(validatedSetup.loadout) ? validatedSetup.loadout : [];
+  for (const entry of loadout) {
+    if (!entry || typeof entry !== 'object') continue;
+    const slotIndex = entry.slotIndex;
+    const defId = entry.defId;
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || typeof defId !== 'string') {
+      receipt.notFitted.push({ slotIndex, defId });
+      continue;
+    }
+    const owned = Array.isArray(p.ownedShips) ? p.ownedShips[p.activeShipIndex] : null;
+    if (owned && Array.isArray(owned.fittings) && owned.fittings[slotIndex] === defId) {
+      receipt.fitted.push({ slotIndex, defId });
+      continue;
+    }
+    if (typeof ships.grantModule !== 'function' || !ships.grantModule({ defId, reason: 'combat-lab' })) {
+      receipt.notFitted.push({ slotIndex, defId });
+      continue;
+    }
+    const inv = p.moduleInventory || [];
+    let inst = null;
+    for (let i = inv.length - 1; i >= 0; i--) {
+      if (inv[i] && inv[i].defId === defId) {
+        inst = inv[i];
+        break;
+      }
+    }
+    let ok = false;
+    if (typeof ships.fitModule === 'function') {
+      ok = inst && inst.instanceId != null
+        ? !!ships.fitModule({ slotIndex, instanceId: inst.instanceId })
+        : !!ships.fitModule({ slotIndex, defId });
+    }
+    if (ok) receipt.fitted.push({ slotIndex, defId });
+    else receipt.notFitted.push({ slotIndex, defId });
+  }
+  return receipt;
+}
+
+/** Spawn a Combat Lab enemy package through spawnBudget.request / bindEntity. Fail closed if the budget is missing. */
+export function spawnBudgetedLabPackage(ctx, packageSpec) {
+  const empty = (requested) => ({
+    requested,
+    admitted: 0,
+    spawnedIds: [],
+    rejected: requested,
+  });
+
+  const entries = packageSpec && Array.isArray(packageSpec.entries) ? packageSpec.entries : [];
+  const queue = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    const count = Math.max(0, Math.min(20, Math.trunc(entry.count || 0)));
+    const enemyId = entry.enemyId;
+    const level = Number.isInteger(entry.level) && entry.level >= 1 ? entry.level : 1;
+    for (let i = 0; i < count; i++) queue.push({ enemyId, level });
+  }
+  const requested = queue.length;
+  if (requested <= 0) return { requested: 0, admitted: 0, spawnedIds: [], rejected: 0 };
+
+  const budget = resolveSpawnBudgetApi(ctx);
+  if (!budget || typeof budget.request !== 'function') return empty(requested);
+
+  const maxConcurrent = Number.isInteger(packageSpec.maxConcurrent) && packageSpec.maxConcurrent >= 0
+    ? packageSpec.maxConcurrent
+    : requested;
+  const want = Math.min(requested, maxConcurrent);
+  const ownerId = `combat-lab:${packageSpec.id != null ? String(packageSpec.id) : 'package'}`;
+  const grant = Math.max(0, budget.request(want, ownerId) | 0);
+  if (grant <= 0) return empty(requested);
+
+  const helpers = ctx && ctx.helpers;
+  if (!helpers || typeof helpers.spawnEntity !== 'function') {
+    if (typeof budget.releaseSome === 'function') budget.releaseSome(ownerId, grant);
+    return empty(requested);
+  }
+
+  const player = ctx.state && ctx.state.entities && ctx.state.playerId != null
+    ? ctx.state.entities.get(ctx.state.playerId)
+    : null;
+  const px = (player && player.pos && Number.isFinite(player.pos.x)) ? player.pos.x : 0;
+  const pz = (player && player.pos && Number.isFinite(player.pos.z)) ? player.pos.z : 0;
+  const dist = Math.max(120, Number(packageSpec.spawnDistance) || 400);
+  const seed = Number.isInteger(packageSpec.seed) && packageSpec.seed >= 0 && packageSpec.seed <= 0xffffffff
+    ? packageSpec.seed >>> 0
+    : 1;
+  const rng = mulberry32(seed);
+
+  const spawnedIds = [];
+  let boundCount = 0;
+  const toSpawn = Math.min(grant, queue.length);
+  try {
+    for (let i = 0; i < toSpawn; i++) {
+      const item = queue[i];
+      const a = ((Math.PI * 2 * i) / requested) + rng() * 0.5;
+      const pos = { x: px + Math.cos(a) * dist, z: pz + Math.sin(a) * dist };
+      const entitySpec = makeEnemySpawnSpec(item.enemyId, item.level, pos);
+      if (!entitySpec) continue;
+      entitySpec.data = entitySpec.data || {};
+      entitySpec.data.ai = entitySpec.data.ai || {};
+      entitySpec.data.ai.spawnContext = 'encounter';
+      const spawned = helpers.spawnEntity(entitySpec);
+      const id = spawnIdOf(spawned);
+      if (id == null) continue;
+      const bound = typeof budget.bindEntity === 'function' && !!budget.bindEntity(id, ownerId);
+      if (!bound) {
+        // Spawned but unbound: not admitted. The reserved slot stays unused and is
+        // released in finally. The entity is left in the world; this module is not
+        // the entity lifecycle owner and does not despawn it. Counted in rejected.
+        continue;
+      }
+      spawnedIds.push(id);
+      boundCount += 1;
+    }
+  } catch (err) {
+    // A throw mid-loop must not starve later spawns. Drop this grant, including
+    // slots already bound here. Spawned entities stay in the world but are not
+    // admitted — this function is not the entity lifecycle owner.
+    boundCount = 0;
+    spawnedIds.length = 0;
+    throw err;
+  } finally {
+    const unused = grant - boundCount;
+    if (unused > 0 && typeof budget.releaseSome === 'function') {
+      budget.releaseSome(ownerId, unused);
+    }
+  }
+
+  return {
+    requested,
+    admitted: boundCount,
+    spawnedIds,
+    rejected: requested - boundCount,
+  };
+}
+
 /** Apply a sandbox config to the just-started game, via real writers, in dependency-safe order. */
 export function applySandboxSetup(ctx, config) {
   if (!ctx || !ctx.state || !ctx.state.player) return;
@@ -802,6 +990,48 @@ export function applySandboxSetup(ctx, config) {
   //     mutation and no alternate travel/gameplay path.
   if (cfg.spawnAtZoneId && cfg.sectorId) {
     relocateToZone(ctx, cfg.sectorId, cfg.spawnAtZoneId, cfg.spawnAtZoneOffset);
+  }
+
+  // 7c. Combat Lab setup: hull/loadout through ships writers, then a budgeted enemy package.
+  // Validate here, not only in the builder — requestSandboxGame stages an arbitrary config
+  // and the game:started hook passes it straight through.
+  if (cfg.combatLabSetup) {
+    const lab = validateCombatLabSetup(cfg.combatLabSetup);
+    if (!lab.ok || !lab.value) {
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        const detail = lab.issues && lab.issues[0] && lab.issues[0].message
+          ? lab.issues[0].message
+          : 'invalid setup';
+        ctx.bus.emit('toast', {
+          text: 'Combat Lab setup invalid: ' + detail,
+          kind: 'error',
+          ttl: 6,
+        });
+      }
+    } else {
+      const setup = lab.value;
+      applyCombatLabSetup(ctx, setup);
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
+      const sectorId = cfg.sectorId || (arena && arena.sectorId);
+      const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
+        ? cfg.spawnPos
+        : (arena && arena.spawnPos);
+      if (sectorId && spawnPos) {
+        relocatePlayer(ctx, sectorId, spawnPos, `sandbox:combat-lab:${setup.arenaId}`);
+      }
+      const enemyPackage = COMBAT_LAB_ENEMY_PACKAGES.find((entry) => (
+        entry.id === setup.enemyPackageId
+      ));
+      if (enemyPackage) {
+        spawnBudgetedLabPackage(ctx, {
+          id: enemyPackage.id,
+          entries: enemyPackage.entries,
+          maxConcurrent: enemyPackage.maxConcurrent,
+          spawnDistance: enemyPackage.spawnDistance,
+          seed: setup.seed,
+        });
+      }
+    }
   }
 
   // 8. Enemies (placed relative to the player in the now-current sector).

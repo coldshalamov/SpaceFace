@@ -11,6 +11,12 @@ import {
   installSandboxGameStartedHook,
   requestSandboxGame,
 } from '../src/ui/sandbox/sandboxSetup.js';
+import { COMBAT_LAB_SETUP_SCHEMA } from '../src/contracts/combatLabSetupSchema.js';
+import {
+  COMBAT_LAB_ARENAS,
+  COMBAT_LAB_ENEMY_PACKAGES,
+  COMBAT_LAB_STARTER_PACKAGES,
+} from '../src/data/combatLabSetups.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
@@ -502,4 +508,137 @@ test('physical-play presets compose production spawns, relocation and launch sch
     }]);
     assert.equal(h.relocations.at(-1).meta.reason, 'sandbox:crime_interception');
   });
+});
+
+test('existing recovery presets still build the same launch config', () => {
+  const physics = recoveryPreset('physics_swarm').config;
+  const visual = recoveryPreset('visual_stress_scene').config;
+  assert.deepEqual(buildSandboxLaunchConfig(physics), { ...physics });
+  assert.deepEqual(buildSandboxLaunchConfig(visual), { ...visual });
+  assert.deepEqual(
+    buildSandboxLaunchConfig(physics, { cameraCandidate: 'physics_study', physicsLoadout: 'impulse' }).physicsSwarm,
+    physics.physicsSwarm,
+  );
+});
+
+test('malformed combatLabSetup does not throw or corrupt the rest of the config', () => {
+  const base = recoveryPreset('physics_swarm').config;
+  let config = null;
+  assert.doesNotThrow(() => {
+    config = buildSandboxLaunchConfig(base, {
+      combatLabSetup: {
+        schema: 'spaceface.combatLabSetup.v0',
+        hullId: 'ship_does_not_exist',
+        loadout: [{ slotIndex: 0, defId: 'nope' }],
+        enemyPackageId: 'nope',
+        arenaId: 'nope',
+        seed: -4,
+        wave: 0,
+      },
+      cameraCandidate: 'physics_study',
+      enemyCount: 4,
+    });
+  });
+  assert.equal(Object.hasOwn(config, 'combatLabSetup'), false);
+  assert.equal(config.shipId, 'ship_hornet');
+  assert.equal(config.cameraCandidate, 'physics_study');
+  assert.equal(config.physicsLoadout, 'physics_toolkit');
+  assert.equal(config.physicsSwarm.lightCount, 2);
+  assert.equal(config.physicsSwarm.mediumCount, 2);
+});
+
+test('applySandboxSetup skips an unvalidated Combat Lab setup that still names a live package', () => {
+  const h = makeContext();
+  const player = h.ctx.state.entities.get('player');
+  const startPos = { x: player.pos.x, z: player.pos.z };
+  const budget = {
+    request(n) { return n; },
+    bindEntity() { return true; },
+    releaseSome() { return 0; },
+  };
+  const innerGet = h.ctx.registry.get.bind(h.ctx.registry);
+  h.ctx.registry.get = (name) => {
+    if (name === 'spawnBudget') return budget;
+    if (name === 'ships') {
+      return {
+        buyShip() { throw new Error('hull should not swap'); },
+        grantModule() { return false; },
+        fitModule() { return false; },
+      };
+    }
+    return innerGet(name);
+  };
+  const enemy = COMBAT_LAB_ENEMY_PACKAGES.find((pkg) => pkg.id === 'wasp_flight');
+  const arena = COMBAT_LAB_ARENAS[0];
+  applySandboxSetup(h.ctx, {
+    combatLabSetup: {
+      schema: 'spaceface.combatLabSetup.v0',
+      hullId: 'ship_does_not_exist',
+      loadout: [{ slotIndex: 0, defId: 'wpn_pulse_laser_s' }],
+      enemyPackageId: enemy.id,
+      arenaId: arena.id,
+      seed: 47,
+      wave: 1,
+    },
+  });
+  assert.equal(h.spawned.length, 0);
+  assert.equal(h.relocations.length, 0);
+  assert.deepEqual(player.pos, startPos);
+  assert.ok(h.emitted.some((row) => row.type === 'toast' && row.payload && row.payload.kind === 'error'));
+});
+
+test('Combat Lab enemy path admits through spawnBudget', () => {
+  const requests = [];
+  const binds = [];
+  const h = makeContext();
+  const budget = {
+    request(n, owner) {
+      requests.push({ n, owner });
+      return n;
+    },
+    bindEntity(id, owner) {
+      binds.push({ id, owner });
+      return true;
+    },
+    releaseSome() { return 0; },
+  };
+  const ships = {
+    buyShip() { return true; },
+    grantModule() { return true; },
+    fitModule() { return true; },
+  };
+  const innerGet = h.ctx.registry.get.bind(h.ctx.registry);
+  h.ctx.registry.get = (name) => {
+    if (name === 'spawnBudget') return budget;
+    if (name === 'ships') return ships;
+    return innerGet(name);
+  };
+
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((pkg) => pkg.id === 'energy_baseline');
+  const enemy = COMBAT_LAB_ENEMY_PACKAGES.find((pkg) => pkg.id === 'wasp_flight');
+  const arena = COMBAT_LAB_ARENAS[0];
+  const config = buildSandboxLaunchConfig({}, {
+    combatLabSetup: {
+      schema: COMBAT_LAB_SETUP_SCHEMA,
+      hullId: starter.hullId,
+      loadout: starter.loadout.map((entry) => ({ slotIndex: entry.slotIndex, defId: entry.defId })),
+      enemyPackageId: enemy.id,
+      arenaId: arena.id,
+      seed: 47,
+      wave: 1,
+    },
+  });
+  applySandboxSetup(h.ctx, config);
+
+  const expected = enemy.entries.reduce((sum, entry) => sum + entry.count, 0);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].n, expected);
+  assert.equal(requests[0].owner, `combat-lab:${enemy.id}`);
+  assert.equal(binds.length, expected);
+  assert.equal(h.spawned.length, expected);
+  assert.deepEqual(binds.map((row) => row.id), h.spawned.map((entity) => entity.id));
+  for (const bind of binds) assert.equal(bind.owner, `combat-lab:${enemy.id}`);
+  for (const entity of h.spawned) {
+    assert.equal(entity.data.ai.spawnContext, 'encounter');
+  }
 });
