@@ -34,6 +34,9 @@ import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sector
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { entityAttr } from './entityResolver.js';
+import {
+  careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
+} from './map/careersReadout.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -3568,6 +3571,54 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--ink-mute); font-style: italic; }
 
+/* ---- Careers (Overview line + Careers tab) --------------------------------------------------- */
+/* New work obeys the grammar floor the panel's older rows predate: nothing here renders below
+   12px, and every figure binds --sf-data-face with tabular numerals (Phase-0 ruling: every figure
+   on every new surface binds the DATA face). Phase state rides on data-career-phase, never colour
+   alone. */
+#sf-galaxymap .gm-career {
+  padding: 6px 0;
+  border-top: 1px solid var(--mf-line-1);
+}
+#sf-galaxymap .gm-career:first-of-type { border-top: 0; }
+#sf-galaxymap .gm-career__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+#sf-galaxymap .gm-career__role {
+  font-family: var(--mf-ui);
+  font-weight: 600;
+  color: var(--ink);
+}
+#sf-galaxymap .gm-career__phase { color: var(--ink-dim); font-size: 12px; }
+#sf-galaxymap .gm-career[data-career-phase="Fleeing"] .gm-career__phase { color: var(--danger, #ff5470); }
+#sf-galaxymap .gm-career__fig {
+  margin-left: auto;
+  font-family: var(--sf-data-face);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+#sf-galaxymap .gm-career__place,
+#sf-galaxymap .gm-career__who {
+  color: var(--ink-mute);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 2px;
+}
+#sf-galaxymap .gm-career__who { color: var(--ink-dim); }
+#sf-galaxymap .gm-fig {
+  font-family: var(--sf-data-face);
+  font-variant-numeric: tabular-nums;
+  /* Owns its size: the header figure rides an 11px legacy row-value class, and the grammar floor
+     for new work is 12px — same specificity, but this block is later in the sheet, so it wins. */
+  font-size: 12px;
+}
+
 /* ---- Place context actions ------------------------------------------------------------------ */
 #sf-galaxymap .gm-place-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 #sf-galaxymap .gm-place-actions:empty { display: none; }
@@ -4019,6 +4070,7 @@ export const MAP_INSPECTOR_TABS = Object.freeze([
   { id: 'missions', label: 'Missions' },
   { id: 'economy', label: 'Economy' },
   { id: 'threat', label: 'Threat' },
+  { id: 'careers', label: 'Careers' },
   { id: 'services', label: 'Services' },
   { id: 'discovery', label: 'Discovery' },
   { id: 'history', label: 'History' },
@@ -4054,6 +4106,13 @@ export function resolveInspectorTabAvailability(state, target) {
   set('economy', true, 'Trade lanes from memory and model beacons');
   set('threat', !!(target || currentSectorId(state)),
     target ? 'Security, events, holdings and regional dossiers for the selection' : 'Security, events, holdings and regional dossiers for your current sector');
+  // CAREERS reads the pocket in scope — the sector behind the selection when there is one, the
+  // player's own sector otherwise — through the same scope idiom the Threat tab uses. The reason
+  // carries the data-state sentence (empty/loading/denied all name what would fill the pane).
+  const careersScope = (kind === 'sector' ? (target && (target.sectorId || target.id)) : (target && target.sectorId))
+    || currentSectorId(state);
+  const careers = careersTabAvailability(state, careersScope);
+  set('careers', careers.available, careers.reason);
   set('services', kind === 'station' || kind === 'sector',
     (kind === 'station' || kind === 'sector') ? 'Docking services' : 'Select a station or sector to list services');
   set('discovery', true, 'Survey confidence and charted status');
@@ -6760,6 +6819,7 @@ export const galaxyMapScreen = {
       case 'missions': return this._missionsTabHtml(state);
       case 'economy': return this._economyTabHtml(state);
       case 'threat': return this._threatTabHtml(state);
+      case 'careers': return this._careersTabHtml(state);
       case 'services': return this._servicesTabHtml(state);
       case 'discovery': return this._discoveryTabHtml(state);
       case 'history': return this._historyTabHtml();
@@ -6789,14 +6849,19 @@ export const galaxyMapScreen = {
         <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
         ${row.detail ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>` : ''}
       </div>`).join('');
+    // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
+    // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
+    // no-selection panel never grows a block that says nothing.
+    const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey table / Navigation</div>
         <div class="gm-ins-target-name">Where you are</div>
         ${rowsHtml}
       </div>
+      ${careersHtml}
       <div class="gm-ins-section">
-        <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat and survey depth.</div>
+        <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
       </div>`;
   },
 
@@ -7002,6 +7067,23 @@ export const galaxyMapScreen = {
         <div class="gm-ins-row"><span>Produces</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.produces))}</span></div>
         <div class="gm-ins-row"><span>Consumes</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.consumes))}</span></div>
       </div>`;
+  },
+
+  /**
+   * CAREERS — who is working this pocket, read-only off `state.npcJobs`.
+   *
+   * The career simulation (npcJobsRuntime — the single writer) runs haulers, miners, salvors,
+   * surveyors, patrols and tenders across the pockets, and before this tab nothing in the UI read
+   * it (build map §11.11 #1, measured). The roster itself is built by map/careersReadout.js — a
+   * pure join of the ledger, the live entity table and the entity resolver — so this method only
+   * resolves the pocket in scope with the same idiom the Threat tab uses, and hands over. Doors
+   * (hull / faction / station / sector) render through entityAttr/entitySpanHtml and open the
+   * shared dossier drawer via the delegated handler on #screens, like every other link on the Chart.
+   */
+  _careersTabHtml(state) {
+    const t = this._selectedTarget;
+    const sectorId = (t && (t.sectorId || (t.kind === 'sector' ? t.id : null))) || currentSectorId(state);
+    return careersTabHtml(state, sectorId);
   },
 
   _servicesTabHtml(state) {
