@@ -41,9 +41,23 @@ assert.match(contract, /must not freeze a[\s\S]*palette/i, 'contract forbids aes
 for (const id of ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger']) {
   assert.match(app, new RegExp(`id:\\s*['"]${id}['"]`), `station exposes ${id}`);
 }
-for (const id of ['repair', 'refuel', 'resupply', 'undock']) {
-  assert.match(app, new RegExp(`id:\\s*['"]${id}['"]`), `station exposes ${id} action`);
+// Repair/Refuel/Resupply moved off the command dock and onto the resource vitals, and the dock
+// is now built destinations-only (stationApp.js:238-247 constructs createCommandDock with
+// `actions: []`). The loop that used to sit here asserted the retired dock-tile shape
+// (`id: 'repair'` objects), so it went red while every capability was still live — and it would
+// have gone green again on any stray `id: 'repair'` string while staying green if the Repair
+// control itself were deleted. The assertions below follow the real chain — control → handler →
+// type → emit — so no stray string can satisfy them.
+for (const id of ['repair', 'refuel', 'resupply']) {
+  assert.match(app, new RegExp(`vitalActHtml\\(\\s*['"]${id}['"]`), `station exposes ${id} action on its vital`);
+  assert.match(app, new RegExp(`typeMap\\s*=\\s*\\{[^}]*\\b${id}\\b\\s*:`), `station exposes ${id} in the runAction service typeMap`);
+  assert.match(app, /bus\.emit\(\s*['"]ui:service['"]/, `station exposes ${id} commit as canonical ui:service`);
 }
+assert.match(app, /function\s+vitalActHtml[\s\S]*?data-vital-act=/, 'station exposes vital verbs via data-vital-act controls');
+assert.match(app, /closest\(\s*['"]\[data-vital-act\]['"]\s*\)[\s\S]*?runAction\s*\(/, 'station exposes delegated data-vital-act handler calling runAction');
+assert.match(app, /data-act="undock"/, 'station exposes undock control');
+assert.match(app, /addEventListener\(\s*['"]click['"][\s\S]*?runAction\(\s*['"]undock['"]\s*\)/, 'station exposes undock listener calling runAction');
+assert.match(app, /createCommandDock\(\s*\{[\s\S]*?actions:\s*\[\s*\]/, 'station exposes services on vitals (command dock built with empty actions)');
 assert.match(app, /data-handoff-mode/, 'first-dock handoff carries trade mode instead of destination only');
 assert.match(app, /tradeMode/, 'handoff mode reaches destination onShow');
 assert.match(app, /ui:service/, 'station services emit canonical ui:service');
