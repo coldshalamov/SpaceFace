@@ -340,7 +340,7 @@ def create_materials():
         # C153: hull to the Hitch bar's bright light gray; dirt damped so panels read as crisp
         # seams, not airbrushed blotches.
         # C154: Hitch-white hull so dark wells and charcoal wings can break value at D=144.
-        "Material_Hull": ((0.70, 0.71, 0.73), 0.02, 0.52, "hull", 0.0, None),
+        "Material_Hull": ((0.82, 0.83, 0.85), 0.02, 0.50, "hull", 0.0, None),
         "Material_Armor": ((0.07, 0.075, 0.082), 0.08, 0.50, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -349,7 +349,7 @@ def create_materials():
         "Material_Ceramic": ((0.10, 0.075, 0.055), 0.35, 0.78, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.02, 0.025, 0.03), 0.00, 0.04, "glass", 0.0, None),
-        "Material_Thruster": ((0.06, 0.06, 0.07), 0.18, 0.38, "thruster", 0.0, None),
+        "Material_Thruster": ((0.98, 0.32, 0.06), 0.00, 0.22, "thruster", 0.0, ((0.98, 0.34, 0.05), 6.0)),
     }
     mats = {}
     for name, (rgb, metal, rough, role, coat, emit) in specs.items():
@@ -361,12 +361,16 @@ def create_materials():
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
         # C118 chrome-black came from metallic_from_map driving Metallic to 1; hull/armor/wing now
         # carry roughness+normal+AO relief with metallic pinned by the constant, not the map.
-        if name not in ("Material_Warning", "Material_Canopy", "Material_Ceramic", "Material_Hull"):
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Ceramic", "Material_Hull", "Material_Thruster"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit, metallic_from_map=False)
         elif emit:
-            bsdf.inputs["Emission Color"].default_value = (*emit[0], 1)
-            bsdf.inputs["Emission Strength"].default_value = emit[1]
+            if "Emission Color" in bsdf.inputs:
+                bsdf.inputs["Emission Color"].default_value = (*emit[0], 1)
+            elif "Emission" in bsdf.inputs:
+                bsdf.inputs["Emission"].default_value = (*emit[0], 1)
+            if "Emission Strength" in bsdf.inputs:
+                bsdf.inputs["Emission Strength"].default_value = emit[1]
         if name == "Material_Canopy":
             # MTX-07/36: dark dielectric shell, coat, no volume transmission.
             # Hashed transmission photographed as a milky slab (C123 bay) or vanished (3Q).
@@ -1171,15 +1175,15 @@ def loft_volume(name, specs, material, collection, thick=0.12):
 
 
 def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None):
-    """Chase-camera slab-delta aft of the waist. Steep dihedral so thickness reads from 60°."""
+    """Delta on the house so the naked waist reads from chase. Mild dihedral only."""
     s = float(sign)
     soot = soot or armor
-    # y, le, chord, thick, z — aft of the waist; mild dihedral (C160 tip 1.24 m shadowed the hull).
+    # y, le, chord, thick, z — roots on the house, aft of the held waist.
     main = (
-        (1.78, -0.10, 2.60, 0.92, 0.16),
-        (2.52, -0.85, 2.10, 0.68, 0.28),
-        (3.28, -1.55, 1.48, 0.46, 0.40),
-        (4.02, -2.20, 0.88, 0.32, 0.52),
+        (1.48, -1.55, 2.20, 1.10, 0.18),
+        (2.20, -2.15, 1.75, 0.82, 0.28),
+        (2.95, -2.70, 1.25, 0.52, 0.38),
+        (3.65, -3.20, 0.75, 0.34, 0.48),
     )
     rings = [
         densify_ring(diamond_airfoil(le, y * s, z, chord, thick), 4)
@@ -1187,35 +1191,35 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     ]
     wing = loft_from_rings(name, rings, skin, collection, 0.022, cap=True)
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(diamond_airfoil(-0.05, 1.48 * s, 0.14, 2.35, 0.96), 4),
-        densify_ring(diamond_airfoil(-0.08, 1.62 * s, 0.15, 2.48, 0.94), 4),
-        densify_ring(diamond_airfoil(-0.10, 1.78 * s, 0.16, 2.60, 0.92), 4),
+        densify_ring(diamond_airfoil(-1.48, 1.22 * s, 0.16, 2.00, 1.14), 4),
+        densify_ring(diamond_airfoil(-1.52, 1.35 * s, 0.17, 2.10, 1.12), 4),
+        densify_ring(diamond_airfoil(-1.55, 1.48 * s, 0.18, 2.20, 1.10), 4),
     ], skin, collection, 0.016, cap=True)
     add_folded_sheet(
         f"{name}_Leading",
-        (-0.05, 1.78 * s, 0.22),
-        (-1.40, 3.40 * s, 0.42),
-        (-1.55, 3.40 * s, 0.08),
-        (-0.20, 1.78 * s, -0.18),
+        (-1.50, 1.48 * s, 0.26),
+        (-2.55, 3.10 * s, 0.44),
+        (-2.70, 3.10 * s, 0.10),
+        (-1.65, 1.48 * s, -0.16),
         0.110, skin, collection, 0.006,
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-1.35, 1.80 * s, 0.28),
-        (-2.05, 3.55 * s, 0.50),
-        (-1.85, 3.55 * s, 0.22),
-        (-1.15, 1.80 * s, 0.06),
-        0.060, soot, collection, 0.002,
+        (-2.35, 1.52 * s, 0.34),
+        (-3.00, 3.35 * s, 0.52),
+        (-2.80, 3.35 * s, 0.22),
+        (-2.15, 1.52 * s, 0.08),
+        0.070, soot, collection, 0.002,
     )
     add_folded_sheet(
         f"{name}_Flap",
-        (-1.55, 1.82 * s, 0.24),
-        (-2.35, 3.72 * s, 0.48),
-        (-3.05, 3.72 * s, 0.18),
-        (-2.15, 1.82 * s, 0.02),
-        0.070, armor, collection, 0.003,
+        (-2.45, 1.55 * s, 0.36),
+        (-3.15, 3.42 * s, 0.54),
+        (-3.70, 3.42 * s, 0.20),
+        (-2.95, 1.55 * s, 0.06),
+        0.150, armor, collection, 0.004,
     )
-    add_overlap_plate(f"{name}_TipMark", (-1.90, 3.88 * s, 0.48), (0.18, 0.14, 0.05), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TipMark", (-3.05, 3.52 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
 
 
@@ -1523,16 +1527,16 @@ def build_lod(lod, mats):
         (4.45, 0.52, 0.78, 0.32, 0.48, 0.30, 0.28),
         (3.30, 0.98, 0.56, 0.18, 0.14, 0.50, 0.22),
         (2.05, 1.42, 0.44, 0.08, 0.08, 0.72, 0.14),
-        (0.70, 2.38, 0.40, 0.06, 0.05, 0.90, 0.10),
-        (-0.50, 2.38, 0.40, 0.06, 0.05, 0.90, 0.10),
-        (-1.80, 1.68, 0.52, 0.10, 0.06, 0.88, 0.10),
-        (-3.10, 1.62, 0.52, 0.12, 0.04, 0.90, 0.08),
-        (-4.35, 1.58, 0.48, 0.12, 0.03, 0.92, 0.06),
+        (0.70, 2.58, 0.38, 0.06, 0.05, 0.90, 0.10),
+        (-0.50, 2.58, 0.38, 0.06, 0.05, 0.90, 0.10),
+        (-1.80, 1.46, 0.50, 0.10, 0.06, 0.88, 0.10),
+        (-3.10, 1.40, 0.50, 0.12, 0.04, 0.90, 0.08),
+        (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.45, 0.0, 0.92), (0.42, 0.42, 0.28))
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.20, 0.0, 0.90), (1.05, 0.52, 0.32))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
-    delete_faces_in_box(body, 4.10, 4.82, -0.42, 0.42, 0.70, 2.00, normal="z", normal_min=0.22)
+    delete_faces_in_box(body, 3.40, 5.10, -0.55, 0.55, 0.62, 2.00, normal="z", normal_min=0.18)
     delete_faces_in_cylinder(body, -3.40, -2.90, 0.95, 0.38, 0.28, normal="z", normal_min=0.18)
     delete_faces_in_cylinder(body, -3.40, -2.90, -0.95, 0.38, 0.28, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
@@ -1554,23 +1558,23 @@ def build_lod(lod, mats):
     report_shells(body, "hull after plate courses")
 
     soot = mats["Material_Soot"]
-    # C158: visor — one dark pane in a thick armor frame. Rim strips photographed as a cage.
-    add_box("Tub_Floor", (4.45, 0.0, 0.34), (0.38, 0.38, 0.016), soot, collection, 0.002)
-    add_box("Tub_Aft", (4.10, 0.0, 0.58), (0.018, 0.40, 0.26), soot, collection, 0.002)
-    add_box("Tub_Port", (4.45, -0.40, 0.58), (0.36, 0.016, 0.26), soot, collection, 0.002)
-    add_box("Tub_Stbd", (4.45, 0.40, 0.58), (0.36, 0.016, 0.26), soot, collection, 0.002)
-    add_box("WellLip_F", (4.78, 0.0, 0.98), (0.085, 0.56, 0.075), armor, collection, 0.003)
-    add_box("WellLip_A", (4.12, 0.0, 0.98), (0.085, 0.54, 0.075), armor, collection, 0.003)
-    add_box("WellLip_P", (4.45, -0.52, 0.98), (0.38, 0.075, 0.075), armor, collection, 0.003)
-    add_box("WellLip_S", (4.45, 0.52, 0.98), (0.38, 0.075, 0.075), armor, collection, 0.003)
+    # C165: long dark visor in a WHITE hull frame so it reads as glass, not a dark stamp.
+    add_box("Tub_Floor", (4.20, 0.0, 0.28), (0.95, 0.46, 0.016), soot, collection, 0.002)
+    add_box("Tub_Aft", (3.42, 0.0, 0.52), (0.018, 0.48, 0.28), soot, collection, 0.002)
+    add_box("Tub_Port", (4.20, -0.50, 0.52), (0.92, 0.016, 0.28), soot, collection, 0.002)
+    add_box("Tub_Stbd", (4.20, 0.50, 0.52), (0.92, 0.016, 0.28), soot, collection, 0.002)
+    add_box("WellLip_F", (5.02, 0.0, 0.98), (0.10, 0.68, 0.085), hull, collection, 0.003)
+    add_box("WellLip_A", (3.38, 0.0, 0.98), (0.10, 0.64, 0.085), hull, collection, 0.003)
+    add_box("WellLip_P", (4.20, -0.62, 0.98), (0.95, 0.085, 0.085), hull, collection, 0.003)
+    add_box("WellLip_S", (4.20, 0.62, 0.98), (0.95, 0.085, 0.085), hull, collection, 0.003)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.70, -0.38, 0.62),
-        (4.70, 0.38, 0.62),
-        (4.18, 0.36, 0.64),
-        (4.18, -0.36, 0.64),
-        0.014, canopy, collection, 0.002,
+        (4.95, -0.50, 0.56),
+        (4.95, 0.50, 0.56),
+        (3.50, 0.46, 0.60),
+        (3.50, -0.46, 0.60),
+        0.016, canopy, collection, 0.002,
     )
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
@@ -1579,16 +1583,17 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (2.40, -2.42, 0.08), (-1.20, -1.72, 0.04),
-        (-1.20, -1.48, 0.42), (2.40, -2.18, 0.48),
-        0.048, armor, collection, 0.004,
+        (1.10, -2.62, 0.34), (-0.35, -2.62, 0.32),
+        (-0.35, -2.22, 0.50), (1.10, -2.22, 0.52),
+        0.055, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (2.40, 2.42, 0.08), (2.40, 2.18, 0.48),
-        (-1.20, 1.48, 0.42), (-1.20, 1.72, 0.04),
-        0.048, armor, collection, 0.004,
+        (1.10, 2.62, 0.34), (1.10, 2.22, 0.52),
+        (-0.35, 2.22, 0.50), (-0.35, 2.62, 0.32),
+        0.055, armor, collection, 0.004,
     )
+    add_box("HouseLid", (-2.90, 0.0, 0.58), (1.55, 1.18, 0.10), armor, collection, 0.004)
     add_folded_sheet(
         "Keel_Spine",
         (1.40, -0.16, -0.42), (-0.40, -0.16, -0.38),
@@ -1610,16 +1615,21 @@ def build_lod(lod, mats):
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection, soot=mats["Material_Soot"])
         # C154: bells sit on the rectangular house, mouths tilted up into the chase.
-        add_hollow_bell(side, -3.20, 0.95 * sign, 0.38, 0.72, mats, collection)
+        add_hollow_bell(side, -3.20, 0.88 * sign, 0.38, 0.78, mats, collection)
         add_cylinder(
             f"DriveRim_{side}",
-            (-3.55, 0.95 * sign, 0.78),
-            0.50, 0.12, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
+            (-3.55, 0.88 * sign, 0.82),
+            0.52, 0.12, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
         )
         add_cylinder(
             f"DriveThroat_{side}",
-            (-3.55, 0.95 * sign, 0.70),
-            0.34, 0.05, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
+            (-3.55, 0.88 * sign, 0.72),
+            0.36, 0.05, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
+        )
+        add_cylinder(
+            f"DriveGlow_{side}",
+            (-3.55, 0.88 * sign, 0.68),
+            0.12, 0.03, mats["Material_Thruster"], collection, vertices=16, bevel=0.001, rot=(0, 0, 0),
         )
         add_folded_sheet(
             f"GunCheek_{side}",
