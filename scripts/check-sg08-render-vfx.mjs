@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
-import { KESTREL_MAIN_PLUME_RECIPE } from '../src/render/thruster/recipes/kestrelRecipes.js';
 import { FLEET_MAX_SHIPS } from '../src/render/thruster/systems/familyFleet.js';
-
-const KESTREL_PLUME_LAYER_COUNT = KESTREL_MAIN_PLUME_RECIPE.layers.filter((layer) => layer.enabled !== false).length;
 
 function makeBus() {
   const listeners = new Map();
@@ -39,6 +36,13 @@ function assertVectorClose(actual, expected, message, epsilon = 1e-5) {
   assertClose(actual.z, expected.z, `${message} z`, epsilon);
 }
 
+function isParentedTo(object, ancestor) {
+  for (let node = object; node; node = node.parent) {
+    if (node === ancestor) return true;
+  }
+  return false;
+}
+
 function makeHarness(overrides = {}) {
   const scene = new THREE.Scene();
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12 };
@@ -68,6 +72,13 @@ function makeHarness(overrides = {}) {
 }
 
 {
+  // This block used to assert the player's two authored trail sockets were bound into the
+  // card-plume pool: socketCount === 2, pool slots carrying those exact world poses, visible
+  // multi-segment plume geometry under throttle. Commit 401e0ebf (2026-08-11) moved the
+  // player's hero exhaust to energy.plasmaStream and writes zero card-plume sockets on
+  // purpose. The check went stale; the game did not regress. It now asserts plasma-stream
+  // ownership, that both authored poses still land in _productionPlumeSocketView, and that
+  // the stream spools to a drawing ribbon.
   const { state, system } = makeHarness({ video: { energyMaterials: true } });
   const player = state.entities.get(state.playerId);
   player.data = { defId: 'ship_kestrel' };
@@ -90,6 +101,28 @@ function makeHarness(overrides = {}) {
   root.updateMatrixWorld(true);
   player.view = { root };
 
+  // Prove the LIVE update path did the binding rather than doing it here: a check that calls the
+  // writer itself would repair _productionPlumeSocketView and then pass its own pose assertions
+  // against the repaired data, so deleting the live call would not be caught.
+  //
+  // _productionPlumeSocketView is shared scratch reused by every ship in one update, so the port
+  // ship's write would overwrite the player's before the assertions run. Snapshot the view AT the
+  // player's call instead of killing the second ship — that keeps the multi-ship scenario the old
+  // block covered while still reading the player's own live binding.
+  const writeProductionPlumeSockets = system._writeProductionPlumeSockets;
+  const socketWriteCalls = [];
+  system._writeProductionPlumeSockets = function wrappedWriteProductionPlumeSockets(...args) {
+    const result = writeProductionPlumeSockets.apply(this, args);
+    const view = system._productionPlumeSocketView;
+    socketWriteCalls.push({
+      entity: args[0],
+      result,
+      viewLength: view ? view.length : -1,
+      snapshot: (view || []).map((s) => ({ x: s.x, y: s.y, z: s.z, ax: s.ax, ay: s.ay, az: s.az })),
+    });
+    return result;
+  };
+
   system.update(1 / 60);
   const fleet = system._energy && system._energy.fleet;
   assert(fleet, 'production family fleet must own the live thruster path');
@@ -99,42 +132,70 @@ function makeHarness(overrides = {}) {
   const playerShip = fleet.findShip(player.id) || fleet.ships.find((s) => s.alive && s.isPlayer);
   assert.ok(playerShip && playerShip.isPlayer, 'player must occupy a fleet slot');
   assert.equal(playerShip.profileId, 'engine_ion_small');
-  const playerSocketCount = playerShip.socketCount;
-  assert.equal(playerSocketCount, 2, 'player must bind both authored trail sockets');
-  const plumeSystem = system._energy && system._energy.plumeSystem;
-  assert(plumeSystem && plumeSystem.group.visible, 'production plume should be visible under throttle');
-  // Exact dual-socket player contribution (layers × 2), regardless of additional co-family ships.
-  const playerLayerSlots = plumeSystem.pool.slots.slice(0, KESTREL_PLUME_LAYER_COUNT * 2);
-  assert.equal(playerLayerSlots.filter((s) => s.alive && s.socketIndex === 0).length, KESTREL_PLUME_LAYER_COUNT);
-  assert.equal(playerLayerSlots.filter((s) => s.alive && s.socketIndex === 1).length, KESTREL_PLUME_LAYER_COUNT);
-  assert.ok(plumeSystem.pool.activeCount >= KESTREL_PLUME_LAYER_COUNT * 2
-    && plumeSystem.pool.activeCount <= KESTREL_PLUME_LAYER_COUNT * playerSocketCount * fleet.activeShipCount,
-    `active slots bounded by layers×sockets×fleet ships (got ${plumeSystem.pool.activeCount})`);
+  const plasmaStream = system._energy && system._energy.plasmaStream;
+  assert(plasmaStream, 'player must bind a plasma stream as the declared hero-exhaust owner');
+  // 0 sockets is the deliberate plasma-stream ownership from 401e0ebf (2026-08-11).
+  // A non-zero value here would mean the card plume had silently taken the player's jet back.
+  assert.equal(playerShip.socketCount, 0, 'player card-plume socketCount must stay 0; a non-zero value means the card plume took the jet back');
+  const playerSocketWrites = socketWriteCalls.filter((call) => call.entity === player);
+  assert.ok(playerSocketWrites.length >= 1, 'live update must call the socket writer with the player entity');
+  const playerWrite = playerSocketWrites[playerSocketWrites.length - 1];
+  assert.equal(playerWrite.result, 2, 'live writer must bind both authored trail sockets');
+  assert.equal(playerWrite.viewLength, 2, 'production socket view must carry both authored trail sockets');
+  system._writeProductionPlumeSockets = writeProductionPlumeSockets;
+  const socketView = playerWrite.snapshot;
   socket.updateWorldMatrix(true, false);
   const expected = new THREE.Vector3();
   const expectedQuat = new THREE.Quaternion();
   const expectedScale = new THREE.Vector3();
   socket.matrixWorld.decompose(expected, expectedQuat, expectedScale);
   const expectedForward = new THREE.Vector3(-1, 0, 0).applyQuaternion(expectedQuat).normalize();
-  const first = plumeSystem.pool.slots[0];
-  assertClose(first.offset[0], expected.x, 'energy plume should share trail socket x');
-  assertClose(first.offset[1], expected.y, 'energy plume should share trail socket y');
-  assertClose(first.offset[2], expected.z, 'energy plume should share trail socket z');
-  assertClose(first.axis[0], -expectedForward.x, 'energy plume axis should oppose exhaust x');
-  assertClose(first.axis[1], -expectedForward.y, 'energy plume axis should oppose exhaust y');
-  assertClose(first.axis[2], -expectedForward.z, 'energy plume axis should oppose exhaust z');
+  const first = socketView[0];
+  assertClose(first.x, expected.x, 'energy plume should share trail socket x');
+  assertClose(first.y, expected.y, 'energy plume should share trail socket y');
+  assertClose(first.z, expected.z, 'energy plume should share trail socket z');
+  assertClose(first.ax, -expectedForward.x, 'energy plume axis should oppose exhaust x');
+  assertClose(first.ay, -expectedForward.y, 'energy plume axis should oppose exhaust y');
+  assertClose(first.az, -expectedForward.z, 'energy plume axis should oppose exhaust z');
   portSocket.updateWorldMatrix(true, false);
   const portExpected = new THREE.Vector3();
   const portExpectedQuat = new THREE.Quaternion();
   portSocket.matrixWorld.decompose(portExpected, portExpectedQuat, expectedScale);
-  const port = plumeSystem.pool.slots[KESTREL_PLUME_LAYER_COUNT];
-  assertClose(port.offset[0], portExpected.x, 'port energy plume should share its socket x');
-  assertClose(port.offset[1], portExpected.y, 'port energy plume should share its socket y');
-  assertClose(port.offset[2], portExpected.z, 'port energy plume should share its socket z');
+  const port = socketView[1];
+  assertClose(port.x, portExpected.x, 'port energy plume should share its socket x');
+  assertClose(port.y, portExpected.y, 'port energy plume should share its socket y');
+  assertClose(port.z, portExpected.z, 'port energy plume should share its socket z');
   assert.equal(system._liveCount, 0, 'production Kestrel plume must not add bead particles');
-  // Segmented geometry must actually sample the axial envelope (not a flat card).
-  assert.ok(plumeSystem.getActiveGeometryStats().vertexCount > 4,
-    'production plume geometry must be multi-segment');
+  const maxSpoolFrames = 60;
+  let spoolFrames = 1;
+  let plasmaInspect = plasmaStream.inspect();
+  while (!plasmaInspect.active && spoolFrames < maxSpoolFrames) {
+    system.update(1 / 60);
+    spoolFrames += 1;
+    plasmaInspect = plasmaStream.inspect();
+  }
+  assert.ok(plasmaInspect.active,
+    `plasma stream must become active under throttle (drive=${plasmaInspect.drive} after ${spoolFrames} frames)`);
+  assert.ok(plasmaInspect.drive > 0.08,
+    `plasma stream drive must rise above idle (drive=${plasmaInspect.drive} after ${spoolFrames} frames)`);
+  assert.equal(plasmaStream.group.visible, true, 'plasma stream group should be visible under throttle');
+  const ribbon = plasmaInspect.ribbon;
+  assert.ok(ribbon && ribbon.visible, 'plasma ribbon should be visible under throttle');
+  assert.ok(ribbon.jetLength > 0, 'plasma ribbon must have a positive jetLength');
+  assert.ok(ribbon.stations > 1, 'plasma ribbon geometry must be multi-station');
+  let ribbonMesh = null;
+  plasmaStream.group.traverse((obj) => {
+    if (!obj.isMesh || !obj.geometry) return;
+    // buildRibbonGeometry in plasmaRibbons.js tags the indexed sheet mesh with aStation.
+    if (!obj.geometry.getAttribute('aStation')) return;
+    ribbonMesh = obj;
+  });
+  assert.ok(ribbonMesh, 'plasma stream group must contain the ribbon mesh from the live object graph');
+  assert.equal(ribbonMesh.visible, true, 'plasma ribbon mesh must be visible under throttle');
+  assert.ok(isParentedTo(ribbonMesh, state.render.scene), 'plasma ribbon mesh must be parented up to the harness scene');
+  // plasmaRibbons.js buildRibbonGeometry draws through geo.setIndex(...); it never sets drawRange.
+  const indexedCount = ribbonMesh.geometry.index && ribbonMesh.geometry.index.count;
+  assert.ok(indexedCount > 0, `plasma ribbon indexed draw count must be positive (got ${indexedCount})`);
   assert.equal(system._liveTrailStreakCount, 0, 'production Kestrel plume must not add detached streak cards');
 }
 
