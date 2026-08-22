@@ -3,6 +3,7 @@
 import { core } from './coreSystem.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
+import { survivalResults } from '../systems/survivalResults.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -173,6 +174,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
     ['survivalDraft', survivalDraft],
+    ['survivalResults', survivalResults],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],

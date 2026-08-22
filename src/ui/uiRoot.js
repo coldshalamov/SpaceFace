@@ -88,6 +88,8 @@ const SCREEN_MODULES = [
   // Both draft surfaces live in one module, so two entries load the same chunk by export name.
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
+  { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleScreen' },
+  { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleResultsScreen' },
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
   { path: './screens/saveLoad.js', load: () => import('./screens/saveLoad.js'), name: 'saveLoadScreen' },
   { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
@@ -980,6 +982,10 @@ export const ui = {
     // briefly until the 'gameOver' screen is registered, then push it (idempotent — only push once).
     this.bus.on('game:over', () => {
       boardingFence.sync({ phase: 'cancelled' });
+      // A Crucible death is the end of a scored run, not a ship loss with a recovery berth. The
+      // run's own results surface opens from run:resultsReady below; the after-action screen with
+      // its "continue from the recovery dock" offer would be nonsense in an arena.
+      if (this._survivalRunLive()) return;
       if (this._gameOverShown) return;
       this._gameOverShown = true;
       const tryOpen = (attempts) => {
@@ -993,6 +999,24 @@ export const ui = {
       tryOpen(0);
     });
     // Reset the one-shot gate when a new game starts or a save loads (a loaded save is alive again).
+    // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
+    // victory (a terminal phase transition, which emits no run:ended).
+    this.bus.on('run:resultsReady', () => {
+      if (this._crucibleResultsShown) return;
+      this._crucibleResultsShown = true;
+      const tryOpen = (attempts) => {
+        if (this._registeredScreens && this._registeredScreens.has('crucibleResults')) {
+          try { this.screenManager.pushScreen('crucibleResults'); }
+          catch (e) { console.error('[ui] open crucibleResults', e); }
+          return;
+        }
+        if (attempts > 60) { console.warn('[ui] crucibleResults screen never registered'); return; }
+        setTimeout(() => tryOpen(attempts + 1), 50);
+      };
+      tryOpen(0);
+    });
+    this.bus.on('run:started', () => { this._crucibleResultsShown = false; });
+    this.bus.on('game:started', () => { this._crucibleResultsShown = false; });
     this.bus.on('game:over:dismissed', () => { this._gameOverShown = false; });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:loaded', () => {
@@ -1011,6 +1035,12 @@ export const ui = {
     // import promises resolve, so on a normal flight boot the menu is (correctly) not shown.
     this.registerScreens();
     this.screenManager.syncVisibility();
+  },
+
+  /** True while a Survival run is live — used to route death to the Crucible results surface. */
+  _survivalRunLive() {
+    const run = this.state && this.state.run;
+    return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
   },
 
   // Dynamically import + register every screen; a missing/throwing module is logged and skipped.

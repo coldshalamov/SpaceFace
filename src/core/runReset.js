@@ -9,6 +9,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'survivalWave',
   'survivalRewards',
   'survivalDraft',
+  'survivalResults',
   // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
   'spawnBudget',
   'world',

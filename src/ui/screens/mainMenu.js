@@ -235,6 +235,13 @@ export const mainMenuScreen = {
     const bSettings = button(coreText('settings'));
     col.appendChild(bNew); col.appendChild(bContinue); col.appendChild(bLoad); col.appendChild(bSettings);
 
+    // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
+    // launches through the ordinary New Game path and never touches the Adventure save. This is a
+    // NORMAL menu entry, not the dev-only Sandbox tier.
+    const bCrucible = button('Crucible');
+    col.appendChild(bCrucible);
+    bCrucible.addEventListener('click', () => pushWhenReady(ctx, 'crucible', 'Crucible'));
+
     // "Signal Archive" — opens the Codex on its Archive tab, where all four authored intro cinematics
     // replay from poster cards. (Replaces the old single-clip "Watch Intro Cinematic".)
     const bArchive = button(coreText('signalArchive'));
@@ -272,7 +279,7 @@ export const mainMenuScreen = {
     bQuit.addEventListener('click', () => requestQuit(ctx));
     col.appendChild(bQuit);
 
-    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox, bQuit };
+    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox, bQuit, bCrucible };
     this._render(ctx);
   },
 
@@ -282,6 +289,7 @@ export const mainMenuScreen = {
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
+    if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending()) {
       refs.bContinue.disabled = true;
