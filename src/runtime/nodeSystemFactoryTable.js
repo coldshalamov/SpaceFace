@@ -5,6 +5,7 @@
 import { isNodeSafeSystemId } from './authoritativeSystemManifest.js';
 import { core } from '../core/coreSystem.js';
 import { runSession } from '../systems/runSession.js';
+import { survivalRun } from '../systems/survivalRun.js';
 import { physics } from '../core/physics.js';
 import { input } from '../systems/input.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
@@ -152,6 +153,7 @@ export function getNodeSystemFactoryTable(options = {}) {
   const entries = [
     ['core', core],
     ['runSession', runSession],
+    ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
     ['autoTargetAssist', autoTargetAssist],
