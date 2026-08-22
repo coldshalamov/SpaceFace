@@ -148,5 +148,6 @@
 | 168 | yes | FECC116E | REVISE/REVISE/REVISE | Inset visor, no rim plugs. Bells named at close. Still chalk plate. Not wired. |
 | 169 | yes | 19F28618 | REVISE/REVISE/REVISE | Dark TE plates. Lum ~151. Still one white mass. Not wired. |
 | 170 | yes | 9D9A6348 | REVISE/REVISE/REVISE | Side belts. Chase looks down; lum unchanged. Still chalk. Not wired. |
+| 171 | yes | 9232AD72 | REVISE/REVISE/REVISE | Dorsal waist band moved lum toward Hitch; reads as a glued crate. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

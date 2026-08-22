@@ -1634,7 +1634,10 @@ def build_lod(lod, mats):
         (-4.20, 1.08, 0.50), (-4.20, 1.42, 0.06),
         0.055, armor, collection, 0.004,
     )
-    add_box("HouseLid", (-2.05, 0.0, 0.70), (0.95, 1.28, 0.12), armor, collection, 0.004)
+    add_box("HouseLid_C", (-2.35, 0.0, 0.72), (1.35, 0.32, 0.12), armor, collection, 0.004)
+    add_box("HouseLid_P", (-2.35, -1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
+    add_box("HouseLid_S", (-2.35, 1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
+    add_box("WaistBand", (0.10, 0.0, 0.58), (1.05, 2.35, 0.09), armor, collection, 0.004)
     add_folded_sheet(
         "Belly_P",
         (2.20, -2.48, -0.12), (-1.10, -1.92, -0.08),
@@ -1668,7 +1671,7 @@ def build_lod(lod, mats):
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection, soot=mats["Material_Soot"])
         # C154: bells sit on the rectangular house, mouths tilted up into the chase.
-        add_hollow_bell(side, -3.20, 0.88 * sign, 0.38, 0.78, mats, collection)
+        add_hollow_bell(side, -3.20, 0.88 * sign, 0.08, 0.72, mats, collection)
         add_folded_sheet(
             f"GunCheek_{side}",
             (5.08, 0.18 * sign, -0.06), (4.28, 0.46 * sign, -0.08),
