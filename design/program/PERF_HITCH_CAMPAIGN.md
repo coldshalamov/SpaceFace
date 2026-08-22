@@ -155,6 +155,67 @@ Reserved catalog IDs in parentheses are the work. `PQ-129.xx` is the admitted di
 | **`PQ-129.16`** | `PQ-097` / `PQ-078` present fusion | Cheaper bloom/HDR only if present is the remaining pole | Stills keep the halo; else close no-mutation |
 | **`PQ-129.17`** | `PQ-087` autosave hitch | Autosave cannot occupy a display callback | Autosave disappears from the classifier |
 | **`PQ-129.18`** | `PQ-094` pole sweep | New poles become new reserved leaves instead of folklore | Keep / reject / new-leaf note |
+| **`PQ-129.19`** | `PERF-89-SIM-HITCH-ATTRIBUTION` (minted by `.18`, 2026-08-21) | A `sim`-owned hitch frame names the system that actually spent the time | Every `sim`-classified hitch carries a per-frame owner; `unknown` share falls below 0.1 |
+
+### `.15` / `.17` / `.18` receipts — 2026-08-21 headed sweep
+
+Run: `SPACEFACE_WITNESS_MS=30000 node scripts/probe-runtime-witness.mjs --continue` at `ce340812`
+(headed Electron, Continue from a read-only player save, held thrust, 30 s at 500 ms cadence),
+plus a live browser census of the same seed.
+
+```
+observed frames 1001 | hitches 69 | named 51 | unknown 18 | named coverage 0.739
+hitch runs: first 47, echoes 22, longest streak 5
+owner counts: bloom 12 | sim 21 | externalScheduling 18 | unknown 18
+bloomScene p95 3.9 ms | bloomDownsample 0.2 | bloomComposite 0.1
+sampled sim systems (p95/avg/max ms):
+  tacticalAI 2.20/1.28/2.90   physics 0.60/0.37/0.90   flight 0.50/0.31/0.70
+  flybyFocus 0.30/0.20/0.40   actions 0.30/0.13/0.40   tetherGameplay 0.30/0.06/0.50
+  surrenderRecovery 0.30/0.16/0.40   core.preStep 0.20/0.10/0.20   input 0.20/0.10/0.80
+  lawSecurity 0.20/0.07/0.30   world 0.20/0.13/0.50   liveCareerLadderBranches 0.20/0.07/0.20
+tabletop census: glass 3-5 | runway 5-8 | beyond 314-319 | submitted 9-12 | resident 42-62
+```
+
+**`PQ-129.17` — REJECT, no code.** Its acceptance is "autosave disappears from the classifier".
+`autosave` is a declared owner (`src/render/hitchClassifier.js:19`, `autosaveMs` phase at `:41`) and
+the sweep names it **zero** times in 51 named hitches. Per §3.2 "the census says that owner is not on
+the pole" this closes without an IMPL leaf. Keep the detector; re-open only if `autosave` appears in a
+later owner count.
+
+**`PQ-129.15` — REJECT as already shipped, no code.** The leaf reads "sleep off-table AI/traffic;
+hostiles stay awake". That machinery exists and is wired: `src/core/activityScheduler.js`
+`shouldOwnerThink` sleeps `S2_ABSTRACT` / `S3_DORMANT` / `S4_AGGREGATE` outright unless `pinnedExact`,
+phase-staggers `S1_NEAR`, and keeps the player, combatants, hostiles and anything inside the authority
+radius awake; it is consumed by `src/ai/stack.js:296` (`sleepPeriodTicks: 8`, `activePeriodTicks: 1`,
+`authorityRadius: TABLE_AI_AUTHORITY_WU`), `src/systems/traffic.js:3204`,
+`src/world/activityRuntime.js:911` and `src/systems/barkDirector.js:64`.
+
+Live census (New Game, seed 47, 15 s held thrust, real browser route):
+
+```
+326 entities | 0 unstamped | 12 pinnedExact
+tiers:      S0_EXACT 13 | S1_NEAR 78 | S2_ABSTRACT 1 | S3_DORMANT 227 | S4_AGGREGATE 7
+ships (18): S0_EXACT  8 | S1_NEAR  2 | S2_ABSTRACT 1 | S4_AGGREGATE 7
+hostiles 2 | combatants 0
+```
+
+Zero entities are unstamped, so the gate never falls through. Eight of eighteen ships are fully
+asleep, two run at the near cadence, and only eight think every tick. There is no population of
+off-table ships thinking at 60 Hz left to switch off. Re-implementing this leaf would replay finished
+work, which §3.2 rejects.
+
+**`PQ-129.18` — the sweep's new-leaf note.** Two numbers from the same run do not reconcile: `sim` is
+the largest named hitch owner (21 of 51), but the largest sampled sim system max is 2.90 ms and every
+sampled system summed is far below a 32 ms hitch frame. **The owner of a `sim`-classified hitch is not
+in the sampled-system list.** Either the sampler misses the spiky owner, or the bucket is catch-up
+rather than one system's steady cost — `hitch runs: first 47, echoes 22` is the catch-up signature
+`.10` already attacked. `unknown` is another 18 of 69 hitches (26%), which the routing table sends
+here by name.
+
+Chasing `tacticalAI`'s 2.20 ms p95 would be chasing 0.27 ms per thinking ship, which cannot produce a
+32 ms frame. So `.19` is minted: give a `sim`-classified hitch frame a per-frame owner attribution
+(max-of-frame, not p95 sampling) and re-run the census. Until `.19` exists, any `.11`-`.15` sim leaf is
+aimed at a bill nobody has weighed.
 
 Wave C leaves stay **planned** until Wave B has a headed receipt that hitch count is ≤ half the
 2026-08-20 tail (8/8 hitch samples) **or** the classifier names that Wave C owner as the live
