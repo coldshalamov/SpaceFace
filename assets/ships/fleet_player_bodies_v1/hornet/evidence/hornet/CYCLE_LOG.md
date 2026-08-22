@@ -160,5 +160,6 @@
 | 180 | yes | DED5E517 | REVISE/REVISE/REVISE | Raised visor is a sticker; white roots chalked the ship; 2-shell hull. Not wired. |
 | 181 | yes | 647C2F42 | REVISE/REVISE/REVISE | 1-shell restored; visor boolean ate the nose lip. Drives are spots/plugs. Not wired. |
 | 182 | yes | 01EB9BCD | REVISE/REVISE/REVISE | Narrow visor is a sticker; sunk bells hid the wells from close. Not wired. |
+| 183 | yes | 690C2D58 | REVISE/REVISE/REVISE | Mid visor still a painted square; transom reads as a white cap. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
