@@ -1,0 +1,791 @@
+{
+  "unit": "PQ-131.00",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "negativeOnly": false,
+  "cell": {
+    "col": 20,
+    "row": 4
+  },
+  "mount": {
+    "ok": true,
+    "id": "drill_platform",
+    "stats": {
+      "loaded": 1,
+      "failed": 0,
+      "released": 0,
+      "register": "work",
+      "lod1Missing": 0,
+      "untaggedMeshes": 0
+    },
+    "hooks": {
+      "place_drill_platform": "place_drill_platform"
+    },
+    "colourSpace": [
+      {
+        "name": "LOD0_Merged_Material_BareSteel",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_Hazard",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_LightFlood",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_LightMining",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_PaintOchre",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_Scorch",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_Struct",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD0_Merged_Material_Truss",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_BareSteel",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_Hazard",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_LightFlood",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_LightMining",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_PaintOchre",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_Scorch",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_Struct",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD1_Merged_Material_Truss",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_BareSteel",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_Hazard",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_LightFlood",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_LightMining",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_PaintOchre",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_Scorch",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      },
+      {
+        "name": "LOD2_Merged_Material_Struct",
+        "map": "srgb",
+        "normal": "srgb-linear",
+        "orm": "srgb-linear"
+      }
+    ],
+    "transform": {
+      "native": {
+        "min": [
+          -7.350000381469727,
+          -7.3500003814697275,
+          -7.499973773956299
+        ],
+        "max": [
+          7.350000381469727,
+          7.350000381469726,
+          4.240161418914796
+        ],
+        "size": [
+          14.700000762939453,
+          14.700000762939453,
+          11.740135192871094
+        ]
+      },
+      "scale": 0.2993197123562709,
+      "rotation": [
+        1.5707963267948966,
+        0,
+        0
+      ],
+      "position": [
+        14.3,
+        39.6,
+        5.544889992700176
+      ],
+      "footprintCells": 2
+    },
+    "nativeBounds": {
+      "min": [
+        -7.350000381469727,
+        -7.3500003814697275,
+        -7.499973773956299
+      ],
+      "max": [
+        7.350000381469727,
+        7.350000381469726,
+        4.240161418914796
+      ],
+      "size": [
+        14.700000762939453,
+        14.700000762939453,
+        11.740135192871094
+      ]
+    },
+    "nodeLod": "lod0"
+  },
+  "afterLoadStats": {
+    "loaded": 1,
+    "failed": 0,
+    "released": 0,
+    "register": "site",
+    "lod1Missing": 0,
+    "untaggedMeshes": 0
+  },
+  "afterLoadRegister": "site",
+  "lod": {
+    "work": {
+      "visible": [
+        "LOD0_Merged_Material_BareSteel",
+        "LOD0_Merged_Material_Hazard",
+        "LOD0_Merged_Material_LightFlood",
+        "LOD0_Merged_Material_LightMining",
+        "LOD0_Merged_Material_PaintOchre",
+        "LOD0_Merged_Material_Scorch",
+        "LOD0_Merged_Material_Struct",
+        "LOD0_Merged_Material_Truss"
+      ],
+      "hidden": [
+        "LOD1_Merged_Material_BareSteel",
+        "LOD1_Merged_Material_Hazard",
+        "LOD1_Merged_Material_LightFlood",
+        "LOD1_Merged_Material_LightMining",
+        "LOD1_Merged_Material_PaintOchre",
+        "LOD1_Merged_Material_Scorch",
+        "LOD1_Merged_Material_Struct",
+        "LOD1_Merged_Material_Truss",
+        "LOD2_Merged_Material_BareSteel",
+        "LOD2_Merged_Material_Hazard",
+        "LOD2_Merged_Material_LightFlood",
+        "LOD2_Merged_Material_LightMining",
+        "LOD2_Merged_Material_PaintOchre",
+        "LOD2_Merged_Material_Scorch",
+        "LOD2_Merged_Material_Struct"
+      ],
+      "register": "work",
+      "nodeLod": "lod0",
+      "tags": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "untaggedMeshes": 0
+    },
+    "site": {
+      "visible": [
+        "LOD1_Merged_Material_BareSteel",
+        "LOD1_Merged_Material_Hazard",
+        "LOD1_Merged_Material_LightFlood",
+        "LOD1_Merged_Material_LightMining",
+        "LOD1_Merged_Material_PaintOchre",
+        "LOD1_Merged_Material_Scorch",
+        "LOD1_Merged_Material_Struct",
+        "LOD1_Merged_Material_Truss"
+      ],
+      "hidden": [
+        "LOD0_Merged_Material_BareSteel",
+        "LOD0_Merged_Material_Hazard",
+        "LOD0_Merged_Material_LightFlood",
+        "LOD0_Merged_Material_LightMining",
+        "LOD0_Merged_Material_PaintOchre",
+        "LOD0_Merged_Material_Scorch",
+        "LOD0_Merged_Material_Struct",
+        "LOD0_Merged_Material_Truss",
+        "LOD2_Merged_Material_BareSteel",
+        "LOD2_Merged_Material_Hazard",
+        "LOD2_Merged_Material_LightFlood",
+        "LOD2_Merged_Material_LightMining",
+        "LOD2_Merged_Material_PaintOchre",
+        "LOD2_Merged_Material_Scorch",
+        "LOD2_Merged_Material_Struct"
+      ],
+      "register": "site",
+      "nodeLod": "lod1",
+      "tags": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "untaggedMeshes": 0
+    }
+  },
+  "untaggedMeshes": 0,
+  "pixels": {
+    "box": {
+      "minX": 826.3364013745042,
+      "minY": 386.33640137450396,
+      "maxX": 1093.6635986254958,
+      "maxY": 653.6635986254961,
+      "width": 267.3271972509915,
+      "height": 267.3271972509921,
+      "visW": 267.3271972509915,
+      "visH": 267.3271972509921,
+      "canvasW": 1920,
+      "canvasH": 1040,
+      "onScreen": true,
+      "areaOnScreen": 71463.83039007068
+    },
+    "mounted": {
+      "pixels": 71824,
+      "nonBackground": 71442,
+      "lit": 70495,
+      "meanLuma": 115.72808683407123,
+      "meanLitLuma": 117.0615935740081,
+      "readX": 826,
+      "readY": 386,
+      "readW": 268,
+      "readH": 268
+    },
+    "unmounted": {
+      "pixels": 71824,
+      "nonBackground": 71335,
+      "lit": 69985,
+      "meanLuma": 94.51614163874565,
+      "meanLitLuma": 96.02652648996076,
+      "readX": 826,
+      "readY": 386,
+      "readW": 268,
+      "readH": 268
+    },
+    "delta": {
+      "changed": 27569,
+      "meanAbs": 195.6535964307737,
+      "mountedLitChanged": 27562,
+      "meanMountedLuma": 151.58488303530075
+    }
+  },
+  "scenePass": {
+    "mounted": {
+      "triangles": 73176,
+      "calls": 127
+    },
+    "unmounted": {
+      "triangles": 71168,
+      "calls": 119
+    }
+  },
+  "mask": {
+    "coveredCount": 23297,
+    "width": 268,
+    "height": 268,
+    "excludedMeshes": []
+  },
+  "shadowsSuppressed": true,
+  "masked": {
+    "real": {
+      "stats": {
+        "count": 23297,
+        "meanLuma": 151.8367440786439,
+        "medianLuma": 143.3864,
+        "stdevLuma": 21.667430540927924,
+        "meanR": 204.67983002103276,
+        "meanG": 147.561359831738,
+        "meanB": 38.586255741082546,
+        "p05Luma": 142.599,
+        "p95Luma": 194.9596
+      },
+      "statsUnmounted": {
+        "count": 23297,
+        "meanLuma": 96.7545545692564,
+        "medianLuma": 103.24239999999999,
+        "stdevLuma": 31.75837092149464,
+        "meanR": 108.56702579731297,
+        "meanG": 95.09868223376401,
+        "meanB": 78.37434004378247,
+        "p05Luma": 36.6418,
+        "p95Luma": 136.098
+      },
+      "delta": {
+        "changed": 23279,
+        "changedFrac": 0.9992273683306864
+      }
+    },
+    "black": {
+      "stats": {
+        "count": 23297,
+        "meanLuma": 0.002241799373309868,
+        "medianLuma": 0,
+        "stdevLuma": 0.06390168852442728,
+        "meanR": 0.0027471348242262953,
+        "meanG": 0.0023178950079409365,
+        "meanB": 0,
+        "p05Luma": 0,
+        "p95Luma": 0
+      },
+      "statsUnmounted": {
+        "count": 23297,
+        "meanLuma": 96.7534982186533,
+        "medianLuma": 103.24239999999999,
+        "stdevLuma": 31.758770364367397,
+        "meanR": 108.56556638193759,
+        "meanG": 95.09765205820491,
+        "meanB": 78.37421127183758,
+        "p05Luma": 36.6418,
+        "p95Luma": 136.098
+      },
+      "delta": {
+        "changed": 23224,
+        "changedFrac": 0.9968665493411168
+      }
+    },
+    "flat": {
+      "stats": {
+        "count": 23297,
+        "meanLuma": 159,
+        "medianLuma": 159,
+        "stdevLuma": 0,
+        "meanR": 159,
+        "meanG": 159,
+        "meanB": 159,
+        "p05Luma": 159,
+        "p95Luma": 159
+      },
+      "statsUnmounted": {
+        "count": 23297,
+        "meanLuma": 96.75137124093087,
+        "medianLuma": 103.24239999999999,
+        "stdevLuma": 31.756908143010318,
+        "meanR": 108.5625617032236,
+        "meanG": 95.09546293514187,
+        "meanB": 78.37528437137829,
+        "p05Luma": 36.6418,
+        "p95Luma": 136.098
+      },
+      "delta": {
+        "changed": 23297,
+        "changedFrac": 1
+      }
+    },
+    "ghost": {
+      "stats": {
+        "count": 0,
+        "meanLuma": 0,
+        "medianLuma": 0,
+        "stdevLuma": 0,
+        "meanR": 0,
+        "meanG": 0,
+        "meanB": 0,
+        "p05Luma": 0,
+        "p95Luma": 0
+      },
+      "statsUnmounted": {
+        "count": 0,
+        "meanLuma": 0,
+        "medianLuma": 0,
+        "stdevLuma": 0,
+        "meanR": 0,
+        "meanG": 0,
+        "meanB": 0,
+        "p05Luma": 0,
+        "p95Luma": 0
+      },
+      "delta": {
+        "changed": 0,
+        "changedFrac": 0
+      }
+    }
+  },
+  "gate": {
+    "real": {
+      "MASK_AREA": {
+        "value": 23297,
+        "floor": 2872.96,
+        "pass": true
+      },
+      "MASK_CHANGED": {
+        "value": 0.9992273683306864,
+        "floor": 0.5,
+        "pass": true
+      },
+      "MASK_LIT": {
+        "value": 143.3864,
+        "floor": 24,
+        "pass": true
+      },
+      "MASK_VARIETY": {
+        "value": 21.667430540927924,
+        "floor": 6,
+        "pass": true
+      },
+      "TRI_DELTA": {
+        "value": 2008,
+        "floor": 64,
+        "pass": true
+      }
+    },
+    "black": {
+      "MASK_AREA": {
+        "value": 23297,
+        "floor": 2872.96,
+        "pass": true
+      },
+      "MASK_CHANGED": {
+        "value": 0.9968665493411168,
+        "floor": 0.5,
+        "pass": true
+      },
+      "MASK_LIT": {
+        "value": 0,
+        "floor": 24,
+        "pass": false
+      },
+      "MASK_VARIETY": {
+        "value": 0.06390168852442728,
+        "floor": 6,
+        "pass": false
+      },
+      "TRI_DELTA": {
+        "value": 2008,
+        "floor": 64,
+        "pass": true
+      }
+    },
+    "flat": {
+      "MASK_AREA": {
+        "value": 23297,
+        "floor": 2872.96,
+        "pass": true
+      },
+      "MASK_CHANGED": {
+        "value": 1,
+        "floor": 0.5,
+        "pass": true
+      },
+      "MASK_LIT": {
+        "value": 159,
+        "floor": 24,
+        "pass": true
+      },
+      "MASK_VARIETY": {
+        "value": 0,
+        "floor": 6,
+        "pass": false
+      },
+      "TRI_DELTA": {
+        "value": 2008,
+        "floor": 64,
+        "pass": true
+      }
+    },
+    "ghost": {
+      "MASK_AREA": {
+        "value": 0,
+        "floor": 2872.96,
+        "pass": false
+      },
+      "MASK_CHANGED": {
+        "value": 0,
+        "floor": 0.5,
+        "pass": false
+      },
+      "MASK_LIT": {
+        "value": 0,
+        "floor": 24,
+        "pass": false
+      },
+      "MASK_VARIETY": {
+        "value": 0,
+        "floor": 6,
+        "pass": false
+      },
+      "TRI_DELTA": {
+        "value": 2008,
+        "floor": 64,
+        "pass": true
+      }
+    },
+    "restored": {
+      "MASK_AREA": {
+        "value": 23297,
+        "floor": 2872.96,
+        "pass": true
+      },
+      "MASK_CHANGED": {
+        "value": 0.9992273683306864,
+        "floor": 0.5,
+        "pass": true
+      },
+      "MASK_LIT": {
+        "value": 143.3864,
+        "floor": 24,
+        "pass": true
+      },
+      "MASK_VARIETY": {
+        "value": 21.667430540927924,
+        "floor": 6,
+        "pass": true
+      },
+      "TRI_DELTA": {
+        "value": 2008,
+        "floor": 64,
+        "pass": true
+      }
+    }
+  },
+  "negativeCaught": {
+    "black": [
+      "MASK_LIT",
+      "MASK_VARIETY"
+    ],
+    "flat": [
+      "MASK_VARIETY"
+    ],
+    "ghost": [
+      "MASK_AREA",
+      "MASK_CHANGED",
+      "MASK_LIT",
+      "MASK_VARIETY"
+    ]
+  },
+  "normalSession": {
+    "worksStats": null,
+    "observerAttached": false,
+    "armed": false,
+    "rendererInfo": {
+      "memory": {
+        "geometries": 86,
+        "textures": 31
+      },
+      "programs": 24,
+      "render": {
+        "triangles": 2,
+        "calls": 1
+      }
+    }
+  },
+  "tearingDownMount": {
+    "ok": false,
+    "reason": "tearing-down"
+  },
+  "presentation": {
+    "baseline": {
+      "toneMapping": 0,
+      "outputColorSpace": "srgb",
+      "clearColor": "#0b0a12",
+      "clearAlpha": 1,
+      "overrideMaterialNull": true,
+      "backgroundIsBaseline": true,
+      "environmentIsBaseline": true,
+      "autoClear": true,
+      "renderTargetNull": true,
+      "visibleChildCount": 17
+    },
+    "beforeProbe": {
+      "toneMapping": 0,
+      "outputColorSpace": "srgb",
+      "clearColor": "#0b0a12",
+      "clearAlpha": 1,
+      "overrideMaterialNull": true,
+      "backgroundIsBaseline": true,
+      "environmentIsBaseline": true,
+      "autoClear": true,
+      "renderTargetNull": true,
+      "visibleChildCount": 18
+    },
+    "afterProbe": {
+      "toneMapping": 0,
+      "outputColorSpace": "srgb",
+      "clearColor": "#0b0a12",
+      "clearAlpha": 1,
+      "overrideMaterialNull": true,
+      "backgroundIsBaseline": true,
+      "environmentIsBaseline": true,
+      "autoClear": true,
+      "renderTargetNull": true,
+      "visibleChildCount": 18
+    }
+  },
+  "before": {
+    "memory": {
+      "geometries": 86,
+      "textures": 31
+    },
+    "programs": 24,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    }
+  },
+  "afterLoad": {
+    "memory": {
+      "geometries": 102,
+      "textures": 55
+    },
+    "programs": 29,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    }
+  },
+  "hide1": {
+    "memory": {
+      "geometries": 86,
+      "textures": 31
+    },
+    "programs": 27,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    },
+    "rendererLive": true,
+    "afterWorksRelease": true
+  },
+  "hide2": {
+    "memory": {
+      "geometries": 86,
+      "textures": 31
+    },
+    "programs": 27,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    },
+    "rendererLive": true,
+    "afterWorksRelease": true
+  },
+  "disposePath": {
+    "memory": {
+      "geometries": 86,
+      "textures": 31
+    },
+    "programs": 27,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    },
+    "rendererLive": true,
+    "afterWorksRelease": true
+  },
+  "afterDispose": {
+    "memory": {
+      "geometries": 86,
+      "textures": 31
+    },
+    "programs": 27,
+    "render": {
+      "triangles": 2,
+      "calls": 1
+    },
+    "rendererLive": true,
+    "afterWorksRelease": true
+  },
+  "deltas": {
+    "load": {
+      "geometries": 16,
+      "textures": 24,
+      "programs": 5
+    },
+    "hide1": {
+      "geometries": 0,
+      "textures": 0,
+      "programs": 3,
+      "rendererLive": true
+    },
+    "hide2": {
+      "geometries": 0,
+      "textures": 0,
+      "programs": 3,
+      "rendererLive": true
+    },
+    "disposePath": {
+      "geometries": 0,
+      "textures": 0,
+      "programs": 3,
+      "rendererLive": true
+    }
+  },
+  "pngs": [
+    "pq-131.00-work.png",
+    "pq-131.00-site.png"
+  ],
+  "failures": []
+}

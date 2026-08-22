@@ -54,6 +54,7 @@ import {
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
+import { createWorksPartLoader } from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -99,6 +100,12 @@ const Z = {
 };
 
 const ENTRY_COL = Math.floor(COLS / 2);
+// PQ-131.00 proof mount: a fixed cell the capture can find. Off unless the query/dev flag
+// or canvas.__ast3d.mountWorksProof() turns it on — a normal session must not grow a stray object.
+const WORKS_PROOF_ID = 'drill_platform';
+const WORKS_PROOF_CELL = Object.freeze({ col: 20, row: 4 });
+const WORKS_PROOF_FOOTPRINT_CELLS = 2;
+const WORKS_BG = Object.freeze([0x0b, 0x0a, 0x12]);
 
 // ---------------------------------------------------------------- material identity (law §3.5)
 // PQ-130.04 "Cells speak". The sim's tile grammar is `dirt | rock | vein(ore) | gas | empty`; the
@@ -420,6 +427,845 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const envRT = bakeEnvMap(renderer);
   const envMap = envRT.texture;
   scene.environment = envMap;
+  const worksPresentationBackground = scene.background;
+  const worksPresentationEnvironment = scene.environment;
+
+  let disposed = false;   // guards async surface arrival against a screen that already left
+  let worksTearingDown = false;
+
+  // PQ-131.00 — authored-part lease bound to THIS renderer. Created on demand when the
+  // proof is armed; a normal player session never constructs it.
+  let worksLoader = null;
+  let worksProofGroup = null;
+  let worksProofGen = 0;
+  let worksProofWanted = false;
+  let worksProofArmed = false;
+  let worksHostWasVisible = false;
+  let worksHostObs = null;
+  let worksRetirePromise = null;
+  let worksRetireToken = null;
+  let worksRetireGen = 0;
+  let glTeardownDone = false;
+  const worksBox = new THREE.Box3();
+  const worksBoxTmp = new THREE.Box3();
+  const worksSize = new THREE.Vector3();
+  const worksCenter = new THREE.Vector3();
+  const worksCorner = new THREE.Vector3();
+  const worksProofTmpColor = new THREE.Color();
+  let worksProofMaskMaterial = null;
+  let worksProofBlackMat = null;
+  let worksProofFlatMat = null;
+  let worksProofGhostMat = null;
+  let worksProofMaskCovered = new Uint8Array(0);
+  let worksProofMaskErode = new Uint8Array(0);
+  let worksProofLumaScratch = new Float64Array(0);
+  let worksProofSavedMaterials = null;
+  function getWorksProofMaskMaterial() {
+    if (!worksProofMaskMaterial) {
+      worksProofMaskMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        toneMapped: false,
+        fog: false,
+        side: THREE.DoubleSide,
+      });
+    }
+    return worksProofMaskMaterial;
+  }
+  function getWorksProofBlackMat() {
+    if (!worksProofBlackMat) {
+      worksProofBlackMat = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
+    }
+    return worksProofBlackMat;
+  }
+  function getWorksProofFlatMat() {
+    if (!worksProofFlatMat) {
+      worksProofFlatMat = new THREE.MeshBasicMaterial({ color: 0x777777, toneMapped: false });
+    }
+    return worksProofFlatMat;
+  }
+  function getWorksProofGhostMat() {
+    if (!worksProofGhostMat) {
+      worksProofGhostMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+    }
+    return worksProofGhostMat;
+  }
+  function restoreWorksProofMaterials() {
+    const saved = worksProofSavedMaterials;
+    if (!saved) return;
+    for (let i = 0; i < saved.length; i++) {
+      saved[i].mesh.material = saved[i].material;
+    }
+    worksProofSavedMaterials = null;
+  }
+  function snapshotRendererPresentation() {
+    renderer.getClearColor(worksProofTmpColor);
+    const children = scene.children;
+    let visibleChildCount = 0;
+    for (let i = 0; i < children.length; i++) {
+      if (children[i].visible) visibleChildCount += 1;
+    }
+    return {
+      toneMapping: renderer.toneMapping,
+      outputColorSpace: renderer.outputColorSpace,
+      clearColor: '#' + worksProofTmpColor.getHexString(),
+      clearAlpha: renderer.getClearAlpha(),
+      overrideMaterialNull: scene.overrideMaterial === null,
+      backgroundIsBaseline: scene.background === worksPresentationBackground,
+      environmentIsBaseline: scene.environment === worksPresentationEnvironment,
+      autoClear: renderer.autoClear,
+      renderTargetNull: renderer.getRenderTarget() === null,
+      visibleChildCount,
+    };
+  }
+  function worksProofFlagOn() {
+    try {
+      if (typeof location === 'undefined') return false;
+      const q = new URLSearchParams(location.search);
+      return q.get('worksProof') === '1' || q.get('dev') === 'works-proof';
+    } catch (_) {
+      return false;
+    }
+  }
+  function snapshotRendererInfo() {
+    const info = renderer.info;
+    const programs = info.programs;
+    return {
+      memory: {
+        geometries: info.memory.geometries,
+        textures: info.memory.textures,
+      },
+      programs: Array.isArray(programs) ? programs.length : (programs && programs.size) || 0,
+      render: {
+        triangles: info.render.triangles,
+        calls: info.render.calls,
+      },
+    };
+  }
+  function ensureWorksLoader() {
+    if (worksTearingDown || disposed || glTeardownDone) return null;
+    if (!worksLoader) {
+      worksLoader = createWorksPartLoader({ renderer });
+      worksLoader.setRegister(zoomRegister);
+    }
+    return worksLoader;
+  }
+  function unmountWorksProof({ forget = false } = {}) {
+    if (forget) worksProofWanted = false;
+    restoreWorksProofMaterials();
+    if (!worksProofGroup) return;
+    const group = worksProofGroup;
+    worksProofGroup = null;
+    if (worksLoader) worksLoader.releaseWorksPart(group);
+    else if (group.parent) group.parent.remove(group);
+  }
+  function rendererContextLive() {
+    try {
+      const gl = renderer.getContext && renderer.getContext();
+      if (!gl) return false;
+      if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+      return !disposed && !glTeardownDone;
+    } catch (_) {
+      return false;
+    }
+  }
+  function retireWorksAssets(reason = 'works-screen-exit') {
+    if (worksRetirePromise) return worksRetirePromise;
+    unmountWorksProof();
+    const loader = worksLoader;
+    worksLoader = null;
+    const token = { n: ++worksRetireGen, reason };
+    const runtimeDone = loader ? loader.dispose(reason) : 0;
+    const mine = Promise.resolve(runtimeDone).then(() => {
+      // Snapshot after lease.release + authored-runtime retirement, while this
+      // WebGLRenderer is still live. Do not wait until after forceContextLoss().
+      const info = snapshotRendererInfo();
+      info.rendererLive = rendererContextLive();
+      info.afterWorksRelease = true;
+      canvas.__ast3dDisposeInfo = info;
+      return info;
+    });
+    worksRetireToken = token;
+    worksRetirePromise = mine;
+    mine.then(
+      () => {
+        if (worksRetireToken === token) {
+          worksRetirePromise = null;
+          worksRetireToken = null;
+        }
+      },
+      () => {
+        if (worksRetireToken === token) {
+          worksRetirePromise = null;
+          worksRetireToken = null;
+        }
+      },
+    );
+    return mine;
+  }
+  function inspectWorksColourSpace(group) {
+    const rows = [];
+    if (!group) return rows;
+    group.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const mat of mats) {
+        if (!mat) continue;
+        rows.push({
+          name: obj.name,
+          map: mat.map ? mat.map.colorSpace : null,
+          normal: mat.normalMap ? mat.normalMap.colorSpace : null,
+          orm: mat.aoMap ? mat.aoMap.colorSpace : null,
+        });
+      }
+    });
+    return rows;
+  }
+  function inspectWorksLod(group) {
+    const visible = [];
+    const hidden = [];
+    if (!group) {
+      return {
+        visible, hidden, register: zoomRegister,
+        nodeLod: null, tags: [], untaggedMeshes: 0,
+      };
+    }
+    group.traverse((obj) => {
+      if (!obj.isMesh || !obj.userData.worksLod) return;
+      if (obj.visible) visible.push(obj.name);
+      else hidden.push(obj.name);
+    });
+    visible.sort();
+    hidden.sort();
+    const tags = Array.isArray(group.userData.worksLodTags)
+      ? group.userData.worksLodTags.slice()
+      : [];
+    tags.sort();
+    return {
+      visible,
+      hidden,
+      register: zoomRegister,
+      nodeLod: group.userData.worksNodeLod || null,
+      tags,
+      untaggedMeshes: group.userData.worksUntaggedMeshes || 0,
+    };
+  }
+  function measureWorksBox(group, includeHidden) {
+    worksBox.makeEmpty();
+    group.updateWorldMatrix(true, true);
+    group.traverse((obj) => {
+      if (!obj.isMesh || !obj.geometry) return;
+      if (!includeHidden && obj.visible === false) return;
+      if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+      if (!obj.geometry.boundingBox) return;
+      worksBoxTmp.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
+      worksBox.union(worksBoxTmp);
+    });
+    return worksBox;
+  }
+  function seatWorksProofGroup(group) {
+    group.rotation.set(Math.PI / 2, 0, 0);
+    group.scale.set(1, 1, 1);
+    group.position.set(0, 0, 0);
+    const nativeBox = measureWorksBox(group, true);
+    nativeBox.getSize(worksSize);
+    const native = {
+      min: nativeBox.min.toArray(),
+      max: nativeBox.max.toArray(),
+      size: worksSize.toArray(),
+    };
+    const footprint = Math.max(worksSize.x, worksSize.y);
+    const target = S * WORKS_PROOF_FOOTPRINT_CELLS;
+    const scale = footprint > 1e-4 ? target / footprint : 1;
+    group.scale.setScalar(scale);
+    const scaled = measureWorksBox(group, true);
+    scaled.getCenter(worksCenter);
+    group.position.set(
+      worldX(WORKS_PROOF_CELL.col) - worksCenter.x,
+      worldY(WORKS_PROOF_CELL.row) - worksCenter.y,
+      ROCK_FACE - scaled.min.z,
+    );
+    group.updateMatrixWorld(true);
+    return {
+      native,
+      scale,
+      rotation: [group.rotation.x, group.rotation.y, group.rotation.z],
+      position: [group.position.x, group.position.y, group.position.z],
+      footprintCells: WORKS_PROOF_FOOTPRINT_CELLS,
+    };
+  }
+  function captureScenePass() {
+    renderer.info.reset();
+    let scenePass = { triangles: 0, calls: 0 };
+    const orig = renderer.render;
+    let seen = false;
+    renderer.render = function worksScenePassProbe(scn, cam) {
+      const out = orig.call(this, scn, cam);
+      if (!seen && scn === scene) {
+        seen = true;
+        scenePass = {
+          triangles: renderer.info.render.triangles,
+          calls: renderer.info.render.calls,
+        };
+      }
+      return out;
+    };
+    try {
+      bloom.render(scene, camera);
+    } finally {
+      renderer.render = orig;
+    }
+    return scenePass;
+  }
+  function projectWorksBox(group) {
+    const box = measureWorksBox(group, false);
+    if (box.isEmpty()) return null;
+    const w = canvas.clientWidth || 1;
+    const h = canvas.clientHeight || 1;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let inClip = false;
+    const xs = [box.min.x, box.max.x];
+    const ys = [box.min.y, box.max.y];
+    const zs = [box.min.z, box.max.z];
+    for (let ix = 0; ix < 2; ix++) {
+      for (let iy = 0; iy < 2; iy++) {
+        for (let iz = 0; iz < 2; iz++) {
+          worksCorner.set(xs[ix], ys[iy], zs[iz]).project(camera);
+          const sx = (worksCorner.x * 0.5 + 0.5) * w;
+          const sy = (-worksCorner.y * 0.5 + 0.5) * h;
+          minX = Math.min(minX, sx);
+          minY = Math.min(minY, sy);
+          maxX = Math.max(maxX, sx);
+          maxY = Math.max(maxY, sy);
+          if (worksCorner.z >= -1 && worksCorner.z <= 1) inClip = true;
+        }
+      }
+    }
+    const visLeft = Math.max(0, minX);
+    const visTop = Math.max(0, minY);
+    const visRight = Math.min(w, maxX);
+    const visBottom = Math.min(h, maxY);
+    const visW = Math.max(0, visRight - visLeft);
+    const visH = Math.max(0, visBottom - visTop);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    return {
+      minX, minY, maxX, maxY, width, height,
+      visW, visH,
+      canvasW: w,
+      canvasH: h,
+      onScreen: visW > 0 && visH > 0 && inClip,
+      areaOnScreen: visW * visH,
+    };
+  }
+  function statsFromPixels(data, width, height) {
+    const bg = WORKS_BG;
+    let nonBackground = 0;
+    let lit = 0;
+    let sumLuma = 0;
+    let sumLitLuma = 0;
+    const pixels = width * height;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const bgDist = Math.abs(r - bg[0]) + Math.abs(g - bg[1]) + Math.abs(b - bg[2]);
+      if (bgDist < 18) continue;
+      nonBackground += 1;
+      sumLuma += luma;
+      if (luma >= 24) {
+        lit += 1;
+        sumLitLuma += luma;
+      }
+    }
+    return {
+      pixels,
+      nonBackground,
+      lit,
+      meanLuma: nonBackground ? sumLuma / nonBackground : 0,
+      meanLitLuma: lit ? sumLitLuma / lit : 0,
+    };
+  }
+  function deltaFromPixels(a, b) {
+    const n = Math.min(a.length, b.length);
+    let changed = 0;
+    let sumAbs = 0;
+    let mountedLitChanged = 0;
+    let sumMountedLuma = 0;
+    for (let i = 0; i < n; i += 4) {
+      const dr = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+      if (dr < 24) continue;
+      changed += 1;
+      sumAbs += dr;
+      const luma = 0.2126 * a[i] + 0.7152 * a[i + 1] + 0.0722 * a[i + 2];
+      sumMountedLuma += luma;
+      if (luma >= 24) mountedLitChanged += 1;
+    }
+    return {
+      changed,
+      meanAbs: changed ? sumAbs / changed : 0,
+      mountedLitChanged,
+      meanMountedLuma: changed ? sumMountedLuma / changed : 0,
+    };
+  }
+  function erodeCoverage(src, dst, width, height) {
+    let count = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        let on = src[i];
+        if (on) {
+          if (x === 0 || y === 0 || x === width - 1 || y === height - 1) on = 0;
+          else if (!src[i - 1] || !src[i + 1] || !src[i - width] || !src[i + width]) on = 0;
+        }
+        dst[i] = on;
+        count += on;
+      }
+    }
+    return count;
+  }
+  function materialWouldPaint(mat) {
+    if (!mat) return false;
+    if (mat.visible === false) return false;
+    if (mat.colorWrite === false) return false;
+    if (mat.transparent === true && mat.opacity <= 0.01) return false;
+    return true;
+  }
+  function meshWouldPaint(mesh) {
+    const mat = mesh.material;
+    if (Array.isArray(mat)) {
+      for (let i = 0; i < mat.length; i++) {
+        if (materialWouldPaint(mat[i])) return true;
+      }
+      return false;
+    }
+    return materialWouldPaint(mat);
+  }
+  function renderWorksProofMask(box) {
+    const empty = {
+      covered: worksProofMaskCovered.subarray(0, 0),
+      coveredCount: 0,
+      width: 0,
+      height: 0,
+      excludedMeshes: [],
+    };
+    if (!worksProofGroup || !box || box.width <= 0 || box.height <= 0) return empty;
+
+    const prevOverride = scene.overrideMaterial;
+    const prevBackground = scene.background;
+    const prevAutoClear = renderer.autoClear;
+    const prevClearAlpha = renderer.getClearAlpha();
+    renderer.getClearColor(worksProofTmpColor);
+    const prevClearHex = worksProofTmpColor.getHex();
+    const prevTone = renderer.toneMapping;
+    const prevRT = renderer.getRenderTarget();
+    const hid = [];
+    const children = scene.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child === worksProofGroup) continue;
+      if (child.visible) {
+        child.visible = false;
+        hid.push(child);
+      }
+    }
+    const swapped = [];
+    const hidProof = [];
+    const excludedMeshes = [];
+
+    try {
+      // Per-mesh white mask on the proof group only. A scene-wide overrideMaterial
+      // would admit invisible / colorWrite-off / opacity-0 meshes into the coverage.
+      scene.overrideMaterial = null;
+      worksProofGroup.traverse((obj) => {
+        if (!obj.isMesh) return;
+        if (!obj.visible) return;
+        if (!meshWouldPaint(obj)) {
+          excludedMeshes.push(obj.name || '');
+          obj.visible = false;
+          hidProof.push(obj);
+          return;
+        }
+        swapped.push({ mesh: obj, material: obj.material });
+        obj.material = getWorksProofMaskMaterial();
+      });
+      excludedMeshes.sort();
+      scene.background = null;
+      renderer.autoClear = true;
+      renderer.setRenderTarget(null);
+      renderer.setClearColor(0x000000, 1);
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.clear();
+      renderer.render(scene, camera);
+      const raw = readProjectedPixels(box);
+      const pixels = raw.width * raw.height;
+      if (pixels < 1 || !raw.data || raw.data.length < 4) {
+        return {
+          covered: worksProofMaskCovered.subarray(0, 0),
+          coveredCount: 0,
+          width: 0,
+          height: 0,
+          excludedMeshes,
+        };
+      }
+      if (worksProofMaskCovered.length < pixels) {
+        worksProofMaskCovered = new Uint8Array(pixels);
+      }
+      const covered = worksProofMaskCovered;
+      let coveredCount = 0;
+      const data = raw.data;
+      for (let i = 0, p = 0; p < pixels; i += 4, p++) {
+        const luma = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        const on = luma >= 8 ? 1 : 0;
+        covered[p] = on;
+        coveredCount += on;
+      }
+      // Two 4-connected erodes: drop the AA/bloom ring around every silhouette
+      // (outer hull and internal truss edges) so a flat fill cannot inherit
+      // neighbour-rock variety. Threshold remains luma ≥ 8; this is interior.
+      if (coveredCount > 0) {
+        if (worksProofMaskErode.length < pixels) {
+          worksProofMaskErode = new Uint8Array(pixels);
+        }
+        erodeCoverage(covered, worksProofMaskErode, raw.width, raw.height);
+        coveredCount = erodeCoverage(worksProofMaskErode, covered, raw.width, raw.height);
+      }
+      return {
+        covered: covered.subarray(0, pixels),
+        coveredCount,
+        width: raw.width,
+        height: raw.height,
+        excludedMeshes,
+      };
+    } finally {
+      for (let i = 0; i < swapped.length; i++) {
+        swapped[i].mesh.material = swapped[i].material;
+      }
+      for (let i = 0; i < hidProof.length; i++) hidProof[i].visible = true;
+      for (let i = 0; i < hid.length; i++) hid[i].visible = true;
+      scene.overrideMaterial = prevOverride;
+      scene.background = prevBackground;
+      renderer.autoClear = prevAutoClear;
+      renderer.setClearColor(prevClearHex, prevClearAlpha);
+      renderer.toneMapping = prevTone;
+      renderer.setRenderTarget(prevRT);
+    }
+  }
+  function maskedStats(beautyData, mask) {
+    const zero = {
+      count: 0, meanLuma: 0, medianLuma: 0, stdevLuma: 0,
+      meanR: 0, meanG: 0, meanB: 0, p05Luma: 0, p95Luma: 0,
+    };
+    if (!beautyData || !mask || !mask.covered) return zero;
+    const covered = mask.covered;
+    const nPix = Math.min(covered.length, Math.floor(beautyData.length / 4));
+    if (worksProofLumaScratch.length < nPix) {
+      worksProofLumaScratch = new Float64Array(nPix);
+    }
+    const lumas = worksProofLumaScratch;
+    let count = 0;
+    let sumL = 0;
+    let sumR = 0;
+    let sumG = 0;
+    let sumB = 0;
+    for (let p = 0; p < nPix; p++) {
+      if (!covered[p]) continue;
+      const i = p * 4;
+      const r = beautyData[i];
+      const g = beautyData[i + 1];
+      const b = beautyData[i + 2];
+      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      lumas[count] = luma;
+      count += 1;
+      sumL += luma;
+      sumR += r;
+      sumG += g;
+      sumB += b;
+    }
+    if (!count) return zero;
+    const view = lumas.subarray(0, count);
+    view.sort((a, b) => a - b);
+    const meanLuma = sumL / count;
+    let varSum = 0;
+    for (let i = 0; i < count; i++) {
+      const d = view[i] - meanLuma;
+      varSum += d * d;
+    }
+    const mid = count >> 1;
+    const medianLuma = (count & 1) ? view[mid] : 0.5 * (view[mid - 1] + view[mid]);
+    const p05Luma = view[Math.min(count - 1, Math.floor(0.05 * (count - 1)))];
+    const p95Luma = view[Math.min(count - 1, Math.floor(0.95 * (count - 1)))];
+    return {
+      count,
+      meanLuma,
+      medianLuma,
+      stdevLuma: Math.sqrt(varSum / count),
+      meanR: sumR / count,
+      meanG: sumG / count,
+      meanB: sumB / count,
+      p05Luma,
+      p95Luma,
+    };
+  }
+  function maskedDelta(mountedData, unmountedData, mask) {
+    if (!mountedData || !unmountedData || !mask || !mask.covered) {
+      return { changed: 0, changedFrac: 0 };
+    }
+    const covered = mask.covered;
+    const nPix = Math.min(
+      covered.length,
+      Math.floor(mountedData.length / 4),
+      Math.floor(unmountedData.length / 4),
+    );
+    let coveredCount = 0;
+    let changed = 0;
+    for (let p = 0; p < nPix; p++) {
+      if (!covered[p]) continue;
+      coveredCount += 1;
+      const i = p * 4;
+      const dr = Math.abs(mountedData[i] - unmountedData[i])
+        + Math.abs(mountedData[i + 1] - unmountedData[i + 1])
+        + Math.abs(mountedData[i + 2] - unmountedData[i + 2]);
+      if (dr >= 24) changed += 1;
+    }
+    return {
+      changed,
+      changedFrac: coveredCount ? changed / coveredCount : 0,
+    };
+  }
+  function worksProofNegativeControl(mode) {
+    if (mode !== 'black' && mode !== 'flat' && mode !== 'ghost' && mode !== 'off') {
+      throw new Error(`[worksProof] unknown negative-control mode "${mode}"`);
+    }
+    if (!worksProofGroup) {
+      throw new Error('[worksProof] negative-control requires a mounted group');
+    }
+    if (mode === 'off') {
+      restoreWorksProofMaterials();
+      return { ok: true, mode };
+    }
+    if (!worksProofSavedMaterials) {
+      const saved = [];
+      worksProofGroup.traverse((obj) => {
+        if (!obj.isMesh) return;
+        saved.push({ mesh: obj, material: obj.material });
+      });
+      worksProofSavedMaterials = saved;
+    }
+    const mat = mode === 'black'
+      ? getWorksProofBlackMat()
+      : mode === 'flat'
+        ? getWorksProofFlatMat()
+        : getWorksProofGhostMat();
+    const saved = worksProofSavedMaterials;
+    for (let i = 0; i < saved.length; i++) saved[i].mesh.material = mat;
+    return { ok: true, mode };
+  }
+  function readProjectedPixels(box) {
+    const cssW = canvas.clientWidth || 1;
+    const cssH = canvas.clientHeight || 1;
+    const bw = canvas.width || 1;
+    const bh = canvas.height || 1;
+    const left = Math.max(0, box.minX);
+    const top = Math.max(0, box.minY);
+    const right = Math.min(cssW, box.maxX);
+    const bottom = Math.min(cssH, box.maxY);
+    const cssRW = Math.max(0, right - left);
+    const cssRH = Math.max(0, bottom - top);
+    if (cssRW < 1 || cssRH < 1) {
+      return { width: 0, height: 0, data: new Uint8ClampedArray(0), x: 0, y: 0 };
+    }
+    const x = Math.max(0, Math.floor(left * bw / cssW));
+    const y = Math.max(0, Math.floor(top * bh / cssH));
+    const rw = Math.max(1, Math.min(bw - x, Math.ceil(cssRW * bw / cssW)));
+    const rh = Math.max(1, Math.min(bh - y, Math.ceil(cssRH * bh / cssH)));
+    const tmp = document.createElement('canvas');
+    tmp.width = rw;
+    tmp.height = rh;
+    const ctx = tmp.getContext('2d');
+    if (!ctx) {
+      const err = new Error('[worksProof] 2d context is null');
+      err.name = 'WorksProofReadError';
+      throw err;
+    }
+    ctx.drawImage(canvas, x, y, rw, rh, 0, 0, rw, rh);
+    const image = ctx.getImageData(0, 0, rw, rh);
+    return { width: rw, height: rh, data: image.data, x, y };
+  }
+  function sampleWorksProof(withPart, forcedBox) {
+    if (!worksProofGroup) return null;
+    const prev = worksProofGroup.visible;
+    try {
+      worksProofGroup.visible = !!withPart;
+      const scenePass = captureScenePass();
+      const box = forcedBox || projectWorksBox(worksProofGroup);
+      let pixels = null;
+      if (box && box.width > 0 && box.height > 0) {
+        const raw = readProjectedPixels(box);
+        pixels = statsFromPixels(raw.data, raw.width, raw.height);
+        pixels.readX = raw.x;
+        pixels.readY = raw.y;
+        pixels.readW = raw.width;
+        pixels.readH = raw.height;
+        pixels._data = raw.data;
+      }
+      return { scenePass, box, pixels, lod: inspectWorksLod(worksProofGroup) };
+    } finally {
+      worksProofGroup.visible = prev;
+    }
+  }
+  function compareWorksProof() {
+    if (!worksProofGroup) return null;
+    const prev = worksProofGroup.visible;
+    const shadowSaved = [];
+    let box = null;
+    let mask = {
+      covered: worksProofMaskCovered.subarray(0, 0),
+      coveredCount: 0,
+      width: 0,
+      height: 0,
+      excludedMeshes: [],
+    };
+    let mounted = null;
+    let unmounted = null;
+    try {
+      worksProofGroup.traverse((obj) => {
+        if (!obj.isMesh) return;
+        shadowSaved.push({ mesh: obj, castShadow: obj.castShadow });
+        obj.castShadow = false;
+      });
+      worksProofGroup.visible = true;
+      box = projectWorksBox(worksProofGroup);
+      mask = renderWorksProofMask(box);
+      mounted = sampleWorksProof(true, box);
+      unmounted = sampleWorksProof(false, box);
+    } finally {
+      worksProofGroup.visible = prev;
+      for (let i = 0; i < shadowSaved.length; i++) {
+        shadowSaved[i].mesh.castShadow = shadowSaved[i].castShadow;
+      }
+    }
+    let delta = null;
+    let masked = {
+      stats: maskedStats(null, mask),
+      statsUnmounted: maskedStats(null, mask),
+      delta: maskedDelta(null, null, mask),
+    };
+    if (mounted && mounted.pixels && unmounted && unmounted.pixels
+      && mounted.pixels._data && unmounted.pixels._data) {
+      delta = deltaFromPixels(mounted.pixels._data, unmounted.pixels._data);
+      masked = {
+        stats: maskedStats(mounted.pixels._data, mask),
+        statsUnmounted: maskedStats(unmounted.pixels._data, mask),
+        delta: maskedDelta(mounted.pixels._data, unmounted.pixels._data, mask),
+      };
+    }
+    if (mounted && mounted.pixels) delete mounted.pixels._data;
+    if (unmounted && unmounted.pixels) delete unmounted.pixels._data;
+    const excluded = (mask.excludedMeshes || []).slice();
+    excluded.sort();
+    return {
+      box,
+      mounted,
+      unmounted,
+      delta,
+      mask: {
+        coveredCount: mask.coveredCount,
+        width: mask.width,
+        height: mask.height,
+        excludedMeshes: excluded,
+      },
+      masked,
+      shadowsSuppressed: true,
+      lod: inspectWorksLod(worksProofGroup),
+      transform: worksProofGroup.userData.worksTransform || null,
+      rendererLive: rendererContextLive(),
+      presentation: snapshotRendererPresentation(),
+    };
+  }
+  async function mountWorksProof() {
+    if (worksTearingDown || disposed || glTeardownDone) {
+      return { ok: false, reason: 'tearing-down' };
+    }
+    armWorksProof();
+    const pendingRetire = worksRetirePromise;
+    if (pendingRetire) await pendingRetire;
+    if (worksTearingDown || disposed || glTeardownDone) {
+      return { ok: false, reason: 'tearing-down' };
+    }
+    const loader = ensureWorksLoader();
+    if (!loader) return { ok: false, reason: 'no-loader' };
+    const gen = ++worksProofGen;
+    unmountWorksProof();
+    const group = await loader.loadWorksPart(WORKS_PROOF_ID);
+    if (worksTearingDown || disposed || glTeardownDone || gen !== worksProofGen) {
+      if (group && loader) loader.releaseWorksPart(group);
+      return {
+        ok: false,
+        reason: (worksTearingDown || disposed || glTeardownDone) ? 'tearing-down' : 'stale',
+      };
+    }
+    if (!group) return { ok: false, reason: 'load-null', stats: loader.stats() };
+    // Authored places are Y-up (flight). The mine's pad faces +Z (camera). Rotate so the
+    // platform stands on the cut plane without mutating shared geometry.
+    const transform = seatWorksProofGroup(group);
+    group.userData.worksTransform = transform;
+    group.name = 'worksProof_drill_platform';
+    scene.add(group);
+    worksProofGroup = group;
+    worksProofWanted = true;
+    worksHostWasVisible = true;
+    const hookNames = group.userData.worksHooks || {};
+    const hooks = {};
+    for (const name of Object.keys(hookNames)) hooks[name] = hookNames[name] ? name : null;
+    return {
+      ok: true,
+      id: WORKS_PROOF_ID,
+      cell: { col: WORKS_PROOF_CELL.col, row: WORKS_PROOF_CELL.row },
+      stats: loader.stats(),
+      hooks,
+      colourSpace: inspectWorksColourSpace(group),
+      nodeLod: group.userData.worksNodeLod || null,
+      transform,
+      lod: inspectWorksLod(group),
+    };
+  }
+  function worksHostExiting() {
+    const ast = wrapEl.closest && wrapEl.closest('.ast-screen');
+    const host = (ast && ast.parentElement) || ast || wrapEl;
+    return !!(host.classList && host.classList.contains('sf-screen--exiting'))
+      || (host.style && host.style.display === 'none')
+      || (host.hasAttribute && host.hasAttribute('hidden'));
+  }
+  function maybeRetireOnHide() {
+    if (disposed || worksTearingDown) return;
+    if (!worksProofArmed) return;
+    // A 0×0 wrapper (minimised window, collapsed flex) is not screen exit.
+    if (!worksHostExiting()) {
+      const becameVisible = !worksHostWasVisible;
+      worksHostWasVisible = true;
+      if (becameVisible && worksProofWanted && !worksProofGroup) void mountWorksProof();
+      return;
+    }
+    if (worksHostWasVisible) {
+      worksHostWasVisible = false;
+      void retireWorksAssets('works-screen-exit');
+    }
+  }
+  // ScreenManager puts sf-screen--exiting / display:none on the mount root (parent of .ast-screen).
+  const astScreen = wrapEl.closest && wrapEl.closest('.ast-screen');
+  const worksHost = (astScreen && astScreen.parentElement) || astScreen || wrapEl;
+  function armWorksProof() {
+    if (worksProofArmed) return;
+    worksProofArmed = true;
+    if (worksHostObs || typeof MutationObserver === 'undefined' || !worksHost) return;
+    worksHostObs = new MutationObserver(() => maybeRetireOnHide());
+    worksHostObs.observe(worksHost, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+  }
+  if (worksProofFlagOn()) armWorksProof();
 
   // ---------------------------------------------------------------- lights
   // DEPTH IS SOLD BY LIGHT (law §2.7 / §3.5): a raking WARM key from slightly below-left that
@@ -512,8 +1358,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const overlayRoot = new THREE.Group();    // merged conduit meshes
   const fxRoot = new THREE.Group();         // particles / rings / cursor / scan / crack decal
   scene.add(rockGroup, oreRoot, gasRoot, siteRoot, overlayRoot, fxRoot);
-
-  let disposed = false;   // guards async surface arrival against a screen that already left
 
   // ---------------------------------------------------------------- rock surface (law §2.7)
   // THE CELL FACE IS THE FLIGHT GAME'S ROCK. Same three authored maps every asteroid outside
@@ -1547,6 +2391,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     sc.updateProjectionMatrix();
   }
   function setZoomRegister(reg) {
+    if (worksLoader) worksLoader.setRegister(reg);
     if (zoomRegister === reg && !zoomAnim) return;
     zoomRegister = reg;
     const to = reg === 'site' ? siteZoomK() : 1;
@@ -1580,6 +2425,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // wrapEl is the sovereign stage: the canvas fills it and the projection follows the aspect.
   function resize() {
+    maybeRetireOnHide();
     const w = Math.max(64, wrapEl.clientWidth | 0);
     const h = Math.max(48, wrapEl.clientHeight | 0);
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
@@ -3975,6 +4821,33 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         visible: cursorGroup.visible,
       };
     },
+    // PQ-131.00 — authored release-part proof. Off in a normal session.
+    rendererInfo: snapshotRendererInfo,
+    rendererPresentation: snapshotRendererPresentation,
+    scenePassInfo: captureScenePass,
+    worksStats() { return worksLoader ? worksLoader.stats() : null; },
+    worksProofObserverAttached() { return !!worksHostObs; },
+    worksProofArmed() { return !!worksProofArmed; },
+    worksRetireSettled() { return worksRetirePromise || Promise.resolve(null); },
+    worksProofCell: { col: WORKS_PROOF_CELL.col, row: WORKS_PROOF_CELL.row },
+    get worksProofMounted() { return !!worksProofGroup; },
+    get worksHostElement() { return worksHost; },
+    mountWorksProof,
+    releaseWorksProof() {
+      unmountWorksProof({ forget: true });
+      return worksLoader ? worksLoader.stats() : null;
+    },
+    worksLod() { return inspectWorksLod(worksProofGroup); },
+    compareWorksProof,
+    worksProofNegativeControl,
+    disposeWorksProof() { dispose(); },
+    setZoomRegister,
+    frameCell(col, row) {
+      look.x = worldX(col);
+      look.y = worldY(row);
+      lookInit = true;
+      lookSnapNext = true;
+    },
   };
 
   // ---------------------------------------------------------------- cursor / ghost / ring sync
@@ -4644,6 +5517,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     drillTheta = 0;
     lookInit = false;
     zoomRegister = 'work';
+    if (worksLoader) worksLoader.setRegister('work');
     zoomKCur = 1;
     zoomAnim = null;
     applyView();
@@ -4691,6 +5565,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       ...roverBuilt.pulses,
       ...(derrickBuilt ? derrickBuilt.pulses : []),
     ];
+    worksProofGen += 1;
+    unmountWorksProof();
+    if (worksProofFlagOn()) {
+      armWorksProof();
+      void mountWorksProof();
+    }
   }
 
   // ---------------------------------------------------------------- frame
@@ -4912,6 +5792,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- teardown
   function dispose() {
+    worksTearingDown = true;
+    worksProofGen += 1;
+    worksProofWanted = false;
+    if (worksHostObs) {
+      worksHostObs.disconnect();
+      worksHostObs = null;
+    }
+    Promise.resolve(retireWorksAssets('works-screen-exit')).then(finishDispose, finishDispose);
+  }
+  function finishDispose() {
+    if (glTeardownDone) return;
+    glTeardownDone = true;
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();
     for (const [, g] of gasByCell) gasRoot.remove(g.group);
@@ -5005,6 +5897,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (const p of pulseRings) { p.mat.dispose(); p.mesh.geometry.dispose(); }
     umbCasingMat.dispose(); umbCoreMat.dispose();
     partGeo.dispose(); partMat.dispose(); chunkGeo.dispose(); chunkMat.dispose();
+    if (worksProofMaskMaterial) {
+      worksProofMaskMaterial.dispose();
+      worksProofMaskMaterial = null;
+    }
+    if (worksProofBlackMat) {
+      worksProofBlackMat.dispose();
+      worksProofBlackMat = null;
+    }
+    if (worksProofFlatMat) {
+      worksProofFlatMat.dispose();
+      worksProofFlatMat = null;
+    }
+    if (worksProofGhostMat) {
+      worksProofGhostMat.dispose();
+      worksProofGhostMat = null;
+    }
     for (const g of sharedGeos) {
       if (g === cellQuad || g === partGeo || g === chunkGeo) continue; // already disposed above
       g.dispose();

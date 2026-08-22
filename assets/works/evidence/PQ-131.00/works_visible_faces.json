@@ -1,0 +1,219 @@
+{
+  "glb": "assets\\ships\\parts\\places\\place_drill_platform.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_Merged_Material_BareSteel",
+      "faces": 52,
+      "visible": 12,
+      "hidden": 40,
+      "hiddenFrac": 0.7692
+    },
+    {
+      "object": "LOD0_Merged_Material_Hazard",
+      "faces": 48,
+      "visible": 8,
+      "hidden": 40,
+      "hiddenFrac": 0.8333
+    },
+    {
+      "object": "LOD0_Merged_Material_LightFlood",
+      "faces": 136,
+      "visible": 12,
+      "hidden": 124,
+      "hiddenFrac": 0.9118
+    },
+    {
+      "object": "LOD0_Merged_Material_LightMining",
+      "faces": 52,
+      "visible": 2,
+      "hidden": 50,
+      "hiddenFrac": 0.9615
+    },
+    {
+      "object": "LOD0_Merged_Material_PaintOchre",
+      "faces": 60,
+      "visible": 26,
+      "hidden": 34,
+      "hiddenFrac": 0.5667
+    },
+    {
+      "object": "LOD0_Merged_Material_Scorch",
+      "faces": 52,
+      "visible": 9,
+      "hidden": 43,
+      "hiddenFrac": 0.8269
+    },
+    {
+      "object": "LOD0_Merged_Material_Struct",
+      "faces": 168,
+      "visible": 35,
+      "hidden": 133,
+      "hiddenFrac": 0.7917
+    },
+    {
+      "object": "LOD0_Merged_Material_Truss",
+      "faces": 1440,
+      "visible": 161,
+      "hidden": 1279,
+      "hiddenFrac": 0.8882
+    },
+    {
+      "object": "LOD1_Merged_Material_BareSteel",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_Hazard",
+      "faces": 48,
+      "visible": 0,
+      "hidden": 48,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_LightFlood",
+      "faces": 36,
+      "visible": 0,
+      "hidden": 36,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_LightMining",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_PaintOchre",
+      "faces": 60,
+      "visible": 0,
+      "hidden": 60,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_Scorch",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_Struct",
+      "faces": 156,
+      "visible": 0,
+      "hidden": 156,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_Merged_Material_Truss",
+      "faces": 1440,
+      "visible": 0,
+      "hidden": 1440,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_BareSteel",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_Hazard",
+      "faces": 48,
+      "visible": 0,
+      "hidden": 48,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_LightFlood",
+      "faces": 36,
+      "visible": 0,
+      "hidden": 36,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_LightMining",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_PaintOchre",
+      "faces": 60,
+      "visible": 0,
+      "hidden": 60,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_Scorch",
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_Merged_Material_Struct",
+      "faces": 156,
+      "visible": 0,
+      "hidden": 156,
+      "hiddenFrac": 1.0
+    }
+  ],
+  "hiddenFaces": 4095,
+  "faces": 4360,
+  "hiddenFrac": 0.9392,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close."
+}
