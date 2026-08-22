@@ -94,7 +94,7 @@ Rover first — it is the character, it is the thing the owner named, and it pro
 4. **Surface pass** — unique UVs, mesh bakes (AO, curvature), authored PBR textures; wear where a machine
    would wear; livery per the design law (§4 rover colours; machines dark metal with one lamp); **no
    emissive paint** beyond lamps and slits.
-5. **LODs + release build** — `scripts/build-hull-release-assets.mjs`; manifest entry; hashes.
+5. **LODs + release build** — LOD roots named `LOD0_*`/`LOD1_*`/`LOD2_*` (the loader tags LOD by node name, `assetLoader.js:1858`); release build through a canonical builder (works category in `scripts/build-place-release-assets.mjs`); manifest entry; **then** `node scripts/generate-render-package-pilots.mjs` and `node scripts/build-render-package-pilots.mjs` — a release part without a render package throws `AssetContractError` at load (`assetLoader.js:1184`); `check:render-package-coverage` green; hashes. Full list in `roadmap/active/PQ-131.md` "Release pipeline for a works asset".
 6. **Wire** — the renderer swaps the procedural builder for `loadWorksPart(id)`; the named hooks drive
    the runtime state that already exists (hopper stages, bit heat, lamps, progress, flow).
 7. **Proof** — works-camera stills at 120 px and 19 px per cell **beside a flight still**; three
