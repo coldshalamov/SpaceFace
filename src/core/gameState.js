@@ -6,6 +6,7 @@ import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { AUDIO_DEFAULT_MUTE_VERSION } from './graphicsProfileBootstrap.js';
+import { createRunState } from './runState.js';
 
 function defaultSettings() {
   return {
@@ -123,6 +124,9 @@ export function createGameState(seed) {
 
     // --- meta records ---
     player: defaultPlayer(),
+
+    // --- run envelope (PQ-133 §27.1: orthogonal to state.mode) ---
+    run: createRunState(),
 
     // --- subsystem trees (owners populate) ---
     combat: { beams: [], threatTables: new Map() },

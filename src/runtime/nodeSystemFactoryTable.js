@@ -4,6 +4,7 @@
 
 import { isNodeSafeSystemId } from './authoritativeSystemManifest.js';
 import { core } from '../core/coreSystem.js';
+import { runSession } from '../systems/runSession.js';
 import { physics } from '../core/physics.js';
 import { input } from '../systems/input.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
@@ -120,6 +121,7 @@ import { priceForecastSystem } from '../ui/priceForecast.js';
 import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { lossLedger } from '../systems/lossLedger.js';
+import { provenanceLedger } from '../systems/provenanceLedger.js';
 import { factionPresence } from '../systems/factionPresence.js';
 import { bandRadio } from '../systems/bandRadio.js';
 import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';
@@ -149,6 +151,7 @@ export function getNodeSystemFactoryTable(options = {}) {
   /** @type {Array<[string, object]>} */
   const entries = [
     ['core', core],
+    ['runSession', runSession],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
     ['autoTargetAssist', autoTargetAssist],
@@ -210,6 +213,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['wingmen', wingmen],
     ['intervention', intervention],
     ['lossLedger', lossLedger],
+    ['provenanceLedger', provenanceLedger],
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],

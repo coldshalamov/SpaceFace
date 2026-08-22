@@ -288,6 +288,7 @@ export const save = {
   // ── serialization ─────────────────────────────────────────────────────────────────────────
 
   _saveCapturePlan() {
+    // state.run is deliberately excluded from save data (PQ-133 ruling 2).
     const state = this.state;
     return [
       ['meta', () => this._serializeMeta()],
@@ -1082,8 +1083,14 @@ export const save = {
 
   // ── autosave ───────────────────────────────────────────────────────────────────────────────
 
+  _campaignAutosaveSuppressed() {
+    const run = this.state && this.state.run;
+    return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+  },
+
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
   requestAutosave(_reason, options = {}) {
+    if (this._campaignAutosaveSuppressed()) return false;
     const state = this.state;
     if (this._restoring) return false;
     if (state.mode !== 'flight') return false;
@@ -1145,6 +1152,10 @@ export const save = {
   _flushAutosave(job) {
     if (!job || this._autosavePending !== job || this._autosaveInFlight
       || job.runEpoch !== this._runEpoch) return false;
+    if (this._campaignAutosaveSuppressed()) {
+      if (this._autosavePending === job) this._autosavePending = null;
+      return false;
+    }
     const state = this.state;
     const jumpBusy = state.jump && (state.jump.state === 'CHARGING' || state.jump.state === 'JUMPING');
     if (this._restoring || this._playerDead || jumpBusy || state.mode === 'paused') {

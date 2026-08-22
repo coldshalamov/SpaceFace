@@ -424,7 +424,11 @@ export const pauseScreen = {
   },
 
   _toMenu(ctx) {
-    ctx.state.mode = 'menu';
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('game:exitToMenu', { source: 'pause' });
+    } else {
+      ctx.state.mode = 'menu';
+    }
     const mgr = getManager(ctx);
     if (mgr) {
       if (mgr.closeAll) mgr.closeAll();

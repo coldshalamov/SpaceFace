@@ -1,6 +1,7 @@
 // System registry: holds every system, runs init in registration order, runs the sim UPDATE_ORDER
 // each step (§2.3), and the render-phase systems each frame. main.js builds it with the ctx.
 import { core } from './coreSystem.js';
+import { runSession } from '../systems/runSession.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
@@ -164,6 +165,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
   /** @type {Array<[string, object]>} */
   const entries = [
     ['core', core],
+    ['runSession', runSession],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
     ['autoTargetAssist', autoTargetAssist],

@@ -212,6 +212,12 @@ async function boot() {
       startNewGameTransition();
     });
 
+    bus.on('game:exitToMenu', () => {
+      const previousMode = state.mode;
+      state.mode = 'menu';
+      if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+    });
+
     loopController = startLoop(state, registry, { presentationJournal });
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
@@ -725,6 +731,7 @@ function resetRunState(state, opts = {}) {
   state.bounds = fresh.bounds;
   state.spatialHash = fresh.spatialHash;
   state.player = fresh.player;
+  state.run = fresh.run;
   state.combat = fresh.combat;
   state.economy = fresh.economy;
   state.factions = fresh.factions;
