@@ -1,0 +1,57 @@
+{
+  "glb": "assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_evidence_spindle.glb",
+  "fovV": 50.0,
+  "distances": [
+    144.0,
+    58.0
+  ],
+  "headings": [
+    0,
+    45,
+    90,
+    135,
+    180,
+    225,
+    270,
+    315
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "Spindle_Clamp_5",
+      "faces": 848,
+      "visible": 163,
+      "hidden": 685,
+      "hiddenFrac": 0.8078
+    },
+    {
+      "object": "Spindle_Seal_Tag_Port",
+      "faces": 24,
+      "visible": 8,
+      "hidden": 16,
+      "hiddenFrac": 0.6667
+    },
+    {
+      "object": "Spindle_Shell",
+      "faces": 1964,
+      "visible": 295,
+      "hidden": 1669,
+      "hiddenFrac": 0.8498
+    },
+    {
+      "object": "Spindle_WellFloor",
+      "faces": 36,
+      "visible": 15,
+      "hidden": 21,
+      "hiddenFrac": 0.5833
+    }
+  ],
+  "hiddenFaces": 2391,
+  "faces": 2872,
+  "hiddenFrac": 0.8325,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac"
+}

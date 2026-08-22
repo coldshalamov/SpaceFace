@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "asset": "wreck",
+  "revision": "candidate_v4",
+  "root": "Bourse_Carrier_Wreck_47A",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_bourse_wreck.glb",
+  "bytes": 30920,
+  "triangles": 246,
+  "objects": [
+    "Bourse_Carrier_Hull",
+    "Bourse_Rib_0"
+  ]
+}

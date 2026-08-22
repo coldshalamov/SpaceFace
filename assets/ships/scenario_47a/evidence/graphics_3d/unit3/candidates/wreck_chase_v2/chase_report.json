@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_bourse_wreck.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\wreck_chase_v2",
+  "focus": [
+    0.0,
+    4.4004,
+    4.6598
+  ],
+  "boundsMin": [
+    -85.1,
+    -43.1863,
+    -17.48
+  ],
+  "boundsMax": [
+    85.1,
+    51.987,
+    26.7996
+  ],
+  "size": [
+    170.2,
+    95.1733,
+    44.2796
+  ],
+  "lightScale": 15.7593,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "Bourse_Carrier_Hull",
+      "triangles": 176,
+      "materials": [
+        "Bourse_Charred_Plate"
+      ]
+    },
+    {
+      "name": "Bourse_Rib_0",
+      "triangles": 84,
+      "materials": [
+        "Bourse_Exposed_Rib"
+      ]
+    }
+  ],
+  "triangles": 260,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\wreck_chase_v2\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\wreck_chase_v2\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\wreck_chase_v2\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\wreck_chase_v2\\clay_play_chase.png"
+}

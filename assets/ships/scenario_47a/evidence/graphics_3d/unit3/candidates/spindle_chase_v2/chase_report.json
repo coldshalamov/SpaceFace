@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_evidence_spindle.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\spindle_chase_v2",
+  "focus": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "boundsMin": [
+    -14.9,
+    -5.0,
+    -4.924
+  ],
+  "boundsMax": [
+    14.9,
+    5.0,
+    4.924
+  ],
+  "size": [
+    29.8,
+    10.0,
+    9.8481
+  ],
+  "lightScale": 2.7593,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "Spindle_Clamp_5",
+      "triangles": 928,
+      "materials": [
+        "Spindle_Black_Clamp"
+      ]
+    },
+    {
+      "name": "Spindle_Seal_Tag_Port",
+      "triangles": 24,
+      "materials": [
+        "Spindle_Ledger_Brass"
+      ]
+    },
+    {
+      "name": "Spindle_Shell",
+      "triangles": 1116,
+      "materials": [
+        "Spindle_Sealed_Hull"
+      ]
+    },
+    {
+      "name": "Spindle_WellFloor",
+      "triangles": 12,
+      "materials": [
+        "Spindle_Well"
+      ]
+    }
+  ],
+  "triangles": 2080,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\spindle_chase_v2\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\spindle_chase_v2\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\spindle_chase_v2\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\spindle_chase_v2\\clay_play_chase.png"
+}

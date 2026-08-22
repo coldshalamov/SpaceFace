@@ -1,0 +1,62 @@
+{
+  "revision": "candidate_v4",
+  "assets": [
+    {
+      "ok": true,
+      "asset": "spindle",
+      "revision": "candidate_v4",
+      "root": "Evidence_Spindle_47A",
+      "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_evidence_spindle.glb",
+      "bytes": 314220,
+      "triangles": 2872,
+      "objects": [
+        "Spindle_Clamp_5",
+        "Spindle_Seal_Tag_Port",
+        "Spindle_Shell",
+        "Spindle_WellFloor"
+      ]
+    },
+    {
+      "ok": true,
+      "asset": "pod",
+      "revision": "candidate_v4",
+      "root": "Civilian_Pod_47A",
+      "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_civilian_pod.glb",
+      "bytes": 179912,
+      "triangles": 1720,
+      "objects": [
+        "CivilianPod_Aft_Scorch_Band",
+        "CivilianPod_Distress_Band",
+        "CivilianPod_Port_Port",
+        "CivilianPod_Shell"
+      ]
+    },
+    {
+      "ok": true,
+      "asset": "beacon",
+      "revision": "candidate_v4",
+      "root": "Kessler_Handoff_Beacon_47A",
+      "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_kessler_beacon.glb",
+      "bytes": 50564,
+      "triangles": 464,
+      "objects": [
+        "HandoffBeacon_Covert_Ring",
+        "HandoffBeacon_KeyFloor",
+        "HandoffBeacon_Spine"
+      ]
+    },
+    {
+      "ok": true,
+      "asset": "wreck",
+      "revision": "candidate_v4",
+      "root": "Bourse_Carrier_Wreck_47A",
+      "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_bourse_wreck.glb",
+      "bytes": 30920,
+      "triangles": 246,
+      "objects": [
+        "Bourse_Carrier_Hull",
+        "Bourse_Rib_0"
+      ]
+    }
+  ]
+}

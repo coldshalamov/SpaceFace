@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_civilian_pod.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\pod_chase_v3",
+  "focus": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "boundsMin": [
+    -7.52,
+    -3.4,
+    -3.4
+  ],
+  "boundsMax": [
+    7.52,
+    3.4,
+    3.4
+  ],
+  "size": [
+    15.04,
+    6.8,
+    6.8
+  ],
+  "lightScale": 1.3926,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "CivilianPod_Aft_Scorch_Band",
+      "triangles": 152,
+      "materials": [
+        "CivilianPod_Scorch"
+      ]
+    },
+    {
+      "name": "CivilianPod_Distress_Band",
+      "triangles": 152,
+      "materials": [
+        "CivilianPod_Distress_Paint"
+      ]
+    },
+    {
+      "name": "CivilianPod_Port_Port",
+      "triangles": 24,
+      "materials": [
+        "CivilianPod_Port_Well"
+      ]
+    },
+    {
+      "name": "CivilianPod_Shell",
+      "triangles": 1376,
+      "materials": [
+        "CivilianPod_White_Ceramic"
+      ]
+    }
+  ],
+  "triangles": 1704,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\pod_chase_v3\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\pod_chase_v3\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\pod_chase_v3\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\pod_chase_v3\\clay_play_chase.png"
+}

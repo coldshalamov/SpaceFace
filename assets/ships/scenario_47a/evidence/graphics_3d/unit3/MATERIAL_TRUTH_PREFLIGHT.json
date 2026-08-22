@@ -1,0 +1,82 @@
+{
+  "schema": "spaceface.graphics3d.unit3.materialTruthPreflight.v1",
+  "campaign": "GRAPHICS_3D unit 3 — 47-A family candidate GLBs, unwired",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg/FOV50 D=144 and D=58",
+  "liveChaseFinding": {
+    "evidence_spindle": "cylinder + glowing core + four clamp tori + pulsing ring; the tube+ring fail next to Hitch",
+    "civilian_pod": "capsule + scorch cylinder + two glow tori + cyan window cards",
+    "kessler_beacon": "box mast + glow hoops + a giant transparent floor disc",
+    "bourse_wreck": "three boxes, six rib boxes, two glow tori"
+  },
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Role is the existing 47-A encounter objects. Live code-built meshes are the defect crop. Candidates stay unwired.",
+  "frozenIdentity": {
+    "evidence_spindle": {
+      "root": "Evidence_Spindle_47A",
+      "assetId": "SF_47A_EVIDENCE_SPINDLE",
+      "sockets": ["SOCKET_Tether_Massline", "SOCKET_Camera_Focus"],
+      "entityRadius": 10,
+      "lengthM": 24
+    },
+    "civilian_pod": {
+      "root": "Civilian_Pod_47A",
+      "assetId": "SF_47A_CIVILIAN_POD",
+      "sockets": ["SOCKET_Tether_Massline", "SOCKET_Camera_Focus"],
+      "entityRadius": 8
+    },
+    "kessler_beacon": {
+      "root": "Kessler_Handoff_Beacon_47A",
+      "assetId": "SF_47A_KESSLER_HANDOFF_BEACON",
+      "sockets": ["SOCKET_Handoff_Core", "SOCKET_Camera_Focus"],
+      "hardwareRadiusM": 25.6,
+      "omit": "80m transparent zone disc is an effect, not the model"
+    },
+    "bourse_wreck": {
+      "root": "Bourse_Carrier_Wreck_47A",
+      "assetId": "SF_47A_BOURSE_CARRIER_WRECK",
+      "sockets": ["SOCKET_Hazard_Core", "SOCKET_Camera_Focus"],
+      "entityRadius": 92
+    }
+  },
+  "billedZones": [
+    {
+      "id": "spindle_pressure_shell",
+      "asset": "evidence_spindle",
+      "fiction": "Sealed sample canister. One coated shell with end wells, not a glass glow stick inside a tube.",
+      "material": "neutral sealed hull, roughness ~0.55, metal 0.4",
+      "chaseMustShow": "a closed can with a dark end/dorsal well, not a cyan core"
+    },
+    {
+      "id": "spindle_clamp_collars",
+      "asset": "evidence_spindle",
+      "fiction": "Load collars with bolt bosses. Rectangular-section bands, not wire tori.",
+      "material": "dark clamp alloy",
+      "chaseMustShow": "four thick bands with hardware, not four hoops"
+    },
+    {
+      "id": "pod_rescue_shell",
+      "asset": "civilian_pod",
+      "fiction": "White pressure capsule, scorched aft, painted distress band, dark ports.",
+      "material": "ceramic white hull, charred band, painted red, dark wells",
+      "chaseMustShow": "a rescue capsule, not a glow hoop"
+    },
+    {
+      "id": "kessler_mast",
+      "asset": "kessler_beacon",
+      "fiction": "Covert handoff mast and ring as hardware. No floor disc in the GLB.",
+      "material": "dark mast, painted violet ring as coated metal",
+      "chaseMustShow": "a post and a ring you can fly past, not a glowing toy"
+    },
+    {
+      "id": "bourse_torn_hull",
+      "asset": "bourse_wreck",
+      "fiction": "One fractured carrier skin with a torn bay. Ribs are the remaining frames around the hole.",
+      "material": "charred plate and exposed rib metal",
+      "chaseMustShow": "a broken hull with a cavity, not a pile of boxes and two glow rings"
+    }
+  ],
+  "allSupportedViewZonesClassified": true,
+  "workingScene": "tools/blender/build_graphics3d_unit3_47a.py",
+  "gateScope": "candidate GLBs only; do not edit scenarioProps47a.js; do not hook"
+}
