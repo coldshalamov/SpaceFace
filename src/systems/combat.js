@@ -10,7 +10,7 @@ import { removeCargo } from './cargo.js';
 import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
-import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
+import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -574,14 +574,21 @@ export const combat = {
     // authorities. The durable mission identity survives sector rematerialization and Continue;
     // ambient enemies have neither tag and retain the normal combat reward path below.
     const missionOwns = missionOwnsReward(t);
-    const authoredRewardEligible = killedByPlayer && !missionOwns;
+    // A Survival body pays the RUN wallet, never campaign credits (PQ-133 ruling 2 / CRU-015).
+    // The marker is written onto the victim by the wave materializer, so this reserves the
+    // authored bounty/loot path for the run without asking whether a run happens to be live.
+    const runOwns = runOwnsReward(t);
+    const authoredRewardEligible = killedByPlayer && !missionOwns && !runOwns;
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
       ? lethal.factionLawful
       : !!(d.ai && d.ai.lawful);
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
-      factionId: t.factionId, factionLawful, bountyCr: missionOwns ? 0 : (d.bountyCr || 0),
+      // bountyCr is the CAMPAIGN payout figure and drives the "+N CR" kill toast. A Survival
+      // body pays no campaign credits, so publishing its archetype bounty here would promise the
+      // player money they never receive; the run chip is what they actually collect.
+      factionId: t.factionId, factionLawful, bountyCr: (missionOwns || runOwns) ? 0 : (d.bountyCr || 0),
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       presentation,

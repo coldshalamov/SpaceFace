@@ -1,0 +1,257 @@
+// CRU-015 — Survival credits are physical: dropped on a kill, collected by the player,
+// swept at cleanup, and never routed into the campaign wallet.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { CREDIT_CHIP_KIND, isCreditChipPickup } from '../src/data/killRewards.js';
+import { runOwnsReward } from '../src/combat/rewardEligibility.js';
+import { mining } from '../src/systems/mining.js';
+import { runSession } from '../src/systems/runSession.js';
+import {
+  RUN_WALLET,
+  chipValueForPlan,
+  survivalRewards,
+} from '../src/systems/survivalRewards.js';
+import { planWave } from '../src/systems/survivalWavePlanner.js';
+
+const ARENA = 'helios_core';
+const SEED = 7;
+
+function boot(seed = SEED) {
+  const state = createGameState(seed);
+  state.player.credits = 1000;
+  const raw = createBus();
+  const emitted = [];
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit(event, payload) {
+      emitted.push({ event, payload });
+      raw.emit(event, payload);
+    },
+  };
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, type: 'ship' };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  state.nextEntityId = 2;
+
+  const ctx = { state, bus, helpers: {} };
+  runSession.init(ctx);
+  survivalRewards.init(ctx);
+  return { state, bus, emitted, ctx, player };
+}
+
+function named(emitted, event) {
+  return emitted.filter((entry) => entry.event === event);
+}
+
+function beginActive(harness) {
+  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: ARENA });
+  let from = 'loadout';
+  for (const next of ['arena_intro', 'wave_intro', 'active']) {
+    harness.bus.emit('run:transitionRequested', { expectedPhase: from, nextPhase: next, reason: 't', tick: 0 });
+    from = next;
+  }
+}
+
+function planFor(wave) {
+  return planWave({ seed: SEED, arenaId: ARENA, wave, act: 0, difficulty: 1, mutators: [], buildSummary: null });
+}
+
+function killCohortBody(harness, wave = 1) {
+  const id = harness.state.nextEntityId++;
+  const entity = {
+    id, alive: true, type: 'ship', team: 1, pos: { x: 30, z: 10 }, vel: { x: 1, z: 2 },
+    data: { level: 1, runWave: wave, runCohort: 'survival' },
+  };
+  harness.state.entities.set(id, entity);
+  harness.state.entityList.push(entity);
+  entity.alive = false;
+  harness.bus.emit('entity:killed', { id, killerId: 1, type: 'ship', pos: { x: 30, z: 10 } });
+  return entity;
+}
+
+/** Stand in for mining's spawn: turn a loot:drop chip item into a live pickup entity. */
+function materializeChips(harness, drop) {
+  const spawnedIds = [];
+  for (const item of drop.payload.items || []) {
+    if (!isCreditChipPickup(item)) continue;
+    const id = harness.state.nextEntityId++;
+    const entity = {
+      id, alive: true, type: 'pickup', pos: { x: drop.payload.pos.x, z: drop.payload.pos.z },
+      data: {
+        kind: CREDIT_CHIP_KIND,
+        amount: item.credits,
+        credits: item.credits,
+        grantReason: item.grantReason,
+        wallet: item.wallet || null,
+      },
+    };
+    harness.state.entities.set(id, entity);
+    harness.state.entityList.push(entity);
+    harness.bus.emit('entity:spawned', { id, type: 'pickup', entity });
+    spawnedIds.push(id);
+  }
+  return spawnedIds;
+}
+
+test('a survival body reserves its reward: campaign paths see runOwnsReward', () => {
+  assert.equal(runOwnsReward({ data: { runCohort: 'survival' } }), true);
+  assert.equal(runOwnsReward({ data: {} }), false);
+  assert.equal(runOwnsReward(null), false);
+});
+
+test('the chip is one body\'s share of the authored wave purse', () => {
+  const wave1 = planFor(1);   // 12 credits over 6 bodies
+  assert.equal(chipValueForPlan(wave1), 2);
+  const wave10 = planFor(10); // 48 credits over 7 bodies
+  assert.equal(chipValueForPlan(wave10), Math.max(1, Math.round(48 / 7)));
+  assert.equal(chipValueForPlan(null), 0);
+});
+
+test('a cohort kill drops a physical chip stamped for the run wallet, and pays nothing at death', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  killCohortBody(harness);
+
+  const drops = named(harness.emitted, 'loot:drop');
+  assert.equal(drops.length, 1);
+  const items = drops[0].payload.items;
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, CREDIT_CHIP_KIND);
+  assert.equal(items[0].wallet, RUN_WALLET);
+  assert.equal(items[0].credits, 2);
+  // No top-level credits field: that is the grant-at-death shape, and Survival settles on scoop.
+  assert.equal(drops[0].payload.credits, undefined);
+  assert.equal(harness.state.run.credits, 0, 'credits are not paid until the chip is collected');
+  assert.equal(harness.state.player.credits, 1000);
+});
+
+test('collecting the chip pays the run wallet, never campaign credits', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  killCohortBody(harness);
+  const drop = named(harness.emitted, 'loot:drop')[0];
+  const [chipId] = materializeChips(harness, drop);
+
+  // This is the shape mining._collectCreditChip produces for a wallet:'run' chip.
+  harness.bus.emit('run:awardRequested', { credits: 2, reason: 'crucible:wave1:chip' });
+  harness.bus.emit('entity:destroyed', { id: chipId });
+
+  assert.equal(harness.state.run.credits, 2);
+  assert.equal(harness.state.player.credits, 1000);
+  assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'));
+});
+
+test('uncollected chips are swept into the run wallet on the way out of cleanup', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  for (let i = 0; i < 4; i++) killCohortBody(harness);
+  for (const drop of named(harness.emitted, 'loot:drop')) materializeChips(harness, drop);
+
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
+  assert.equal(harness.state.run.credits, 0, 'chips are still on the board during cleanup');
+
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
+  assert.equal(harness.state.run.credits, 8, 'four chips at 2 each were swept');
+  const swept = named(harness.emitted, 'run:awardRequested').filter((e) => String(e.payload.reason).startsWith('sweep:'));
+  assert.equal(swept.length, 1);
+  for (const entity of harness.state.entities.values()) {
+    if (entity.type === 'pickup') assert.equal(entity.alive, false, 'swept chips leave the board');
+  }
+});
+
+test('the sweep never double-pays a chip the player already collected', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  killCohortBody(harness);
+  killCohortBody(harness);
+  const ids = named(harness.emitted, 'loot:drop').flatMap((drop) => materializeChips(harness, drop));
+
+  // Player scoops the first chip: mining marks it granted and the body dies.
+  const collected = harness.state.entities.get(ids[0]);
+  collected.data.creditGranted = true;
+  collected.alive = false;
+  harness.bus.emit('run:awardRequested', { credits: 2, reason: 'scoop' });
+  harness.bus.emit('entity:destroyed', { id: ids[0] });
+
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
+
+  assert.equal(harness.state.run.credits, 4, 'one scooped + one swept, each paid exactly once');
+});
+
+test('ending a run sweeps what is still on the board so a death does not lose the earnings', () => {
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  for (let i = 0; i < 3; i++) killCohortBody(harness);
+  for (const drop of named(harness.emitted, 'loot:drop')) materializeChips(harness, drop);
+
+  harness.bus.emit('run:endRequested', { outcome: 'defeat', reason: 'player_death', tick: 9 });
+  assert.equal(harness.state.run.phase, 'ended');
+  assert.equal(harness.state.run.credits, 6);
+});
+
+test('the REAL mining pickup path spawns the chip and routes it to the run wallet', () => {
+  // Not a stand-in: this drives mining's own loot:drop handler and its own credit-chip collector.
+  const harness = boot();
+  const spawned = [];
+  harness.ctx.helpers.spawnEntity = (spec) => {
+    const id = harness.state.nextEntityId++;
+    const entity = { ...spec, id, alive: true, pos: { x: spec.pos.x, z: spec.pos.z } };
+    harness.state.entities.set(id, entity);
+    harness.state.entityList.push(entity);
+    spawned.push(entity);
+    harness.bus.emit('entity:spawned', { id, type: entity.type, entity });
+    return entity;
+  };
+  mining.init({ state: harness.state, bus: harness.bus, helpers: harness.ctx.helpers, registry: null });
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  killCohortBody(harness);
+
+  // mining also drops a salvage wreck on a ship death; the chip is the pickup among them.
+  const chips = spawned.filter((e) => e.type === 'pickup');
+  assert.equal(chips.length, 1, 'mining materialized exactly one chip body');
+  const chip = chips[0];
+  assert.equal(chip.data.kind, CREDIT_CHIP_KIND);
+  assert.equal(chip.data.wallet, RUN_WALLET, 'the wallet stamp survived mining\'s spawn path');
+  assert.equal(chip.data.credits, 2);
+
+  harness.bus.emit('pickup:collected', {
+    pickupId: chip.id, collectorId: harness.state.playerId, kind: CREDIT_CHIP_KIND,
+    amount: chip.data.credits, credits: chip.data.credits, wallet: chip.data.wallet,
+    pos: { x: chip.pos.x, z: chip.pos.z },
+  });
+
+  assert.equal(harness.state.run.credits, 2, 'the run wallet was paid by mining, through runSession');
+  assert.equal(harness.state.player.credits, 1000);
+  assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'),
+    'campaign economy was never asked for a grant');
+  mining.bus = null;
+});
+
+test('a chip with no wallet stamp is left alone by the run sweep', () => {
+  const harness = boot();
+  beginActive(harness);
+  const id = harness.state.nextEntityId++;
+  const entity = {
+    id, alive: true, type: 'pickup', pos: { x: 5, z: 5 },
+    data: { kind: CREDIT_CHIP_KIND, amount: 40, credits: 40 },
+  };
+  harness.state.entities.set(id, entity);
+  harness.bus.emit('entity:spawned', { id, type: 'pickup', entity });
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
+  assert.equal(harness.state.run.credits, 0);
+  assert.equal(entity.alive, true, 'a campaign chip is not swept by the run');
+});

@@ -29,7 +29,7 @@
 //   transientSector:false so a claimed/persistent body survives sector change while the cap still
 //   bounds total residency.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
-import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
+import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -165,6 +165,9 @@ export const lootShards = {
     if (!victim) return;
     // Contracts own contract-target rewards. Fail closed for mission hulls.
     if (missionOwnsReward(victim)) return;
+    // Survival bodies drop their own run-wallet chip through survivalRewards. A second campaign
+    // shard burst on the same hull would pay the Adventure purse mid-run (PQ-133 CRU-015).
+    if (runOwnsReward(victim)) return;
 
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     // Production combat snapshots canonical hostility before synchronous damage consequences can

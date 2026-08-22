@@ -1143,6 +1143,9 @@ export const mining = {
           amount: credits,
           credits,
           grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          // The chip carries which wallet it belongs to (PQ-133 CRU-015). A Survival chip settles
+          // into state.run.credits; everything else keeps the ordinary campaign route.
+          wallet: typeof it.wallet === 'string' ? it.wallet : null,
           inheritX,
           inheritZ,
         });
@@ -1183,6 +1186,7 @@ export const mining = {
     if (opts.kind === CREDIT_CHIP_KIND || opts.kind === 'credits') {
       data.credits = amount;
       if (opts.grantReason) data.grantReason = opts.grantReason;
+      if (opts.wallet) data.wallet = opts.wallet;
     }
     this.helpers.spawnEntity({
       type: 'pickup',
@@ -1224,11 +1228,21 @@ export const mining = {
     const reason = (typeof p.grantReason === 'string' && p.grantReason)
       || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
       || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
-    this.bus.emit('economy:grantCredits', {
-      amount: requested,
-      reason,
-      receiptId: reason,
-    });
+    // Wallet routing (PQ-133 CRU-015): a Survival chip pays state.run.credits through runSession
+    // and MUST NOT reach campaign economy. The destination travels on the chip, so this is a
+    // property of the item collected, not of whatever global run happens to be live.
+    const wallet = (typeof p.wallet === 'string' && p.wallet)
+      || (typeof pickupData.wallet === 'string' && pickupData.wallet)
+      || null;
+    if (wallet === 'run') {
+      this.bus.emit('run:awardRequested', { credits: requested, reason });
+    } else {
+      this.bus.emit('economy:grantCredits', {
+        amount: requested,
+        reason,
+        receiptId: reason,
+      });
+    }
     p.acceptedAmount = requested;
     p.rejectedAmount = 0;
     p.creditGranted = true;
@@ -1472,6 +1486,8 @@ export const mining = {
       ...(isCreditChipPickup(pickup.data) ? {
         credits: requested,
         grantReason: pickup.data.grantReason || null,
+        // Which wallet the chip settles into (PQ-133 CRU-015); null keeps the campaign route.
+        wallet: pickup.data.wallet || null,
       } : {}),
       ...(pickup.data.richLotSource ? {
         richLotSource: {
