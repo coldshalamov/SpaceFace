@@ -700,6 +700,10 @@ def delete_faces_in_cylinder(obj, x0, x1, yc, zc, radius, normal=None, normal_mi
             continue
         if (center.y - yc) ** 2 + (center.z - zc) ** 2 > r2:
             continue
+        if normal == "z" and face.normal.z < normal_min:
+            continue
+        if normal == "z-" and face.normal.z > -normal_min:
+            continue
         if normal == "x-" and face.normal.x > -normal_min:
             continue
         if normal == "x+" and face.normal.x < normal_min:
@@ -1545,11 +1549,12 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.40, 0.0, 0.86), (0.72, 0.42, 0.16))
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.20, 0.0, 0.90), (1.05, 0.52, 0.32))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
-    delete_faces_in_box(body, 3.85, 4.95, -0.46, 0.46, 0.68, 2.00, normal="z", normal_min=0.22)
-    delete_faces_in_cylinder(body, -3.40, -2.90, 0.95, 0.38, 0.28, normal="z", normal_min=0.18)
-    delete_faces_in_cylinder(body, -3.40, -2.90, -0.95, 0.38, 0.28, normal="z", normal_min=0.18)
+    if not cut:
+        delete_faces_in_box(body, 3.40, 5.10, -0.55, 0.55, 0.62, 2.00, normal="z", normal_min=0.18)
+    delete_faces_in_cylinder(body, -3.70, -3.15, 0.88, 0.70, 0.42, normal="z", normal_min=0.18)
+    delete_faces_in_cylinder(body, -3.70, -3.15, -0.88, 0.70, 0.42, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1569,19 +1574,15 @@ def build_lod(lod, mats):
     report_shells(body, "hull after plate courses")
 
     soot = mats["Material_Soot"]
-    # C166: flush dark pane in the roof. C165's proud lips + tub walls photographed as a crate.
-    add_box("Tub_Floor", (4.40, 0.0, 0.42), (0.62, 0.34, 0.012), soot, collection, 0.002)
-    add_box("WellLip_F", (4.88, 0.0, 0.86), (0.055, 0.50, 0.040), hull, collection, 0.002)
-    add_box("WellLip_A", (3.92, 0.0, 0.86), (0.055, 0.48, 0.040), hull, collection, 0.002)
-    add_box("WellLip_P", (4.40, -0.46, 0.86), (0.55, 0.040, 0.040), hull, collection, 0.002)
-    add_box("WellLip_S", (4.40, 0.46, 0.86), (0.55, 0.040, 0.040), hull, collection, 0.002)
+    # C167: large flush pane in the boolean hole. No crate lips. C165 crate / C166 stamp.
+    add_box("Tub_Floor", (4.20, 0.0, 0.36), (0.85, 0.40, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.86, -0.42, 0.80),
-        (4.86, 0.42, 0.80),
-        (3.94, 0.40, 0.82),
-        (3.94, -0.40, 0.82),
+        (4.90, -0.48, 0.80),
+        (4.90, 0.48, 0.80),
+        (3.55, 0.44, 0.82),
+        (3.55, -0.44, 0.82),
         0.018, canopy, collection, 0.002,
     )
 
@@ -1601,7 +1602,7 @@ def build_lod(lod, mats):
         (-0.35, 2.22, 0.50), (-0.35, 2.62, 0.32),
         0.055, armor, collection, 0.004,
     )
-    add_box("HouseLid", (-2.85, 0.0, 0.72), (1.85, 1.32, 0.14), armor, collection, 0.004)
+    add_box("HouseLid", (-2.05, 0.0, 0.70), (0.95, 1.28, 0.12), armor, collection, 0.004)
     add_folded_sheet(
         "Belly_P",
         (2.20, -2.48, -0.12), (-1.10, -1.92, -0.08),
