@@ -135,5 +135,6 @@
 | 155 | yes | see json | REVISE/REVISE/REVISE | Diamond clay + punched 2-shell hull. Play went black. Not wired. |
 | 156 | yes | see json | author REVISE | Shallower wells, more fill. Play still charcoal — gap-paint + hull maps. Not wired. |
 | 157 | yes | 0DCEEE04 | REVISE/REVISE/REVISE | Unmapped Hitch-white hull. Card wings, cage canopy, jagged cups. Not wired. |
+| 158 | yes | 0460960F | REVISE/REVISE/REVISE | Slab-delta + visor. Play luminance ~42. Maps muddied the hull. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
