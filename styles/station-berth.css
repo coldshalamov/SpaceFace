@@ -183,7 +183,7 @@
   text-transform: uppercase; color: var(--sxb-ink-3); white-space: nowrap;
 }
 .sxb-vital__value {
-  font-family: var(--sx-mono); font-size: var(--sxb-t-body); font-weight: 500;
+  font-family: var(--sf-data-face); font-size: var(--sxb-t-body); font-weight: 500;
   font-variant-numeric: tabular-nums; color: var(--sxb-ink); white-space: nowrap;
 }
 
@@ -248,7 +248,7 @@
   color: var(--sxb-ink-3);
 }
 .sxb-purse__value {
-  font-family: var(--sx-mono); font-weight: 500; font-size: var(--sxb-t-lg);
+  font-family: var(--sf-data-face); font-weight: 500; font-size: var(--sxb-t-lg);
   font-variant-numeric: tabular-nums; color: var(--sxb-ink); line-height: 1.05;
 }
 .sxb-purse__value::after { content: " cr"; font-size: var(--sxb-t-label); color: var(--sxb-ink-3); }
@@ -354,7 +354,8 @@
   min-width: 16px; height: 16px; padding: 0 4px;
   display: grid; place-items: center;
   border-radius: 8px; background: var(--sxb-act); color: var(--sxb-act-ink);
-  font-family: var(--sx-mono); font-size: 11px; font-weight: 600; line-height: 1;
+  /* 12px floor (INSTRUMENT_GRAMMAR §3). Was 11px; the badge carries a count figure. */
+  font-family: var(--sf-data-face); font-size: 12px; font-weight: 600; line-height: 1;
 }
 .sx-app .sxb-ops .sx-tile__badge[hidden] { display: none; }
 
