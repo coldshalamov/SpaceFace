@@ -1208,6 +1208,7 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     ]
     wing = loft_from_rings(name, rings, skin, collection, 0.022, cap=True)
     loft_from_rings(f"{name}_Fillet", [
+        densify_ring(diamond_airfoil(-1.42, 1.08 * s, 0.14, 1.90, 1.18), 4),
         densify_ring(diamond_airfoil(-1.48, 1.22 * s, 0.16, 2.00, 1.14), 4),
         densify_ring(diamond_airfoil(-1.52, 1.35 * s, 0.17, 2.10, 1.12), 4),
         densify_ring(diamond_airfoil(-1.55, 1.48 * s, 0.18, 2.20, 1.10), 4),
@@ -1222,20 +1223,20 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.00, 1.50 * s, 0.26),
-        (-2.85, 3.90 * s, 0.48),
-        (-2.65, 3.90 * s, 0.08),
-        (-1.80, 1.50 * s, -0.06),
-        0.100, soot, collection, 0.002,
+        (-2.00, 1.50 * s, 0.14),
+        (-2.85, 3.90 * s, 0.32),
+        (-2.65, 3.90 * s, 0.00),
+        (-1.80, 1.50 * s, -0.12),
+        0.080, soot, collection, 0.002,
     )
-    # Half-wing dark flap so the TE split is a planform block at D=144, not a thin overlay (C169).
+    # C177: flap sits in the wing, not a proud cowl (C176 plastic lumps).
     add_folded_sheet(
         f"{name}_Flap",
-        (-2.05, 1.50 * s, 0.48),
-        (-2.95, 3.98 * s, 0.66),
-        (-3.90, 3.98 * s, 0.28),
-        (-3.15, 1.50 * s, 0.10),
-        0.170, armor, collection, 0.004,
+        (-2.08, 1.52 * s, 0.22),
+        (-2.98, 3.96 * s, 0.40),
+        (-3.85, 3.96 * s, 0.10),
+        (-3.12, 1.52 * s, -0.02),
+        0.110, armor, collection, 0.003,
     )
     add_overlap_plate(f"{name}_TipMark", (-3.20, 3.88 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
@@ -1552,8 +1553,8 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # C173: longer dorsal tub so the framed visor is a chase-size rectangle, not a nose blot.
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.05, 0.0, 0.88), (1.28, 0.46, 0.28))
+    # C177: longer/wider tub so the white hull rim is the window frame at D=144.
+    cut = safe_boolean_cut(body, "CockpitBoolean", (3.95, 0.0, 0.86), (1.40, 0.42, 0.30))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
         delete_faces_in_box(body, 2.85, 5.20, -0.50, 0.50, 0.58, 2.00, normal="z", normal_min=0.18)
@@ -1580,21 +1581,20 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
-    add_box("Tub_Floor", (4.05, 0.0, 0.34), (1.05, 0.34, 0.012), soot, collection, 0.002)
+    add_box("Tub_Floor", (3.95, 0.0, 0.32), (1.15, 0.30, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.50, -0.24, 0.52),
-        (4.50, 0.24, 0.52),
-        (3.22, 0.22, 0.54),
-        (3.22, -0.22, 0.54),
+        (4.42, -0.18, 0.48),
+        (4.42, 0.18, 0.48),
+        (3.28, 0.16, 0.50),
+        (3.28, -0.16, 0.50),
         0.014, canopy, collection, 0.002,
     )
-    # White hull bars around the visor — mech wire vanished on dark glass (C174).
-    add_box("CanopyFrame_Fore", (4.68, 0.0, 0.86), (0.070, 0.42, 0.050), hull, collection, 0.002)
-    add_box("CanopyFrame_Aft", (3.12, 0.0, 0.84), (0.070, 0.40, 0.050), hull, collection, 0.002)
-    add_box("CanopyFrame_P", (3.90, -0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
-    add_box("CanopyFrame_S", (3.90, 0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
+    add_box("CanopyFrame_Fore", (4.72, 0.0, 0.88), (0.090, 0.46, 0.060), hull, collection, 0.002)
+    add_box("CanopyFrame_Aft", (3.05, 0.0, 0.86), (0.090, 0.44, 0.060), hull, collection, 0.002)
+    add_box("CanopyFrame_P", (3.88, -0.48, 0.87), (0.78, 0.070, 0.060), hull, collection, 0.002)
+    add_box("CanopyFrame_S", (3.88, 0.48, 0.87), (0.78, 0.070, 0.060), hull, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
