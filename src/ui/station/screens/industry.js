@@ -59,7 +59,7 @@ export function createIndustryScreen(ctx) {
   function renderList(state) {
     const stn = stationType(ctx);
     listEl.innerHTML =
-      `<span class="sx-ind-spindle__label" aria-hidden="true">MATERIAL BECOMES CAPABILITY</span>` +
+      `<span class="sx-ind-spindle__label" aria-hidden="true">MADE CAPABLE</span>` +
       `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
         CAT_ORDER.map((category, processIndex) => {
           const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);

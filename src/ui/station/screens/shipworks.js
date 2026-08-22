@@ -227,7 +227,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<button type="button" data-camera="reset" aria-label="Reset ship view">CENTER</button>` +
           `<button type="button" data-camera="right" aria-label="Rotate ship right">↷</button>` +
         `</div>` +
-        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG / TWO-FINGER HORIZONTAL TO ORBIT · VERTICAL / PINCH TO ZOOM</span>` +
+        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG TO ORBIT · PINCH TO ZOOM</span>` +
       `</div>` +
       `<div class="sx-sw__stats sf-apron"></div>` +
     `</section>` +

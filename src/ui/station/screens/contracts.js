@@ -240,7 +240,7 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
         `<div class="sx-brief"><span class="sx-brief__ic">${icon('spark', 16)}</span><span class="sx-brief__k">Continuity</span><span class="sx-brief__v">${escapeHtml(filing.continuityTitle)}</span><span class="sx-brief__sub">${escapeHtml(filing.continuityObjective)}</span></div>` +
       `</div>` +
       `<div class="sx-contract-sim" aria-label="Previewed final disposition consequences">` +
-        `<span class="sx-contract-sim__label">POSITION PREVIEW</span>` +
+        `<span class="sx-contract-sim__label">POSITION</span>` +
         `<div><span>FILED POSITION</span><b>${escapeHtml(filing.resolution)}</b><em>The same world remains playable.</em></div>` +
         `<div><span>NEXT WORK</span><b>${escapeHtml(filing.continuityTitle)}</b><em>${escapeHtml(filing.continuityObjective)}</em></div>` +
         `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'READY TO REVIEW' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +
@@ -436,7 +436,7 @@ export function createContractsScreen(ctx) {
         `</div>` +
 
         `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +
-          `<span class="sx-contract-sim__label">OUTCOME PREVIEW</span>` +
+          `<span class="sx-contract-sim__label">OUTCOME</span>` +
           `<div><span>SUCCESS</span><b>+${reward(m).toLocaleString('en-US')} cr</b><em>+${repPreview.gain} ${escapeHtml((FAC.get(m.factionId) || {}).short || 'faction')} rep</em></div>` +
           `<div><span>FAILURE</span><b>${collateral(m) ? `−${collateral(m).toLocaleString('en-US')} cr collateral` : 'No collateral loss'}</b><em>${repPreview.loss} faction rep</em></div>` +
           `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'ROUTE CLEAR' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +

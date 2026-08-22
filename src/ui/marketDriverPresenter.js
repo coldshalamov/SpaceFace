@@ -49,29 +49,29 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
   const role = entry && entry.role || 'none';
   const stationRole = words(station.type || 'Station');
   const roleDriver = role === 'consume'
-    ? driver('role', `${stationRole} consumes ${commodity && commodity.name || 'this commodity'}`, 'Role · demand ↑', `${stationRole} operations consume ${commodity && commodity.name || 'this commodity'}, creating persistent demand.`, 'up')
+    ? driver('role', `${stationRole} consumes ${commodity && commodity.name || 'this commodity'}`, 'Demand ↑', `${stationRole} operations consume ${commodity && commodity.name || 'this commodity'}, creating persistent demand.`, 'up')
     : role === 'produce'
-      ? driver('role', `${stationRole} supplies ${commodity && commodity.name || 'this commodity'}`, 'Role · surplus ↓', `${stationRole} operations produce ${commodity && commodity.name || 'this commodity'}, creating persistent supply.`, 'down')
-      : driver('role', 'No production bias', 'Role · balanced', 'This station has no structural production or consumption bias for this commodity.', 'flat');
+      ? driver('role', `${stationRole} supplies ${commodity && commodity.name || 'this commodity'}`, 'Surplus ↓', `${stationRole} operations produce ${commodity && commodity.name || 'this commodity'}, creating persistent supply.`, 'down')
+      : driver('role', 'No production bias', 'Balanced', 'This station has no structural production or consumption bias for this commodity.', 'flat');
 
   const security = Number(sector.security);
   const frontier = Number.isFinite(security) && security < 0.58;
   const geographyDriver = frontier
-    ? driver('geography', 'Wider frontier spread', 'Frontier · wide', 'Lower-security frontier logistics widen the gap between buy and sell quotes.', 'wide', security)
-    : driver('geography', 'Tighter core spread', 'Core · tight', 'Established core logistics keep the buy and sell spread comparatively tight.', 'tight', security);
+    ? driver('geography', 'Wider frontier spread', 'Wide spread', 'Lower-security frontier logistics widen the gap between buy and sell quotes.', 'wide', security)
+    : driver('geography', 'Tighter core spread', 'Tight core', 'Established core logistics keep the buy and sell spread comparatively tight.', 'tight', security);
 
   const demandDrivers = Array.isArray(entry && entry.demandDrivers) ? entry.demandDrivers : [];
   const demandSummary = summarizeDemandDrivers(demandDrivers, entry && entry.demandMult);
   const conflictDriver = demandSummary
     ? driver('conflict', demandSummary.label, demandSummary.shortLabel, demandSummary.explanation, demandSummary.direction, entry.demandMult)
-    : driver('conflict', 'No sector demand modifier', 'Conflict · none', 'No persistent war, blockade, or industrial expansion currently changes this commodity quote.', 'flat', 1);
+    : driver('conflict', 'No sector demand modifier', 'No conflict', 'No persistent war, blockade, or industrial expansion currently changes this commodity quote.', 'flat', 1);
 
   const liveCycle = cycle || (state && state.economy && state.economy.cycles
     && state.economy.cycles[stationId] && commodity && state.economy.cycles[stationId][commodity.id]);
   const regime = liveCycle && (liveCycle.regime || liveCycle.family) || 'stable';
   const regimeText = regimeLabel(regime);
   const cycleDirection = regime === 'rising' ? 'up' : regime === 'falling' ? 'down' : 'variable';
-  const cycleDriver = driver('cycle', 'Short-term trend', `Cycle · ${regimeText.replace(/ demand| pricing| market| curve/i, '')}`, `The current short-term formula regime is ${regimeText.toLocaleLowerCase()}.`, cycleDirection, regime);
+  const cycleDriver = driver('cycle', 'Short-term trend', regimeText.replace(/ demand| pricing| market| curve/i, ''), `The current short-term formula regime is ${regimeText.toLocaleLowerCase()}.`, cycleDirection, regime);
 
   const primary = Object.freeze([roleDriver, geographyDriver, conflictDriver, cycleDriver]);
   const cause = sector.id ? causeFor(state, sector.id) : null;
