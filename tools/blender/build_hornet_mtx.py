@@ -340,7 +340,7 @@ def create_materials():
         # C153: hull to the Hitch bar's bright light gray; dirt damped so panels read as crisp
         # seams, not airbrushed blotches.
         # C154: Hitch-white hull so dark wells and charcoal wings can break value at D=144.
-        "Material_Hull": ((0.88, 0.89, 0.91), 0.02, 0.48, "hull", 0.0, None),
+        "Material_Hull": ((0.70, 0.71, 0.73), 0.02, 0.52, "hull", 0.0, None),
         "Material_Armor": ((0.07, 0.075, 0.082), 0.08, 0.50, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -1201,19 +1201,19 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.20, 1.85 * s, 0.26),
-        (-2.90, 3.60 * s, 0.48),
-        (-2.55, 3.60 * s, 0.18),
-        (-1.90, 1.85 * s, 0.02),
-        0.055, soot, collection, 0.002,
+        (-1.35, 1.80 * s, 0.28),
+        (-2.05, 3.55 * s, 0.50),
+        (-1.85, 3.55 * s, 0.22),
+        (-1.15, 1.80 * s, 0.06),
+        0.060, soot, collection, 0.002,
     )
     add_folded_sheet(
         f"{name}_Flap",
-        (-2.55, 1.90 * s, 0.18),
-        (-3.05, 3.62 * s, 0.40),
-        (-2.92, 3.62 * s, 0.22),
-        (-2.42, 1.90 * s, 0.04),
-        0.040, armor, collection, 0.002,
+        (-1.55, 1.82 * s, 0.24),
+        (-2.35, 3.72 * s, 0.48),
+        (-3.05, 3.72 * s, 0.18),
+        (-2.15, 1.82 * s, 0.02),
+        0.070, armor, collection, 0.003,
     )
     add_overlap_plate(f"{name}_TipMark", (-1.90, 3.88 * s, 0.48), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
@@ -1579,15 +1579,15 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (1.90, -2.28, 0.00), (-0.80, -1.78, -0.02),
-        (-0.80, -1.64, 0.30), (1.90, -2.12, 0.34),
-        0.036, armor, collection, 0.004,
+        (2.40, -2.42, 0.08), (-1.20, -1.72, 0.04),
+        (-1.20, -1.48, 0.42), (2.40, -2.18, 0.48),
+        0.048, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.90, 2.28, 0.00), (1.90, 2.12, 0.34),
-        (-0.80, 1.64, 0.30), (-0.80, 1.78, -0.02),
-        0.036, armor, collection, 0.004,
+        (2.40, 2.42, 0.08), (2.40, 2.18, 0.48),
+        (-1.20, 1.48, 0.42), (-1.20, 1.72, 0.04),
+        0.048, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Keel_Spine",
@@ -1614,12 +1614,12 @@ def build_lod(lod, mats):
         add_cylinder(
             f"DriveRim_{side}",
             (-3.55, 0.95 * sign, 0.78),
-            0.36, 0.10, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
+            0.50, 0.12, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
         )
         add_cylinder(
             f"DriveThroat_{side}",
             (-3.55, 0.95 * sign, 0.70),
-            0.26, 0.04, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
+            0.34, 0.05, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
         )
         add_folded_sheet(
             f"GunCheek_{side}",
