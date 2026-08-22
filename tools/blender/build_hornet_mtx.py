@@ -1201,11 +1201,19 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.35, 1.95 * s, 0.22),
-        (-2.85, 3.55 * s, 0.42),
-        (-2.70, 3.55 * s, 0.22),
-        (-2.20, 1.95 * s, 0.04),
-        0.032, soot, collection, 0.002,
+        (-2.20, 1.85 * s, 0.26),
+        (-2.90, 3.60 * s, 0.48),
+        (-2.55, 3.60 * s, 0.18),
+        (-1.90, 1.85 * s, 0.02),
+        0.055, soot, collection, 0.002,
+    )
+    add_folded_sheet(
+        f"{name}_Flap",
+        (-2.55, 1.90 * s, 0.18),
+        (-3.05, 3.62 * s, 0.40),
+        (-2.92, 3.62 * s, 0.22),
+        (-2.42, 1.90 * s, 0.04),
+        0.040, armor, collection, 0.002,
     )
     add_overlap_plate(f"{name}_TipMark", (-1.90, 3.88 * s, 0.48), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
@@ -1522,9 +1530,9 @@ def build_lod(lod, mats):
         (-4.35, 1.58, 0.48, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.08, 0.0, 0.92), (0.72, 0.42, 0.28))
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.45, 0.0, 0.92), (0.42, 0.42, 0.28))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
-    delete_faces_in_box(body, 3.52, 4.62, -0.40, 0.40, 0.70, 2.00, normal="z", normal_min=0.22)
+    delete_faces_in_box(body, 4.10, 4.82, -0.42, 0.42, 0.70, 2.00, normal="z", normal_min=0.22)
     delete_faces_in_cylinder(body, -3.40, -2.90, 0.95, 0.38, 0.28, normal="z", normal_min=0.18)
     delete_faces_in_cylinder(body, -3.40, -2.90, -0.95, 0.38, 0.28, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
@@ -1547,22 +1555,22 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # C158: visor — one dark pane in a thick armor frame. Rim strips photographed as a cage.
-    add_box("Tub_Floor", (4.05, 0.0, 0.34), (0.72, 0.38, 0.016), soot, collection, 0.002)
-    add_box("Tub_Aft", (3.38, 0.0, 0.58), (0.018, 0.40, 0.26), soot, collection, 0.002)
-    add_box("Tub_Port", (4.05, -0.40, 0.58), (0.70, 0.016, 0.26), soot, collection, 0.002)
-    add_box("Tub_Stbd", (4.05, 0.40, 0.58), (0.70, 0.016, 0.26), soot, collection, 0.002)
-    add_box("WellLip_F", (4.72, 0.0, 0.94), (0.070, 0.52, 0.060), armor, collection, 0.003)
-    add_box("WellLip_A", (3.40, 0.0, 0.94), (0.070, 0.50, 0.060), armor, collection, 0.003)
-    add_box("WellLip_P", (4.06, -0.50, 0.94), (0.74, 0.060, 0.060), armor, collection, 0.003)
-    add_box("WellLip_S", (4.06, 0.50, 0.94), (0.74, 0.060, 0.060), armor, collection, 0.003)
+    add_box("Tub_Floor", (4.45, 0.0, 0.34), (0.38, 0.38, 0.016), soot, collection, 0.002)
+    add_box("Tub_Aft", (4.10, 0.0, 0.58), (0.018, 0.40, 0.26), soot, collection, 0.002)
+    add_box("Tub_Port", (4.45, -0.40, 0.58), (0.36, 0.016, 0.26), soot, collection, 0.002)
+    add_box("Tub_Stbd", (4.45, 0.40, 0.58), (0.36, 0.016, 0.26), soot, collection, 0.002)
+    add_box("WellLip_F", (4.78, 0.0, 0.98), (0.085, 0.56, 0.075), armor, collection, 0.003)
+    add_box("WellLip_A", (4.12, 0.0, 0.98), (0.085, 0.54, 0.075), armor, collection, 0.003)
+    add_box("WellLip_P", (4.45, -0.52, 0.98), (0.38, 0.075, 0.075), armor, collection, 0.003)
+    add_box("WellLip_S", (4.45, 0.52, 0.98), (0.38, 0.075, 0.075), armor, collection, 0.003)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.64, -0.36, 0.66),
-        (4.64, 0.36, 0.66),
-        (3.52, 0.34, 0.68),
-        (3.52, -0.34, 0.68),
-        0.016, canopy, collection, 0.002,
+        (4.70, -0.38, 0.62),
+        (4.70, 0.38, 0.62),
+        (4.18, 0.36, 0.64),
+        (4.18, -0.36, 0.64),
+        0.014, canopy, collection, 0.002,
     )
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
@@ -1603,6 +1611,16 @@ def build_lod(lod, mats):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection, soot=mats["Material_Soot"])
         # C154: bells sit on the rectangular house, mouths tilted up into the chase.
         add_hollow_bell(side, -3.20, 0.95 * sign, 0.38, 0.72, mats, collection)
+        add_cylinder(
+            f"DriveRim_{side}",
+            (-3.55, 0.95 * sign, 0.78),
+            0.36, 0.10, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
+        )
+        add_cylinder(
+            f"DriveThroat_{side}",
+            (-3.55, 0.95 * sign, 0.70),
+            0.26, 0.04, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
+        )
         add_folded_sheet(
             f"GunCheek_{side}",
             (5.08, 0.18 * sign, -0.06), (4.28, 0.46 * sign, -0.08),
@@ -1610,7 +1628,7 @@ def build_lod(lod, mats):
             0.028, armor, collection, 0.003,
         )
         add_overlap_plate(f"GunTrunnion_{side}", (4.58, 0.36 * sign, 0.00), (0.20, 0.07, 0.06), mech, collection, 0.004)
-        add_cylinder(f"BarrelJacket_{side}", (5.18, 0.36 * sign, -0.02), 0.042, 0.46, mech, collection, vertices=10, bevel=0.002)
+        add_cylinder(f"BarrelJacket_{side}", (4.85, 0.36 * sign, -0.02), 0.038, 0.22, mech, collection, vertices=10, bevel=0.002)
         add_five_wall_tub(f"RcsBay_{side}", (0.20, 2.05 * sign, 0.02), (0.22, 0.12, 0.10), 0.036, mech, collection)
         add_cylinder(f"RcsNoz_{side}", (0.32, 2.05 * sign, 0.02), 0.028, 0.10, soot, collection, 8, 0.001)
         add_rcs_cluster(side, (0.10, 1.95 * sign, 0.16), mats, collection, sign=sign)
@@ -1623,8 +1641,8 @@ def build_lod(lod, mats):
     for i in range(7):
         add_box(
             f"RadFinDorsal_{i}",
-            (-1.50 - 0.48 + i * 0.16, 0.0, 0.52),
-            (0.014, 0.18, 0.07),
+            (-1.50 - 0.48 + i * 0.16, 0.0, 0.58),
+            (0.018, 0.22, 0.10),
             rad, collection, 0.001,
         )
     add_service_hatch("Dorsal", (-0.40, 0.28, 0.68), mats, collection, sx=0.18, sy=0.12)
