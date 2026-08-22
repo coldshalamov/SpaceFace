@@ -157,5 +157,6 @@
 | 177 | yes | EF85DDD2 | REVISE/REVISE/REVISE | Flush flaps; visor shrank; wings read chrome cards. Not wired. |
 | 178 | yes | 04981730 | REVISE/REVISE/REVISE | Matte charcoal wings; visor is a nose stripe. No seat. Not wired. |
 | 179 | yes | 2F74FB3B | REVISE/REVISE/REVISE | Opaque shorter visor reads as a sticker; drives are soot discs. Not wired. |
+| 180 | yes | DED5E517 | REVISE/REVISE/REVISE | Raised visor is a sticker; white roots chalked the ship; 2-shell hull. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

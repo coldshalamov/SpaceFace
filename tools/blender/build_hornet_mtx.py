@@ -804,7 +804,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     loft_from_rings(
         f"BellLip_{tag}",
         [ring_at(0.98, 0.46), ring_at(1.04, 0.46)],
-        armor, collection, 0.0, cap=False,
+        soot, collection, 0.0, cap=False,
     )
     liner_rings = [
         ring_at(t, r, 32)
@@ -1189,56 +1189,53 @@ def loft_volume(name, specs, material, collection, thick=0.12):
     return obj
 
 
-def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None):
-    """Delta on the house. Whole wing is armor so chase sees a dark planform, not a white card with a brick flap."""
+def add_blended_interceptor_wing(name, sign, hull, armor, collection, soot=None):
+    """Delta on the house. Charcoal outboard; white hull fillet so the root is a socket, not a glued card."""
     s = float(sign)
     soot = soot or armor
-    # C176: one charcoal skin. C175 armor flap on a hull wing photographed as a TE brick.
-    skin = armor
     # y, le, chord, thick, z — roots on the house, aft of the held waist.
     main = (
-        (1.48, -1.55, 2.20, 1.10, 0.18),
-        (2.35, -2.20, 1.80, 0.80, 0.28),
-        (3.20, -2.85, 1.30, 0.50, 0.38),
-        (4.05, -3.40, 0.78, 0.32, 0.48),
+        (1.52, -1.35, 2.40, 1.18, 0.16),
+        (2.50, -2.05, 1.90, 0.82, 0.24),
+        (3.40, -2.85, 1.25, 0.48, 0.34),
+        (4.20, -3.55, 0.70, 0.28, 0.42),
     )
     rings = [
         densify_ring(diamond_airfoil(le, y * s, z, chord, thick), 4)
         for y, le, chord, thick, z in main
     ]
-    wing = loft_from_rings(name, rings, skin, collection, 0.022, cap=True)
+    wing = loft_from_rings(name, rings, armor, collection, 0.022, cap=True)
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(diamond_airfoil(-1.42, 1.08 * s, 0.14, 1.90, 1.18), 4),
-        densify_ring(diamond_airfoil(-1.48, 1.22 * s, 0.16, 2.00, 1.14), 4),
-        densify_ring(diamond_airfoil(-1.52, 1.35 * s, 0.17, 2.10, 1.12), 4),
-        densify_ring(diamond_airfoil(-1.55, 1.48 * s, 0.18, 2.20, 1.10), 4),
-    ], skin, collection, 0.016, cap=True)
+        densify_ring(diamond_airfoil(-1.22, 1.10 * s, 0.14, 2.05, 1.22), 4),
+        densify_ring(diamond_airfoil(-1.28, 1.24 * s, 0.15, 2.18, 1.20), 4),
+        densify_ring(diamond_airfoil(-1.32, 1.38 * s, 0.16, 2.30, 1.19), 4),
+        densify_ring(diamond_airfoil(-1.35, 1.52 * s, 0.16, 2.40, 1.18), 4),
+    ], hull, collection, 0.016, cap=True)
     add_folded_sheet(
         f"{name}_Leading",
-        (-1.50, 1.48 * s, 0.26),
-        (-2.70, 3.45 * s, 0.44),
-        (-2.85, 3.45 * s, 0.10),
-        (-1.65, 1.48 * s, -0.16),
-        0.110, skin, collection, 0.006,
+        (-1.32, 1.52 * s, 0.26),
+        (-2.55, 3.55 * s, 0.40),
+        (-2.70, 3.55 * s, 0.08),
+        (-1.48, 1.52 * s, -0.16),
+        0.110, armor, collection, 0.006,
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.00, 1.50 * s, 0.14),
-        (-2.85, 3.90 * s, 0.32),
-        (-2.65, 3.90 * s, 0.00),
-        (-1.80, 1.50 * s, -0.12),
+        (-1.90, 1.55 * s, 0.14),
+        (-2.80, 4.05 * s, 0.28),
+        (-2.60, 4.05 * s, 0.00),
+        (-1.70, 1.55 * s, -0.12),
         0.080, soot, collection, 0.002,
     )
-    # C177: flap sits in the wing, not a proud cowl (C176 plastic lumps).
     add_folded_sheet(
         f"{name}_Flap",
-        (-2.08, 1.52 * s, 0.22),
-        (-2.98, 3.96 * s, 0.40),
-        (-3.85, 3.96 * s, 0.10),
-        (-3.12, 1.52 * s, -0.02),
+        (-1.98, 1.58 * s, 0.22),
+        (-2.95, 4.10 * s, 0.36),
+        (-3.90, 4.10 * s, 0.08),
+        (-3.05, 1.58 * s, -0.02),
         0.110, armor, collection, 0.003,
     )
-    add_overlap_plate(f"{name}_TipMark", (-3.20, 3.88 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TipMark", (-3.30, 4.02 * s, 0.40), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
 
 
@@ -1553,14 +1550,14 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # C179: shorter tub so the visor is a framed rectangle, not a 2.4 m nose stripe (C178).
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.15, 0.0, 0.86), (0.82, 0.42, 0.28))
+    # C180: visor ~5 cm below the roof so the boolean lip is a white frame, not a buried sticker (C179).
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.18, 0.0, 0.80), (0.70, 0.40, 0.16))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
-        delete_faces_in_box(body, 3.40, 4.90, -0.48, 0.48, 0.58, 2.00, normal="z", normal_min=0.18)
-    # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
-    delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
-    delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
+        delete_faces_in_box(body, 3.55, 4.82, -0.44, 0.44, 0.58, 2.00, normal="z", normal_min=0.18)
+    # C180: punch where the bell mouths actually sit (C179 punched the barrels, so chase saw discs).
+    delete_faces_in_cylinder(body, -3.70, -3.00, 0.88, 0.52, 0.58, normal="z", normal_min=0.15)
+    delete_faces_in_cylinder(body, -3.70, -3.00, -0.88, 0.52, 0.58, normal="z", normal_min=0.15)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1581,14 +1578,14 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
-    add_box("Tub_Floor", (4.15, 0.0, 0.32), (0.68, 0.30, 0.012), soot, collection, 0.002)
+    add_box("Tub_Floor", (4.18, 0.0, 0.42), (0.58, 0.28, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.72, -0.34, 0.58),
-        (4.72, 0.34, 0.58),
-        (3.55, 0.32, 0.60),
-        (3.55, -0.32, 0.60),
+        (4.72, -0.30, 0.68),
+        (4.72, 0.30, 0.68),
+        (3.62, 0.28, 0.70),
+        (3.62, -0.28, 0.70),
         0.014, canopy, collection, 0.002,
     )
 
@@ -1653,7 +1650,8 @@ def build_lod(lod, mats):
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection, soot=mats["Material_Soot"])
         # C154: bells sit on the rectangular house, mouths tilted up into the chase.
-        add_hollow_bell(side, -3.20, 0.88 * sign, 0.08, 0.72, mats, collection)
+        # C180: start the bell forward so the up-canted mouth sits in the roof punch, not aft of it.
+        add_hollow_bell(side, -2.62, 0.88 * sign, -0.18, 0.72, mats, collection)
         add_folded_sheet(
             f"GunCheek_{side}",
             (5.08, 0.18 * sign, -0.06), (4.28, 0.46 * sign, -0.08),
