@@ -151,5 +151,6 @@
 | 171 | yes | 9232AD72 | REVISE/REVISE/REVISE | Dorsal waist band moved lum toward Hitch; reads as a glued crate. Not wired. |
 | 172 | yes | 25ED03A5 | REVISE/REVISE/REVISE | Waist crate off; lum back to chalk. Split lids read as glued cards. Not wired. |
 | 173 | yes | 56FFA615 | REVISE/REVISE/REVISE | Waist shoulders photographed as black side boxes. Not wired. |
+| 174 | yes | F88CBF02 | REVISE/REVISE/REVISE | Waist wells still black side boxes; lum worse. Frame reads as wire. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

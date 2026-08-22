@@ -1543,8 +1543,8 @@ def build_lod(lod, mats):
         (4.45, 0.52, 0.78, 0.32, 0.48, 0.30, 0.28),
         (3.30, 0.98, 0.56, 0.18, 0.14, 0.50, 0.22),
         (2.05, 1.42, 0.44, 0.08, 0.08, 0.72, 0.14),
-        (0.70, 2.58, 0.38, 0.06, 0.05, 0.90, 0.10),
-        (-0.50, 2.58, 0.38, 0.06, 0.05, 0.90, 0.10),
+        (0.70, 2.58, 0.46, 0.08, 0.50, 0.88, 0.10),
+        (-0.50, 2.58, 0.46, 0.08, 0.50, 0.88, 0.10),
         (-1.80, 1.46, 0.50, 0.10, 0.06, 0.88, 0.10),
         (-3.10, 1.40, 0.50, 0.12, 0.04, 0.90, 0.08),
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
@@ -1558,6 +1558,9 @@ def build_lod(lod, mats):
     # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
     delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
+    # C174: dark waist as roof wells, not proud shoulder plates (C173 side boxes).
+    delete_faces_in_box(body, -0.80, 1.30, 1.12, 2.50, 0.22, 2.00, normal="z", normal_min=0.18)
+    delete_faces_in_box(body, -0.80, 1.30, -2.50, -1.12, 0.22, 2.00, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1582,33 +1585,24 @@ def build_lod(lod, mats):
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.58, -0.28, 0.56),
-        (4.58, 0.28, 0.56),
-        (3.15, 0.26, 0.58),
-        (3.15, -0.26, 0.58),
-        0.016, canopy, collection, 0.002,
+        (4.50, -0.24, 0.52),
+        (4.50, 0.24, 0.52),
+        (3.22, 0.22, 0.54),
+        (3.22, -0.22, 0.54),
+        0.014, canopy, collection, 0.002,
     )
-    add_box("WellFloor_P", (-3.35, -0.88, 0.36), (0.48, 0.48, 0.012), soot, collection, 0.002)
-    add_box("WellFloor_S", (-3.35, 0.88, 0.36), (0.48, 0.48, 0.012), soot, collection, 0.002)
+    # Mid-gray metal rectangle so chase sees a frame, not a black sticker (armor frame vanished on dark glass).
+    add_box("CanopyFrame_Fore", (4.62, 0.0, 0.80), (0.028, 0.36, 0.035), mech, collection, 0.002)
+    add_box("CanopyFrame_Aft", (3.18, 0.0, 0.80), (0.028, 0.34, 0.035), mech, collection, 0.002)
+    add_box("CanopyFrame_P", (3.90, -0.38, 0.80), (0.68, 0.022, 0.035), mech, collection, 0.002)
+    add_box("CanopyFrame_S", (3.90, 0.38, 0.80), (0.68, 0.022, 0.035), mech, collection, 0.002)
+    add_box("WaistWell_P", (0.25, -1.80, 0.30), (0.92, 0.58, 0.010), soot, collection, 0.002)
+    add_box("WaistWell_S", (0.25, 1.80, 0.30), (0.92, 0.58, 0.010), soot, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
     add_five_wall_tub("RadiatorTub", (-1.75, 0.98, 0.18), (0.28, 0.10, 0.11), 0.040, mech, collection)
 
-    # C173: dark on the waist planform as two shoulders, not a deck-spanning crate (C171)
-    # and not edge-only strips the chase cannot see (C170/C172). White spine stays open.
-    add_folded_sheet(
-        "Chine_P",
-        (1.35, -2.58, 0.34), (-0.85, -2.52, 0.32),
-        (-0.85, -0.92, 0.70), (1.35, -0.92, 0.72),
-        0.085, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "Chine_S",
-        (1.35, 2.58, 0.34), (1.35, 0.92, 0.72),
-        (-0.85, 0.92, 0.70), (-0.85, 2.52, 0.32),
-        0.085, armor, collection, 0.004,
-    )
     add_folded_sheet(
         "Belt_Nose_P",
         (4.85, -0.58, 0.08), (3.10, -1.22, 0.06),
