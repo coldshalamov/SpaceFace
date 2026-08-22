@@ -1190,9 +1190,10 @@ def loft_volume(name, specs, material, collection, thick=0.12):
 
 
 def add_blended_interceptor_wing(name, sign, hull, armor, collection, soot=None):
-    """Delta on the house. Charcoal outboard; white hull fillet so the root is a socket, not a glued card."""
+    """Delta on the house. Whole wing charcoal — white fillets (C180) chalked the planform."""
     s = float(sign)
     soot = soot or armor
+    _ = hull
     # y, le, chord, thick, z — roots on the house, aft of the held waist.
     main = (
         (1.52, -1.35, 2.40, 1.18, 0.16),
@@ -1210,7 +1211,7 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection, soot=None)
         densify_ring(diamond_airfoil(-1.28, 1.24 * s, 0.15, 2.18, 1.20), 4),
         densify_ring(diamond_airfoil(-1.32, 1.38 * s, 0.16, 2.30, 1.19), 4),
         densify_ring(diamond_airfoil(-1.35, 1.52 * s, 0.16, 2.40, 1.18), 4),
-    ], hull, collection, 0.016, cap=True)
+    ], armor, collection, 0.016, cap=True)
     add_folded_sheet(
         f"{name}_Leading",
         (-1.32, 1.52 * s, 0.26),
@@ -1550,14 +1551,14 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # C180: visor ~5 cm below the roof so the boolean lip is a white frame, not a buried sticker (C179).
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.18, 0.0, 0.80), (0.70, 0.40, 0.16))
+    # C181: C179 visor depth (dark rectangle) + a wider boolean so the white lip can frame it.
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.15, 0.0, 0.86), (0.95, 0.52, 0.28))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
-        delete_faces_in_box(body, 3.55, 4.82, -0.44, 0.44, 0.58, 2.00, normal="z", normal_min=0.18)
-    # C180: punch where the bell mouths actually sit (C179 punched the barrels, so chase saw discs).
-    delete_faces_in_cylinder(body, -3.70, -3.00, 0.88, 0.52, 0.58, normal="z", normal_min=0.15)
-    delete_faces_in_cylinder(body, -3.70, -3.00, -0.88, 0.52, 0.58, normal="z", normal_min=0.15)
+        delete_faces_in_box(body, 3.30, 5.00, -0.55, 0.55, 0.58, 2.00, normal="z", normal_min=0.18)
+    # C179 punch kept 1-shell; C180 punch at the roof split the hull. Mouth still sits in this x-range.
+    delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
+    delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1578,14 +1579,14 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
-    add_box("Tub_Floor", (4.18, 0.0, 0.42), (0.58, 0.28, 0.012), soot, collection, 0.002)
+    add_box("Tub_Floor", (4.15, 0.0, 0.32), (0.82, 0.40, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.72, -0.30, 0.68),
-        (4.72, 0.30, 0.68),
-        (3.62, 0.28, 0.70),
-        (3.62, -0.28, 0.70),
+        (4.72, -0.32, 0.58),
+        (4.72, 0.32, 0.58),
+        (3.55, 0.30, 0.60),
+        (3.55, -0.30, 0.60),
         0.014, canopy, collection, 0.002,
     )
 

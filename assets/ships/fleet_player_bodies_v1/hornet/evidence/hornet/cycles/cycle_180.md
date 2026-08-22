@@ -11,7 +11,7 @@ Reviews at play size:
 
 | Still | Agent | Verdict |
 |---|---|---|
-| `play_chase.png` | author (review stall) | REVISE |
+| `play_chase.png` | 2111844f / eec8e917 | REVISE |
 | `play_chase_abeam.png` | 75cf4875 | REVISE |
 | `play_chase_close.png` | a761bef3 | REVISE |
 
