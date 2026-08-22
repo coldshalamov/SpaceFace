@@ -1,0 +1,67 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\place_lane_beacon.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\lane_beacon_chase",
+  "focus": [
+    3.675,
+    0.0,
+    2.15
+  ],
+  "boundsMin": [
+    -1.75,
+    -1.75,
+    -5.1
+  ],
+  "boundsMax": [
+    9.1,
+    1.75,
+    9.4
+  ],
+  "size": [
+    10.85,
+    3.5,
+    14.5
+  ],
+  "lightScale": 1.3426,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_EMISSIVE",
+      "triangles": 376,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 1128,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 4232,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 940,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 6676,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\lane_beacon_chase\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\lane_beacon_chase\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\lane_beacon_chase\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\lane_beacon_chase\\clay_play_chase.png"
+}

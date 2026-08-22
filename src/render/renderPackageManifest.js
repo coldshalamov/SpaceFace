@@ -184,22 +184,22 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.nav-buoy",
-    "expectedContentHash": "9e115b65d18dc0c7feda3966a1b5005c6d4c779792db612c6cf3c7632e221b25",
+    "expectedContentHash": "ba9929ce6f6d9d401a2c6d1757aa0211d9fbafe2bb7fd25314f923ff86e046ef",
     "key": "nav-buoy",
     "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
     "slot": "place",
-    "sourceSha256": "5f7c43a66b4563d40e4a6df1fe35698c11489263f81746b55a86b7eabcc886e6",
+    "sourceSha256": "d39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd",
     "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
   {
     "assetId": "sf.render.lane-beacon",
-    "expectedContentHash": "2599a6c1a56f52d2789ce0c0b4cf3feb18ac5b0e6c06d5356a927883945dc33f",
+    "expectedContentHash": "d1fad4b1faf6d178925e2ba2a0d7df326e72dd4cf745992f6800452afba5e71a",
     "key": "lane-beacon",
     "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
     "slot": "place",
-    "sourceSha256": "72bb0fabefed2b1b81c8cd4d70a3b3ef7abbad1f09010dde14c5f0fe15d1cbbe",
+    "sourceSha256": "0310ccbb236a7c6b52db7a60d763cab927c8ca9d1800da62b20c88b71b07b7c5",
     "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
   {

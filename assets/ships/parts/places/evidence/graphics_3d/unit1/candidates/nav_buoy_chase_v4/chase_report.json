@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\place_nav_buoy_v4.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\nav_buoy_chase_v4",
+  "focus": [
+    0.0875,
+    0.0,
+    2.65
+  ],
+  "boundsMin": [
+    -1.4,
+    -1.4,
+    -5.0
+  ],
+  "boundsMax": [
+    1.575,
+    1.4,
+    10.3
+  ],
+  "size": [
+    2.975,
+    2.8,
+    15.3
+  ],
+  "lightScale": 1.4167,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Buoy_Nav_Optic",
+      "triangles": 112,
+      "materials": [
+        "Buoy_Nav_Optic"
+      ]
+    },
+    {
+      "name": "LOD0_Buoy_Pressure_Shell",
+      "triangles": 386,
+      "materials": [
+        "Buoy_Pressure_Shell"
+      ]
+    },
+    {
+      "name": "LOD0_Buoy_Service_Marking",
+      "triangles": 152,
+      "materials": [
+        "Buoy_Service_Marking"
+      ]
+    },
+    {
+      "name": "LOD0_Buoy_Solar_Cell",
+      "triangles": 216,
+      "materials": [
+        "Buoy_Solar_Cell"
+      ]
+    },
+    {
+      "name": "LOD0_Buoy_Stabilizer_Frame",
+      "triangles": 868,
+      "materials": [
+        "Buoy_Stabilizer_Frame"
+      ]
+    }
+  ],
+  "triangles": 1734,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\nav_buoy_chase_v4\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\nav_buoy_chase_v4\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\nav_buoy_chase_v4\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\nav_buoy_chase_v4\\clay_play_chase.png"
+}

@@ -188,18 +188,7 @@ if (injectDrift) {
   console.error(`SELF-TEST: injected sourceSha256 drift into ${injectDrift}; this run MUST fail.`);
 }
 
-// One acknowledged stale parts_manifest row, pinned to its exact current values (see
-// partitionKnownStale: any change to the row OR the GLB voids the pin and fails the check).
-// place_lane_beacon's GLB was re-exported without refreshing its parts row: the release manifest
-// agrees with disk (source GLB is 3775520 bytes, 2040 total / 1280 LOD0 triangles) but the parts
-// row still records the previous export (3777536 bytes, 1292 tris). The GLB itself is NOT corrupt;
-// repairing the row is a manifest edit outside this check's remit.
-const KNOWN_STALE_PARTS_ROWS = {
-  place_lane_beacon: [
-    { manifest: 'parts_manifest.json', field: 'bytes', expected: 3775520, actual: 3777536 },
-    { manifest: 'parts_manifest.json', field: 'tris', expected: '2040 (total) or 1280 (lod0)', actual: 1292 },
-  ],
-};
+const KNOWN_STALE_PARTS_ROWS = {};
 
 const sweepResults = releaseManifest.assets.map((asset) =>
   verifyAssetReceipt(ROOT, asset, partById.get(asset.id) ?? null));

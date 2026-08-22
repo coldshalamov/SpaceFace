@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "asset": "place_lane_beacon",
+  "revision": "chase_surgical_v5",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_lane_beacon.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\place_lane_beacon_v5.glb",
+  "surgery": {
+    "deletedCaps": {},
+    "boolean": [
+      {
+        "lod": 0,
+        "boomRemoved": true
+      },
+      {
+        "lod": 0,
+        "podWell": true
+      },
+      {
+        "lod": 1,
+        "boomRemoved": true
+      },
+      {
+        "lod": 1,
+        "podWell": true
+      },
+      {
+        "lod": 2,
+        "boomRemoved": true
+      },
+      {
+        "lod": 2,
+        "podWell": true
+      }
+    ]
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 1488,
+      "objects": [
+        "LOD0_HOOK_EMISSIVE",
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm"
+      ]
+    },
+    "lod1": {
+      "triangles": 712,
+      "objects": [
+        "LOD1_HOOK_EMISSIVE",
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm"
+      ]
+    },
+    "lod2": {
+      "triangles": 364,
+      "objects": [
+        "LOD2_HOOK_EMISSIVE",
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm"
+      ]
+    }
+  },
+  "bytes": 3816840
+}

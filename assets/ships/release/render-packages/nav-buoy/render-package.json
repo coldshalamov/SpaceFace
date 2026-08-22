@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9e115b65d18dc0c7feda3966a1b5005c6d4c779792db612c6cf3c7632e221b25",
+  "contentHash": "ba9929ce6f6d9d401a2c6d1757aa0211d9fbafe2bb7fd25314f923ff86e046ef",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-nav-optic.primitive.0",
       "indexCount": 336,
       "indexed": true,
-      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
+      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-nav-optic",
@@ -95,41 +95,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c6a5f62ce1ff2d903113a07883591012e377297efbfe824a3f76d4893741ca6",
+      "geometryHash": "228e324ab7fc02c0481239d4adb1b711cc1a6f03757f9117df4f443925544e65",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-pressure-shell.primitive.0",
-      "indexCount": 1212,
+      "indexCount": 1158,
       "indexed": true,
       "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 900
+      "vertexCount": 884
     },
     {
       "bounds": {
         "max": [
-          1.5750046968460083,
-          4.210000038146973,
-          0.21000942587852478
+          1.5749999284744263,
+          4.375040531158447,
+          0.6600571870803833
         ],
         "min": [
-          1.2249952554702759,
-          3.5900001525878906,
-          -0.21000942587852478
+          -0.6600000262260437,
+          3.424959421157837,
+          -0.6600571870803833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c53a520a91a56b7b747535fa3b85df5ff77dc52d65361a16a2e4461515a1e37",
+      "geometryHash": "4b96ce998ab7cfb0b030c06976fa193f24c800a6670edf759cc8786d941dc71c",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-service-marking.primitive.0",
-      "indexCount": 324,
+      "indexCount": 456,
       "indexed": true,
       "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 264
+      "vertexCount": 336
     },
     {
       "bounds": {
@@ -170,16 +170,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e7406f1f8bcb93d25444458a25b08c43318ade781585a72eb94366766cfa644",
+      "geometryHash": "c7eb758b3f972a365761eefe1da2067588e394d9c7e645c04cbfcb73efac7d17",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 2400,
+      "indexCount": 2604,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 1536
+      "vertexCount": 1656
     },
     {
       "bounds": {
@@ -199,7 +199,7 @@
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-nav-optic.primitive.0",
       "indexCount": 240,
       "indexed": true,
-      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
+      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-nav-optic",
@@ -220,41 +220,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a53d3d99074494028e06dfd46e38e6964aad9680c7b08761b00761e41b16d1be",
+      "geometryHash": "8aa0893ca36b3402396ebe8555c29bbc7f48d32ea59d822ec868344120237a26",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-pressure-shell.primitive.0",
-      "indexCount": 708,
+      "indexCount": 666,
       "indexed": true,
       "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 480
+      "vertexCount": 464
     },
     {
       "bounds": {
         "max": [
-          1.5750046968460083,
-          4.210000038146973,
-          0.21000942587852478
+          1.5749999284744263,
+          4.375031471252441,
+          0.6600630283355713
         ],
         "min": [
-          1.2249952554702759,
-          3.5900001525878906,
-          -0.21000942587852478
+          -0.6276973485946655,
+          3.4249684810638428,
+          -0.6600630283355713
         ]
       },
       "drawMode": 4,
-      "geometryHash": "173974af4992a32eb20b2eec7b2aa463d5cb9db59ff81e32a22f3d5939866845",
+      "geometryHash": "51352c70b4eeecacb83efd59ebe9632e183637c9a141a07116f189d45fe3ea54",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-service-marking.primitive.0",
-      "indexCount": 132,
+      "indexCount": 240,
       "indexed": true,
       "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 156
     },
     {
       "bounds": {
@@ -295,16 +295,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "501d76c176561a38fb601809e798d21c1700e9c1a168dee03ad1197100be6bba",
+      "geometryHash": "4970f15b42ac8fc7879a88355a8c80aa9185966dab518ebd3b1b62db50750682",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 1512,
+      "indexCount": 1680,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 972
+      "vertexCount": 1072
     },
     {
       "bounds": {
@@ -324,7 +324,7 @@
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-nav-optic.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
+      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-nav-optic",
@@ -345,41 +345,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3021f5165e086765f53071ac32212b16da3905697fc1865526b5469e2297185",
+      "geometryHash": "85b194864b9e3261aa7e543f4338e3bca745a075fc9276f91f2cc5f6e07a754e",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-pressure-shell.primitive.0",
-      "indexCount": 324,
+      "indexCount": 294,
       "indexed": true,
       "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 212
+      "vertexCount": 208
     },
     {
       "bounds": {
         "max": [
-          1.5750046968460083,
-          4.210000038146973,
-          0.21000942587852478
+          1.5749999284744263,
+          4.375040531158447,
+          0.6600571870803833
         ],
         "min": [
-          1.2249952554702759,
-          3.5900001525878906,
-          -0.21000942587852478
+          -0.6600000262260437,
+          3.424959421157837,
+          -0.6600571870803833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0211c5aa5b9810cbc7f1619a8d198bd31bf596f4e5bfd79cf8bb2165352ec3d0",
+      "geometryHash": "11a80d68b60abc7f77f389b1ce8eac8dd7ccef731cf250f991aeb02700d4f0a1",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-service-marking.primitive.0",
-      "indexCount": 36,
+      "indexCount": 120,
       "indexed": true,
       "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -420,54 +420,22 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc895f729b3ca70a0a2a3a0d11048839c915755c7784e738dd9da571300340b6",
+      "geometryHash": "ae48dd3e81cc282514b945cd74f7e5cc45a3240ed87a3c2a54819953730a0f01",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 336,
+      "indexCount": 468,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 228
+      "vertexCount": 308
     }
   ],
   "hlods": [],
   "kind": "place",
   "lods": [],
   "materials": [
-    {
-      "hash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
-      "id": "material:05939ccf93f64ae51a515aa6",
-      "name": "Buoy_Nav_Optic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "recessed_multiface_navigation_optic_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
       "id": "material:2d13bae1fcb57d1e69c5db2c",
@@ -559,6 +527,38 @@
         {
           "colorSpace": "linear",
           "name": "cast_inertial_stabilizer_frame_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
+      "id": "material:b3ad80ea167ab8623ff28f3f",
+      "name": "Buoy_Nav_Optic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "recessed_multiface_navigation_optic_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "recessed_multiface_navigation_optic_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "recessed_multiface_navigation_optic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "recessed_multiface_navigation_optic_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1387,30 +1387,30 @@
       "sha256": "4b185e90c7db4094a8d43108b3c1342656892598104b4b5ef6002a32a0b462f7"
     },
     "sourceGlb": {
-      "bytes": 199176,
-      "sha256": "5f7c43a66b4563d40e4a6df1fe35698c11489263f81746b55a86b7eabcc886e6",
+      "bytes": 205128,
+      "sha256": "d39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd",
       "uri": "place_nav_buoy.glb"
     },
     "sourceManifest": {
       "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "sha256": "af6db6d0014cc5be145fe032d29e293dab6eade7b7312f4882510bfebaf20300",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 264736,
-    "sha256": "4cab4eb82fd27e4820a1ab726b8f8a61f7a4cd0f4a92c1283056fbdaf1365f29",
+    "bytes": 274324,
+    "sha256": "9b737cfac2d07800cea225c59305490bb513f240ef3b10c5b34bfc929386df2e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.0875694751739502,
+        0.08756709098815918,
         2.6500000953674316,
         0
       ],
       "max": [
-        1.5750046968460083,
+        1.5749999284744263,
         10.300000190734863,
         1.399865746498108
       ],
@@ -1420,7 +1420,7 @@
         -1.399865746498108
       ],
       "size": [
-        2.974870443344116,
+        2.974865674972534,
         15.300000190734863,
         2.799731492996216
       ]
@@ -2009,12 +2009,13 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
+  "runtimeHash": "a866510bf95cec213a178d1ec9da787c47530d91e21d1407885a43cb0a8a5c66",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.5750046968460083,
+          1.5749999284744263,
           10.300000190734863,
           1.399865746498108
         ],
