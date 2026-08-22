@@ -304,6 +304,9 @@ function formatNoSubmitDiagnosticSection(diagnostic, hitchAttribution) {
     `- long tasks: ${diagnostic.longTasks?.count ?? 0}; total ${Number(diagnostic.longTasks?.totalMs || 0).toFixed(1)} ms; max ${Number(diagnostic.longTasks?.maxMs || 0).toFixed(1)} ms`,
     `- externalScheduling hitches: ${hitchAttribution?.counts?.externalScheduling ?? 0}`,
   );
+  const splitLine = formatHitchAttributionDetailLines(hitchAttribution || {})
+    .find((line) => line.startsWith('- externalScheduling split:'));
+  if (splitLine) lines.push(splitLine);
   return lines.join('\n');
 }
 

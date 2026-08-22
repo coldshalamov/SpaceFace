@@ -461,3 +461,153 @@ test('residual is disjoint when callbackMs is supplied and unknown when it is no
   assert.equal(withoutCallback.residualKnown, false);
   assert.equal(withoutCallback.residualMs, 0);
 });
+
+test('intervalDisagreementMs is signed and unclamped when the callback interval is longer than frameMs', () => {
+  const classified = classifyHitchFrame({
+    frameMs: 40,
+    callbackIntervalMs: 55,
+  });
+  assert.equal(classified.intervalKnown, true);
+  assert.equal(classified.intervalDisagreementMs, -15);
+});
+
+test('a hitch without callbackIntervalMs is interval-unknown and stays out of interval totals', () => {
+  const classified = classifyHitchFrame({
+    frameMs: 40,
+    presentMs: 3,
+  });
+  assert.equal(classified.intervalKnown, false);
+  assert.equal(classified.intervalDisagreementMs, 0);
+
+  const histogram = createHitchHistogram();
+  accumulateHitch(histogram, classified);
+  assert.equal(histogram.intervalFrames, 0);
+  assert.equal(histogram.frameMsTotal, 0);
+  assert.equal(histogram.callbackIntervalMsTotal, 0);
+  assert.equal(histogram.intervalDisagreementMsTotal, 0);
+
+  const lines = formatHitchAttributionDetailLines(hitchHistogramReport(histogram)).join('\n');
+  assert.doesNotMatch(lines, /frame interval vs measured callback interval/);
+});
+
+test('a hitch with callbackIntervalMs 0 is interval-unknown and stays out of interval totals', () => {
+  const classified = classifyHitchFrame({
+    frameMs: 40,
+    presentMs: 3,
+    callbackIntervalMs: 0,
+  });
+  assert.equal(classified.intervalKnown, false);
+  assert.equal(classified.intervalDisagreementMs, 0);
+
+  const histogram = createHitchHistogram();
+  accumulateHitch(histogram, classified);
+  assert.equal(histogram.intervalFrames, 0);
+  assert.equal(histogram.frameMsTotal, 0);
+  assert.equal(histogram.callbackIntervalMsTotal, 0);
+  assert.equal(histogram.intervalDisagreementMsTotal, 0);
+});
+
+test('externalScheduling split totals the raw gap and dispatch lag, not the max', () => {
+  const gapFrame = classifyHitchFrame({
+    frameMs: 50,
+    scheduleMs: 38,
+    externalGapMs: 38,
+    dispatchLagMs: 5,
+  });
+  const dispatchFrame = classifyHitchFrame({
+    frameMs: 50,
+    scheduleMs: 38,
+    externalGapMs: 5,
+    dispatchLagMs: 38,
+  });
+  assert.equal(gapFrame.owner, 'externalScheduling');
+  assert.equal(dispatchFrame.owner, 'externalScheduling');
+
+  const histogram = createHitchHistogram();
+  accumulateHitch(histogram, gapFrame);
+  accumulateHitch(histogram, dispatchFrame);
+  assert.equal(histogram.schedulingFrames, 2);
+  assert.equal(histogram.schedulingGapDominant, 1);
+  assert.equal(histogram.schedulingDispatchDominant, 1);
+  assert.equal(histogram.schedulingExternalGapMsTotal, 43);
+  assert.equal(histogram.schedulingDispatchLagMsTotal, 43);
+
+  const lines = formatHitchAttributionDetailLines(hitchHistogramReport(histogram)).join('\n');
+  assert.match(
+    lines,
+    /externalScheduling split: mean gap 21\.5 ms \| mean dispatch lag 21\.5 ms \| gap dominant 1 \| dispatch dominant 1 over 2 frames/,
+  );
+});
+
+test('callbackIntervalMs, externalGapMs, and dispatchLagMs cannot shift hitch blame', () => {
+  const sample = {
+    frameMs: 50,
+    simMs: 30,
+    scheduleMs: 8,
+    presentMs: 4,
+  };
+  const without = classifyHitchFrame(sample);
+  const withFacts = classifyHitchFrame({
+    ...sample,
+    callbackIntervalMs: 50,
+    externalGapMs: 40,
+    dispatchLagMs: 40,
+  });
+  assert.equal(withFacts.owner, without.owner);
+  assert.equal(withFacts.attributed, without.attributed);
+  assert.equal(withFacts.ownerMs, without.ownerMs);
+  assert.deepEqual(withFacts.phases, without.phases);
+});
+
+test('formatHitchAttributionDetailLines omits interval and scheduling lines when those frame counts are zero', () => {
+  const empty = formatHitchAttributionDetailLines({
+    counts: { sim: 1 },
+    intervalFrames: 0,
+    schedulingFrames: 0,
+  }).join('\n');
+  assert.doesNotMatch(empty, /frame interval vs measured callback interval/);
+  assert.doesNotMatch(empty, /externalScheduling split/);
+
+  const predating = formatHitchAttributionDetailLines({ counts: { sim: 1 } }).join('\n');
+  assert.doesNotMatch(predating, /frame interval vs measured callback interval/);
+  assert.doesNotMatch(predating, /externalScheduling split/);
+});
+
+test('ensurePerfRuntime reset clears interval and scheduling histogram fields', () => {
+  const perf = ensurePerfRuntime({ entityList: [], settings: { video: {} } });
+  perf.setHitchAttributionEnabled(true);
+
+  // Seed a previous callback so the next hitch has a known interval.
+  perf.beginFrame(0.016, 0, 0);
+  perf.recordFrameCallback(5);
+
+  // Gap-dominant hitch: frameMs 50, callback interval 40, gap 35, dispatch lag 0.
+  perf.beginFrame(0.05, 40, 40);
+  perf.recordFrameCallback(45);
+
+  // Dispatch-dominant hitch: frameMs 60, callback interval 50, gap 5, dispatch lag 70.
+  perf.beginFrame(0.06, 90, 20);
+
+  let report = perf.getHitchHistogram();
+  assert.equal(report.intervalFrames, 2);
+  assert.equal(report.frameMsTotal, 110);
+  assert.equal(report.callbackIntervalMsTotal, 90);
+  assert.equal(report.intervalDisagreementMsTotal, 20);
+  assert.equal(report.schedulingFrames, 2);
+  assert.equal(report.schedulingExternalGapMsTotal, 40);
+  assert.equal(report.schedulingDispatchLagMsTotal, 70);
+  assert.equal(report.schedulingGapDominant, 1);
+  assert.equal(report.schedulingDispatchDominant, 1);
+
+  perf.reset();
+  report = perf.getHitchHistogram();
+  assert.equal(report.intervalFrames, 0);
+  assert.equal(report.frameMsTotal, 0);
+  assert.equal(report.callbackIntervalMsTotal, 0);
+  assert.equal(report.intervalDisagreementMsTotal, 0);
+  assert.equal(report.schedulingFrames, 0);
+  assert.equal(report.schedulingExternalGapMsTotal, 0);
+  assert.equal(report.schedulingDispatchLagMsTotal, 0);
+  assert.equal(report.schedulingGapDominant, 0);
+  assert.equal(report.schedulingDispatchDominant, 0);
+});

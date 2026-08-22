@@ -101,6 +101,25 @@ export function formatHitchAttributionDetailLines(histogram) {
       `- unknown residual: mean ${mean.toFixed(1)} ms unattributed interval over ${frames} hitch frames; largest measured phase: ${phases || 'none'}`,
     );
   }
+  if (Number(histogram.intervalFrames) > 0) {
+    const intervalFrames = Number(histogram.intervalFrames);
+    const meanFrameMs = Number(histogram.frameMsTotal) / intervalFrames;
+    const meanCallbackInterval = Number(histogram.callbackIntervalMsTotal) / intervalFrames;
+    const meanDisagreement = Number(histogram.intervalDisagreementMsTotal) / intervalFrames;
+    lines.push(
+      `- frame interval vs measured callback interval: mean frameMs ${meanFrameMs.toFixed(1)} | mean callbackInterval ${meanCallbackInterval.toFixed(1)} | mean disagreement ${meanDisagreement.toFixed(1)} ms over ${intervalFrames} hitch frames`,
+    );
+  }
+  if (Number(histogram.schedulingFrames) > 0) {
+    const schedulingFrames = Number(histogram.schedulingFrames);
+    const meanGap = Number(histogram.schedulingExternalGapMsTotal) / schedulingFrames;
+    const meanDispatchLag = Number(histogram.schedulingDispatchLagMsTotal) / schedulingFrames;
+    const gapDominant = Number(histogram.schedulingGapDominant) || 0;
+    const dispatchDominant = Number(histogram.schedulingDispatchDominant) || 0;
+    lines.push(
+      `- externalScheduling split: mean gap ${meanGap.toFixed(1)} ms | mean dispatch lag ${meanDispatchLag.toFixed(1)} ms | gap dominant ${gapDominant} | dispatch dominant ${dispatchDominant} over ${schedulingFrames} frames`,
+    );
+  }
   return lines;
 }
 

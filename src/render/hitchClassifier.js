@@ -126,6 +126,11 @@ export function classifyHitchFrame(sample = {}, options = {}) {
   const residualMs = residualKnown
     ? Math.max(0, frameMs - callbackMs - (Number.isFinite(scheduleMs) ? scheduleMs : 0))
     : 0;
+  const callbackIntervalMs = Number(sample.callbackIntervalMs);
+  const externalGapMs = Number(sample.externalGapMs);
+  const dispatchLagMs = Number(sample.dispatchLagMs);
+  const intervalKnown = Number.isFinite(callbackIntervalMs) && callbackIntervalMs > 0;
+  const intervalDisagreementMs = intervalKnown ? frameMs - callbackIntervalMs : 0;
   return {
     owner,
     frameMs,
@@ -145,6 +150,11 @@ export function classifyHitchFrame(sample = {}, options = {}) {
     simFullyMeasured: safeSimStepCount > 0 && safeSimMeasuredStepCount === safeSimStepCount,
     residualMs,
     residualKnown,
+    callbackIntervalMs: Number.isFinite(callbackIntervalMs) ? callbackIntervalMs : 0,
+    externalGapMs: Number.isFinite(externalGapMs) ? externalGapMs : 0,
+    dispatchLagMs: Number.isFinite(dispatchLagMs) ? dispatchLagMs : 0,
+    intervalKnown,
+    intervalDisagreementMs,
     largestPhase: bestMs > 0 ? bestOwner : null,
     largestPhaseMs: bestMs,
   };
@@ -170,6 +180,15 @@ export function createHitchHistogram() {
     unknownLargestPhase: Object.create(null),
     residualMsTotal: 0,
     residualFrames: 0,
+    intervalFrames: 0,
+    frameMsTotal: 0,
+    callbackIntervalMsTotal: 0,
+    intervalDisagreementMsTotal: 0,
+    schedulingFrames: 0,
+    schedulingExternalGapMsTotal: 0,
+    schedulingDispatchLagMsTotal: 0,
+    schedulingGapDominant: 0,
+    schedulingDispatchDominant: 0,
     simOwnedSystemTotalMs: 0,
     simOwnedPhaseMs: 0,
     simMeasuredFrames: 0,
@@ -252,6 +271,39 @@ export function accumulateHitch(histogram, classification) {
       histogram.residualFrames = (histogram.residualFrames || 0) + 1;
     }
   }
+  if (classification.intervalKnown === true) {
+    histogram.intervalFrames = (histogram.intervalFrames || 0) + 1;
+    const hitchFrameMs = Number(classification.frameMs);
+    if (Number.isFinite(hitchFrameMs)) {
+      histogram.frameMsTotal = (histogram.frameMsTotal || 0) + hitchFrameMs;
+    }
+    const callbackIntervalMs = Number(classification.callbackIntervalMs);
+    if (Number.isFinite(callbackIntervalMs)) {
+      histogram.callbackIntervalMsTotal = (histogram.callbackIntervalMsTotal || 0) + callbackIntervalMs;
+    }
+    const disagreement = Number(classification.intervalDisagreementMs);
+    if (Number.isFinite(disagreement)) {
+      histogram.intervalDisagreementMsTotal = (histogram.intervalDisagreementMsTotal || 0) + disagreement;
+    }
+  }
+  if (owner === 'externalScheduling') {
+    histogram.schedulingFrames = (histogram.schedulingFrames || 0) + 1;
+    const gap = Number(classification.externalGapMs);
+    const lag = Number(classification.dispatchLagMs);
+    if (Number.isFinite(gap)) {
+      histogram.schedulingExternalGapMsTotal = (histogram.schedulingExternalGapMsTotal || 0) + gap;
+    }
+    if (Number.isFinite(lag)) {
+      histogram.schedulingDispatchLagMsTotal = (histogram.schedulingDispatchLagMsTotal || 0) + lag;
+    }
+    const gapMs = Number.isFinite(gap) ? gap : 0;
+    const lagMs = Number.isFinite(lag) ? lag : 0;
+    if (gapMs > lagMs) {
+      histogram.schedulingGapDominant = (histogram.schedulingGapDominant || 0) + 1;
+    } else if (lagMs > gapMs) {
+      histogram.schedulingDispatchDominant = (histogram.schedulingDispatchDominant || 0) + 1;
+    }
+  }
   return histogram;
 }
 
@@ -280,6 +332,33 @@ export function hitchHistogramReport(histogram) {
       : 0,
     residualFrames: histogram && Number.isFinite(Number(histogram.residualFrames))
       ? Number(histogram.residualFrames)
+      : 0,
+    intervalFrames: histogram && Number.isFinite(Number(histogram.intervalFrames))
+      ? Number(histogram.intervalFrames)
+      : 0,
+    frameMsTotal: histogram && Number.isFinite(Number(histogram.frameMsTotal))
+      ? Number(histogram.frameMsTotal)
+      : 0,
+    callbackIntervalMsTotal: histogram && Number.isFinite(Number(histogram.callbackIntervalMsTotal))
+      ? Number(histogram.callbackIntervalMsTotal)
+      : 0,
+    intervalDisagreementMsTotal: histogram && Number.isFinite(Number(histogram.intervalDisagreementMsTotal))
+      ? Number(histogram.intervalDisagreementMsTotal)
+      : 0,
+    schedulingFrames: histogram && Number.isFinite(Number(histogram.schedulingFrames))
+      ? Number(histogram.schedulingFrames)
+      : 0,
+    schedulingExternalGapMsTotal: histogram && Number.isFinite(Number(histogram.schedulingExternalGapMsTotal))
+      ? Number(histogram.schedulingExternalGapMsTotal)
+      : 0,
+    schedulingDispatchLagMsTotal: histogram && Number.isFinite(Number(histogram.schedulingDispatchLagMsTotal))
+      ? Number(histogram.schedulingDispatchLagMsTotal)
+      : 0,
+    schedulingGapDominant: histogram && Number.isFinite(Number(histogram.schedulingGapDominant))
+      ? Number(histogram.schedulingGapDominant)
+      : 0,
+    schedulingDispatchDominant: histogram && Number.isFinite(Number(histogram.schedulingDispatchDominant))
+      ? Number(histogram.schedulingDispatchDominant)
       : 0,
     simOwnedSystemTotalMs: histogram && Number.isFinite(Number(histogram.simOwnedSystemTotalMs))
       ? Number(histogram.simOwnedSystemTotalMs)

@@ -692,6 +692,9 @@ export function ensurePerfRuntime(state) {
             simSystemTotalMs: frameSystemTotalMs,
             simStepCount: frameSimStepCount,
             simMeasuredStepCount: frameMeasuredStepCount,
+            callbackIntervalMs: nextCallbackIntervalMs,
+            externalGapMs: nextExternalCallbackGapMs,
+            dispatchLagMs: nextCallbackDispatchLagMs,
           }));
         } else {
           accumulateHitch(hitchHistogram, null);
@@ -983,6 +986,15 @@ export function ensurePerfRuntime(state) {
       hitchHistogram.unknownLargestPhase = Object.create(null);
       hitchHistogram.residualMsTotal = 0;
       hitchHistogram.residualFrames = 0;
+      hitchHistogram.intervalFrames = 0;
+      hitchHistogram.frameMsTotal = 0;
+      hitchHistogram.callbackIntervalMsTotal = 0;
+      hitchHistogram.intervalDisagreementMsTotal = 0;
+      hitchHistogram.schedulingFrames = 0;
+      hitchHistogram.schedulingExternalGapMsTotal = 0;
+      hitchHistogram.schedulingDispatchLagMsTotal = 0;
+      hitchHistogram.schedulingGapDominant = 0;
+      hitchHistogram.schedulingDispatchDominant = 0;
       hitchHistogram.simOwnedSystemTotalMs = 0;
       hitchHistogram.simOwnedPhaseMs = 0;
       hitchHistogram.simMeasuredFrames = 0;
