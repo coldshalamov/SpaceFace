@@ -340,7 +340,8 @@ def create_materials():
         # C153: hull to the Hitch bar's bright light gray; dirt damped so panels read as crisp
         # seams, not airbrushed blotches.
         # C154: Hitch-white hull so dark wells and charcoal wings can break value at D=144.
-        "Material_Hull": ((0.82, 0.83, 0.85), 0.02, 0.50, "hull", 0.0, None),
+        # C175: slightly off chalk so dark wells and flaps can own the Hitch split without maps.
+        "Material_Hull": ((0.74, 0.75, 0.77), 0.02, 0.52, "hull", 0.0, None),
         "Material_Armor": ((0.07, 0.075, 0.082), 0.08, 0.50, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -1220,20 +1221,20 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.40, 1.52 * s, 0.28),
-        (-3.20, 3.70 * s, 0.46),
-        (-3.00, 3.70 * s, 0.10),
-        (-2.20, 1.52 * s, -0.04),
-        0.090, soot, collection, 0.002,
+        (-2.00, 1.50 * s, 0.26),
+        (-2.85, 3.90 * s, 0.48),
+        (-2.65, 3.90 * s, 0.08),
+        (-1.80, 1.50 * s, -0.06),
+        0.100, soot, collection, 0.002,
     )
-    # Raised flap so the TE step is a silhouette break at D=144. Overlay ArmorTE unread (C169).
+    # Half-wing dark flap so the TE split is a planform block at D=144, not a thin overlay (C169).
     add_folded_sheet(
         f"{name}_Flap",
-        (-2.55, 1.58 * s, 0.50),
-        (-3.40, 3.82 * s, 0.68),
-        (-4.00, 3.82 * s, 0.30),
-        (-3.10, 1.58 * s, 0.14),
-        0.160, armor, collection, 0.004,
+        (-2.05, 1.50 * s, 0.48),
+        (-2.95, 3.98 * s, 0.66),
+        (-3.90, 3.98 * s, 0.28),
+        (-3.15, 1.50 * s, 0.10),
+        0.170, armor, collection, 0.004,
     )
     add_overlap_plate(f"{name}_TipMark", (-3.20, 3.88 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
@@ -1558,9 +1559,9 @@ def build_lod(lod, mats):
     # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
     delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
-    # C174: dark waist as roof wells, not proud shoulder plates (C173 side boxes).
-    delete_faces_in_box(body, -0.80, 1.30, 1.12, 2.50, 0.22, 2.00, normal="z", normal_min=0.18)
-    delete_faces_in_box(body, -0.80, 1.30, -2.50, -1.12, 0.22, 2.00, normal="z", normal_min=0.18)
+    # C175: thin silhouette-edge slots, not 1 m waist pits (C174 side boxes).
+    delete_faces_in_box(body, -0.65, 1.15, 2.18, 2.58, 0.22, 2.00, normal="z", normal_min=0.18)
+    delete_faces_in_box(body, -0.65, 1.15, -2.58, -2.18, 0.22, 2.00, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1591,13 +1592,23 @@ def build_lod(lod, mats):
         (3.22, -0.22, 0.54),
         0.014, canopy, collection, 0.002,
     )
-    # Mid-gray metal rectangle so chase sees a frame, not a black sticker (armor frame vanished on dark glass).
-    add_box("CanopyFrame_Fore", (4.62, 0.0, 0.80), (0.028, 0.36, 0.035), mech, collection, 0.002)
-    add_box("CanopyFrame_Aft", (3.18, 0.0, 0.80), (0.028, 0.34, 0.035), mech, collection, 0.002)
-    add_box("CanopyFrame_P", (3.90, -0.38, 0.80), (0.68, 0.022, 0.035), mech, collection, 0.002)
-    add_box("CanopyFrame_S", (3.90, 0.38, 0.80), (0.68, 0.022, 0.035), mech, collection, 0.002)
-    add_box("WaistWell_P", (0.25, -1.80, 0.30), (0.92, 0.58, 0.010), soot, collection, 0.002)
-    add_box("WaistWell_S", (0.25, 1.80, 0.30), (0.92, 0.58, 0.010), soot, collection, 0.002)
+    # White hull bars around the visor — mech wire vanished on dark glass (C174).
+    add_box("CanopyFrame_Fore", (4.68, 0.0, 0.86), (0.070, 0.42, 0.050), hull, collection, 0.002)
+    add_box("CanopyFrame_Aft", (3.12, 0.0, 0.84), (0.070, 0.40, 0.050), hull, collection, 0.002)
+    add_box("CanopyFrame_P", (3.90, -0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
+    add_box("CanopyFrame_S", (3.90, 0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
+    add_folded_sheet(
+        "Chine_P",
+        (1.15, -2.52, 0.40), (-0.65, -2.50, 0.38),
+        (-0.65, -2.22, 0.44), (1.15, -2.24, 0.46),
+        0.022, soot, collection, 0.002,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (1.15, 2.52, 0.40), (1.15, 2.24, 0.46),
+        (-0.65, 2.22, 0.44), (-0.65, 2.50, 0.38),
+        0.022, soot, collection, 0.002,
+    )
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
