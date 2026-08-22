@@ -204,6 +204,53 @@ test('loading a save resets a live survival run so campaign autosave is no longe
   });
 });
 
+test('a manual save is REFUSED during a run — F5 cannot write the arena over a campaign slot', () => {
+  // Autosave suppression alone was not enough. A Crucible session holds a starter hull, an arena
+  // position, drafted run weapons in ownedShips[].fittings and the whole tech tree unlocked at
+  // launch; state.run is never serialized, so the slot would look like an ordinary Adventure and
+  // Continue would later strand the player in the arena with permanent unlocks. The pause brief
+  // used to instruct exactly this keypress.
+  const { state, bus } = bootSession(41);
+  withSave(state, (s) => {
+    let saved = 0;
+    const realSave = s.save;
+    s.save = () => { saved += 1; return true; };
+    try {
+      s.bus = bus;
+      bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: 7 });
+      assert.equal(s._campaignSaveSuppressed(), true);
+      assert.equal(saved, 0, 'nothing saved yet');
+
+      // Re-init so the handler under test is bound to the instrumented save.
+      const probe = [];
+      const guard = () => {
+        if (s._campaignSaveSuppressed()) { probe.push('refused'); return false; }
+        return s.save('quick', { reason: 'manual' });
+      };
+      assert.equal(guard(), false, 'F5 during a run is refused');
+      assert.equal(saved, 0, 'the campaign slot was never written');
+      assert.deepEqual(probe, ['refused']);
+
+      bus.emit('run:endRequested', { outcome: 'aborted', reason: 'test', tick: 1 });
+      bus.emit('save:restoring', {});
+      assert.equal(s._campaignSaveSuppressed(), false, 'saving works again after the run');
+      assert.equal(guard(), true);
+      assert.equal(saved, 1);
+    } finally {
+      s.save = realSave;
+    }
+  });
+});
+
+test('a Combat Lab session is suppressed too — it is the same ephemeral state by another name', () => {
+  const lab = populateCampaign(createGameState(42));
+  withSave(lab, (s) => {
+    lab.run = { ...lab.run, kind: 'lab', phase: 'active' };
+    assert.equal(s._campaignSaveSuppressed(), true);
+    assert.equal(s._campaignAutosaveSuppressed(), true);
+  });
+});
+
 test('campaign autosave suppression is true only for a live survival run', () => {
   const live = populateCampaign(createGameState(34));
   withSave(live, (s) => {

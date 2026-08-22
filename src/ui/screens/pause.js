@@ -266,6 +266,13 @@ function fmtSavedAt(value) {
 }
 
 function saveLine(state) {
+  // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
+  // Telling the player to press F5 here would be instructing them to attempt the one thing the
+  // save system now blocks.
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'This run is not saved. Leaving the arena ends it; your campaign save is untouched.';
+  }
   const slot = state && state.save && state.save.currentSlot;
   const savedAt = state && state.meta && state.meta.lastSavedAt;
   const savedWhen = fmtSavedAt(savedAt);

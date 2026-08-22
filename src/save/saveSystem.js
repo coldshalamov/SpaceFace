@@ -133,8 +133,25 @@ export const save = {
     const bus = this.bus;
     this._loadProfileSettings();
     // UI / input route F5/F9 and menu buttons through these (§4.4).
-    bus.on('game:save', (p) => this.save((p && p.slot) || 'quick', { reason: 'manual' }));
+    // A run is ephemeral by contract, so F5 must not be able to write it over a campaign slot.
+    // The pause brief used to instruct exactly that keypress, which made this the one advertised
+    // route into campaign contamination.
+    bus.on('game:save', (p) => {
+      if (this._campaignSaveSuppressed()) {
+        bus.emit('toast', {
+          text: 'This run is not saved — it ends when you leave the arena.',
+          kind: 'info',
+          ttl: 4,
+        });
+        return false;
+      }
+      return this.save((p && p.slot) || 'quick', { reason: 'manual' });
+    });
     bus.on('game:load', (p) => {
+      // Loading out of a live run is legal — it is how a player leaves — but the run has to END,
+      // not silently vanish. runSession consumes game:exitToMenu and aborts the envelope; without
+      // it the loaded campaign would inherit a stale survival run and suppress its own saves.
+      if (this._campaignSaveSuppressed()) bus.emit('game:exitToMenu', { source: 'load_during_run' });
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
       if (typeof defer === 'function' && defer(load) === true) return;
@@ -1083,9 +1100,25 @@ export const save = {
 
   // ── autosave ───────────────────────────────────────────────────────────────────────────────
 
-  _campaignAutosaveSuppressed() {
+  /**
+   * True while an ephemeral scored run owns the live state.
+   *
+   * PQ-133 ruling 2: a run must never mutate the Adventure save. It is not enough to suppress
+   * AUTOsaves — a Crucible session holds a starter hull, an arena position, drafted run weapons in
+   * ownedShips[].fittings, and the entire tech tree unlocked at launch. Writing ANY of that to a
+   * slot produces a file that looks like an ordinary Adventure (state.run is never serialized), so
+   * Continue would later drop the player into a stranded arena with permanent unlocks.
+   *
+   * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
+   */
+  _campaignSaveSuppressed() {
     const run = this.state && this.state.run;
-    return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+    if (!run || run.phase === 'inactive') return false;
+    return run.kind === 'survival' || run.kind === 'lab';
+  },
+
+  _campaignAutosaveSuppressed() {
+    return this._campaignSaveSuppressed();
   },
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */

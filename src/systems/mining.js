@@ -1228,15 +1228,17 @@ export const mining = {
     const reason = (typeof p.grantReason === 'string' && p.grantReason)
       || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
       || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
-    // Wallet routing (PQ-133 CRU-015): a Survival chip pays state.run.credits through runSession
-    // and MUST NOT reach campaign economy. The destination travels on the chip, so this is a
-    // property of the item collected, not of whatever global run happens to be live.
+    // Wallet routing (PQ-133 CRU-015): a chip stamped for a scored run MUST NOT reach campaign
+    // economy. Collection is still owned here — the scoop, the acceptance, the consumed body — but
+    // the CREDITS are settled by survivalRewards, which keeps the run's own chip ledger and pays
+    // each chip exactly once however it leaves the board (scooped, despawned, or swept).
+    //
+    // Paying here as well was a real double-pay: this file and that ledger both settled the same
+    // chip. One owner, one payment.
     const wallet = (typeof p.wallet === 'string' && p.wallet)
       || (typeof pickupData.wallet === 'string' && pickupData.wallet)
       || null;
-    if (wallet === 'run') {
-      this.bus.emit('run:awardRequested', { credits: requested, reason });
-    } else {
+    if (wallet !== 'run') {
       this.bus.emit('economy:grantCredits', {
         amount: requested,
         reason,

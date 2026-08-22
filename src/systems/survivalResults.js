@@ -62,6 +62,7 @@ export const survivalResults = {
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
     this._unsubs.push(this.bus.on('player:death', (p) => this._onPlayerDeath(p)));
+    this._unsubs.push(this.bus.on('run:wavePlanFailed', (p) => this._onPlanFailed(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', (p) => this._onRunEnded(p)));
   },
@@ -82,6 +83,7 @@ export const survivalResults = {
   },
 
   _reset() {
+    this._planFailure = null;
     this._kills = 0;
     this._wavesCleared = 0;
     this._deepestWave = 0;
@@ -131,6 +133,29 @@ export const survivalResults = {
     });
   },
 
+  /**
+   * The phase machine emits run:wavePlanFailed and then STOPS: it will not retry the plan and
+   * nothing else was listening, so the player sat in an empty arena in phase `wave_intro` forever
+   * — sim running, no enemies, no draft, no results, no message, exit-to-menu the only way out.
+   *
+   * The normal launch path cannot trip this today (the seed is normalised and every authored wave
+   * validates), which is exactly why it needed an owner: it is a softlock armed by the next data
+   * regression, and a regression that ends the run loudly is one somebody will notice and fix.
+   */
+  _onPlanFailed(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    this._planFailure = {
+      wave: payload && Number.isInteger(payload.wave) ? payload.wave : run.wave,
+      error: (payload && payload.error) || 'invalid_input',
+    };
+    this._emit('run:endRequested', {
+      outcome: 'aborted',
+      reason: 'wave_plan_failed',
+      tick: Number.isFinite(this.state.tick) ? this.state.tick : 0,
+    });
+  },
+
   _onTransitioned(payload) {
     // `victory` is a terminal phase reached by transition, so no run:ended follows it.
     if (payload && payload.phase === 'victory') this._publish('victory');
@@ -164,9 +189,11 @@ export const survivalResults = {
           wave: Number.isInteger(entry && entry.wave) ? entry.wave : null,
         }))
         : [],
-      headline: outcome === 'defeat' && receipt
-        ? deathSentence(receipt, { wave })
-        : outcomeSentence(outcome, { wave }),
+      headline: this._planFailure
+        ? `The arena could not build wave ${this._planFailure.wave}. The run was stopped.`
+        : (outcome === 'defeat' && receipt
+          ? deathSentence(receipt, { wave })
+          : outcomeSentence(outcome, { wave })),
       defeat: outcome === 'defeat' && receipt
         ? {
           attacker: receipt.attacker || null,

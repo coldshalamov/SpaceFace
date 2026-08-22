@@ -272,11 +272,15 @@ async function main() {
       const e = p && p.entity;
       if (e && e.type === 'pickup' && e.data && e.data.wallet === 'run') {
         window.__chipTrace.spawned += 1;
-        window.__chipTrace.spawnedIds.push(e.id);
+        window.__chipTrace.spawnedIds.push(`${e.id}=${e.data.credits}cr/${e.data.amount}`);
       }
     });
+    // NO wallet filter: physics' contact-collect payload has no wallet field, so filtering on it
+    // hides exactly the collections a moving player produces.
     window.SF.bus.on('pickup:collected', (p) => {
-      if (p && p.wallet === 'run') window.__chipTrace.collected.push(p.pickupId);
+      if (p && p.kind === 'credit_chip') {
+        window.__chipTrace.collected.push(`${p.pickupId}:${p.amount}:${p.wallet || 'nowallet'}`);
+      }
     });
     window.SF.bus.on('entity:destroyed', (p) => {
       if (p && window.__chipTrace.spawnedIds.includes(p.id)) window.__chipTrace.destroyed.push(p.id);

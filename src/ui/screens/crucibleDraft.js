@@ -35,7 +35,14 @@ function injectStyle() {
   .sf-menu.sf-crucible .sf-cru-blurb { font-size:13px; line-height:1.5; color:var(--ink); }
   .sf-menu.sf-crucible .sf-cru-slot { font-family:var(--mono); font-size:11px; letter-spacing:.06em;
     color:var(--ink-dim); border-top:1px solid var(--line); padding-top:7px; margin-top:auto; }
-  .sf-menu.sf-crucible .sf-cru-foot { display:flex; gap:10px; justify-content:center; margin-top:6px; }
+  .sf-menu.sf-crucible .sf-cru-card { position:relative; }
+  .sf-menu.sf-crucible .sf-cru-key { position:absolute; top:10px; right:11px;
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--ink-dim);
+    border:1px solid var(--line); border-radius:2px; padding:0 5px; line-height:17px; }
+  .sf-menu.sf-crucible .sf-cru-foot { display:flex; gap:10px; justify-content:center; margin-top:6px;
+    align-items:center; }
+  .sf-menu.sf-crucible .sf-cru-hint { font-family:var(--mono); font-size:12px; color:var(--ink-dim);
+    letter-spacing:.04em; }
   .sf-menu.sf-crucible .sf-cru-rows { display:grid; grid-template-columns:auto 1fr auto; gap:6px 16px;
     align-items:center; font-family:var(--mono); font-size:12px; }
   .sf-menu.sf-crucible .sf-cru-rows .k { color:var(--ink-dim); letter-spacing:.05em; }
@@ -141,6 +148,12 @@ export const crucibleDraftScreen = {
       slot.textContent = lines.slot;
       card.appendChild(slot);
 
+      const key = document.createElement('span');
+      key.className = 'sf-cru-key';
+      key.textContent = String(cards.childElementCount + 1);
+      key.setAttribute('aria-hidden', 'true');
+      card.appendChild(key);
+
       card.addEventListener('click', () => {
         ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
       });
@@ -148,6 +161,34 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
     rootEl.appendChild(cards);
+
+    // The run is fully paused on this choice, so it must be answerable from the keyboard: 1/2/3
+    // pick, arrows move, Escape keeps the current loadout. Escape is otherwise dead here (the
+    // screen is locked so the manager will not pop it), which would leave a paused player with a
+    // key that does nothing.
+    rootEl.addEventListener('keydown', (event) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      const all = [...cards.querySelectorAll('.sf-cru-card')];
+      const index = '123'.indexOf(event.key);
+      if (index >= 0 && all[index]) {
+        event.preventDefault();
+        all[index].click();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        skip.click();
+        return;
+      }
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        const here = all.indexOf(document.activeElement);
+        if (here < 0 || all.length === 0) return;
+        event.preventDefault();
+        const step = event.key === 'ArrowRight' ? 1 : -1;
+        const next = all[(here + step + all.length) % all.length];
+        if (next && typeof next.focus === 'function') next.focus();
+      }
+    });
 
     const foot = document.createElement('div');
     foot.className = 'sf-cru-foot';
@@ -159,6 +200,12 @@ export const crucibleDraftScreen = {
       ctx.bus.emit('run:draftPickRequested', { offerId: null });
     });
     foot.appendChild(skip);
+    if (offers.length) {
+      const hint = document.createElement('span');
+      hint.className = 'sf-cru-hint';
+      hint.textContent = '1-3 choose · Esc keep';
+      foot.appendChild(hint);
+    }
     rootEl.appendChild(foot);
 
     const focusTarget = first || skip;
@@ -208,7 +255,20 @@ export const crucibleRefitScreen = {
       ctx.bus.emit('run:refitCloseRequested', {});
     });
     foot.appendChild(done);
+    const hint = document.createElement('span');
+    hint.className = 'sf-cru-hint';
+    hint.textContent = 'Enter or Esc launch';
+    foot.appendChild(hint);
     rootEl.appendChild(foot);
+
+    // Same reasoning as the draft: the run is paused here, so Escape must mean something.
+    rootEl.addEventListener('keydown', (event) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      done.click();
+    });
+
     if (typeof done.focus === 'function') {
       try { done.focus(); } catch { /* focus is best-effort */ }
     }

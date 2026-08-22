@@ -140,16 +140,46 @@ test('collecting the chip pays the run wallet, never campaign credits', () => {
   const drop = named(harness.emitted, 'loot:drop')[0];
   const [chipId] = materializeChips(harness, drop);
 
-  // This is the pair mining produces when the player scoops a wallet:'run' chip.
+  // The scoop receipt is what pays — survivalRewards is the sole payer of run chips.
   harness.bus.emit('pickup:collected', {
     pickupId: chipId, collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, credits: 2, wallet: 'run',
   });
-  harness.bus.emit('run:awardRequested', { credits: 2, reason: 'crucible:wave1:chip' });
   harness.bus.emit('entity:destroyed', { id: chipId });
 
   assert.equal(harness.state.run.credits, 2, 'a scooped chip is paid exactly once');
   assert.equal(harness.state.player.credits, 1000);
   assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'));
+});
+
+test('a chip the ship physically flies into pays — the payload has no wallet field', () => {
+  // THE live defect: two publishers emit pickup:collected and only mining's carries `wallet`.
+  // physics' contact-collect (physics.js emitPickupCollected) carries pickupId/collectorId/kind/
+  // amount/pos and nothing else. A route capture showed six kills worth twelve credits paying
+  // eight, because the two chips the hull actually touched paid nothing. Settlement is keyed on
+  // this owner's own ledger now, so the payload shape cannot change the outcome.
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  killCohortBody(harness);
+  killCohortBody(harness);
+  const ids = named(harness.emitted, 'loot:drop').flatMap((drop) => materializeChips(harness, drop));
+
+  // Exactly the physics payload — no `wallet`, no `credits`.
+  harness.bus.emit('pickup:collected', {
+    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, pos: { x: 0, z: 0 },
+  });
+  assert.equal(harness.state.run.credits, 2, 'the contact collect paid');
+
+  // And the magnet-scoop shape, which does carry a wallet, pays the same.
+  harness.bus.emit('pickup:collected', {
+    pickupId: ids[1], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, credits: 2, wallet: 'run',
+  });
+  assert.equal(harness.state.run.credits, 4, 'both collection routes pay identically');
+
+  // Their bodies are then destroyed; neither pays again.
+  for (const id of ids) harness.bus.emit('entity:destroyed', { id });
+  assert.equal(harness.state.run.credits, 4, 'and neither pays twice');
+  assert.equal(harness.state.player.credits, 1000);
 });
 
 test('uncollected chips are cleared off the board at cleanup and settle into the run wallet', () => {
@@ -203,11 +233,15 @@ test('the sweep never double-pays a chip the player already collected', () => {
   killCohortBody(harness);
   const ids = named(harness.emitted, 'loot:drop').flatMap((drop) => materializeChips(harness, drop));
 
-  // Player scoops the first chip: mining marks it granted and the body dies.
+  // Player scoops the first chip. Both publishers of pickup:collected are exercised: mining's
+  // carries a wallet field, physics' contact-collect does NOT — and the ledger must drop the chip
+  // either way, or a chip the player flew into is paid twice.
   const collected = harness.state.entities.get(ids[0]);
-  collected.data.creditGranted = true;
+  harness.bus.emit('pickup:collected', {
+    pickupId: ids[0], collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2,
+    pos: { x: collected.pos.x, z: collected.pos.z },   // physics shape: no `wallet`
+  });
   collected.alive = false;
-  harness.bus.emit('run:awardRequested', { credits: 2, reason: 'scoop' });
   harness.bus.emit('entity:destroyed', { id: ids[0] });
 
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });

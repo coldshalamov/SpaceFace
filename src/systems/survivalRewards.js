@@ -173,35 +173,46 @@ export const survivalRewards = {
     this._liveChips.set(entity.id, credits > 0 ? credits : 0);
   },
 
+  /** The player flew through it. Settle it here — this owner is the only payer of run chips. */
   _onPickupCollected(payload) {
-    // The player scooped it: mining already routed the credits to the run wallet. Drop it from the
-    // ledger so the settlement below cannot pay for the same chip twice.
-    if (!payload || payload.wallet !== RUN_WALLET) return;
-    if (payload.pickupId != null) this._liveChips.delete(payload.pickupId);
+    const id = payload && payload.pickupId;
+    if (id == null) return;
+    this._settleChip(id, 'chip_scooped');
   },
 
   /**
-   * A tracked chip left the board without being collected — despawn, cull, or the cleanup sweep.
-   * Settle it into the run wallet.
+   * Pay one tracked chip and drop it from the ledger. Every route a chip can leave the board by
+   * funnels through here, so a chip is worth its face value exactly once.
+   *
+   * This being the SOLE payer is the point. Two publishers emit pickup:collected and only one of
+   * them carries a `wallet` field — mining's does, physics' contact-collect does not — so routing
+   * on that field meant a chip the player flew into behaved differently from one the magnet pulled
+   * in. A live route capture showed it: six kills dropped six chips worth twelve credits, the
+   * player was paid eight, and the two the ship physically touched paid nothing at all. No headless
+   * check could ever see it, because a headless player never moves.
+   */
+  _settleChip(id, reason) {
+    if (!this._liveChips || !this._liveChips.has(id)) return 0;
+    const credits = this._liveChips.get(id) || 0;
+    this._liveChips.delete(id);
+    if (!(credits > 0)) return 0;
+    const run = liveSurvivalRun(this.state);
+    if (!run) return 0;
+    this._emit('run:awardRequested', { credits, reason, wave: run.wave });
+    return credits;
+  },
+
+  /**
+   * A tracked chip left the board without being scooped — despawn, cull, or the cleanup sweep.
    *
    * This, not a phase boundary, is the seam that guarantees earnings. The first version credited
    * uncollected chips only on the way out of cleanup, and a live route capture showed two of six
    * chips already destroyed by that moment: the player killed six enemies and was paid for four.
-   * Anything that removes a chip now pays for it, whatever removed it and whenever.
    */
   _onEntityDestroyed(payload) {
     const id = payload && payload.id;
-    if (id == null || !this._liveChips || !this._liveChips.has(id)) return;
-    const credits = this._liveChips.get(id);
-    this._liveChips.delete(id);
-    if (!(credits > 0)) return;
-    const run = liveSurvivalRun(this.state);
-    if (!run) return;
-    this._emit('run:awardRequested', {
-      credits,
-      reason: 'chip_settled',
-      wave: run.wave,
-    });
+    if (id == null) return;
+    this._settleChip(id, 'chip_settled');
   },
 
   _onTransitioned(payload) {
@@ -212,30 +223,31 @@ export const survivalRewards = {
   },
 
   /**
-   * Clear every uncollected run chip off the board. Returns the credits still outstanding.
+   * Clear every uncollected run chip off the board and settle it, in one act.
    *
-   * During a run the bodies are marked dead and coreSystem's ordinary sweep publishes the
-   * entity:destroyed that settles them. At the END of a run the sim may never tick again, so
-   * outstanding chips are settled directly here.
+   * The settlement is SYNCHRONOUS on purpose. An earlier version marked the bodies dead and let
+   * the destroy receipt pay them — but entity:destroyed is QUEUED and flushed at the end of the
+   * sim step, and on the last wave the refit→victory transition freezes the results inside that
+   * same step. The player who won the run saw a Salvage figure lower than what they had earned.
+   * Paying here and dropping the ledger entry means no ordering between this owner, core's sweep
+   * and the results owner can change the total.
    */
   sweepChips(reason) {
     const run = liveSurvivalRun(this.state);
     if (!run || !this._liveChips || this._liveChips.size === 0) return 0;
-    const terminal = run.phase === 'ended' || run.phase === 'victory';
     let outstanding = 0;
-    const ids = [...this._liveChips.keys()];
-    for (const id of ids) {
-      const credits = this._liveChips.get(id) || 0;
+    for (const [id, credits] of [...this._liveChips.entries()]) {
       const entity = this._entity(id);
       // This owner is not the entity lifecycle owner; marking dead hands the body to core's sweep.
       if (entity && entity.alive) entity.alive = false;
-      outstanding += credits;
-      if (terminal) this._liveChips.delete(id);
+      if (entity && entity.data) entity.data.creditGranted = true;
+      outstanding += credits || 0;
+      this._liveChips.delete(id);
     }
-    if (terminal && outstanding > 0) {
+    if (outstanding > 0) {
       this._emit('run:awardRequested', {
         credits: outstanding,
-        reason: `sweep:${reason || 'run_end'}`,
+        reason: `sweep:${reason || 'cleanup'}`,
         wave: run.wave,
       });
     }

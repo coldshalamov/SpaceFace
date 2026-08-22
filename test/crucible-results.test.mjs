@@ -137,6 +137,24 @@ test('victory publishes results even though it emits no run:ended', () => {
   assert.match(ready[0].payload.headline, /waves cleared/);
 });
 
+test('a wave the arena cannot build ends the run instead of stranding the player in it', () => {
+  // survivalRun emits run:wavePlanFailed and then stops: it does not retry and it does not end the
+  // run. With nobody listening, the player sat in an empty arena in wave_intro forever.
+  const harness = boot();
+  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: CRUCIBLE_ARENA_ID });
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'loadout', nextPhase: 'arena_intro', reason: 't', tick: 0 });
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'arena_intro', nextPhase: 'wave_intro', reason: 't', tick: 0 });
+  assert.equal(harness.state.run.phase, 'wave_intro');
+
+  harness.bus.emit('run:wavePlanFailed', { wave: 4, error: 'invalid_input', issues: [] });
+
+  assert.equal(harness.state.run.phase, 'ended', 'the run ends rather than hanging');
+  assert.equal(harness.state.run.result.reason, 'wave_plan_failed');
+  const ready = named(harness.emitted, 'run:resultsReady');
+  assert.equal(ready.length, 1);
+  assert.match(ready[0].payload.headline, /could not build wave 4/);
+});
+
 test('the damage trail is bounded and only records hits on the player', () => {
   const harness = boot();
   beginActive(harness);
