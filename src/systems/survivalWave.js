@@ -126,7 +126,19 @@ export const survivalWave = {
   _onEntityDestroyed(payload) {
     const id = payload && payload.id;
     if (id == null || !this._cohort) return;
-    if (!this._cohort.delete(id)) return;
+    if (!this._cohort.has(id)) return;
+    // Same-tick id reuse. core recycles a dead body's id into freeIds immediately but QUEUES its
+    // entity:destroyed to the end of the step, so a batch dispatched in the same tick can be
+    // handed the id of a body whose death receipt has not been delivered yet. Acting on that
+    // receipt would drop a LIVE hostile out of the census — and if it were the last one accounted
+    // for, the wave would report itself cleared with an enemy still shooting. If a live cohort
+    // body holds this id now, the receipt belongs to its predecessor: keep the entry, which is
+    // already the right one for the new occupant.
+    const live = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id)
+      : null;
+    if (live && live.alive && live.data && live.data.runCohort === 'survival') return;
+    this._cohort.delete(id);
     this._resolved += 1;
     this._publishThreat();
   },

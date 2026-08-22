@@ -150,6 +150,37 @@ test('the wave census reaches state.run through runSession, written by nobody el
   assert.equal(threatCensus(harness.state.run).remaining, 4);
 });
 
+test('a recycled entity id never drops a live hostile out of the wave census', () => {
+  // core recycles a dead body's id immediately but queues its entity:destroyed to end of tick, so
+  // a batch dispatched the same tick can be handed that id. Acting on the stale receipt would
+  // shrink the census by a body that is alive and shooting — and could clear the wave.
+  const harness = boot();
+  reachActive(harness);
+  const victim = harness.spawned[0];
+  const recycledId = victim.id;
+
+  // The old body dies and its id is immediately reissued to a fresh cohort hostile...
+  victim.alive = false;
+  harness.state.entities.delete(recycledId);
+  const replacement = {
+    id: recycledId, alive: true, type: 'ship', team: 1, pos: { x: 10, z: 10 },
+    data: { runCohort: 'survival', runWave: 1, runRole: 'mass', level: 1 },
+  };
+  harness.state.entities.set(recycledId, replacement);
+
+  // ...and only THEN does the old body's queued receipt arrive.
+  harness.bus.emit('entity:destroyed', { id: recycledId });
+
+  assert.equal(harness.state.run.resolvedThreat, 0, 'the live occupant was not counted as dead');
+  assert.equal(threatCensus(harness.state.run).remaining, 6, 'still six hostiles to fight');
+
+  // When the replacement itself dies for real, the receipt lands normally.
+  replacement.alive = false;
+  harness.state.entities.delete(recycledId);
+  harness.bus.emit('entity:destroyed', { id: recycledId });
+  assert.equal(harness.state.run.resolvedThreat, 1);
+});
+
 test('a starved wave never asks the player to kill bodies that were never admitted', () => {
   const harness = boot();
   // Ambient traffic holds every slot, so wave 1 admits nothing.

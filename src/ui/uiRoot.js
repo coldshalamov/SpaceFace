@@ -1001,7 +1001,11 @@ export const ui = {
     // Reset the one-shot gate when a new game starts or a save loads (a loaded save is alive again).
     // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
     // victory (a terminal phase transition, which emits no run:ended).
-    this.bus.on('run:resultsReady', () => {
+    this.bus.on('run:resultsReady', (payload) => {
+      // An abort is the player walking out through the pause menu, which closes every screen and
+      // replaces them with the main menu in the same handler chain — so a results plate pushed here
+      // is built and destroyed in one breath. They chose to leave; do not flash a scoreboard at them.
+      if (payload && payload.outcome === 'aborted') return;
       if (this._crucibleResultsShown) return;
       this._crucibleResultsShown = true;
       const tryOpen = (attempts) => {
