@@ -24,6 +24,11 @@ const FALLBACK_ENEMY = COMBAT_LAB_ENEMY_PACKAGES[0];
 const FALLBACK_ARENA = COMBAT_LAB_ARENAS[0];
 const FALLBACK_SEED = 1;
 const FALLBACK_WAVE = 1;
+// Survival is a thirty-wave run. Cap at 999 so every schema-valid wave is a
+// short decimal integer and therefore encodable by combatLabBuildCode.js
+// (String(1e21) is "1e+21", which the codec rejects as unsafe). Do not raise
+// this without checking that every valid setup still encodes as a build code.
+const COMBAT_LAB_WAVE_MAX = 999;
 
 function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -35,6 +40,10 @@ function isPlainObject(value) {
 // to Date.now() ^ Math.random(). Do not widen this back to 0, and do not coerce 0 to 1.
 function isCombatLabSeed(value) {
   return Number.isInteger(value) && value >= 1 && value <= 0xffffffff;
+}
+
+function isCombatLabWave(value) {
+  return Number.isInteger(value) && value >= 1 && value <= COMBAT_LAB_WAVE_MAX;
 }
 
 function issue(path, message) {
@@ -116,7 +125,7 @@ function salvageSetup(input) {
     ? src.arenaId
     : (FALLBACK_ARENA && FALLBACK_ARENA.id) || 'helios_core';
   const seed = isCombatLabSeed(src.seed) ? src.seed : FALLBACK_SEED;
-  const wave = Number.isInteger(src.wave) && src.wave >= 1 ? src.wave : FALLBACK_WAVE;
+  const wave = isCombatLabWave(src.wave) ? src.wave : FALLBACK_WAVE;
   return makeValue({ hullId, loadout, enemyPackageId, arenaId, seed, wave });
 }
 
@@ -156,8 +165,8 @@ function validateInner(input) {
     issues.push(issue('seed', 'seed must be an integer in 1..0xffffffff'));
   }
 
-  if (!Number.isInteger(input.wave) || input.wave < 1) {
-    issues.push(issue('wave', 'wave must be an integer >= 1'));
+  if (!isCombatLabWave(input.wave)) {
+    issues.push(issue('wave', 'wave must be an integer in 1..999'));
   }
 
   if (!Array.isArray(input.loadout)) {

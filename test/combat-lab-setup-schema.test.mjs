@@ -87,6 +87,19 @@ test('validateCombatLabSetup rejects illegal seeds and waves', () => {
   assertIssuePath(validateCombatLabSetup(minimalSetup({ wave: 1.2 })), 'wave');
 });
 
+test('validateCombatLabSetup accepts wave 1..999 so every valid setup is build-code encodable', () => {
+  const low = validateCombatLabSetup(minimalSetup({ wave: 1 }));
+  assert.equal(low.ok, true);
+  assert.equal(low.value.wave, 1);
+  const high = validateCombatLabSetup(minimalSetup({ wave: 999 }));
+  assert.equal(high.ok, true);
+  assert.equal(high.value.wave, 999);
+  assertIssuePath(validateCombatLabSetup(minimalSetup({ wave: 1000 })), 'wave');
+  assertIssuePath(validateCombatLabSetup(minimalSetup({ wave: 1e21 })), 'wave');
+  assertIssuePath(validateCombatLabSetup(minimalSetup({ wave: 0 })), 'wave');
+  assertIssuePath(validateCombatLabSetup(minimalSetup({ wave: 1.2 })), 'wave');
+});
+
 test('validateCombatLabSetup rejects seed 0 and accepts the 1..0xffffffff bounds', () => {
   assertIssuePath(validateCombatLabSetup(minimalSetup({ seed: 0 })), 'seed');
   const low = validateCombatLabSetup(minimalSetup({ seed: 1 }));
