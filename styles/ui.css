@@ -1129,6 +1129,9 @@ button:active { translate: 0 1px; }
   color: var(--sf-paper);
   font-family: var(--sf-body-face);
   pointer-events: auto;
+  /* Single source for the rail width so the ≤1280px override below retunes the PROPERTY, not the
+     drawer's `width`, and the empty-state inset below can track the same number. */
+  --sf-range-rail: min(440px, 40vw);
 }
 .sf-range__shell {
   position: relative;
@@ -1196,7 +1199,7 @@ button:active { translate: 0 1px; }
 .sf-range .sf-drawer {
   left: 0;
   right: auto;
-  width: min(440px, 40vw);
+  width: var(--sf-range-rail);
   transform: translateX(-100%);
   border-left: 0;
   border-right: 1px solid var(--sf-edge);
@@ -1392,10 +1395,24 @@ button:active { translate: 0 1px; }
   font: 500 14px/1.45 var(--sf-body-face);
   color: var(--sf-paper);
 }
+/* The rail paints OVER the empty state (drawer z-index 40 vs empty z-index 30), and the rail gets
+   WIDER as the viewport narrows (440px at 1920 → 480px at 1280) while the centre point moves left,
+   so at 1280×720 the centred copy started around x≈405 — behind the rail. When the drawer is open,
+   add the rail's width to the empty state's LEFT PADDING so the centred column sits in the space
+   actually visible. Two reasons this is padding and NOT left/inset: the empty state's background is
+   a near-opaque full-screen scrim, and its box is what paints that scrim — moving left/inset moves
+   the scrim too, leaving everything left of the rail (header title, bottom strip) un-dimmed with a
+   hard vertical seam splitting one title into a bright half and a dim half. Padding shrinks only the
+   content box the flex centring uses while the background still paints the full screen. Do not
+   "simplify" this back to a plain centred box or an inset box. Layout only: no forced-colors
+   counterpart needed. */
+.sf-range:has(.sf-drawer.is-open) .sf-range__empty {
+  padding-left: calc(26px + var(--sf-range-rail));
+}
 @media (max-width: 1280px) {
   .sf-range__crest-side { min-width: 170px; }
   .sf-range__progress { font-size: 17px; }
-  .sf-range .sf-drawer { width: min(480px, 54vw); }
+  .sf-range { --sf-range-rail: min(480px, 54vw); }
 }
 @media (prefers-reduced-motion: reduce) {
   .sf-range__rail-row,
