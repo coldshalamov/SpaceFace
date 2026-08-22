@@ -18,6 +18,7 @@ import {
   PHASE_WORDS,
   arenaLabel,
   phaseWord,
+  objectiveWord,
   earnLine,
   levelProgress,
   survivalHud,
@@ -96,6 +97,16 @@ test('every visible run phase has a word a player can read — no raw phase ids 
   // Even a phase this file has never heard of renders as words, not as an id.
   assert.equal(phaseWord('some_future_phase'), 'SOME FUTURE PHASE');
   assert.equal(phaseWord(null), 'RUN');
+});
+
+test('a boss or elite wave says which it is instead of reading as an ordinary fight', () => {
+  assert.equal(objectiveWord('boss'), 'BOSS');
+  assert.equal(objectiveWord('elite_hunt'), 'ELITE');
+  // The ordinary case stays null on purpose: the phase word already says FIGHT, and a second
+  // label saying the same thing is noise.
+  assert.equal(objectiveWord('resolve_hostiles'), null);
+  assert.equal(objectiveWord('something_new'), null, 'an unknown objective invents no label');
+  assert.equal(objectiveWord(undefined), null);
 });
 
 test('the arena label is derived, so a new arena needs no edit here', () => {

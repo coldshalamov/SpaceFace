@@ -44,6 +44,22 @@ export function phaseWord(phase) {
   return String(phase || '').replace(/_/g, ' ').toUpperCase() || 'RUN';
 }
 
+/**
+ * What KIND of wave this is, in a word. A boss wave and a chaff wave both read as "FIGHT"
+ * otherwise, which is exactly the moment a player most wants to be told which one they are in.
+ * Unknown objectives fall back to the phase word rather than inventing a label.
+ */
+export const OBJECTIVE_WORDS = Object.freeze({
+  resolve_hostiles: null,   // the ordinary case — the phase word already says FIGHT
+  elite_hunt: 'ELITE',
+  boss: 'BOSS',
+});
+
+export function objectiveWord(objectiveKind) {
+  const word = OBJECTIVE_WORDS[objectiveKind];
+  return typeof word === 'string' ? word : null;
+}
+
 /** Arena label from the id. Data-free so a new arena needs no edit here. */
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
@@ -100,11 +116,13 @@ export const survivalHud = {
     this._last = Object.create(null);
     this._earn = null;
     this._earnUntil = -1;
+    this._objective = null;
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:started', () => this._clearEarn()));
+    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
   },
 
   destroy() {
@@ -136,10 +154,14 @@ export const survivalHud = {
     this._show(dom);
 
     const census = threatCensus(run);
-    const phase = phaseWord(run.phase);
+    // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
+    const fighting = run.phase === 'active' || run.phase === 'wave_intro';
+    const phase = (fighting && this._objective) ? this._objective : phaseWord(run.phase);
     this._setText(dom.label, `CRUCIBLE · ${arenaLabel(run.arenaId)}`);
     this._setText(dom.waveN, `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
+    // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
+    this._setClass(dom.phase, 'sf-crun__phase' + (fighting && this._objective ? ' sf-crun__phase--hot' : ''));
 
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
@@ -170,6 +192,12 @@ export const survivalHud = {
 
   // ---- receipts -------------------------------------------------------------
 
+  _onWavePlanned(payload) {
+    const plan = payload && payload.plan;
+    const kind = plan && plan.objective && plan.objective.kind;
+    this._objective = objectiveWord(kind);
+  },
+
   _onAwarded(payload) {
     const line = earnLine(payload);
     if (!line) return;
@@ -191,6 +219,7 @@ export const survivalHud = {
   _clearEarn() {
     this._earn = null;
     this._earnUntil = -1;
+    this._objective = null;
   },
 
   // ---- DOM ------------------------------------------------------------------
@@ -208,6 +237,14 @@ export const survivalHud = {
     if (this._last[node.__crunKey] === text) return;
     this._last[node.__crunKey] = text;
     node.textContent = text;
+  },
+
+  _setClass(node, value) {
+    if (!node) return;
+    const key = `${node.__crunKey}:class`;
+    if (this._last[key] === value) return;
+    this._last[key] = value;
+    node.className = value;
   },
 
   _setStyle(node, prop, value) {
@@ -296,6 +333,7 @@ export const survivalHud = {
     font-variant-numeric:tabular-nums; color:var(--sf-goal); }
   .sf-crun__phase { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
     letter-spacing:.14em; color:var(--sf-calm); margin-left:auto; }
+  .sf-crun__phase--hot { color:var(--sf-foe); }
   .sf-crun__threat { display:flex; align-items:center; gap:7px; }
   .sf-crun__word { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
     letter-spacing:.14em; color:var(--sf-calm); }
