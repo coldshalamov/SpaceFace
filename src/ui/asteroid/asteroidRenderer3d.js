@@ -3592,8 +3592,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---- the port stacks crates (law §7) -------------------------------------------------------
-  // Five stages keyed to what the PORT is actually holding: `projection.exportBuffer` is the stock
-  // the port has staged for the next pod, so the pile is the shipment waiting on the floor.
+  // The pile is keyed to the port's current exportBuffer. The projection cache is not used here:
+  // a reassigned buffer object leaves that cache pointing at the previous object, so the drawn
+  // stage would depend on when the cache last refreshed rather than on the buffer that exists now.
   function crateStageFor(total) {
     if (!(total > 0)) return 0;
     if (total < 3) return 1;
@@ -3605,7 +3606,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function syncCrates(site, projection) {
     const port = site ? site.machines.find((m) => m.defId === 'sm_cargo_port') : null;
-    const total = projection ? storeTotal(projection.exportBuffer) : 0;
+    const total = site
+      ? storeTotal(site.exportBuffer)
+      : (projection ? storeTotal(projection.exportBuffer) : 0);
     const stage = port ? crateStageFor(total) : 0;
     crateStageNow = stage;
     if (!stage) { crateCell = null; if (crateMesh) crateMesh.visible = false; return; }
