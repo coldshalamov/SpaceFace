@@ -1,23 +1,20 @@
 {
   "schemaVersion": "1.0",
   "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
-  "candidateState": "blockout",
-  "scope": "PQ-049.01 G0 pre-authoring material/shape contract only; no source candidate, authored output, or review evidence exists yet",
-  "componentReferenceDecision": "not_needed",
+  "candidateState": "surfaced_candidate",
+  "scope": "PQ-049.01 source candidate; chase-camera evidence only; not wired",
+  "componentReferenceDecision": "native_imagegen",
   "allSupportedViewZonesClassified": false,
   "supportedViews": [
-    "neutral_front3q",
-    "neutral_rear3q",
-    "starboard_side",
-    "top",
-    "underside",
-    "grazing_starboard",
-    "clay_front3q",
-    "material_id_front3q",
-    "dark_space_rear3q",
-    "probe_32px",
-    "probe_52px",
-    "probe_120px"
+    "play_chase",
+    "play_chase_abeam",
+    "play_chase_close",
+    "clay_play_chase",
+    "grazing_close",
+    "id_or_material_id",
+    "orm_isolation",
+    "normal_isolation",
+    "drive_rear"
   ],
   "textureStrategy": {
     "format": "planned portable embedded PNG in source GLB plus editable PNGs in textures/ after source implementation",
@@ -30,7 +27,7 @@
     {
       "zone": "central_pressure_drum",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "top", "grazing_starboard", "clay_front3q", "material_id_front3q", "dark_space_rear3q", "probe_32px", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "grazing_close", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory"],
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: formed passenger pressure shell maintained between dock calls.",
@@ -42,7 +39,7 @@
     {
       "zone": "forward_operations_wedge_and_frame",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "starboard_side", "top", "clay_front3q", "material_id_front3q", "probe_32px", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
       "functionOriginAndServiceContext": "framed boarding/operations enclosure ahead of the passenger pressure bulkhead",
@@ -54,7 +51,7 @@
     {
       "zone": "low_service_cassette",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "underside", "grazing_starboard", "material_id_front3q", "probe_32px", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "grazing_close", "id_or_material_id"],
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_ServicePrimer_Galvanized"],
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: sealed luggage and maintenance access envelope, not freight capacity",
@@ -66,7 +63,7 @@
     {
       "zone": "dark_keel_and_tether_saddle",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "neutral_rear3q", "underside", "grazing_starboard", "clay_front3q", "material_id_front3q", "probe_32px", "probe_52px", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "grazing_close", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_Keel_ForgedDark", "MAT_SF_Massline_Frame_DarkAnodized"],
       "functionOriginAndServiceContext": "reinforced non-passenger-facing Massline latch/load transfer assembly",
@@ -78,7 +75,7 @@
     {
       "zone": "port_starboard_docking_and_service_interfaces",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "top", "grazing_starboard", "material_id_front3q", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "grazing_close", "id_or_material_id"],
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_WayfindingCyan", "MAT_SF_Massline_WayfindingAmber"],
       "functionOriginAndServiceContext": "separate station docking and service contacts on both sides of a passenger vessel",
@@ -90,7 +87,7 @@
     {
       "zone": "dorsal_cooling_service_spine",
       "disposition": "billed",
-      "supportedViews": ["neutral_rear3q", "top", "grazing_starboard", "clay_front3q", "material_id_front3q", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "id_or_material_id"],
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_ServicePrimer_Galvanized"],
       "functionOriginAndServiceContext": "formed cooling and service route from passenger systems to aft drive roots",
@@ -102,7 +99,7 @@
     {
       "zone": "aft_drive_booms_and_recessed_throats",
       "disposition": "billed",
-      "supportedViews": ["neutral_rear3q", "starboard_side", "top", "underside", "grazing_starboard", "clay_front3q", "material_id_front3q", "dark_space_rear3q", "probe_32px", "probe_52px", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "drive_rear", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_RefractoryHeatAlloy", "MAT_SF_Massline_WayfindingCyan"],
       "functionOriginAndServiceContext": "paired aft propulsion assemblies with protected heat-throat liners",
@@ -114,7 +111,7 @@
     {
       "zone": "wayfinding_fixtures_and_sparse_markings",
       "disposition": "billed",
-      "supportedViews": ["neutral_front3q", "starboard_side", "top", "material_id_front3q", "dark_space_rear3q", "probe_120px"],
+      "supportedViews": ["play_chase", "play_chase_close", "id_or_material_id"],
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_WayfindingCyan", "MAT_SF_Massline_WayfindingAmber"],
       "functionOriginAndServiceContext": "boarding and service orientation aids only; no corporate luxury skin",
@@ -125,9 +122,8 @@
     }
   ],
   "knownOpenItems": [
-    "No authored Blender source, source GLB, LOD, texture, capture, candidate hash, or hash-bound visual evidence exists yet; all are pending implementation.",
-    "Whole-asset G1/G2/G4 have no result. Independent visual review remains pending after an exact candidate and matched evidence exist.",
-    "G3 needs an independent checker/stretch and authored-density review; planned UV generation is not a self-pass.",
-    "G5/G6/G7 and real Browser/Electron route proof belong to later PQ-049 leaves."
+    "Source candidate and chase-camera evidence exist in this folder. Whole-asset G1/G2/G4 stay open until an independent hash-bound review.",
+    "G3 needs an independent checker/stretch review; builder UVs are not a self-pass.",
+    "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests."
   ]
 }

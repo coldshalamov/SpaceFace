@@ -1,8 +1,8 @@
 # Pre-authoring material and shape audit — Massline Express Liner v1
 
 Planned asset identity: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
-Scope: PQ-049.01 G0 pre-authoring Tier-B contract only
-Whole-asset G1/G2/G4 status: **not started — no authored output, exact candidate hash, or hash-bound visual evidence exists**
+Scope: PQ-049.01 source candidate, chase-camera evidence
+Whole-asset G1/G2/G4 status: **open — cycle 05 LOD0 `01019DE6…A733F3`; independent review required; authoring decision is revise**
 
 ## Visible-zone preflight
 

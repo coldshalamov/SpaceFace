@@ -5,12 +5,12 @@
 - Asset ID: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
 - Source identity: `wholeship_massline_express_liner_v1`
 - Role: Helios `express` presentation candidate; passenger-only civic liner
-- Tier / state: Tier B / `blockout` pre-authoring intent
-- Scope: PQ-049.01 G0 preflight only. No editable Blender source, authored LOD, texture, capture, candidate hash, release, render package, runtime map, manifest record, or accepted asset exists yet.
+- Tier / state: Tier B / `surfaced_candidate` source only (not accepted, not wired)
+- Scope: PQ-049.01 DCC candidate. Editable Blender source, authored LOD0/1/2, textures, and hash-bound chase-camera evidence live in this folder. No release, render package, runtime map, or manifest mutation.
 - Source root: `assets/ships/massline_express_liner_v1/`
-- Planned outputs: `blender/massline_express_liner_v1.blend` and `source/wholeships/massline_express_liner_v1_lod[0-2].glb`; all remain pending implementation.
-- Planned orientation: Blender long axis `+X` forward, Blender `+Z` up; glTF export must be Y-up with forward axis retained as `+X`.
-- Supported camera bands: close tether/dock inspection (220–540 px), ordinary express encounter (90–220 px), readability probe (44–55 px), and distant traffic silhouette (`probe_32px`, under 44 px).
+- Outputs: `blender/massline_express_liner_v1.blend`, `source/wholeships/massline_express_liner_v1_lod[0-2].glb`, `scripts/build_massline_express_liner_v1.py`
+- Orientation: Blender long axis `+X` forward, Blender `+Z` up; glTF export is Y-up with forward axis retained as `+X`.
+- Supported review cameras (only these close a cycle): live chase at 60° tilt, 50° FOV, D=144 (`play_chase`, `play_chase_abeam`) and D=58 (`play_chase_close`) via `tools/blender/spaceface_chase_camera.py`. No seats. No studio three-quarter.
 
 The only donor is `reference/stopped_lark_iter19/`, and it is reference-only. No donor object, mesh,
 material, texture, transform, socket, Blender data block, or source GLB is imported, copied, or renamed
@@ -111,10 +111,6 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-This is a G0 preflight, not evidence-ready G0. Authored Blender source, source GLBs, LODs, textures,
-identity matrix, exact hashes, and hash-bound visual evidence are all pending implementation. G1, G2, and
-G4 have no result: after a real candidate exists, original-resolution matched captures may support a
-future independent whole-asset review, but the authoring pass cannot self-accept them. G3, G5, G6, and
-G7 remain open until their designated promotion/integration/review leaves. Any P0/P1 found in later
-matched inspection must be recorded as a revision target rather than hidden by a new camera or material
-tweak.
+G0 is written and the source candidate exists. Whole-asset G1/G2/G4 require an independent hash-bound
+review of the chase stills; this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
+until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
