@@ -371,6 +371,13 @@ export function createSimulationRunner(state, registry, deps = {}) {
       state.accumulator = advanceResult.accumulator;
       return advanceResult;
     },
+    // Lab Step is the only caller of stepOnce(). Replay and advance() never invoke it, so
+    // check:sim / check:sim:v3 hashes cannot move.
+    stepOnce() {
+      assertOpen();
+      stepSimulation(fixedDt);
+      return true;
+    },
     prepareWithoutAdvance,
     interpolationAlpha() {
       assertOpen();

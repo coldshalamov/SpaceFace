@@ -123,6 +123,8 @@ export const weapons = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
     };
+
+    ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
   },
 
   update(dt, state) {
@@ -1106,6 +1108,26 @@ export const weapons = {
 
 void DEG2;
 void TWO_PI;
+
+function isLiveLabSession(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
+}
+
+function refillLabPlayerHeat(state) {
+  if (!isLiveLabSession(state)) return;
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return;
+  }
+  const player = state.entities.get(state.playerId);
+  if (!player) return;
+  const mounts = player.data && player.data.weapons;
+  if (!Array.isArray(mounts)) return;
+  for (let i = 0; i < mounts.length; i++) {
+    const mount = mounts[i];
+    if (mount) mount._heat = 0;
+  }
+}
 
 // Exact lead/intercept solver for the shipped aim-true projectile model. Flight time is solved in
 // the shooter's inertial frame, where projectile speed relative to the shooter is `projSpeed`, but

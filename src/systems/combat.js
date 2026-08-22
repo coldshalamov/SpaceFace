@@ -456,6 +456,8 @@ export const combat = {
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
+    ctx.bus.on('debug:refillPlayer', () => refillLabPlayer(this.state));
+    ctx.bus.on('debug:invulnerable', (p) => setLabInvulnerable(this.state, p || {}));
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -1002,6 +1004,44 @@ function resetCombatDiagnostics(diag) {
 
 function lootPickupKind(id) {
   return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';
+}
+
+function isLiveLabSession(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
+}
+
+function labPlayerEntity(state) {
+  if (!isLiveLabSession(state)) return null;
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return null;
+  }
+  return state.entities.get(state.playerId) || null;
+}
+
+function refillLabPlayer(state) {
+  const player = labPlayerEntity(state);
+  if (!player) return;
+  // Same restore vocabulary as respawnPlayer — current pools only, never the maxima.
+  if (Number.isFinite(player.hullMax)) player.hull = player.hullMax;
+  if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
+  if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
+  if (Number.isFinite(player.capMax)) player.cap = player.capMax;
+  if (Number.isFinite(player.heat)) player.heat = 0;
+}
+
+function setLabInvulnerable(state, payload) {
+  const player = labPlayerEntity(state);
+  if (!player) return;
+  if (typeof payload.on !== 'boolean') return;
+  player.flags = player.flags || {};
+  if (payload.on) {
+    player.flags.invuln = true;
+    player._invulnUntil = Infinity;
+  } else {
+    player.flags.invuln = false;
+    player._invulnUntil = null;
+  }
 }
 
 // Scale every damage channel of a packet by `mult` (BP-02 weak-point bonus). Returns the packet

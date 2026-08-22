@@ -1031,6 +1031,16 @@ export function applySandboxSetup(ctx, config) {
           seed: setup.seed,
         });
       }
+      // LD-1: begin AFTER game:started / applied setup. Never write state.run; runSession is
+      // the sole writer and accepts a begin only from phase inactive (a fresh New Game).
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('run:beginRequested', {
+          kind: 'lab',
+          ruleset: null,
+          seed: setup.seed,
+          arenaId: setup.arenaId,
+        });
+      }
     }
   }
 

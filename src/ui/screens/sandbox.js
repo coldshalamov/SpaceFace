@@ -15,13 +15,36 @@ import { SECTORS } from '../../data/sectors.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
+import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import {
+  COMBAT_LAB_SURFACE,
+  COMBAT_LAB_SURFACE_STARTERS,
+  COMBAT_LAB_SURFACE_ENEMIES,
+  COMBAT_LAB_SURFACE_ARENAS,
+  combatLabHullsForStarter,
+  combatLabResolveHullId,
+} from '../../data/combatLab.js';
+import {
+  COMBAT_LAB_SETUP_SCHEMA,
+  validateCombatLabSetup,
+  combatLabSetupDigestInput,
+} from '../../contracts/combatLabSetupSchema.js';
 import {
   SCENARIO_PRESETS, SANDBOX_CAMERA_CANDIDATES, SANDBOX_PHYSICS_LOADOUTS,
   buildSandboxLaunchConfig, requestSandboxGame,
   giveAndEquipItem, spawnEnemyNow, spawnTargetsNow,
 } from '../sandbox/sandboxSetup.js';
+import { panel, chip, enhanceSelects } from '../uiPrimitives.js';
+import { mountCrucibleLabControls } from './crucibleLabControls.js';
+import { mountCrucibleLabTelemetry } from './crucibleLabTelemetry.js';
 
 const STYLE_ID = 'sf-sandbox-style';
+const COMBAT_LAB_SEED_MAX = 0xffffffff;
+const COMBAT_LAB_DIGEST_MAX = 96;
+
+// Last Combat Lab setup that launched successfully. Module-scoped so Relaunch same seed
+// can replay it byte-identically after the screen remounts. Never written to ctx.state.
+let lastCombatLabSetup = null;
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
@@ -71,10 +94,38 @@ function injectStyle() {
     padding: 5px 7px; font-family: var(--mono); font-size: 12px; min-width: 0;
   }
   .sf-sandbox-picker button:disabled { opacity: .45; cursor: not-allowed; }
+  .sf-sandbox-lab { margin: 0 0 8px; padding: 12px 14px; }
+  .sf-sandbox-lab-form {
+    display: grid; grid-template-columns: max-content 1fr; gap: 8px 12px; align-items: center;
+  }
+  .sf-sandbox-lab-form label { color: var(--ink-dim, var(--sf-calm, #84a0c8)); font-size: var(--t-sm, 12px); }
+  .sf-sandbox-lab-form select,
+  .sf-sandbox-lab-form input[type=text],
+  .sf-sandbox-lab-form input[type=number] {
+    background: var(--panel-2, #111d30); color: var(--ink, var(--sf-paper, #d3e6ff));
+    border: 1px solid var(--panel-edge, #1d3350); border-radius: 4px;
+    padding: 5px 7px; font-family: var(--mono); font-size: 13px; width: 100%;
+  }
+  .sf-sandbox-lab-seed { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  .sf-sandbox-lab-seed input { flex: 1; min-width: 0; }
+  .sf-sandbox-lab-status {
+    font-size: var(--t-sm, 12px); grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .sf-sandbox-lab-status .sf-chip { font-size: var(--t-sm, 12px); }
+  .sf-sandbox-lab-issues { font-size: var(--t-sm, 12px); color: var(--sf-foe); line-height: 1.4; }
+  .sf-sandbox-lab-digest {
+    font-size: var(--t-sm, 12px); color: var(--sf-calm); font-family: var(--mono);
+    grid-column: 1 / -1; line-height: 1.4; word-break: break-all;
+  }
+  .sf-sandbox-lab-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; margin-top: 4px;
+  }
+  .sf-sandbox-lab-actions button:disabled { opacity: .45; cursor: not-allowed; }
   @media (max-width: 560px) {
     .sf-sandbox-cards { grid-template-columns: 1fr; }
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
     .sf-sandbox-picker { grid-template-columns: 1fr; }
+    .sf-sandbox-lab-form { grid-template-columns: 1fr; }
   }
   `;
   document.head.appendChild(s);
@@ -104,6 +155,99 @@ function getManager(ctx) {
   const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
   if (ui && ui.screenManager) return ui.screenManager;
   return null;
+}
+
+function fillSelect(sel, options, value) {
+  for (const opt of options) {
+    const o = document.createElement('option');
+    o.value = opt.id;
+    o.textContent = opt.label;
+    sel.appendChild(o);
+  }
+  if (value != null) sel.value = value;
+  return sel;
+}
+
+function parseCombatLabSeed(text, rollSource) {
+  const trimmed = text == null ? '' : String(text).trim();
+  if (trimmed === '') {
+    return typeof rollSource === 'function' ? rollCombatLabSeed(rollSource) : Number.NaN;
+  }
+  if (!/^[0-9]+$/.test(trimmed)) return Number.NaN;
+  return Number(trimmed);
+}
+
+function parseCombatLabWave(text) {
+  const trimmed = text == null ? '' : String(text).trim();
+  if (trimmed === '') return 1;
+  if (!/^[0-9]+$/.test(trimmed)) return Number.NaN;
+  return Number(trimmed);
+}
+
+function formatCombatLabDigest(setup) {
+  if (!setup) return '';
+  const text = combatLabSetupDigestInput(setup).join(' ');
+  if (text.length <= COMBAT_LAB_DIGEST_MAX) return text;
+  return text.slice(0, COMBAT_LAB_DIGEST_MAX - 1) + '\u2026';
+}
+
+function formatCombatLabIssuePaths(issues) {
+  const paths = [];
+  for (const issue of issues || []) {
+    const path = issue && issue.path;
+    if (path && !paths.includes(path)) paths.push(path);
+  }
+  return paths.join(', ');
+}
+
+/** Map any numeric roll source into the v1 seed range 1..0xffffffff. Zero is invalid. */
+export function rollCombatLabSeed(source) {
+  const raw = typeof source === 'function' ? source() : 0;
+  let n = Math.trunc(Number(raw));
+  if (!Number.isFinite(n)) n = 1;
+  if (n < 1) n = 1;
+  if (n > COMBAT_LAB_SEED_MAX) n = COMBAT_LAB_SEED_MAX;
+  return n;
+}
+
+/** Pure form reader. All `values` are strings (as from <select>/<input>). No Math.random. */
+export function readCombatLabForm(values, rollSource) {
+  const src = values && typeof values === 'object' && !Array.isArray(values) ? values : {};
+  const starterId = src.starterPackageId == null ? '' : String(src.starterPackageId);
+  const pkg = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId);
+  const hullText = src.hullId == null ? '' : String(src.hullId).trim();
+  const hullId = hullText || (pkg && pkg.hullId) || '';
+  const loadout = pkg && Array.isArray(pkg.loadout)
+    ? pkg.loadout.map((entry) => ({ slotIndex: entry.slotIndex, defId: entry.defId }))
+    : [];
+  const candidate = {
+    schema: COMBAT_LAB_SETUP_SCHEMA,
+    hullId,
+    loadout,
+    enemyPackageId: src.enemyPackageId == null ? '' : String(src.enemyPackageId),
+    arenaId: src.arenaId == null ? '' : String(src.arenaId),
+    seed: parseCombatLabSeed(src.seed, rollSource),
+    wave: parseCombatLabWave(src.wave),
+  };
+  return validateCombatLabSetup(candidate);
+}
+
+/** Same-seed restart: relaunch reuses the stored normalized setup, not live form values. */
+export function combatLabRelaunchConfig(lastSetup) {
+  return buildSandboxLaunchConfig({}, { combatLabSetup: lastSetup });
+}
+
+/** Stored setup changes only on a successful launch. Failed attempts and form edits leave it. */
+export function nextCombatLabStoredSetup(stored, result) {
+  if (result && result.ok && result.value) return result.value;
+  return stored || null;
+}
+
+/** Emit game:new for a stored/normalized setup. No-op when there is nothing to launch. */
+export function emitCombatLabLaunch(bus, setup) {
+  if (!setup) return false;
+  requestSandboxGame(bus, combatLabRelaunchConfig(setup));
+  return true;
 }
 
 export const sandboxScreen = {
@@ -136,6 +280,195 @@ export const sandboxScreen = {
       });
       cardGrid.appendChild(card);
     }
+
+    // --- Combat Lab ---
+    rootEl.appendChild(el('div', 'sf-section-h', COMBAT_LAB_SURFACE.title.toUpperCase()));
+    const labPanel = panel({ cut: true });
+    labPanel.classList.add('sf-sandbox-lab');
+    const labForm = el('div', 'sf-sandbox-lab-form');
+
+    const defaultStarterId = COMBAT_LAB_SURFACE_STARTERS[0] && COMBAT_LAB_SURFACE_STARTERS[0].id;
+    const initialHulls = combatLabHullsForStarter(defaultStarterId);
+    const initialHullId = combatLabResolveHullId(defaultStarterId, initialHulls[0] && initialHulls[0].id);
+
+    const hullLabel = el('label', null, COMBAT_LAB_SURFACE.fields[0].label);
+    hullLabel.htmlFor = 'sf-sandbox-lab-hull';
+    const hullSel = document.createElement('select');
+    hullSel.id = 'sf-sandbox-lab-hull';
+    hullSel.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[0].label);
+    fillSelect(hullSel, initialHulls, initialHullId);
+    labForm.appendChild(hullLabel);
+    labForm.appendChild(hullSel);
+
+    const starterLabel = el('label', null, COMBAT_LAB_SURFACE.fields[1].label);
+    starterLabel.htmlFor = 'sf-sandbox-lab-starter';
+    const starterSel = document.createElement('select');
+    starterSel.id = 'sf-sandbox-lab-starter';
+    starterSel.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[1].label);
+    fillSelect(starterSel, COMBAT_LAB_SURFACE_STARTERS, defaultStarterId);
+    labForm.appendChild(starterLabel);
+    labForm.appendChild(starterSel);
+
+    const enemyLabel = el('label', null, COMBAT_LAB_SURFACE.fields[2].label);
+    enemyLabel.htmlFor = 'sf-sandbox-lab-enemy';
+    const enemySelLab = document.createElement('select');
+    enemySelLab.id = 'sf-sandbox-lab-enemy';
+    enemySelLab.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[2].label);
+    fillSelect(enemySelLab, COMBAT_LAB_SURFACE_ENEMIES, COMBAT_LAB_SURFACE_ENEMIES[0] && COMBAT_LAB_SURFACE_ENEMIES[0].id);
+    labForm.appendChild(enemyLabel);
+    labForm.appendChild(enemySelLab);
+
+    const arenaLabel = el('label', null, COMBAT_LAB_SURFACE.fields[3].label);
+    arenaLabel.htmlFor = 'sf-sandbox-lab-arena';
+    const arenaSel = document.createElement('select');
+    arenaSel.id = 'sf-sandbox-lab-arena';
+    arenaSel.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[3].label);
+    fillSelect(arenaSel, COMBAT_LAB_SURFACE_ARENAS, COMBAT_LAB_SURFACE_ARENAS[0] && COMBAT_LAB_SURFACE_ARENAS[0].id);
+    labForm.appendChild(arenaLabel);
+    labForm.appendChild(arenaSel);
+
+    const seedLabel = el('label', null, COMBAT_LAB_SURFACE.fields[4].label);
+    seedLabel.htmlFor = 'sf-sandbox-lab-seed';
+    const seedRow = el('div', 'sf-sandbox-lab-seed');
+    const seedInput = document.createElement('input');
+    seedInput.type = 'text';
+    seedInput.id = 'sf-sandbox-lab-seed';
+    seedInput.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[4].label);
+    seedInput.inputMode = 'numeric';
+    seedInput.autocomplete = 'off';
+    seedInput.spellcheck = false;
+    seedInput.value = '1';
+    const rollBtn = el('button', 'sf-btn', COMBAT_LAB_SURFACE.rollLabel);
+    rollBtn.type = 'button';
+    rollBtn.setAttribute('aria-label', COMBAT_LAB_SURFACE.rollLabel + ' seed');
+    seedRow.appendChild(seedInput);
+    seedRow.appendChild(rollBtn);
+    labForm.appendChild(seedLabel);
+    labForm.appendChild(seedRow);
+
+    const waveLabel = el('label', null, COMBAT_LAB_SURFACE.fields[5].label);
+    waveLabel.htmlFor = 'sf-sandbox-lab-wave';
+    const waveInput = document.createElement('input');
+    waveInput.type = 'number';
+    waveInput.id = 'sf-sandbox-lab-wave';
+    waveInput.setAttribute('aria-label', COMBAT_LAB_SURFACE.fields[5].label);
+    waveInput.min = '1';
+    waveInput.step = '1';
+    waveInput.value = '1';
+    labForm.appendChild(waveLabel);
+    labForm.appendChild(waveInput);
+
+    enhanceSelects(labForm);
+    const hullWidget = labForm.querySelector('#sf-sandbox-lab-hull');
+    const starterWidget = labForm.querySelector('#sf-sandbox-lab-starter');
+    const enemyWidget = labForm.querySelector('#sf-sandbox-lab-enemy');
+    const arenaWidget = labForm.querySelector('#sf-sandbox-lab-arena');
+
+    const statusRow = el('div', 'sf-sandbox-lab-status');
+    statusRow.setAttribute('role', 'status');
+    statusRow.setAttribute('aria-live', 'polite');
+    let statusChip = chip('Ready', { tone: 'good', dot: true });
+    const issueLine = el('span', 'sf-sandbox-lab-issues', '');
+    statusRow.appendChild(statusChip);
+    statusRow.appendChild(issueLine);
+    labForm.appendChild(statusRow);
+
+    const digestLine = el('div', 'sf-sandbox-lab-digest', '');
+    digestLine.setAttribute('aria-label', 'Combat Lab setup summary');
+    labForm.appendChild(digestLine);
+
+    const labActions = el('div', 'sf-sandbox-lab-actions');
+    const labLaunch = el('button', 'sf-btn sf-btn--primary', COMBAT_LAB_SURFACE.launchLabel);
+    labLaunch.type = 'button';
+    const labRelaunch = el('button', 'sf-btn', COMBAT_LAB_SURFACE.relaunchLabel);
+    labRelaunch.type = 'button';
+    labRelaunch.disabled = !lastCombatLabSetup;
+    labActions.appendChild(labLaunch);
+    labActions.appendChild(labRelaunch);
+    labForm.appendChild(labActions);
+    // Dispose a previous mount before re-mounting: the screen can be rebuilt without an onHide,
+    // and the controls hold bus listeners that would otherwise survive with a detached DOM node.
+    if (sandboxScreen._labControls && typeof sandboxScreen._labControls.dispose === 'function') {
+      sandboxScreen._labControls.dispose();
+    }
+    sandboxScreen._labControls = mountCrucibleLabControls(ctx, labForm);
+
+    labPanel.appendChild(labForm);
+    if (typeof sandboxScreen._telemetryDispose === 'function') {
+      sandboxScreen._telemetryDispose();
+      sandboxScreen._telemetryDispose = null;
+    }
+    sandboxScreen._telemetryDispose = mountCrucibleLabTelemetry(ctx, labPanel);
+    rootEl.appendChild(labPanel);
+
+    function readLabValues() {
+      return {
+        hullId: String((hullWidget && hullWidget.value) || ''),
+        starterPackageId: String((starterWidget && starterWidget.value) || ''),
+        enemyPackageId: String((enemyWidget && enemyWidget.value) || ''),
+        arenaId: String((arenaWidget && arenaWidget.value) || ''),
+        seed: String(seedInput.value || ''),
+        wave: String(waveInput.value || ''),
+      };
+    }
+
+    function setHullOffer(starterId, currentHullId) {
+      const hulls = combatLabHullsForStarter(starterId);
+      const nextId = combatLabResolveHullId(starterId, currentHullId);
+      if (hullWidget && typeof hullWidget.sfSetOptions === 'function') {
+        hullWidget.sfSetOptions(hulls.map((hull) => ({ value: hull.id, label: hull.label })), nextId);
+        return;
+      }
+      if (!hullWidget) return;
+      hullWidget.textContent = '';
+      fillSelect(hullWidget, hulls, nextId);
+    }
+
+    function refreshLabSurface() {
+      const result = readCombatLabForm(readLabValues());
+      const nextChip = chip(result.ok ? 'Ready' : 'Invalid', {
+        tone: result.ok ? 'good' : 'danger',
+        dot: true,
+      });
+      statusChip.replaceWith(nextChip);
+      statusChip = nextChip;
+      issueLine.textContent = result.ok ? '' : formatCombatLabIssuePaths(result.issues);
+      digestLine.textContent = result.ok ? formatCombatLabDigest(result.value) : 'Setup invalid';
+      labLaunch.disabled = !result.ok;
+      return result;
+    }
+
+    rollBtn.addEventListener('click', () => {
+      seedInput.value = String(rollCombatLabSeed(() => 1 + Math.floor(Math.random() * COMBAT_LAB_SEED_MAX)));
+      refreshLabSurface();
+    });
+
+    let lastStarterId = String((starterWidget && starterWidget.value) || '');
+    labForm.addEventListener('change', () => {
+      const starterId = String((starterWidget && starterWidget.value) || '');
+      if (starterId !== lastStarterId) {
+        const currentHull = String((hullWidget && hullWidget.value) || '');
+        lastStarterId = starterId;
+        setHullOffer(starterId, currentHull);
+      }
+      refreshLabSurface();
+    });
+    seedInput.addEventListener('input', () => { refreshLabSurface(); });
+    waveInput.addEventListener('input', () => { refreshLabSurface(); });
+
+    labLaunch.addEventListener('click', () => {
+      const result = refreshLabSurface();
+      lastCombatLabSetup = nextCombatLabStoredSetup(lastCombatLabSetup, result);
+      if (!result.ok || !result.value) return;
+      labRelaunch.disabled = false;
+      emitCombatLabLaunch(ctx.bus, lastCombatLabSetup);
+    });
+
+    labRelaunch.addEventListener('click', () => {
+      emitCombatLabLaunch(ctx.bus, lastCombatLabSetup);
+    });
+
+    refreshLabSurface();
 
     // --- Fine-tune panel ---
     rootEl.appendChild(el('div', 'sf-section-h', 'FINE-TUNE (applies on launch)'));
@@ -389,8 +722,18 @@ export const sandboxScreen = {
     if (sandboxScreen._liveHintEl) {
       sandboxScreen._liveHintEl.style.display = inGame ? 'none' : '';
     }
+    const telemetry = sandboxScreen._telemetryDispose;
+    if (telemetry && typeof telemetry.resume === 'function') telemetry.resume();
   },
-  onHide() {},
+  onHide() {
+    if (typeof sandboxScreen._telemetryDispose === 'function') {
+      sandboxScreen._telemetryDispose();
+    }
+    if (sandboxScreen._labControls && typeof sandboxScreen._labControls.dispose === 'function') {
+      sandboxScreen._labControls.dispose();
+      sandboxScreen._labControls = null;
+    }
+  },
   refresh() {},
 };
 
