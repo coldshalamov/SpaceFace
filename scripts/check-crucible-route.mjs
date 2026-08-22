@@ -151,6 +151,13 @@ async function main() {
   record('MENU', menuButtons.includes('Crucible'), `main menu offers: ${menuButtons.join(' / ')}`);
 
   // ── DOOR ────────────────────────────────────────────────────────────────────────────────────
+  // Menu buttons stay disabled until their screen module finishes its dynamic import (the same
+  // pattern New Game uses). Wait for it rather than racing it.
+  await page.waitForFunction(() => {
+    const b = [...document.querySelectorAll('#screens button')]
+      .find((x) => x.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
+    return !!b && !b.disabled;
+  }, null, { timeout: 30000 });
   if (!(await clickButton(page, 'Crucible'))) throw new Error('Crucible button did not click');
   await page.waitForTimeout(400);
   const door = await page.evaluate(() => ({
