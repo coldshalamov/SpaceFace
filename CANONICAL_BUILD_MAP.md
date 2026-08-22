@@ -75,6 +75,10 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   design or build anything.** The grammar is binding; per-screen specs live beside it in
   [`design/frontend/`](./design/frontend/README.md). Frontend work that skips it is the documented
   cause of "cheap and uninspired" output.
+- **Crucible / Survival mode / Combat Lab / arcade combat / wave mode / attack modifiers / arenas** → §12 below and
+  [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md).
+  Dispatch `node scripts/program-dispatch.mjs --id PQ-133`. Leaves run `.00 → .04` strictly. The arcade
+  structural VFX pool is `PQ-134` (§13). This is not PQ-050, not PQ-129, and not the Physics-as-Spectacle gates.
 - `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
   plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
   flyable-ship remaster.
@@ -1508,3 +1512,113 @@ PHASE 3: POLISH, DIPLOMACY & CI
 2. **J05 & J06–J08 deliver the immediate high-visibility flight upgrade**: eliminating emojis, de-boxing the HUD, and establishing combat glancability.
 3. **J09–J13 reveal the deep simulation**: surfacing ship handling, crime history, gauntlet drills, economic flows, and playstyle fits.
 4. **J14–J16 finish sensory feedback, diplomacy, and automated regression safety**.
+
+## 12. Crucible — Survival, Combat Lab, and arcade-physics convergence (`PQ-133`)
+
+**Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
+(6,900 lines; §30 is the phase roadmap, §31 the 69 provisional packets `CRU-000`–`CRU-068`, Appendix A
+the schemas, Appendix E the owner map, Appendix F the open product decisions with recommendations).
+**Admitted 2026-08-21 as `PQ-133`.** Packet: [`design/program/roadmap/active/PQ-133.md`](./design/program/roadmap/active/PQ-133.md).
+Dispatch: `node scripts/program-dispatch.mjs --id PQ-133`.
+
+The thesis in one line: *Crucible discovers what is fun. Adventure makes it matter. Combat Lab explains why
+it worked or failed.* The central move is a **shared attack algebra** (emitter · trajectory · propagation ·
+payload · trigger · constraint) so one Pulse Laser can become a bank shot, a chain primer, a returning
+cutter, or a clean gun without a bespoke code path for each.
+
+**Binding architecture rulings from the plan (§27), restated because every leaf below depends on them:**
+
+- `state.mode` stays `'flight'`. Survival is an **orthogonal** `state.run` envelope (`kind:'survival'`),
+  never a mode value that stops flight systems updating.
+- A run starts from **fresh ephemeral state through the real New Game path**. It never mutates the live
+  Adventure save, shares campaign credits, shares inventory by reference, or writes run modifiers into
+  persistent fittings. `A.8` campaign-contamination test is mandatory from Phase 2 onward.
+- Phases are **explicit and validated** (`inactive → loadout → arena_intro → wave_intro → active →
+  cleanup → draft → … → refit → … → victory | ended`). No UI infers phase from whether enemies exist.
+- The wave planner is a **pure function** (`planWave({seed, arenaId, wave, act, difficulty, mutators,
+  buildSummary})` → intent). Runtime owners materialize it through `spawnBudget` and the canonical
+  materializer. No cap bypass; `DEFAULT_MAX = 24`, `HARD_MAX = 40` are re-audited, not overridden.
+- Attack modifiers compile into an **immutable `AttackSpec`** with lineage (root/descendant, generation,
+  visited targets) and a **shared proc budget**. Containment invariants (§9.7) are tests, not prose.
+- Crucible **consumes** Physics-as-Spectacle (contact provenance, kill receipts, priority-aware VFX) and
+  never closes that program's gates by using its code.
+- One game path: Browser, Electron, Sandbox, Crucible and the deterministic Lab share registry, input,
+  data, physics, combat, rendering, settings, assets. Wrappers select setup and rules; they never fork.
+
+### 12.1 Phases → dispatch leaves
+
+| Leaf | Plan phase | Player outcome | Exit gate (verbatim from §30) | `CRU` packets absorbed |
+|---|---|---|---|---|
+| `PQ-133.00` | **0 · Assimilation + seam audit** | Plan registered; seam map names exact owners, files, reusable code, missing seams, tests, perf limits, first packet | Seam map exists and the first two packets are shaped against live code | CRU-000, CRU-001 |
+| `PQ-133.01` | **1 · Combat Lab extension** | Launch a real-path combat setup with chosen hull, weapons, physics loadout, enemy package, seed, arena prototype; same-seed restart; speed/debug toggles; telemetry overlay; build-code v0; one deterministic physics-swarm scenario | Same build+seed launches repeatedly in Browser and Electron and the deterministic scenario agrees | CRU-002 … CRU-008 |
+| `PQ-133.02` | **2 · Ten-wave shell** | Complete replayable ten-wave run with existing weapons/enemies/fields/pickups and one greybox arena: run state, phases, pure wave planner, spawning through canonical materialization, run XP + Arena Credits, physical credit pickup, three-choice draft, wave-10 boss from an existing enemy, results screen, build code, contamination checks | Start → play → die or win → results → restart same seed; Adventure state unchanged | CRU-009 … CRU-018 |
+| `PQ-133.03` | **3 · AttackSpec compiler + lineage** | Existing projectile weapons accept bounded deterministic topology modifiers: trait schema, compiler, lineage, shared proc budget, child inheritance, multishot/pierce/split, owner-seam metrics, Lab inspector | Pulse Laser + one projectile weapon produce ≥3 distinct legal compiled forms with repeatable metrics and bounded descendants | CRU-019 … CRU-024 |
+| `PQ-133.04` | **4 · Surface receipt + Ricochet Foundry slice** | Authoritative surface-contact receipt (point/normal/material/velocity), material compatibility, reflection through physics, Bank Shot + Smart Bank, greybox Foundry with moving shutters and a loose reflective plate, ten Foundry recipes, Mirrorjaw Foreman, causal VFX/audio, route + perf acceptance | Same Pulse Laser supports direct, bank, and smart-bank; all three finish the ten-wave block; bounce cause is visible and deterministic | CRU-025 … CRU-031 |
+| `PQ-133.05` | **5 · Chain, payload, bridge modifiers** | Deterministic chain selection; Ion Payload, Relay Arc, Gravity Tag, Incendiary Payload; bridge traits (bounce→chain, tether→payload, status→propagation); causal score tags; draft compatibility/exclusions; results causal distribution | ≥3 mature build identities viable in Foundry with measurably different causal distributions | CRU-032 … CRU-038 |
+| `PQ-133.06` | **6 · Orbit fields, Cryo Lock, reactions** | Bounded orbiting field nodes; Cryo Lock (momentum preserved, control authority reduced); Thermal Shock; Cryo Gyro Rack prototype; active-positioning requirement for orbit efficacy; grammar, Lab controls, perf metrics, one thermal pocket | Orbit builds require movement; Cryo preserves translational momentum; Thermal Shock is repeatable and understandable | CRU-039 … CRU-042 |
+| `PQ-133.07` | **7 · Thirty-wave Foundry** | Acts I–III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding, swarm AI tiering + spawn-scale profile, run HUD, refit/draft polish | Early identity, mid-run resistance, late spectacle, complete victory arc without HP inflation | CRU-043, CRU-049 … CRU-054 |
+| `PQ-133.08` | **8 · Lagrange Crucible + Cinder Sluice** | Gravity arena and current arena with their controllers, bosses, recipes, props; existing builds cross-tested | The strongest Foundry build is not automatically strongest in both, but stays intelligibly viable | CRU-044, CRU-045 |
+| `PQ-133.09` | **9 · Cryo Drift + Storm Lattice** | Thermal quadrants, coolant/heat props, conductivity graph, movable relays, Massline conduction, two bosses, act coverage, cross-arena tuning | All five arenas express distinct laws with the same combat owners and data grammar | CRU-046, CRU-047, CRU-048 |
+| `PQ-133.10` | **10 · Meta, challenges, endless** | Unlock catalog (possibility, not stats), local records, mutators, boss circuit, deterministic endless after wave 30, one-hull/one-weapon trials, run history, versioned build codes | Reasons to replay beyond score; a fresh account stays competitively viable | CRU-055, CRU-056, CRU-057 |
+| `PQ-133.11` | **11 · Adventure migration** | Proven traits mapped to modules/Rigs/variants/tech/salvage; arena laws as authored sites; enemy doctrines from wave roles; acquisition arcs; law/collateral | Adventure combat shows the same combinatorial grammar without run economy or random drafts | CRU-058, CRU-059, CRU-060 |
+| `PQ-133.12` | **12 · Content factory** | Schemas, validators, compatibility lint, preview tools, wave-recipe simulator, arena module library, localization-ready text, balance dashboards | A new legal modifier or wave recipe can be authored, validated, previewed and tested without editing the combat kernel | CRU-061, CRU-062 |
+| `PQ-133.13` | **13 · Community / network** | **Research only** — daily seeds, ghosts, leaderboards, co-op feasibility | Explicitly *not implied* by local completion; separate product decision | CRU-063 … CRU-068 |
+
+Order is `.00 → .01 → .02 → .03 → .04` strictly (the plan's §32.7 admission order), then `.05/.06` may
+run in parallel on disjoint files, `.07` after both, `.08/.09` in parallel after `.07`, `.10`–`.12`
+after `.09`. `.13` is deferred research and never blocks anything.
+
+### 12.2 Product decisions adopted (Appendix F recommendations, binding until the owner overrides)
+
+Umbrella **Crucible**, scored ruleset **Survival**, experiment surface **Combat Lab**, existing surface
+**Sandbox**. Direct main-menu entry, fiction later. Manual aim default; auto-fire only as accessibility.
+Full pause during drafts. Hull changes only at ten-wave refits. Physical collisions and arena hazards hurt
+enemies; ordinary enemy projectile friendly fire stays limited. No mid-run save in the first slices.
+Seeded offers and waves, deterministic build-code reproduction, a draftless control ruleset. Meta
+progression unlocks possibility, never permanent stats. Victory at wave 30; endless optional. No campaign
+material reward in v1. Five authored arenas before any generation. No architectural distortion for
+hypothetical network play.
+
+### 12.3 Anti-patterns that fail a leaf on sight (§33)
+
+Generic bullet-heaven drift (passive auras that clear screens), a second-game architecture (parallel
+combat registry, alternate physics), modifier soup (stat-only drafts), proc explosion (unbounded
+descendants), visual soup, HP inflation as difficulty, hard-counter director, physics as garnish (no
+causal participation) or as chaos (unreadable), campaign contamination, debug divergence (Lab path that
+is not the game path), harness treadmill (validation machinery instead of a better playable game),
+content-before-foundation, boss immunity theater.
+
+## 13. Arcade VFX foundation (`PQ-134`)
+
+The orphan branch `feat/arcade-vfx-foundation` (one commit, `20216c9c`) was pulled to master as
+`ce340812`: [`src/render/combat/arcadeStructuralFx.js`](./src/render/combat/arcadeStructuralFx.js) — a
+pooled, instanced structural-FX primitive set (**blades** 128, **broken arcs** 48, **shards** 64) with
+priority-aware slot admission, no camera-facing sprites, no radial alpha fields, no full shock rings. It
+has **zero consumers**. `PQ-134` wires it and becomes the VFX half of Crucible's causal grammar
+(`CRU-051`): family / generation / material / status must read under saturation.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `PQ-134.00` | File on master, lint/import green | **DONE `ce340812`** |
+| `PQ-134.01` | `ArcadeStructuralFx` mounted in the presentation adapter behind `cueArbitration`; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat | Live combat shows the primitives at the chase camera; pool high-water stays ≤ capacity; `check:ui-effects` / VFX checks green; `check:playable` green |
+| `PQ-134.02` | Causal VFX/audio grammar (`CRU-051`): direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants | Four-way capture (Crucible wave 8, Foundry boss, Adventure fight, reduced-motion) reviewed at play size |
+
+## 14. Fleet orchestration law for the 2026-08-21 final run
+
+Who does what, recorded so a later session does not reinvent it.
+
+| Role | Surface | Invocation that works (verified 2026-08-21) |
+|---|---|---|
+| **Primary implementer** | `cursor-agent` with Grok 4.6 | `cursor-agent -p --force --trust --output-format text --model cursor-grok-4.6-xhigh --workspace <repo> "<packet>"` |
+| **Primary implementer (alt)** | `grok` CLI 1.0.4, grok-4.6 | `grok --model grok-4.6 --reasoning-effort xhigh --prompt-file <packet.md> --output-format plain --max-turns N --no-plan --no-memory --disable-web-search --permission-mode auto --cwd <repo>` |
+| **Reviewer / auditor** | `codex` 0.148.0 npm build, GPT-5.6 Sol xhigh | `C:\Users\93rob\AppData\Roaming\npm\codex.cmd exec --ignore-user-config -m gpt-5.6-sol -c 'model_reasoning_effort="xhigh"' -s read-only -C <repo> - < packet.md` (the app-managed 0.130 build on PATH is too old; `-s workspace-write` for audits that write one file) |
+| **Frontend implementer** | `opencode` 1.18.18, GLM 5.3 Max (Z.ai coding plan) | `opencode run --dir <repo> --model zai-coding-plan/glm-5.3 --variant max --format json "<packet>"` — **GLM has no vision**; never accept its visual output on mechanical checks |
+| **Frontend visual reviewer** | `opencode` Kimi K3 xhigh (clinepass); `kimi` CLI k3-256k for small reviews | `opencode run --dir <repo> --model cline-pass/cline-pass/kimi-k3 --variant xhigh --format json "<packet>"`. Slow, silent first token; never kill on stdout silence |
+| **Fallback for frontend when every lane is out of quota** | Claude Opus 5 subagents | Agent tool, `model: opus` |
+| **Lane orchestrators** | Claude Opus 5 subagents | One per lane; they dispatch the CLIs above, diff-gate, and report. They are given exact file partitions and NO-GO lists |
+| **Master orchestrator + final reviewer** | Claude Fable 5 (this session) | Judges every deliverable beside real evidence; never accepts prose as proof |
+
+Rules: usage renews every five hours — a lane that dies on quota is retried a few tasks later, not
+abandoned. Implementers and reviewers are always different models. Every lane partitions writes by
+**file**; two agents never hold the same file. Every leaf commits immediately after review, scoped to
+its exact paths. `npm run check:playable` is run before any "done".

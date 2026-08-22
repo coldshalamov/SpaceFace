@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-20",
+  "updatedAt": "2026-08-21",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2519,6 +2519,83 @@
         "golden-telemetry-unchanged-or-rebased"
       ],
       "brief": "The strata generator in src/systems/drill.js rolls every cell's material independently, so a fresh rock is confetti: 189 seam bodies with the biggest at 3 cells (measured 2026-08-21), and at the site register the whole body reads as scatter. The four-laws game (mine-once/farm-forever, feed through faces, geology is the tech tree, tunnels are streets) needs real geology: contiguous veins with a grain, strata bands by depth, gas pockets as sealed bodies of 2-6 cells, ice lenses, a rare exotic core, and plain matrix as the majority. Design the generator as a seeded multi-octave field with anisotropic vein growth (random walks with branching), depth-banded strata, and pocket placement with sealed margins; keep per-asteroid family identity; expose formations through the already-wired asteroidFormationModel; preserve or explicitly rebase the 47a golden telemetry; tune so a 28x45 field has roughly 6-12 metal seams of 4-14 cells, 3-6 gas pockets, 1-3 exotic bodies deep, basalt bands, and matrix everywhere else. Presentation needs no change: seam outlines, counts and split previews already read bodies. Admit as a packet when PQ-131 .00-.01 are on master; do not start from this row."
+    },
+    {
+      "id": "PQ-133",
+      "priority": 55,
+      "title": "Crucible: Survival mode, Combat Lab, and the shared attack algebra",
+      "state": "ready",
+      "canonical": [
+        "CRUCIBLE-SURVIVAL"
+      ],
+      "aliases": [
+        "SURVIVAL-MODE",
+        "COMBAT-LAB",
+        "ATTACK-ALGEBRA",
+        "CRU"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-run-state",
+        "attack-compiler",
+        "sandbox-launch-schema"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md",
+        "design/PHYSICAL_PLAY_GRAMMAR.md",
+        "design/PHYSICAL_PLAY_BUILD_PLAN.md",
+        "design/program/roadmap/active/PQ-133.md",
+        "design/program/roadmap/active/PQ-133_SEAM_AUDIT.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:save-schema",
+        "npm run check:combat",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "deterministic-lab-scenario",
+        "same-seed-restart",
+        "campaign-contamination-test",
+        "playable"
+      ],
+      "brief": "Admitted 2026-08-21 from the 6,900-line master plan. A concentrated combat proving ground (Crucible) with a scored thirty-wave Survival ruleset, a Combat Lab built on the existing Sandbox, and a shared attack algebra (emitter/trajectory/propagation/payload/trigger/constraint) compiled into immutable AttackSpecs with lineage and a shared proc budget. state.mode stays flight; state.run is orthogonal; a run starts from fresh state through the real New Game path and never touches the Adventure save. Leaves .00-.13 are the plan phases in order; .00-.04 are strictly sequential. See CANONICAL_BUILD_MAP.md section 12."
+    },
+    {
+      "id": "PQ-134",
+      "priority": 56,
+      "title": "Arcade structural VFX pool wired into the causal presentation grammar",
+      "state": "ready",
+      "canonical": [
+        "ARCADE-STRUCTURAL-VFX"
+      ],
+      "aliases": [
+        "ARCADE-VFX-FOUNDATION",
+        "CRU-051"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "arcade-structural-fx"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "src/render/combat/arcadeStructuralFx.js",
+        "design/program/roadmap/active/PQ-134.md",
+        "design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable"
+      ],
+      "evidence": [
+        "pool-high-water-under-capacity",
+        "four-way-capture-at-play-size",
+        "playable"
+      ],
+      "brief": "The orphan branch feat/arcade-vfx-foundation (20216c9c) was pulled to master as ce340812: a pooled instanced structural-FX primitive set (blades 128, broken arcs 48, shards 64) with priority-aware slot admission and zero consumers. Wire it behind cueArbitration for kill, hard-collision, and bank-shot cues, then grow it into the causal VFX/audio grammar Crucible needs (family/generation/material/status legible under saturation). See CANONICAL_BUILD_MAP.md section 13."
     }
   ],
   "dispatchUnits": [
@@ -7916,7 +7993,14 @@
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/assetLoader.js","src/render/partsLibrary.js","tools/blender/spaceface_works_camera.py","tools/blender/chase_visible_faces.py","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/assetLoader.js",
+        "src/render/partsLibrary.js",
+        "tools/blender/spaceface_works_camera.py",
+        "tools/blender/chase_visible_faces.py",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -7932,11 +8016,19 @@
       "title": "Rover: the hero, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -7952,11 +8044,19 @@
       "title": "Massline Core, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -7972,11 +8072,19 @@
       "title": "Extractor, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -7992,11 +8100,19 @@
       "title": "Refinery, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8012,11 +8128,19 @@
       "title": "Surface derrick / head-frame, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8032,11 +8156,19 @@
       "title": "Conduit kit: cable + lane, modular, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8052,11 +8184,19 @@
       "title": "Gas tap, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8072,11 +8212,19 @@
       "title": "Fabricator, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8092,11 +8240,19 @@
       "title": "Cargo port + crates + courier pod, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8112,11 +8268,19 @@
       "title": "Inclusion kit: ore, exotic, ice, gas, scars, lock plate, authored",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": ["PQ-131.00"],
+      "dependsOn": [
+        "PQ-131.00"
+      ],
       "mutexes": [
         "asteroid-works-art"
       ],
-      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "assets/incubator/asteroid_works_kit",
+        "assets/ships/release/release_manifest.json",
+        "scripts/capture-asteroid-works.mjs"
+      ],
       "checks": [
         "npm run check:asteroid-theater",
         "npm run check:playable",
@@ -8124,6 +8288,459 @@
       ],
       "receiptRefs": [],
       "brief": "Inventory row .10: replaces the low-poly crystal clusters - ore cluster variants per family (silver, gold, iron, nickel), exotic lattice variants, an ice sheen plate, a gas crack decal set, the vented scar, the MK lock plate - authored, lit, occupying a real part of a cell, <=0.7 cell, one instanced mesh per variant, 1-3k each on a shared 2048^2 atlas. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural inclusion builders."
+    },
+    {
+      "id": "PQ-133.00",
+      "parentId": "PQ-133",
+      "priority": 366,
+      "title": "Assimilation + seam audit",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md",
+        "design/program/roadmap/active/PQ-133.md",
+        "design/program/roadmap/active/PQ-133_SEAM_AUDIT.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/PLAN_REGISTRY.md",
+        "design/program/PROGRAM_MAP.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Plan moved to design/vision, registry/program-map/build-map rows, queue admission, and a seam map (PQ-133_SEAM_AUDIT.md) naming exact owners, files, reusable code, missing seams, tests, performance limits, and the shape of the first two packets."
+    },
+    {
+      "id": "PQ-133.01",
+      "parentId": "PQ-133",
+      "priority": 367,
+      "title": "Combat Lab extension (Phase 1)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.00"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/ui/sandbox/sandboxSetup.js",
+        "src/systems/survivalRun.js",
+        "src/data/combatLab.js",
+        "src/ui/screens/combatLab.js",
+        "src/testing/lab/scenarios/",
+        "scripts/check-crucible-lab.mjs"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:save-schema",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Extend the existing Sandbox on the real New Game path: orthogonal state.run contract (CRU-002), Combat Lab setup schema for hull/loadout/enemy package/arena/seed/wave (CRU-003), setup UI and same-seed restart (CRU-004), runtime controls pause/step/speed/refill/invuln (CRU-005), telemetry overlay v1 (CRU-006), build code v0 (CRU-007), one deterministic physics-swarm lab scenario (CRU-008). No scored run, no drafts, no modifiers, no new weapons."
+    },
+    {
+      "id": "PQ-133.02",
+      "parentId": "PQ-133",
+      "priority": 368,
+      "title": "Ten-wave shell (Phase 2)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.01"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/data/survivalWaves.js",
+        "src/data/runModifiers.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/ui/screens/crucibleResults.js",
+        "src/ui/screens/crucibleDraft.js",
+        "scripts/check-crucible-run.mjs"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:save-schema",
+        "npm run check:combat",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Complete replayable ten-wave run with existing weapons, enemies, fields, pickups and one greybox arena: pure wave schema + planner (CRU-009/010), survivalRun phase machine (CRU-011), spawn materialization bridge through spawnBudget (CRU-012), completion/cleanup (CRU-013), run wallet + XP (CRU-014), physical credit pickup + sweep (CRU-015), seeded three-choice draft v0 (CRU-016), refit transaction through canonical fit APIs (CRU-017), results + causal death summary + same-seed restart (CRU-018). Campaign-contamination test A.8 is mandatory."
+    },
+    {
+      "id": "PQ-133.03",
+      "parentId": "PQ-133",
+      "priority": 369,
+      "title": "AttackSpec compiler + lineage kernel (Phase 3)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.02"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/data/attackTraits.js",
+        "src/combat/attackCompiler.js",
+        "src/combat/attackLineage.js",
+        "src/combat/attackPropagation.js",
+        "src/combat/attackTargeting.js",
+        "scripts/check-attack-compiler.mjs"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:combat",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Attack trait schema (CRU-019), compiler base weapon + fitting + run modifiers into immutable AttackSpec with stable digest (CRU-020), lineage root/descendant/generation/visited/shared proc budget (CRU-021), multishot (CRU-022), pierce (CRU-023), split (CRU-024), owner-seam metrics and Lab inspector, focused deterministic tests. No surface bounce, no orbit nodes, no conductivity graph."
+    },
+    {
+      "id": "PQ-133.04",
+      "parentId": "PQ-133",
+      "priority": 370,
+      "title": "Surface receipt + Ricochet Foundry vertical slice (Phase 4)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.03"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/core/physicsAuthority.js",
+        "src/systems/arenas/ricochetFoundry.js",
+        "src/data/survivalArenas.js",
+        "src/data/survivalWaves.js",
+        "src/combat/attackPropagation.js",
+        "src/data/enemies.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:combat",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Physics surface-contact receipt with point/normal/material/velocity (CRU-025), ricochet continuation through physics with bounded energy and enemy asymmetry (CRU-026), Smart Bank (CRU-027), Foundry greybox geometry/plates/furnace/gates/camera (CRU-028), moving shutters + loose reflective plate (CRU-029), ten Foundry wave recipes (CRU-030), Mirrorjaw Foreman boss (CRU-031), causal VFX/audio hooks, route + performance acceptance."
+    },
+    {
+      "id": "PQ-133.05",
+      "parentId": "PQ-133",
+      "priority": 371,
+      "title": "Chain, payload, and bridge modifiers (Phase 5)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.04"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/combat/attackTargeting.js",
+        "src/combat/attackPropagation.js",
+        "src/data/runModifiers.js",
+        "src/systems/survivalStyle.js",
+        "src/systems/survivalDraft.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:combat",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Deterministic chain selector (CRU-032), Ion Payload + Relay Arc (CRU-033), Gravity Tag bridge (CRU-034), Incendiary bridge (CRU-035), causal style ledger (CRU-036), draft quality planner (CRU-037), one build evolution (CRU-038)."
+    },
+    {
+      "id": "PQ-133.06",
+      "parentId": "PQ-133",
+      "priority": 372,
+      "title": "Orbit fields, Cryo Lock, and reaction play (Phase 6)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.04"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/combat/orbitNodes.js",
+        "src/combat/statuses.js",
+        "src/data/combatDefs.js",
+        "src/data/weapons.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:combat",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Orbit field node kernel (CRU-039), Cryo Lock status (CRU-040), Thermal Shock reaction (CRU-041), Cryo Gyro Rack prototype (CRU-042), Lab controls and perf metrics, one thermal pocket."
+    },
+    {
+      "id": "PQ-133.07",
+      "parentId": "PQ-133",
+      "priority": 373,
+      "title": "Thirty-wave Foundry run (Phase 7)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.05",
+        "PQ-133.06"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/systems/survivalRun.js",
+        "src/data/survivalWaves.js",
+        "src/ui/hud.js",
+        "src/ui/screens/crucibleHud.js",
+        "src/systems/swarmAi.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:combat",
+        "npm run check:perf",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Acts I-III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding (CRU-043), swarm AI tiering (CRU-049), spawn-scale profile (CRU-050), run HUD (CRU-052), refit/draft polish (CRU-053), run history (CRU-054)."
+    },
+    {
+      "id": "PQ-133.08",
+      "parentId": "PQ-133",
+      "priority": 374,
+      "title": "Lagrange Crucible + Cinder Sluice (Phase 8)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.07"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/systems/arenas/lagrangeCrucible.js",
+        "src/systems/arenas/cinderSluice.js",
+        "src/data/survivalArenas.js",
+        "src/data/survivalWaves.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Gravity arena with pull/repel/tide/pulse states, pylons and Tidal Engine Carrier (CRU-044); current arena with warn/surge/calm, ballast, shutters and Chain Tug (CRU-045)."
+    },
+    {
+      "id": "PQ-133.09",
+      "parentId": "PQ-133",
+      "priority": 375,
+      "title": "Cryo Drift + Storm Lattice (Phase 9)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.07"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/systems/arenas/cryoDrift.js",
+        "src/systems/arenas/stormLattice.js",
+        "src/combat/conductivityGraph.js",
+        "src/data/survivalArenas.js",
+        "src/data/survivalWaves.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Thermal quadrants and coolant props with Manifold Warden (CRU-046); bounded conductivity graph (CRU-047); movable relay network with Grid Tyrant (CRU-048); cross-arena tuning."
+    },
+    {
+      "id": "PQ-133.10",
+      "parentId": "PQ-133",
+      "priority": 376,
+      "title": "Meta progression, challenges, endless (Phase 10)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.08",
+        "PQ-133.09"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/data/runUnlocks.js",
+        "src/systems/survivalMeta.js",
+        "src/data/survivalWaves.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:save-schema",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Unlock catalog of possibility not stats (CRU-055), deterministic endless recipe (CRU-056), challenge rulesets (CRU-057), local records, versioned build codes."
+    },
+    {
+      "id": "PQ-133.11",
+      "parentId": "PQ-133",
+      "priority": 377,
+      "title": "Adventure migration (Phase 11)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.10"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/data/techTree.js",
+        "src/systems/encounterDirector.js"
+      ],
+      "checks": [
+        "npm run check:sim",
+        "npm run check:save-schema",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Proven traits to modules/Rigs/variants/tech/salvage (CRU-058), arena laws as authored world sites (CRU-059), enemy doctrine transfer (CRU-060). No run-modifier leakage into persistence."
+    },
+    {
+      "id": "PQ-133.12",
+      "parentId": "PQ-133",
+      "priority": 378,
+      "title": "Content factory and authoring tools (Phase 12)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-133.10"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "scripts/check-crucible-content.mjs",
+        "scripts/crucible-wave-sim.mjs",
+        "src/data/survivalSchemas.js"
+      ],
+      "checks": [
+        "node scripts/check-crucible-content.mjs",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Schemas and validators (CRU-061), arena recipe toolkit (CRU-062), wave recipe simulator, compatibility lint, localization-ready text."
+    },
+    {
+      "id": "PQ-133.13",
+      "parentId": "PQ-133",
+      "priority": 379,
+      "title": "Community and network research (Phase 13)",
+      "kind": "implementation",
+      "state": "deferred",
+      "dependsOn": [
+        "PQ-133.12"
+      ],
+      "mutexes": [
+        "crucible-run-state"
+      ],
+      "paths": [
+        "design/vision/CRUCIBLE_NETWORK_RESEARCH.md"
+      ],
+      "checks": [],
+      "receiptRefs": [],
+      "brief": "Research-only: daily seed (CRU-063), leaderboard threat model (CRU-064), run suspend (CRU-065), modding boundary (CRU-066), ghost/replay (CRU-067), co-op feasibility (CRU-068). Produces documents, not code."
+    },
+    {
+      "id": "PQ-134.00",
+      "parentId": "PQ-134",
+      "priority": 380,
+      "title": "Pull feat/arcade-vfx-foundation to master",
+      "kind": "implementation",
+      "state": "implemented",
+      "dependsOn": [],
+      "mutexes": [
+        "arcade-structural-fx"
+      ],
+      "paths": [
+        "src/render/combat/arcadeStructuralFx.js"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "One commit, one new file src/render/combat/arcadeStructuralFx.js. Cherry-picked as ce340812."
+    },
+    {
+      "id": "PQ-134.01",
+      "parentId": "PQ-134",
+      "priority": 381,
+      "title": "Mount ArcadeStructuralFx behind cueArbitration",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-134.00"
+      ],
+      "mutexes": [
+        "arcade-structural-fx"
+      ],
+      "paths": [
+        "src/render/combat/arcadeStructuralFx.js",
+        "src/presentation/cueArbitration.js",
+        "src/presentation/presentationAdapter.js",
+        "src/render/vfx/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Instantiate the pool in the presentation adapter; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat; dispose on context loss; high-water telemetry."
+    },
+    {
+      "id": "PQ-134.02",
+      "parentId": "PQ-134",
+      "priority": 382,
+      "title": "Causal VFX/audio grammar (CRU-051)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-134.01",
+        "PQ-133.05"
+      ],
+      "mutexes": [
+        "arcade-structural-fx"
+      ],
+      "paths": [
+        "src/presentation/causalGrammar.js",
+        "src/render/combat/arcadeStructuralFx.js",
+        "src/audio/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants; four-way capture at play size."
     }
   ]
 }
