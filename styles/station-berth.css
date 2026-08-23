@@ -214,11 +214,21 @@
   min-height: 26px; padding: 0 10px;
   font-family: var(--sx-ui); font-size: var(--sxb-t-label); font-weight: 600;
   letter-spacing: .035em; white-space: nowrap;
-  color: var(--sxb-act-ink); background: var(--sxb-act);
-  border: 1px solid #c9812c; border-radius: 2px; cursor: pointer;
-  transition: background-color 140ms linear, box-shadow 140ms linear;
+  /* OUTLINED, NOT FILLED. A filled amber pill sat in the header of every station screen and was the
+     loudest object on all eight of them - two independent reviews named this same element, one
+     calling it "a persistent alarm worn as chrome" and the other "two orange shouts; the actual
+     contract reads third". Filled amber is the primary action's treatment and there should be one
+     of those per screen. These service verbs are real actions and stay amber and clickable, but as
+     an outlined chip they read as secondary, which is what they are. */
+  color: var(--sxb-act); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--sxb-act) 62%, transparent);
+  border-radius: 2px; cursor: pointer;
+  transition: background-color 140ms linear, box-shadow 140ms linear, color 140ms linear;
 }
-.sxb-vital__act:hover { background: var(--sxb-act-hi); box-shadow: 0 0 0 1px rgba(242,160,60,.34); }
+.sxb-vital__act:hover {
+  color: var(--sxb-act-ink); background: var(--sxb-act-hi);
+  box-shadow: 0 0 0 1px rgba(242,160,60,.34);
+}
 .sxb-vital__act:focus-visible { outline: 2px solid var(--sxb-act-hi); outline-offset: 2px; }
 .sxb-vital__act[aria-disabled="true"] { opacity: .42; cursor: default; }
 .sxb-vital__act--ghost {
