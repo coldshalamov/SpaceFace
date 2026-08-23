@@ -8523,7 +8523,9 @@
         "npm run check:perf",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "partial 2026-08-23 (e948066f): the SYSTEMS half landed - three acts over thirty waves, difficulty by COMPOSITION not spawn count (enemy-type swaps, extra bearings, tighter arrivals, room behaviour), peak still <= DEFAULT_MAX 24 and well under HARD_MAX 40, wave-20 plate-theft event latched to fire exactly once, seed-deterministic. Mutation-tested. STILL OPEN: the wave-30 boss HULL variant, build evolutions as authored content, the unlock surface and the results-history screen - all content/UI needing the GPU lane. State left `ready`: the leaf is not done."
+      ],
       "brief": "Acts I-III, wave-20 system event, wave-30 boss variant, refit cadence, build evolutions, difficulty composition, score/style, results history, unlock scaffolding (CRU-043), swarm AI tiering (CRU-049), spawn-scale profile (CRU-050), run HUD (CRU-052), refit/draft polish (CRU-053), run history (CRU-054)."
     },
     {
