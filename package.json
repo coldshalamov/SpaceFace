@@ -67,7 +67,7 @@
     "check:asteroid-works-render": "node --test test/asteroid-works-render.test.mjs",
     "check:crucible:arc": "node --test test/crucible-thirty-wave-arc.test.mjs test/crucible-survival-style.test.mjs",
     "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs",
-    "check:all": "node scripts/check-all.mjs",
+    "check:all": "node scripts/check-ci-report.mjs",
     "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs",
     "check:colour-tokens": "node scripts/check-colour-tokens.mjs",
     "check:type-floor": "node scripts/check-type-floor.mjs",
@@ -549,13 +549,16 @@
     "check:camera-shake-scope": "node scripts/check-camera-shake-scope.mjs",
     "check:brake-convergence": "node scripts/check-brake-convergence.mjs",
     "check:dock-key-exclusivity": "node scripts/check-dock-key-exclusivity.mjs",
-    "check:all": "node scripts/check-ci-report.mjs",
     "check:all:smoke": "node scripts/check-ci-report.mjs --smoke",
     "check:src-reachability": "node scripts/check-src-reachability.mjs",
     "check:perf-counters": "node --test test/perf-counters.test.mjs",
     "probe:shader-timeline": "node scripts/probe-shader-compile-timeline.mjs",
     "check:thruster:lookdev": "node scripts/check-thruster-lookdev.mjs",
-    "check:thruster:plasma-unit": "node --test test/plasma-stream-thruster.test.mjs"
+    "check:thruster:plasma-unit": "node --test test/plasma-stream-thruster.test.mjs",
+    "check:screens:overflow": "node scripts/probe-screen-overflow.mjs",
+    "check:station:overflow": "node scripts/probe-station-overflow.mjs",
+    "check:station:tabstate": "node scripts/probe-station-tab-state.mjs",
+    "check:frontend:live": "npm run check:screens:overflow && npm run check:station:overflow && npm run check:station:tabstate"
   },
   "private": true,
   "devDependencies": {

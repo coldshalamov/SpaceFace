@@ -172,6 +172,9 @@ try {
   console.log(`\nmeasured ${measured.length}/${results.length} screens  belowFold=${totBelow}  clipped=${totClip}  phantomHidden=${totPhantom}`);
   if (errors.length) console.log(`page errors: ${errors.length}\n  ${errors.slice(0, 3).join('\n  ')}`);
   console.log('wrote →', join(OUT, 'screen-overflow.json'));
+  // Unreachable content is a failure, not an observation. Without this the probe is a report nobody
+  // reads rather than a check anything has to obey.
+  if (totBelow || totClip || totPhantom) process.exitCode = 1;
 } catch (err) {
   console.error('probe-screen-overflow failed:', err && err.message ? err.message : err);
   process.exitCode = 1;

@@ -72,7 +72,24 @@ try {
       const t = root && (root.querySelector(`[data-nav="${id}"]`) || root.querySelector(`[data-tab="${id}"]`));
       if (t) t.click();
     }, tab);
-    await page.waitForTimeout(900); // let the fill transition settle; 450ms measured mid-fade
+    // Do not sleep and hope. A fixed wait measured mid-fade and produced phantom failures at 450ms,
+    // and still flaked at 900ms on a loaded machine — the OUTGOING tab's fill had not finished
+    // fading, so it briefly outscored the incoming one. Wait for every tile's fill to stop moving.
+    //
+    // The marker MUST be cleared after the click. A first version left it holding the previous
+    // tab's settled value, so the very first poll matched it, declared the paint settled, and read
+    // the state from BEFORE the click — which made the flake worse rather than better.
+    await page.evaluate(() => { window.__sfTabPaint = null; });
+    await page.waitForTimeout(350);
+    await page.waitForFunction(() => {
+      const root = document.querySelector('[data-screen="station"]');
+      if (!root) return false;
+      const now = [...root.querySelectorAll('[data-nav]')]
+        .map((el) => getComputedStyle(el).backgroundColor).join('|');
+      const settled = window.__sfTabPaint === now;
+      window.__sfTabPaint = now;
+      return settled;
+    }, null, { timeout: 8000, polling: 200 }).catch(() => {});
     const r = await page.evaluate((expected) => {
       const root = document.querySelector('[data-screen="station"]');
       const items = [...root.querySelectorAll('[data-nav]')];
@@ -166,19 +183,54 @@ try {
       return { expected, selectedIds: sel, filledLiars: liars, selectedButUnpainted: unpainted, read,
         activeBgRules: activeEl ? matchedBg(activeEl) : [], attentionBgRules: attnEl ? matchedBg(attnEl) : [],
         salienceById,
+        // RANKING IS NOT ENOUGH, and finding that out cost a wrong claim. The broken version put
+        // selection at 37.1 and attention at 31.4 — selection still ranked first, so a
+        // "selection is the most salient" rule passed on the very layout it was written to catch.
+        // What was actually wrong was the MARGIN: 1.18x is not a distinction the eye can use when
+        // the weaker fill is the more saturated hue. Require real separation.
+        activeSalience: sel.length === 1 ? salienceById[sel[0]] : null,
+        runnerUpSalience: sel.length === 1
+          ? Math.max(0, ...Object.entries(salienceById).filter(([id]) => id !== sel[0]).map(([, v]) => v))
+          : null,
         activeIsMostSalient: sel.length === 1 && Object.entries(salienceById)
-          .every(([id, v]) => id === sel[0] || v < salienceById[sel[0]]) };
+          .every(([id, v]) => id === sel[0] || v < salienceById[sel[0]]),
+        // The selected tab must wear the SELECTION colour. When the attention tab was also the
+        // selected tab it wore the attention colour instead, and no ranking rule could see it
+        // because that colour still outscored every quiet neighbour.
+        activeFill: activeEl ? getComputedStyle(activeEl).backgroundColor : null,
+        attentionFill: attnEl ? getComputedStyle(attnEl).backgroundColor : null,
+        activeIsAlsoAttention: !!(activeEl && attnEl && activeEl === attnEl) };
     }, tab);
     results.push(r);
-    const top = Object.entries(r.salienceById).sort((a, b) => b[1] - a[1]).slice(0, 2)
-      .map(([id, v]) => `${id}:${v}`).join('  ');
+    const margin = r.runnerUpSalience > 0 ? (r.activeSalience / r.runnerUpSalience) : Infinity;
+    r.margin = Number.isFinite(margin) ? +margin.toFixed(2) : null;
     console.log(`${tab.padEnd(10)} selected=[${r.selectedIds.join(',')}]  `
-      + `activeIsMostSalient=${r.activeIsMostSalient ? 'YES' : 'NO '}  top2 ${top}`);
+      + `salience ${r.activeSalience} vs ${r.runnerUpSalience}  margin ${r.margin === null ? 'inf' : r.margin + 'x'}`
+      + `${r.activeIsAlsoAttention ? '  (also the attention tab)' : ''}`);
   }
   writeFileSync(join(OUT, 'tab-state.json'), JSON.stringify(results, null, 2));
-  const lies = results.reduce((n, r) => n + r.selectedButUnpainted.length + (r.activeIsMostSalient ? 0 : 1), 0);
-  console.log(`\nTOTAL tab-state lies: ${lies}  (tabs where selection is unpainted, or is not the most salient fill)`);
-  if (lies) process.exitCode = 1;
+  // The selection fill, learned from a tab that is NOT the attention tab. The attention tab must
+  // wear that same fill when selected; before the fix it wore amber instead, and no ranking rule
+  // could see it because amber still outscored every quiet neighbour.
+  const plain = results.find((r) => r.activeFill && !r.activeIsAlsoAttention);
+  const selectionFill = plain ? plain.activeFill : null;
+  const MIN_MARGIN = 2;
+  const failures = [];
+  for (const r of results) {
+    for (const id of r.selectedButUnpainted) failures.push(`${r.expected}: ${id} is selected but unpainted`);
+    if (!r.activeIsMostSalient) failures.push(`${r.expected}: selection is not the most salient fill`);
+    else if (r.margin !== null && r.margin < MIN_MARGIN) {
+      failures.push(`${r.expected}: selection only ${r.margin}x the next fill (needs ${MIN_MARGIN}x)`
+        + ' — a margin the eye cannot use when the weaker fill is the more saturated hue');
+    }
+    if (selectionFill && r.activeFill && r.activeFill !== selectionFill) {
+      failures.push(`${r.expected}: selected tab wears ${r.activeFill}, not the selection fill ${selectionFill}`);
+    }
+  }
+  console.log(`\nselection fill ${selectionFill}   attention fill ${(results[0] || {}).attentionFill}`);
+  console.log(`TOTAL tab-state failures: ${failures.length}`);
+  for (const f of failures) console.log(`  - ${f}`);
+  if (failures.length) process.exitCode = 1;
   console.log('wrote →', join(OUT, 'tab-state.json'));
 } catch (err) {
   console.error('probe-station-tab-state failed:', err && err.message ? err.message : err);
