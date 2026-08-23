@@ -20,6 +20,9 @@ import {
   cryoLockControlScale,
   tickCryoLockedMotion,
 } from '../src/combat/cryoLock.js';
+import { CRYO_LOCK_STATUS_ID as CATALOG_CRYO_LOCK_STATUS_ID, STATUS_DEFS } from '../src/data/combatDefs.js';
+import { createCombatCatalog } from '../src/combat/runtime.js';
+import { validateCombatCatalog } from '../src/combat/validate.js';
 import {
   BURNING_STATUS_ID,
   resolveThermalShock,
@@ -28,8 +31,12 @@ import {
 } from '../src/combat/thermalShock.js';
 import {
   ORBIT_NODE_CAP,
+  ORBIT_NODE_TYPE,
   applyOrbitContacts,
+  countOrbitFields,
+  countOrbitNodes,
   createOrbitWorld,
+  listOrbitNodeIdentities,
   orbitEfficacy,
   orbitNodePose,
   stepOrbitWorld,
@@ -87,6 +94,14 @@ test('orbit nodes are bounded by the shared proc budget', () => {
   const first = trySpawnOrbitNodes(world, parent, spec, host, { tick: 10, simTime: 10 });
   assert.equal(first.spawned.length, 2);
   assert.equal(first.suppressed.length, 0);
+  assert.equal(countOrbitNodes(world), 2);
+  assert.equal(countOrbitFields(world.kernel), 2);
+  const identities = listOrbitNodeIdentities(world);
+  assert.equal(identities[0].type, ORBIT_NODE_TYPE);
+  assert.equal(identities[0].index, 0);
+  assert.equal(identities[1].index, 1);
+  assert.equal(identities[0].hostId, 'player');
+  assert.equal(world.kernel.list()[0].tag, ORBIT_NODE_TYPE);
   const metrics = lineageMetrics(parent);
   assert.equal(metrics.consumed, PROC_COSTS.orbitNode * 2);
   assert.equal(metrics.remaining, metrics.initial - PROC_COSTS.orbitNode * 2);
@@ -285,6 +300,19 @@ test('Thermal Shock pays the shared reaction proc and stops when it cannot', () 
   assert.equal(result.shocks.length, 1);
   assert.equal(result.suppressed.length, 1);
   assert.equal(result.shocks[0].targetId, 'a');
+});
+
+test('Cryo Lock is a real status in the combat catalog', () => {
+  assert.equal(CATALOG_CRYO_LOCK_STATUS_ID, CRYO_LOCK_STATUS_ID);
+  const def = STATUS_DEFS.find((row) => row.id === CRYO_LOCK_STATUS_ID);
+  assert.ok(def, 'the status catalog must know Cryo Lock exists');
+  assert.equal(def.durationTicks, 90);
+  assert.equal(def.stacking.maxStacks, 3);
+  assert.deepEqual(def.effects, {});
+  assert.equal(def.cueId, 'combat.status.cryo_lock');
+  const catalog = validateCombatCatalog(createCombatCatalog());
+  assert.equal(catalog.ok, true, JSON.stringify(catalog.errors));
+  assert.ok(createCombatCatalog().statuses.has(CRYO_LOCK_STATUS_ID));
 });
 
 test('untraited weapons and unfielded ships do nothing in the orbit kernel', () => {

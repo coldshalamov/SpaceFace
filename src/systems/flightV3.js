@@ -11,6 +11,11 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import {
+  cryoLockStickLive,
+  helmControlScaleFromCombat,
+  scaleHelmCommandForCryoLock,
+} from '../combat/cryoLock.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
@@ -295,14 +300,22 @@ export const flightV3 = {
       runtime,
       environment: resolveFlightEnvironment(entity, state),
     });
+    const cryoScale = helmControlScaleFromCombat(state, entity.id);
+    const helmCommand = cryoScale < 1
+      ? scaleHelmCommandForCryoLock(
+        { force: result.force, torque: result.torque, impulse: result.impulse },
+        cryoScale,
+        cryoLockStickLive(input),
+      )
+      : result;
     writePhysicsControl(entity, {
       source: isPlayer ? 'player-flight-v3' : 'npc-flight-v3',
       mode: input.assistMode,
-      force: result.force,
-      torque: result.torque,
+      force: helmCommand.force,
+      torque: helmCommand.torque,
       maxSpeed: result.maxSpeed,
     });
-    if (result.impulse) queuePhysicsImpulse(entity, result.impulse);
+    if (helmCommand.impulse) queuePhysicsImpulse(entity, helmCommand.impulse);
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
     entity.flags = entity.flags || {};
@@ -377,7 +390,8 @@ export const flightV3 = {
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
-    queuePhysicsImpulse(e, { x: cf * imp * mass, y: 0, z: sf * imp * mass });
+    const cryoScale = helmControlScaleFromCombat(state, e.id);
+    queuePhysicsImpulse(e, { x: cf * imp * mass * cryoScale, y: 0, z: sf * imp * mass * cryoScale });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     // The dash impulse is queued through physics authority above, so by the time the pure kernel

@@ -7,6 +7,7 @@ export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
 export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
 export const PINNED_STATUS_ID = 'status_pinned';
 export const UNMOORED_STATUS_ID = 'status_unmoored';
+export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';
 
 export const COMBAT_CUE_IDS = Object.freeze([
   'combat.action.dash.start', 'combat.action.dash.active', 'combat.action.dash.end',
@@ -25,6 +26,7 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
   'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
+  'combat.status.cryo_lock',
   'combat.attachment.created', 'combat.attachment.broken',
 ]);
 
@@ -181,6 +183,15 @@ export const STATUS_DEFS = Object.freeze([
       packet: { channels: { kinetic: 0, thermal: 4, ion: 0, plasma: 0, phase: 0 }, penetration: 0, heat: 1, statuses: [] },
     },
     cueId: 'combat.status.burning',
+  },
+  {
+    // PQ-133.06b Cryo Lock. Catalog identity only: duration and stacks. The helm reads
+    // stacks through cryoLockControlScale. This definition never writes velocity.
+    id: CRYO_LOCK_STATUS_ID, version: 1, tags: ['thermal', 'cryo', 'control'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 3 }, immunityTags: [],
+    effects: {},
+    interactions: [],
+    periodic: null, cueId: 'combat.status.cryo_lock',
   },
   {
     id: 'status_overheated', version: 1, tags: ['thermal'], durationTicks: 60,

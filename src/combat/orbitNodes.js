@@ -8,6 +8,7 @@ import { PROC_COSTS, trySpawnDescendant } from './attackLineage.js';
 import { selectTargets } from './attackTargeting.js';
 import { applyCryoLock, CRYO_LOCK_STATUS_ID } from './cryoLock.js';
 
+export const ORBIT_NODE_TYPE = 'orbit_node';
 export const ORBIT_NODE_CAP = 8;
 export const ORBIT_MIN_HOST_SPEED = 8;
 export const ORBIT_ALIGN_MIN = 0.5;
@@ -36,6 +37,58 @@ export function createOrbitWorld(options = {}) {
     cap,
     contacts: [],
   };
+}
+
+export function countOrbitNodes(world) {
+  if (!world || !Array.isArray(world.nodes)) return 0;
+  let n = 0;
+  for (let i = 0; i < world.nodes.length; i++) {
+    if (world.nodes[i] && world.nodes[i].type === ORBIT_NODE_TYPE) n++;
+  }
+  return n;
+}
+
+export function countOrbitFields(kernel) {
+  if (!kernel || typeof kernel.list !== 'function') return 0;
+  const list = kernel.list();
+  let n = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] && list[i].tag === ORBIT_NODE_TYPE) n++;
+  }
+  return n;
+}
+
+export function removeOrbitNodesForHost(world, hostId) {
+  if (!world || !Array.isArray(world.nodes) || hostId == null) return 0;
+  let removed = 0;
+  const keep = [];
+  for (let i = 0; i < world.nodes.length; i++) {
+    const node = world.nodes[i];
+    if (node && node.hostId === hostId) {
+      if (world.kernel && typeof world.kernel.unregister === 'function') world.kernel.unregister(node.id);
+      removed += 1;
+    } else {
+      keep.push(node);
+    }
+  }
+  world.nodes = keep;
+  return removed;
+}
+
+export function listOrbitNodeIdentities(world) {
+  const nodes = world && Array.isArray(world.nodes) ? sortNodes(world.nodes.slice()) : [];
+  const out = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (!node || node.type !== ORBIT_NODE_TYPE) continue;
+    out.push({
+      id: node.id,
+      type: node.type,
+      index: node.index,
+      hostId: node.hostId != null ? node.hostId : null,
+    });
+  }
+  return out;
 }
 
 export function orbitNodePose(host, index, count, radius, simTime, periodTicks) {
@@ -148,17 +201,21 @@ export function trySpawnOrbitNodes(world, parent, spec, host, options = {}) {
     world.kernel.register({
       id,
       kind: FIELD_KINDS.REPULSOR,
+      tag: ORBIT_NODE_TYPE,
       center: { x: pose.x, z: pose.z },
       radius: effectRadius,
       strength: 0,
       durationS: Infinity,
       createdAt: simTime,
       sourceId: hostId,
+      ownerId: hostId,
       filters: hostId != null ? { excludeId: hostId } : null,
     });
     world.nodes.push({
       id,
+      type: ORBIT_NODE_TYPE,
       index: i,
+      hostId,
       lineageId: parent.lineageId,
       runtime: child.runtime,
       x: pose.x,
@@ -180,7 +237,12 @@ export function applyOrbitContacts(world, host, targets = [], options = {}) {
   const events = [];
   const ignored = [];
   const list = Array.isArray(targets) ? targets.map(asCandidate) : [];
-  const nodes = sortNodes(world.nodes.slice());
+  const hostId = host && host.id != null ? host.id : null;
+  const nodes = sortNodes(world.nodes.filter((node) => {
+    if (!node || node.type !== ORBIT_NODE_TYPE) return false;
+    if (hostId == null || node.hostId == null) return true;
+    return node.hostId === hostId;
+  }));
   for (let n = 0; n < nodes.length; n++) {
     const node = nodes[n];
     const inRange = [];
@@ -225,8 +287,10 @@ export function applyOrbitContacts(world, host, targets = [], options = {}) {
 export function stepOrbitWorld(world, host, simTime, targets = [], options = {}) {
   const speed = Math.hypot(finite(host && host.vx), finite(host && host.vz));
   const powered = speed >= ORBIT_MIN_HOST_SPEED;
+  const hostId = host && host.id != null ? host.id : null;
   for (let i = 0; i < world.nodes.length; i++) {
     const node = world.nodes[i];
+    if (hostId != null && node.hostId != null && node.hostId !== hostId) continue;
     const pose = orbitNodePose(host, node.index, node.count, node.radius, simTime, node.periodTicks);
     node.x = pose.x;
     node.z = pose.z;

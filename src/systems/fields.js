@@ -30,6 +30,12 @@ import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import {
+  ORBIT_NODE_TYPE,
+  attachOrbitWorld,
+  resetOrbitWorld,
+  syncOrbitRuntime,
+} from './orbitNodeRuntime.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
@@ -55,7 +61,8 @@ function defaultRuntime() {
     snapshot: [],   // id-sorted normalized field records — the PURE predictor seam consumer input
     active: [],     // per-field presentation records for VFX/HUD
     anchored: {},   // hull-anchored fields: fieldId -> { fieldId, sourceId, defKey, activateTick }
-    telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0 },
+    orbit: { count: 0, nodes: [] },
+    telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0, orbitNodes: 0 },
   };
 }
 
@@ -63,10 +70,26 @@ function ensureRuntime(state) {
   const f = state.fields;
   if (f && f.schemaVersion === 1) {
     if (!f.anchored || typeof f.anchored !== 'object') f.anchored = {};
+    if (!f.orbit || typeof f.orbit !== 'object') f.orbit = { count: 0, nodes: [] };
+    if (f.telemetry && typeof f.telemetry === 'object' && f.telemetry.orbitNodes == null) {
+      f.telemetry.orbitNodes = 0;
+    }
     return f;
   }
   state.fields = defaultRuntime();
   return state.fields;
+}
+
+function playerOwnedFieldCount(kernel) {
+  if (!kernel || typeof kernel.list !== 'function') return 0;
+  const list = kernel.list();
+  let n = 0;
+  for (let i = 0; i < list.length; i++) {
+    const tag = list[i] && list[i].tag;
+    if (tag === 'external' || tag === 'environmental' || tag === ORBIT_NODE_TYPE) continue;
+    n++;
+  }
+  return n;
 }
 
 // Aim convention shared with impulse charges / mass seed: direction toward the painted world point,
@@ -119,6 +142,7 @@ export const fields = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._kernel = createFieldKernel();
+    this._orbitWorld = attachOrbitWorld(this._kernel);
     this._combatKernel = getCombatKernel(ctx);
     // Reused scratch — zero per-tick allocation in the force loop.
     this._queryOut = [];
@@ -164,6 +188,7 @@ export const fields = {
     this._handleInput(state, rt);
     this._syncCone(state, rt);
     this._syncAnchoredFields(state, rt);
+    this._syncOrbit(state);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
@@ -188,7 +213,7 @@ export const fields = {
     const rt = ensureRuntime(this.state);
     const existing = Object.values(rt.anchored).find((rec) => rec && rec.sourceId === entity.id);
     if (existing && this._kernel.has(existing.fieldId)) return existing.fieldId;
-    if (this._kernel.size >= FIELD_MAX_ACTIVE) return null;
+    if (playerOwnedFieldCount(this._kernel) >= FIELD_MAX_ACTIVE) return null;
     const now = nowOf(this.state);
     const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
     const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);
@@ -424,9 +449,14 @@ export const fields = {
 
   // ── lifecycle: expiry + destruction cleanup (brief req 8) ────────────────────────────────────
 
+  _syncOrbit(state) {
+    if (!this._orbitWorld) this._orbitWorld = attachOrbitWorld(this._kernel);
+    syncOrbitRuntime(this, state);
+  },
+
   _enforceCap(state, rt) {
     const ids = Object.keys(rt.deployed);
-    if (this._kernel.size < FIELD_MAX_ACTIVE) return;
+    if (playerOwnedFieldCount(this._kernel) < FIELD_MAX_ACTIVE) return;
     // Retire the oldest deployed emitter so a new deploy always fits under the cap.
     let oldest = null;
     for (const id of ids) {
@@ -483,6 +513,7 @@ export const fields = {
       const entity = state.entities && state.entities.get ? state.entities.get(rec.emitterId) : null;
       if (entity && entity.alive !== false) entity.alive = false;
     }
+    if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     if (this._kernel) this._kernel.clear();
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
@@ -645,7 +676,7 @@ export const fields = {
       // PQ-013: external authored profiles (the planet's attraction) stay in the SNAPSHOT (the
       // predictor must see the bend) but out of the deploy-tool presentation records — the planet
       // carries its own visual language (bands/sheath), never an Intake funnel or a HUD chip.
-      if (f.tag === 'external') continue;
+      if (f.tag === 'external' || f.tag === ORBIT_NODE_TYPE) continue;
       let rec = active[n];
       if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
       n++;
@@ -663,6 +694,7 @@ export const fields = {
     active.length = n; // trim retired fields
     const tel = rt.telemetry;
     tel.fields = fieldsList.length; tel.queries = queries; tel.affected = affected; tel.appliedAccelSum = accelSum;
+    tel.orbitNodes = rt.orbit && Number.isInteger(rt.orbit.count) ? rt.orbit.count : 0;
   },
 
   // ── VFX cues (presentation bus; renderer consumes — no renderer fork) ─────────────────────────
