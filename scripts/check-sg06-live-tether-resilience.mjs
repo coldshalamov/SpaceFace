@@ -4,8 +4,13 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
+import { COUNTER_TETHER_RESPONSE_TICKS } from '../src/ai/sg03ActionPort.js';
 
 const DT = 1 / 60;
+// The authored counter-tether telegraph delays the first eligible dash by
+// COUNTER_TETHER_RESPONSE_TICKS after first selection; the wait budget must exceed it or the
+// canonical escape can never legally start.
+const DASH_WAIT_TICKS = COUNTER_TETHER_RESPONSE_TICKS + 90;
 const HEADLESS_SKIP = new Set(['render', 'vfx', 'feel', 'audio', 'ui', 'save']);
 const STANDARD_MASSLINE_DEF = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
 const PREVIOUS_STANDARD_BREAK = Object.freeze({ maxTension: 1_050_000, maxImpulse: 19_000, maxYank: 15_000 });
@@ -78,7 +83,7 @@ try {
   state.spatialHash.rebuild(state.entityList);
 
   let dash = null;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < DASH_WAIT_TICKS; i++) {
     registry.step(DT);
     dash = state.combat.trace.events.find((event) =>
       event.kind === 'action.started' &&
@@ -198,7 +203,11 @@ try {
   actor.data.masslineBreakPolicy = 'extreme_overload';
   let extremeBreak = null;
   for (let i = 0; i < 180; i++) {
-    applyDashSlackLoad(harness, attachmentId, actor.id);
+    // The authored 15-tick near-break warning lease (player counterplay) delays every threshold
+    // cut; a merely-ordinary load decays below the overload edge before the lease expires. The
+    // extreme-load contract is only exercised by a load that stays past the edge, like the
+    // former-edge challenge above.
+    applyDashSlackLoad(harness, attachmentId, actor.id, 2_400);
     registry.step(DT);
     const current = state.combat.attachments.byId[attachmentId];
     if (current && current.state === 'broken') {

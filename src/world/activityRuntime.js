@@ -163,6 +163,7 @@ function ensureRuntime(state) {
   if (!runtime) {
     runtime = {
       classifiedTick: -1,
+      classifiedMembership: null,
       ready: false,
       physicsReachWu: 0,
       glassHalfX: 0,
@@ -762,12 +763,30 @@ export function ensureActivityClassified(state) {
   if (!state || typeof state !== 'object') return null;
   const runtime = ensureRuntime(state);
   const tick = state.tick | 0;
-  if (runtime.classifiedTick === tick && runtime.ready) return runtime;
+  // Sanctioned membership moves through the entity index: spawnEntity/removeEntityIndex bump
+  // `version` immediately, so a mid-tick spawn must be admitted to this same tick's owner views —
+  // SG-06 samples a roster factionPresence just populated, and the SG-02 owner must step
+  // projectiles weapons fired this tick (both run after their spawners in update order). Raw
+  // entityList edits are not sanctioned membership; without an index there is no cheap change
+  // signal, so the frame is never cached and every caller classifies fresh.
+  const membership = entityIndexVersion(state);
+  if (membership != null && runtime.ready && runtime.classifiedTick === tick
+    && runtime.classifiedMembership === membership) {
+    return runtime;
+  }
   classifyWorld(state, runtime);
   runtime.classifiedTick = tick;
+  runtime.classifiedMembership = membership;
   runtime.ready = true;
   publishScalars(state, runtime);
   return runtime;
+}
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
 }
 
 /**

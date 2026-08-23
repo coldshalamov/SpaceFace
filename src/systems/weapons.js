@@ -24,6 +24,14 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import {
+  attackModifiersFromRun,
+  attackSpecNeedsRuntime,
+  compileAttackSpec,
+  mergeWeaponView,
+} from '../combat/attackSpec.js';
+import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
+import { emitVolley } from '../combat/attackPropagation.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -123,6 +131,8 @@ export const weapons = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
     };
+    this._attackSpecCache = new Map();
+    this._attackMetrics = emptyAttackMetrics();
 
     ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
   },
@@ -231,6 +241,7 @@ export const weapons = {
     this._tickRcsDisruption(state);
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
+    state.weaponRuntime.attack = this._attackMetrics;
   },
 
   // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
@@ -694,13 +705,17 @@ export const weapons = {
       dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
+    const spec = this._attackSpecFor(w, def, state);
+    const heatScale = spec && spec.costs && Number.isFinite(spec.costs.heatScale) ? spec.costs.heatScale : 1;
+    const heatCost = heatPerShot * heatScale;
+
     // --- commit: spend cap + heat, set cooldown ---
     capLeft -= energyCost;
-    if (heatPerShot) {
+    if (heatCost) {
       // The final accepted shot visibly pegs the gauge and explicitly starts the vent. The old
       // pre-fire `nextHeat > max` rejection silently ate trigger pulls just below the threshold,
       // while pre-service cooling could keep the separate vent detector from ever seeing 100%.
-      w._heat = Math.min(heatMax, (w._heat || 0) + heatPerShot);
+      w._heat = Math.min(heatMax, (w._heat || 0) + heatCost);
       if (w._heat >= heatMax) this._beginVent(e, state, w);
     }
     const rof = w.rof != null ? w.rof : def.rof || 0;
@@ -709,7 +724,7 @@ export const weapons = {
     // consume missile lock so each missile needs a fresh lock
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
 
-    this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
+    this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
 
     const origin = this._muzzle(e, w, dir);
     this.bus.emit('combat:fire', {
@@ -718,7 +733,50 @@ export const weapons = {
     return capLeft;
   },
 
-  _spawnProjectile(e, w, def, dir, tgt, isMissile, state) {
+  _attackSpecFor(w, def, state) {
+    if (!this._attackSpecCache) this._attackSpecCache = new Map();
+    if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
+    const modifiers = attackModifiersFromRun(state && state.run);
+    const key = `${def && def.id || w.defId}|${modifiers.map((row) => `${row[0]}:${row[1]}`).join(',')}`;
+    let compiled = this._attackSpecCache.get(key);
+    if (compiled) {
+      this._attackMetrics.cacheHits += 1;
+      return compiled.spec;
+    }
+    compiled = compileAttackSpec({ weapon: mergeWeaponView(w, def), modifiers });
+    this._attackSpecCache.set(key, compiled);
+    this._attackMetrics.specsCompiled += 1;
+    return compiled && compiled.spec;
+  },
+
+  _emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec) {
+    if (!spec || !attackSpecNeedsRuntime(spec)) {
+      this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
+      return;
+    }
+    if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    const lineage = createLineage({
+      spec,
+      sourceEntityId: e.id,
+      sourceWeaponSlot: Number.isInteger(w.slotIndex) ? w.slotIndex : 0,
+      createdTick: tick,
+    });
+    const volley = emitVolley(spec, lineage);
+    const payloadScale = spec.costs && Number.isFinite(spec.costs.payloadScale) ? spec.costs.payloadScale : 1;
+    const record = compactLineageRecord(lineage);
+    this._attackMetrics.volleys += 1;
+    this._attackMetrics.rootsEmitted += volley.emitted.length;
+    this._attackMetrics.rootsSuppressed += volley.suppressed.length;
+    for (const root of volley.emitted) {
+      this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, {
+        payloadScale,
+        attackRuntime: record,
+      });
+    }
+  },
+
+  _spawnProjectile(e, w, def, dir, tgt, isMissile, state, opts) {
     const projSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 300;
     const projSpeedMin = w.projSpeedMin != null ? w.projSpeedMin : def.projSpeedMin;
     const range = w.range != null ? w.range : def.range || 600;
@@ -743,7 +801,8 @@ export const weapons = {
     const worldSpeed = Math.hypot(vel.x, vel.z);
     const ttl = Math.max(0.25, range / Math.max(1, worldSpeed));
 
-    const damage = (w.dmg != null ? w.dmg : def.dmg) || 0;
+    const payloadScale = opts && Number.isFinite(opts.payloadScale) ? opts.payloadScale : 1;
+    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale;
     const damageType = w.damageType || def.damageType || 'kinetic';
     const data = {
       damage,
@@ -755,6 +814,7 @@ export const weapons = {
       spawnPos: { x: muzzle.x, z: muzzle.z },
       maxDistance: range,
     };
+    if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
@@ -1189,6 +1249,16 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   return dx * dx + dz * dz <= (range + pad) * (range + pad);
 }
 
+function emptyAttackMetrics() {
+  return {
+    specsCompiled: 0,
+    cacheHits: 0,
+    volleys: 0,
+    rootsEmitted: 0,
+    rootsSuppressed: 0,
+  };
+}
+
 function ensureWeaponRuntime(host) {
   if (!host._diag) {
     host._diag = {
@@ -1196,6 +1266,8 @@ function ensureWeaponRuntime(host) {
       autoFireCandidates: 0,
     };
   }
+  if (!host._attackSpecCache) host._attackSpecCache = new Map();
+  if (!host._attackMetrics) host._attackMetrics = emptyAttackMetrics();
 }
 
 function resetWeaponDiagnostics(diag) {
