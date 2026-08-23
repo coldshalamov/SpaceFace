@@ -100,8 +100,14 @@ was killing the whole contact-roster file before any assertion ran), and `check-
   (`window.SF && state && bus && ctx`, 15s). **But the game boots fine:** a direct headless boot
   probe found all four present with zero page errors, and `check:playable` has passed 15/15
   repeatedly since. Two delegation lanes were running throughout with 18 node processes live, and
-  this is the fragile `headless: true` path. **Re-test on a quiet machine before attributing it.**
+  this is the fragile `headless: true` path. **Re-tested once the machine was quieter (8 node
+  processes instead of 18): it PASSES.** A load artefact, not a regression.
 
-**Standing lesson, now twice confirmed:** a check that fails inside a 272-command sequential run
+**So the honest red count is 18, not 20** — both of this run's new entries were load, and the
+three frontend probes (`check:screens:overflow`, `check:station:overflow`,
+`check:station:tabstate`) still report zero across 21 screens, 7 station tabs and 7 tab states
+after 72 commits.
+
+**Standing lesson, now three times confirmed:** a check that fails inside a 272-command sequential run
 should be re-run alone before anyone investigates it. Two of the twenty-one in the first run were
 load artefacts, and one of the two "new" failures here is as well.
