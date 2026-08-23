@@ -8443,7 +8443,7 @@
       "priority": 371,
       "title": "Chain, payload, and bridge modifiers (Phase 5)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.04"
       ],
@@ -8462,7 +8462,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "implemented 2026-08-23 (f010fc3e): chain + payload + bridge KERNEL. Exit gate met - three build identities from one Pulse Laser with measurably different causal distributions (Ion Circuit chain 16 / Bank Relay bank 8 / Incendiary status 12), stable digests, chain selection deterministic by score-distance-id, and hops bounded four ways (proc cost, hop count, visited-target set, generation cap). Mutation-tested three ways. STILL OWED: live shots do not hop in play - the kernel is callable but not wired into the gun/hit path - plus causal score tags, draft exclusions and the results distribution (all UI). NOT integrated: no receipt issued."
+      ],
       "brief": "Deterministic chain selector (CRU-032), Ion Payload + Relay Arc (CRU-033), Gravity Tag bridge (CRU-034), Incendiary bridge (CRU-035), causal style ledger (CRU-036), draft quality planner (CRU-037), one build evolution (CRU-038)."
     },
     {
