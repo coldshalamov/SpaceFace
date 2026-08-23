@@ -767,8 +767,16 @@ export const travelLanes = {
    * the event trace unreadable at exactly the moment travel is interesting.
    */
   _publish(state, lane, geometry, fix, disrupted, boosting, infrastructure = null, appliedLane = null) {
-    const recovery = disrupted && !lane.manufactured ? nextIntactBeacon(geometry, fix.alongWU) : null;
     const driveBlock = state.input && state.input.travelDrive;
+    // THE RECOVERY TARGET MUST OUTLIVE THE DEAD SEGMENT. `disrupted` is purely positional — it goes
+    // false the instant the player leaves the segment — but the knocked-out drive is not: it stays
+    // in cooldown while they coast out the far side. Publishing the recovery beacon only while
+    // standing inside the dead segment meant the answer to "where do I go now" disappeared at
+    // exactly the moment the player needed it, a few hundred ticks after the knockout.
+    const driveKnockedOut = !!driveBlock && driveBlock.state === 'cooldown';
+    const recovery = (disrupted || driveKnockedOut) && !lane.manufactured
+      ? nextIntactBeacon(geometry, fix.alongWU)
+      : null;
     const status = this._statusScratch;
     status.laneId = lane.id;
     status.name = lane.name;
