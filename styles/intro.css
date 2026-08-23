@@ -89,7 +89,7 @@
   align-items: center;
   border-bottom: 1px solid rgba(78, 195, 230, 0.2);
   padding-bottom: 8px;
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
@@ -108,7 +108,7 @@
   animation: sf-intro-blink 1.2s steps(2, end) infinite;
 }
 .boot-registry {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: .25em;
   color: #a9b8c4;
@@ -144,7 +144,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 10px;
+  font-size: 12px;
   background: color-mix(in srgb, var(--bg) 60%, transparent);
   border: 1px solid rgba(148, 178, 205, 0.15);
   border-radius: 3px;
@@ -161,7 +161,7 @@
   color: #74879a;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  font-size: 8.5px;
+  font-size: 12px;
 }
 .boot-panel-title {
   color: #a9b8c4;
@@ -178,7 +178,7 @@
   gap: 4px;
   max-height: 220px;
   overflow: hidden;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.45;
 }
 .boot-diag-line {
@@ -213,14 +213,14 @@
   border-radius: 2px;
 }
 .boot-hex-header {
-  font-size: 8px;
+  font-size: 12px;
   color: #54646f;
   letter-spacing: 0.15em;
   margin-bottom: 4px;
   text-transform: uppercase;
 }
 .boot-hex-dump {
-  font-size: 8.5px;
+  font-size: 12px;
   color: #4ec3e6;
   letter-spacing: 0.05em;
   line-height: 1.4;
@@ -273,7 +273,7 @@
   position: absolute;
   bottom: 8px;
   right: 12px;
-  font-size: 8.5px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   color: rgba(78, 195, 230, 0.4);
   pointer-events: none;
@@ -298,7 +298,7 @@
   text-shadow: 0 0 16px rgba(78, 195, 230, 0.4);
 }
 .boot-sub {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .22em;
   text-indent: .22em;
   text-transform: uppercase;
@@ -308,7 +308,7 @@
 .boot-detail {
   min-height: 1.4em;
   margin-top: 2px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.4;
   letter-spacing: .1em;
   color: #687885;
@@ -321,7 +321,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .boot-subsys-row {
   display: flex;
@@ -332,7 +332,7 @@
   width: 62px;
   color: #a9b8c4;
   font-weight: 500;
-  font-size: 8.5px;
+  font-size: 12px;
 }
 .subsys-led-bar {
   flex: 1;
@@ -359,7 +359,7 @@
   width: 32px;
   text-align: right;
   color: var(--sf-you);
-  font-size: 8.5px;
+  font-size: 12px;
 }
 
 .boot-waveform-container {
@@ -379,7 +379,7 @@
 }
 .boot-telemetry-metrics {
   margin-top: auto;
-  font-size: 8.5px;
+  font-size: 12px;
   color: #61737f;
   display: flex;
   flex-direction: column;
@@ -434,7 +434,7 @@
 .boot-progress-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 12px;
   color: #74879a;
   letter-spacing: 0.1em;
 }
@@ -446,7 +446,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 9.5px;
+  font-size: 12px;
   color: #687885;
   letter-spacing: 0.12em;
 }
@@ -558,7 +558,7 @@
   top: clamp(16px, 3vw, 36px);
   left: clamp(18px, 3.4vw, 44px);
   z-index: 1;
-  font: 500 9px/1.6 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.6 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   letter-spacing: .3em;
   text-transform: uppercase;
   color: #61737f;
@@ -574,7 +574,7 @@
   text-align: center;
 }
 .cine-eyebrow {
-  font: 500 10px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   letter-spacing: .44em;
   text-indent: .44em;
   text-transform: uppercase;
@@ -619,7 +619,7 @@
   justify-content: center;
   gap: 11px;
   margin-top: 18px;
-  font: 500 11px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   letter-spacing: .3em;
   text-indent: .3em;
   text-transform: uppercase;
@@ -638,7 +638,7 @@
 }
 .cine-begin {
   margin-top: clamp(38px, 7vh, 64px);
-  font: 500 10px/1 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.35 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   letter-spacing: .42em;
   text-indent: .42em;
   text-transform: uppercase;
@@ -673,7 +673,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .3em;
   text-transform: uppercase;
   color: #74879a;
@@ -694,7 +694,7 @@
 }
 .cine-signal__s {
   margin-top: 6px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .22em;
   text-transform: uppercase;
   color: #61737f;
