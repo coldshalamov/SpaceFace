@@ -4,7 +4,10 @@
 // current(), which is reserved slots (including never-hostile team-2 patrols and unbound reservations).
 //
 // Deferred (verified: no honest live owner, or a disabled counter whose 0 would be a vacuous zero):
-// - Orbit nodes: no runtime type, index, or counter exists.
+// - Orbit nodes: an honest owner EXISTS as of PQ-133.06b — `countLiveOrbitNodes(state)` in
+//   src/systems/orbitNodeRuntime.js, published as state.fields.orbit = { count, nodes }. This
+//   overlay still does not draw it; that is a screen change, not a missing counter. The reason
+//   this line sat here was true when written and is not any more.
 // - queryCandidates / collisionPairs / vfxEmissions: src/core/perfCounters.js totals gated by
 //   perfCountersRequested(); this overlay does not enable them.
 // Spatial-hash queries ship as the always-on cumulative SpatialHash.diagnostics.queries total.
