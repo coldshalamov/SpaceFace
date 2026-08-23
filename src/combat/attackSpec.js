@@ -497,6 +497,16 @@ export function attackSpecNeedsRuntime(spec) {
   return false;
 }
 
+/** True when a compiled spec has bounce, chain, pierce, split, or extra status payload. */
+export function attackSpecHasLiveHit(spec) {
+  if (attackSpecNeedsRuntime(spec)) return true;
+  const payload = spec && Array.isArray(spec.payload) ? spec.payload : [];
+  for (let i = 0; i < payload.length; i++) {
+    if (payload[i] && payload[i].kind === 'status') return true;
+  }
+  return false;
+}
+
 export function describeAttackMetrics(spec) {
   const volley = describeVolley(spec);
   const payload = spec && Array.isArray(spec.payload) ? spec.payload : [];

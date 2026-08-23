@@ -9,6 +9,7 @@ export {
   digestAttackSpec,
   describeAttackMetrics,
   attackSpecNeedsRuntime,
+  attackSpecHasLiveHit,
   attackModifiersFromRun,
   mergeWeaponView,
   ATTACK_SPEC_SCHEMA_VERSION,
@@ -31,3 +32,9 @@ export {
   statusPeriodicDamageTotal,
   CAUSAL_CHANNEL,
 } from './attackPayload.js';
+export {
+  armAttackContinue,
+  collectAttackCandidates,
+  requestAttackContinue,
+  resolveLiveAttackHit,
+} from './attackHit.js';

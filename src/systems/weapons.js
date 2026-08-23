@@ -26,12 +26,19 @@ import {
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import {
   attackModifiersFromRun,
+  attackSpecHasLiveHit,
   attackSpecNeedsRuntime,
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
+import { resolvePayload } from '../combat/attackPayload.js';
+import {
+  armAttackContinue,
+  collectAttackCandidates,
+  resolveLiveAttackHit,
+} from '../combat/attackHit.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -133,8 +140,11 @@ export const weapons = {
     };
     this._attackSpecCache = new Map();
     this._attackMetrics = emptyAttackMetrics();
+    this._attackLive = new Map();
+    this._attackQueryScratch = [];
 
     ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
+    ctx.bus.on('projectile:hit', (payload) => this._onAttackHit(payload));
   },
 
   update(dt, state) {
@@ -751,7 +761,8 @@ export const weapons = {
 
   _emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec) {
     if (!spec || !attackSpecNeedsRuntime(spec)) {
-      this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
+      this._spawnProjectile(e, w, def, dir, tgt, isMissile, state,
+        spec && attackSpecHasLiveHit(spec) ? { spec } : undefined);
       return;
     }
     if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
@@ -772,6 +783,8 @@ export const weapons = {
       this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, {
         payloadScale,
         attackRuntime: record,
+        spec,
+        liveRuntime: lineage,
       });
     }
   },
@@ -815,6 +828,21 @@ export const weapons = {
       maxDistance: range,
     };
     if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
+    if (opts && opts.spec) {
+      const resolved = resolvePayload(opts.spec, {
+        generation: opts.liveRuntime && Number.isInteger(opts.liveRuntime.generation)
+          ? opts.liveRuntime.generation : 0,
+        hasBounced: !!(opts.liveRuntime && opts.liveRuntime.hasBounced),
+      });
+      if (resolved.statuses && resolved.statuses.length) {
+        const packet = data.damagePacket;
+        if (!Array.isArray(packet.statuses)) packet.statuses = [];
+        for (let i = 0; i < resolved.statuses.length; i++) {
+          const status = resolved.statuses[i];
+          packet.statuses.push({ id: status.id, stacks: status.stacks });
+        }
+      }
+    }
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
@@ -827,7 +855,7 @@ export const weapons = {
       if (splashDmg != null) data.splashDmg = splashDmg;
     }
 
-    this.helpers.spawnEntity({
+    const spawned = this.helpers.spawnEntity({
       type: 'projectile',
       pos: muzzle,
       vel,
@@ -841,6 +869,46 @@ export const weapons = {
       collides: true,
       data,
     });
+    if (spawned && opts && opts.liveRuntime) {
+      if (!this._attackLive) this._attackLive = new Map();
+      this._attackLive.set(spawned.id, { spec: opts.spec, runtime: opts.liveRuntime });
+      if ((opts.spec && opts.spec.trajectory && opts.spec.trajectory.bounces > 0)
+        || (opts.spec && opts.spec.propagation && opts.spec.propagation.pierce > 0)) {
+        armAttackContinue(spawned);
+      }
+    }
+  },
+
+  _onAttackHit(payload) {
+    if (!this._attackLive || this._attackLive.size === 0) return;
+    const state = this.state;
+    if (!state || !payload) return;
+    const projectile = findLiveAttackProjectile(state, this._attackLive, payload);
+    if (!projectile) return;
+    const live = this._attackLive.get(projectile.id);
+    if (!live) return;
+    const target = payload.targetId != null && this.helpers && this.helpers.getEntity
+      ? this.helpers.getEntity(payload.targetId)
+      : (state.entities && state.entities.get && state.entities.get(payload.targetId));
+    const scratch = this._attackQueryScratch || (this._attackQueryScratch = []);
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    const chain = live.spec && live.spec.propagation && live.spec.propagation.chain;
+    const range = chain && Number.isFinite(chain.range) ? chain.range : 0;
+    const result = resolveLiveAttackHit({
+      spec: live.spec,
+      runtime: live.runtime,
+      projectile,
+      target,
+      payload,
+      tick,
+      tetherAnchorId: tetherAnchorIdOf(state),
+      hostiles: null,
+      candidates: range > 0
+        ? (origin) => collectAttackCandidates(state, origin, range, scratch, projectile.ownerId, projectile.team)
+        : [],
+      applyHopDamage: (hop) => applyAttackHopDamage(this, projectile, live.spec, hop),
+    });
+    if (result.consume) this._attackLive.delete(projectile.id);
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------
@@ -1249,6 +1317,54 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   return dx * dx + dz * dz <= (range + pad) * (range + pad);
 }
 
+function findLiveAttackProjectile(state, live, payload) {
+  let best = null;
+  let bestD = Infinity;
+  const px = payload && payload.pos ? payload.pos.x : 0;
+  const pz = payload && payload.pos ? payload.pos.z : 0;
+  for (const [id, rec] of live) {
+    void rec;
+    const entity = state.entities && state.entities.get && state.entities.get(id);
+    if (!entity) {
+      live.delete(id);
+      continue;
+    }
+    if (payload.ownerId != null && entity.ownerId !== payload.ownerId) continue;
+    const dx = (entity.pos && entity.pos.x || 0) - px;
+    const dz = (entity.pos && entity.pos.z || 0) - pz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD) {
+      bestD = d2;
+      best = entity;
+    }
+  }
+  return best;
+}
+
+function tetherAnchorIdOf(state) {
+  const tether = state && state.player && state.player.tether;
+  return tether && tether.targetId != null ? tether.targetId : null;
+}
+
+function applyAttackHopDamage(host, projectile, spec, hop) {
+  const helpers = host && host.helpers;
+  if (!helpers || typeof helpers.routeCombatDamage !== 'function') return;
+  const packet = projectile && projectile.data && projectile.data.damagePacket
+    ? { ...projectile.data.damagePacket }
+    : { statuses: [] };
+  const statuses = hop && hop.resolved && Array.isArray(hop.resolved.statuses)
+    ? hop.resolved.statuses.map((status) => ({ id: status.id, stacks: status.stacks }))
+    : [];
+  packet.statuses = statuses;
+  helpers.routeCombatDamage({
+    attackerId: projectile.ownerId,
+    targetId: hop.target.id,
+    packet,
+    origin: { kind: 'weapon', id: projectile.data && projectile.data.weaponId },
+  });
+  void spec;
+}
+
 function emptyAttackMetrics() {
   return {
     specsCompiled: 0,
@@ -1268,6 +1384,8 @@ function ensureWeaponRuntime(host) {
   }
   if (!host._attackSpecCache) host._attackSpecCache = new Map();
   if (!host._attackMetrics) host._attackMetrics = emptyAttackMetrics();
+  if (!host._attackLive) host._attackLive = new Map();
+  if (!host._attackQueryScratch) host._attackQueryScratch = [];
 }
 
 function resetWeaponDiagnostics(diag) {
