@@ -8381,7 +8381,7 @@
       "priority": 369,
       "title": "AttackSpec compiler + lineage kernel (Phase 3)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.02"
       ],
@@ -8401,7 +8401,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "implemented 2026-08-23 (227d6b1f): AttackSpec compiler + lineage kernel per master plan A.4. Exit gate met and exceeded - FOUR distinct legal compiled forms from Pulse Laser + Autocannon with stable digests on recompile, and descendants bounded by one shared lineage proc budget. Mutation-tested (determinism, budget refusal). Lab inspector UI deliberately out of slice. NOT integrated: no receipt issued."
+      ],
       "brief": "Attack trait schema (CRU-019), compiler base weapon + fitting + run modifiers into immutable AttackSpec with stable digest (CRU-020), lineage root/descendant/generation/visited/shared proc budget (CRU-021), multishot (CRU-022), pierce (CRU-023), split (CRU-024), owner-seam metrics and Lab inspector, focused deterministic tests. No surface bounce, no orbit nodes, no conductivity graph."
     },
     {
@@ -8695,7 +8697,7 @@
       "priority": 381,
       "title": "Mount ArcadeStructuralFx behind cueArbitration",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-134.00"
       ],
@@ -8713,7 +8715,9 @@
         "npm run check:ui-effects",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "implemented 2026-08-23 (50e02b34): ArcadeStructuralFx mounted behind cueArbitration; kills and hard collisions have live producers (entity:killed x4 emitters, combat:collisionConsequence x1); bank-shot events are forward-wired for PQ-133.04, which does not exist yet. 11 mount tests wired as check:arcade-structural-fx. NOT integrated: no receipt issued."
+      ],
       "brief": "Instantiate the pool in the presentation adapter; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat; dispose on context loss; high-water telemetry."
     },
     {
