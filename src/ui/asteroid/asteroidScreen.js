@@ -475,6 +475,13 @@ export const asteroidScreen = {
     let currentSiteId = null;
     let projection = null;
     let projDirty = true;
+    // Cheap identity probe for the projection cache: overlay arrays are replaced on paint, and
+    // deserialize replaces the site object. Comparing references is free; rebuilding is not.
+    // lastMachineCount catches in-place splices (removeMachine mutates the array, identity does not).
+    let lastProjSite = null;
+    let lastPowerOv = null;
+    let lastLaneOv = null;
+    let lastMachineCount = 0;
     // ---- §6.6 drawer state (declared with the rest of the session state so no handler can
     // ---- reach it in its temporal dead zone) ----
     let drawerTab = null;             // null = closed; otherwise one of DRAWER_TABS
@@ -492,11 +499,40 @@ export const asteroidScreen = {
     const site = () => (currentSiteId && siteSys ? siteSys.getSite(currentSiteId) : null);
 
     function refreshProjection() {
-      if (!siteSys) { projection = null; return; }
+      if (!siteSys) {
+        projection = null;
+        lastProjSite = null;
+        lastPowerOv = null;
+        lastLaneOv = null;
+        lastMachineCount = 0;
+        projDirty = false;
+        return;
+      }
       const s = siteSys.siteForAsteroid(asteroidId());
       currentSiteId = s ? s.id : null;
       projection = currentSiteId ? siteSys.projection(currentSiteId) : null;
+      lastProjSite = s || null;
+      lastPowerOv = s && s.overlays ? s.overlays.power : null;
+      lastLaneOv = s && s.overlays ? s.overlays.lane : null;
+      lastMachineCount = s && s.machines ? s.machines.length : 0;
       projDirty = false;
+    }
+
+    // Consume projDirty first (a tick can mutate rates/progress without replacing identity),
+    // then the identity/length probe. projection() allocates — never call it unless one of these trips.
+    function refreshProjectionIfIdentityShifted() {
+      if (projDirty) {
+        refreshProjection();
+        return;
+      }
+      const s = site();
+      const power = s && s.overlays ? s.overlays.power : null;
+      const lane = s && s.overlays ? s.overlays.lane : null;
+      const machineCount = s && s.machines ? s.machines.length : 0;
+      if (s !== lastProjSite || power !== lastPowerOv || lane !== lastLaneOv
+          || machineCount !== lastMachineCount) {
+        refreshProjection();
+      }
     }
 
     // ---------- controller + palette ----------
@@ -1819,6 +1855,7 @@ export const asteroidScreen = {
       if (!d) return;
 
       controller.tick(dt);
+      refreshProjectionIfIdentityShifted();
       if (renderer3d) renderer3d.render(dt, now / 1000, buildUiFrame());
       hudElapsed += dt;
       if (hudElapsed >= 0.15) {

@@ -36,6 +36,7 @@ import * as THREE from 'three';
 import { hash32 } from '../../core/rng.js';
 import { DRILL_CONST, tileIndex, avatarDrawPos, drillTierReqForOre } from '../../systems/drill.js';
 import { connectivityMask, storeTotal } from '../../systems/siteLogistics.js';
+import { contactKind, contactProfile } from '../../systems/siteProduction.js';
 // PQ-130.10b: the Faces lens asks the SIM whether a seat is legal — canInstall is the same answer
 // asteroidScreen's ghost gets, so a mint cell can never disagree with the refusal the click earns.
 // `asteroidSites` is the module singleton the registry hands to ctx, so this is the live system.
@@ -61,6 +62,71 @@ export const VIEW_ROWS = 18;
 
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
 const S = 2.2;                // world units per cell — the astlab-proven scale for these builders
+// Same 8-cell contact ring as siteProduction.contactProfile (RING_OFFSETS is not exported).
+// Exported so the ring contract is checkable without a canvas — see contactRingDivergence().
+export const CONTACT_RING = Object.freeze([
+  [-1, -1], [0, -1], [1, -1],
+  [-1, 0], [1, 0],
+  [-1, 1], [0, 1], [1, 1],
+]);
+
+/**
+ * Compare this module's copy of the ring against the sim's own contactProfile on a synthetic
+ * field that exercises every contactKind plus an out-of-bounds edge. Pure: no THREE, no DOM,
+ * no module state — callable from a plain Node test.
+ * @returns {string|null} null when the two agree; a human-readable divergence otherwise.
+ */
+export function contactRingDivergence() {
+  const n = 5;
+  const probe = [];
+  for (let c = 0; c < n; c++) {
+    probe[c] = [];
+    for (let r = 0; r < n; r++) {
+      const m = (c + r) % 5;
+      if (m === 0) probe[c][r] = { type: 'vein', ore: `ore_${c}_${r}` };
+      else if (m === 1) probe[c][r] = { type: 'gas' };
+      else if (m === 2) probe[c][r] = { type: 'rock' };
+      else if (m === 3) probe[c][r] = { type: 'empty' };
+      else probe[c][r] = { type: 'dirt' };
+    }
+  }
+  // Two seats. (2,2) is fully surrounded, so its ring exercises every contactKind; (0,0) hangs
+  // off the corner, so five of its eight neighbours are out of bounds and must come back 'empty'
+  // rather than reading past the array. A machine only ever sits on a hollow cell.
+  for (const [oc, or] of [[2, 2], [0, 0]]) {
+    const seat = probe[oc][or];
+    probe[oc][or] = { type: 'empty' };
+    const cells = contactProfile(probe, oc, or, n, n).cells;
+    probe[oc][or] = seat;
+    if (cells.length !== CONTACT_RING.length) {
+      return `CONTACT_RING length ${CONTACT_RING.length} diverged from siteProduction.contactProfile ring ${cells.length}`;
+    }
+    for (let i = 0; i < CONTACT_RING.length; i++) {
+      const dc = CONTACT_RING[i][0], dr = CONTACT_RING[i][1];
+      const c = oc + dc, r = or + dr;
+      const tile = (c >= 0 && c < n && r >= 0 && r < n && probe[c]) ? probe[c][r] : null;
+      const kind = contactKind(tile);
+      const ore = kind === 'ore' ? tile.ore : null;
+      const cell = cells[i];
+      if (cell.col !== c || cell.row !== r || cell.kind !== kind || cell.ore !== ore) {
+        return `CONTACT_RING[${i}] around seat ${oc},${or} expected `
+          + `{col:${c},row:${r},kind:${kind},ore:${ore}} but siteProduction.contactProfile gave `
+          + `{col:${cell.col},row:${cell.row},kind:${cell.kind},ore:${cell.ore}}`;
+      }
+    }
+  }
+  return null;
+}
+
+// Module load REPORTS a divergence; it must never throw. uiRoot.registerScreens() swallows a
+// module-evaluation rejection with a console.warn and skips the screen, so a throw here would
+// delete the whole mining board from the game while boot and every headless check stayed green
+// — the exact silent-unplayable failure check:playable exists to catch. The hard gate that fails
+// a build lives in test/asteroid-works-render.test.mjs.
+{
+  const divergence = contactRingDivergence();
+  if (divergence) console.error(`[asteroidRenderer3d] ${divergence}`);
+}
 const DEPTH = S * 1.5;        // block body depth; the cavity recess carved cells reveal
 // Law §2.1 — the board is an axis-aligned chess board: zero yaw, zero pitch, no tilt ever.
 const CAM_YAW = 0;
@@ -2968,10 +3034,25 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return 0x7a8698;
   }
 
-  function syncMachineArms(rec, pm) {
+  // Contact arms follow the LIVE drill field, not the cached projection's geo object. That geo is
+  // an alias of rt.geo[id], which is replaced wholesale when a neighbour is bored; until the
+  // screen's projection cache catches up the arms would keep clamping a cell that is already hollow.
+  const contactSigParts = [];
+  function liveContactSig(col, row) {
+    contactSigParts.length = 0;
+    for (let i = 0; i < CONTACT_RING.length; i++) {
+      const dc = CONTACT_RING[i][0], dr = CONTACT_RING[i][1];
+      const c = col + dc, r = row + dr;
+      const tile = (c >= 0 && c < COLS && r >= 0 && r < ROWS && field && field[c]) ? field[c][r] : null;
+      const kind = contactKind(tile);
+      contactSigParts.push(`${c},${r},${kind},${kind === 'ore' ? (tile.ore || '') : ''}`);
+    }
+    return contactSigParts.join(';');
+  }
+
+  function syncMachineArms(rec) {
     const isContact = rec.defId === 'sm_extractor' || rec.defId === 'sm_gas_tap';
-    const geo = isContact && pm && pm.geo ? pm.geo : null;
-    const sig = geo ? geo.cells.map((c) => `${c.col},${c.row},${c.kind},${c.ore || ''}`).join(';') : '';
+    const sig = isContact && field ? liveContactSig(rec.col, rec.row) : '';
     if (sig === rec.geoSig) return;
     rec.geoSig = sig;
     if (rec.arms) {
@@ -2979,13 +3060,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       disposeGroup(rec.arms);
       rec.arms = null;
     }
-    if (!geo) return;
+    if (!isContact || !field) return;
     const arms = new THREE.Group();
-    for (const cell of geo.cells || []) {
-      if (cell.kind === 'empty') continue;
-      if (rec.defId === 'sm_gas_tap' && cell.kind !== 'gas') continue;
-      const dx = Math.sign(cell.col - rec.col);
-      const dy = -Math.sign(cell.row - rec.row); // world y is up; rows grow down
+    for (let i = 0; i < CONTACT_RING.length; i++) {
+      const dc = CONTACT_RING[i][0], dr = CONTACT_RING[i][1];
+      const c = rec.col + dc, r = rec.row + dr;
+      const tile = (c >= 0 && c < COLS && r >= 0 && r < ROWS && field[c]) ? field[c][r] : null;
+      const kind = contactKind(tile);
+      if (kind === 'empty') continue;
+      if (rec.defId === 'sm_gas_tap' && kind !== 'gas') continue;
+      const cell = { col: c, row: r, kind, ore: kind === 'ore' ? tile.ore : null };
+      const dx = Math.sign(c - rec.col);
+      const dy = -Math.sign(r - rec.row); // world y is up; rows grow down
       const len = Math.hypot(dx, dy) * S * 0.5;
       // Physical clamp arms: machined steel with the worked material's tint in the PAINT, not in
       // an emissive. A clamp bolted to a seam is hardware; a glowing bar is an icon (law §2.7).
@@ -3025,9 +3111,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           rec = buildMachineAt(m);
         }
         const pm = projection && projection.machines ? projection.machines.find((x) => x.id === m.id) : null;
+        // KNOWN LIMIT: pm.status aliases rt.status, which asteroidSites replaces every tick
+        // (asteroidSites.js:1468-1470). Under this screen that replacement is unreachable except
+        // one open-during-tick window: tetherGameplay emits drill:approachCompleted
+        // (tetherGameplay.js:1139), uiRoot.js:948 pushes this screen synchronously, then
+        // asteroidSites still runs later in the same update (authoritativeSystemManifest.js:66-69).
+        // Closing it needs a generation counter on asteroidSites — out of this lane.
         const status = pm ? pm.status : null;
         const state = (status && status.state) || 'idle';
-        syncMachineArms(rec, pm);
+        syncMachineArms(rec);
         // Law §5 "Machine placed": a 120ms settle. The housing lands a touch proud of its socket
         // and drops into it — the same body seating itself, not a crossfade between two objects.
         const settleLeft = settles.get(tileIndex(m.col, m.row));
@@ -4735,6 +4827,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         podFlight: podT,
         mkStamp: mkStampT,
       };
+    },
+    // The contact ring each machine's clamp arms are actually built from THIS frame, read off the
+    // live drill field (not the projection cache). geoSig names the eight neighbours by position,
+    // kind and ore, so a capture can assert that boring a neighbour RELEASED an arm rather than
+    // that a flag flipped. Consumer: scripts/capture-asteroid-works.mjs (not yet wired).
+    machineContacts() {
+      const out = [];
+      for (const [id, rec] of machines) {
+        out.push({ id, defId: rec.defId, col: rec.col, row: rec.row, geoSig: rec.geoSig });
+      }
+      return out;
     },
     // ---- law §7 / §6.5 / §6.7 "The site reads" (PQ-130.10b) ----
     // What the NETWORK LAYER is drawing this frame, read off the live objects: which run belongs to
