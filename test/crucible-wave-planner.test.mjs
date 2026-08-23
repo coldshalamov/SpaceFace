@@ -374,7 +374,7 @@ test('planWave rejects out-of-range input without throwing or clamping', () => {
     { input: { seed: 0x100000000, arenaId: 'helios_core', wave: 1 }, path: 'seed' },
     { input: { seed: -3, arenaId: 'helios_core', wave: 1 }, path: 'seed' },
     { input: { seed: 1, arenaId: 'arena_does_not_exist', wave: 1 }, path: 'arenaId' },
-    { input: { seed: 1, arenaId: 'helios_core', wave: 11 }, path: 'wave' },
+    { input: { seed: 1, arenaId: 'helios_core', wave: 31 }, path: 'wave' },
     { input: { seed: 0xffffffff, arenaId: 'helios_core', wave: 999 }, path: 'wave' },
   ];
   for (const { input, path } of cases) {
