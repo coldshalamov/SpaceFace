@@ -965,7 +965,11 @@ subtree grep, and event emit ∩ subscribe:
 > (`commsRadial`, `dockArrival`, `worldSiteMapLayer`), so "read by 0 UI files" is stale; and a
 > mercy outcome is no longer indistinguishable from a kill — `combatOutcome` speaks four distinct
 > lines ("fled the fight", "disabled; capture window open", "surrendered", "destroyed").
-> The ace-memory row is still exactly true: nothing in `src/ui/**` names a pilot.
+> The ace-memory row is stale too, and I got that wrong on the first pass: a returning ace speaks
+> its own name (`"<name>: you should have finished me."`), sets `ai.name` on every ship it
+> spawns, and `src/ui/targetPanel.js` reads `ai.name` — so targeting one shows who it is. My
+> first grep searched for `ace`-shaped identifiers and missed the field the UI actually reads.
+> All four rows re-tested have aged, which makes the point below stronger, not weaker.
 >
 > This is a diagnosis from a point in time, not a live status board. Rebuilding something that
 > already exists because a row still says it does not is the failure mode to avoid here — the same
