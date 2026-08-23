@@ -8663,7 +8663,9 @@
         "node scripts/check-crucible-content.mjs",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "COMPLETE 2026-08-23 (f4814182): schemas, validators, wave-recipe simulator, compatibility lint, performance estimates, arena module library, separable loc text, six CLIs. EXIT GATE PROVEN BY DIFF: a new modifier (Herald Fan) and a new wave recipe were authored end to end with `git status -- src/combat/` EMPTY - the kernel this phase exists to avoid editing was not edited. Validators verified by feeding bad input: stack adding damage REFUSED, mul damage 1.5 REFUSED, mul 1.0 no-op allowed, heat COST allowed, 100-body recipe refused against the hard cap of 40. Simulator agrees with planner 9/9 seed-wave pairs (checked independently). 352 tests green in an isolated worktree carrying only these 15 files. Wired as factory:* plus check:content-factory. NOTE phase 13 (community/network) is explicitly NOT implied by local completion - the plan calls it a separate product decision with infrastructure, security, moderation and cost implications. It is the owner's call, not outstanding engineering."
+      ],
       "brief": "Schemas and validators (CRU-061), arena recipe toolkit (CRU-062), wave recipe simulator, compatibility lint, localization-ready text."
     },
     {

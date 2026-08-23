@@ -559,7 +559,14 @@
     "check:station:overflow": "node scripts/probe-station-overflow.mjs",
     "check:station:tabstate": "node scripts/probe-station-tab-state.mjs",
     "check:frontend:live": "npm run check:screens:overflow && npm run check:station:overflow && npm run check:station:tabstate",
-    "check:crucible:meta": "node --test test/crucible-meta.test.mjs test/crucible-record-band.test.mjs test/crucible-causal-tags.test.mjs"
+    "check:crucible:meta": "node --test test/crucible-meta.test.mjs test/crucible-record-band.test.mjs test/crucible-causal-tags.test.mjs",
+    "factory:validate": "node scripts/content-factory-validate.mjs",
+    "factory:lint": "node scripts/content-factory-lint.mjs",
+    "factory:preview": "node scripts/content-factory-preview.mjs",
+    "factory:estimate": "node scripts/content-factory-estimate.mjs",
+    "factory:simulate": "node scripts/content-factory-simulate.mjs",
+    "factory:dashboard": "node scripts/content-factory-dashboard.mjs",
+    "check:content-factory": "node --test test/content-factory.test.mjs && node scripts/content-factory-validate.mjs && node scripts/content-factory-lint.mjs"
   },
   "private": true,
   "devDependencies": {
