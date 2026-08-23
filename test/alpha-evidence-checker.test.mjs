@@ -20,7 +20,11 @@ import {
 const ALPHA_SCHEMA = 'spaceface.alphaEvidence.v1';
 const TEST_FILE = '.\\test\\alpha\\evidence.json';
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const AUTHORITY_CHAIN = 'root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md` (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding)';
+// design/VISION.md was deliberately inserted into the chain on 2026-08-10 (86d3d5c6, "wire
+// VISION.md into every authority chain"); it declares itself PRODUCT AUTHORITY and outranks every
+// other document's emphasis. This constant still asserted the pre-VISION chain, so the check was
+// failing the repository for honouring an explicit owner decision.
+const AUTHORITY_CHAIN = "root `ARCHITECTURE.md` (technical) > `design/VISION.md` (the owner's fantasy and UVP — wins on product emphasis) > `design/GDD_2_0.md` (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding)";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));

@@ -1,6 +1,7 @@
 # 03 — Master Build Plan (supporting historical pre-alpha roadmap)
 
-> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/GDD_2_0.md`
+> **Current authority banner:** root `ARCHITECTURE.md` (technical) > `design/VISION.md` (the
+> owner's fantasy and UVP — wins on product emphasis) > `design/GDD_2_0.md`
 > (design) > `design/spec2/00_MASTER_TASTE.md` (historical taste reference; visual tokens not binding).
 > `design/vision/ALPHA_PROGRAM.md` owns current execution order and solo-alpha scope beneath that
 > chain. This file is a supporting pre-alpha roadmap and wave history; a section is active only
