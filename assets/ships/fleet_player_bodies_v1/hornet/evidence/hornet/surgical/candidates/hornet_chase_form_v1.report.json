@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "asset": "ship_hornet",
+  "revision": "chase_form_v1",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\hornet_production_v1.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\candidates\\hornet_chase_form_v1.glb",
+  "scale": 2.962962962962963,
+  "canopy": {
+    "tub": true
+  },
+  "drives": [
+    {
+      "tag": "Port",
+      "dorsal": true,
+      "aft": true
+    },
+    {
+      "tag": "Stbd",
+      "dorsal": true,
+      "aft": true
+    }
+  ],
+  "radiator": true,
+  "triangles": 7484,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_AccentSlash",
+    "LOD0_Canopy",
+    "LOD0_CanopyCoaming",
+    "LOD0_DriveCollar_Port",
+    "LOD0_DriveHub_Port",
+    "LOD0_DriveHub_Stbd",
+    "LOD0_FlapSlot_Port",
+    "LOD0_FlapSlot_Stbd",
+    "LOD0_Hull",
+    "LOD0_RadiatorFin_0",
+    "LOD0_RadiatorFin_1",
+    "LOD0_RadiatorFin_2",
+    "LOD0_RadiatorFin_3",
+    "LOD0_RadiatorFin_4",
+    "LOD0_RadiatorFin_5",
+    "LOD0_RadiatorFin_6",
+    "LOD0_RadiatorFrame",
+    "LOD0_Wing_Stbd"
+  ],
+  "bytes": 371772
+}

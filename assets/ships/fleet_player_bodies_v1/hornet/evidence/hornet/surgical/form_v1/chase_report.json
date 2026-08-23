@@ -1,0 +1,168 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\candidates\\hornet_chase_form_v1.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1",
+  "focus": [
+    0.5185,
+    0.0,
+    6.1185
+  ],
+  "boundsMin": [
+    -15.0222,
+    -10.2222,
+    -1.6593
+  ],
+  "boundsMax": [
+    16.0593,
+    10.2222,
+    13.8963
+  ],
+  "size": [
+    31.0815,
+    20.4444,
+    15.5556
+  ],
+  "lightScale": 2.8779,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_AccentSlash",
+      "triangles": 108,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 216,
+      "materials": [
+        "Material_Canopy",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyCoaming",
+      "triangles": 108,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_DriveCollar_Port",
+      "triangles": 2168,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_DriveHub_Port",
+      "triangles": 276,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_DriveHub_Stbd",
+      "triangles": 276,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_FlapSlot_Port",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_FlapSlot_Stbd",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1050,
+      "materials": [
+        "Material_Hull",
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_2",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_3",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_4",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_5",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_6",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFrame",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Stbd",
+      "triangles": 2188,
+      "materials": [
+        "Material_Armor"
+      ]
+    }
+  ],
+  "triangles": 7470,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1\\clay_play_chase.png",
+  "clayClose": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v1\\clay_play_chase_close.png"
+}

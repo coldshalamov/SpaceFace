@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.materialTruthPreflight.v1",
+  "asset": "ship_hornet",
+  "identityFrozen": {
+    "liveBody": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+    "root": "HORNET_LOD0_ROOT",
+    "assetId": "SF_HORNET_PRODUCTION_V1",
+    "role": "interceptor",
+    "sockets": "keep names and relative layout; world metres scale with collision envelope",
+    "collision": "COLLISION_HULL kept; visual longest axis scaled to 2 * collisionRadius (32)"
+  },
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "componentReferenceDecision": "native_imagegen",
+  "references": [
+    "reference/surgical/canopy_well_ref.png",
+    "reference/surgical/drive_wells_ref.png",
+    "reference/surgical/wing_planform_ref.png"
+  ],
+  "zones": [
+    {"id": "hull", "class": "billed", "fiction": "Helios painted aluminum interceptor skin", "action": "unmap factory sheet; mid gray dielectric-metal"},
+    {"id": "armor_wings", "class": "billed", "fiction": "dark armor plates / lifting surfaces", "action": "unmap; darker than hull so planform splits at chase"},
+    {"id": "canopy", "class": "billed", "fiction": "near-black dielectric shell over a cut tub", "action": "opaque; no seat; boolean tub in hull"},
+    {"id": "drive_throats", "class": "billed", "fiction": "twin ceramic-lined wells, Y-separated", "action": "boolean two aft wells; ceramic floors; not roof eyes"},
+    {"id": "radiator", "class": "billed", "fiction": "one offset dorsal heat well", "action": "single hatch, not a second eye"},
+    {"id": "mechanical", "class": "retained_reviewed", "fiction": "dark hardware in wells", "action": "unmap to dark metal"},
+    {"id": "accent_warning", "class": "billed", "fiction": "paint, not lamps", "action": "emission off"},
+    {"id": "seat_cabin", "class": "outside_supported_view", "supportedViews": [], "action": "do not model"}
+  ],
+  "allSupportedViewZonesClassified": false,
+  "liveDefectsAtChase": [
+    "5% frame at D=144 vs Hitch 10% and contract 15-16% — authored 10.8 m vs collision diameter 32",
+    "dark 1.5% / mid 98.5% — mapped white metal=1 sheets wash chalk",
+    "canopy stamp; two dorsal marks read as a face",
+    "card wings; transom is a closed box, drives not wells from 60 degrees"
+  ]
+}

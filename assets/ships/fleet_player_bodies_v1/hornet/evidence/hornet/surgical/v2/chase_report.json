@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\candidates\\hornet_chase_surgical_v2.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\v2",
+  "focus": [
+    0.2593,
+    0.0,
+    0.288
+  ],
+  "boundsMin": [
+    -15.9259,
+    -10.5185,
+    -3.4963
+  ],
+  "boundsMax": [
+    16.4444,
+    10.5185,
+    4.0722
+  ],
+  "size": [
+    32.3704,
+    21.037,
+    7.5685
+  ],
+  "lightScale": 2.9973,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Accent",
+      "triangles": 216,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Armor",
+      "triangles": 4135,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 324,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Ceramic",
+      "triangles": 4280,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 24026,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 17184,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Radiator",
+      "triangles": 1944,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 2256,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 324,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 54689,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\v2\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\v2\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\v2\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\v2\\clay_play_chase.png"
+}

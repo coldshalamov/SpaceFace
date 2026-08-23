@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\candidates\\hornet_chase_form_v8.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8",
+  "focus": [
+    0.4,
+    0.0,
+    1.0473
+  ],
+  "boundsMin": [
+    -15.2593,
+    -7.5556,
+    -1.8256
+  ],
+  "boundsMax": [
+    16.0593,
+    7.5556,
+    3.9203
+  ],
+  "size": [
+    31.3185,
+    15.1111,
+    5.7459
+  ],
+  "lightScale": 2.8999,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Canard_Port",
+      "triangles": 160,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canard_Stbd",
+      "triangles": 160,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 108,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyCavity",
+      "triangles": 484,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyFrame",
+      "triangles": 128,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Port",
+      "triangles": 176,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Stbd",
+      "triangles": 176,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1238,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_0",
+      "triangles": 540,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Port",
+      "triangles": 373,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Stbd",
+      "triangles": 375,
+      "materials": [
+        "Material_Armor"
+      ]
+    }
+  ],
+  "triangles": 3918,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8\\clay_play_chase.png",
+  "clayClose": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\form_v8\\clay_play_chase_close.png"
+}

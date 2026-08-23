@@ -1,0 +1,160 @@
+{
+  "ok": true,
+  "asset": "ship_hornet",
+  "revision": "chase_surgical_v2",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\hornet_production_v1.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\surgical\\candidates\\hornet_chase_surgical_v2.glb",
+  "scale": 2.962962962962963,
+  "collisionDiameter": 32.0,
+  "authoredLength": 10.8,
+  "surgery": {
+    "boolean": [
+      {
+        "name": "canopyTubHull",
+        "ok": true
+      },
+      {
+        "name": "canopyTubArmor",
+        "ok": true
+      },
+      {
+        "name": "driveAftHullPort",
+        "ok": true
+      },
+      {
+        "name": "driveDorsalHullPort",
+        "ok": true
+      },
+      {
+        "name": "driveAftArmorPort",
+        "ok": true
+      },
+      {
+        "name": "driveDorsalArmorPort",
+        "ok": true
+      },
+      {
+        "name": "driveAftHullStbd",
+        "ok": true
+      },
+      {
+        "name": "driveDorsalHullStbd",
+        "ok": true
+      },
+      {
+        "name": "driveAftArmorStbd",
+        "ok": true
+      },
+      {
+        "name": "driveDorsalArmorStbd",
+        "ok": true
+      },
+      {
+        "name": "radiatorHull",
+        "ok": true
+      },
+      {
+        "name": "radiatorArmor",
+        "ok": true
+      }
+    ],
+    "joined": []
+  },
+  "materials": {
+    "Material_Accent": {
+      "color": [
+        0.52,
+        0.14,
+        0.07
+      ],
+      "metallic": 0.04,
+      "roughness": 0.42
+    },
+    "Material_Armor": {
+      "color": [
+        0.09,
+        0.095,
+        0.11
+      ],
+      "metallic": 0.22,
+      "roughness": 0.48
+    },
+    "Material_Canopy": {
+      "color": [
+        0.018,
+        0.022,
+        0.028
+      ],
+      "metallic": 0.0,
+      "roughness": 0.08
+    },
+    "Material_Ceramic": {
+      "color": [
+        0.2,
+        0.16,
+        0.13
+      ],
+      "metallic": 0.0,
+      "roughness": 0.58
+    },
+    "Material_Hull": {
+      "color": [
+        0.44,
+        0.45,
+        0.47
+      ],
+      "metallic": 0.08,
+      "roughness": 0.52
+    },
+    "Material_Mechanical": {
+      "color": [
+        0.06,
+        0.065,
+        0.07
+      ],
+      "metallic": 0.52,
+      "roughness": 0.4
+    },
+    "Material_Radiator": {
+      "color": [
+        0.1,
+        0.08,
+        0.07
+      ],
+      "metallic": 0.18,
+      "roughness": 0.52
+    },
+    "Material_Thruster": {
+      "color": [
+        0.05,
+        0.05,
+        0.055
+      ],
+      "metallic": 0.42,
+      "roughness": 0.46
+    },
+    "Material_Warning": {
+      "color": [
+        0.58,
+        0.3,
+        0.07
+      ],
+      "metallic": 0.04,
+      "roughness": 0.44
+    }
+  },
+  "triangles": 54703,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_Accent",
+    "LOD0_Armor",
+    "LOD0_Canopy",
+    "LOD0_Ceramic",
+    "LOD0_Hull",
+    "LOD0_Mechanical",
+    "LOD0_Radiator",
+    "LOD0_Thruster",
+    "LOD0_Warning"
+  ],
+  "bytes": 8379068
+}

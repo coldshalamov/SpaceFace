@@ -1551,14 +1551,16 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # C183: between C181 (ate the nose) and C182 (sticker). Hole ~1.40 x 0.68, pane smaller so a lip remains.
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.18, 0.0, 0.84), (0.70, 0.34, 0.26))
+    # C184: wider lip than C183 so 60° chase still sees white hull around the pane.
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.18, 0.0, 0.84), (0.75, 0.40, 0.26))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
-        delete_faces_in_box(body, 3.55, 4.82, -0.36, 0.36, 0.58, 2.00, normal="z", normal_min=0.18)
-    # C179 punch kept 1-shell; C180 punch at the roof split the hull. Mouth still sits in this x-range.
+        delete_faces_in_box(body, 3.50, 4.85, -0.42, 0.42, 0.58, 2.00, normal="z", normal_min=0.18)
+    # Dorsal punches (planform) + aft punches (close sees the transom, not the roof).
     delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
+    delete_faces_in_cylinder(body, -4.50, -4.15, 0.88, 0.08, 0.42, normal="x-", normal_min=0.15)
+    delete_faces_in_cylinder(body, -4.50, -4.15, -0.88, 0.08, 0.42, normal="x-", normal_min=0.15)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1579,14 +1581,14 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
-    add_box("Tub_Floor", (4.18, 0.0, 0.34), (0.56, 0.24, 0.012), soot, collection, 0.002)
+    add_box("Tub_Floor", (4.18, 0.0, 0.34), (0.50, 0.22, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.70, -0.26, 0.58),
-        (4.70, 0.26, 0.58),
-        (3.62, 0.24, 0.60),
-        (3.62, -0.24, 0.60),
+        (4.62, -0.20, 0.56),
+        (4.62, 0.20, 0.56),
+        (3.72, 0.18, 0.58),
+        (3.72, -0.18, 0.58),
         0.014, canopy, collection, 0.002,
     )
 
