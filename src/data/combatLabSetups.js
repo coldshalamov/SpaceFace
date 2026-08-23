@@ -104,4 +104,16 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     sectorId: 'sector_tethys_junction',
     spawnPos: { x: 1050, z: 380 },
   },
+  {
+    id: 'lagrange_crucible',
+    label: 'Lagrange Crucible',
+    sectorId: 'sector_helios_prime',
+    spawnPos: { x: -500, z: 800 },
+  },
+  {
+    id: 'cinder_sluice',
+    label: 'Cinder Sluice',
+    sectorId: 'sector_ceres_belt',
+    spawnPos: { x: -300, z: 200 },
+  },
 ]);

@@ -452,4 +452,6 @@ export const SURVIVAL_WAVES = freezeDeep([
   ...tenWaveBlock('helios_core', 'nw', 'se'),
   ...tenWaveBlock('ceres_belt', 'ne', 'sw'),
   ...tenWaveBlock('tethys_hub', 'diagonal_a', 'rear'),
+  ...tenWaveBlock('lagrange_crucible', 'sw', 'ne'),
+  ...tenWaveBlock('cinder_sluice', 'front', 'rear'),
 ]);

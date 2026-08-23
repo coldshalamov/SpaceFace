@@ -55,14 +55,26 @@
 //     (sector enter/exit, new game, save load — fields.js:135-141). A field that outlives its run
 //     is a defect, not a leftover.
 //
-// Event-driven by construction: no `update` method, so it costs nothing on a tick where no wave was
-// planned and nothing cleared.
+// Event-driven for Helios: no work on a tick where no wave was planned. Cinder machinery is a
+// cheap no-op unless that law is live.
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { gateBearing } from './waveMaterialization.js';
+import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
+import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
 
-/** The eight authored values in src/data/survivalWaves.js. 'idle' installs nothing, by design. */
+export { CINDER_ARENA_ID, LAGRANGE_ARENA_ID };
+export const LAW_ARENA_IDS = Object.freeze([LAGRANGE_ARENA_ID, CINDER_ARENA_ID]);
+
+const CINDER_CYCLE_PHASES = new Set([
+  'idle',
+  'shutter_slow',
+  'furnace_active',
+  'shutter_alternating',
+]);
+
+/** The eight authored values in src/data/survivalWaves.js. Helios idle installs nothing; law arenas keep their law on idle. */
 export const SURVIVAL_ARENA_PHASES = Object.freeze([
   'idle',
   'shutter_slow',
@@ -138,21 +150,44 @@ function alongBearing(anchor, bearing, distance) {
   return point(anchor, bearing.x * distance, bearing.z * distance);
 }
 
+function finalizeInstall(out) {
+  if (out.fields.length > ARENA_FIELD_SLOT_IDS.length) {
+    out.fields.length = ARENA_FIELD_SLOT_IDS.length;
+  }
+  for (let i = 0; i < out.fields.length; i++) out.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
+  if (out.mines.length > ARENA_MINE_MAX) out.mines.length = ARENA_MINE_MAX;
+  return out;
+}
+
+function isLawArena(arenaId) {
+  return arenaId === LAGRANGE_ARENA_ID || arenaId === CINDER_ARENA_ID;
+}
+
 /**
- * PURE room description for one wave. No bus, no registry, no state — the whole eight-phase table
- * is one readable function so a reviewer can see at a glance that no two phases are the same room.
+ * PURE room description for one wave. No bus, no registry, no state.
+ *
+ * Helios keeps the eight-phase table. Lagrange and Cinder are arena-id laws: idle still has a room,
+ * because the law IS the room. An unknown phase is inert on every arena — never a guess.
  *
  * Returns { phase, note, fields: [...], mines: [{x,z}], cover: boolean }.
  * `fields` is capped at ARENA_FIELD_SLOT_IDS.length and its entries already carry their slot id.
  */
-export function planArenaInstall({ arenaPhase, wave = 1, seed = 1, anchor = null, laneGate = 'front' } = {}) {
+export function planArenaInstall({
+  arenaPhase,
+  arenaId = null,
+  wave = 1,
+  seed = 1,
+  anchor = null,
+  laneGate = 'front',
+} = {}) {
   const at = {
     x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
     z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
   };
   const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
   const empty = { phase, note: 'inert room', fields: [], mines: [], cover: false };
-  if (phase === 'idle') return empty;
+  if (!isLawArena(arenaId) && phase === 'idle') return empty;
+  if (isLawArena(arenaId) && !SURVIVAL_ARENA_PHASES.includes(phase)) return empty;
 
   const rng = mulberry32(arenaStreamSeed(seed, wave));
   const spin = rng() * TAU;                                  // the room's own bearing
@@ -163,6 +198,17 @@ export function planArenaInstall({ arenaPhase, wave = 1, seed = 1, anchor = null
     : { x: lane.z, z: -lane.x };                             // which way the lane gets swept
 
   const out = { phase, note: '', fields: [], mines: [], cover: false };
+
+  if (arenaId === LAGRANGE_ARENA_ID) {
+    return finalizeInstall(planLagrangeInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
+    }));
+  }
+  if (arenaId === CINDER_ARENA_ID) {
+    return finalizeInstall(planCinderInstall({
+      arenaPhase: phase, at, lane, across, spin,
+    }));
+  }
 
   switch (phase) {
     // A slow shutter dropping on one wall: everything — hulls, shots, loose cargo — leans that way,
@@ -296,13 +342,7 @@ export function planArenaInstall({ arenaPhase, wave = 1, seed = 1, anchor = null
       return empty;
   }
 
-  // Hard structural bound: the room never asks for a third kernel slot.
-  if (out.fields.length > ARENA_FIELD_SLOT_IDS.length) {
-    out.fields.length = ARENA_FIELD_SLOT_IDS.length;
-  }
-  for (let i = 0; i < out.fields.length; i++) out.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
-  if (out.mines.length > ARENA_MINE_MAX) out.mines.length = ARENA_MINE_MAX;
-  return out;
+  return finalizeInstall(out);
 }
 
 /** Copied verbatim from survivalWave.js:25-33 — the same "is this a live Survival run" question. */
@@ -381,10 +421,24 @@ export const survivalArena = {
       wave: this._wave,
       phase: this._phase,
       note: this._note,
+      lawId: this._lawId,
       fieldIds: (this._fieldIds || []).slice(),
       mineIds: (this._mineIds || []).slice(),
       coverEncounterId: this._encounterId,
     });
+  },
+
+  // Cinder machinery only. Helios and Lagrange are event-driven; this is a no-op unless that law is live.
+  update(_dt, state) {
+    if (this._lawId !== CINDER_ARENA_ID || !this._cycleMachinery) return;
+    const st = state || this.state;
+    if (!liveSurvivalRun(st)) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.updateExternal !== 'function') return;
+    const elapsed = simTimeOf(st) - (this._installedAt || 0);
+    const cycle = stepCinderMachinery(elapsed);
+    const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
+    system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
   },
 
   // ---- install --------------------------------------------------------------
@@ -404,6 +458,7 @@ export const survivalArena = {
 
     const install = planArenaInstall({
       arenaPhase: phase,
+      arenaId: run.arenaId,
       wave,
       seed,
       anchor: playerAnchor(state),
@@ -413,11 +468,20 @@ export const survivalArena = {
     this._wave = wave;
     this._phase = install.phase;
     this._note = install.note;
+    this._lawId = isLawArena(run.arenaId) ? run.arenaId : null;
+    this._installedAt = simTimeOf(state);
+    this._cycleMachinery = run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase);
+    this._authoredStrength = 0;
+    if (this._cycleMachinery) {
+      const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
+      this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
+    }
     this._installFields(install.fields);
     this._installMines(install.mines);
     this._installCover(install.cover, wave);
     this._emit('survivalArena:installed', {
       wave,
+      arenaId: run.arenaId,
       arenaPhase: install.phase,
       note: install.note,
       fields: this._fieldIds.length,
@@ -564,6 +628,10 @@ export const survivalArena = {
     this._phase = null;
     this._note = '';
     this._wave = 0;
+    this._lawId = null;
+    this._installedAt = 0;
+    this._cycleMachinery = false;
+    this._authoredStrength = 0;
   },
 
   _emit(event, payload) {

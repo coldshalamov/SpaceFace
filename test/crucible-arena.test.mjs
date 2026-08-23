@@ -518,8 +518,17 @@ test('a missing fields system does not stop the mines or the cover, and does not
   assert.equal(named(h.emitted, 'encounter:resolved').length, 1);
 });
 
-test('the system has no update method — it costs nothing on a quiet tick', () => {
-  assert.equal(typeof survivalArena.update, 'undefined');
+test('update is a no-op on a quiet Helios tick — Cinder machinery does not leak into Helios', () => {
+  assert.equal(typeof survivalArena.update, 'function');
+  const h = boot();
+  installRun(h, { wave: 1, phase: 'wave_intro' });
+  planWaveOn(h, 1);
+  assert.equal(h.fakeFields.live.size, 0);
+  const callsBefore = h.fakeFields.calls.length;
+  h.state.simTime = 3;
+  survivalArena.update(1 / 60, h.state);
+  assert.equal(h.fakeFields.live.size, 0);
+  assert.equal(h.fakeFields.calls.length, callsBefore);
   assert.equal(typeof survivalArena.init, 'function');
   assert.equal(typeof survivalArena.destroy, 'function');
   assert.equal(typeof survivalArena.newGame, 'function');
