@@ -255,8 +255,13 @@ export function createScreenManager(ctx) {
     // pausing screen, docking, or a fulfillment blackout keeps the full modal treatment.
     const externalModal = state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
     const liveOverlay = open && !externalModal && stack.every((id) => !PAUSING_SCREENS.has(id));
-    const modalOpen = open && !liveOverlay || externalModal;
-    document.body.classList.toggle('ui-modal-open', modalOpen);
+    // Reconciliation request: a stack screen, docking, or the external blackout each ask for full
+    // modal semantics. The live-overlay downgrade above is the only softening and is definitionally
+    // false while docking or a fulfillment blackout is active, so external blackout semantics
+    // survive init/re-init reconciliation.
+    const modalOpen = open || state.ui.docked === true
+      || state.ui.fulfillmentBlackoutActive === true;
+    document.body.classList.toggle('ui-modal-open', modalOpen && !liveOverlay);
     document.body.classList.toggle('ui-live-screen', liveOverlay);
     syncHudAccessibility(open || externalModal || state.mode !== 'flight');
     if (backdrop) {

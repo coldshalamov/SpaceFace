@@ -165,28 +165,41 @@ try {
     const state = window.SF && window.SF.state;
     return !!(state && state.mode === 'flight' && state.ui && state.ui.docked === false);
   }, null, { timeout: 15000 });
-  const hud = await page.evaluate(() => {
-    const state = window.SF.state;
-    const mission = state.missions.active.find((m) => m.id === state.ui.trackedMissionId);
-    return {
-      mode: state.mode,
-      missionId: mission && mission.id,
-      cargoQty: mission && mission.params && state.player.cargo.items[mission.params.cmdtyId] || 0,
-      waypointMissionId: state.nav.waypoint && state.nav.waypoint.missionId,
-      waypointLabel: state.nav.waypoint && (state.nav.waypoint.label || state.nav.waypoint.stationName || state.nav.waypoint.sectorName || state.nav.waypoint.mapLabel),
-      trackerText: (document.querySelector('.sf-mission-tracker')?.textContent || '').replace(/\s+/g, ' ').trim(),
-    };
+  await page.waitForFunction(() => {
+    const tracker = document.querySelector('.sf-mission-tracker');
+    const arrow = document.querySelector('.sf-objarrow');
+    if (!tracker || !arrow) return false;
+    const tcs = getComputedStyle(tracker);
+    const acs = getComputedStyle(arrow);
+    const text = (tracker.textContent || '').replace(/\s+/g, ' ');
+    const box = tracker.getBoundingClientRect();
+    return tcs.display !== 'none' && box.width > 20 && /sell/i.test(text) && acs.display !== 'none';
+  }, null, { timeout: 10000 }).catch(async (err) => {
+    throw new Error('Timed out waiting for flight destination line after cargo loading: '
+      + JSON.stringify(await readFlightObjectiveHud(page)) + ' :: ' + err.message);
   });
+  const hud = await readFlightObjectiveHud(page);
   assert.equal(hud.mode, 'flight', 'undock should return to flight mode');
   assert.equal(hud.waypointMissionId, hud.missionId, 'flight nav should still target the loaded contract mission');
-  assert.match(hud.trackerText, /CURRENT OBJECTIVE/i,
-    'flight HUD should carry the loaded contract as the current objective: ' + JSON.stringify(hud));
+  // Live flight HUD after this route (observed, not inferred): the tracker is one destination
+  // line — "Sell 1u Iron Ore at Coalition HQ · 1.4k WU · ETA — · ↙". CURRENT OBJECTIVE and
+  // AMBER DIAMOND / GOAL were retired as tracker chrome; the world diamond is the goal marker.
+  assert.equal(hud.trackerVisible, true,
+    'flight HUD should show the loaded contract destination line: ' + JSON.stringify(hud));
   assert.match(hud.trackerText, /sell/i,
     'flight HUD should carry the loaded contract sell action: ' + JSON.stringify(hud));
   assert(hud.waypointLabel && hud.trackerText.includes(hud.waypointLabel),
     'flight HUD should carry the loaded contract destination: ' + JSON.stringify(hud));
-  assert.match(hud.trackerText, /AMBER DIAMOND \/ GOAL/i,
-    'flight HUD should keep the loaded contract goal marker visible: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /\d+(?:\.\d+)?k?\s*WU/i,
+    'flight HUD destination line should carry distance to the loaded contract: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /ETA/i,
+    'flight HUD destination line should carry ETA to the loaded contract: ' + JSON.stringify(hud));
+  assert.match(hud.trackerText, /[↑↗→↘↓↙←↖]/,
+    'flight HUD destination line should carry bearing to the loaded contract: ' + JSON.stringify(hud));
+  assert.equal(hud.markerVisible, true,
+    'flight HUD should keep the loaded contract world goal marker visible: ' + JSON.stringify(hud));
+  assert.match(hud.markerClass, /sf-objarrow--(?:onscreen|edge)/,
+    'loaded contract goal marker should sit on-camera or at the screen edge: ' + JSON.stringify(hud));
   assert(hud.cargoQty >= 1, 'contract cargo should remain aboard after undock: ' + JSON.stringify(hud));
   assert.deepEqual(issues.errorIssues(), [], 'mission cargo-loading runtime probe should not record page errors');
 
@@ -195,6 +208,28 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+function readFlightObjectiveHud(page) {
+  return page.evaluate(() => {
+    const state = window.SF.state;
+    const mission = state.missions.active.find((m) => m.id === state.ui.trackedMissionId);
+    const tracker = document.querySelector('.sf-mission-tracker');
+    const arrow = document.querySelector('.sf-objarrow');
+    const tcs = tracker ? getComputedStyle(tracker) : null;
+    const box = tracker ? tracker.getBoundingClientRect() : null;
+    return {
+      mode: state.mode,
+      missionId: mission && mission.id,
+      cargoQty: mission && mission.params && state.player.cargo.items[mission.params.cmdtyId] || 0,
+      waypointMissionId: state.nav.waypoint && state.nav.waypoint.missionId,
+      waypointLabel: state.nav.waypoint && (state.nav.waypoint.label || state.nav.waypoint.stationName || state.nav.waypoint.sectorName || state.nav.waypoint.mapLabel),
+      trackerText: (tracker?.textContent || '').replace(/\s+/g, ' ').trim(),
+      trackerVisible: !!(tracker && tcs && tcs.display !== 'none' && tcs.visibility !== 'hidden' && box && box.width > 20),
+      markerVisible: !!(arrow && getComputedStyle(arrow).display !== 'none'),
+      markerClass: (arrow && arrow.className) || '',
+    };
+  });
 }
 
 function trackedMarketReport(page) {

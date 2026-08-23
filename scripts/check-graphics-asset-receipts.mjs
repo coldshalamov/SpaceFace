@@ -91,27 +91,28 @@ assert.equal(authoring.entries.place_asteroid_rock_a.blend_path, rockReceipt.aut
 assert.equal(authoring.entries.place_asteroid_rock_a.promotion_pipeline,
   'scripts/promote-m4-surface-remaster.mjs', 'Rock A authoring registry must name its promoter');
 
-const waspReport = json('assets/ships/wasp_production_v1/evidence/finalize_report.json');
+// Dated 2026-08-23: finalize_report.json is the technical-candidate receipt
+// (`technical_candidate_no_promote`). Live promotion is recorded in evidence/acceptance.json
+// (accepted 2026-07-14, verdict PASS). Do not treat the candidate report as the live receipt.
+const waspAcceptance = json('assets/ships/wasp_production_v1/evidence/acceptance.json');
+const waspFinalize = json('assets/ships/wasp_production_v1/evidence/finalize_report.json');
 const waspPart = required(partById.get('wholeship_wasp_production_v1'), 'wholeship_wasp_production_v1', 'parts manifest');
 const waspRelease = required(releaseById.get('wholeship_wasp_production_v1'), 'wholeship_wasp_production_v1', 'release manifest');
-assert.equal(waspReport.status, 'accepted_live');
-assert.equal(waspReport.promoted, true);
-assert.equal(waspReport.promotion.manifestId, waspPart.id);
-assert.equal(waspReport.promotion.runtimeShipId, 'ship_wasp');
-assertObjectReceipt(waspReport.promotion.authoringBlend, 'Wasp authoring blend');
-for (const receipt of waspReport.promotion.sourceLods) assertObjectReceipt(receipt, `Wasp source LOD${receipt.lod}`);
-for (const receipt of waspReport.promotion.releaseLods) assertObjectReceipt(receipt, `Wasp release LOD${receipt.lod}`);
-for (const candidate of waspReport.lods) {
-  const source = required(waspReport.promotion.sourceLods.find((item) => item.lod === candidate.lod),
-    `LOD${candidate.lod}`, 'Wasp source receipts');
-  assert.equal(fileRecord(candidate.path).sha256, fileRecord(source.path).sha256,
-    `Wasp accepted source LOD${candidate.lod} must match the finalized candidate`);
-}
+assert.equal(waspAcceptance.verdict, 'PASS', 'Wasp acceptance verdict');
+assert.equal(waspAcceptance.assetId, 'SF_WASP_PRODUCTION_V1', 'Wasp acceptance asset id');
+assert.equal(waspPart.status, 'accepted', 'Wasp parts-manifest status');
+assert.equal(waspPart.wiringStatus, 'live_player_wasp', 'Wasp parts-manifest wiring');
+assert.equal(waspFinalize.ok, true, 'Wasp technical candidate still structurally ok');
+assert.equal(waspFinalize.status, 'technical_candidate_no_promote',
+  'Wasp finalize report must remain the candidate receipt, not a rewritten live claim');
+const waspLiveSource = fileRecord(waspRelease.source);
+assert.equal(waspLiveSource.sha256, String(waspAcceptance.runtime.lods[0].sha256).toUpperCase(),
+  'Wasp live source must match the acceptance LOD0 hash');
+assert.equal(waspLiveSource.bytes, waspAcceptance.runtime.lods[0].bytes,
+  'Wasp live source must match the acceptance LOD0 bytes');
 assertReleaseManifest(waspRelease, 'Wasp release manifest');
-assert.equal(waspPart.bytes, fileRecord(waspReport.promotion.sourceLods[0].path).bytes,
-  'Wasp parts-manifest bytes');
-assert.equal(waspPart.tris, glbMetrics(waspReport.promotion.sourceLods[0].path).triangles,
-  'Wasp parts-manifest triangles');
+assert.equal(waspPart.bytes, waspLiveSource.bytes, 'Wasp parts-manifest bytes');
+assert.equal(waspPart.tris, glbMetrics(waspRelease.source).triangles, 'Wasp parts-manifest triangles');
 const partsLibrary = text('src/render/partsLibrary.js');
 assert.match(partsLibrary, /['"]?ship_wasp['"]?:\s*'wholeships\/wasp_production_v1\.glb'/,
   'Wasp runtime must select the accepted production GLB');

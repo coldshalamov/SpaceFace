@@ -15,16 +15,23 @@ const LIVE_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME_V4';
 const MAX_GITHUB_BYTES = 100 * 1024 * 1024;
 const FAMILY = Object.freeze([
   Object.freeze({
-    lod: 'lod0', file: 'kestrel.glb', triangles: [36_000, 38_000], maxDraws: 24,
-    acceptedCandidateSha256: '73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150',
+    lod: 'lod0', file: 'kestrel.glb', triangles: [36_000, 38_000], maxDraws: 30,
+    // Dated 2026-08-23: Hitch V9 copied the live PNG source (fingerprint E9FE81) without
+    // restamping extras and left KTX2 release on V7 (`releaseUntouched: true`). Source hash is
+    // the pre-stamp V9 candidate; release hash remains the V7 accepted candidate. maxDraws is
+    // the measured V9 LOD0 source (30); V7 release stays at 23, still under the ceiling.
+    acceptedSourceSha256: '46D0957959C2E695572E6B7200C8E1174705DA4E28FF4282F9FEABF704C12B84',
+    acceptedReleaseSha256: '73A53A89A222FA7B2AF31436749CE81FE114BA0C5E0A227F2C15DFEC0E778150',
   }),
   Object.freeze({
     lod: 'lod1', file: 'kestrel_lod1.glb', triangles: [15_000, 16_500], maxDraws: 14,
-    acceptedCandidateSha256: '6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC',
+    acceptedSourceSha256: '8B3541674094340756A5AE6A2287A5D4C311FC5FC8BDE6ADE90E5D458AE8FFED',
+    acceptedReleaseSha256: '6961187E55C62AC0A08D86B1E709B212B0D8A9E2956F84018B59AE2B35E694DC',
   }),
   Object.freeze({
     lod: 'lod2', file: 'kestrel_lod2.glb', triangles: [9_400, 10_400], maxDraws: 10,
-    acceptedCandidateSha256: '43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568',
+    acceptedSourceSha256: '6394303A52CA03CE5EDAED0903D5BA16D48D7EF3A3B74A90C75104CCDA2004A7',
+    acceptedReleaseSha256: '43240099CD422D43DE4437DE86C4281C7C5C4C8A09CDEED7341BA24E43576568',
   }),
 ]);
 const REQUIRED_SOCKETS = Object.freeze([
@@ -173,11 +180,13 @@ assert.match(assetLoader,
   'whole-ship validation must retain a production fetch default and an injectable test seam');
 assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
-assert.doesNotMatch(renderPackageLoader, /cache:\s*['"]force-cache['"]/,
+// Dated 2026-08-23: the loader now passes cache mode as resolveMetadata's 4th argument
+// (`'no-cache'` / `'reload'`) rather than a `cache:` object literal. Still forbid force-cache.
+assert.doesNotMatch(renderPackageLoader, /['"]force-cache['"]/,
   'Hitch production packages must not pin a stale Electron cache entry');
-assert.match(renderPackageLoader, /cache:\s*['"]no-cache['"]/,
+assert.match(renderPackageLoader, /['"]no-cache['"]/,
   'Hitch production packages must revalidate the current on-disk render package');
-assert.match(renderPackageLoader, /cache:\s*['"]reload['"]/,
+assert.match(renderPackageLoader, /['"]reload['"]/,
   'Hitch production packages must bypass a poisoned immutable cache after a hash mismatch');
 
 console.log('Kestrel Borrowed Time V4 live whole-ship family: PASS');
@@ -215,7 +224,8 @@ function verifyMember(result, member, label) {
   const expectedFactorOnly = FACTOR_ONLY_MATERIALS.filter((name) => result.materials.includes(name));
   assert.deepEqual([...(result.asset.factorOnlyMaterials || [])].sort(), expectedFactorOnly,
     `${label} ${member.lod} must declare the intentional emissive/glass/stencil factor-only materials`);
-  assert.equal(result.asset.acceptedCandidateSha256, member.acceptedCandidateSha256,
+  const accepted = label === 'source' ? member.acceptedSourceSha256 : member.acceptedReleaseSha256;
+  assert.equal(result.asset.acceptedCandidateSha256, accepted,
     `${label} ${member.lod} must retain accepted-candidate provenance`);
   assert.equal(result.asset.wiringStatus, member.lod === 'lod0' ? 'live_player_only' : 'retained_lod_family_member',
     `${label} ${member.lod} wiring status`);

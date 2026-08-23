@@ -3618,8 +3618,8 @@
         "lod1": "wholeships/kestrel_lod1.glb",
         "lod2": "wholeships/kestrel_lod2.glb"
       },
-      "tris": 36902,
-      "bytes": 53203580,
+      "tris": 37974,
+      "bytes": 53208684,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3672,7 +3672,7 @@
       "priority": "P0",
       "file": "wholeships/kestrel_lod1.glb",
       "tris": 16323,
-      "bytes": 38606700,
+      "bytes": 38611612,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
@@ -3683,7 +3683,7 @@
       "priority": "P0",
       "file": "wholeships/kestrel_lod2.glb",
       "tris": 9878,
-      "bytes": 32971740,
+      "bytes": 32975840,
       "textureSize": 1024,
       "mount": "origin",
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."

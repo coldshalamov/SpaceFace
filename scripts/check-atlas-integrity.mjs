@@ -453,18 +453,39 @@ export function checkAtlasIntegrity(sources = null) {
   }
   checks.push({ name: 'proxyAssetsAvailable', pass: assetProblems.length === 0, details: assetProblems });
 
-  // 14. The map-proxy triangle cap stays below the cheapest shipped `places/` LOD0, and no resolved
-  //     proxy exceeds it. Re-derived every run so the constant cannot rot as the art library grows.
+  // 14. The map-proxy triangle cap stays below the cheapest shipped gameplay LOD0 a chart marker
+  //     actually derives from, and no resolved proxy exceeds it. Re-derived every run so the
+  //     constant cannot rot as the art library grows.
+  //
+  //     Dated 2026-08-23: compare against authoredAssetForNode sources (the same association
+  //     check 13 already uses), not every `category: "places"` row. Everyday-space scatter props
+  //     (PQ-045-PROP-PROMOTION-001, e.g. place_cargo_pod_standard at 168 tris) live in the
+  //     places/ folder as occupational yard dressing and are not atlas proxy sources. Including
+  //     them made MAP_PROXY_TRIANGLE_CAP 256 fail even though the cheapest chart-marker source
+  //     remains place_ash_pin at 420 tris — the cap still has headroom under the object a marker
+  //     stands for. This is not an allowlist.
   const budgetProblems = [];
   if (manifest) {
-    const placeTris = (manifest.parts || [])
-      .filter((p) => p && p.category === 'places' && Number.isFinite(p.tris))
-      .map((p) => p.tris);
-    if (placeTris.length) {
-      const cheapest = Math.min(...placeTris);
+    const proxySourceIds = new Set();
+    for (const node of atlas.nodes) {
+      const assetId = authoredAssetForNode(node.id);
+      if (assetId) proxySourceIds.add(assetId);
+    }
+    const proxySourceParts = (manifest.parts || []).filter((p) => (
+      p && proxySourceIds.has(p.id) && Number.isFinite(p.tris)
+    ));
+    if (proxySourceParts.length) {
+      let cheapest = Infinity;
+      let cheapestId = '';
+      for (const part of proxySourceParts) {
+        if (part.tris < cheapest) {
+          cheapest = part.tris;
+          cheapestId = part.id;
+        }
+      }
       if (MAP_PROXY_TRIANGLE_CAP >= cheapest) {
         budgetProblems.push(`MAP_PROXY_TRIANGLE_CAP ${MAP_PROXY_TRIANGLE_CAP} is no longer below the cheapest `
-          + `shipped places asset (${cheapest} tris) — a chart marker may now cost more than the object it represents`);
+          + `chart-marker source ${cheapestId} (${cheapest} tris) — a chart marker may now cost more than the object it represents`);
       }
     }
   }

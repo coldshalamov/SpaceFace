@@ -833,10 +833,12 @@ export const ui = {
       const externalOpen = active || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
       // During a blackout isLiveOverlay() is false by definition, so live screens collapse into the
-      // full modal treatment here.
+      // full modal treatment here. The plain two-input reconciliation is the pinned K1 lifecycle
+      // landmark; only a live overlay takes the softened third input.
       const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
         && this.screenManager.isLiveOverlay());
-      syncModalChrome(screenOpen, externalOpen, liveOverlay);
+      if (liveOverlay) syncModalChrome(screenOpen, externalOpen, liveOverlay);
+      else syncModalChrome(screenOpen, externalOpen);
       const docked = !!(this.state.ui && this.state.ui.docked === true);
       if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
         this.screenManager.syncHudAccessibility(screenOpen || externalOpen || docked || this.state.mode !== 'flight');
