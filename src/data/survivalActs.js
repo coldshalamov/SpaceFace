@@ -3,7 +3,11 @@
 // Waves 1–10 stay the authored template. Waves 11–30 reuse that template with
 // role, bearing, and arena-phase swaps. Body counts never rise.
 
-import { SURVIVAL_GATE_GROUPS } from './survivalWaves.js';
+import {
+  SURVIVAL_ENDLESS_OVERLAYS,
+  SURVIVAL_ENDLESS_START_WAVE,
+  SURVIVAL_GATE_GROUPS,
+} from './survivalWaves.js';
 
 export const SURVIVAL_ARC_LENGTH = 30;
 export const SURVIVAL_TEMPLATE_BLOCK = 10;
@@ -177,6 +181,63 @@ export function composeArcWave({ packages, blockingRoles, arenaPhase, objective,
     arenaPhase: nextPhase,
     objective: nextObjective,
     systemEvent,
+  };
+}
+
+/** Endless cycle 0 begins at wave 31. Pure function of wave number; no accumulated state. */
+export function endlessCycleOf(wave) {
+  if (!Number.isInteger(wave) || wave < SURVIVAL_ENDLESS_START_WAVE) return 0;
+  return Math.floor((wave - SURVIVAL_ENDLESS_START_WAVE) / SURVIVAL_TEMPLATE_BLOCK);
+}
+
+function applyEndlessOverlay(packages, overlay, cycle) {
+  const next = packages.map(clonePackage);
+  for (const pkg of next) {
+    if (pkg.enemyId === 'dreadnought_boss') continue;
+    if (pkg.role === 'mass' && overlay.massEnemyId) {
+      pkg.enemyId = overlay.massEnemyId;
+      if (overlay.massRole) pkg.role = overlay.massRole;
+    } else if (pkg.role === 'pressure' && overlay.pressureEnemyId) {
+      pkg.enemyId = overlay.pressureEnemyId;
+      if (overlay.pressureRole) pkg.role = overlay.pressureRole;
+    } else if (pkg.role === 'control' && overlay.controlEnemyId) {
+      pkg.enemyId = overlay.controlEnemyId;
+      if (overlay.controlRole) pkg.role = overlay.controlRole;
+    }
+  }
+  const n = SURVIVAL_GATE_GROUPS.length;
+  if (n > 0 && next.length > 0) {
+    const last = next[next.length - 1];
+    if (last.enemyId !== 'dreadnought_boss') {
+      const current = SURVIVAL_GATE_GROUPS.indexOf(last.gateGroup);
+      const from = current < 0 ? 0 : current;
+      last.gateGroup = SURVIVAL_GATE_GROUPS[(from + cycle + 1) % n];
+    }
+  }
+  return next;
+}
+
+/**
+ * Endless composition for one planned wave. Starts from the arc composer so
+ * Act III specialist swaps still apply, then overlays a cycle-indexed mix.
+ * Never changes the sum of package counts.
+ */
+export function composeEndlessWave({ packages, blockingRoles, arenaPhase, objective, wave }) {
+  const arc = composeArcWave({ packages, blockingRoles, arenaPhase, objective, wave });
+  const cycle = endlessCycleOf(wave);
+  const slot = cycle % SURVIVAL_ENDLESS_OVERLAYS.length;
+  const overlay = SURVIVAL_ENDLESS_OVERLAYS[slot];
+  const nextPackages = applyEndlessOverlay(arc.packages, overlay, cycle);
+  const nextRoles = rebuildBlockingRoles(arc.blockingRoles, nextPackages);
+  const nextPhase = overlay && overlay.arenaPhase ? overlay.arenaPhase : arc.arenaPhase;
+  return {
+    packages: nextPackages,
+    blockingRoles: nextRoles,
+    arenaPhase: nextPhase,
+    objective: arc.objective,
+    systemEvent: arc.systemEvent,
+    endlessOverlay: overlay ? overlay.id : null,
+    endlessCycle: cycle,
   };
 }
 

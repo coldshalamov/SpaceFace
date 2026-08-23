@@ -593,7 +593,14 @@ test('adding the two arenas changes the content digest and rejects the old worke
   const decodedOld = decodeCombatLabBuildCode(OLD_WORKED_EXAMPLE);
   assert.equal(decodedOld.ok, false);
   const messages = (decodedOld.issues || []).map((issue) => issue && issue.message).join(' ');
-  assert.match(messages, /digest/i);
+  // Phase 10b replaced the bare word "digest" with a sentence that says what happened and
+  // names both catalogs: "minted against an earlier catalog (0U3BLV9; current 0QYZCFO)".
+  // That is the better message, so the assertion moves to the stronger property rather than
+  // the old wording: the refusal must identify it as a catalog mismatch AND name the current
+  // digest, so a player can tell a stale code from a corrupt one.
+  assert.match(messages, /earlier catalog|digest/i);
+  assert.ok(messages.includes(digest),
+    `the refusal must name the current digest ${digest}; got: ${messages}`);
 
   const roundTrip = decodeCombatLabBuildCode(code);
   assert.equal(roundTrip.ok, true);

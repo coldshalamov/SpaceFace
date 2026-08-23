@@ -10,11 +10,13 @@ import {
   SURVIVAL_TEMPLATE_BLOCK,
   actIndexForWave,
   composeArcWave,
+  composeEndlessWave,
   difficultyForWave,
   templateWaveOf,
 } from '../data/survivalActs.js';
 import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import {
+  SURVIVAL_BOSS_CIRCUIT,
   SURVIVAL_GATE_GROUPS,
   SURVIVAL_WAVES,
   peakConcurrentDemand,
@@ -258,13 +260,32 @@ export function hashSemanticWavePlan(plan) {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-function lookupRecipe(arenaId, wave) {
+export function resolvePlanMode(input) {
+  if (!isPlainObject(input)) return 'arc';
+  const ruleset = typeof input.ruleset === 'string' ? input.ruleset : '';
+  const mode = typeof input.mode === 'string' ? input.mode : '';
+  if (mode === 'endless' || ruleset === 'endless') return 'endless';
+  if (mode === 'boss_circuit' || ruleset === 'boss_circuit') return 'boss_circuit';
+  return 'arc';
+}
+
+function lookupRecipe(arenaId, wave, mode) {
+  if (mode === 'boss_circuit') {
+    if (!Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_BOSS_CIRCUIT.length) return null;
+    const step = SURVIVAL_BOSS_CIRCUIT[wave - 1];
+    if (!step) return null;
+    return RECIPE_BY_ARENA_WAVE.get(`${step.arenaId}#${step.templateWave}`) || null;
+  }
+  if (mode === 'endless') {
+    if (!Number.isInteger(wave) || wave < 1 || wave > WAVE_MAX) return null;
+    return RECIPE_BY_ARENA_WAVE.get(`${arenaId}#${templateWaveOf(wave)}`) || null;
+  }
   if (!Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_ARC_LENGTH) return null;
   return RECIPE_BY_ARENA_WAVE.get(`${arenaId}#${templateWaveOf(wave)}`) || null;
 }
 
-function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSummary, rng }) {
-  const blockPos = templateWaveOf(wave);
+function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSummary, rng, mode }) {
+  const blockPos = mode === 'boss_circuit' ? 10 : templateWaveOf(wave);
   const rawPackages = recipe.packages.map((pkg) => clonePackage(pkg, pickGate(rng, pkg.gateGroup)));
   const pressured = applyBuildPressure(
     rawPackages,
@@ -272,12 +293,13 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     buildSummary,
     blockPos,
   );
-  const composed = composeArcWave({
+  const composeFn = mode === 'endless' ? composeEndlessWave : composeArcWave;
+  const composed = composeFn({
     packages: pressured.packages,
     blockingRoles: pressured.blockingRoles,
     arenaPhase: recipe.arenaPhase,
     objective: recipe.objective,
-    wave,
+    wave: mode === 'boss_circuit' ? wave : wave,
   });
   const packages = applyDifficulty(composed.packages, difficulty);
   const schedule = expandSchedule(packages);
@@ -302,7 +324,7 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
       xp: recipe.rewards.xp + act * 20 + (Number.isFinite(difficulty) ? Math.max(0, Math.floor(difficulty - 1)) * 10 : 0),
       credits: recipe.rewards.credits + act * 6,
     },
-    draftExpectation: draftExpectationFor(wave),
+    draftExpectation: mode === 'boss_circuit' ? { kind: 'refit', choices: null } : draftExpectationFor(wave),
     completionRules: {
       requiredPackagesMaterialized: recipe.completion.requiredPackagesMaterialized === true,
       blockingRoles: blockingRoles.length > 0 ? blockingRoles : uniqueRoles(packages),
@@ -310,6 +332,16 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     },
   };
   if (composed.systemEvent) plan.systemEvent = composed.systemEvent;
+  if (mode === 'endless' && composed.endlessOverlay) {
+    plan.endlessOverlay = composed.endlessOverlay;
+    plan.endlessCycle = composed.endlessCycle;
+    plan.mode = 'endless';
+  }
+  if (mode === 'boss_circuit') {
+    plan.circuitStep = wave;
+    plan.circuitArenaId = recipe.arenaId;
+    plan.mode = 'boss_circuit';
+  }
   return plan;
 }
 
@@ -342,12 +374,17 @@ function planWaveInner(input) {
   }
   if (issues.length > 0) return invalid(issues);
 
-  const act = Number.isInteger(input.act) ? input.act : actIndexForWave(wave);
-  const difficulty = Number.isFinite(input.difficulty) ? input.difficulty : difficultyForWave(wave);
+  const mode = resolvePlanMode(input);
+  const act = Number.isInteger(input.act)
+    ? input.act
+    : (mode === 'boss_circuit' ? 0 : actIndexForWave(wave));
+  const difficulty = Number.isFinite(input.difficulty)
+    ? input.difficulty
+    : (mode === 'endless' ? 3 : difficultyForWave(wave));
   const mutators = Array.isArray(input.mutators) ? input.mutators : [];
   const buildSummary = input.buildSummary == null ? null : input.buildSummary;
 
-  const recipe = lookupRecipe(arenaId, wave);
+  const recipe = lookupRecipe(arenaId, wave, mode);
   if (!recipe) {
     return invalid([issue('wave', 'no authored recipe for this arena and wave')]);
   }
@@ -364,5 +401,6 @@ function planWaveInner(input) {
     mutators,
     buildSummary,
     rng,
+    mode,
   });
 }

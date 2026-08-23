@@ -45,6 +45,11 @@ export function deathSentence(receipt, context = {}) {
 export function outcomeSentence(outcome, context = {}) {
   const wave = Number.isInteger(context.wave) && context.wave > 0 ? context.wave : 0;
   if (outcome === 'victory') return `All ${wave || SURVIVAL_ARC_LENGTH} waves cleared. The arena is empty.`;
+  if (outcome === 'extracted') {
+    return wave
+      ? `You extracted at wave ${wave} with the haul you had.`
+      : 'You extracted with the haul you had.';
+  }
   if (outcome === 'aborted') return 'You left the arena before the run finished.';
   return wave ? `The run ended on wave ${wave}.` : 'The run ended.';
 }
@@ -165,7 +170,11 @@ export const survivalResults = {
   },
 
   _onRunEnded(payload) {
-    this._publish((payload && payload.outcome) || 'defeat');
+    const reason = payload && payload.reason;
+    const outcome = reason === 'extracted'
+      ? 'extracted'
+      : ((payload && payload.outcome) || 'defeat');
+    this._publish(outcome);
   },
 
   _publish(outcome) {
@@ -221,6 +230,10 @@ export const survivalResults = {
     result.ruleset = challenge.ruleset;
     result.trialId = challenge.trialId;
     result.mutators = challenge.mutators.slice();
+    result.extracted = outcome === 'extracted';
+    result.mode = challenge.ruleset === 'endless' || challenge.ruleset === 'boss_circuit'
+      ? challenge.ruleset
+      : 'arc';
     result.unlocksEarned = [];
     try {
       const settled = settleCrucibleRun({ result, run });

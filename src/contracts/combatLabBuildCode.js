@@ -108,6 +108,13 @@ function catalogContentSource() {
 const CONTENT_DIGEST = base36u32(fnv1aU32(catalogContentSource()), DIGEST_WIDTH);
 const VERSION_TAG = PREFIX + String(COMBAT_LAB_BUILD_CODE_VERSION);
 
+export const COMBAT_LAB_CONTENT_DIGEST = CONTENT_DIGEST;
+
+const PRIOR_DIGESTS = ['0U3BLV9', '0GWHFVV', '0QYZCFO'];
+export const COMBAT_LAB_KNOWN_PRIOR_DIGESTS = Object.freeze(
+  PRIOR_DIGESTS.filter((digest) => digest !== CONTENT_DIGEST),
+);
+
 function groupCode(raw) {
   const prefix = raw.slice(0, VERSION_TAG.length);
   const rest = raw.slice(VERSION_TAG.length);
@@ -254,7 +261,10 @@ export function decodeCombatLabBuildCode(code) {
       return fail('checksum', 'checksum mismatch');
     }
     if (digest !== CONTENT_DIGEST) {
-      return fail('contentDigest', 'content digest does not match current Lab catalogs');
+      return fail(
+        'contentDigest',
+        `code was minted against an earlier catalog (${digest}; current ${CONTENT_DIGEST})`,
+      );
     }
     const parsed = parsePayload(payload);
     if (!parsed.ok) return parsed;
@@ -279,4 +289,53 @@ export function describeCombatLabBuildCode(setup) {
   const summary = `${hullName} ${value.hullId} · ${enemyName} ${value.enemyPackageId} · ${arenaName} ${value.arenaId} · seed ${value.seed} · wave ${value.wave}`;
   if (summary.length <= 120) return summary;
   return `${value.hullId} · ${value.enemyPackageId} · ${value.arenaId} · seed ${value.seed} · wave ${value.wave}`;
+}
+
+/**
+ * Classify a code's catalog generation without decoding it into a setup.
+ * Prior-digest codes are recognised; they are never turned into a live setup.
+ */
+export function inspectCombatLabBuildCode(code) {
+  if (typeof code !== 'string') {
+    return { ok: false, catalog: 'invalid', digest: null, issues: [issue('code', 'code must be a string')] };
+  }
+  const raw = code.replace(/[\s-]/g, '').toUpperCase();
+  if (raw.length === 0) {
+    return { ok: false, catalog: 'invalid', digest: null, issues: [issue('code', 'code is empty')] };
+  }
+  if (raw.length < VERSION_TAG.length + DIGEST_WIDTH + CHECKSUM_WIDTH) {
+    return { ok: false, catalog: 'invalid', digest: null, issues: [issue('code', 'code is truncated')] };
+  }
+  if (raw.slice(0, PREFIX.length) !== PREFIX) {
+    return { ok: false, catalog: 'invalid', digest: null, issues: [issue('code', 'wrong prefix')] };
+  }
+  const versionChar = raw.slice(PREFIX.length, VERSION_TAG.length);
+  if (versionChar !== String(COMBAT_LAB_BUILD_CODE_VERSION)) {
+    return { ok: false, catalog: 'invalid', digest: null, issues: [issue('code', 'unsupported build-code version')] };
+  }
+  const digest = raw.slice(VERSION_TAG.length, VERSION_TAG.length + DIGEST_WIDTH);
+  const checksum = raw.slice(-CHECKSUM_WIDTH);
+  const payload = raw.slice(VERSION_TAG.length + DIGEST_WIDTH, raw.length - CHECKSUM_WIDTH);
+  if (payload.length === 0) {
+    return { ok: false, catalog: 'invalid', digest, issues: [issue('code', 'code is truncated')] };
+  }
+  const expectedChecksum = base36u32(fnv1aU32(payload), CHECKSUM_WIDTH);
+  if (checksum !== expectedChecksum) {
+    return { ok: false, catalog: 'invalid', digest, issues: [issue('checksum', 'checksum mismatch')] };
+  }
+  let catalog = 'unknown';
+  if (digest === CONTENT_DIGEST) catalog = 'current';
+  else if (COMBAT_LAB_KNOWN_PRIOR_DIGESTS.includes(digest)) catalog = 'prior';
+  if (catalog === 'current') {
+    return { ok: true, catalog, digest, issues: [] };
+  }
+  return {
+    ok: false,
+    catalog,
+    digest,
+    issues: [issue(
+      'contentDigest',
+      `code was minted against an earlier catalog (${digest}; current ${CONTENT_DIGEST})`,
+    )],
+  };
 }

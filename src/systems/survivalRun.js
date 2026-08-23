@@ -6,6 +6,10 @@
 
 import { validateRunState } from '../core/runState.js';
 import { SURVIVAL_ARC_LENGTH, actIndexForWave, difficultyForWave } from '../data/survivalActs.js';
+import { SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
+import { isBossCircuitRuleset, SURVIVAL_BOSS_CIRCUIT_LENGTH } from './survivalCircuit.js';
+import { isEndlessRuleset } from './survivalEndless.js';
+import { isExtractionWindow } from './survivalExtraction.js';
 import { planWave } from './survivalWavePlanner.js';
 import {
   compileChallenge,
@@ -68,6 +72,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:draftResolved', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
+    this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
   },
 
   destroy() {
@@ -159,6 +164,7 @@ export const survivalRun = {
     const run = liveSurvivalRun(this.state);
     if (run && queued) {
       run.arenaMutators = queued.mutators.slice();
+      if (queued.ruleset) run.ruleset = queued.ruleset;
     }
     if (payload && payload.kind === 'survival' && payload.phase === 'loadout') {
       this._phaseTicks = 0;
@@ -179,7 +185,10 @@ export const survivalRun = {
     this._phaseTicks = 0;
     this._clearReceiptLatches();
 
-    if (phase === 'draft' && compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
+    if (phase === 'draft' && (
+      compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
+      || isBossCircuitRuleset(run.ruleset)
+    )) {
       this._draftResolved = true;
     }
 
@@ -234,19 +243,26 @@ export const survivalRun = {
   _planCurrentWaveIntro(run) {
     if (this._waveIntroHandled) return;
     const nextWave = run.wave < 1 ? 1 : run.wave + 1;
-    if (nextWave > SURVIVAL_RUN_WAVE_COUNT) {
+    const endless = isEndlessRuleset(run.ruleset);
+    const circuit = isBossCircuitRuleset(run.ruleset);
+    const waveCap = circuit
+      ? SURVIVAL_BOSS_CIRCUIT_LENGTH
+      : (endless ? SURVIVAL_ENDLESS_WAVE_MAX : SURVIVAL_RUN_WAVE_COUNT);
+    if (nextWave > waveCap) {
       this._waveIntroHandled = true;
       return;
     }
-    const act = actIndexForWave(nextWave);
+    const act = circuit ? 0 : actIndexForWave(nextWave);
     const plan = planWave({
       seed: run.seed,
       arenaId: run.arenaId,
       wave: nextWave,
       act,
-      difficulty: difficultyForWave(nextWave),
+      difficulty: endless ? 3 : difficultyForWave(nextWave),
       mutators: normalizeMutators(run.arenaMutators),
       buildSummary: null,
+      mode: endless ? 'endless' : (circuit ? 'boss_circuit' : undefined),
+      ruleset: run.ruleset,
     });
     if (isPlanError(plan)) {
       this._planFailed = true;
@@ -280,11 +296,11 @@ export const survivalRun = {
   },
 
   _requestCleanupExit(run) {
-    if (this._isRefitWave(run.wave)) {
+    if (this._isRefitWave(run)) {
       this._requestTransition('cleanup', 'refit', REASON_REFIT_OPEN);
       return;
     }
-    if (this._isLastWave(run.wave)) {
+    if (this._isLastWave(run)) {
       this._requestTransition('cleanup', 'victory', REASON_ACT_COMPLETE);
       return;
     }
@@ -292,31 +308,48 @@ export const survivalRun = {
   },
 
   _draftNext(run) {
-    if (this._isLastWave(run.wave)) return 'victory';
+    if (this._isLastWave(run)) return 'victory';
     return 'wave_intro';
   },
 
   _draftReason(run) {
-    if (this._isLastWave(run.wave)) return REASON_ACT_COMPLETE;
+    if (this._isLastWave(run)) return REASON_ACT_COMPLETE;
     return REASON_PICK_DONE;
   },
 
   _refitNext(run) {
-    if (this._isLastWave(run.wave)) return 'victory';
+    if (this._isLastWave(run)) return 'victory';
     return 'wave_intro';
   },
 
   _refitReason(run) {
-    if (this._isLastWave(run.wave)) return REASON_ACT_COMPLETE;
+    if (this._isLastWave(run)) return REASON_ACT_COMPLETE;
     return REASON_REFIT_DONE;
   },
 
-  _isLastWave(wave) {
+  _isLastWave(run) {
+    const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
+    if (isEndlessRuleset(run && run.ruleset)) return wave >= SURVIVAL_ENDLESS_WAVE_MAX;
+    if (isBossCircuitRuleset(run && run.ruleset)) return wave >= SURVIVAL_BOSS_CIRCUIT_LENGTH;
     return wave >= SURVIVAL_RUN_WAVE_COUNT;
   },
 
-  _isRefitWave(wave) {
+  _isRefitWave(run) {
+    const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
+    if (isBossCircuitRuleset(run && run.ruleset)) return wave > 0;
     return wave > 0 && wave % SURVIVAL_REFIT_EVERY === 0;
+  },
+
+  _onExtractionRequested() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    if (run.phase !== 'cleanup' && run.phase !== 'refit') return;
+    if (!isExtractionWindow(run.wave)) return;
+    this._emit('run:endRequested', {
+      outcome: 'aborted',
+      reason: 'extracted',
+      tick: this._runTick,
+    });
   },
 
   _requestTransition(expectedPhase, nextPhase, reason) {

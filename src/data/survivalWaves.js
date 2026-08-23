@@ -457,3 +457,105 @@ export const SURVIVAL_WAVES = freezeDeep([
   ...tenWaveBlock('cryo_drift', 'se', 'nw'),
   ...tenWaveBlock('storm_lattice', 'diagonal_b', 'front'),
 ]);
+
+/** First wave that is not part of the authored thirty. Default planWave still rejects it. */
+export const SURVIVAL_ENDLESS_START_WAVE = 31;
+export const SURVIVAL_ENDLESS_WAVE_MAX = 999;
+
+/**
+ * Five live arenas for the boss circuit. Ceres Belt and Tethys Hub stay in the
+ * catalog as lab rooms; they are not on this gauntlet.
+ */
+export const SURVIVAL_LIVE_CIRCUIT_ARENAS = freezeDeep([
+  'helios_core',
+  'lagrange_crucible',
+  'cinder_sluice',
+  'cryo_drift',
+  'storm_lattice',
+]);
+
+/**
+ * Consecutive bosses, one authored wave-10 recipe per live arena, with compressed
+ * refits (every step is a refit, no drafts). Fought in the launched room; the
+ * recipe supplies composition and gates, not a mid-run arena-law swap.
+ */
+export const SURVIVAL_BOSS_CIRCUIT = freezeDeep(
+  SURVIVAL_LIVE_CIRCUIT_ARENAS.map((arenaId, index) => ({
+    step: index + 1,
+    arenaId,
+    templateWave: 10,
+    bossEnemyId: 'dreadnought_boss',
+  })),
+);
+
+export const SURVIVAL_BOSS_CIRCUIT_LENGTH = SURVIVAL_BOSS_CIRCUIT.length;
+
+/**
+ * Endless composition overlays. Each row swaps roles/enemies without touching
+ * counts. Indexed by endless cycle so wave 60, 120 and 300 do not collapse
+ * onto one escort mix. Counts never rise.
+ */
+export const SURVIVAL_ENDLESS_OVERLAYS = freezeDeep([
+  {
+    id: 'pressure_wall',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    arenaPhase: 'shutter_alternating',
+  },
+  {
+    id: 'ghost_net',
+    massEnemyId: 'quiet_ghost',
+    massRole: 'reach',
+    arenaPhase: 'absorbent_screen',
+  },
+  {
+    id: 'mine_garden',
+    massEnemyId: 'mine_layer_jackal',
+    massRole: 'disruptor',
+    arenaPhase: 'shutter_lane_close',
+  },
+  {
+    id: 'anchor_snare',
+    massEnemyId: 'field_anchor_controller',
+    massRole: 'anchor',
+    arenaPhase: 'absorbent_screen',
+  },
+  {
+    id: 'choir_tide',
+    massEnemyId: 'choir_zealot',
+    massRole: 'mass',
+    arenaPhase: 'furnace_active',
+  },
+  {
+    id: 'screen_exam',
+    massEnemyId: 'choir_zealot',
+    massRole: 'mass',
+    pressureEnemyId: 'pd_screen_escort',
+    pressureRole: 'support',
+    arenaPhase: 'furnace_active',
+  },
+  {
+    id: 'tether_special',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    controlEnemyId: 'tether_control_raider',
+    controlRole: 'control',
+    arenaPhase: 'shutter_slow',
+  },
+  {
+    id: 'corsair_hunt',
+    massEnemyId: 'corsair_raider',
+    massRole: 'elite',
+    arenaPhase: 'boss',
+  },
+]);
+
+/** Extraction cash-out windows: every ten-wave boundary from wave 10 onward. */
+export const SURVIVAL_EXTRACTION_PERIOD = 10;
+export const SURVIVAL_EXTRACTION_MIN_WAVE = 10;
+
+export function isExtractionWindow(wave) {
+  return Number.isInteger(wave)
+    && wave >= SURVIVAL_EXTRACTION_MIN_WAVE
+    && wave % SURVIVAL_EXTRACTION_PERIOD === 0;
+}
