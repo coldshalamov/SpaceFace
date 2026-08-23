@@ -267,6 +267,22 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     collateral: { civilians: 'orbit_nodes', cargo: 'none' },
     blurb: 'Utility Rig. Two orbiting field nodes; you have to fly a node onto the target.',
   },
+  {
+    traitId: 'mod_herald_fan',
+    form: 'rig',
+    fittedId: 'mod_herald_fan',
+    name: 'Herald Fan',
+    slotType: 'utility',
+    size: 'S',
+    mass: 2,
+    energyDraw: 1,
+    price: 11000,
+    tech: 'tech_attack_topology',
+    acquisition: ['buy', 'research'],
+    legality: 'legal',
+    collateral: { civilians: 'wide_cone', cargo: 'none' },
+    blurb: 'Spreads the root volley. Heat up a little; damage stays the same.',
+  },
 ]);
 
 export const ADVENTURE_TRAIT_MAP_BY_ID = freezeDeep(

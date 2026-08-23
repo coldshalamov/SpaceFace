@@ -384,7 +384,11 @@ function planWaveInner(input) {
   const mutators = Array.isArray(input.mutators) ? input.mutators : [];
   const buildSummary = input.buildSummary == null ? null : input.buildSummary;
 
-  const recipe = lookupRecipe(arenaId, wave, mode);
+  const authored = isPlainObject(input.recipe) ? input.recipe : null;
+  if (authored && authored.arenaId !== arenaId) {
+    return invalid([issue('recipe.arenaId', 'recipe.arenaId must match input.arenaId')]);
+  }
+  const recipe = authored || lookupRecipe(arenaId, wave, mode);
   if (!recipe) {
     return invalid([issue('wave', 'no authored recipe for this arena and wave')]);
   }

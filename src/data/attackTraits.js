@@ -495,6 +495,35 @@ export const ATTACK_TRAITS = freezeDeep([
       detail: 'Each node spends five lineage procs. The ring does nothing while you sit still; you have to fly a node onto the target. Weak outward impulse is a field, not a colliding body.',
     },
   },
+  {
+    // PQ-133.12 factory example. Widens the cone; does not add damage, hull, shield, speed, credits, xp, or score.
+    id: 'mod_herald_fan',
+    schemaVersion: 1,
+    name: 'Herald Fan',
+    tier: 'foundation',
+    family: 'trajectory',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'add', target: 'emitter.spreadDeg', perRank: 10 },
+      { mode: 'mul', target: 'costs.heatScale', perRank: 1.08 },
+    ],
+    inheritance: inheritBlock(true, false, false),
+    cost: {},
+    triggers: [],
+    loc: {
+      summaryKey: 'trait.mod_herald_fan.summary',
+      detailKey: 'trait.mod_herald_fan.detail',
+    },
+    text: {
+      summary: 'Widen the root volley cone. Heat rises slightly. Damage is unchanged.',
+      detail: 'Adds spread only. No extra roots, no payload scale, no speed grant. You cover a wider lane and pay heat.',
+    },
+  },
 ]);
 
 export const ATTACK_TRAIT_BY_ID = freezeDeep(

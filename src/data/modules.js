@@ -340,4 +340,8 @@ export const MODULES = [
     id: 'mod_cryo_gyros', name: 'Cryo Gyros', slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 62000,
     requiresTech: 'tech_orbit_cryo', energyDraw: 8,
   },
+  {
+    id: 'mod_herald_fan', name: 'Herald Fan', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 11000,
+    requiresTech: 'tech_attack_topology', energyDraw: 1,
+  },
 ];
