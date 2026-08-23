@@ -57,6 +57,18 @@ const allowedRandomFiles = new Map([
   ['src/audio/bandBeds.js', 'cosmetic procedural noise buffer (injected-default RNG seam)'],
   ['src/testing/lab/runScenario.js', 'local lab run id only; lab results are non-promoting/internal-test'],
   ['src/ui/screens/stationHub.js', 'cosmetic station-name acquire animation token'],
+  // spawnChunks() scatters the tumbling rock debris when a mining block lets go. Verified
+  // render-only before listing: `particles` is a LOCAL array inside the renderer (declared at
+  // asteroidRenderer3d.js:2027) feeding instanced additive chips, and the only readers outside the
+  // file are perf counters and the diagnostics overlay, which COUNT particles and never feed them
+  // back into sim state. Same class as the drill screen and vfx entries above.
+  ['src/ui/asteroid/asteroidRenderer3d.js', 'cosmetic mining-debris chips (renderer-local particle array)'],
+  // The Combat Lab "roll" button. This is the boot-seed case from src/main.js in miniature: a human
+  // presses roll, the value lands in the seed INPUT, and everything downstream runs from that
+  // explicit seed — nothing authoritative reads the raw draw. The screen is additionally DEV ONLY
+  // ("never ships in build/web"; IS_DEV folds false at build time and uiRoot only registers it
+  // behind that flag), so it cannot reach a player build at all.
+  ['src/ui/screens/sandbox.js', 'dev-only Combat Lab seed roll; the drawn value becomes an explicit seed'],
 ]);
 const randomSites = activeMathRandomSites('src');
 for (const site of randomSites) {

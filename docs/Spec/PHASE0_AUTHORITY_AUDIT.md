@@ -26,6 +26,8 @@ Allowed current call sites:
 | `src/ui/floatingText.js` | cosmetic UI | Adds presentation drift to damage/pickup text. |
 | `src/ui/screens/drill.js` | cosmetic UI | Varies drill particles, steam, dust, and rover shake inside the local drill screen; authoritative drill yields remain system-driven. |
 | `src/ui/screens/stationHub.js` | cosmetic UI | Mints a token to dedupe the station-name acquire CSS transition; presentation only. |
+| `src/ui/asteroid/asteroidRenderer3d.js` | cosmetic UI | Scatters the tumbling rock debris when a mining block lets go. Verified renderer-local: `particles` is declared inside the module and feeds instanced additive chips; the only readers outside the file are perf counters and the diagnostics overlay, which count particles and never feed them back into sim state. |
+| `src/ui/screens/sandbox.js` | seed mint | The Combat Lab "roll" button. The boot-seed case in miniature: a human presses roll, the value lands in the seed input, and everything downstream runs from that explicit seed — nothing authoritative reads the raw draw. The screen is additionally DEV ONLY (IS_DEV folds false at build time; uiRoot registers it only behind that flag), so it cannot reach a player build. |
 
 Forbidden classes:
 
