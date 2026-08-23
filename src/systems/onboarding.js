@@ -257,9 +257,10 @@ export const onboarding = {
     // flight hints above. The hint explains what the system IS + the immediate next step, so the
     // player is never staring at an unfamiliar screen with no guidance.
 
-    // First dock: orient the player to the 8-tab station hub. This is the single biggest "cliff"
-    // moment — a new player docking for the first time sees Market/Shipyard/Outfitting/Manufacture/
-    // Missions/Services/Factions/Bar with no explanation. This fires on every first dock (not just
+    // First dock: orient the player to the station's LEFT RAIL. This is the single biggest "cliff"
+    // moment — a new player docking for the first time meets a screen full of operations with no
+    // explanation. (The comment used to describe an 8-tab hub across the top; that layout is gone,
+    // and the live copy in hudAttention.js already points at the rail and at Departure Check.) This fires on every first dock (not just
     // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
     bus.on('dock:docked', (p) => {
       this._showHint('firstHub', firstUseLine('firstHub'), p);

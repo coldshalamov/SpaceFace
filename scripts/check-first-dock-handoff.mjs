@@ -9,6 +9,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const stationSource = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
 const onboardingSource = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
+// The first-use LINES live in hudAttention, not in the system that fires them. Asserting the copy
+// against onboarding.js reported a correct game as broken: hudAttention.js has carried
+// "Use the left rail. Departure Check owns undock." all along, while onboarding.js only ever held
+// the trigger and a comment about the layout.
+const firstUseCopySource = readFileSync(join(ROOT, 'src/ui/hudAttention.js'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
 assert.match(stationSource, /export function firstDockHandoffVisible\(state, stationId\)/,
@@ -74,11 +79,13 @@ for (const eventName of [
 
 assert.doesNotMatch(stationSource, /codex/i,
   'first dock handoff slice must not touch Codex responsibilities');
-assert.doesNotMatch(onboardingSource, /tab labels at top/i,
-  'first dock onboarding copy must not describe the old top-tab layout');
-assert.match(onboardingSource, /left rail/,
+for (const [label, source] of [['onboarding', onboardingSource], ['first-use copy', firstUseCopySource]]) {
+  assert.doesNotMatch(source, /tab labels at top/i,
+    `${label} must not describe the old top-tab layout`);
+}
+assert.match(firstUseCopySource, /left rail/,
   'first dock onboarding copy must teach the actual station left rail');
-assert.match(onboardingSource, /Use the left rail\. Departure Check owns undock\./,
+assert.match(firstUseCopySource, /Use the left rail\. Departure Check owns undock\./,
   'firstHub copy must point at the handoff owner without repeating its full checklist');
 assert.match(onboardingSource, /_tutorialRailOwnsVoice\(\)/,
   'firstHub hint must yield while the staged B0-B5 tutorial is active');
