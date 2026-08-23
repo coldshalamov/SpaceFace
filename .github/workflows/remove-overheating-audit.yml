@@ -3,6 +3,8 @@ name: remove-overheating-audit
 on:
   push:
     branches: [remove-overheating-systems]
+  pull_request:
+    branches: [master]
 
 permissions:
   contents: read
