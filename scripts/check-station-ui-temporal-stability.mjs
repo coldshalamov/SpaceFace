@@ -106,11 +106,11 @@ try {
     checkStable(report.global.hold, 'Hold readout stationary hover');
   }
 
-  const handoff = page.locator('.sx-handoff:not([hidden]) .sx-hstep').first();
+  const handoff = page.locator('.sxb-handoff:not([hidden]) .sxb-hstep').first();
   if (await handoff.count()) {
     await handoff.hover();
     await page.waitForTimeout(240);
-    report.global.handoff = await sampleFrames(page, '.sx-handoff:not([hidden]) .sx-hstep', FRAMES);
+    report.global.handoff = await sampleFrames(page, '.sxb-handoff:not([hidden]) .sxb-hstep', FRAMES);
     checkStable(report.global.handoff, 'First Dock Handoff stationary hover');
   }
 
@@ -196,7 +196,7 @@ async function sampleFrames(page, selector, frames, { requireHover = true } = {}
         });
         if (record.type === 'childList' && node?.closest('.sx-screen__body')) mutations.screenChildList += 1;
         else if (record.type === 'childList' && node?.closest('.sx-readouts')) mutations.readoutsChildList += 1;
-        else if (record.type === 'childList' && node?.closest('.sx-handoff')) mutations.handoffChildList += 1;
+        else if (record.type === 'childList' && node?.closest('.sxb-handoff')) mutations.handoffChildList += 1;
         else if (record.type === 'attributes' && node?.closest('.sx-dock')) mutations.dockAttributes += 1;
         else mutations.other += 1;
       }

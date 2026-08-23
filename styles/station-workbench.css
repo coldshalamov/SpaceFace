@@ -45,10 +45,6 @@
   border:1px solid #4f4637;
 }
 .sx-crest__name { color:var(--ink-0); }
-.sx-credits {
-  position:relative; border-left:1px solid #4c4a44; border-right:1px solid #282b2d;
-}
-.sx-credits::before { content:"CREDIT LINE"; position:absolute; top:3px; right:7px; font:500 12px/1 var(--sx-mono); letter-spacing:var(--sf-track-micro); }
 
 /* The command dock is a distance field mounted to a heavy rail. */
 .sx-dockzone { position:relative; z-index:4; }
@@ -160,8 +156,6 @@
 /* First-dock tasks sit on the rail as executable intentions, not tutorial cards. */
 .sx-handoff { gap:0; }
 .sx-handoff__k { padding-right:16px; }
-.sx-hstep { border-radius:0; border:0; border-left:1px solid #46453f; }
-.sx-hstep:last-child { border-right:1px solid #46453f; }
 
 /* ======================== SHIPWORKS / OBJECT-CENTRIC BAY ======================== */
 .sx-sw {
@@ -809,9 +803,6 @@ button.sx-fab-in { cursor:pointer; }
 .sx-crest__meta { margin-top:1px; font-size:13px; }
 .sx-readout__meter { height:22px; }
 .sx-readout__v { font-size:13px; }
-.sx-credits { padding:5px 12px 5px 14px; }
-.sx-credits::before { display:none; }
-.sx-credits__v { padding-top:0; font-size:16px; }
 
 /* One real magnetic dock. Opaque hardware below, projected status above. */
 .sx-dockzone { grid-row:1; min-height:0; }
@@ -847,7 +838,6 @@ button.sx-fab-in { cursor:pointer; }
 .sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) > .sx-dockzone { grid-row:2; }
 .sx-app:has(> .sx-dockzone > .sx-handoff:not([hidden])) > .sx-workspace { grid-row:3; }
 .sx-handoff__k { padding:0 10px; font-size:12px; letter-spacing:var(--sf-track-micro); }
-.sx-hstep { min-height:38px; padding:6px 12px; }
 
 /* Operation identity sits inside the object's selector rail. The page-title band
    and Soviet-looking numbered spine are intentionally removed. */
@@ -1037,12 +1027,6 @@ button.sx-fab-in { cursor:pointer; }
 .sx-crest__meta { color:#82999a; }
 .sx-readout__meter { width:4px; border-radius:3px; background:#182932; box-shadow:0 0 0 1px rgba(106,205,218,.08); }
 .sx-readout__fill { border-radius:3px; }
-.sx-credits {
-  border:1px solid rgba(103,213,229,.18); border-radius:10px; background:linear-gradient(135deg,color-mix(in srgb, var(--sf-surface) 96%, transparent),rgba(8,14,22,.92));
-  clip-path:none; box-shadow:inset 0 0 22px rgba(85,217,239,.035),0 8px 28px rgba(0,0,0,.22);
-}
-.sx-credits::before { color:#668386; }
-.sx-credits__ico { color:var(--sx-worklight); filter:drop-shadow(0 0 7px rgba(243,173,80,.3)); }
 
 /* The one allowed floating object is the player's primary command instrument. */
 .sx-dock {
@@ -1083,9 +1067,6 @@ button.sx-fab-in { cursor:pointer; }
 
 .sx-handoff { color:#8ba1a1; }
 .sx-handoff__k { color:#668185; }
-.sx-hstep { border-left-color:rgba(103,208,223,.18); background:linear-gradient(180deg,rgba(13,27,37,.76),color-mix(in srgb, var(--sf-surface) 74%, transparent)); }
-.sx-hstep:last-child { border-right-color:rgba(103,208,223,.18); }
-.sx-hstep:hover { background:rgba(18,39,49,.86); box-shadow:inset 0 -2px var(--sx-cool); }
 
 /* Repeated selectors are instruments on one field, not boxed navigation cards. */
 .sx-sw__rail,.sx-mkt__list,.sx-ind__list,.sx-ct__board,.sx-fac__rail,.sx-bar__rail { border-bottom-color:rgba(105,209,224,.15); }

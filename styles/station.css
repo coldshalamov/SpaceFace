@@ -106,13 +106,6 @@
 .sx-readout__v { font-family:var(--sx-mono); font-size:13px; color:var(--ink-1); font-variant-numeric:tabular-nums; min-width:34px; }
 .sx-readout__v i { font-style:normal; color:var(--ink-3); font-size:12px; }
 
-.sx-credits {
-  display:flex; align-items:center; gap:8px; padding:8px 15px; border-radius:var(--r-md);
-  background:var(--surface-1); border:1px solid var(--line-2); box-shadow:var(--sh-1);
-}
-.sx-credits__ico { color:var(--warn); display:flex; }
-.sx-credits__v { font-family:var(--sx-mono); font-weight:500; font-size:19px; color:var(--ink-0); font-variant-numeric:tabular-nums; letter-spacing:.01em; }
-.sx-credits__u { font-size:12px; color:var(--ink-3); letter-spacing:.14em; text-transform:uppercase; }
 
 /* =========================== COMMAND DOCK =========================== */
 .sx-dockwrap { padding:14px 24px 16px; display:flex; justify-content:center; }
@@ -636,14 +629,6 @@
 .sx-handoff { display:flex; align-items:center; gap:10px; padding:0 28px 14px; flex-wrap:wrap; }
 .sx-handoff[hidden] { display:none; }
 .sx-handoff__k { font-family:var(--sx-display); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; }
-.sx-hstep { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:8px 14px; border:1px solid var(--line-1); border-left-width:3px; border-radius:var(--r-md); background:var(--surface-1); cursor:pointer; font-family:var(--sx-ui); text-align:left; transition:border-color .14s,background .14s; }
-.sx-hstep:hover { background:var(--surface-2); border-color:var(--azure); }
-.sx-hstep__n { font-family:var(--sx-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); }
-.sx-hstep__t { font-size:13px; color:var(--ink-1); }
-.sx-hstep.is-ok { border-left-color:var(--gain); }
-.sx-hstep.is-warn { border-left-color:var(--warn); }
-.sx-hstep.is-bad { border-left-color:var(--loss); }
-.sx-hstep.is-done { opacity:.62; border-left-color:var(--gain); }
 
 /* anchored popovers (departure check, cargo manifest) */
 .sx-pop { position:absolute; z-index:20; min-width:290px; max-width:370px; padding:14px; border:1px solid var(--line-2); border-radius:var(--r-md); background:linear-gradient(180deg,var(--surface-2),var(--void-1)); box-shadow:var(--sh-2); opacity:0; transform:translateY(-6px); transition:opacity .15s var(--ease), transform .15s var(--ease); }

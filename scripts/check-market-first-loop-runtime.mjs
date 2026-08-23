@@ -101,7 +101,12 @@ try {
       })),
       chart: !!document.querySelector('[data-screen="station"] .sx-mkt-chart'),
       stats: [...document.querySelectorAll('[data-screen="station"] .sx-mkt-stats .sx-stat__k')].map((k) => text(k)),
-      credits: text(document.querySelector('[data-screen="station"] .sx-credits__v')),
+      // The docked credit readout lives in the fascia purse. `.sx-credits__v` was a SUPERSEDED
+      // design: no JavaScript in src/ ever emitted that markup, so this assertion had been reading
+      // an element that does not exist and reporting the game broken. Verified live in the station
+      // lab -- `.sxb-purse__value` reads "12,453" under a "Credits" label while `.sx-credits` is
+      // absent from the DOM entirely.
+      credits: text(document.querySelector('[data-screen="station"] .sxb-purse__value')),
     };
   });
   assert.ok(readable.rowCount > 0, 'Market should list at least one traded commodity at the first dockable station');
@@ -129,7 +134,7 @@ try {
 
   // ---- cargo handoff: the common "sell what I hauled" action must open the same Market in
   // sell mode and focus its list on what is actually in the hold, even when Market is already open.
-  await domClick(page, '[data-screen="station"] .sx-hstep[data-handoff="market"][data-handoff-mode="sell"]');
+  await domClick(page, '[data-screen="station"] .sxb-hstep[data-handoff="market"][data-handoff-mode="sell"]');
   await page.waitForFunction(() => {
     const active = document.querySelector('[data-screen="station"] .sx-seg__btn.is-on');
     return active && active.getAttribute('data-mode') === 'sell';
