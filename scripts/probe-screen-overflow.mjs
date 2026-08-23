@@ -145,7 +145,21 @@ try {
     const opened = await page.evaluate((sid) => {
       try { window.SF.bus.emit('ui:pushScreen', { id: sid, source: 'probe' }); return true; } catch { return false; }
     }, id);
-    await page.waitForTimeout(700);
+    // Wait for layout to stop moving rather than sleeping a fixed amount. Several of these screens
+    // populate asynchronously, and a fixed 700ms caught the galaxy map's cargo apron mid-layout
+    // about half the time, reporting a 6px overflow that settled to zero moments later. A probe
+    // that reports phantom defects trains people to ignore it.
+    await page.evaluate(() => { window.__sfScreenShape = null; });
+    await page.waitForTimeout(300);
+    await page.waitForFunction((sid) => {
+      const root = document.querySelector(`[data-screen="${sid}"]`)
+        || document.querySelector('.screen.is-active, .screen[aria-hidden="false"]');
+      if (!root) return true;
+      const shape = `${root.scrollHeight}|${root.scrollWidth}|${root.querySelectorAll('*').length}`;
+      const settled = window.__sfScreenShape === shape;
+      window.__sfScreenShape = shape;
+      return settled;
+    }, id, { timeout: 8000, polling: 200 }).catch(() => {});
     const r = await measure(id);
     r.opened = opened;
     results.push(r);
@@ -157,7 +171,8 @@ try {
       for (const c of r.clipped.slice(0, 3)) console.log(`    CLIP ${c.over}px  ${c.name}`);
       for (const p of r.phantomHidden.slice(0, 3)) console.log(`    PHANTOM display:${p.display} ${p.w}x${p.h}  ${p.name}`);
     }
-    if (!r.missing && (r.belowFold.length || r.clipped.length || r.phantomHidden.length)) {
+    if (!r.missing && (process.env.SF_PROBE_SHOT === '1'
+      || r.belowFold.length || r.clipped.length || r.phantomHidden.length)) {
       await page.screenshot({ path: join(OUT, `defect-${id}.png`) }).catch(() => {});
     }
     await page.evaluate(() => { try { window.SF.bus.emit('ui:closeAll', {}); } catch { /* ok */ } });

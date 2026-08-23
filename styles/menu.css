@@ -73,6 +73,16 @@
     0 24px 64px rgba(0, 0, 0, .75),
     0 4px 16px rgba(0, 0, 0, .5),
     inset 0 1px 0 rgba(255, 255, 255, .06);
+  /* max-height alone only promised to cap the panel; with no overflow the list simply drew past its
+     own border and off the screen. On a 1152x720 laptop the Pause menu's last entry — MAIN MENU —
+     was 18px below the viewport with nothing able to scroll to it, so a player could not quit to
+     the main menu at all. The panel now holds its bounds and the list scrolls inside it. */
+  overflow: hidden;
+}
+.screen.sf-menu > .sf-col {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Diegetic mono stamp in the top right corner. */
