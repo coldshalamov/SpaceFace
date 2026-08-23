@@ -59,7 +59,9 @@ test('projectFieldTrajectory matches the actual simulated body path under a Well
     // impulse integration applies, so the two paths should track closely.
     const start = { pos: { x: body.pos.x, z: body.pos.z }, vel: { x: body.vel.x, z: body.vel.z } };
     const STEPS = 24;
-    const proj = projectFieldTrajectory(start.pos, start.vel, snapshot, LIGHT, { dt: SIM_DT, steps: STEPS });
+    // Profile mirrors the WRECK (id included): the well carries the player's excludeId filter, and a
+    // synthetic id that happens to equal the player's would silently predict a field-free path.
+    const proj = projectFieldTrajectory(start.pos, start.vel, snapshot, { ...LIGHT, id: body.id }, { dt: SIM_DT, steps: STEPS });
 
     let maxErr = 0;
     for (let i = 1; i <= STEPS; i++) {

@@ -352,6 +352,11 @@ export const fields = {
       ownerId: player.id,
       team: player.team,
       createdAt: now,
+      // The deploying hull never feels its own tool (same rule the enemy anchor snare applies to
+      // its source hull): the Well/Repulsor exist to move OTHER bodies. Without this the
+      // ship-centered Repulsor flings the player off-center on the first drift tick, and a
+      // well dropped on the cursor yanks the player's own approach path.
+      filters: { excludeId: player.id },
     });
     rt.deployed[fieldId] = { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt };
     rt.cooldowns[kind] = now + def.cooldownS;
@@ -383,6 +388,10 @@ export const fields = {
         id: fieldId, kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
         falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
         durationS: Infinity, sourceId: player.id, team: player.team, createdAt: now,
+        // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
+        // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
+        // keeps that guarantee true regardless of future originGap/geometry tuning.
+        filters: { excludeId: player.id },
       });
       rt.coneActive = true;
       rt.coneFieldId = fieldId;

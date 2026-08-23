@@ -164,6 +164,31 @@ test('Cone CLEARS forward and ignores bodies behind it (consumer 3)', async () =
   });
 });
 
+// ── owner exclusion: a player tool never moves its own hull ────────────────────────────────────
+test('Repulsor dropped at the ship never shoves the deploying player', async () => {
+  await withFlag(true, async () => {
+    const t = await bootPhysics();
+    const body = lightBody(t.sim, 60, 0); // east of the ship-centered repulsor → still pushed +x
+    pressDeploy(t, 'deployRepulsor');
+    for (let i = 0; i < 40; i++) t.sim.step();
+    assert.ok(body.vel.x > 0.5, `other body still shoved outward (+x), got vel.x=${body.vel.x}`);
+    assert.ok(speed(t.player) < 0.05, `deploying player not shoved by own repulsor, got speed=${speed(t.player)}`);
+    t.cleanup();
+  });
+});
+
+test('Well deployed beside the ship never pulls the deploying player', async () => {
+  await withFlag(true, async () => {
+    const t = await bootPhysics();
+    const body = lightBody(t.sim, 110, 0); // east of the well center at (60,0) → pulled -x
+    pressDeploy(t, 'deployWell', { x: 60, z: 0 });
+    for (let i = 0; i < 40; i++) t.sim.step();
+    assert.ok(body.vel.x < -0.5, `other body still pulled inward (-x), got vel.x=${body.vel.x}`);
+    assert.ok(speed(t.player) < 0.05, `deploying player not pulled by own well, got speed=${speed(t.player)}`);
+    t.cleanup();
+  });
+});
+
 // ── heavy shrug at the Δv layer (brief req 2/13) ────────────────────────────────────────────────
 test('heavy ship moves a small fraction of a light body under the same well', async () => {
   await withFlag(true, async () => {
