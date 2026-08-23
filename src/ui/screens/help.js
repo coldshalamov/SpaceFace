@@ -38,7 +38,7 @@ function injectStyle() {
   // copy of that whole block was pasted here and into every other menu screen.
   s.textContent = `
   .sf-codex-table { width:100%; border-collapse:collapse; font-size:12px; }
-  .sf-codex-table th { text-align:left; color:var(--ink-dim); font-family:var(--mono,monospace); font-size:11px;
+  .sf-codex-table th { text-align:left; color:var(--ink-dim); font-family:var(--mono,monospace); font-size:12px;
     letter-spacing:.08em; text-transform:uppercase; padding:6px 8px; border-bottom:1px solid var(--panel-edge);
     position:sticky; top:0; background:var(--panel,#121518); }
   .sf-codex-table td { padding:5px 8px; color:var(--ink,#f1ede2); border-bottom:1px solid rgba(150,140,120,.12); }
@@ -48,9 +48,9 @@ function injectStyle() {
   .sf-codex-faction { padding:12px 0; border-bottom:1px solid rgba(150,140,120,.12); }
   .sf-codex-faction:last-child { border-bottom:none; }
   .sf-codex-faction .fname { font-size:14px; color:var(--ink,#f1ede2); display:flex; align-items:center; gap:8px; }
-  .sf-codex-faction .fshort { font-family:var(--mono,monospace); font-size:11px; color:var(--ink-dim); letter-spacing:.06em; }
+  .sf-codex-faction .fshort { font-family:var(--mono,monospace); font-size:12px; color:var(--ink-dim); letter-spacing:.06em; }
   .sf-codex-faction .fdesc { font-size:12px; color:var(--ink-dim); margin-top:4px; line-height:1.5; }
-  .sf-codex-faction .fdisp { font-family:var(--mono,monospace); font-size:11px; margin-top:3px; }
+  .sf-codex-faction .fdisp { font-family:var(--mono,monospace); font-size:12px; margin-top:3px; }
   `;
   document.head.appendChild(s);
 }

@@ -28,7 +28,7 @@ export const BAND_HUD_CSS = `
   .sf-band-hud__button { min-width:176px; min-height:34px; display:flex; align-items:center;
     justify-content:space-between; gap:12px; padding:7px 10px; border:1px solid rgba(135,165,190,.38);
     border-left:2px solid rgba(124,196,218,.82); border-radius:8px; background:rgba(5,9,18,.92);
-    color:var(--text-secondary, #aebdca); font:600 10px/1.2 var(--hud-data, "IBM Plex Mono", Consolas, monospace);
+    color:var(--text-secondary, #aebdca); font:600 12px/1.2 var(--hud-data, "IBM Plex Mono", Consolas, monospace);
     letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
     transition:border-color 160ms ease-out,color 160ms ease-out,background 160ms ease-out; }
   .sf-band-hud__button:hover,.sf-band-hud__button:focus-visible { color:var(--text-primary, #edf5fa);
@@ -37,7 +37,7 @@ export const BAND_HUD_CSS = `
   .sf-band-hud__button[data-off="true"] { border-left-color:rgba(130,145,155,.5); color:rgba(174,189,202,.72); }
   @media (prefers-reduced-motion: reduce) { .sf-band-hud__button { transition:none; } }
   @media (max-width: 820px) { .sf-band-hud { right:12px; top:112px; bottom:auto; }
-    .sf-band-hud__button { min-width:148px; font-size:9px; } }
+    .sf-band-hud__button { min-width:148px; font-size:12px; } }
 `;
 
 export function createBandHud(ctx, options = {}) {

@@ -129,7 +129,7 @@ export const localmapScreen = {
       '</div>' +
       '<div class="lm-body"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
-      '<div class="lm-legend" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; opacity: 0.85;">' +
+      '<div class="lm-legend" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; opacity: 0.85;">' +
         `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Zoom: [Scroll Wheel]` +
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +

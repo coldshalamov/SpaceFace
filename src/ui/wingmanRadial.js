@@ -198,9 +198,9 @@ function injectCss() {
     box-shadow:0 0 18px rgba(57,208,255,.25), inset 0 0 14px rgba(57,208,255,.08);
     transition:transform .14s ease; color:inherit; cursor:pointer; padding:0; pointer-events:auto; }
   .sf-wradial--in .sf-wradial__hub { transform:translate(-50%,-50%) scale(1); }
-  .sf-wradial__hub-title { font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--visor-cyan, #39d0ff); }
+  .sf-wradial__hub-title { font-family:var(--mono); font-size:12px; letter-spacing:.18em; color:var(--visor-cyan, #39d0ff); }
   .sf-wradial__hub-count { font-family:var(--mono); font-size:16px; color:var(--text-primary, #eaf4ff); text-shadow:0 0 6px rgba(57,208,255,.5); }
-  .sf-wradial__hub-scope { font-size:7px; color:var(--text-secondary, #9fb4cc); }
+  .sf-wradial__hub-scope { font-size:12px; color:var(--text-secondary, #9fb4cc); }
   .sf-wradial__wedge { position:absolute; left:50%; top:50%; width:96px; height:66px; margin:-33px 0 0 -48px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     background:rgba(6,12,22,.86); border:1px solid var(--panel-edge, rgba(120,160,200,.3)); border-radius:10px;
@@ -212,8 +212,8 @@ function injectCss() {
   .sf-wradial__wedge--disabled:hover { border-color:var(--panel-edge, rgba(120,160,200,.3)); box-shadow:none; }
   .sf-wradial__wedge:disabled { cursor:not-allowed; }
   .sf-wradial__glyph { font-size:18px; color:var(--visor-cyan, #39d0ff); line-height:1; }
-  .sf-wradial__label { font-size:10px; letter-spacing:.04em; white-space:nowrap; }
-  .sf-wradial__key { font-size:9px; color:var(--text-secondary, #9fb4cc); border:1px solid var(--panel-edge, rgba(120,160,200,.3));
+  .sf-wradial__label { font-size:12px; letter-spacing:.04em; white-space:nowrap; }
+  .sf-wradial__key { font-size:12px; color:var(--text-secondary, #9fb4cc); border:1px solid var(--panel-edge, rgba(120,160,200,.3));
     border-radius:3px; padding:0 4px; }
   /* wedge placement: the transform slides each wedge out from center to its compass point. */
   .sf-wradial__wedge--top    { transform:translate(0,-92px); }

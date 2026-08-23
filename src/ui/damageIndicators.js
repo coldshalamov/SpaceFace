@@ -87,7 +87,7 @@ function injectStyle() {
   border:2px solid var(--impact-tone);
   background:rgba(5,9,18,.88);
   color:var(--impact-tone);
-  font:700 11px/1 var(--mono, monospace);
+  font:700 12px/1.35 var(--mono, monospace);
   letter-spacing:0;
 }
 .sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #39d0ff); }

@@ -241,18 +241,18 @@ function injectStyle(doc) {
     background:linear-gradient(135deg,rgba(20,16,7,.98),rgba(8,10,13,.95)); color:#fff4d4;
     font-family:var(--mono,Consolas,monospace); box-shadow:0 18px 36px rgba(0,0,0,.36); pointer-events:auto; }
   #sf-lawful-inspection[hidden] { display:none !important; }
-  .sf-lawful-inspection__eyebrow { color:#f3ca68; font-size:9px; font-weight:700; letter-spacing:.2em; }
+  .sf-lawful-inspection__eyebrow { color:#f3ca68; font-size:12px; font-weight:700; letter-spacing:.2em; }
   #sf-lawful-inspection-title { margin:7px 0 0; font:700 17px/1.2 var(--mono,Consolas,monospace); letter-spacing:.025em; }
-  .sf-lawful-inspection__status { margin:6px 0 0; color:#eadbb7; font-size:10px; line-height:1.35; }
-  .sf-lawful-inspection__escape { min-height:1.35em; margin:7px 0 0; color:#e8bd56; font:700 9px/1.35 var(--mono,Consolas,monospace); letter-spacing:.12em; }
+  .sf-lawful-inspection__status { margin:6px 0 0; color:#eadbb7; font-size:12px; line-height:1.35; }
+  .sf-lawful-inspection__escape { min-height:1.35em; margin:7px 0 0; color:#e8bd56; font:700 12px/1.35 var(--mono,Consolas,monospace); letter-spacing:.12em; }
   .sf-lawful-inspection__actions { display:grid; gap:6px; margin-top:12px; }
   .sf-lawful-inspection__actions button { min-height:42px; position:relative; padding:8px 11px 8px 44px;
     border:1px solid rgba(243,202,104,.45); background:rgba(216,170,51,.11); color:#fff4d4;
-    text-align:left; font:700 11px/1.25 var(--mono,Consolas,monospace); letter-spacing:.025em; cursor:pointer;
+    text-align:left; font:700 12px/1.25 var(--mono,Consolas,monospace); letter-spacing:.025em; cursor:pointer;
     transition:transform .14s ease, border-color .14s ease, background .14s ease; }
   .sf-lawful-inspection__actions button::before { content:attr(data-key); position:absolute; left:10px; top:50%;
     width:22px; height:22px; display:grid; place-items:center; transform:translateY(-50%); border:1px solid rgba(243,202,104,.58);
-    color:#f3ca68; font-size:10px; letter-spacing:0; }
+    color:#f3ca68; font-size:12px; letter-spacing:0; }
   .sf-lawful-inspection__actions button:hover,.sf-lawful-inspection__actions button:focus-visible { transform:translateX(-2px);
     border-color:#ffe39a; background:rgba(243,202,104,.19); outline:2px solid #ffe39a; outline-offset:2px; }
   .sf-lawful-inspection__actions button:disabled { opacity:.56; cursor:wait; transform:none; }

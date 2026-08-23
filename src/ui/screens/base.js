@@ -36,7 +36,7 @@ function injectStyle() {
 #sf-base .base-plan--ok { border-color:rgba(88,201,138,.35); background:rgba(24,42,34,.4); }
 #sf-base .base-plan--warn { border-color:rgba(227,161,61,.38); background:rgba(48,38,20,.4); }
 #sf-base .base-plan--bad { border-color:rgba(237,105,97,.38); background:rgba(46,24,22,.4); }
-#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; }
+#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
 #sf-base .base-plan--ok .base-plan-k { color:var(--good); }
 #sf-base .base-plan--warn .base-plan-k { color:var(--warn); }
 #sf-base .base-plan--bad .base-plan-k { color:var(--danger); }
@@ -48,7 +48,7 @@ function injectStyle() {
 #sf-base .base-slot.empty { border-style:dashed; opacity:.6; display:flex; align-items:center;
   justify-content:center; color:var(--ink-mute); font-size:12px; min-height:80px; }
 #sf-base .base-slot .nm { font-weight:600; color:var(--ink); font-size:13px; margin-bottom:4px; }
-#sf-base .base-slot .eff { color:var(--accent); font-size:11px; font-family:var(--mono); }
+#sf-base .base-slot .eff { color:var(--accent); font-size:12px; font-family:var(--mono); }
 #sf-base .base-shop { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 #sf-base .base-specializations { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 #sf-base .base-spec { border:1px solid var(--panel-edge); border-radius:2px; padding:12px;
@@ -57,23 +57,23 @@ function injectStyle() {
 #sf-base .base-spec.active { border-color:#8a6a3c; background:var(--mf-worklight-dim);
   box-shadow:inset 2px 0 0 var(--accent); }
 #sf-base .base-spec .nm { color:var(--ink); font-size:13px; font-weight:700; }
-#sf-base .base-spec .desc { color:var(--ink-mute); font-size:11px; line-height:1.35; }
-#sf-base .base-spec .verb { color:var(--accent); font-size:11px; font-weight:700; line-height:1.35; }
-#sf-base .base-spec .effect { color:var(--good); font-size:10px; line-height:1.35; }
-#sf-base .base-spec .risk { color:var(--warn); font-size:10px; line-height:1.35; }
+#sf-base .base-spec .desc { color:var(--ink-mute); font-size:12px; line-height:1.35; }
+#sf-base .base-spec .verb { color:var(--accent); font-size:12px; font-weight:700; line-height:1.35; }
+#sf-base .base-spec .effect { color:var(--good); font-size:12px; line-height:1.35; }
+#sf-base .base-spec .risk { color:var(--warn); font-size:12px; line-height:1.35; }
 #sf-base .base-ledger { border:1px solid rgba(219,152,56,.25); border-radius:2px; padding:12px;
   background:rgba(14,17,19,.88); display:grid; gap:8px; }
 #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 #sf-base .base-ledger-cell { border-left:2px solid rgba(219,152,56,.32); padding-left:8px; }
-#sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:9px;
+#sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:12px;
   letter-spacing:.12em; text-transform:uppercase; }
 #sf-base .base-ledger-v { color:var(--ink); font-size:12px; margin-top:2px; }
 #sf-base .base-freight { display:flex; gap:8px; flex-wrap:wrap; }
-#sf-base .base-receipt { color:var(--ink-dim); font-size:11px; }
+#sf-base .base-receipt { color:var(--ink-dim); font-size:12px; }
 #sf-base .base-mod { border:1px solid var(--panel-edge); border-radius:2px; padding:12px; background:var(--panel); }
 #sf-base .base-mod .nm { font-weight:600; color:var(--ink); font-size:13px; }
-#sf-base .base-mod .desc { color:var(--ink-mute); font-size:11px; margin:4px 0 8px; min-height:28px; }
-#sf-base .base-mod .meta { display:flex; justify-content:space-between; align-items:center; font-size:11px;
+#sf-base .base-mod .desc { color:var(--ink-mute); font-size:12px; margin:4px 0 8px; min-height:28px; }
+#sf-base .base-mod .meta { display:flex; justify-content:space-between; align-items:center; font-size:12px;
   color:var(--ink-dim); font-family:var(--mono); }
 #sf-base .base-foot { display:flex; gap:10px; justify-content:flex-end; }
 #sf-base button.sf-btn { width:auto; padding:8px 18px; }

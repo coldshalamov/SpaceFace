@@ -22,6 +22,7 @@
 import { dangerTier } from '../data/sectors.js';
 import { SECURITY_TIER_LABELS } from './sectorPostcard.js';
 import { starmapScreen } from './screens/starmap.js';
+import { canvasFontScaled } from './canvasFonts.js';
 
 /** dangerTier 0..5 → cool→hot tint ramp (0 = secure core, 5 = lethal frontier). */
 export const TIER_COLORS = ['#4DA8FF', '#62E08A', '#FFD84A', '#FFB347', '#FF5470', '#FF2438'];
@@ -65,7 +66,7 @@ function drawGradientOverlay(screen, g, nodes) {
     g.restore();
     // Tier badge under the node's existing label stack (name @ +5, danger% @ +18).
     g.fillStyle = grad.color;
-    g.font = `600 ${8 / z}px var(--mono,monospace)`;
+    g.font = canvasFontScaled('600', 12, z, 'mono');
     g.textAlign = 'center';
     g.textBaseline = 'top';
     g.fillText(grad.badge.toUpperCase(), n.x, n.y + n.r + 29 / z);

@@ -8,6 +8,7 @@ import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { createMorphLabel, createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
+import { canvasFont } from '../canvasFonts.js';
 
 const STEP_S = 1 / 60;
 const MAX_FRAME_S = 0.1;
@@ -437,7 +438,7 @@ function drawDrone(ctx2d, drone, bounds, width, height, forced) {
   ctx2d.strokeStyle = forced ? 'CanvasText' : '#ffb347';
   ctx2d.lineWidth = 1.6;
   ctx2d.stroke();
-  ctx2d.font = '600 12px var(--sf-body-face)';
+  ctx2d.font = canvasFont('600', 12, 'body');
   ctx2d.fillStyle = forced ? 'CanvasText' : '#d3e6ff';
   ctx2d.textAlign = 'center';
   ctx2d.textBaseline = 'top';
@@ -1649,13 +1650,13 @@ export const rangeScreen = {
       ctx2d.arc(center.x, center.y, 5, 0, Math.PI * 2);
       ctx2d.fill();
       if (forced && state !== 'pending') {
-        ctx2d.font = '600 12px var(--sf-data-face)';
+        ctx2d.font = canvasFont('600', 12, 'data');
         ctx2d.fillStyle = 'CanvasText';
         ctx2d.textAlign = 'center';
         ctx2d.textBaseline = 'bottom';
         ctx2d.fillText(state === 'passed' ? '✓' : '✕', center.x, center.y - 8);
       }
-      ctx2d.font = '600 12px var(--sf-data-face)';
+      ctx2d.font = canvasFont('600', 12, 'data');
       ctx2d.fillStyle = forced ? 'CanvasText' : '#84a0c8';
       ctx2d.textAlign = 'center';
       ctx2d.textBaseline = 'top';
@@ -1674,7 +1675,7 @@ export const rangeScreen = {
     ctx2d.moveTo(top.x, top.y);
     ctx2d.lineTo(bottom.x, bottom.y);
     ctx2d.stroke();
-    ctx2d.font = '600 12px var(--sf-data-face)';
+    ctx2d.font = canvasFont('600', 12, 'data');
     ctx2d.fillStyle = forced ? 'CanvasText' : '#ffb347';
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'top';
@@ -1696,7 +1697,7 @@ export const rangeScreen = {
     ctx2d.moveTo(now.x, now.y + 18);
     ctx2d.lineTo(line.x, now.y + 18);
     ctx2d.stroke();
-    ctx2d.font = '500 12px var(--sf-data-face)';
+    ctx2d.font = canvasFont('500', 12, 'data');
     ctx2d.fillStyle = forced ? 'CanvasText' : '#7af7d0';
     ctx2d.textAlign = 'left';
     ctx2d.textBaseline = 'bottom';
@@ -1714,7 +1715,7 @@ export const rangeScreen = {
     ctx2d.moveTo(left.x, left.y);
     ctx2d.lineTo(right.x, right.y);
     ctx2d.stroke();
-    ctx2d.font = '600 12px var(--sf-data-face)';
+    ctx2d.font = canvasFont('600', 12, 'data');
     ctx2d.fillStyle = forced ? 'CanvasText' : '#ffb347';
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'bottom';
@@ -1759,7 +1760,7 @@ export const rangeScreen = {
     if (!forced) ctx2d.fillStyle = '#7af7d0';
     else ctx2d.fillStyle = 'CanvasText';
     ctx2d.fillRect(x + 1, y + (h * (1 - pct)) + 1, 8, Math.max(1, (h * pct) - 2));
-    ctx2d.font = '600 12px var(--sf-data-face)';
+    ctx2d.font = canvasFont('600', 12, 'data');
     ctx2d.fillStyle = forced ? 'CanvasText' : '#d3e6ff';
     ctx2d.textAlign = 'right';
     ctx2d.textBaseline = 'top';

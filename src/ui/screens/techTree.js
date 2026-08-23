@@ -67,7 +67,7 @@ const CSS = `
 #sf-techtree .tt-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 #sf-techtree .tt-hint { font-size: .78em; color: var(--ink-mute); }
 #sf-techtree .tt-zoom-badge { position: absolute; bottom: 8px; right: 8px; font-family: var(--mono, monospace);
-  font-size: 11px; color: var(--ink-dim); background: rgba(8,14,26,.85); border: 1px solid var(--panel-edge);
+  font-size: 12px; color: var(--ink-dim); background: rgba(8,14,26,.85); border: 1px solid var(--panel-edge);
   border-radius: 4px; padding: 3px 8px; pointer-events: none; z-index: 2; letter-spacing: .04em; }
 `;
 

@@ -73,12 +73,12 @@ function injectStyle() {
   .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:3px; }
   .sf-slot .sf-slot-name { font-size:14px; font-weight:600; color:var(--ink); }
   .sf-slot.empty .sf-slot-name { font-weight:normal; color:var(--ink-mute); font-style:italic; }
-  .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+  .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--accent); border:1px solid rgba(78,195,230,.35); border-radius:2px; padding:1px 6px;
     background:rgba(78,195,230,.08); }
   .sf-slot .sf-slot-context { font-size:12.5px; color:var(--ink-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sf-slot.empty .sf-slot-context { color:var(--ink-mute); }
-  .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sf-slot .sf-slot-detail { font-size:12px; color:var(--ink-mute); font-family:var(--mono); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sf-slot .sf-slot-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .sf-slot .sf-slot-actions button.sf-tab { min-width:68px; padding:6px 14px; cursor:pointer; }
   .sf-slot .sf-slot-actions button.sf-tab--primary {

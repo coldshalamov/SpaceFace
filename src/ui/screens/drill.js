@@ -843,7 +843,7 @@ function injectStyle() {
   text-transform: uppercase;
 }
 .drill-kicker {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .16em;
   color: var(--accent);
   text-transform: uppercase;
@@ -876,7 +876,7 @@ function injectStyle() {
 .drill-side-panel .sec-title {
   position: relative;
   padding-left: 9px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
   color: var(--accent);
   letter-spacing: .15em;
@@ -924,7 +924,7 @@ function injectStyle() {
   border-radius: 2px;
   background: rgba(57,208,255,.06);
   color: var(--accent);
-  font: 700 10px/1.4 var(--mono);
+  font: 700 12px/1.4 var(--mono);
   letter-spacing: .05em;
   text-align: center;
 }
@@ -984,7 +984,7 @@ function injectStyle() {
   max-width: 960px;
   border: 1px solid rgba(57,208,255,.14);
   background: rgba(5,9,18,.88);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-mute);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -1000,7 +1000,7 @@ function injectStyle() {
   padding:8px 12px; margin-top:2px;
   border:1px solid rgba(255,92,92,0.5); border-radius:3px;
   background:rgba(255,92,92,0.1);
-  color:var(--danger); font-size:11px; letter-spacing:.06em; line-height:1.35;
+  color:var(--danger); font-size:12px; letter-spacing:.06em; line-height:1.35;
   animation:drill-cargo-pulse 1.6s ease-in-out infinite;
 }
 .drill-status-banner[hidden] { display:none; }
@@ -1011,7 +1011,7 @@ function injectStyle() {
 .drill-status-banner.warn .drill-status-banner-icon { background:var(--warn); color:#1a1206; }
 .drill-status-banner-icon {
   flex:0 0 auto; width:16px; height:16px; display:flex; align-items:center; justify-content:center;
-  font-weight:700; font-size:11px; border-radius:50%;
+  font-weight:700; font-size:12px; border-radius:50%;
   background:var(--danger); color:#160808;
 }
 .drill-status-banner-text { min-width:0; overflow-wrap:anywhere; }
@@ -1039,7 +1039,7 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   color:var(--ink-mute);
 }
 .drill-legend-title {
-  font-size:10px;
+  font-size:12px;
   color:var(--accent);
   letter-spacing:.15em;
   text-transform:uppercase;
@@ -1062,7 +1062,7 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   display:inline-flex;
   align-items:center;
   gap:6px;
-  font-size:10px;
+  font-size:12px;
   color:var(--ink-dim);
   padding:3px 6px;
   border-radius:2px;
@@ -1079,17 +1079,17 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   flex-shrink:0;
   background:#0a0d14;
 }
-.drill-legend-arrow { font-size:9px; color:var(--ink-mute); opacity:0.7; }
+.drill-legend-arrow { font-size:12px; color:var(--ink-mute); opacity:0.7; }
 .drill-legend-label { letter-spacing:0.04em; white-space:nowrap; }
 .drill-legend-badge {
-  font-size:8px; font-weight:bold; letter-spacing:0.08em; padding:1px 4px; border-radius:3px;
+  font-size:12px; font-weight:bold; letter-spacing:0.08em; padding:1px 4px; border-radius:3px;
   background:rgba(57,208,255,0.12); color:var(--accent); border:1px solid rgba(57,208,255,0.22);
 }
 .drill-legend-badge.bad {
   background:rgba(255,84,112,0.14); color:var(--danger); border-color:rgba(255,84,112,0.35);
 }
 .drill-legend-note {
-  font-size:11px; color:var(--ink-mute); letter-spacing:0.02em; text-align:center;
+  font-size:12px; color:var(--ink-mute); letter-spacing:0.02em; text-align:center;
 }
 .drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
 .drill-foot button.sf-btn { width:auto; min-height:40px; padding:9px 22px; }
@@ -1111,13 +1111,13 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
 
 /* Persistent, compact activity feed. Routine receipts never cover the playfield. */
 .drill-activity-feed { display:flex; flex-direction:column; gap:5px; min-height:72px; max-height:156px; overflow:hidden; }
-.drill-activity-empty { color:var(--ink-mute); font-size:10px; line-height:1.4; }
-.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--accent); background:rgba(57,208,255,.045); color:var(--ink-dim); font-size:10px; line-height:1.35; overflow-wrap:anywhere; animation:drill-feed-in .12s ease-out; }
+.drill-activity-empty { color:var(--ink-mute); font-size:12px; line-height:1.4; }
+.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--accent); background:rgba(57,208,255,.045); color:var(--ink-dim); font-size:12px; line-height:1.35; overflow-wrap:anywhere; animation:drill-feed-in .12s ease-out; }
 .drill-activity-item.warn { border-left-color:var(--warn); color:var(--warn); background:rgba(255,179,92,.055); }
 .drill-activity-item.bad { border-left-color:var(--danger); color:var(--danger); background:rgba(255,92,92,.06); }
 .drill-activity-item .icon { font-weight:700; color:currentColor; }
-.drill-activity-item .value { color:var(--accent); font-size:9px; }
-.drill-activity-item .count { color:var(--ink-mute); font-size:9px; }
+.drill-activity-item .value { color:var(--accent); font-size:12px; }
+.drill-activity-item .count { color:var(--ink-mute); font-size:12px; }
 @keyframes drill-feed-in { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
 
 /* Drill Extraction Summary Modal */
@@ -1408,7 +1408,7 @@ export const drillScreen = {
     scanSec.className = 'panel-section';
     scanSec.innerHTML = `
       <div class="sec-title">Target analysis</div>
-      <div id="drill-scan-target" style="font-size:11px; line-height:1.4; color:var(--ink-dim);">
+      <div id="drill-scan-target" style="font-size:12px; line-height:1.4; color:var(--ink-dim);">
         Resolving adjacent strata…
       </div>
     `;
@@ -1430,7 +1430,7 @@ export const drillScreen = {
     manifestSec.innerHTML = `
       <div class="sec-title">Extraction manifest</div>
       <div id="drill-cargo-manifest-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
-        <div style="font-size:10px; color:var(--ink-mute);">No minerals extracted.</div>
+        <div style="font-size:12px; color:var(--ink-mute);">No minerals extracted.</div>
       </div>
     `;
     rightPanel.appendChild(manifestSec);

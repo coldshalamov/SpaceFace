@@ -60,19 +60,19 @@ function injectStyle() {
      italic quote, mono attribution. No alert-red box. */
   .sf-ng-lore { margin-top:14px; padding:13px 0 0; border:0; border-top:1px solid var(--mf-line-2);
     background:none; display:flex; flex-direction:column; gap:5px; }
-  .sf-ng-lore__line { font-size:10px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+  .sf-ng-lore__line { font-size:12px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.12em; text-transform:uppercase; }
   .sf-ng-lore__quote { margin-top:3px; font-family:var(--mf-ui); font-size:13px; color:#d7e0e7; font-style:italic; line-height:1.55; }
-  .sf-ng-lore__attr { font-size:9.5px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.22em; text-align:right; }
+  .sf-ng-lore__attr { font-size:12px; color:var(--ink-mute); font-family:var(--mono); letter-spacing:.22em; text-align:right; }
   /* FIRST 15 MINUTES: hairline ledger cells, no tinted boxes. */
   .sf-ng-route { margin-top:6px; padding:0; border:0; background:none; display:grid; gap:10px; }
-  .sf-ng-route__title { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:10px;
+  .sf-ng-route__title { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:12px;
     color:var(--ink-mute); letter-spacing:.22em; text-transform:uppercase; }
   .sf-ng-route__title::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, var(--mf-line-2), transparent); }
   .sf-ng-route__steps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px; }
   .sf-ng-route__step { min-width:0; border:0; border-top:1px solid var(--mf-line-2); background:none; padding:8px 0 0; }
   .sf-ng-route__step b { display:block; font-family:var(--mf-display); font-weight:600; font-size:12.5px;
     letter-spacing:.05em; color:var(--ink); margin-bottom:3px; overflow-wrap:anywhere; }
-  .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.4; overflow-wrap:anywhere; }
+  .sf-ng-route__step span { display:block; font-size:12px; color:var(--ink-dim); line-height:1.4; overflow-wrap:anywhere; }
   @media (max-width:520px) { .sf-ng-route__steps { grid-template-columns:1fr; } }
   /* New Game keeps its decision actions in view while the detailed setup content scrolls. */
   .sf-menu.sf-ng-shell { width:min(540px,calc(100vw - 32px)); min-width:0; height:min(88vh,820px);
@@ -94,21 +94,21 @@ function injectStyle() {
     background:linear-gradient(180deg, transparent 58%, rgba(4,7,11,.78) 100%); pointer-events:none; }
   .sf-ng-preview__still { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 49%; }
   .sf-ng-preview__cap { position:absolute; left:14px; bottom:10px; z-index:2; font-family:var(--mono);
-    font-size:9px; letter-spacing:.24em; text-transform:uppercase; color:rgba(157,220,240,.9); }
+    font-size:12px; letter-spacing:.24em; text-transform:uppercase; color:rgba(157,220,240,.9); }
   .sf-ng-legacy { display:grid; gap:9px; padding:12px 0; border-top:1px solid var(--mf-line-2);
     border-bottom:1px solid var(--mf-line-2); }
   .sf-ng-legacy__toggle { display:flex; align-items:center; gap:9px; color:var(--ink); font-family:var(--mf-display);
     font-size:13px; letter-spacing:.04em; cursor:pointer; }
   .sf-ng-legacy__toggle input { margin:0; }
-  .sf-ng-legacy__meta { font-family:var(--mono); color:var(--ink-mute); font-size:9.5px;
+  .sf-ng-legacy__meta { font-family:var(--mono); color:var(--ink-mute); font-size:12px;
     letter-spacing:.1em; line-height:1.5; text-transform:uppercase; }
   .sf-ng-legacy__select { width:100%; }
   /* Registry stats: hairline-ruled ledger; redacted entries get the marker-block treatment. */
   .sf-menu .sf-ng-body .sf-grid2 { gap:0 20px; font-size:12.5px; }
-  .sf-menu .sf-ng-body .sf-grid2 .k { font-family:var(--mono); font-size:9.5px; letter-spacing:.16em;
+  .sf-menu .sf-ng-body .sf-grid2 .k { font-family:var(--mono); font-size:12px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--ink-mute); padding:5px 0; border-bottom:1px solid rgba(148,178,205,.08); }
   .sf-menu .sf-ng-body .sf-grid2 .v { color:var(--ink); padding:5px 0; border-bottom:1px solid rgba(148,178,205,.08); }
-  .sf-menu .sf-ng-body .sf-grid2 .v.v--redacted { font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+  .sf-menu .sf-ng-body .sf-grid2 .v.v--redacted { font-family:var(--mono); font-size:12px; letter-spacing:.1em;
     color:var(--ink-mute); background:linear-gradient(90deg, rgba(233,239,244,.07), rgba(233,239,244,.02)); padding-left:7px; }
   /* Warmup veil (spec2/03 §3): the Launch disabled-state never shows >300ms — async warmup
      happens behind this veil, not a bare disabled button. */
@@ -119,7 +119,7 @@ function injectStyle() {
   .sf-ng-warmup__spin { width:22px; height:22px; border-radius:50%; border:1px solid var(--mf-line-2);
     border-top-color:var(--accent); animation:sf-ng-spin .8s linear infinite; }
   @keyframes sf-ng-spin { to { transform:rotate(360deg); } }
-  .sf-ng-warmup__txt { font-family:var(--mono); font-size:10px; letter-spacing:.24em;
+  .sf-ng-warmup__txt { font-family:var(--mono); font-size:12px; letter-spacing:.24em;
     color:var(--ink-dim); text-transform:uppercase; }
   /* First-run splash (spec2/03 §3): full-screen black, 2.5s, single line. */
   .sf-firstrun-splash { position:fixed; inset:0; z-index:3200; background:#000; display:flex;

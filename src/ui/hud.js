@@ -980,11 +980,11 @@ function injectTravelTapeStyle() {
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    font-family:var(--mono,Consolas,monospace); font-size:9px; letter-spacing:.2em; text-transform:uppercase; }
+    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.2em; text-transform:uppercase; }
   .sf-vtape__state { color:var(--vt-brass); }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:#a08c6a; }
-  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:9px; letter-spacing:.14em; }
+  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.14em; }
   /* --- the tape itself: a linear 0..headroom scale --- */
   .sf-vtape__track { position:relative; height:11px; border-radius:2px; overflow:hidden;
     background:rgba(0,0,0,.55); border:1px solid color-mix(in srgb, var(--vt-brass) 22%, transparent); }
@@ -1001,12 +1001,12 @@ function injectTravelTapeStyle() {
   .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
     background:color-mix(in srgb, var(--vt-amber) 85%, transparent); transition:left .1s linear; }
   .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:7px; letter-spacing:.14em; color:var(--vt-amber); opacity:.9; }
+    font-size:12px; letter-spacing:.14em; color:var(--vt-amber); opacity:.9; }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
   .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
-    font-size:7px; letter-spacing:.14em; color:var(--vt-brass); }
+    font-size:12px; letter-spacing:.14em; color:var(--vt-brass); }
   /* --- approach row: the stopping arc (W1-9) --- */
   .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
@@ -1019,16 +1019,16 @@ function injectTravelTapeStyle() {
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
     border-left:1px solid var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:8px; letter-spacing:.12em;
+  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.12em;
     color:#9a8a6c; text-transform:uppercase; }
   .sf-vtape--overshoot .sf-vtape__arcstop { background:color-mix(in srgb, #d4573f 70%, transparent); }
   .sf-vtape--overshoot .sf-vtape__arclabel { color:#e0876f; }
   /* --- BRAKE NOW --- */
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
     padding:2px 0; border-top:1px solid color-mix(in srgb, var(--vt-amber) 30%, transparent);
-    font-family:var(--mono,Consolas,monospace); font-size:10px; letter-spacing:.24em; color:var(--vt-amber); }
+    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.24em; color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
-  .sf-vtape__brakeglyph { font-size:9px; }
+  .sf-vtape__brakeglyph { font-size:12px; }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
@@ -1933,10 +1933,10 @@ export function createHud(ctx, alerts) {
     .sf-tell--FLYBY { border-color:rgba(255,92,92,.7); }
     .sf-tell--TETHER { border-color:rgba(255,179,92,.7); }
     .sf-tell--CHARGE { border-color:rgba(255,92,92,.7); }
-    .sf-tell__icon { font-size:11px; opacity:.95; flex:0 0 auto; }
-    .sf-tell__kind { font-weight:700; letter-spacing:.14em; font-size:11px; color:#ff5c5c; }
+    .sf-tell__icon { font-size:12px; opacity:.95; flex:0 0 auto; }
+    .sf-tell__kind { font-weight:700; letter-spacing:.14em; font-size:12px; color:#ff5c5c; }
     .sf-tell--TETHER .sf-tell__kind { color:#ffb35c; }
-    .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:11px;
+    .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:12px;
       text-transform:none; overflow:hidden; text-overflow:ellipsis; }
     .sf-tell__dir { color:rgba(215,230,255,.9); font-size:12px; margin-left:2px; flex:0 0 auto; }
     .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
@@ -2157,7 +2157,7 @@ export function createHud(ctx, alerts) {
     color: var(--visor-cyan);
   }
   .sf-cargo-status-tag {
-    font-size: 9px;
+    font-size: 12px;
     letter-spacing: 0.05em;
     color: var(--ink-dim);
   }
@@ -2172,7 +2172,7 @@ export function createHud(ctx, alerts) {
     gap: 10px;
   }
   .sf-gauge-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--ink-dim);
     display: flex;
     flex-direction: column;
@@ -2186,7 +2186,7 @@ export function createHud(ctx, alerts) {
     border: 1px solid var(--ink-mute);
     border-radius: 4px;
     color: var(--ink-dim);
-    font-size: 11px;
+    font-size: 12px;
     padding: 4px 12px;
     cursor: pointer;
   }
@@ -2331,7 +2331,7 @@ export function createHud(ctx, alerts) {
     -webkit-box-orient: vertical;
   }
   .sf-cargo-lock-icon {
-    font-size: 10px;
+    font-size: 12px;
     color: var(--warn);
   }
   .sf-cargo-block-bottom {
@@ -2340,15 +2340,15 @@ export function createHud(ctx, alerts) {
     gap: 4px;
   }
   .sf-cargo-block-qty {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--accent-2);
   }
   .sf-cargo-block-vol {
-    font-size: 9px;
+    font-size: 12px;
     color: var(--ink-dim);
   }
   .sf-cargo-badge {
-    font-size: 8px;
+    font-size: 12px;
     padding: 1px 4px;
     border-radius: 2px;
     font-weight: bold;
@@ -2379,7 +2379,7 @@ export function createHud(ctx, alerts) {
     z-index: 5;
   }
   .sf-cargo-supply-title {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--ink-mute);
     margin-bottom: 8px;
     letter-spacing: 0.05em;
@@ -2445,14 +2445,14 @@ export function createHud(ctx, alerts) {
     gap: 8px;
   }
   .sf-ins-market h4 {
-    font-size: 11px;
+    font-size: 12px;
     margin: 0;
     text-transform: uppercase;
     color: var(--visor-cyan);
     letter-spacing: 0.05em;
   }
   .sf-ins-buyer {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--ink);
     line-height: 1.4;
     margin: 0;
@@ -2527,7 +2527,7 @@ export function createHud(ctx, alerts) {
     background: color-mix(in srgb, var(--panel-2) 40%, transparent);
     border: 1px solid var(--panel-edge);
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .sf-ledger-left {
     display: flex;
@@ -2541,7 +2541,7 @@ export function createHud(ctx, alerts) {
   .sf-ledger-side {
     padding: 1px 4px;
     border-radius: 2px;
-    font-size: 9px;
+    font-size: 12px;
     font-weight: bold;
     margin-right: 6px;
   }
@@ -2567,7 +2567,7 @@ export function createHud(ctx, alerts) {
     color: var(--accent-2);
   }
   .sf-ledger-profit {
-    font-size: 9px;
+    font-size: 12px;
     color: var(--good);
   }
   .sf-cargo-empty-msg {

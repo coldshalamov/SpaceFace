@@ -31,7 +31,7 @@ const MASS_SEED_HUD_CSS = `
   background: rgba(20, 40, 60, 0.35);
 }
 .sf-mseed-mark .mseed-mark-label {
-  position: absolute; left: 10px; top: -8px; font: 600 10px/1.1 "Segoe UI", system-ui, sans-serif;
+  position: absolute; left: 10px; top: -8px; font: 600 12px/1.35 "Segoe UI", system-ui, sans-serif;
   letter-spacing: 0.1em; color: #bfe6ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
 }
 .sf-mseed-root.mseed-reduced-motion .sf-mseed-mark .mseed-diamond { border-style: dashed; }

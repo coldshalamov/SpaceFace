@@ -2237,7 +2237,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-stamp {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: .2em;
   text-transform: uppercase;
@@ -2273,7 +2273,7 @@ const CSS = `
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-mute);
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
@@ -2327,7 +2327,7 @@ const CSS = `
 #sf-galaxymap .gm-search-item-detail {
   font-family: var(--mono);
   color: var(--ink-mute);
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 2px;
 }
 
@@ -2378,7 +2378,7 @@ const CSS = `
   color: var(--ink-mute);
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .12em;
   text-transform: uppercase;
   transition: border-color .12s ease, color .12s ease, background .12s ease;
@@ -2399,7 +2399,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-level {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--ink-mute);
@@ -2502,7 +2502,7 @@ const CSS = `
   padding: 6px 14px;
   cursor: pointer;
   font-family: var(--mf-ui);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -2535,7 +2535,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-hints-title {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--ink-mute);
@@ -2547,12 +2547,12 @@ const CSS = `
   justify-content: space-between;
   gap: 10px;
   padding: 3px 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-dim);
 }
 #sf-galaxymap .gm-hint-row kbd {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--accent-3);
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
@@ -2563,7 +2563,7 @@ const CSS = `
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--mf-line-1);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--ink-mute);
 }
@@ -2597,7 +2597,7 @@ const CSS = `
   align-items: center;
   gap: 8px;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .22em;
   text-transform: uppercase;
   color: var(--ink-mute);
@@ -2657,7 +2657,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-layer-btn .gm-layer-ico svg { width: 14px; height: 14px; display: block; }
 #sf-galaxymap .gm-layer-btn .gm-layer-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -2705,7 +2705,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-rail-commodity label {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .18em;
   color: var(--ink-mute);
   text-transform: uppercase;
@@ -2737,7 +2737,7 @@ const CSS = `
   align-items: center;
   gap: 8px;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--ink-mute);
@@ -2760,14 +2760,14 @@ const CSS = `
 }
 #sf-galaxymap .gm-hint-title {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 5px;
 }
 #sf-galaxymap .gm-hint-text {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-mute);
   line-height: 1.55;
 }
@@ -2839,7 +2839,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-inspector-empty {
   color: var(--ink-mute);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.6;
 }
 #sf-galaxymap .gm-inspector-empty b { color: var(--ink-dim); font-weight: 500; }
@@ -2850,7 +2850,7 @@ const CSS = `
 #sf-galaxymap .gm-ins-section:last-child { border-bottom: none; }
 #sf-galaxymap .gm-ins-title {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--ink-mute);
@@ -2858,7 +2858,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-ins-kind {
   font-family: var(--mono);
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--mf-stamp);
@@ -2878,12 +2878,12 @@ const CSS = `
   align-items: baseline;
   gap: 10px;
   padding: 2px 0;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ink-dim);
 }
 #sf-galaxymap .gm-ins-row-val {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--ink);
   text-align: right;
@@ -2893,7 +2893,7 @@ const CSS = `
 #sf-galaxymap .gm-ins-row-val.old { color: var(--ink-mute); font-style: italic; }
 #sf-galaxymap .gm-ins-note {
   color: var(--ink-mute);
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
 }
 #sf-galaxymap .gm-ins-note b { color: var(--ink-dim); }
@@ -2964,7 +2964,7 @@ const CSS = `
   margin-top: 4px;
   color: #9a8a72;
   font-family: var(--mf-ui);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .06em;
   line-height: 1.35;
   text-align: center;
@@ -2980,7 +2980,7 @@ const CSS = `
   margin-top: 5px;
   color: #9a8a72;
   font-family: var(--mf-ui);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .06em;
   line-height: 1.35;
   text-align: center;
@@ -3006,7 +3006,7 @@ const CSS = `
   background: rgba(150, 158, 170, .06);
   border-color: rgba(178, 186, 198, .34);
   color: #c3c8d0;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .08em;
   margin-top: 0;
   padding: 8px 12px;
@@ -3029,7 +3029,7 @@ const CSS = `
   margin-top: 2px;
   color: #9a8a72;
   font-family: var(--mf-ui);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .05em;
   line-height: 1.35;
   text-align: center;
@@ -3056,7 +3056,7 @@ const CSS = `
   border-radius: 2px;
   background: #0e1113;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -3124,7 +3124,7 @@ const CSS = `
   color: var(--ink);
   border: 1px solid var(--mf-line-1);
   border-radius: 2px;
-  font: 500 11px var(--mf-ui);
+  font: 500 12px var(--mf-ui);
   text-align: left;
   cursor: pointer;
 }
@@ -3139,15 +3139,15 @@ const CSS = `
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ink);
   font-weight: 500;
 }
-#sf-galaxymap .gm-tl-profit { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+#sf-galaxymap .gm-tl-profit { font-family: var(--mono); font-size: 12px; font-weight: 500; }
 #sf-galaxymap .gm-tl-sub {
   margin-top: 2px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--ink-mute);
   white-space: nowrap;
   overflow: hidden;
@@ -3159,7 +3159,7 @@ const CSS = `
   align-items: baseline;
   gap: 8px;
   padding: 3px 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-dim);
 }
 #sf-galaxymap .gm-bk-station {
@@ -3167,7 +3167,7 @@ const CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#sf-galaxymap .gm-bk-val { font-family: var(--mono); font-size: 11px; }
+#sf-galaxymap .gm-bk-val { font-family: var(--mono); font-size: 12px; }
 
 /* Transit forecast comparison */
 #sf-galaxymap .gm-transit {
@@ -3186,18 +3186,18 @@ const CSS = `
   justify-content: space-between;
   align-items: baseline;
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 5px;
 }
-#sf-galaxymap .gm-transit-head b { font-size: 10px; font-weight: 500; letter-spacing: 0; }
+#sf-galaxymap .gm-transit-head b { font-size: 12px; font-weight: 500; letter-spacing: 0; }
 #sf-galaxymap .gm-transit-row {
   display: flex;
   justify-content: space-between;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 12px;
   color: var(--ink-mute);
   padding: 1px 0;
 }
@@ -3206,7 +3206,7 @@ const CSS = `
 /* Route legs */
 #sf-galaxymap .gm-route-leg {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-dim);
   padding: 2px 0;
 }
@@ -3214,7 +3214,7 @@ const CSS = `
 #sf-galaxymap .gm-route-total {
   margin-top: 4px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-mute);
 }
 /* The leg currently under way reads as the live one; the rest are record. */
@@ -3229,7 +3229,7 @@ const CSS = `
   min-width: 12px;
   margin-right: 5px;
   color: var(--ink-mute);
-  font-size: 9px;
+  font-size: 12px;
 }
 #sf-galaxymap .gm-route-leg.is-current .gm-route-leg-n { color: var(--accent); }
 
@@ -3241,7 +3241,7 @@ const CSS = `
 }
 #sf-galaxymap .gm-mission-brief {
   color: var(--accent-3);
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 2px;
   font-family: var(--mono);
   line-height: 1.45;
@@ -3428,7 +3428,7 @@ html.sf-dyslexia #sf-galaxymap {
   cursor: pointer;
   list-style: none;
   font-family: var(--mf-display);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: .16em;
   text-transform: uppercase;
@@ -3456,7 +3456,7 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-rail-sum-n {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .08em;
   color: var(--mf-stamp);
 }
@@ -3483,11 +3483,11 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-rail-item:hover { border-color: var(--mf-line-3); color: var(--ink); }
 #sf-galaxymap .gm-rail-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-rail-item-t { font-size: 11.5px; color: var(--ink); }
-#sf-galaxymap .gm-rail-item-s { font-size: 10px; color: var(--ink-mute); }
+#sf-galaxymap .gm-rail-item-t { font-size: 12px; color: var(--ink); }
+#sf-galaxymap .gm-rail-item-s { font-size: 12px; color: var(--ink-mute); }
 #sf-galaxymap .gm-rail-item-tag {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 12px;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--accent-2);
@@ -3519,7 +3519,7 @@ html.sf-dyslexia #sf-galaxymap {
   padding: 6px 9px;
   color: var(--ink-mute);
   font-family: var(--mf-ui);
-  font-size: 10.5px;
+  font-size: 12px;
   letter-spacing: .04em;
   cursor: pointer;
   transition: color .12s ease, background .12s ease, border-color .12s ease;
@@ -3548,18 +3548,18 @@ html.sf-dyslexia #sf-galaxymap {
   gap: 2px 9px;
   padding: 5px 0;
   border-top: 1px solid var(--mf-line-1);
-  font-size: 11.5px;
+  font-size: 12px;
 }
 #sf-galaxymap .gm-nav-row-k {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--mf-stamp);
   padding-top: 2px;
 }
 #sf-galaxymap .gm-nav-row-v { color: var(--ink); }
-#sf-galaxymap .gm-nav-row-d { grid-column: 2; color: var(--ink-mute); font-size: 10px; }
+#sf-galaxymap .gm-nav-row-d { grid-column: 2; color: var(--ink-mute); font-size: 12px; }
 /* TRACKED is the one tone allowed to spend bright gold, and it also gets a left rule. */
 #sf-galaxymap .gm-nav-row[data-tone="tracked"] .gm-nav-row-v {
   color: var(--accent-3);
@@ -3630,7 +3630,7 @@ html.sf-dyslexia #sf-galaxymap {
   padding: 6px 9px;
   color: var(--ink-dim);
   font-family: var(--mf-ui);
-  font-size: 10.5px;
+  font-size: 12px;
   cursor: pointer;
   transition: border-color .12s ease, color .12s ease;
 }
@@ -3691,7 +3691,7 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-ribbon-status {
   font-family: var(--mf-display);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -3708,7 +3708,7 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-ribbon-arrival {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .08em;
   color: var(--ink-dim);
 }
@@ -3727,7 +3727,7 @@ html.sf-dyslexia #sf-galaxymap {
   padding: 3px 8px;
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--ink-mute);
   background: rgba(255, 255, 255, .015);
 }
@@ -3738,24 +3738,24 @@ html.sf-dyslexia #sf-galaxymap {
   border-left-width: 3px;
   color: var(--ink);
 }
-#sf-galaxymap .gm-ribbon-leg-g { color: var(--accent); font-size: 9px; }
+#sf-galaxymap .gm-ribbon-leg-g { color: var(--accent); font-size: 12px; }
 #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] .gm-ribbon-leg-g { color: var(--accent-3); }
-#sf-galaxymap .gm-ribbon-leg-c { font-family: var(--mono); font-size: 9.5px; color: var(--mf-stamp); }
+#sf-galaxymap .gm-ribbon-leg-c { font-family: var(--mono); font-size: 12px; color: var(--mf-stamp); }
 #sf-galaxymap .gm-ribbon-haz {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: 12px;
   letter-spacing: .1em;
   text-transform: uppercase;
 }
 #sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--warn); }
 #sf-galaxymap .gm-ribbon-haz[data-haz="contested"] { color: var(--danger); }
-#sf-galaxymap .gm-ribbon-warn { color: var(--danger); font-size: 9.5px; }
+#sf-galaxymap .gm-ribbon-warn { color: var(--danger); font-size: 12px; }
 #sf-galaxymap .gm-ribbon-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 3px 14px;
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 12px;
   letter-spacing: .05em;
   color: var(--ink-mute);
 }
@@ -3767,7 +3767,7 @@ html.sf-dyslexia #sf-galaxymap {
   padding: 7px 12px;
   color: var(--ink-dim);
   font-family: var(--mf-ui);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   transition: border-color .12s ease, color .12s ease;
 }
@@ -3780,7 +3780,7 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-ribbon-reason {
   grid-area: reason;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-mute);
   font-style: italic;
 }
@@ -3899,7 +3899,7 @@ html.sf-dyslexia #sf-galaxymap {
   padding: 3px 8px;
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink-dim);
   text-transform: capitalize;
 }

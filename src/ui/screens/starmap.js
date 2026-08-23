@@ -14,6 +14,7 @@ import {
 import { BINDINGS } from '../bindings.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { canvasFont, canvasFontScaled } from '../canvasFonts.js';
 
 const FACTION_COLOR = Object.create(null);
 const FACTION_NAME = Object.create(null);
@@ -187,10 +188,10 @@ function trendColor(v, goodWhenPositive = false) {
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function securityPips(sec) {
-  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span> <span style="font-size:9px;color:var(--ink-dim);">HIGH</span>';
-  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span> <span style="font-size:9px;color:var(--ink-dim);">MID</span>';
-  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span> <span style="font-size:9px;color:var(--ink-dim);">LOW</span>';
-  return '<span style="color:#ff5470; letter-spacing: 2px;">○○○</span> <span style="font-size:9px;color:var(--ink-dim);">NULL</span>';
+  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span> <span style="font-size:12px;color:var(--ink-dim);">HIGH</span>';
+  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span> <span style="font-size:12px;color:var(--ink-dim);">MID</span>';
+  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span> <span style="font-size:12px;color:var(--ink-dim);">LOW</span>';
+  return '<span style="color:#ff5470; letter-spacing: 2px;">○○○</span> <span style="font-size:12px;color:var(--ink-dim);">NULL</span>';
 }
 function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
 function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
@@ -898,7 +899,7 @@ export const starmapScreen = {
       if (!known) {
         g.beginPath(); g.arc(n.x, n.y, 8, 0, Math.PI * 2); g.fillStyle = 'rgba(40,54,76,.5)'; g.fill();
         g.strokeStyle = 'rgba(120,140,170,.4)'; g.lineWidth = 1 / z; g.stroke();
-        g.fillStyle = 'rgba(150,170,200,.5)'; g.font = `600 ${10 / z}px var(--mono,monospace)`;
+        g.fillStyle = 'rgba(150,170,200,.5)'; g.font = canvasFontScaled('600', 12, z, 'mono');
         g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText('???', n.x, n.y + 10 / z);
         continue;
       }
@@ -940,7 +941,7 @@ export const starmapScreen = {
         const alpha = Math.sin(now * 0.004) * 0.3 + 0.7;
         g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z + Math.sin(now * 0.003) * 3 / z, 0, Math.PI * 2);
         g.strokeStyle = `rgba(57,208,255,${alpha.toFixed(2)})`; g.lineWidth = 2 / z; g.stroke();
-        g.fillStyle = '#fff'; g.font = `700 ${9 / z}px var(--mono,monospace)`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('●', n.x, n.y);
+        g.fillStyle = '#fff'; g.font = canvasFontScaled('700', 12, z, 'mono'); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('●', n.x, n.y);
       }
 
       const labelY = n.y + n.r + 5 / z;
@@ -954,7 +955,7 @@ export const starmapScreen = {
       if (commQuote) {
         g.save();
         g.fillStyle = '#ffe36b';
-        g.font = `${8 / z}px var(--mono,monospace)`;
+        g.font = canvasFontScaled('', 12, z, 'mono');
         g.textAlign = 'left';
         g.textBaseline = 'middle';
         const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
@@ -965,7 +966,7 @@ export const starmapScreen = {
       if (signal) {
         const glyph = trendGlyph(signal.trend.danger);
         g.fillStyle = trendColor(signal.trend.danger);
-        g.font = `700 ${9 / z}px var(--mono,monospace)`;
+        g.font = canvasFontScaled('700', 12, z, 'mono');
         g.fillText(`${Math.round(signal.danger * 100)}${glyph}`, n.x, labelY + 13 / z);
       }
       this._drawFeatureIcons(g, n, s, z);
@@ -981,7 +982,7 @@ export const starmapScreen = {
     if (s.wormholeTo) icons.push('◌');
     if (!icons.length) return;
     const spacing = 12 / z, start = n.x - (icons.length - 1) * spacing / 2;
-    g.font = `700 ${9 / z}px var(--mono,monospace)`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = canvasFontScaled('700', 12, z, 'mono'); g.textAlign = 'center'; g.textBaseline = 'middle';
     for (let i = 0; i < icons.length; i++) {
       const icon = icons[i];
       g.fillStyle = icon === '!' ? '#ffd84a' : icon === '◆' ? '#64ffda' : icon === '◌' ? '#c08bff' : '#ff5470';
@@ -995,13 +996,13 @@ export const starmapScreen = {
     const eff = this._effective(s.id);
     if (!signal || !eff) return;
     const lines = [
-      { text: s.name, color: '#fff', font: '700 13px var(--font,sans-serif)' },
-      { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: factionColor(signal.dominantFactionId), font: '600 11px var(--mono,monospace)' },
-      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: dangerColor(signal.danger), font: '600 11px var(--mono,monospace)' },
-      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: pressureColor(signal.pricePressure), font: '600 11px var(--mono,monospace)' },
-      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: dangerColor(signal.danger), font: '500 11px var(--mono,monospace)' },
+      { text: s.name, color: '#fff', font: canvasFont('700', 13, 'sans') },
+      { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: factionColor(signal.dominantFactionId), font: canvasFont('600', 12, 'mono') },
+      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: dangerColor(signal.danger), font: canvasFont('600', 12, 'mono') },
+      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: pressureColor(signal.pricePressure), font: canvasFont('600', 12, 'mono') },
+      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: dangerColor(signal.danger), font: canvasFont('500', 12, 'mono') },
     ];
-    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: '#ffd84a', font: '500 11px var(--mono,monospace)' });
+    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: '#ffd84a', font: canvasFont('500', 12, 'mono') });
     const lineH = 17, padX = 12, padY = 10;
     let maxW = 0;
     for (const line of lines) { g.font = line.font; maxW = Math.max(maxW, g.measureText(line.text).width); }

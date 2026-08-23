@@ -225,7 +225,7 @@ export const bulkHaulTag = {
         'border:1px solid rgba(255,179,92,.58)',
         'border-radius:4px',
         'color:#ffb35c',
-        'font:11px/1.35 var(--mono,monospace)',
+        'font:12px/1.35 var(--mono,monospace)',
         'letter-spacing:.12em',
         'text-transform:uppercase',
         'pointer-events:none',

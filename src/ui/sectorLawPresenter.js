@@ -262,10 +262,10 @@ function injectStyle() {
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
   .sf-law__head { display:flex; justify-content:space-between; gap:12px;
-    font:700 9px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.12em; color:#83ced8; }
+    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.12em; color:#83ced8; }
   .sf-law__headline { margin-top:5px; font:700 14px/1.2 var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.035em; }
-  .sf-law__meta { margin-top:3px; font:500 9px/1.35 var(--hud-data,"IBM Plex Mono",monospace); letter-spacing:.05em; color:#718298; }
-  .sf-law__detail { margin-top:5px; font-size:10.5px; line-height:1.4; color:#aebdce; }
+  .sf-law__meta { margin-top:3px; font:500 12px/1.35 var(--hud-data,"IBM Plex Mono",monospace); letter-spacing:.05em; color:#718298; }
+  .sf-law__detail { margin-top:5px; font-size:12px; line-height:1.4; color:#aebdce; }
   #sf-sector-law.sf-law--medium, #sf-sector-law.sf-law--low { border-color:rgba(216,164,93,.4); border-top-color:#d8a45d; }
   #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:#ffb35c; }
   #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(238,108,117,.48); border-top-color:#ee6c75; }
@@ -274,7 +274,7 @@ function injectStyle() {
   @media (max-width:900px), (max-height:620px) {
     #ui-root > #sf-sector-law { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
     .sf-law__headline { font-size:12px; }
-    .sf-law__detail { font-size:9px; }
+    .sf-law__detail { font-size:12px; }
   }
   @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }`;
   document.head.appendChild(style);
