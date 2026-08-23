@@ -110,3 +110,73 @@ directly for anything after that.
 and `check:gate-reachability` are steps 107–111 — i.e. **inside the unreachable tail**. Each passes
 when run directly, and each was additionally mutation-tested. `check:playable` is not in the aggregate
 at all and passed 15/15 after every change this session.
+
+---
+
+## 8. Addendum — four of the 25 closed, and what they taught
+
+Worked the same session. **Four of the twenty-five are now green**, and the interesting part is that
+**three of them were never game defects at all.**
+
+| Check | Was red because | Fix |
+|---|---|---|
+| `check:market-first-loop` | queried `.sx-credits__v` — a selector from a superseded design that no JS in `src/` has ever emitted | point at `.sxb-purse__value`, which reads "12,453" live |
+| `check:controls-discoverability` | the tether line-control key hint **genuinely did not exist** | build it |
+| `check:first-dock-handoff` | asserted the copy against `onboarding.js`; the copy lives in `hudAttention.js` | point at the file that owns the words |
+| `check:contracts` | three UI panels got wired and the reachability ratchet was not updated | remove the stale exceptions |
+
+### The root cause behind three of them
+
+A superseded `sx-` station design. Selectors and copy moved — `sx-credits` → `sxb-purse`,
+`sx-hstep` → `sxb-hstep`, first-use lines → `hudAttention.js` — and the checks did not follow. The
+style layers for the dead components were still present too, fully authored, for markup that does not
+exist: `.sx-credits` carried flex layout, an icon colour, a tabular-numeric value, a unit, a
+`content:"CREDIT LINE"` label and a drop-shadow, across **two** stylesheets.
+
+### The discipline that matters here
+
+**Prove the feature works before calling a check stale.** `.sxb-purse__value` was read live in the
+station lab — "12,453" under a "Credits" label — before either the check or the CSS was touched.
+
+Because the opposite case is real and looks identical from the outside:
+`check:controls-discoverability` was red for a **feature that was genuinely missing**. The string it
+demanded was absent from `hud.js` entirely, and the right response was to build the thing, not to
+repoint the assertion. Same symptom, opposite fix. Getting that backwards would have deleted a
+real requirement and shipped a HUD that still hides the game's signature verbs.
+
+### One more hidden-behind-a-failure case
+
+Clearing `check:contracts`' three stale exceptions immediately exposed four more unreachable modules
+(`backendDecision`, `webgpuPresent`, `batchedInstanceRenderer`, `presentPhaseTimers`) that the stale
+error had been masking — the same shape as this whole receipt, one level down. All four are live
+staged work: each has its own gate, all of which still pass, and each is now baselined with a
+concrete reason and date rather than a shrug.
+
+### Closing state, measured with `check:all` itself
+
+```
+93 pass / 18 fail of 111 steps
+```
+
+Up from **88 / 25** at the start of the session. Two of that original 25 (`New`, `production`) were
+parse artifacts of the hand-rolled expansion — `check-all.mjs` splits the chain correctly and does
+not reproduce them — so the real movement is **five checks closed**:
+
+`check:market-first-loop` · `check:controls-discoverability` · `check:first-dock-handoff` ·
+`check:contracts` · `check:bundle`
+
+The remaining 18 run and report every time now, which is the point: a failure list is a thing you can
+work through, and the first casualty of a `&&` chain is not.
+
+| Still red | Domain |
+|---|---|
+| `check:depth-program:contracts` · `47a:tactics` · `47a:live-branch` | scenario / encounter data |
+| `alpha:evidence:contract` · `alpha:baseline:contracts` | documents + cadence contract |
+| `sg02` · `sg06` | physics save-safety, hidden state reads |
+| `title-continue-runtime` · `new-game-first-run` · `first-15-runtime` | save slots, first-run layout, onboarding beats |
+| `mission-handoff` · `mission-cargo-loading` | missions |
+| `check-gameplay-core.mjs` · `check-phase0-slice-contract.mjs` | drill ids, unclassified `Math.random` |
+| `check:flight:clean` | the 4,212-warning flood, §5 — not a flight defect |
+| `atlas` · `art` · `perf-packets` | assets, export, packaging |
+
+None is in this session's diff.
