@@ -102,7 +102,8 @@
       "sectorId": "sector_haumea_rift",
       "status": "data-wired",
       "uniqueDrops": [
-        { "id": "unique_deepsurvey_suite", "kind": "module", "baseId": "mod_survey_suite" }
+        { "id": "unique_deepsurvey_suite", "kind": "module", "baseId": "mod_survey_suite" },
+        { "id": "unique_cryo_shroud_sink", "kind": "module", "baseId": "mod_thermal_sink_m" }
       ],
       "rumorSources": [
         { "id": "okars_deep_ping", "channelId": "bar", "status": "authored", "sourceRef": "bar.rift_observatory.deepsurvey" }
@@ -114,7 +115,8 @@
       "sectorId": "sector_io_reach",
       "status": "data-wired",
       "uniqueDrops": [
-        { "id": "unique_smokesong_chaff", "kind": "module", "baseId": "mod_chaff_dispenser_m" }
+        { "id": "unique_smokesong_chaff", "kind": "module", "baseId": "mod_chaff_dispenser_m" },
+        { "id": "unique_phantom_scrambler", "kind": "module", "baseId": "mod_sensor_scrambler_m" }
       ],
       "rumorSources": [
         { "id": "tirrs_smokesong", "channelId": "bar", "status": "authored", "sourceRef": "bar.io_mercenary.smokesong" }
