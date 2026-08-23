@@ -166,7 +166,10 @@ export const onboarding = {
     const bus = this.bus;
     // The first-run splash is the sole opening line. B0 waits until it is physically removed.
     bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; });
-    bus.on('ui:firstRunSplash:done', () => { this._firstRunSplashPending = false; });
+    bus.on('ui:firstRunSplash:done', () => {
+      this._firstRunSplashPending = false;
+      try { this._tryAdvanceBeat(); } catch (_) { /* never let onboarding break the bus */ }
+    });
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
     bus.on('game:started', () => this._begin());
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
@@ -480,7 +483,14 @@ export const onboarding = {
     const nextIndex = ob.currentBeat + 1;
     if (nextIndex >= BEATS.length) return;
     // First-run opening line owns the screen until its fade has completed.
-    if (nextIndex === 0 && this._firstRunSplashPending) return;
+    if (nextIndex === 0 && this._firstRunSplashPending) {
+      const splashLive = typeof document !== 'undefined'
+        && document.querySelector('.sf-firstrun-splash');
+      if (splashLive) return;
+      // Splash node was torn down without a done event (boot/UI replacement). Do not
+      // leave B0 gated forever.
+      this._firstRunSplashPending = false;
+    }
     // Silence gate: the previous beat must have DONE'd AND ≥SILENCE_S passed since the last text.
     if (nextIndex > 0) {
       const prev = BEATS[nextIndex - 1];

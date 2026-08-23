@@ -422,17 +422,16 @@ function rebuildPinFacts(state, player, facts, simTime) {
   facts.damagedPlayerUntil.clear();
 
   const playerId = player && player.id;
+  // SG-06: this pass is reachable from the AI production ports and may not read the player
+  // meta record (`state.player`) — that record couples a reader to credits/heat/cargo data it
+  // was denied. Player-intent pins therefore arrive only through entity-carried state the pass
+  // already owns: the combat-owned target id and weapons-owned missile lock on the player craft.
+  // UI selection and the mining lock have no sanctioned source here yet; until UI and mining
+  // publish those pins outside the meta record, `facts.miningId` stays null (the
+  // PLAYER_MINING_TARGET pin plumbing remains ready for that publication).
   const playerCombat = player && player.data && player.data.combat;
-  const selected = state && state.player && state.player.targetId;
-  if (selected != null) facts.targetId = selected;
   if (playerCombat && playerCombat.targetId != null) facts.targetId = playerCombat.targetId;
-  else if (playerCombat && playerCombat.lockTarget != null && facts.targetId == null) {
-    facts.targetId = playerCombat.lockTarget;
-  }
-  if (state && state.player) {
-    if (state.player.miningTargetId != null) facts.miningId = state.player.miningTargetId;
-    else if (state.player.beamTargetId != null) facts.miningId = state.player.beamTargetId;
-  }
+  else if (playerCombat && playerCombat.lockTarget != null) facts.targetId = playerCombat.lockTarget;
 
   // Scanner owns the durable tracked contact. Resolve its stable signal record back to the live
   // entity id without asking the HUD or a render list to decide residency. Explicit live scanner

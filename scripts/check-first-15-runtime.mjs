@@ -12,6 +12,9 @@
 // reports a clear BLOCKER and exits non-zero; source/headless coverage lives in check-first-hour.mjs.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +22,7 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-first-15-'));
 const START_TIMEOUT_MS = 90000;
 // firstFlight historically fires after ~3s of flight; sample past that so deferral is observable.
 const B0_SAMPLE_WAIT_MS = 3800;
@@ -122,7 +126,18 @@ try {
   }
 
   // Hold in B0 long enough that an undeferred firstFlight wall would have fired (~3s).
-  await page.waitForTimeout(B0_SAMPLE_WAIT_MS);
+  // Pump the page while waiting. A Node-side sleep lets Chromium freeze rAF/timers, so the
+  // opening splash never lifts and B0 never starts.
+  await page.waitForFunction((minSimS) => {
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const ob = state && state.onboarding;
+    if (!state || state.mode !== 'flight' || !ob || !ob.active || ob.finished) return false;
+    const splash = document.querySelector('.sf-firstrun-splash');
+    return !splash && ob.currentBeat === 0 && (state.simTime || 0) >= minSimS;
+  }, B0_SAMPLE_WAIT_MS / 1000, { timeout: 20000 }).catch((err) => {
+    throw new Error('Timed out waiting for B0 thrust sample: ' + err.message);
+  });
 
   // ── B0 one-verb exclusivity sample (before opening Mission Log) ─────────────
   const b0Report = await page.evaluate(() => {
@@ -280,6 +295,7 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+  try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {
@@ -327,6 +343,7 @@ function spawnProbeServer(port) {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: PLAYER_STORE_DIR },
   });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };

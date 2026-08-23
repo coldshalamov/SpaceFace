@@ -167,17 +167,17 @@ function showFirstRunSplash(ctx) {
   line.textContent = FIRST_RUN_LINE;
   splash.appendChild(line);
   (document.getElementById('ui-root') || document.body).appendChild(splash);
-  // Fade in, hold ~2.5s, fade out, remove. The game boots underneath; B0 fires once the splash lifts.
-  requestAnimationFrame(() => {
-    splash.classList.add('open');
-    setTimeout(() => {
-      splash.classList.remove('open');
-      setTimeout(() => {
-        if (splash.parentNode) splash.remove();
-        if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: false });
-      }, 600);
-    }, 2500);
-  });
+  // Fade in, hold ~2.5s, fade out, remove. Hold/fade clocks start now; rAF only adds the
+  // visible class so a stalled frame cannot gate the opening tutorial.
+  const finish = () => {
+    if (splash.parentNode) splash.remove();
+    if (ctx && ctx.bus) ctx.bus.emit('ui:firstRunSplash:done', { skipped: false });
+  };
+  requestAnimationFrame(() => splash.classList.add('open'));
+  setTimeout(() => {
+    splash.classList.remove('open');
+    setTimeout(finish, 600);
+  }, 2500);
 }
 
 function starterShip(ctx) {

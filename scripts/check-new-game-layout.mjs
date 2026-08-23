@@ -5,9 +5,10 @@
 // asset-gated flight path, and proves the setup panel keeps its actions visible while only its
 // content body scrolls at the supported desktop viewports.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer as createNetServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +18,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./lib/gameServer.cjs');
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-new-game-layout-'));
 const OUT_DIR = join(ROOT, '.devshots', 'alpha', 'm1-new-game-layout');
 const ARGUMENTS = new Set(process.argv.slice(2));
 const FORCE_RECORD_RED = ARGUMENTS.has('--force-record-red');
@@ -143,6 +145,7 @@ try {
 } finally {
   if (browser) await browser.close().catch(() => {});
   if (server && server.kill) await server.kill().catch(() => {});
+  try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
 const failures = results.flatMap((result) => result.errors.map((message) => ({
@@ -462,7 +465,7 @@ async function waitForBootOverlayGone(page) {
 async function startFreshServer() {
   const port = await findFreePort(8160);
   const baseUrl = `http://127.0.0.1:${port}/`;
-  const gameServer = createGameServer({ root: ROOT, async: true });
+  const gameServer = createGameServer({ root: ROOT, async: true, playerStoreDir: PLAYER_STORE_DIR });
   await new Promise((resolve, reject) => {
     const onError = (error) => {
       gameServer.off('listening', onListening);
@@ -513,16 +516,26 @@ function assertRedArtifactsWritable() {
 }
 
 function relevantLayoutIssues(issues) {
-  return (issues || []).filter((issue) => !isDisposedPreviewRequest(issue));
+  return (issues || []).filter((issue) => !isIgnoredLayoutIssue(issue));
 }
 
 function ignoredLayoutIssues(issues) {
-  return (issues || []).filter(isDisposedPreviewRequest);
+  return (issues || []).filter(isIgnoredLayoutIssue);
+}
+
+function isIgnoredLayoutIssue(issue) {
+  return isDisposedPreviewRequest(issue) || isHandledStoreProbeAbort(issue);
 }
 
 function isDisposedPreviewRequest(issue) {
   return issue && issue.type === 'error'
     && /^Request failed blob:.*net::ERR_ABORTED$/i.test(String(issue.text || ''));
+}
+
+function isHandledStoreProbeAbort(issue) {
+  return issue && issue.type === 'error'
+    && String(issue.text || '').includes('__spaceface_player_store')
+    && String(issue.text || '').includes('net::ERR_ABORTED');
 }
 
 function relativeOutput(file) {

@@ -6,6 +6,9 @@
 // same concrete slot shown to the player.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +18,7 @@ import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await loadPlaywright();
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-title-continue-'));
 
 let server = null;
 let browser = null;
@@ -89,6 +93,16 @@ try {
   assert.equal(new URL(page.url()).search, '', 'title Continue probe must use the canonical root URL with no query flags');
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await page.waitForFunction(() => {
+    const sys = window.SF && window.SF.ctx && window.SF.ctx.registry
+      && typeof window.SF.ctx.registry.get === 'function'
+      && window.SF.ctx.registry.get('save');
+    return !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && !sys.isSharedStoreSyncPending());
+  }, null, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
+    return !!(summary && summary.classList.contains('has-save'));
+  }, null, { timeout: 5000 });
 
   const report = await page.evaluate(() => {
     const text = (sel) => (document.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
@@ -140,12 +154,17 @@ try {
     'Continue should emit the concrete slot shown in the title summary');
   assert.notEqual(emitted.payload && emitted.payload.slot, 'latest',
     'Continue should not ask a second latest resolver to reinterpret the visible summary');
-  assert.deepEqual(issues.errorIssues(), [], 'title Continue runtime probe should not record page errors');
+  assert.deepEqual(
+    issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)),
+    [],
+    'title Continue runtime probe should not record page errors',
+  );
 
   console.log('Title Continue runtime OK: seeded save index -> visible latest-save summary -> concrete slot load intent.');
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+  try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {
@@ -175,11 +194,18 @@ async function startFreshServer() {
   return { baseUrl: url, kill: () => child.kill() };
 }
 
+function isHandledStoreProbeAbort(issue) {
+  return issue && issue.type === 'error'
+    && String(issue.text).includes('__spaceface_player_store')
+    && String(issue.text).includes('net::ERR_ABORTED');
+}
+
 function spawnProbeServer(port) {
   const child = spawn(process.execPath, ['server.js', String(port)], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: PLAYER_STORE_DIR },
   });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };

@@ -49,7 +49,19 @@ assert.deepEqual(Object.keys(resolved).sort(), [
   'radius',
   'revision',
   'schemaVersion',
+  'shape',
 ], 'resolved body spec should expose only save-safe physics authoring fields');
+assert.equal(resolved.shape, 'capsule', 'craft body spec should default to the capsule collider shape');
+assert.equal(
+  resolvePhysicsBodySpec({ id: 5, type: 'station', radius: 30, mass: 100 }).shape,
+  'ball',
+  'non-craft body spec should default to the ball collider shape',
+);
+assert.equal(
+  resolvePhysicsBodySpec({ ...ship, physicsBody: { ...ship.physicsBody, shape: 'ball' } }).shape,
+  'ball',
+  'an authored shape override is save-safe authoring and must survive resolution',
+);
 
 const fullAuthority = measureThrusterAuthority(ship);
 assert.deepEqual(fullAuthority, { forward: 1, reverse: 1, strafe: 1, yaw: 1 }, 'undamaged default thrusters should have full authority');

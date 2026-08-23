@@ -121,6 +121,11 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
 // the full planner output across all 60 sector-day-seed combinations, and a change to the core
 // authored zones, to the planner, or to the catalogue still fails it. The list is derived from
 // AUTHORED_PLACE_ZONES rather than hard-coded so the next authored place does not re-break it.
+//
+// Two later planner/enemy stamps also land on every planned item without moving the schedule
+// identity (shape, zone, delay, archetypes, positions). Measured 2026-08-23: stripping them restores
+// 332c517a… exactly, while live-vs-baseline still only moves Ceres (Throughline Weigh) and Tethys
+// (Driftmark + Anvil). Reconstruct them here the same way the catalogue gates are reconstructed.
 const AUTHORED_PLACE_ZONE_IDS = new Set(
   Object.values(AUTHORED_PLACE_ZONES).flat().map((zone) => zone.id),
 );
@@ -131,6 +136,11 @@ const MIGRATION_ZONE_OVERRIDES = Object.freeze({
     center: Object.freeze({ x: 300, z: -300 }),
     radius: 1100,
   }),
+});
+
+const MIGRATION_ERA_SHIP_DOCTRINE = Object.freeze({
+  reaver_pirate: 'tether_control_raider',
+  corsair_raider: 'tether_control_raider',
 });
 
 function migrationBaselineZones(sectorId) {
@@ -147,6 +157,20 @@ function migrationBaselineZones(sectorId) {
     });
 }
 
+function migrationBaselinePlan(plan) {
+  return plan.map((item) => {
+    const copy = { ...item };
+    delete copy.predation;
+    copy.ships = item.ships.map((ship) => {
+      const next = { ...ship };
+      const doctrine = MIGRATION_ERA_SHIP_DOCTRINE[ship.archetype];
+      if (doctrine !== undefined) next.combatDoctrineId = doctrine;
+      return next;
+    });
+    return copy;
+  });
+}
+
 test('encounter migration preserves the seeded 60-schedule matrix', () => {
   const migrationCatalog = migrationBaselineCatalog();
   const rows = [];
@@ -154,7 +178,7 @@ test('encounter migration preserves the seeded 60-schedule matrix', () => {
     const zones = migrationBaselineZones(sectorId);
     for (const day of fixture.scheduleMatrix.days) {
       for (const seed of fixture.scheduleMatrix.seeds) {
-        rows.push([sectorId, day, seed, planEncounters(seed, sectorId, day, zones, null, migrationCatalog)]);
+        rows.push([sectorId, day, seed, migrationBaselinePlan(planEncounters(seed, sectorId, day, zones, null, migrationCatalog))]);
       }
     }
   }
