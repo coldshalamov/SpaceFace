@@ -191,6 +191,9 @@ export function waveOpeningLine(wave, plan) {
   } else if (kind === 'elite_hunt') {
     objective = 'Kill the elite and clear the rest.';
     namecheck = leadName ? ` ${leadName} leads.` : '';
+  } else if (kind === 'system_event') {
+    objective = 'Steal the plate. Kill it and clear the rest.';
+    namecheck = leadName ? ` ${leadName} holds the plate.` : ' A plate-theft signature.';
   } else if (leadName) {
     namecheck = ` ${leadName} on the board.`;
   }

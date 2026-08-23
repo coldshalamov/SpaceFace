@@ -247,7 +247,7 @@ async function main() {
     };
   });
   record('HUD',
-    hud.present && hud.visible && String(hud.wave).indexOf('WAVE 1 / 10') === 0
+    hud.present && hud.visible && String(hud.wave).indexOf('WAVE 1 / 30') === 0
       && hud.phase === 'FIGHT' && hud.role === 'status' && hud.minFontPx >= 12,
     hud.present
       ? `"${hud.label}" · ${hud.wave} · ${hud.phase} · figures ${hud.figs.join(' ')} · `

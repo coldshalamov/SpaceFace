@@ -8,6 +8,7 @@
 
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
+import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -41,7 +42,7 @@ export function deathSentence(receipt, context = {}) {
 /** The one-line reason a run ended when nothing killed the player. */
 export function outcomeSentence(outcome, context = {}) {
   const wave = Number.isInteger(context.wave) && context.wave > 0 ? context.wave : 0;
-  if (outcome === 'victory') return `All ${wave || 10} waves cleared. The arena is empty.`;
+  if (outcome === 'victory') return `All ${wave || SURVIVAL_ARC_LENGTH} waves cleared. The arena is empty.`;
   if (outcome === 'aborted') return 'You left the arena before the run finished.';
   return wave ? `The run ended on wave ${wave}.` : 'The run ended.';
 }
@@ -209,6 +210,10 @@ export const survivalResults = {
       // The last hits before the end, so "what actually took me apart" is answerable even when the
       // killing blow was not the interesting one.
       damageTrail: this._damageTrail.slice(),
+      style: {
+        multiplier: run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1,
+        recentCauses: run.style && Array.isArray(run.style.recentCauses) ? run.style.recentCauses.slice() : [],
+      },
     };
     this._result = result;
     this._emit('run:resultsReady', result);

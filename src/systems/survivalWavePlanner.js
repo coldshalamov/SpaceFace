@@ -3,6 +3,16 @@
 // Same input → same output. Never mutates the input.
 
 import { mulberry32 } from '../core/rng.js';
+import {
+  SPAWN_BUDGET_DEFAULT_MAX,
+  SPAWN_BUDGET_HARD_MAX,
+  SURVIVAL_ARC_LENGTH,
+  SURVIVAL_TEMPLATE_BLOCK,
+  actIndexForWave,
+  composeArcWave,
+  difficultyForWave,
+  templateWaveOf,
+} from '../data/survivalActs.js';
 import { COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import {
   SURVIVAL_GATE_GROUPS,
@@ -12,16 +22,13 @@ import {
 } from '../data/survivalWaves.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
-// Authored recipes exist only for waves 1–10 per live arena. Waves in 11..999
-// are in-range input and return the documented error — they are not silently
-// remapped onto recipes 1–9.
+// Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
+// arc remaps waves 11–30 onto that template. Waves in 31..999 are in-range
+// input and return the documented error — they are not silently remapped.
 const SEED_MIN = 1;
 const SEED_MAX = 0xffffffff;
 const WAVE_MIN = 1;
 const WAVE_MAX = 999;
-const TEMPLATE_BLOCK = 10;
-// DEFAULT_MAX at src/systems/spawnBudget.js:26 — do not import the private constant.
-const SPAWN_BUDGET_DEFAULT_MAX = 24;
 
 const ARENA_IDS = new Set(COMBAT_LAB_ARENAS.map((arena) => arena.id));
 
@@ -50,10 +57,6 @@ function isCombatLabSeed(value) {
 
 function isCombatLabWave(value) {
   return Number.isInteger(value) && value >= WAVE_MIN && value <= WAVE_MAX;
-}
-
-function templateWaveOf(wave) {
-  return ((wave - 1) % TEMPLATE_BLOCK) + 1;
 }
 
 /**
@@ -123,7 +126,7 @@ function expandSchedule(packages) {
 
 function draftExpectationFor(wave) {
   const blockPos = templateWaveOf(wave);
-  if (blockPos === TEMPLATE_BLOCK) return { kind: 'refit', choices: null };
+  if (blockPos === SURVIVAL_TEMPLATE_BLOCK) return { kind: 'refit', choices: null };
   return { kind: 'draft', choices: 3 };
 }
 
@@ -256,7 +259,8 @@ export function hashSemanticWavePlan(plan) {
 }
 
 function lookupRecipe(arenaId, wave) {
-  return RECIPE_BY_ARENA_WAVE.get(`${arenaId}#${wave}`) || null;
+  if (!Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_ARC_LENGTH) return null;
+  return RECIPE_BY_ARENA_WAVE.get(`${arenaId}#${templateWaveOf(wave)}`) || null;
 }
 
 function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSummary, rng }) {
@@ -268,22 +272,32 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     buildSummary,
     blockPos,
   );
-  const packages = applyDifficulty(pressured.packages, difficulty);
+  const composed = composeArcWave({
+    packages: pressured.packages,
+    blockingRoles: pressured.blockingRoles,
+    arenaPhase: recipe.arenaPhase,
+    objective: recipe.objective,
+    wave,
+  });
+  const packages = applyDifficulty(composed.packages, difficulty);
   const schedule = expandSchedule(packages);
   const peak = peakConcurrentDemand(packages);
   if (peak > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `peak concurrent demand ${peak} exceeds 24`)]);
   }
+  if (peak > SPAWN_BUDGET_HARD_MAX) {
+    return invalid([issue('packages', `peak concurrent demand ${peak} exceeds 40`)]);
+  }
   const spawnedRoles = new Set(packages.map((pkg) => pkg.role));
   // Plan field is `blockingRoles`. Recipe field is `blockingRolesResolved`
   // (Appendix A.2). See the comment in survivalWaves.js.
-  const blockingRoles = pressured.blockingRoles.filter((role) => spawnedRoles.has(role));
-  return {
+  const blockingRoles = composed.blockingRoles.filter((role) => spawnedRoles.has(role));
+  const plan = {
     id: `${recipe.id}:w${wave}:a${act}:${seed.toString(16)}`,
-    objective: { kind: recipe.objective.kind },
+    objective: { kind: composed.objective.kind },
     packages,
     schedule,
-    arenaPhase: applyMutators(recipe.arenaPhase, mutators),
+    arenaPhase: applyMutators(composed.arenaPhase, mutators),
     rewards: {
       xp: recipe.rewards.xp + act * 20 + (Number.isFinite(difficulty) ? Math.max(0, Math.floor(difficulty - 1)) * 10 : 0),
       credits: recipe.rewards.credits + act * 6,
@@ -295,6 +309,8 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
       cleanupTicks: Number.isInteger(recipe.completion.cleanupTicks) ? recipe.completion.cleanupTicks : 0,
     },
   };
+  if (composed.systemEvent) plan.systemEvent = composed.systemEvent;
+  return plan;
 }
 
 export function planWave(input) {
@@ -326,8 +342,8 @@ function planWaveInner(input) {
   }
   if (issues.length > 0) return invalid(issues);
 
-  const act = Number.isInteger(input.act) ? input.act : 0;
-  const difficulty = Number.isFinite(input.difficulty) ? input.difficulty : 1;
+  const act = Number.isInteger(input.act) ? input.act : actIndexForWave(wave);
+  const difficulty = Number.isFinite(input.difficulty) ? input.difficulty : difficultyForWave(wave);
   const mutators = Array.isArray(input.mutators) ? input.mutators : [];
   const buildSummary = input.buildSummary == null ? null : input.buildSummary;
 

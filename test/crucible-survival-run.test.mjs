@@ -24,13 +24,14 @@ import {
 
 const DT = 1 / 60;
 const NOOP_TICKS = 600;
-const WAVE_COUNT = 10;
+const WAVE_COUNT = 30;
 const REFIT_EVERY = 10;
 const LIVE_ARENA_ID = 'helios_core';
 const BOSS_CLEANUP_TICKS = 240;
 
 function cleanupTicksForWave(wave) {
-  return wave >= WAVE_COUNT ? BOSS_CLEANUP_TICKS : SURVIVAL_CLEANUP_TICKS;
+  const template = ((wave - 1) % 10) + 1;
+  return template === 10 ? BOSS_CLEANUP_TICKS : SURVIVAL_CLEANUP_TICKS;
 }
 
 function snapshotTree(value, seen = new WeakSet()) {

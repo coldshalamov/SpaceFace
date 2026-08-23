@@ -1,6 +1,8 @@
 // Survival wave-recipe catalog and pure validator (CRU-009).
 // Data only: no runtime writes, no imports from src/systems/**.
 // Recipe field names follow design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md Appendix A.2.
+// Waves 1–10 per arena are the template block for the thirty-wave Foundry arc
+// (survivalActs.js). Do not change recipe bodies: waves 1, 5 and 10 are pinned.
 
 import { COMBAT_LAB_ARENAS } from './combatLabSetups.js';
 import { ENEMY_TYPES } from './enemies.js';

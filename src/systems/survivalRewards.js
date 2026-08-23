@@ -20,6 +20,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { peakConcurrentDemand } from '../data/survivalWaves.js';
+import { applyStyleKill, scoreWithStyle, styleCauseFromKill } from './survivalStyle.js';
 
 /** XP a single cohort kill is worth. Small and level-scaled so the bar visibly moves in a fight. */
 export const KILL_XP_BASE = 2;
@@ -123,9 +124,16 @@ export const survivalRewards = {
     // arena still settles through the campaign path and never pays the run.
     if (!runOwnsReward(victim)) return;
     const level = this._levelOf(victim);
+    const cause = styleCauseFromKill(payload);
+    const style = run.style && typeof run.style === 'object'
+      ? run.style
+      : { multiplier: 1, recentCauses: [] };
+    const multiplier = Number.isFinite(style.multiplier) ? style.multiplier : 1;
+    const base = killScoreFor(level);
+    run.style = applyStyleKill(style, cause);
     this._emit('run:awardRequested', {
       xp: killXpFor(level),
-      score: killScoreFor(level),
+      score: scoreWithStyle(base, multiplier, cause),
       reason: 'kill',
       wave: run.wave,
     });

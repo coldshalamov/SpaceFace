@@ -5,9 +5,10 @@
 // Never infers a phase from entity counts. Never writes campaign credits, entities, or fittings.
 
 import { validateRunState } from '../core/runState.js';
+import { SURVIVAL_ARC_LENGTH, actIndexForWave, difficultyForWave } from '../data/survivalActs.js';
 import { planWave } from './survivalWavePlanner.js';
 
-export const SURVIVAL_RUN_WAVE_COUNT = 10;
+export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
 export const SURVIVAL_ARENA_INTRO_TICKS = 1;
 export const SURVIVAL_WAVE_INTRO_TICKS = 1;
@@ -133,6 +134,7 @@ export const survivalRun = {
     this._refitClosed = false;
     this._planFailed = false;
     this._waveIntroHandled = false;
+    this._systemEventFired = false;
     this._pendingFrom = null;
     this._pendingTo = null;
   },
@@ -222,12 +224,13 @@ export const survivalRun = {
       this._waveIntroHandled = true;
       return;
     }
+    const act = actIndexForWave(nextWave);
     const plan = planWave({
       seed: run.seed,
       arenaId: run.arenaId,
       wave: nextWave,
-      act: Number.isInteger(run.act) ? run.act : 0,
-      difficulty: 1,
+      act,
+      difficulty: difficultyForWave(nextWave),
       mutators: run.modifiers,
       buildSummary: null,
     });
@@ -244,6 +247,7 @@ export const survivalRun = {
     this._planFailed = false;
     this._waveIntroHandled = true;
     run.wave = nextWave;
+    run.act = act;
     run.wavePlanId = typeof plan.id === 'string' ? plan.id : null;
     const rules = plan.completionRules;
     const cleanupTicks = rules && Number.isInteger(rules.cleanupTicks)
@@ -251,6 +255,14 @@ export const survivalRun = {
       : SURVIVAL_CLEANUP_TICKS;
     this._cleanupTicks = cleanupTicks < 0 ? 0 : cleanupTicks;
     this._emit('run:wavePlanned', { wave: run.wave, plan, tick: this._runTick });
+    if (plan.systemEvent && !this._systemEventFired) {
+      this._systemEventFired = true;
+      this._emit('run:systemEvent', {
+        wave: run.wave,
+        id: plan.systemEvent.id,
+        tick: this._runTick,
+      });
+    }
   },
 
   _requestCleanupExit(run) {
