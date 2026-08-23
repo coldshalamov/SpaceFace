@@ -150,6 +150,7 @@ export const weapons = {
   update(dt, state) {
     if (state.mode !== 'flight') return;
     ensureWeaponRuntime(this);
+    pruneAttackLive(this, state);
     resetWeaponDiagnostics(this._diag);
 
     // Beams are transient per-tick rays; combat normally rebuilds state.combat.beams but may be a
@@ -1386,6 +1387,16 @@ function ensureWeaponRuntime(host) {
   if (!host._attackMetrics) host._attackMetrics = emptyAttackMetrics();
   if (!host._attackLive) host._attackLive = new Map();
   if (!host._attackQueryScratch) host._attackQueryScratch = [];
+}
+
+function pruneAttackLive(host, state) {
+  const live = host && host._attackLive;
+  if (!live || live.size === 0) return;
+  const entities = state && state.entities;
+  for (const id of live.keys()) {
+    const projectile = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!projectile || projectile.alive === false || projectile.type !== 'projectile') live.delete(id);
+  }
 }
 
 function resetWeaponDiagnostics(diag) {

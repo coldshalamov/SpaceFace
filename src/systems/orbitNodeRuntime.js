@@ -141,6 +141,7 @@ function orbitTargets(state, host) {
     if (!entity || entity.alive === false) continue;
     if (host && entity.id === host.id) continue;
     if (!HOST_TYPES.has(entity.type)) continue;
+    if (host && host.team != null && entity.team === host.team) continue;
     const pos = entity.pos || {};
     const vel = entity.vel || {};
     out.push({
@@ -176,6 +177,23 @@ function hostHasNodes(world, hostId) {
     if (world.nodes[i] && world.nodes[i].hostId === hostId) return true;
   }
   return false;
+}
+
+function assignOrbitFieldTeam(world, nodes, host) {
+  const kernel = world && world.kernel;
+  if (!kernel || typeof kernel.get !== 'function' || typeof kernel.register !== 'function') return;
+  for (let i = 0; i < nodes.length; i++) {
+    const field = kernel.get(nodes[i].id);
+    if (!field) continue;
+    kernel.register({
+      ...field,
+      team: host && host.team != null ? host.team : null,
+      filters: {
+        ...(field.filters || {}),
+        excludeSourceTeam: !!(host && host.team != null),
+      },
+    });
+  }
 }
 
 function scheduleCryoFromEvents(state, combatKernel, events, host) {
@@ -270,7 +288,8 @@ export function syncOrbitRuntime(fieldsSys, state) {
         createdTick: tick,
         sourceEntityId: hostEntity.id,
       });
-      trySpawnOrbitNodes(world, parent, spec, pose, { tick, simTime });
+      const spawned = trySpawnOrbitNodes(world, parent, spec, pose, { tick, simTime });
+      assignOrbitFieldTeam(world, spawned.spawned, hostEntity);
     }
     const targets = orbitTargets(state, hostEntity);
     const stepped = stepOrbitWorld(world, pose, simTime, targets);
