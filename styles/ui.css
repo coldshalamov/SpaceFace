@@ -83,6 +83,14 @@
   --text-shadow-hard: 0px 1px 3px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 0.8);
 }
 * { box-sizing: border-box; }
+/* `el.hidden = true` is silently defeated by ANY author rule that sets `display` on that element,
+   because an author declaration outranks the user agent's [hidden]{display:none}. The JS then
+   believes it hid the thing and the thing is still on screen. That is how the Footprint board kept
+   drawing its ACT / INCIDENT / STANDING / CONSEQUENCE headers while `board.hidden = true` — the
+   empty state took a full viewport height and pushed the headers 40px off the bottom, where
+   nothing could scroll to them. `.aw-lens[hidden]` in asteroid-ops.css was already carrying this
+   patch locally; the class of bug is worth closing once rather than per component. */
+[hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); }
 #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
 body.sf-flight-cursor,
