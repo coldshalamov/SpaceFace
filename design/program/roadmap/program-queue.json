@@ -8551,7 +8551,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "partial 2026-08-23 (de5f17cb): SYSTEMS half landed - Lagrange Crucible (paired wells with a real ridge) and Cinder Sluice (cycling directional current), both registered as existing field consumers rather than a forked kernel, both scoped at the tick to arena identity AND a live Survival run. Exit gate met by integrated trajectory (180 steps @60Hz, real mass): the physics build is WORST station-keeper and BEST rider in both, tied at zero in Helios. Adding the arenas moved the build-code digest 0U3BLV9 -> 0GWHFVV, invalidating older codes by design. STILL OPEN: boss hulls, prop meshes, VFX; bosses are currently roles over the existing dreadnought. NOTE the gate measures how the room MOVES you, not a combat outcome. State left `ready`."
+      ],
       "brief": "Gravity arena with pull/repel/tide/pulse states, pylons and Tidal Engine Carrier (CRU-044); current arena with warn/surge/calm, ballast, shutters and Chain Tug (CRU-045)."
     },
     {
@@ -8605,7 +8607,9 @@
         "npm run check:save-schema",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "partial 2026-08-23 (fc5eae50): unlock catalog, local records, run history and challenge mutators landed. All 14 unlocks are zero on all seven power axes, and the freely-available Pulse (44 DPS) is the hardest-hitting weapon in the set - the unlockables are 32, 31, 0.75, 0.6 - so a fresh account cannot be out-gunned by a returning one. DEFERRED because a concurrent lane held the wave/arena files: endless recipes past wave 30, the boss circuit, the extraction experiment, versioned build codes. All UI (unlock surface, run-history screen) still owed. State left `ready`."
+      ],
       "brief": "Unlock catalog of possibility not stats (CRU-055), deterministic endless recipe (CRU-056), challenge rulesets (CRU-057), local records, versioned build codes."
     },
     {
