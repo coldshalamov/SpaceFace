@@ -79,3 +79,29 @@ the art lane's territory and the owner's call, not a check to be quietened.
 The disk is separately a real constraint — 446 MB free of 944 GB. Of that, `.devshots/perf` alone is
 2.6 GB and `pq017-world-site` 993 MB. These are evidence archives from past runs; pruning them
 destroys work products and is an owner decision, so nothing here has been deleted.
+
+
+---
+
+## Second full run, after the day's fixes — 252 pass / 20 fail
+
+`check:ci:report` again: **272 commands, 252 passed, 20 failed** (was 251/21).
+
+**Closed since the first run:** `check-travel-lanes` (fixed — the recovery beacon now outlives the
+dead segment), `check-perf-packets` (fixed — one unguarded `requestAnimationFrame` in `createHud`
+was killing the whole contact-roster file before any assertion ran), and `check-mission-handoff`
+(never a defect — it passes standalone and only failed inside the batch).
+
+**Appeared in this run, and neither is what it looks like:**
+
+- `check-station-egress` — **passes standalone.** Another batch flake, same shape as
+  `check-mission-handoff`. Not a defect.
+- `check-bar-mission-readiness` — fails consistently right now, at the boot wait on line 34
+  (`window.SF && state && bus && ctx`, 15s). **But the game boots fine:** a direct headless boot
+  probe found all four present with zero page errors, and `check:playable` has passed 15/15
+  repeatedly since. Two delegation lanes were running throughout with 18 node processes live, and
+  this is the fragile `headless: true` path. **Re-test on a quiet machine before attributing it.**
+
+**Standing lesson, now twice confirmed:** a check that fails inside a 272-command sequential run
+should be re-run alone before anyone investigates it. Two of the twenty-one in the first run were
+load artefacts, and one of the two "new" failures here is as well.
