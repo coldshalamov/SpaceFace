@@ -1,0 +1,27 @@
+name: remove-overheating-audit
+
+on:
+  push:
+    branches: [remove-overheating-systems]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Inventory active overheating references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== ACTIVE CODE / TEST / DOC REFERENCES ==='
+          git grep -nEi 'overheat|weaponHeat|thermal[ _-]?sink|vent[ _-]?(bonus|band|rhythm|window|cool)|heat(Max|Rate|Per|Pct|Frac|Ratio|Dissipation|Generation|Warning|Threshold|Reset|Mult)|(^|[^A-Za-z])heat([^A-Za-z]|$)' -- src scripts test docs package.json || true
+          echo
+          echo '=== DESIGN REFERENCES (PATHS + LINES) ==='
+          git grep -nEi 'overheat|weaponHeat|thermal[ _-]?sink|vent[ _-]?(bonus|band|rhythm|window|cool)|heat(Max|Rate|Per|Pct|Frac|Ratio|Dissipation|Generation|Warning|Threshold|Reset|Mult)' -- design ':!design/_ARCHIVE/**' ':!design/sequential-build-plan/ORIGINALS/**' || true
