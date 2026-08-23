@@ -257,3 +257,51 @@ each pass individually, and `check:playable` is 15/15, so the work stands. The h
 
 **Rule for the next session:** run browser checks alone, and never attribute a browser check's result
 from a single run.
+
+---
+
+## 11. Second orchestrated round, and the disk is now the dominant variable
+
+Six delegated lanes ran in total across two rounds (grok via Cursor, grok CLI, GLM, Kimi, and a
+Codex review). Measured **individually** — because the suite run is contention-polluted, §10 — the
+previously-failing set now stands at **10 passing, 11 still red**:
+
+**Now green:** `alpha:evidence:contract` · `contracts` · `title-continue-runtime` ·
+`new-game-first-run` · `first-15-runtime` · `mission-cargo-loading` · `mission-handoff` ·
+`market-first-loop` · `check-phase0-slice-contract` · `bundle`
+
+**Still red:** `depth-program:contracts` · `alpha:baseline:contracts` · `sg02` · `sg06` ·
+`perf-packets` · `atlas` · `art` · `flight:clean` · `47a:tactics` · `47a:live-branch` ·
+`check-gameplay-core`
+
+Several of the still-red were advanced past their FIRST failure to a deeper one — `sg02`, `sg06` and
+`depth-program:contracts` each now fail on an assertion that was previously unreachable, which is
+progress that a pass/fail column cannot show.
+
+### FOUR of the ten were never game defects
+
+`mission-handoff` was not broken at all: run alone it completes the full loop, and its TimeoutError
+only appears when two headless Chromiums overlap. `mission-cargo-loading`, `market-first-loop` and
+`first-dock-handoff` were checks hunting for a superseded design's selectors and copy. A lane that had
+no reason to look for the contention effect found it independently, which is the strongest form the
+evidence could take.
+
+### THE DISK IS NOW THE BINDING CONSTRAINT, and it corrupts measurements
+
+Free space on the 944 GB volume moved like this during the session:
+
+```
+613 MB  ->  check:bundle failing on ENOSPC
+1.3 GB  ->  after reclaiming build/web            check:bundle PASSES
+ 61 MB  ->  after one individual-check sweep      bundle and mission-handoff both FAIL
+697 MB  ->  after reclaiming build/web again      both PASS again
+```
+
+Every browser check writes artifacts, so **running the suite consumes the space that the suite needs**.
+Some of the eleven red results above were measured at 61 MB and are therefore not trustworthy as
+failures; they need re-running with room.
+
+`.devshots/` holds **6.5 GB** of gitignored capture evidence (`perf` alone is 2.6 GB) and `assets/` is
+21 GB. `build/` regenerates and was reclaimed twice here. **Pruning the evidence is an owner decision,
+not a cleanup** — receipts cite some of it — but until the volume has headroom, no check result on
+this machine should be quoted without stating the free space it was measured at.
