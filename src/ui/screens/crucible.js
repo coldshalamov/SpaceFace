@@ -13,6 +13,9 @@ import {
   normalizeSeed,
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
+import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
+import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 
 const STYLE_ID = 'sf-crucible-door-style';
 
@@ -97,6 +100,41 @@ function injectStyle() {
     font-size:12px; font-variant-numeric:tabular-nums; color:var(--sf-calm); }
   .sf-menu.sf-crucible-results .sf-crres__step-verb { font-family:var(--sf-subhead-face);
     font-weight:600; font-size:15px; color:var(--sf-you); }
+  /* THE RECORD BAND — the door's answer to "why play again". Per the phase's own rule, nothing
+     here is power: the ladder lists possibilities still closed and the exact condition that opens
+     each, so the reason to return is the shape of the next run, never a bigger number. */
+  .sf-menu.sf-crucible-door .sf-crd-rec { display:grid; gap:10px; padding-top:12px;
+    border-top:1px solid var(--panel-edge); }
+  .sf-menu.sf-crucible-door .sf-crd-rec__figs { display:grid; gap:8px;
+    grid-template-columns:repeat(auto-fit,minmax(84px,1fr)); }
+  .sf-menu.sf-crucible-door .sf-crd-fig { display:flex; flex-direction:column; gap:2px; }
+  .sf-menu.sf-crucible-door .sf-crd-fig b { font-family:var(--mono); font-size:18px; line-height:1;
+    color:var(--ink); font-variant-numeric:tabular-nums; }
+  .sf-menu.sf-crucible-door .sf-crd-fig span { font-size:12px; color:var(--ink-dim);
+    letter-spacing:.06em; text-transform:uppercase; }
+  .sf-menu.sf-crucible-door .sf-crd-rec__head { display:flex; align-items:baseline;
+    justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-ladder { display:grid; gap:4px; max-height:196px;
+    overflow-y:auto; overscroll-behavior:contain; }
+  .sf-menu.sf-crucible-door .sf-crd-lock { display:grid; grid-template-columns:14px minmax(0,1fr) auto;
+    gap:9px; align-items:baseline; padding:5px 7px; border-radius:3px; font-size:13px; }
+  .sf-menu.sf-crucible-door .sf-crd-lock__m { font-family:var(--mono); font-size:12px; line-height:1.3; }
+  .sf-menu.sf-crucible-door .sf-crd-lock__n { min-width:0; color:var(--ink); }
+  .sf-menu.sf-crucible-door .sf-crd-lock__c { font-size:12px; color:var(--ink-dim);
+    font-variant-numeric:tabular-nums; text-align:right; }
+  /* Colour by MEANING, not by decoration: open is settled paper, closed is the goal you can still
+     reach. Nothing here is a warning, because nothing here is going wrong. */
+  .sf-menu.sf-crucible-door .sf-crd-lock.is-open { background:color-mix(in srgb, var(--ink) 5%, transparent); }
+  .sf-menu.sf-crucible-door .sf-crd-lock.is-open .sf-crd-lock__m { color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-lock.is-shut .sf-crd-lock__n { color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-lock.is-shut .sf-crd-lock__m { color:var(--sf-goal, #e3a13d); }
+  .sf-menu.sf-crucible-door .sf-crd-runs { display:grid; gap:3px; }
+  .sf-menu.sf-crucible-door .sf-crd-run { display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:baseline;
+    font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-run b { font-family:var(--mono); color:var(--ink); font-weight:600; }
+  .sf-menu.sf-crucible-door .sf-crd-none { font-size:12px; color:var(--ink-dim); }
   /* forced-colors strips the share bars; the figure beside every bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-menu.sf-crucible-results .sf-crres__hit-track { background:Canvas; border:1px solid CanvasText; }
@@ -125,6 +163,151 @@ function freshSeed() {
   return normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
 }
 
+/* --- THE RECORD BAND ------------------------------------------------------------------------
+   The Crucible's answer to "why come back". The map's phase-10 exit gate asks for reasons to
+   replay beyond raw score AND for a fresh account to stay competitive, and those two pull against
+   each other unless the reward is possibility rather than power. Every unlock in the catalog is
+   zero on all seven power axes, so this band shows the SHAPE of what is still closed and the exact
+   condition that opens it. A returning player gets more ways to play and not one point of damage.
+   ------------------------------------------------------------------------------------------- */
+
+/**
+ * Phrase the earn condition as the thing the player would go and do.
+ *
+ * Every kind the catalog actually uses gets a real sentence. The generic fallback exists only so a
+ * kind added later still renders something, and a test fails if a live kind ever reaches it — a
+ * player reading "pick and waves 10" has been told nothing.
+ *
+ * Note the two different keys: pick_and_waves carries minWaves, the rest carry min. Reading only
+ * `min` printed "clear wave 0" for four of the five starters.
+ */
+export function unlockConditionText(entry) {
+  if (!entry) return '';
+  if (entry.defaultUnlocked) return 'open from the start';
+  const earn = entry.earn;
+  if (!earn || typeof earn !== 'object') return 'condition not yet set';
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  switch (earn.kind) {
+    case 'pick_and_waves': {
+      const waves = num(earn.minWaves != null ? earn.minWaves : earn.min);
+      return earn.verb ? `run ${earn.verb} to wave ${waves}` : `run it to wave ${waves}`;
+    }
+    case 'waves_cleared': return `clear wave ${num(earn.min)}`;
+    case 'deepest_wave': return `reach wave ${num(earn.min)}`;
+    case 'authored_victory': return 'win the authored run';
+    case 'victory_and_physics_pick': return 'win with a physics verb';
+    default: return `${String(earn.kind).replace(/_/g, ' ')} ${num(earn.min)}`;
+  }
+}
+
+/** One row per catalog entry: is it open, and if not, what opens it. Stable, catalog-ordered. */
+export function unlockLadderRows(profile) {
+  const owned = (profile && profile.unlocks) || {};
+  const stats = (profile && profile.records) || null;
+  return SURVIVAL_UNLOCK_CATALOG.map((entry) => {
+    let open = !!entry.defaultUnlocked || !!owned[entry.id];
+    if (!open && stats) {
+      // Ask the systems layer rather than re-deriving the rule here; a second copy would drift.
+      try { open = !!meetsUnlockCondition(entry, profile); } catch { open = false; }
+    }
+    return {
+      id: entry.id,
+      kind: entry.kind,
+      label: entry.label,
+      blurb: entry.blurb,
+      open,
+      condition: open ? '' : unlockConditionText(entry),
+    };
+  });
+}
+
+/** The lifetime figures, each keeping its own word. */
+export function lifetimeFigures(profile) {
+  const life = (profile && profile.records && profile.records.lifetime) || {};
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return [
+    { key: 'runs', label: 'Runs', value: n(life.runs) },
+    { key: 'victories', label: 'Won', value: n(life.victories) },
+    { key: 'deepestWave', label: 'Deepest', value: n(life.deepestWave) },
+    { key: 'bestScore', label: 'Best score', value: n(life.bestScore) },
+    { key: 'bestKills', label: 'Best kills', value: n(life.bestKills) },
+  ];
+}
+
+const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
+
+/** The most recent runs, newest first. Reads history as stored; never re-sorts by score. */
+export function recentRunRows(profile, limit = 5) {
+  const hist = (profile && Array.isArray(profile.history)) ? profile.history : [];
+  return hist.slice(0, Math.max(0, limit)).map((run) => ({
+    outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
+    wave: Number(run && run.wave) || 0,
+    score: Number(run && run.score) || 0,
+    arena: (run && run.arenaId) || '',
+  }));
+}
+
+function renderRecordBand(profile) {
+  const band = el('div', 'sf-crd-rec');
+
+  const figs = el('div', 'sf-crd-rec__figs');
+  for (const f of lifetimeFigures(profile)) {
+    const cell = el('div', 'sf-crd-fig');
+    cell.appendChild(el('b', null, String(f.value)));
+    cell.appendChild(el('span', null, f.label));
+    figs.appendChild(cell);
+  }
+  band.appendChild(figs);
+
+  const rows = unlockLadderRows(profile);
+  const openCount = rows.filter((r) => r.open).length;
+  const head = el('div', 'sf-crd-rec__head');
+  // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
+  // one-of-fourteen-remaining when it meant one-of-fourteen-open — the label and the number were
+  // describing opposite sets.
+  head.appendChild(el('span', null, 'Unlocks'));
+  head.appendChild(el('span', null, `${openCount} of ${rows.length} open`));
+  band.appendChild(head);
+
+  const ladder = el('div', 'sf-crd-ladder');
+  ladder.setAttribute('role', 'list');
+  // Closed first — the band exists to show what is still ahead, so the answer sits at the top.
+  const ordered = [...rows.filter((r) => !r.open), ...rows.filter((r) => r.open)];
+  for (const r of ordered) {
+    const row = el('div', `sf-crd-lock ${r.open ? 'is-open' : 'is-shut'}`);
+    row.setAttribute('role', 'listitem');
+    // A glyph, not colour alone: forced-colors and colour-blind readers get the same answer.
+    row.appendChild(el('span', 'sf-crd-lock__m', r.open ? '+' : '·'));
+    const name = el('span', 'sf-crd-lock__n', r.label);
+    name.title = r.blurb || '';
+    row.appendChild(name);
+    row.appendChild(el('span', 'sf-crd-lock__c', r.open ? 'open' : r.condition));
+    row.setAttribute('aria-label', `${r.label}. ${r.open ? 'Open.' : 'Closed — ' + r.condition + '.'}`);
+    ladder.appendChild(row);
+  }
+  band.appendChild(ladder);
+
+  const runs = recentRunRows(profile);
+  if (runs.length) {
+    const rhead = el('div', 'sf-crd-rec__head');
+    rhead.appendChild(el('span', null, 'Recent runs'));
+    band.appendChild(rhead);
+    const list = el('div', 'sf-crd-runs');
+    for (const r of runs) {
+      const row = el('div', 'sf-crd-run');
+      row.appendChild(el('b', null, r.outcome));
+      row.appendChild(el('span', null, `wave ${r.wave}`));
+      row.appendChild(el('span', null, `${r.score}`));
+      list.appendChild(row);
+    }
+    band.appendChild(list);
+  } else {
+    band.appendChild(el('div', 'sf-crd-none', 'No runs recorded yet. The first one starts the record.'));
+  }
+
+  return band;
+}
+
 export const crucibleScreen = {
   id: 'crucible',
 
@@ -149,7 +332,7 @@ export const crucibleScreen = {
     rootEl.appendChild(el(
       'div',
       'sf-crd-sub',
-      'Ten waves in Helios Core. Every wave you rearm; every ten you refit. '
+      'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
       + 'Nothing you earn here follows you home.',
     ));
 
@@ -216,6 +399,18 @@ export const crucibleScreen = {
     back.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
     foot.appendChild(back);
     rootEl.appendChild(foot);
+
+    // The record band goes last, below the verb: the door's job is to start a run, and the reason
+    // to start another one is context for that, not a competitor for it. Reading the profile must
+    // never be able to stop the door opening, so a broken or absent profile just omits the band.
+    try {
+      const profile = loadCrucibleMeta();
+      if (profile) rootEl.appendChild(renderRecordBand(profile));
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
+      }
+    }
 
     if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }

@@ -558,7 +558,8 @@
     "check:screens:overflow": "node scripts/probe-screen-overflow.mjs",
     "check:station:overflow": "node scripts/probe-station-overflow.mjs",
     "check:station:tabstate": "node scripts/probe-station-tab-state.mjs",
-    "check:frontend:live": "npm run check:screens:overflow && npm run check:station:overflow && npm run check:station:tabstate"
+    "check:frontend:live": "npm run check:screens:overflow && npm run check:station:overflow && npm run check:station:tabstate",
+    "check:crucible:meta": "node --test test/crucible-meta.test.mjs test/crucible-record-band.test.mjs"
   },
   "private": true,
   "devDependencies": {
