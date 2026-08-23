@@ -116,8 +116,16 @@ test with no entry is a dead file in a different costume.
 
 ## 5. Verification
 
-- `npm run check:playable` — **15/15**, run alone (concurrent headless Chromium fails on this
-  integrated Intel GPU; every subagent was denied browser access for the whole job).
+- `npm run check:playable` — **15/15**, run alone, three times: once mid-job, once after the code
+  lanes, and once on `bd03c7d7`, **the last commit that touches runtime code**. The final commit
+  `4571e7f2` is markdown and evidence only and was not re-gated — stated precisely rather than
+  claiming the gate covers the literal tip. (Concurrent headless Chromium fails on this integrated
+  Intel GPU, so every subagent was denied browser access for the whole job and all three runs were
+  serialised.)
+- Completeness of "clean" was proved with directories expanded, not just the collapsed default:
+  `git status --porcelain --untracked-files=all` returns **0** entries. The new
+  `tools/blender/_patch_*.py` ignore rule hides exactly the four consumed one-shot scripts and
+  nothing else.
 - `npm run check:hitch-attribution` — 32/32. `check:asteroid-works-render` — 6/6.
   `check:runtime-witness` — green. 97/97 across the nine node-only asteroid test files.
 - **15 mutations, 0 survivors** on the perf lane. Four of them passed *before* this session — including
