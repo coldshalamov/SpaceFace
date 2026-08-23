@@ -3074,7 +3074,10 @@ function normalizePlayerEntitySave(saved, player) {
   out.radius = positiveNumber(saved.radius, base.radius);
   out.mass = positiveNumber(saved.mass, base.mass);
   out.data = normalizePlayerEntityData(saved.data, base.data, defId, fittings);
-  normalizeVitals(out, base);
+  // A coherent save keeps its death-moment wreck (hull 0 stays 0). A garbage entity
+  // (no defId/weapons, zero maxima) is not a wreck — it is repaired into the starter
+  // ship, so its junk vitals must not override the restored base spec.
+  normalizeVitals(out, base, needsPlayerEntityRepair(saved));
   if (!out.flags || typeof out.flags !== 'object' || Array.isArray(out.flags)) out.flags = {};
   return out;
 }
@@ -3093,16 +3096,18 @@ function normalizePlayerEntityData(savedData, baseData, defId, fittings) {
   return data;
 }
 
-function normalizeVitals(out, base) {
+function normalizeVitals(out, base, repairGarbage = false) {
   out.hullMax = positiveNumber(out.hullMax, base.hullMax);
   out.shieldMax = nonNegativeNumber(out.shieldMax, base.shieldMax);
   out.capMax = positiveNumber(out.capMax, base.capMax);
   out.armorMax = nonNegativeNumber(out.armorMax, base.armorMax);
   out.armorFlat = nonNegativeNumber(out.armorFlat, base.armorFlat);
-  out.hull = boundedVital(out.hull, out.hullMax, base.hull, true);
-  out.shield = boundedVital(out.shield, out.shieldMax, base.shield, true);
-  out.cap = boundedVital(out.cap, out.capMax, base.cap, true);
-  out.armorHp = boundedVital(out.armorHp, out.armorMax, base.armorHp, true);
+  // repairGarbage: the saved entity was incoherent (no defId/weapons, zero maxima), so its
+  // vitals are junk rather than a death-moment wreck; ignore them and start from the base ship.
+  out.hull = boundedVital(repairGarbage ? NaN : out.hull, out.hullMax, base.hull, true);
+  out.shield = boundedVital(repairGarbage ? NaN : out.shield, out.shieldMax, base.shield, true);
+  out.cap = boundedVital(repairGarbage ? NaN : out.cap, out.capMax, base.cap, true);
+  out.armorHp = boundedVital(repairGarbage ? NaN : out.armorHp, out.armorMax, base.armorHp, true);
   out.thrust = positiveNumber(out.thrust, base.thrust);
   out.turnRate = positiveNumber(out.turnRate, base.turnRate);
   out.maxSpeed = positiveNumber(out.maxSpeed, base.maxSpeed);

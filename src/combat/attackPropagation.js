@@ -168,8 +168,9 @@ export function trySplit(parent, spec, contact = {}) {
 }
 
 /**
- * Bounce continuation against the shared budget. Physics reflection is Phase 4;
- * this only spends remaining.bounces + one proc, or refuses.
+ * Bounce continuation against the shared budget. Physics reflection is
+ * `resolveRicochet` in surfaceReflection.js; this only spends remaining.bounces
+ * plus one proc, or refuses.
  */
 export function tryBounce(runtime) {
   if (!runtime) return { ok: false, reason: 'no_lineage' };

@@ -320,6 +320,21 @@ function finalizeChain(draft) {
   }
 }
 
+function finalizeAfterBounceSteer(draft) {
+  const steer = draft.trajectory.afterBounceSteer;
+  if (!steer || typeof steer !== 'object') {
+    draft.trajectory.afterBounceSteer = null;
+    return;
+  }
+  const coneDeg = Number.isFinite(steer.coneDeg) ? steer.coneDeg : 0;
+  const maxTurnDeg = Number.isFinite(steer.maxTurnDeg) ? steer.maxTurnDeg : 0;
+  if (!(coneDeg > 0) || !(maxTurnDeg > 0)) {
+    draft.trajectory.afterBounceSteer = null;
+    return;
+  }
+  draft.trajectory.afterBounceSteer = { coneDeg, maxTurnDeg };
+}
+
 function clampInt(value, min, max) {
   const n = Number.isFinite(value) ? Math.round(value) : min;
   return Math.max(min, Math.min(max, n));
@@ -383,6 +398,7 @@ export function compileAttackSpec(input = {}) {
   draft.payload = scalePayload(draft.payload, draft.costs.payloadScale);
   finalizeSplit(draft);
   finalizeChain(draft);
+  finalizeAfterBounceSteer(draft);
   draft.presentation.family = presentationFamily(weapon.id, applied.map((row) => row.trait));
   draft.triggers.sort((a, b) => {
     if (a.event !== b.event) return a.event < b.event ? -1 : 1;
@@ -426,6 +442,7 @@ export function describeAttackMetrics(spec) {
     pierce: volley.pierce,
     splitCount: volley.splitCount,
     bounces: spec && spec.trajectory ? spec.trajectory.bounces : 0,
+    afterBounceSteer: spec && spec.trajectory ? spec.trajectory.afterBounceSteer : null,
     lineageProcBudget: spec && spec.constraints ? spec.constraints.lineageProcBudget : 0,
     generationMax: spec && spec.constraints ? spec.constraints.generationMax : 0,
     childMax: spec && spec.constraints ? spec.constraints.childMax : 0,

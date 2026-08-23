@@ -347,3 +347,14 @@ function positive(value, fallback) {
 function clamp(value, lo, hi) {
   return Math.max(lo, Math.min(hi, value));
 }
+
+export {
+  SURFACE_CONTACT_SCHEMA_VERSION,
+  SURFACE_RESPONSE,
+  applyReflectedVelocity,
+  createSurfaceContactReceipt,
+  isSurfaceContactReceipt,
+  reflectVelocity,
+  surfaceContactFromBodies,
+  surfaceResponseFor,
+} from './surfaceContact.js';

@@ -1519,7 +1519,7 @@ export const ships = {
     prospective.fittings[slotIndex] = def.id;
     const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
     if (budgetBlocker) return budgetBlocker;
-    if (this.wouldOverflowCargo(prospective)) {
+    if (this.wouldOverflowCargo(owned, prospective.fittings)) {
       return { reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
     }
     return null;
@@ -1729,12 +1729,14 @@ export const ships = {
     return true;
   },
 
-  /** Would the given owned ship's cargo capacity drop below currently-used volume? (active only) */
-  wouldOverflowCargo(owned) {
+  /** Would the given owned ship's cargo capacity drop below currently-used volume? (active only)
+   * `prospectiveFittings` tests a candidate loadout without tripping the identity guard — the
+   * guard keys on the canonical owned record, so validation copies must pass fittings explicitly. */
+  wouldOverflowCargo(owned, prospectiveFittings = null) {
     if (owned !== this.ownedShip()) return false; // only the flown ship holds cargo
     const cargo = this.state.player.cargo;
     if (!cargo) return false;
-    const derived = getDerivedStats(owned.defId, owned.fittings, this.state.player);
+    const derived = getDerivedStats(owned.defId, prospectiveFittings || owned.fittings, this.state.player);
     return (cargo.usedVolume || 0) > derived.cargoCap;
   },
 

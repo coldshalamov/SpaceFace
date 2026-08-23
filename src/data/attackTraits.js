@@ -1,9 +1,8 @@
 // Attack trait catalog (PQ-133 / CRU-019). Appendix A.3 is the schema.
 // Pure data + validators. No bus, registry, DOM, or systems imports.
 //
-// Phase 3 ships the topology families the compiler and lineage kernel need: volley (multishot),
-// pierce, split, plus the Bank Shot row that A.3 uses as the schema example. Bounce *physics* is
-// Phase 4; this file only declares the trait.
+// Topology families plus ricochet traits. Bank Shot writes bounce count and the surface_contact
+// trigger; Smart Bank writes afterBounceSteer. Reflection itself lives in core/surfaceContact.js.
 
 export const ATTACK_TRAIT_SCHEMA_VERSION = 1;
 
@@ -189,7 +188,7 @@ export const ATTACK_TRAITS = freezeDeep([
     },
   },
   {
-    // A.3 schema example. Compiler writes trajectory.bounces; physics bounce is Phase 4.
+    // A.3 schema example. Compiler writes trajectory.bounces; physics consumes the receipt.
     id: 'mod_bank_shot',
     schemaVersion: 1,
     name: 'Bank Shot',
@@ -216,6 +215,30 @@ export const ATTACK_TRAITS = freezeDeep([
     text: {
       summary: 'Eligible projectiles bounce {rank} time(s) from reflective surfaces.',
       detail: 'Each bounce consumes one lineage proc. Ordinary enemy shots are unchanged.',
+    },
+  },
+  {
+    id: 'mod_smart_bank',
+    schemaVersion: 1,
+    name: 'Smart Bank',
+    tier: 'deepener',
+    family: 'ricochet',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'set', target: 'trajectory.afterBounceSteer.coneDeg', perRank: 50 },
+      { mode: 'set', target: 'trajectory.afterBounceSteer.maxTurnDeg', perRank: 35 },
+    ],
+    inheritance: inheritBlock(true, true, false),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'After a bounce, steer up to 35° toward the nearest valid hostile inside a 50° cone.',
+      detail: 'One steering event per bounce. Target order is deterministic. Cone and turn caps are compiled, not rolled. Does not grant extra bounces.',
     },
   },
 ]);

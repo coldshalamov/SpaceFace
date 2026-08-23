@@ -54,6 +54,7 @@ import { SHIPS } from '../src/data/ships.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { spawn47aOpeningScene } from '../src/data/scenarios/47aLiveScene.js';
+import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 
 function makeCargoState() {
   return {
@@ -398,7 +399,11 @@ function checkDrillInputAcceptsLiveTetherStandard() {
   };
   const bus = createBus();
   const events = [];
-  bus.on('ui:drillFadeStart', (payload) => events.push({ type: 'drill', payload }));
+  // Since the drill approach was routed through tether physics (ff643400), B-key acceptance is
+  // published synchronously as drill:approachRequested; the fade itself is owned downstream by
+  // uiRoot observing drill:approachStarted from the fixed-tick tether system (not instantiated
+  // in this harness). Acceptance and rejection are still fully observable here.
+  bus.on('drill:approachRequested', (payload) => events.push({ type: 'drill', payload }));
   bus.on('toast', (payload) => events.push({ type: 'toast', payload }));
   const screenManager = {
     isOpen: () => false,
@@ -436,7 +441,9 @@ function checkDrillInputAcceptsLiveTetherStandard() {
     else globalThis.window = originalWindow;
   }
 
-  assert(events.some((event) => event.type === 'drill' && event.payload.attachmentId === 'att_live_tether'),
+  assert(events.some((event) => event.type === 'drill'
+    && event.payload.attachmentId === 'att_live_tether'
+    && event.payload.asteroidId === 2),
     'B drill input should accept the live tether_standard attachment id');
   assert(!events.some((event) => event.type === 'toast' && /No massline link/.test(event.payload && event.payload.text)),
     'B drill input must not reject a visible live tether_standard massline');
@@ -1260,20 +1267,35 @@ function checkCoreBuildsPhysicsBodyIndexForSg02Layers() {
   assert(state.entityIndex.physicsStaticVersion > 0, 'SG-02 physics static layer should expose an invalidation version');
 }
 
-function checkSg02ProductionSyncUsesIndexedBodyLayers() {
-  const staticBody = { id: 1, alive: true, type: 'asteroid' };
-  const dynamicBody = { id: 2, alive: true, type: 'ship' };
+function checkSg02ProductionSyncUsesActivityBodyLayers() {
+  // Since the world-activity dormancy pass (f0c7b653/dd543980), the sanctioned full walk lives in
+  // the activity classifier; production physics sync consumes its dormancy-filtered layers by
+  // reference instead of re-reading state.entityIndex directly. The durable contract proven here:
+  // layered sync only, never a fallback to full entityList iteration inside physics.
+  const staticBody = { id: 1, alive: true, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 20 };
+  const dynamicBody = { id: 2, alive: true, type: 'ship', pos: { x: 30, z: 0 }, radius: 4 };
   const state = {
-    entityList: nonIterableEntityList(2, 'SG-02 production sync should use indexed physics body layers'),
+    tick: 0,
+    entityList: [staticBody, dynamicBody],
     entityIndex: {
       __spacefaceEntityIndexV1: true,
       ready: true,
+      version: 1,
       physicsBodies: [staticBody, dynamicBody],
       physicsStatics: [staticBody],
       physicsDynamics: [dynamicBody],
       physicsStaticVersion: 7,
     },
   };
+  const activity = ensureActivityClassified(state);
+  assert(activity, 'SG-02 sync fixture should classify into activity body layers');
+  assert(activity.physicsStatics.includes(staticBody),
+    'activity classifier should keep asteroids in the fixed body layer');
+  assert(activity.physicsDynamics.includes(dynamicBody),
+    'activity classifier should keep ships in the dynamic body layer');
+  assert(activity.physicsStaticVersion > 0,
+    'activity classifier should expose a static invalidation version');
+
   const previous = physics._sg02;
   const calls = [];
   physics._sg02 = {
@@ -1281,7 +1303,7 @@ function checkSg02ProductionSyncUsesIndexedBodyLayers() {
       calls.push({ statics, dynamics, version, ordered });
     },
     syncFromEntities() {
-      throw new Error('SG-02 production sync should not fall back to full entityList iteration when indexed layers are ready');
+      throw new Error('SG-02 production sync should not fall back to full entityList iteration when activity layers are ready');
     },
   };
   try {
@@ -1290,10 +1312,10 @@ function checkSg02ProductionSyncUsesIndexedBodyLayers() {
     physics._sg02 = previous || null;
   }
   assert.equal(calls.length, 1, 'SG-02 production sync should call the layered body sync path');
-  assert.equal(calls[0].statics, state.entityIndex.physicsStatics, 'SG-02 production sync should pass indexed fixed bodies');
-  assert.equal(calls[0].dynamics, state.entityIndex.physicsDynamics, 'SG-02 production sync should pass indexed dynamic bodies');
-  assert.equal(calls[0].version, 7, 'SG-02 production sync should pass the static invalidation version');
-  assert.equal(calls[0].ordered, state.entityIndex.physicsBodies, 'SG-02 production sync should pass entity-ordered physics bodies for deterministic static refreshes');
+  assert.equal(calls[0].statics, activity.physicsStatics, 'SG-02 production sync should pass the classified fixed body layer');
+  assert.equal(calls[0].dynamics, activity.physicsDynamics, 'SG-02 production sync should pass the classified dynamic body layer');
+  assert.equal(calls[0].version, activity.physicsStaticVersion, 'SG-02 production sync should pass the activity static invalidation version');
+  assert.equal(calls[0].ordered, null, 'SG-02 production sync should not pass retired legacy ordered entity arrays');
 }
 
 function checkAutomationNearestAsteroidUsesSpatialCandidates() {
@@ -1567,6 +1589,14 @@ function checkAudioThreatScanUsesSpatialShipCandidates() {
     ships,
   };
   state.spatialHash.rebuild(state.entityList);
+  // Audio threat residency is gated on the world-activity presentation tier (dormancy pass).
+  // In production the registered world classifier stamps every entity each tick before audio
+  // runs; drive the same sanctioned seam here so nearby live hostiles read as exact voices.
+  const audioActivity = ensureActivityClassified(state);
+  assert(audioActivity, 'audio threat fixture should classify into activity tiers');
+  assert(ships.filter((e) => e.alive && e.team === 1 && e.pos.x <= 380)
+    .every((e) => e.activity && e.activity.presentationTier === 'R0_GLASS'),
+  'nearby live hostiles should be stamped as glass-tier exact audio voices before the scan');
 
   const originalEntityList = state.entityList;
   state.entityList = nonIterableEntityList(originalEntityList.length,
@@ -5616,7 +5646,7 @@ checkNpcFireAtPlayerRequiresRadarVisibility();
 checkSharedSpatialQueryUsesActiveHashAndFallback();
 checkSpatialHashCachesStaticLayer();
 checkCoreBuildsPhysicsBodyIndexForSg02Layers();
-checkSg02ProductionSyncUsesIndexedBodyLayers();
+checkSg02ProductionSyncUsesActivityBodyLayers();
 checkAutomationNearestAsteroidUsesSpatialCandidates();
 checkAlphabetProgramBeaconResolutionUsesIndexedSpatialCandidates();
 checkHudNavStationUsesIndexedLookup();

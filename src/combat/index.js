@@ -24,3 +24,4 @@ export {
 } from './attackLineage.js';
 export { describeVolley, emitVolley, tryPierce, trySplit, tryBounce } from './attackPropagation.js';
 export { selectTargets } from './attackTargeting.js';
+export { resolveRicochet, steerAfterBounce } from './surfaceReflection.js';
