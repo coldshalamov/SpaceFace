@@ -26,8 +26,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #020407;
-  background: radial-gradient(ellipse at center, rgba(8, 18, 30, 0.90) 0%, rgba(2, 4, 7, 0.99) 85%);
+  background: var(--bg);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--sf-surface) 90%, transparent) 0%, color-mix(in srgb, var(--bg) 99%, transparent) 85%);
   transition: opacity .8s ease;
   overflow: hidden;
   padding: 10px;
@@ -59,7 +59,7 @@
   max-height: 98vh;
   display: flex;
   flex-direction: column;
-  background: rgba(3, 6, 11, 0.95);
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
   border: 1px solid rgba(78, 195, 230, 0.32);
   border-radius: 4px;
   box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(78, 195, 230, 0.04);
@@ -102,8 +102,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7af7d0;
-  box-shadow: 0 0 8px #7af7d0;
+  background: var(--sf-you);
+  box-shadow: 0 0 8px var(--sf-you);
   margin-right: 8px;
   animation: sf-intro-blink 1.2s steps(2, end) infinite;
 }
@@ -145,7 +145,7 @@
   flex-direction: column;
   gap: 10px;
   font-size: 10px;
-  background: rgba(3, 6, 11, 0.6);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
   border: 1px solid rgba(148, 178, 205, 0.15);
   border-radius: 3px;
   padding: 10px;
@@ -193,10 +193,10 @@
 }
 .boot-diag-line.is-latest {
   color: #e9eff4;
-  text-shadow: 0 0 8px rgba(122, 247, 208, 0.55);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--sf-you) 55%, transparent);
 }
 .diag-tag {
-  color: #7af7d0;
+  color: var(--sf-you);
   font-weight: 600;
   margin-right: 4px;
 }
@@ -207,7 +207,7 @@
 /* Hex Dump */
 .boot-hex-panel {
   margin-top: auto;
-  background: rgba(2, 4, 8, 0.7);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
   border: 1px solid rgba(78, 195, 230, 0.15);
   padding: 8px;
   border-radius: 2px;
@@ -241,7 +241,7 @@
   width: 100%;
   flex: 1;
   min-height: 380px;
-  background: rgba(2, 4, 8, 0.85);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   border: 1px solid rgba(78, 195, 230, 0.28);
   border-radius: 3px;
   display: flex;
@@ -340,7 +340,7 @@
   height: 6px;
   display: flex;
   gap: 2px;
-  background: rgba(4, 8, 14, 0.8);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
   padding: 1px;
   border-radius: 1px;
   border: 1px solid rgba(78, 195, 230, 0.2);
@@ -358,12 +358,12 @@
 .subsys-val {
   width: 32px;
   text-align: right;
-  color: #7af7d0;
+  color: var(--sf-you);
   font-size: 8.5px;
 }
 
 .boot-waveform-container {
-  background: rgba(2, 4, 8, 0.7);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
   border: 1px solid rgba(78, 195, 230, 0.15);
   padding: 4px;
   border-radius: 2px;
@@ -439,7 +439,7 @@
   letter-spacing: 0.1em;
 }
 .boot-progress-pct {
-  color: #7af7d0;
+  color: var(--sf-you);
   font-weight: 600;
 }
 .boot-prompt-line {
@@ -451,7 +451,7 @@
   letter-spacing: 0.12em;
 }
 .boot-prompt-prefix {
-  color: #7af7d0;
+  color: var(--sf-you);
   font-weight: 600;
 }
 .boot-prompt-cmd {
@@ -503,7 +503,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #04060a;
+  background: var(--bg);
   overflow: hidden;
   pointer-events: auto;
   opacity: 1;
@@ -534,11 +534,11 @@
   inset: 0;
   background:
     linear-gradient(180deg,
-      rgba(4, 6, 10, .58) 0%,
-      rgba(4, 6, 10, .10) 26%,
-      rgba(4, 6, 10, .04) 52%,
-      rgba(4, 6, 10, .46) 80%,
-      rgba(4, 6, 10, .86) 100%);
+      color-mix(in srgb, var(--bg) 58%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 10%, transparent) 26%,
+      color-mix(in srgb, var(--bg) 4%, transparent) 52%,
+      color-mix(in srgb, var(--bg) 46%, transparent) 80%,
+      color-mix(in srgb, var(--bg) 86%, transparent) 100%);
   pointer-events: none;
 }
 
@@ -579,7 +579,7 @@
   text-indent: .44em;
   text-transform: uppercase;
   color: #a7bac7;
-  text-shadow: 0 1px 10px rgba(3, 6, 11, .8);
+  text-shadow: 0 1px 10px color-mix(in srgb, var(--bg) 80%, transparent);
   opacity: 0;
   animation: cine-rise .7s ease-out .6s forwards;
 }
@@ -592,7 +592,7 @@
   letter-spacing: .3em;
   text-indent: .3em;
   color: #edf3f7;
-  text-shadow: 0 2px 26px rgba(3, 6, 11, .7);
+  text-shadow: 0 2px 26px color-mix(in srgb, var(--bg) 70%, transparent);
   opacity: 0;
   animation: cine-title-in 1.15s cubic-bezier(.2, .7, .2, 1) .85s forwards;
 }
@@ -663,7 +663,7 @@
   z-index: 1;
   padding: 12px 18px 13px 16px;
   border-left: 1px solid rgba(94, 205, 235, .5);
-  background: linear-gradient(90deg, rgba(4, 8, 13, .68), rgba(4, 8, 13, .26) 82%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 68%, transparent), color-mix(in srgb, var(--bg) 26%, transparent) 82%, transparent);
   font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   text-align: left;
   opacity: 0;

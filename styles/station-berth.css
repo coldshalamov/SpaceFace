@@ -101,7 +101,7 @@
   background:
     radial-gradient(120% 78% at 18% -12%, rgba(242,160,60,.055), transparent 58%),
     radial-gradient(90% 60% at 88% 4%, rgba(98,207,224,.035), transparent 62%),
-    linear-gradient(180deg, #101315 0%, var(--sxb-void) 46%, #090b0c 100%);
+    linear-gradient(180deg, #101315 0%, var(--sxb-void) 46%, var(--bg) 100%);
 }
 
 /* Fine machined grain. Atmosphere without noise — 2px repeating rules at very
@@ -190,7 +190,7 @@
 /* The meter reads as a machined slot, not a glowing bar. */
 .sxb-vital__track {
   position: relative; height: 5px; border-radius: 1px;
-  background: #0a0c0d; box-shadow: inset 0 1px 1px rgba(0,0,0,.7);
+  background: var(--bg); box-shadow: inset 0 1px 1px rgba(0,0,0,.7);
   overflow: hidden;
 }
 .sxb-vital__fill {
