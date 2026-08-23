@@ -8636,7 +8636,9 @@
         "npm run check:save-schema",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "systems COMPLETE 2026-08-23 (bca4c34e): fifteen Crucible modifiers became fitted Adventure Rigs carrying slot type, size, mass, energy draw and price - they cost hull space and power rather than being handed over by a draft. Exit gate demonstrated: three fitted builds on one Hitch produce three distinct causal KINDs (Twin Mount VOLLEY, Bank Shot BANK, Relay Arc CHAIN) with a combined fit showing all three, through the SAME compiler. No run economy leaked - an explicit RUN_ECONOMY_KEYS list (draft/reroll/score/wave/waveIndex) with a leak detector, and run modifiers merge only on a live Survival run. The lane claim that 179 whole-suite failures were pre-existing was spot-checked in a clean sparse worktree at HEAD: identical 11 pass / 2 fail. STILL OWED: Mirrorjaw is not in the twelve-wreck unique ledger (needs the reservation manifest and a frozen count), and the Pursuit ladder step teaches Twin Mount without granting the Rig."
+      ],
       "brief": "Proven traits to modules/Rigs/variants/tech/salvage (CRU-058), arena laws as authored world sites (CRU-059), enemy doctrine transfer (CRU-060). No run-modifier leakage into persistence."
     },
     {
