@@ -22,9 +22,10 @@
     "src/systems/siteSignatureModel.js": "Asteroid-site signature model. Same shape as siteThermalModel.js — kernel plus tests, no runtime consumer.",
     "src/systems/siteThermalModel.js": "Asteroid-site thermal model. Pure kernel with tests and no runtime consumer; asteroidSites.js does not import it. Bind it to the site runtime or fold it into that system.",
     "src/ui/dockArrival.js": "Dock-arrival presentation helper with no importer; the arrival beat is currently owned by uiRoot/stationHub.",
-    "src/ui/panels/handlingProfile.js": "BP-09 fitting readout, same wiring gap as moduleRisk.js.",
-    "src/ui/panels/massDelta.js": "BP-09 fitting readout, same wiring gap as moduleRisk.js.",
-    "src/ui/panels/moduleRisk.js": "BP-09.1 module-drawback glyphs. A readout helper for the fitting screens that no fitting screen imports; depends on S3-F5 truthful previews landing first."
+    "src/render/backendDecision.js": "PQ-044 (PERF-10 conditional WebGPU/TSL) is DEFERRED, so nothing on the default route selects a backend yet. Gated by scripts/check-backend-decision.mjs and scripts/check-render-path-parity.mjs; landed 2026-08-07.",
+    "src/render/webgpuPresent.js": "Present half of the same deferred PQ-044 slice; the WebGL present path is the only one wired. Gated by scripts/check-render-path-parity.mjs; landed 2026-08-21.",
+    "src/render/batchedInstanceRenderer.js": "Perf-rescue candidate held out of the default route until its own acceptance runs. Gated by scripts/check-batched-instance-renderer.mjs; landed 2026-08-07.",
+    "src/render/presentPhaseTimers.js": "Instrumentation staged for the hitch campaign, not yet on the player path. Gated by test/present-phase-timers.test.mjs; landed 2026-08-14."
   },
   "recordedAt": "2026-07-26"
 }
