@@ -21,6 +21,10 @@ import {
 } from '../src/presentation/cueArbitration.js';
 import { deriveVfxAdmissionMetadata } from '../src/presentation/vfxAdmissionPriority.js';
 import {
+  HERO_ADMISSION_FLOOR,
+  scaleHeroAdmissionPriority,
+} from '../src/presentation/causalVfxGrammar.js';
+import {
   ARCADE_STRUCTURAL_FX_CAPACITY,
 } from '../src/render/combat/arcadeStructuralFx.js';
 import { vfx } from '../src/render/vfx.js';
@@ -143,10 +147,12 @@ test('admitStructuralFxCue classifies kill, hard collision, and bank, and refuse
   assert.equal(kill.kind, STRUCTURAL_FX_CUE_KIND);
   assert.equal(kill.family, STRUCTURAL_FX_FAMILIES.kill);
   assert.equal(kill.playerCaused, true);
+  assert.equal(kill.hero, true);
   const expected = deriveVfxAdmissionMetadata({
     id: TARGET_ID, killerId: PLAYER_ID, pos: { x: 6, z: 2 },
   }, state);
-  assert.equal(kill.admissionPriority, expected.admissionPriority);
+  assert.equal(kill.admissionPriority, scaleHeroAdmissionPriority(expected.admissionPriority));
+  assert.ok(kill.admissionPriority >= HERO_ADMISSION_FLOOR);
 
   assert.equal(structuralFxFamilyFromReceipt('combat:collisionConsequence', { control: 'tumble' }), 'collision');
   assert.equal(structuralFxFamilyFromReceipt('combat:collisionConsequence', { control: 'stagger' }), null);
