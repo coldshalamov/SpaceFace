@@ -1190,7 +1190,14 @@ export function createHud(ctx, alerts) {
     else commsTape.removeAttribute('hidden');
   };
   adoptCommsChrome();
-  const _commsAdoptFrame = requestAnimationFrame(adoptCommsChrome);
+  // adoptCommsChrome has already run once, above. The extra frame is a second pass for chrome
+  // that mounts after this HUD does — a convenience, not a requirement. Calling rAF bare made
+  // createHud throw outright anywhere there is no rAF, which took the entire headless contact
+  // roster suite down with `ReferenceError: requestAnimationFrame is not defined` before a
+  // single assertion ran. A nicety must not be able to prevent the HUD from being built.
+  const _commsAdoptFrame = typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame(adoptCommsChrome)
+    : null;
   leftContext.prepend(commsTape);
   // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
   // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
