@@ -16,6 +16,8 @@ import {
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
+import { compileAttackSpec } from '../../combat/attackSpec.js';
+import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 
 const STYLE_ID = 'sf-crucible-door-style';
 
@@ -135,6 +137,27 @@ function injectStyle() {
     font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-run b { font-family:var(--mono); color:var(--ink); font-weight:600; }
   .sf-menu.sf-crucible-door .sf-crd-none { font-size:12px; color:var(--ink-dim); }
+  /* CAUSAL TAGS — how the finished build put damage in. Colour carries MEANING here: the routes
+     that bend or spread a shot read as the live signal, and plain DIRECT stays paper, because
+     "it went where you pointed it" is not a distinction worth heat. */
+  .sf-menu.sf-crucible-results .sf-crres__causal-lead { color:var(--ink-dim); font-size:13px;
+    line-height:1.5; margin-top:6px; }
+  .sf-menu.sf-crucible-results .sf-crres__causal { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .sf-menu.sf-crucible-results .sf-crres__causal-tag {
+    padding:3px 8px; border-radius:2px; font-family:var(--mono); font-size:12px;
+    letter-spacing:.08em; color:var(--ink);
+    background:color-mix(in srgb, var(--sx-cool, #62cfe0) 16%, transparent);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sx-cool, #62cfe0) 34%, transparent);
+  }
+  .sf-menu.sf-crucible-results .sf-crres__causal-tag[data-kind="direct"] {
+    background:color-mix(in srgb, var(--ink) 8%, transparent);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent);
+  }
+  @media (forced-colors: active) {
+    .sf-menu.sf-crucible-results .sf-crres__causal-tag {
+      border:1px solid CanvasText; background:Canvas; color:CanvasText; forced-color-adjust:none;
+    }
+  }
   /* forced-colors strips the share bars; the figure beside every bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-menu.sf-crucible-results .sf-crres__hit-track { background:Canvas; border:1px solid CanvasText; }
@@ -693,8 +716,75 @@ function renderLedger(band, result) {
   band.appendChild(grid);
 }
 
+/**
+ * HOW THIS BUILD LANDS ITS DAMAGE — the causal tags phase 5 deferred to the GPU lane.
+ *
+ * Read from the COMPILED SPEC, not from the run's hits. Nothing accumulates per-arrival counts
+ * during a run yet, so any figure claiming "8 direct, 16 chained" would be a model presented as a
+ * measurement. The kinds are exact and honest: this is what the fit you finished with actually
+ * does with a shot. Damage that arrives by CHAIN is a different game from damage that arrives by
+ * BANK, and until now the results screen could not say which one you had been playing.
+ *
+ * Picks mix weapons and modifiers in one list, so the weapon is whichever pick resolves to a known
+ * weapon and everything else is treated as a modifier. No weapon, no band — a results screen must
+ * never fail to open because a build could not be read.
+ */
+export function causalKindsFromPicks(picks) {
+  const entries = Array.isArray(picks) ? picks : [];
+  const ids = [];
+  for (const pick of entries) {
+    if (pick && typeof pick.defId === 'string' && pick.defId) ids.push(pick.defId);
+  }
+  if (!ids.length) return [];
+  const weaponIds = new Set(WEAPONS.map((w) => w && w.id).filter(Boolean));
+  const weaponId = ids.find((id) => weaponIds.has(id)) || null;
+  if (!weaponId) return [];
+  const modifiers = ids.filter((id) => id !== weaponId && !weaponIds.has(id));
+  const compile = (mods) => {
+    try {
+      const out = compileAttackSpec({ weapon: weaponId, modifiers: mods });
+      return out && out.ok === true && out.spec ? out : null;
+    } catch (_) {
+      return null;
+    }
+  };
+  // One unknown modifier used to take the whole band down, even though the weapon read perfectly.
+  // That happens for real: an old run whose trait has since been renamed or retired. Falling back
+  // to the weapon alone says less than the truth but never says nothing, and never leaves a results
+  // screen with a silently missing section that looks like a bug.
+  const compiled = compile(modifiers) || compile([]);
+  if (!compiled) return [];
+  try {
+    return causalKindsFromSpec(compiled.spec);
+  } catch (_) {
+    return [];
+  }
+}
+
+/** One sentence over the tags, so the figures keep their word. */
+export function causalKindsLead(kinds) {
+  const list = Array.isArray(kinds) ? kinds : [];
+  if (!list.length) return '';
+  if (list.length === 1 && list[0] === 'DIRECT') {
+    return 'Every shot arrived the plain way: straight into whatever you were pointing at.';
+  }
+  if (list.length === 1) return `This build put its damage in by one route: ${list[0].toLowerCase()}.`;
+  return `This build had ${list.length} ways in: ${list.map((k) => k.toLowerCase()).join(', ')}.`;
+}
+
 function renderBuild(band, picks) {
   band.appendChild(el('div', 'sf-crres__lead', buildLead(picks)));
+  const kinds = causalKindsFromPicks(picks);
+  if (kinds.length) {
+    band.appendChild(el('div', 'sf-crres__causal-lead', causalKindsLead(kinds)));
+    const tags = el('div', 'sf-crres__causal');
+    for (const kind of kinds) {
+      const tag = el('span', 'sf-crres__causal-tag', kind);
+      tag.setAttribute('data-kind', kind.toLowerCase());
+      tags.appendChild(tag);
+    }
+    band.appendChild(tags);
+  }
   const steps = buildSteps(picks);
   if (!steps.length) return;
   const chain = el('div', 'sf-crres__build');
