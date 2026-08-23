@@ -14,25 +14,24 @@ diagnosed to the exact rule and measurement:
 **The contract rail chops its own titles mid-word.** It is the first content after the header and
 it reads "SCORT A CONVOY TO CUSTOMS GAT", "MUGGLE 8U / RADE HUB". Confirmed in the captured frame.
 
-**CORRECTION, 2026-08-23 — the cause first recorded here was WRONG, twice.** This paragraph
-originally said `.sx-ct-row__mid` is absolutely positioned and therefore ignores `min-width: 0`.
-It is not: measured live, `position` computes to `static`. A second attempt blamed the grid item
-overflowing its track and applied `overflow: hidden` + `max-width` + an ellipsis on the children.
-That made the lab report `titleFits: true` on every row — and **changed nothing in the re-captured
-frame**. It was reverted rather than shipped, because an ineffective change carrying a confident
-comment is worse than no change at all.
+**RESOLVED, 2026-08-23 (`aa0829e6`).** Fixed and confirmed in a re-captured frame: every title now
+reads in full, wrapping to two lines, with a proper ellipsis where one genuinely does not fit.
 
-What the evidence actually shows: the text is clipped at the **LEFT** as well as the right — the
-first card reads "E: 8U FUEL CELLS TO CERES" with "FIRST TRAD" missing off the front. A title that
-is merely too long clips on the right only. Left-clipping means **the cards overlap each other
-horizontally** in the `overflow-x: auto` rail; each card's content is being covered by its
-neighbour. So this is a rail positioning / stacking problem, not a text-length problem, and no
-amount of ellipsis on the title will fix it.
+Four wrong diagnoses preceded the right one, each "confirmed" by a measurement and then disproved
+by a picture: (1) absolutely positioned — it is `static`; (2) the grid item overflows its track;
+(3) the last grid track is `auto` and grows; (4) a nowrap element's automatic minimum size. None
+changed the captured frame.
 
-Established facts for whoever picks this up: the card is 268px, the title element measures 310px,
-the row grid is `20px 27px minmax(0,1fr) auto` with the title spanning `3 / 5`, and the lab
-(mock data) and the captured frame (real game) do not agree about the title fitting — which is
-itself worth knowing before trusting either surface alone.
+**The actual cause: `styles/station-workbench.css:1955` sets `max-width: none` on this element, and
+it is a LATER rule than every attempted fix.** Same specificity, later wins — so each attempt was
+being silently cancelled by an override further down the same file. That is the append-only override
+pile §11.10 records this station recovering from, caught in the act. The fix had to go IN the winning
+rule, not beside it.
+
+**Method note worth keeping: the mock station lab and the captured real game DISAGREED.** The lab
+reported the title fitting after attempt (2) while the captured frame was pixel-identical to before.
+A measurement taken on a mock fixture is not evidence about the product. This is exactly why the
+grammar requires visual confirmation against a captured frame rather than a measurement.
 
 Findings about hierarchy, density and the persistent amber resupply chip are art-direction calls
 and are left to the owner.
