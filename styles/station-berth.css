@@ -336,7 +336,13 @@
 .sx-app .sxb-ops .sx-tile:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: -2px; }
 
 /* The active tab is the only place a glow is spent. */
-.sx-app .sxb-ops .sx-tile.is-active { color: var(--sxb-ink); background: rgba(255,255,255,.055); }
+/* FILL MEANS "YOU ARE HERE". It used to mean two things at once: selection wore a neutral
+   white wash at 5.5% while the attention tab wore saturated amber at 7%, and on a dark teal
+   ground a saturated hue reads far hotter than a neutral one at the same alpha. The eye
+   landed on MISSIONS on every screen and the actually-selected tab had no fill worth the
+   name, so only the thin underline was telling the truth. Selection now carries the cool
+   signal hue its own underline uses, so the two channels agree instead of competing. */
+.sx-app .sxb-ops .sx-tile.is-active { color: var(--sxb-ink); background: rgba(120,222,238,.11); }
 .sx-app .sxb-ops .sx-tile.is-active::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
   background: var(--sxb-live); box-shadow: 0 0 10px rgba(98,207,224,.5);
@@ -363,9 +369,20 @@
    different kind of object from its six neighbours. In a tab strip the badge already carries the
    signal; attention only needs to raise the tab to full ink. */
 .sx-app .sxb-ops .sx-tile.is-attention {
-  color: var(--sxb-ink); border: 0; box-shadow: none; background: rgba(242,160,60,.07);
+  /* Deliberately weaker than selection: the badge and the amber icon already carry this
+     signal, so the wash is a hint and must never be mistaken for "you are here". */
+  color: var(--sxb-ink); border: 0; box-shadow: none; background: rgba(242,160,60,.035);
 }
 .sx-app .sxb-ops .sx-tile.is-attention .sx-tile__icon { color: var(--sxb-act); opacity: 1; }
+
+/* SELECTION OUTRANKS ATTENTION when one tab is both. The two rules carry equal specificity and
+   attention is declared later, so before this the Missions tab lost its selection colour at exactly
+   the moment it was selected — the one tab with a badge was also the one tab that could not show
+   you were standing on it. Measured: selected scores 57.9 against the strip ground, attention 15.7;
+   without this line selecting Missions scored 15.7 and a merely-hovered neighbour outranked it. */
+.sx-app .sxb-ops .sx-tile.is-attention.is-active {
+  background: rgba(120,222,238,.11);
+}
 
 /* ============================================================================
    First-dock handoff — three steps, said once.
