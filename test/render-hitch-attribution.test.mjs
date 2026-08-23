@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   ensurePerfRuntime,
@@ -11,8 +13,11 @@ import {
   accumulateHitch,
   classifyHitchFrame,
   createHitchHistogram,
+  FRAME_DT_CLAMP_MS,
   hitchHistogramReport,
 } from '../src/render/hitchClassifier.js';
+
+const INTERVAL_DISAGREEMENT_RING_CAPACITY = 256;
 
 function sumMap(map) {
   let total = 0;
@@ -593,11 +598,23 @@ test('ensurePerfRuntime reset clears interval and scheduling histogram fields', 
   assert.equal(report.frameMsTotal, 110);
   assert.equal(report.callbackIntervalMsTotal, 90);
   assert.equal(report.intervalDisagreementMsTotal, 20);
+  assert.equal(report.intervalDisagreementMedianMs, 10);
+  assert.equal(report.intervalDisagreementMedianCount, 2);
+  assert.equal(report.intervalClampedFrames, 0);
   assert.equal(report.schedulingFrames, 2);
   assert.equal(report.schedulingExternalGapMsTotal, 40);
   assert.equal(report.schedulingDispatchLagMsTotal, 70);
   assert.equal(report.schedulingGapDominant, 1);
   assert.equal(report.schedulingDispatchDominant, 1);
+
+  // One frame at the frame-dt clamp, so the clamp counters are non-zero going into the
+  // reset. Without it the post-reset zeros below hold even if both clamp reset lines are
+  // deleted, and they assert nothing.
+  perf.recordFrameCallback(1);
+  perf.beginFrame(0.25, 200, 200); // frameMs 250, callback interval 110 -> disagreement 140
+  report = perf.getHitchHistogram();
+  assert.equal(report.intervalClampedFrames, 1);
+  assert.equal(report.intervalClampedDisagreementMsTotal, 140);
 
   perf.reset();
   report = perf.getHitchHistogram();
@@ -605,9 +622,289 @@ test('ensurePerfRuntime reset clears interval and scheduling histogram fields', 
   assert.equal(report.frameMsTotal, 0);
   assert.equal(report.callbackIntervalMsTotal, 0);
   assert.equal(report.intervalDisagreementMsTotal, 0);
+  assert.equal(report.intervalDisagreementMedianMs, 0);
+  assert.equal(report.intervalDisagreementMedianCount, 0);
+  assert.equal(report.intervalClampedFrames, 0);
+  assert.equal(report.intervalClampedDisagreementMsTotal, 0);
   assert.equal(report.schedulingFrames, 0);
   assert.equal(report.schedulingExternalGapMsTotal, 0);
   assert.equal(report.schedulingDispatchLagMsTotal, 0);
   assert.equal(report.schedulingGapDominant, 0);
   assert.equal(report.schedulingDispatchDominant, 0);
+
+  // Zeroed counters alone do not prove the disagreement ring was reset: the median reads
+  // ring slots, and the write cursor and the fill count have to return to zero together.
+  // Push fresh samples through the real runtime and assert the median is theirs. Deleting
+  // either `intervalDisagreementRingWrite = 0` (median falls back to the pre-reset 10) or
+  // `intervalDisagreementRingCount = 0` (never-written zeros join the window) turns this red.
+  perf.beginFrame(0.016, 1000, 1000);
+  perf.recordFrameCallback(1);
+  perf.beginFrame(0.05, 1020, 1020); // frameMs 50, callback interval 20 -> disagreement 30
+  perf.recordFrameCallback(1);
+  perf.beginFrame(0.07, 1040, 1040); // frameMs 70, callback interval 20 -> disagreement 50
+  perf.recordFrameCallback(1);
+  perf.beginFrame(0.09, 1060, 1060); // frameMs 90, callback interval 20 -> disagreement 70
+
+  report = perf.getHitchHistogram();
+  assert.equal(report.intervalFrames, 3);
+  assert.equal(report.intervalDisagreementMsTotal, 150);
+  assert.equal(report.intervalDisagreementMedianCount, 3);
+  assert.equal(report.intervalDisagreementMedianMs, 50);
+  assert.equal(report.intervalClampedFrames, 0);
+});
+
+function accumulateDisagreement(histogram, disagreementMs, frameMs = 200) {
+  accumulateHitch(histogram, classifyHitchFrame({
+    frameMs,
+    callbackIntervalMs: frameMs - disagreementMs,
+  }));
+}
+
+test('interval disagreement median is numeric for odd and even samples including negatives', () => {
+  // Default Array.sort is lexicographic. For this odd fixture it yields median -8,
+  // not the numeric median -9. This assertion must keep failing against sort()
+  // with no comparator.
+  const oddValues = [-70, -9, -8];
+  const evenValues = [-70, 9, -9, 10];
+  const lexOdd = oddValues.slice().sort();
+  const lexEven = evenValues.slice().sort();
+  assert.deepEqual(lexOdd, [-70, -8, -9]);
+  assert.equal(lexOdd[1], -8);
+  assert.notEqual(lexOdd[1], -9);
+  assert.deepEqual(lexEven, [-70, -9, 10, 9]);
+  assert.equal((lexEven[1] + lexEven[2]) / 2, 0.5);
+  assert.notEqual((lexEven[1] + lexEven[2]) / 2, 0);
+
+  const oddHist = createHitchHistogram();
+  for (const disagreement of oddValues) accumulateDisagreement(oddHist, disagreement);
+  const oddReport = hitchHistogramReport(oddHist);
+  assert.equal(oddReport.intervalDisagreementMedianMs, -9);
+  assert.equal(oddReport.intervalDisagreementMedianCount, 3);
+  assert.equal(oddReport.intervalFrames, 3);
+
+  const evenHist = createHitchHistogram();
+  for (const disagreement of evenValues) accumulateDisagreement(evenHist, disagreement);
+  const evenReport = hitchHistogramReport(evenHist);
+  assert.equal(evenReport.intervalDisagreementMedianMs, 0);
+  assert.equal(evenReport.intervalDisagreementMedianCount, 4);
+
+  const oddLines = formatHitchAttributionDetailLines(oddReport).join('\n');
+  assert.match(
+    oddLines,
+    /interval disagreement: mean -29\.0 \| median -9\.0 ms over 3 hitch frames \(median over last 3 of 3\); frames at the 250 ms frame-dt clamp: 0/,
+  );
+  // No clamped frames means no mean to take: dividing by zero would print "NaN ms" as a fact.
+  assert.doesNotMatch(oddLines, /mean disagreement on the clamped frames/);
+  assert.doesNotMatch(oddLines, /NaN/);
+});
+
+test('interval disagreement median covers the last 256 samples and reports truncation', () => {
+  const histogram = createHitchHistogram();
+  const total = 300;
+  for (let i = 0; i < total; i += 1) accumulateDisagreement(histogram, i, 1000);
+  const report = hitchHistogramReport(histogram);
+  assert.equal(report.intervalFrames, total);
+  assert.equal(report.intervalDisagreementMedianCount, INTERVAL_DISAGREEMENT_RING_CAPACITY);
+  // Last 256 values are 44..299. Even window: mean of 171 and 172.
+  assert.equal(report.intervalDisagreementMedianMs, 171.5);
+  const lines = formatHitchAttributionDetailLines(report).join('\n');
+  assert.match(lines, /median over last 256 of 300/);
+  // Every frame here sits at the clamp, so the clamped-frame disagreement mean is the
+  // mean of 0..299. That total is accumulated by accumulateHitch and read only here and
+  // in the formatter.
+  assert.equal(report.intervalClampedFrames, total);
+  assert.equal(report.intervalClampedDisagreementMsTotal, 44850);
+  assert.match(lines, /frames at the 250 ms frame-dt clamp: 300; mean disagreement on the clamped frames 149\.5 ms/);
+});
+
+test('intervalClampedFrames counts the 250 ms frame-dt clamp with a 0.5 ms epsilon', () => {
+  assert.equal(FRAME_DT_CLAMP_MS, 250);
+  const histogram = createHitchHistogram();
+  accumulateHitch(histogram, classifyHitchFrame({
+    frameMs: FRAME_DT_CLAMP_MS,
+    callbackIntervalMs: 400,
+  }));
+  accumulateHitch(histogram, classifyHitchFrame({
+    frameMs: FRAME_DT_CLAMP_MS + 0.25,
+    callbackIntervalMs: 400,
+  }));
+  // Inside the 0.5 ms epsilon: counted here, not counted if the epsilon is narrowed to 0.
+  accumulateHitch(histogram, classifyHitchFrame({
+    frameMs: FRAME_DT_CLAMP_MS - 0.25,
+    callbackIntervalMs: 400,
+  }));
+  // Outside it: not counted here, counted if the epsilon is widened past 0.51.
+  accumulateHitch(histogram, classifyHitchFrame({
+    frameMs: FRAME_DT_CLAMP_MS - 0.5 - 0.01,
+    callbackIntervalMs: 400,
+  }));
+  assert.equal(histogram.intervalClampedFrames, 3);
+  assert.equal(histogram.intervalFrames, 4);
+  assert.equal(histogram.intervalClampedDisagreementMsTotal, -150 + -149.75 + -150.25);
+  const report = hitchHistogramReport(histogram);
+  assert.equal(report.intervalClampedFrames, 3);
+  assert.equal(report.intervalClampedDisagreementMsTotal, -450);
+  const lines = formatHitchAttributionDetailLines(report).join('\n');
+  assert.match(
+    lines,
+    /frames at the 250 ms frame-dt clamp: 3; mean disagreement on the clamped frames -150\.0 ms/,
+  );
+});
+
+test('a frame with intervalKnown false is absent from the ring, median, and clamp count', () => {
+  const histogram = createHitchHistogram();
+  const classified = classifyHitchFrame({
+    frameMs: FRAME_DT_CLAMP_MS,
+    presentMs: 200,
+  });
+  assert.equal(classified.intervalKnown, false);
+  accumulateHitch(histogram, classified);
+  assert.equal(histogram.intervalFrames, 0);
+  assert.equal(histogram.intervalDisagreementRingCount, 0);
+  assert.equal(histogram.intervalClampedFrames, 0);
+  const report = hitchHistogramReport(histogram);
+  assert.equal(report.intervalDisagreementMedianMs, 0);
+  assert.equal(report.intervalDisagreementMedianCount, 0);
+  assert.equal(report.intervalClampedFrames, 0);
+  const lines = formatHitchAttributionDetailLines(report).join('\n');
+  assert.doesNotMatch(lines, /interval disagreement:/);
+});
+
+test('interval disagreement ring identity is unchanged across accumulateHitch calls', () => {
+  const histogram = createHitchHistogram();
+  const ring = histogram.intervalDisagreementRing;
+  assert.ok(ring);
+  assert.equal(ring.length, INTERVAL_DISAGREEMENT_RING_CAPACITY);
+  for (let i = 0; i < 64; i += 1) {
+    accumulateHitch(histogram, classifyHitchFrame({
+      frameMs: 40,
+      callbackIntervalMs: 50 + i,
+    }));
+    accumulateHitch(histogram, null);
+  }
+  assert.equal(histogram.intervalDisagreementRing, ring);
+});
+
+test('clamp counting and the disagreement ring do not change hitch owner, attributed, ownerMs, or phases', () => {
+  const sample = {
+    frameMs: FRAME_DT_CLAMP_MS,
+    simMs: 180,
+    scheduleMs: 8,
+    presentMs: 4,
+  };
+  const without = classifyHitchFrame(sample);
+  const withFacts = classifyHitchFrame({
+    ...sample,
+    callbackIntervalMs: 2000,
+    externalGapMs: 40,
+    dispatchLagMs: 40,
+  });
+  assert.equal(withFacts.owner, without.owner);
+  assert.equal(withFacts.attributed, without.attributed);
+  assert.equal(withFacts.ownerMs, without.ownerMs);
+  assert.deepEqual(withFacts.phases, without.phases);
+
+  const a = createHitchHistogram();
+  const b = createHitchHistogram();
+  accumulateHitch(a, without);
+  accumulateHitch(b, withFacts);
+  assert.deepEqual(a.counts, b.counts);
+  assert.equal(a.named, b.named);
+  assert.equal(a.unknown, b.unknown);
+  assert.equal(a.hitches, b.hitches);
+});
+
+// --- probe host-load section -------------------------------------------------------------
+// The probe's host-load section is the corroborating evidence for the intervalDisagreement
+// and externalScheduling owners: those owners say time went missing outside the frame, and
+// this section says whether the machine was in fact busy elsewhere. It therefore must never
+// report a confident idle host from no measurement.
+//
+// scripts/probe-runtime-witness.mjs launches Playwright at module scope, so it cannot be
+// imported. Lift the pure functions out of the shipped source text instead. A rename or a
+// reformat fails loudly here rather than silently skipping the check.
+function loadProbeHostLoad(osStub) {
+  const probePath = fileURLToPath(new URL('../scripts/probe-runtime-witness.mjs', import.meta.url));
+  const src = readFileSync(probePath, 'utf8');
+  const names = ['readCpuTimes', 'snapshotHostLoadStart', 'snapshotHostLoadEnd', 'formatHostLoadSection'];
+  const bodies = names.map((name) => {
+    const start = src.indexOf(`function ${name}(`);
+    assert.ok(start >= 0, `probe-runtime-witness.mjs no longer declares function ${name}`);
+    const end = src.indexOf('\n}\n', start);
+    assert.ok(end > start, `probe-runtime-witness.mjs function ${name} is unterminated`);
+    return src.slice(start, end + 3);
+  });
+  // eslint-disable-next-line no-new-func
+  const factory = new Function('os', `${bodies.join('\n')}\nreturn { ${names.join(', ')} };`);
+  return factory(osStub);
+}
+
+function osStub(readings) {
+  let call = 0;
+  return {
+    cpus: () => readings[Math.min(call++, readings.length - 1)],
+    totalmem: () => 32 * 1024 * 1024 * 1024,
+    freemem: () => 8 * 1024 * 1024 * 1024,
+  };
+}
+
+const cpuTimes = (user, sys, idle) => ({ times: { user, nice: 0, sys, irq: 0, idle } });
+
+test('probe host load reports a real busy percentage when the CPU times move', () => {
+  const { snapshotHostLoadStart, snapshotHostLoadEnd, formatHostLoadSection } = loadProbeHostLoad(osStub([
+    [cpuTimes(0, 0, 0), cpuTimes(0, 0, 0), cpuTimes(0, 0, 0), cpuTimes(0, 0, 0)],
+    [cpuTimes(75, 0, 25), cpuTimes(75, 0, 25), cpuTimes(75, 0, 25), cpuTimes(75, 0, 25)],
+  ]));
+  const snapshot = snapshotHostLoadEnd(snapshotHostLoadStart());
+  assert.equal(snapshot.available, true);
+  assert.equal(snapshot.logicalCpus, 4);
+  assert.equal(snapshot.cpuBusyPercent, 75);
+  const section = formatHostLoadSection(snapshot);
+  assert.match(section, /CPU busy during window: 75%/);
+  assert.match(section, /memory: 24576 \/ 32768 MB/);
+});
+
+test('probe host load never reports an idle host it did not measure', () => {
+  // os.cpus() is documented to return [] on some platforms.
+  const noCpus = loadProbeHostLoad(osStub([[], []]));
+  const blind = noCpus.snapshotHostLoadEnd(noCpus.snapshotHostLoadStart());
+  assert.equal('cpuBusyPercent' in blind, false);
+  assert.equal('cpuBusyPercent' in JSON.parse(JSON.stringify(blind)), false);
+  const blindSection = noCpus.formatHostLoadSection(blind);
+  assert.match(blindSection, /CPU busy during window: n\/a/);
+  assert.doesNotMatch(blindSection, /CPU busy during window: 0%/);
+  // Memory is still a real reading, so it stays.
+  assert.match(blindSection, /memory: 24576 \/ 32768 MB/);
+
+  // A window too short to move the tick counters is also not a measurement.
+  const flat = loadProbeHostLoad(osStub([
+    [cpuTimes(100, 10, 900), cpuTimes(100, 10, 900)],
+    [cpuTimes(100, 10, 900), cpuTimes(100, 10, 900)],
+  ]));
+  const still = flat.snapshotHostLoadEnd(flat.snapshotHostLoadStart());
+  assert.equal('cpuBusyPercent' in still, false);
+  assert.match(flat.formatHostLoadSection(still), /CPU busy during window: n\/a/);
+
+  // So is a pair of readings that disagree about how many CPUs exist.
+  const mismatched = loadProbeHostLoad(osStub([
+    [cpuTimes(0, 0, 0), cpuTimes(0, 0, 0)],
+    [cpuTimes(50, 0, 50), cpuTimes(50, 0, 50), cpuTimes(50, 0, 50), cpuTimes(50, 0, 50)],
+  ]));
+  const drifted = mismatched.snapshotHostLoadEnd(mismatched.snapshotHostLoadStart());
+  assert.equal('cpuBusyPercent' in drifted, false);
+});
+
+test('probe host load survives a missing start snapshot and a throwing os', () => {
+  const probe = loadProbeHostLoad(osStub([[], []]));
+  assert.equal(probe.snapshotHostLoadEnd(null).available, false);
+  assert.match(probe.formatHostLoadSection({ available: false }), /- unavailable/);
+  assert.match(probe.formatHostLoadSection(null), /- unavailable/);
+
+  const throwing = loadProbeHostLoad({
+    cpus: () => { throw new Error('no cpu data'); },
+    totalmem: () => 1,
+    freemem: () => 1,
+  });
+  assert.equal(throwing.snapshotHostLoadStart(), null);
+  assert.equal(throwing.snapshotHostLoadEnd({ logicalCpus: 4, idle: 1, total: 2 }).available, false);
 });

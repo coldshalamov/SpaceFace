@@ -990,6 +990,10 @@ export function ensurePerfRuntime(state) {
       hitchHistogram.frameMsTotal = 0;
       hitchHistogram.callbackIntervalMsTotal = 0;
       hitchHistogram.intervalDisagreementMsTotal = 0;
+      hitchHistogram.intervalClampedFrames = 0;
+      hitchHistogram.intervalClampedDisagreementMsTotal = 0;
+      hitchHistogram.intervalDisagreementRingWrite = 0;
+      hitchHistogram.intervalDisagreementRingCount = 0;
       hitchHistogram.schedulingFrames = 0;
       hitchHistogram.schedulingExternalGapMsTotal = 0;
       hitchHistogram.schedulingDispatchLagMsTotal = 0;

@@ -1,5 +1,7 @@
 // 1 Hz flight recorder for agents. Source inspection cannot see a frozen canvas or a hitch.
 // window.__SF_WITNESS__ is the live surface; probes write a plain-language report from it.
+import { FRAME_DT_CLAMP_MS } from '../render/hitchClassifier.js';
+
 export const RUNTIME_WITNESS_SCHEMA = 'spaceface.runtimeWitness.v1';
 export const RUNTIME_WITNESS_RING = 32;
 export const RUNTIME_WITNESS_PERIOD_MS = 1000;
@@ -109,6 +111,22 @@ export function formatHitchAttributionDetailLines(histogram) {
     lines.push(
       `- frame interval vs measured callback interval: mean frameMs ${meanFrameMs.toFixed(1)} | mean callbackInterval ${meanCallbackInterval.toFixed(1)} | mean disagreement ${meanDisagreement.toFixed(1)} ms over ${intervalFrames} hitch frames`,
     );
+    const medianMs = Number(histogram.intervalDisagreementMedianMs);
+    if (Number.isFinite(medianMs)) {
+      const medianCount = Number.isFinite(Number(histogram.intervalDisagreementMedianCount))
+        ? Number(histogram.intervalDisagreementMedianCount)
+        : 0;
+      const clampedFrames = Number(histogram.intervalClampedFrames) || 0;
+      let intervalLine = `- interval disagreement: mean ${meanDisagreement.toFixed(1)} | median ${medianMs.toFixed(1)} ms over ${intervalFrames} hitch frames (median over last ${medianCount} of ${intervalFrames}); frames at the ${FRAME_DT_CLAMP_MS} ms frame-dt clamp: ${clampedFrames}`;
+      // On a clamped frame frameMs is pinned at the clamp, so the disagreement is the only
+      // record of the wall gap the clamp could not report. Divide only when the count is
+      // real: clampedFrames 0 would print NaN and read as a measured fact.
+      const clampedTotal = Number(histogram.intervalClampedDisagreementMsTotal);
+      if (clampedFrames > 0 && Number.isFinite(clampedTotal)) {
+        intervalLine += `; mean disagreement on the clamped frames ${(clampedTotal / clampedFrames).toFixed(1)} ms`;
+      }
+      lines.push(intervalLine);
+    }
   }
   if (Number(histogram.schedulingFrames) > 0) {
     const schedulingFrames = Number(histogram.schedulingFrames);

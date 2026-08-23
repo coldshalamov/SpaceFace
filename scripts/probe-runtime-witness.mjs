@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -62,6 +63,8 @@ let openingExactOwnerTouch = null;
 let opaqueBatchDiagnostic = null;
 let noSubmitDiagnostic = null;
 let sectorTransitionTrace = null;
+let hostLoadStart = null;
+let hostLoad = { available: false };
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -124,6 +127,85 @@ function formatTableCensusSection(summary, route) {
     '- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.',
   );
   return lines.join('\n');
+}
+
+function readCpuTimes() {
+  const cpus = os.cpus();
+  let idle = 0;
+  let total = 0;
+  for (const cpu of cpus) {
+    const times = cpu.times || {};
+    const idlePart = Number(times.idle) || 0;
+    idle += idlePart;
+    total += (Number(times.user) || 0)
+      + (Number(times.nice) || 0)
+      + (Number(times.sys) || 0)
+      + (Number(times.irq) || 0)
+      + idlePart;
+  }
+  return { logicalCpus: cpus.length, idle, total };
+}
+
+function snapshotHostLoadStart() {
+  try {
+    return readCpuTimes();
+  } catch (_) {
+    return null;
+  }
+}
+
+function snapshotHostLoadEnd(start) {
+  try {
+    if (!start) return { available: false };
+    const end = readCpuTimes();
+    const idleDelta = end.idle - start.idle;
+    const totalDelta = end.total - start.total;
+    // os.cpus() is documented to return [] on some platforms, and a very short window can
+    // produce a zero time delta. Either way there is no busy ratio to report. Leave the
+    // field absent so the section prints n/a; reporting 0% here would assert an idle host
+    // from no measurement, and an idle host is exactly what would clear the
+    // intervalDisagreement owner.
+    const cpuMeasured = start.logicalCpus > 0
+      && end.logicalCpus === start.logicalCpus
+      && totalDelta > 0;
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const snapshot = {
+      available: true,
+      logicalCpus: end.logicalCpus,
+      memoryUsedMb: (totalMem - freeMem) / (1024 * 1024),
+      memoryTotalMb: totalMem / (1024 * 1024),
+    };
+    if (cpuMeasured) {
+      snapshot.cpuBusyPercent = Math.min(100, Math.max(0, (1 - idleDelta / totalDelta) * 100));
+    }
+    return snapshot;
+  } catch (_) {
+    return { available: false };
+  }
+}
+
+function formatHostLoadSection(snapshot) {
+  try {
+    const lines = ['', '## Host load during the window'];
+    if (!snapshot || snapshot.available !== true) {
+      lines.push('- unavailable');
+      return lines.join('\n');
+    }
+    const busy = Number.isFinite(Number(snapshot.cpuBusyPercent))
+      ? Number(snapshot.cpuBusyPercent).toFixed(0)
+      : 'n/a';
+    const used = Math.round(Number(snapshot.memoryUsedMb) || 0);
+    const total = Math.round(Number(snapshot.memoryTotalMb) || 0);
+    lines.push(
+      `- logical CPUs: ${snapshot.logicalCpus}`,
+      `- CPU busy during window: ${busy}%`,
+      `- memory: ${used} / ${total} MB`,
+    );
+    return lines.join('\n');
+  } catch (_) {
+    return '\n## Host load during the window\n- unavailable';
+  }
 }
 
 function formatHitchAttributionSection(histogram, route) {
@@ -2526,6 +2608,7 @@ try {
       ), null, { timeout: 30_000 });
     }
   }
+  hostLoadStart = snapshotHostLoadStart();
   const started = Date.now();
   let shotIndex = 0;
   while (Date.now() - started < SAMPLE_MS) {
@@ -2543,6 +2626,7 @@ try {
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
+  hostLoad = snapshotHostLoadEnd(hostLoadStart);
   const finalPerfReport = await page.evaluate(() => window.SF.state.perfRuntime.getReport());
   finalHitchAttribution = finalPerfReport.hitchAttribution;
   finalRenderWork = finalPerfReport.renderWork;
@@ -2554,6 +2638,9 @@ try {
   primaryError = error;
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
+  if (hostLoadStart && hostLoad.available !== true) {
+    hostLoad = snapshotHostLoadEnd(hostLoadStart);
+  }
   await page?.keyboard.up('KeyW').catch(() => {});
   if (page && OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
     const restored = await restoreOpeningFirstTouchOwnerWitness(page).catch(() => null);
@@ -2743,7 +2830,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-  })}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -2767,6 +2854,7 @@ const report = {
   sectorTransition: sectorTransitionTrace,
   tableCensus,
   hitchAttribution,
+  hostLoad,
   bloomPhases,
   systemTiming: finalSystemTiming,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,

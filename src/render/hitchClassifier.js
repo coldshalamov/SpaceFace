@@ -6,6 +6,14 @@
 
 export const HITCH_THRESHOLD_MS = 32;
 
+// src/core/presentationRunner.js:672 clamps frameDt > 0.25 to 0.25 and line 688 is the only
+// production caller of perfRuntime.beginFrame, so a real frameMs never exceeds this value.
+// That is why the clamp test below has a lower bound and no upper one. This leaf measures
+// the clamp; it does not change it.
+export const FRAME_DT_CLAMP_MS = 250;
+const FRAME_DT_CLAMP_EPSILON_MS = 0.5;
+const INTERVAL_DISAGREEMENT_RING_CAPACITY = 256;
+
 export const HITCH_OWNERS = Object.freeze([
   'compile',
   'upload',
@@ -66,6 +74,33 @@ const DETAILED_HITCH_OWNERS = new Set([
 
 export function isHitchFrame(frameMs, thresholdMs = HITCH_THRESHOLD_MS) {
   return Number.isFinite(Number(frameMs)) && Number(frameMs) > thresholdMs;
+}
+
+function pushIntervalDisagreement(histogram, value) {
+  const ring = histogram.intervalDisagreementRing;
+  if (!ring) return;
+  const capacity = ring.length;
+  const write = histogram.intervalDisagreementRingWrite || 0;
+  ring[write] = value;
+  histogram.intervalDisagreementRingWrite = (write + 1) % capacity;
+  const filled = histogram.intervalDisagreementRingCount || 0;
+  if (filled < capacity) histogram.intervalDisagreementRingCount = filled + 1;
+}
+
+function intervalDisagreementMedian(histogram) {
+  const ring = histogram && histogram.intervalDisagreementRing;
+  const filled = histogram && Number.isFinite(Number(histogram.intervalDisagreementRingCount))
+    ? Number(histogram.intervalDisagreementRingCount)
+    : 0;
+  if (!ring || filled <= 0) return { medianMs: 0, count: 0 };
+  const copy = new Array(filled);
+  for (let i = 0; i < filled; i += 1) copy[i] = ring[i];
+  copy.sort((left, right) => left - right);
+  const middle = filled >> 1;
+  const medianMs = (filled % 2 === 1)
+    ? copy[middle]
+    : (copy[middle - 1] + copy[middle]) / 2;
+  return { medianMs, count: filled };
 }
 
 /**
@@ -184,6 +219,11 @@ export function createHitchHistogram() {
     frameMsTotal: 0,
     callbackIntervalMsTotal: 0,
     intervalDisagreementMsTotal: 0,
+    intervalClampedFrames: 0,
+    intervalClampedDisagreementMsTotal: 0,
+    intervalDisagreementRing: new Float64Array(INTERVAL_DISAGREEMENT_RING_CAPACITY),
+    intervalDisagreementRingWrite: 0,
+    intervalDisagreementRingCount: 0,
     schedulingFrames: 0,
     schedulingExternalGapMsTotal: 0,
     schedulingDispatchLagMsTotal: 0,
@@ -284,6 +324,13 @@ export function accumulateHitch(histogram, classification) {
     const disagreement = Number(classification.intervalDisagreementMs);
     if (Number.isFinite(disagreement)) {
       histogram.intervalDisagreementMsTotal = (histogram.intervalDisagreementMsTotal || 0) + disagreement;
+      pushIntervalDisagreement(histogram, disagreement);
+    }
+    if (Number.isFinite(hitchFrameMs) && hitchFrameMs >= FRAME_DT_CLAMP_MS - FRAME_DT_CLAMP_EPSILON_MS) {
+      histogram.intervalClampedFrames = (histogram.intervalClampedFrames || 0) + 1;
+      if (Number.isFinite(disagreement)) {
+        histogram.intervalClampedDisagreementMsTotal = (histogram.intervalClampedDisagreementMsTotal || 0) + disagreement;
+      }
     }
   }
   if (owner === 'externalScheduling') {
@@ -313,6 +360,7 @@ export function hitchCoverage(histogram) {
 }
 
 export function hitchHistogramReport(histogram) {
+  const median = intervalDisagreementMedian(histogram);
   return {
     frames: histogram ? histogram.frames : 0,
     hitches: histogram ? histogram.hitches : 0,
@@ -344,6 +392,14 @@ export function hitchHistogramReport(histogram) {
       : 0,
     intervalDisagreementMsTotal: histogram && Number.isFinite(Number(histogram.intervalDisagreementMsTotal))
       ? Number(histogram.intervalDisagreementMsTotal)
+      : 0,
+    intervalDisagreementMedianMs: median.medianMs,
+    intervalDisagreementMedianCount: median.count,
+    intervalClampedFrames: histogram && Number.isFinite(Number(histogram.intervalClampedFrames))
+      ? Number(histogram.intervalClampedFrames)
+      : 0,
+    intervalClampedDisagreementMsTotal: histogram && Number.isFinite(Number(histogram.intervalClampedDisagreementMsTotal))
+      ? Number(histogram.intervalClampedDisagreementMsTotal)
       : 0,
     schedulingFrames: histogram && Number.isFinite(Number(histogram.schedulingFrames))
       ? Number(histogram.schedulingFrames)
