@@ -1274,7 +1274,7 @@ export function createHud(ctx, alerts) {
   center.innerHTML = `
     <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
-    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span></div>
+    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden>↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
@@ -1365,6 +1365,7 @@ export function createHud(ctx, alerts) {
   const elRole = center.querySelector('[data-k=role]');
   const elTetherStat = center.querySelector('#sf-tetherstat');
   const elTether = center.querySelector('[data-k=tether]');
+  const elTetherKeys = center.querySelector('[data-k=tetherkeys]');
   const chipEls = {
     cargo: center.querySelector('[data-chip=cargo]'),
     credits: center.querySelector('[data-chip=credits]'),
@@ -4304,9 +4305,15 @@ export function createHud(ctx, alerts) {
           setStyle(elTetherStat, 'display', '');
           setText(elTether, tetherStatus.text);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
+          // Build-map inhibitor #6 is "the HUD hides what you can already do". While a line is
+          // attached the arrow keys reel, pay out and orbit and SHIFT pumps — four verbs on the
+          // game's signature mechanic that the HUD never mentioned, so the only way to find them
+          // was the help screen. The hint appears exactly while those keys do something.
+          if (elTetherKeys) elTetherKeys.hidden = false;
         }
       } else if (elTetherStat) {
         setStyle(elTetherStat, 'display', 'none');
+        if (elTetherKeys) elTetherKeys.hidden = true;
       }
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;

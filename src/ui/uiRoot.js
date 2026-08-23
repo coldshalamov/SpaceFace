@@ -1496,6 +1496,16 @@ function injectHudCss() {
   .sf-stat--chip.sf-chip-show { opacity:1; transform:translateY(0); }
   /* Hover-affordance: these are readouts; underline the key to hint at the tooltip. */
   .sf-stat--info { cursor:default; user-select:none; }
+  /* Line-control key hint. Sits under the tether readout only while a line is attached, which is
+     exactly when those keys do anything. Calm, not shouty: this is chrome that teaches, so it takes
+     --sf-calm and the data face, and holds the 12px grammar floor like everything else. */
+  /* .sf-stat is a baseline flex ROW, so the hint has to claim a full basis to land on its own line;
+     inline it would push a long string across the 272px left stack, which already overflows. Wrapping
+     is enabled on the tether stat only, so no other readout changes shape. */
+  #sf-tetherstat { flex-wrap:wrap; }
+  .sf-stat__hint { flex-basis:100%; margin-top:2px; font-family:var(--sf-data-face); font-size:12px;
+    letter-spacing:.08em; color:var(--sf-calm); opacity:.85; }
+  .sf-stat__hint[hidden] { display:none; }
   .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(255,255,255,.25); padding-bottom:1px; }
   .sf-stat--info:hover .sf-stat__k { color:var(--visor-cyan); border-bottom-color:var(--visor-cyan-dim); }
   /* Hover tooltip for stat readouts — the one place a dark backing aids legibility of dense text. */
