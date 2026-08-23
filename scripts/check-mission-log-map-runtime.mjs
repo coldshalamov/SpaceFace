@@ -29,7 +29,14 @@ try {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
+  // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
+  // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
+  // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
+  // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
+  // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
+  // this is an environment allowance, not a behavioural assertion being loosened. Everything
+  // these checks actually assert happens after boot and is untouched.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Mission Log Map Runtime', seed: 47 }));
   await page.waitForFunction(() => {
     const sf = window.SF;

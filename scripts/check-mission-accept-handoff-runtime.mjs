@@ -30,7 +30,14 @@ try {
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'mission handoff probe must use the canonical root URL with no query flags');
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
+  // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
+  // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
+  // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
+  // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
+  // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
+  // this is an environment allowance, not a behavioural assertion being loosened. Everything
+  // these checks actually assert happens after boot and is untouched.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game first-session rail');
