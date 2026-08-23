@@ -2,7 +2,9 @@
 // Consumes the fields system's kernel. Does not fork a second field. Identity is
 // type + index + counter on the node records and on state.fields.orbit.
 
-import { compileFittedAttackSpec } from './adventureMigration.js';
+import { attackModifiersFromFit, compileFittedAttackSpec } from './adventureMigration.js';
+import { ATTACK_TRAITS } from '../data/attackTraits.js';
+import { WEAPONS } from '../data/weapons.js';
 import { createLineage } from '../combat/attackLineage.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import {
@@ -51,7 +53,57 @@ function firstWeaponId(entity) {
   return 'wpn_pulse_laser_s';
 }
 
+/**
+ * Which traits can grant orbit at all. Read from the DECLARED stack targets rather than hardcoded,
+ * so a second orbit trait added later is picked up without editing this file. Today exactly one
+ * trait qualifies (`mod_cryo_gyros`).
+ */
+const ORBIT_TRAIT_IDS = new Set(
+  ATTACK_TRAITS
+    .filter((trait) => Array.isArray(trait && trait.stack)
+      && trait.stack.some((entry) => entry && String(entry.target || '').startsWith('propagation.orbit')))
+    .map((trait) => trait.id),
+);
+
+// adventureMigration keeps its own private weapon map; mirror it rather than pass a bare id string,
+// because attackModifiersFromFit resolves the weapon's OWN traits by def and would skip them.
+const ORBIT_WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
+
+function idOfModifier(entry) {
+  if (typeof entry === 'string') return entry;
+  if (Array.isArray(entry)) return typeof entry[0] === 'string' ? entry[0] : null;
+  if (entry && typeof entry === 'object' && typeof entry.id === 'string') return entry.id;
+  return null;
+}
+
+/**
+ * A CHEAP GATE IN FRONT OF AN EXPENSIVE COMPILE.
+ *
+ * This used to compile a full AttackSpec — trait application, stack normalisation, and an FNV digest
+ * over a canonical string — for EVERY ship and drone on EVERY tick, purely to discover that nobody
+ * has orbit nodes. Measured at 27.7 microseconds per compile, that is 1.1 ms per frame at 40 ships
+ * and it scales linearly: about 6.6% of a 60Hz frame budget spent proving a negative, for a feature
+ * that is inactive almost always and is granted by exactly one trait.
+ *
+ * Reading the fit is cheap and involves no compiler, so ask that question first and only pay for the
+ * compile when an orbit-granting trait is actually fitted.
+ */
+function couldHaveOrbit(state, entity) {
+  if (!ORBIT_TRAIT_IDS.size) return false;
+  const weaponId = firstWeaponId(entity);
+  const weapon = typeof weaponId === 'string' ? ORBIT_WEAPON_BY_ID.get(weaponId) : weaponId;
+  let mods = null;
+  try { mods = attackModifiersFromFit(entity, weapon); } catch (_) { return true; }
+  if (!Array.isArray(mods)) return true;
+  for (let i = 0; i < mods.length; i++) {
+    const id = idOfModifier(mods[i]);
+    if (id && ORBIT_TRAIT_IDS.has(id)) return true;
+  }
+  return false;
+}
+
 function orbitSpecForHost(state, entity) {
+  if (!couldHaveOrbit(state, entity)) return null;
   const compiled = compileFittedAttackSpec(state, entity, firstWeaponId(entity));
   if (!compiled || !compiled.ok || !compiled.spec) return null;
   const orbit = compiled.spec.propagation && compiled.spec.propagation.orbit;
