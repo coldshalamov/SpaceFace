@@ -150,8 +150,18 @@ export class TacticalAIStack {
         // FOCUS, allowing ordinary gunners to consume the attacker cap ahead of a specialist.
         if (!combatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
         const doctrinePerception = perceptionForWingOrderCombatDoctrine(perception, directive, freeze);
+        const disabledNonlethalTarget = typeof this.ports.sensors.disabledNonlethalTargetFor === 'function'
+          ? this.ports.sensors.disabledNonlethalTargetFor(member.id)
+          : undefined;
         const combatDoctrine = doctrineId && combatOrdered ? this.combatDoctrine.update({
-          tick, entityId: member.id, doctrineId, perception: doctrinePerception, directive,
+          tick,
+          entityId: member.id,
+          doctrineId,
+          perception: doctrinePerception,
+          directive,
+          disabledNonlethalTargetId: disabledNonlethalTarget === undefined
+            ? undefined
+            : disabledNonlethalTarget && disabledNonlethalTarget.id,
         }) : null;
         const priorDecision = this.lastDecisionByEntity.get(member.id);
         if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers)

@@ -79,7 +79,14 @@ export class CombatDoctrineRuntime {
     this.byEntity = new Map();
   }
 
-  update({ tick, entityId, doctrineId: doctrineValue, perception, directive = null } = {}) {
+  update({
+    tick,
+    entityId,
+    doctrineId: doctrineValue,
+    perception,
+    directive = null,
+    disabledNonlethalTargetId = undefined,
+  } = {}) {
     const doctrineId = normalizeCombatDoctrineId(doctrineValue);
     if (!doctrineId || entityId == null || !Number.isInteger(tick) || tick < 0) return null;
     if (!combatActorEligible(perception)) {
@@ -111,8 +118,14 @@ export class CombatDoctrineRuntime {
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
-    if (factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
-      && target.disabled === true) {
+    // Production supplies this from aiPorts' live combat-runtime query. The contact fallback keeps
+    // the pure/worldless doctrine API usable for fixtures and non-production adapters that have no
+    // state port; an explicit null is authoritative and must not be replaced by cached perception.
+    const disabledNonlethalTarget = disabledNonlethalTargetId === undefined
+      ? !!(factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
+        && target.disabled === true)
+      : disabledNonlethalTargetId != null && stableId(disabledNonlethalTargetId) === stableId(target.id);
+    if (disabledNonlethalTarget) {
       const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
           : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'

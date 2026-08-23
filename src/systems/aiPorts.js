@@ -125,6 +125,11 @@ export const aiPorts = {
       frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
       liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
       liveFramesFor: (entityIds, tick, options) => this._sensorFramesFor(entityIds, tick, options),
+      disabledNonlethalTargetFor: (entityId) => {
+        const entity = getEntity(this.state, entityId);
+        const ai = entity && ((entity.data && entity.data.ai) || entity.ai);
+        return disabledNonlethalTargetFor(this.state, entity, ai);
+      },
     });
     this.helpers.aiRoster = Object.freeze({
       listSquads: (tick) => this._listSquads(tick),
