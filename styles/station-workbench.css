@@ -212,24 +212,37 @@
   position:absolute; width:34px; height:34px; padding:0;
   border:0; border-radius:50%; background:transparent; cursor:pointer; pointer-events:auto;
   transition:opacity 180ms ease,filter 180ms ease;
+  transform:translate(-50%,-50%);
 }
-.sx-hardpoint__reticle { position:absolute; inset:4px; border:1px solid currentColor; border-radius:50%; transition:transform 180ms cubic-bezier(.16,.85,.25,1),box-shadow 180ms ease; }
+.sx-hardpoint__leader {
+  position:absolute; inset:0; overflow:visible; pointer-events:none; z-index:1;
+}
+.sx-hardpoint__leader path {
+  stroke:rgba(91,224,240,.42); stroke-width:1px; fill:none; stroke-dasharray:4 3;
+  transition:stroke 160ms ease,filter 160ms ease;
+}
+.sx-hardpoint:hover .sx-hardpoint__leader path,
+.sx-hardpoint:focus-visible .sx-hardpoint__leader path,
+.sx-hardpoint.is-selected .sx-hardpoint__leader path {
+  stroke:var(--sx-worklight); stroke-dasharray:none; filter:drop-shadow(0 0 3px rgba(219,152,56,.45));
+}
+.sx-hardpoint__reticle { position:absolute; inset:4px; border:1px solid currentColor; border-radius:50%; transition:transform 180ms cubic-bezier(.16,.85,.25,1),box-shadow 180ms ease; z-index:2; }
 .sx-hardpoint__reticle::before,
 .sx-hardpoint__reticle::after { content:""; position:absolute; background:currentColor; opacity:.7; }
 .sx-hardpoint__reticle::before { left:50%; top:-5px; bottom:-5px; width:1px; }
 .sx-hardpoint__reticle::after { top:50%; left:-5px; right:-5px; height:1px; }
 .sx-hardpoint__reticle i { position:absolute; inset:7px; border-radius:50%; opacity:.55; }
 .sx-hardpoint__copy {
-  position:absolute; z-index:2; left:var(--callout-x,31px); top:var(--callout-y,3px); width:210px; padding:5px 7px 5px 9px; text-align:left; pointer-events:auto;
+  position:absolute; z-index:3; left:var(--callout-x,31px); top:var(--callout-y,3px); width:200px; padding:5px 7px 5px 9px; text-align:left; pointer-events:auto;
   border-left:1px solid #777166;
   filter:drop-shadow(0 4px 9px #000); white-space:nowrap;
 }
-.sx-hardpoint__copy b { display:block; max-width:194px; overflow:hidden; text-overflow:ellipsis; font:500 13px/1.2 var(--sx-ui); }
+.sx-hardpoint__copy b { display:block; max-width:184px; overflow:hidden; text-overflow:ellipsis; font:500 13px/1.2 var(--sx-ui); }
 .sx-hardpoint__copy em { display:block; margin-top:2px; font:500 12px/1 var(--sx-mono); font-style:normal; letter-spacing:var(--sf-track-micro); }
 .sx-hardpoint.is-callout-left .sx-hardpoint__copy { text-align:right; border-left:0; border-right:1px solid #777166; padding-left:7px; padding-right:9px; }
 .sx-hardpoint:hover,
 .sx-hardpoint:focus-visible,
-.sx-hardpoint.is-selected { color:var(--sx-worklight); z-index:3; }
+.sx-hardpoint.is-selected { color:var(--sx-worklight); z-index:4; }
 .sx-hardpoint:hover .sx-hardpoint__reticle,
 .sx-hardpoint:focus-visible .sx-hardpoint__reticle,
 .sx-hardpoint.is-selected .sx-hardpoint__reticle { box-shadow:0 0 0 4px rgba(219,152,56,.12),0 0 22px rgba(219,152,56,.25); }

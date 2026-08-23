@@ -11,25 +11,28 @@ captured the same day against `design/frontend/INSTRUMENT_GRAMMAR.md` and CANONI
 The top three findings are **clipping and collision defects, not taste**, and the first one is
 diagnosed to the exact rule and measurement:
 
-**The contract rail chops its own titles mid-word.** Measured live in the station lab: each
-`.sx-ct-row` card is **268 px** while its title element `.sx-ct-row__mid` is **310 px**, and the
-card carries `overflow: hidden` with no ellipsis — so the text is sliced mid-glyph
-("SCORT A CONVOY TO CUSTOMS GAT", "MUGGLE 8U / RADE HUB").
+**The contract rail chops its own titles mid-word.** It is the first content after the header and
+it reads "SCORT A CONVOY TO CUSTOMS GAT", "MUGGLE 8U / RADE HUB". Confirmed in the captured frame.
 
-`styles/station.css:377` already sets `.sx-ct-row__mid { min-width: 0 }`, which would normally
-let a grid item shrink. It cannot apply, because `styles/station-workbench.css:1354` makes the
-element **absolutely positioned** (`left:28px; top:-7px; z-index:4`) with `white-space: nowrap`.
-An out-of-flow element sizes to its content and ignores the grid track entirely.
+**CORRECTION, 2026-08-23 — the cause first recorded here was WRONG, twice.** This paragraph
+originally said `.sx-ct-row__mid` is absolutely positioned and therefore ignores `min-width: 0`.
+It is not: measured live, `position` computes to `static`. A second attempt blamed the grid item
+overflowing its track and applied `overflow: hidden` + `max-width` + an ellipsis on the children.
+That made the lab report `titleFits: true` on every row — and **changed nothing in the re-captured
+frame**. It was reverted rather than shipped, because an ineffective change carrying a confident
+comment is worse than no change at all.
 
-**The fix belongs in `station-workbench.css`:** bound `.sx-ct-row__mid` to the card (a `right`
-offset or `max-width`) and give it `overflow: hidden; text-overflow: ellipsis`. A title truncated
-with an ellipsis reads as designed; one sliced mid-glyph reads as broken.
+What the evidence actually shows: the text is clipped at the **LEFT** as well as the right — the
+first card reads "E: 8U FUEL CELLS TO CERES" with "FIRST TRAD" missing off the front. A title that
+is merely too long clips on the right only. Left-clipping means **the cards overlap each other
+horizontally** in the `overflow-x: auto` rail; each card's content is being covered by its
+neighbour. So this is a rail positioning / stacking problem, not a text-length problem, and no
+amount of ellipsis on the title will fix it.
 
-**It was NOT applied here** only because that file carried another lane's uncommitted work at the
-time, and a pathspec commit takes the whole working copy of a file rather than selected hunks.
-Fixing it from `station.css` instead would have meant adding a specificity override to beat a
-later sheet — which is exactly the override-pile antipattern §11.10 records this station
-recovering from. It is a small, well-located change for whoever holds that file next.
+Established facts for whoever picks this up: the card is 268px, the title element measures 310px,
+the row grid is `20px 27px minmax(0,1fr) auto` with the title spanning `3 / 5`, and the lab
+(mock data) and the captured frame (real game) do not agree about the title fitting — which is
+itself worth knowing before trusting either surface alone.
 
 Findings about hierarchy, density and the persistent amber resupply chip are art-direction calls
 and are left to the owner.

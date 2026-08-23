@@ -165,6 +165,151 @@ function shipSilhouette(def) {
   return `<svg class="sx-shipmark" viewBox="0 0 48 28" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
+export function calculateSpatialSlotLayout({
+  projectedSlots = [],
+  stageWidth = 1100,
+  stageHeight = 500,
+  nodeRadius = 17,
+  calloutWidth = 200,
+  calloutHeight = 36,
+  edgeInset = 12,
+  nameplateBottom = 0,
+} = {}) {
+  if (!Array.isArray(projectedSlots) || !projectedSlots.length || stageWidth <= 0 || stageHeight <= 0) return [];
+
+  const cx = stageWidth * 0.5;
+  const cy = stageHeight * 0.5;
+
+  const leftGroup = [];
+  const rightGroup = [];
+  const ambiguous = [];
+
+  for (const item of projectedSlots) {
+    if (item.x < cx - 12) {
+      leftGroup.push(item);
+    } else if (item.x > cx + 12) {
+      rightGroup.push(item);
+    } else {
+      ambiguous.push(item);
+    }
+  }
+
+  ambiguous.sort((a, b) => (a.y - b.y));
+  for (const item of ambiguous) {
+    const localX = (item.local && typeof item.local.x === 'number') ? item.local.x : 0;
+    if (localX < 0) {
+      leftGroup.push(item);
+    } else if (localX > 0) {
+      rightGroup.push(item);
+    } else if (leftGroup.length <= rightGroup.length) {
+      leftGroup.push(item);
+    } else {
+      rightGroup.push(item);
+    }
+  }
+
+  leftGroup.sort((a, b) => a.y - b.y);
+  rightGroup.sort((a, b) => a.y - b.y);
+
+  const leftMinY = nameplateBottom > 0
+    ? Math.max(32, Math.min(stageHeight * 0.38, nameplateBottom + 6))
+    : 32;
+  const rightMinY = 44;
+  const maxY = Math.max(leftMinY + 40, stageHeight - calloutHeight - 16);
+
+  const results = [];
+
+  function layoutFlank(group, isLeft, minY) {
+    const count = group.length;
+    if (!count) return;
+
+    const minPitch = 42;
+    const targetYs = group.map((s) => Math.max(minY, Math.min(maxY, s.y - 18)));
+
+    for (let i = 1; i < count; i++) {
+      if (targetYs[i] < targetYs[i - 1] + minPitch) {
+        targetYs[i] = targetYs[i - 1] + minPitch;
+      }
+    }
+
+    if (targetYs[count - 1] > maxY) {
+      targetYs[count - 1] = maxY;
+      for (let i = count - 2; i >= 0; i--) {
+        if (targetYs[i] > targetYs[i + 1] - minPitch) {
+          targetYs[i] = targetYs[i + 1] - minPitch;
+        }
+      }
+      if (targetYs[0] < minY) {
+        const avail = Math.max(1, maxY - minY);
+        const compressedPitch = Math.max(28, Math.min(minPitch, avail / Math.max(1, count - 1)));
+        for (let i = 0; i < count; i++) {
+          targetYs[i] = minY + i * compressedPitch;
+        }
+      }
+    }
+
+    group.forEach((item, i) => {
+      const { index, order, x, y } = item;
+      const targetY = targetYs[i];
+
+      let absoluteLabelX;
+      let calloutX;
+      if (isLeft) {
+        const targetRight = Math.max(calloutWidth + edgeInset, Math.min(x - nodeRadius - 16, cx - 100));
+        absoluteLabelX = Math.max(edgeInset, targetRight - calloutWidth);
+        calloutX = absoluteLabelX - (x - nodeRadius);
+      } else {
+        const targetLeft = Math.min(stageWidth - calloutWidth - edgeInset, Math.max(x + nodeRadius + 16, cx + 100));
+        absoluteLabelX = Math.min(stageWidth - calloutWidth - edgeInset, Math.max(edgeInset, targetLeft));
+        calloutX = absoluteLabelX - (x - nodeRadius);
+      }
+
+      const calloutY = Math.round(targetY - (y - nodeRadius));
+      const visualCardLeft = absoluteLabelX;
+      const visualCardRight = absoluteLabelX + calloutWidth;
+      const visualCardTop = targetY;
+      const visualCardBottom = targetY + calloutHeight;
+
+      let leaderD = '';
+      const reticleY = 17;
+      const cardCenterY = calloutY + 17;
+      if (isLeft) {
+        const reticleX = 0;
+        const cardX = calloutX + calloutWidth;
+        const midX = Math.round(reticleX - Math.max(6, Math.min(20, (reticleX - cardX) * 0.35)));
+        leaderD = `M ${reticleX} ${reticleY} H ${midX} V ${cardCenterY} H ${cardX}`;
+      } else {
+        const reticleX = 34;
+        const cardX = calloutX;
+        const midX = Math.round(reticleX + Math.max(6, Math.min(20, (cardX - reticleX) * 0.35)));
+        leaderD = `M ${reticleX} ${reticleY} H ${midX} V ${cardCenterY} H ${cardX}`;
+      }
+
+      results.push({
+        item,
+        index,
+        order,
+        x,
+        y,
+        isLeft,
+        calloutX,
+        calloutY,
+        visualCardLeft,
+        visualCardRight,
+        visualCardTop,
+        visualCardBottom,
+        leaderD,
+        zIndex: projectedSlots.length - order + 2,
+      });
+    });
+  }
+
+  layoutFlank(leftGroup, true, leftMinY);
+  layoutFlank(rightGroup, false, rightMinY);
+
+  return results;
+}
+
 export function createShipworksScreen(ctx) {
   // Dock host (station destination): the shared stage locked to commerce. One module instance and
   // one WebGL mount serve this dock destination AND the in-flight 'ship' screen (SCREENS_B §0.5) —
@@ -1210,6 +1355,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
         : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
       return `<button type="button" class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted ? '' : ' is-empty'}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
+        `<svg class="sx-hardpoint__leader" aria-hidden="true"><path></path></svg>` +
         `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
         `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
       `</button>`;
@@ -1269,46 +1415,72 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function updateSpatialProjection() {
     if (!mount || !stageEl.isConnected) return;
     const stageRect = stageEl.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
     const focusLine = el.querySelector('.sx-sw__focusline');
     if (focusLine && selectedSlot < 0) focusLine.classList.remove('is-on');
+
     const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
-    const rows = Math.max(1, Math.ceil(nodes.length / 2));
+    if (!nodes.length) return;
+
     const nodeRadius = 17;
-    const calloutWidth = 172;
+    const calloutWidth = 200;
     const calloutHeight = 36;
-    const calloutGap = 12;
-    const edgeInset = 8;
+    const edgeInset = 12;
+    const cx = stageRect.width * 0.5;
+    const cy = stageRect.height * 0.5;
+
+    const projectedSlots = [];
     nodes.forEach((node, order) => {
       const index = Number(node.getAttribute('data-spatial-slot'));
       const local = spatialAnchors.get(index);
       const projected = local && mount.projectLocalPoint(local);
       if (!projected) return;
-      const x = Math.max(42, Math.min(stageRect.width - 42, projected.x - stageRect.left));
-      const y = Math.max(46, Math.min(stageRect.height - 64, projected.y - stageRect.top));
+      const x = Math.max(36, Math.min(stageRect.width - 36, projected.x - stageRect.left));
+      const y = Math.max(38, Math.min(stageRect.height - 38, projected.y - stageRect.top));
+      projectedSlots.push({
+        node,
+        index,
+        order,
+        x,
+        y,
+        local,
+      });
+    });
+
+    if (!projectedSlots.length) return;
+
+    const nameplateRect = nameplateEl && nameplateEl.isConnected ? nameplateEl.getBoundingClientRect() : null;
+    const nameplateBottom = nameplateRect && nameplateRect.bottom > stageRect.top
+      ? nameplateRect.bottom - stageRect.top
+      : 0;
+
+    const layout = calculateSpatialSlotLayout({
+      projectedSlots,
+      stageWidth: stageRect.width,
+      stageHeight: stageRect.height,
+      nodeRadius,
+      calloutWidth,
+      calloutHeight,
+      edgeInset,
+      nameplateBottom,
+    });
+
+    layout.forEach((res) => {
+      const { item, isLeft, calloutX, calloutY, leaderD, zIndex } = res;
+      const { node, index, x, y } = item;
       node.style.left = `${x}px`;
       node.style.top = `${y}px`;
-      node.style.zIndex = String(nodes.length - order + 2);
-      // Labels fan into a stable schematic constellation while each reticle remains tied to its
-      // projected physical/system point. That preserves spatial truth without producing a knot of
-      // overlapping text on compact hulls.
-      const row = Math.floor(order / 2);
-      const desiredY = (row - (rows - 1) / 2) * 52 - 10;
-      const absoluteLabelY = Math.max(edgeInset, Math.min(stageRect.height - calloutHeight - edgeInset, y + desiredY));
-      const calloutY = absoluteLabelY - (y - nodeRadius);
-      const preferLeft = x > stageRect.width / 2;
-      const desiredLabelX = preferLeft
-        ? x - nodeRadius - calloutWidth - calloutGap
-        : x + nodeRadius + calloutGap;
-      const absoluteLabelX = Math.max(edgeInset,
-        Math.min(stageRect.width - calloutWidth - edgeInset, desiredLabelX));
-      const calloutX = absoluteLabelX - (x - nodeRadius);
-      const calloutLeft = absoluteLabelX + calloutWidth / 2 < x;
-      node.classList.toggle('is-callout-left', calloutLeft);
+      node.style.zIndex = String(zIndex);
+      node.classList.toggle('is-callout-left', isLeft);
       node.style.setProperty('--callout-x', `${calloutX}px`);
       node.style.setProperty('--callout-y', `${calloutY}px`);
+
+      const leaderPath = node.querySelector('.sx-hardpoint__leader path');
+      if (leaderPath) {
+        leaderPath.setAttribute('d', leaderD);
+      }
+
       if (index === selectedSlot) {
-        const cx = stageRect.width / 2;
-        const cy = stageRect.height / 2;
         const dx = x - cx;
         const dy = y - cy;
         if (focusLine) {
@@ -1322,6 +1494,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
       }
     });
+
     const scars = [...scarfieldEl.querySelectorAll('[data-scar-id]')];
     scars.forEach((node, order) => {
       const scarId = node.getAttribute('data-scar-id');
