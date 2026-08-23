@@ -140,9 +140,17 @@ const INK = Object.freeze({
 });
 
 // Canvas type trio — mirrors the DOM fascia (self-hosted in styles/fonts.css, loaded at boot).
-const FONT_MONO = (weight, px) => `${weight} ${px}px "IBM Plex Mono", ui-monospace, monospace`;
-const FONT_UI = (weight, px) => `${weight} ${px}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
-const FONT_DISPLAY = (weight, px) => `${weight} ${px}px "Saira SemiCondensed", "IBM Plex Sans", system-ui, sans-serif`;
+// Canvas text is text, and INSTRUMENT_GRAMMAR §3 is binding: "12 px is the floor. Nothing renders
+// below it, ever." The chart was asking these helpers for 8, 8.5, 9, 10 and 11 px across 29 call
+// sites — genuinely unreadable sub-labels on the survey table. Clamping HERE rather than at the call
+// sites covers all 29 at once, including the ones that compute a size from a ternary, and it cannot
+// be bypassed by a new call site later. The context is only ever scaled by devicePixelRatio
+// (setTransform(dpr,0,0,dpr,0,0)), so these numbers are CSS pixels on screen and the clamp is exact.
+const TYPE_FLOOR_PX = 12;
+const floorPx = (px) => Math.max(TYPE_FLOOR_PX, Number.isFinite(px) ? px : TYPE_FLOOR_PX);
+const FONT_MONO = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Mono", ui-monospace, monospace`;
+const FONT_UI = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
+const FONT_DISPLAY = (weight, px) => `${weight} ${floorPx(px)}px "Saira SemiCondensed", "IBM Plex Sans", system-ui, sans-serif`;
 
 /** Stable 0..1 hash for cosmetic phase offsets (deterministic, never fed into sim). */
 function cosmeticHash01(text) {
