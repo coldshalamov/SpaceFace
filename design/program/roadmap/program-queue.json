@@ -8473,7 +8473,7 @@
       "priority": 372,
       "title": "Orbit fields, Cryo Lock, and reaction play (Phase 6)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.04"
       ],
@@ -8491,7 +8491,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "implemented 2026-08-23: orbit fields + Cryo Lock + Thermal Shock KERNEL. Active positioning enforced (an ignored orbit is inert, not an aura); Cryo Lock COPIES velocity so momentum is preserved and only control authority drops to 0.35, never zero; nodes bounded by the shared lineage budget (5 each of 12) and capped at 8; placement and contact order deterministic. Mutation-tested. OWED: live helm does not read the control scale, Cryo Lock is not in the status catalog, no Cryo Gyro Rack / Lab / VFX / thermal pocket. NOT integrated: no receipt."
+      ],
       "brief": "Orbit field node kernel (CRU-039), Cryo Lock status (CRU-040), Thermal Shock reaction (CRU-041), Cryo Gyro Rack prototype (CRU-042), Lab controls and perf metrics, one thermal pocket."
     },
     {
