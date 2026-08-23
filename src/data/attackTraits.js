@@ -13,7 +13,7 @@ export const ATTACK_TRAIT_TIERS = Object.freeze([
 ]);
 
 export const ATTACK_TRAIT_FAMILIES = Object.freeze([
-  'volley', 'ricochet', 'chain', 'propagation', 'trajectory', 'payload', 'physics', 'resource',
+  'volley', 'ricochet', 'chain', 'propagation', 'trajectory', 'payload', 'physics', 'resource', 'orbit',
 ]);
 
 export const ATTACK_STACK_MODES = Object.freeze(['add', 'mul', 'set']);
@@ -33,6 +33,10 @@ export const ATTACK_STACK_TARGETS = Object.freeze([
   'propagation.chain.count',
   'propagation.chain.range',
   'propagation.chain.requireBounce',
+  'propagation.orbit.count',
+  'propagation.orbit.radius',
+  'propagation.orbit.effectRadius',
+  'propagation.orbit.periodTicks',
   'costs.payloadScale',
   'costs.heatScale',
   'costs.tetherAnchorPayloadScale',
@@ -430,6 +434,65 @@ export const ATTACK_TRAITS = freezeDeep([
     text: {
       summary: 'Chains only hop to Ionized targets.',
       detail: 'Connects the existing Ionized status to chain propagation. Does not grant hops; Relay Arc or Bank Relay still author the chain budget.',
+    },
+  },
+  {
+    id: 'mod_cryo_payload',
+    schemaVersion: 1,
+    name: 'Cryo Payload',
+    tier: 'foundation',
+    family: 'payload',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'mul', target: 'costs.payloadScale', perRank: 1 },
+    ],
+    payload: [
+      { kind: 'status', statusId: 'status_cryo_lock', stacks: 1 },
+    ],
+    inheritance: inheritBlock(true, true, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Compatible hits apply Cryo Lock.',
+      detail: 'Cryo Lock preserves translational momentum and reduces control authority. It is never a hard stop.',
+    },
+  },
+  {
+    id: 'mod_cryo_gyros',
+    schemaVersion: 1,
+    name: 'Cryo Gyros',
+    tier: 'foundation',
+    family: 'orbit',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'add', target: 'propagation.orbit.count', perRank: 2 },
+      { mode: 'set', target: 'propagation.orbit.radius', perRank: 48 },
+      { mode: 'set', target: 'propagation.orbit.effectRadius', perRank: 14 },
+      { mode: 'set', target: 'propagation.orbit.periodTicks', perRank: 90 },
+      { mode: 'mul', target: 'costs.heatScale', perRank: 1.25 },
+    ],
+    inheritance: inheritBlock(true, false, false),
+    cost: { procBudgetPerOrbitNode: 5 },
+    triggers: [
+      {
+        event: 'fire',
+        action: 'spawn_orbit_node',
+        inherit: inheritBlock(true, false, false),
+      },
+    ],
+    text: {
+      summary: 'Deploy two orbiting field nodes that apply Cryo Lock on a presented close pass.',
+      detail: 'Each node spends five lineage procs. The ring does nothing while you sit still; you have to fly a node onto the target. Weak outward impulse is a field, not a colliding body.',
     },
   },
 ]);
