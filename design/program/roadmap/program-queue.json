@@ -8432,7 +8432,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "partial 2026-08-23 (c1629d1b): the KERNEL half landed - authoritative physics-owned surface-contact receipt, material response, reflection continuation on the same body, and Bank Shot + Smart Bank compiled traits (3 stable digests, deterministic bounce, bounce spends the shared lineage proc budget). STILL OPEN for this leaf: greybox Foundry arena, ten wave recipes, Mirrorjaw Foreman boss, causal VFX/audio, and route + perf acceptance - all of which need art and the GPU lane. State deliberately left `ready` because the leaf is not done."
+      ],
       "brief": "Physics surface-contact receipt with point/normal/material/velocity (CRU-025), ricochet continuation through physics with bounded energy and enemy asymmetry (CRU-026), Smart Bank (CRU-027), Foundry greybox geometry/plates/furnace/gates/camera (CRU-028), moving shutters + loose reflective plate (CRU-029), ten Foundry wave recipes (CRU-030), Mirrorjaw Foreman boss (CRU-031), causal VFX/audio hooks, route + performance acceptance."
     },
     {
