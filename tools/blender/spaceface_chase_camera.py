@@ -4,7 +4,8 @@ The game is a tilted top-down chase, not a hero studio. Hornet spent a long
 loop modeling seats and cabin kits that only existed in `bay_interior` crops.
 Those cameras are illegal as cycle stills.
 
-Matches live `src/render/camera.js` + ARCHITECTURE §0.14 pose:
+Matches live `src/render/camera.js` + ARCHITECTURE §0.14 pose (three.js +Y up, transcribed to
+Blender +Z up - see chase_offset):
 
 - vertical FOV 50°
 - tilt 60° from horizontal
@@ -38,14 +39,27 @@ PLAY_CHASE_CLOSE_WIDTH_FRAC = (0.20, 0.42)
 
 
 def chase_offset(distance=DISTANCE_DEFAULT, heading_deg=0.0):
-    """World-space camera offset. heading_deg 0 matches the live controller."""
+    """World-space camera offset. heading_deg 0 matches the live controller.
+
+    Axis mapping matters. The live controller (src/render/camera.js:647) offsets the camera in
+    three.js axes, where +Y is UP: (0, D*sin60, -D*cos60) - mostly above the ship, slightly
+    behind, looking down at the dorsal side. Whole-ship GLBs are exported Blender Z-up ->
+    glTF Y-up (Blender +Z dorsal becomes glTF/game +Y up), so the same pose in this scene's
+    Blender axes is: x = game x, y = -game z, z = game y:
+
+        (horiz*sin h, horiz*cos h, D*sin tilt)
+
+    Writing the game formula verbatim in Blender axes put the camera below the keel, and every
+    cycle still through C151 photographed the belly mirrored - which is why no canopy or wing
+    planform could ever read while keel hardware dominated the silhouette.
+    """
     tilt = math.radians(TILT_DEG)
     heading = math.radians(heading_deg)
     horiz = distance * math.cos(tilt)
     return (
         horiz * math.sin(heading),
+        horiz * math.cos(heading),
         distance * math.sin(tilt),
-        -horiz * math.cos(heading),
     )
 
 

@@ -138,7 +138,7 @@ def setup_studio(focus, light_scale):
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
-        data.energy = energy * light_scale * light_scale
+        data.energy = energy * light_scale
         data.color = color
         data.size = size * light_scale
         lamp = bpy.data.objects.new(name, data)
@@ -205,10 +205,14 @@ def main():
     camera = setup_studio(tuple(center), light_scale)
     written = render_cycle_chase_stills(camera, out, focus=tuple(center))
     clay_path = None
+    clay_close = None
     if args.clay:
         backups = apply_clay(clay_meshes(meshes))
         clay_path = render_chase_still(
             camera, out / "clay_play_chase.png", distance=DISTANCE_DEFAULT, heading_deg=0.0, focus=tuple(center)
+        )
+        clay_close = render_chase_still(
+            camera, out / "clay_play_chase_close.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=tuple(center)
         )
         restore_mats(meshes, backups)
     report = {
@@ -232,6 +236,7 @@ def main():
         "triangles": sum(len(obj.data.polygons) for obj in meshes),
         "stills": {name: str(path) for name, path in written.items()},
         "clay": str(clay_path) if clay_path else None,
+        "clayClose": str(clay_close) if clay_close else None,
     }
     (out / "chase_report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report))
