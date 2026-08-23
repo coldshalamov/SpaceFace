@@ -26,6 +26,7 @@
 // is a no-op below saturation and only membership changes at saturation.
 
 import { CRITICAL_SLICE_EVENT_IDS } from './cueSchema.js';
+import { deriveVfxAdmissionMetadata } from './vfxAdmissionPriority.js';
 
 /**
  * Maximum cues that may claim each lane within one simulation tick. Totals are identical to the
@@ -125,6 +126,70 @@ export function chargeCueLanes(lanes, laneCounts) {
 }
 
 /**
+ * Structural-fx cue kind. This is NOT a new presentation recipe and does not charge lane budgets —
+ * kill / hard-collision / bank-shot receipts request the arcade pool through the same admission
+ * metadata every other VFX already uses (`deriveVfxAdmissionMetadata`).
+ */
+export const STRUCTURAL_FX_CUE_KIND = 'vfx.arcade_structural';
+
+export const STRUCTURAL_FX_FAMILIES = Object.freeze({
+  kill: 'kill',
+  collision: 'collision',
+  bank: 'bank',
+});
+
+function hasBankFlag(payload) {
+  if (!payload || typeof payload !== 'object') return false;
+  if (payload.bank === true || payload.ricochet === true || payload.bounce === true) return true;
+  const cause = payload.cause;
+  return cause === 'bank' || cause === 'ricochet' || cause === 'deflect';
+}
+
+/** Classify a domain or presentation receipt into a structural family, or null. */
+export function structuralFxFamilyFromReceipt(eventName, payload) {
+  const name = typeof eventName === 'string' ? eventName : '';
+  if (name === 'entity:killed') return STRUCTURAL_FX_FAMILIES.kill;
+  if (name === 'combat:collisionConsequence') {
+    return payload && payload.control === 'tumble' ? STRUCTURAL_FX_FAMILIES.collision : null;
+  }
+  if (name === 'projectile:bank' || name === 'projectile:ricochet' || name === 'combat:bankShot') {
+    return STRUCTURAL_FX_FAMILIES.bank;
+  }
+  if (name === 'projectile:hit' && hasBankFlag(payload)) return STRUCTURAL_FX_FAMILIES.bank;
+  if (payload && (payload.lane === STRUCTURAL_FX_CUE_KIND || payload.kind === STRUCTURAL_FX_CUE_KIND)) {
+    const family = payload.family || payload.cause;
+    if (family === STRUCTURAL_FX_FAMILIES.kill
+      || family === STRUCTURAL_FX_FAMILIES.collision
+      || family === STRUCTURAL_FX_FAMILIES.bank) return family;
+  }
+  return null;
+}
+
+/**
+ * Admit a structural-fx request. Returns null when the receipt is not a structural family.
+ * Priority is `deriveVfxAdmissionMetadata` — this does not mint a recipe or charge lane slots.
+ */
+export function admitStructuralFxCue(eventName, payload, state) {
+  const family = structuralFxFamilyFromReceipt(eventName, payload);
+  if (!family) return null;
+  const admission = deriveVfxAdmissionMetadata(payload || {}, state);
+  return {
+    kind: STRUCTURAL_FX_CUE_KIND,
+    family,
+    admissionPriority: admission.admissionPriority,
+    importance: admission.importance,
+    playerRelevance: admission.playerRelevance,
+    proximity: admission.proximity,
+    severity: admission.severity,
+    targetRelevance: admission.targetRelevance,
+    playerCaused: admission.playerCaused,
+    currentTarget: admission.currentTarget,
+    sourceId: admission.sourceId,
+    targetId: admission.targetId,
+  };
+}
+
+/**
  * The packet's required budget declaration, as data so tests can assert it rather than trusting
  * prose. Instance/pool figures name the module that actually enforces them — this leaf declares the
  * contract and does not re-implement pooling that already exists.
@@ -150,7 +215,15 @@ export const CUE_BUDGET_DECLARATION = Object.freeze({
     projectileAndImpactSprites: 'src/render/combat/instancedSpritePool.js',
     beams: 'src/render/combat/persistentBeams.js',
     destructionPhases: 'src/render/combat/phasedExplosions.js',
+    arcadeStructuralFx: 'src/render/combat/arcadeStructuralFx.js',
     worldSiteFixtures: 'src/render/worldSitePresentation.js (<=12 fixtures, <=12 animations per stage)',
+  }),
+  structuralFx: Object.freeze({
+    kind: STRUCTURAL_FX_CUE_KIND,
+    families: STRUCTURAL_FX_FAMILIES,
+    pool: 'src/render/combat/arcadeStructuralFx.js',
+    admission: 'deriveVfxAdmissionMetadata',
+    laneBudgetsCharged: false,
   }),
   allocation: Object.freeze({
     hotPathAllocation: false,

@@ -475,6 +475,35 @@ export class ArcadeStructuralFx {
     return [this.group];
   }
 
+  stats() {
+    return {
+      blades: {
+        highWater: this.blades.highWater,
+        live: this.blades.live,
+        capacity: this.blades.capacity,
+        spawned: this.blades.spawned,
+        evicted: this.blades.evicted,
+        rejected: this.blades.rejected,
+      },
+      arcs: {
+        highWater: this.arcs.highWater,
+        live: this.arcs.live,
+        capacity: this.arcs.capacity,
+        spawned: this.arcs.spawned,
+        evicted: this.arcs.evicted,
+        rejected: this.arcs.rejected,
+      },
+      shards: {
+        highWater: this.shards.highWater,
+        live: this.shards.live,
+        capacity: this.shards.capacity,
+        spawned: this.shards.spawned,
+        evicted: this.shards.evicted,
+        rejected: this.shards.rejected,
+      },
+    };
+  }
+
   inspect() {
     return {
       schema: 'spaceface.arcadeStructuralFx.v1',
@@ -488,12 +517,26 @@ export class ArcadeStructuralFx {
         arcs: this.arcs.highWater,
         shards: this.shards.highWater,
       },
+      stats: this.stats(),
       pools: {
         blades: this.blades.inspect(),
         arcs: this.arcs.inspect(),
         shards: this.shards.inspect(),
       },
     };
+  }
+
+  contextLossResources() {
+    return [
+      this.group,
+      this.blades.mesh, this.blades.mesh.geometry, this.blades.mesh.material,
+      this.arcs.mesh, this.arcs.mesh.geometry, this.arcs.mesh.material,
+      this.shards.mesh, this.shards.mesh.geometry, this.shards.mesh.material,
+    ];
+  }
+
+  handleContextLost() {
+    this.dispose();
   }
 
   dispose() {

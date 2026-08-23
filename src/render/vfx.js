@@ -179,6 +179,10 @@ import {
   deriveVfxAdmissionMetadata,
   normalizeVfxAdmissionPriority,
 } from '../presentation/vfxAdmissionPriority.js';
+import {
+  admitStructuralFxCue,
+  STRUCTURAL_FX_CUE_KIND,
+} from '../presentation/cueArbitration.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
@@ -1075,6 +1079,7 @@ export const vfx = {
     this._weaponPresenter = null;
     if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
     this._combatBeams = null;
+    this._unbindArcadeContextLoss();
     if (this._arcadeStructural?.dispose) this._arcadeStructural.dispose();
     this._arcadeStructural = null;
   },
@@ -1277,6 +1282,7 @@ export const vfx = {
         }
         : null,
       arcadeStructuralFx: this._arcadeStructural ? this._arcadeStructural.inspect() : null,
+      arcadeStructuralFxStats: this._arcadeStructural ? this._arcadeStructural.stats() : null,
     };
   },
 
@@ -1655,6 +1661,9 @@ export const vfx = {
     add('combat:fire', (p) => this._onFire(p));
     add('combat:beamStop', (p) => this._onBeamStop(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
+    add('projectile:bank', (p) => this._onArcadeBankShot(p, 'projectile:bank'));
+    add('projectile:ricochet', (p) => this._onArcadeBankShot(p, 'projectile:ricochet'));
+    add('combat:bankShot', (p) => this._onArcadeBankShot(p, 'combat:bankShot'));
     add('combat:damage', (p) => this._onDamage(p));
     add('physics:impact', (p) => this._onPhysicsImpact(p));
     add('collision', (p) => this._onCollision(p));
@@ -2521,6 +2530,37 @@ export const vfx = {
   _initArcadeStructural() {
     if (!this._scene || this._arcadeStructural) return;
     this._arcadeStructural = new ArcadeStructuralFx(this._scene);
+    this._bindArcadeContextLoss();
+  },
+
+  _arcadeContextLossCanvas() {
+    const renderer = this.state && this.state.render && this.state.render.renderer;
+    return renderer && renderer.domElement || null;
+  },
+
+  _bindArcadeContextLoss() {
+    const canvas = this._arcadeContextLossCanvas();
+    if (!canvas || typeof canvas.addEventListener !== 'function') return;
+    if (this._arcadeContextLostHandler) return;
+    this._arcadeContextLostHandler = () => this._onArcadeWebGlContextLost();
+    canvas.addEventListener('webglcontextlost', this._arcadeContextLostHandler);
+  },
+
+  _unbindArcadeContextLoss() {
+    const canvas = this._arcadeContextLossCanvas();
+    if (canvas && this._arcadeContextLostHandler && typeof canvas.removeEventListener === 'function') {
+      canvas.removeEventListener('webglcontextlost', this._arcadeContextLostHandler);
+    }
+    this._arcadeContextLostHandler = null;
+  },
+
+  _onArcadeWebGlContextLost() {
+    if (this._arcadeStructural && typeof this._arcadeStructural.handleContextLost === 'function') {
+      this._arcadeStructural.handleContextLost();
+    } else if (this._arcadeStructural && typeof this._arcadeStructural.dispose === 'function') {
+      this._arcadeStructural.dispose();
+    }
+    this._arcadeStructural = null;
   },
 
   _initWeaponPresenter() {
@@ -2706,6 +2746,9 @@ export const vfx = {
     if (!this._scene) return;
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
+    if (this.state && admitStructuralFxCue('projectile:hit', p, this.state)) {
+      this._onArcadeBankShot(p, 'projectile:hit');
+    }
     const tgt = this._ent(p.targetId);
     const fid = (tgt && tgt.factionId) || null;
     const hitShield = tgt && tgt.shield > 0;
@@ -3173,6 +3216,10 @@ export const vfx = {
 
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
+    if (p.lane === STRUCTURAL_FX_CUE_KIND || p.kind === STRUCTURAL_FX_CUE_KIND) {
+      this._onArcadeStructuralPresentationCue(p);
+      return;
+    }
     // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
     // audio/contracts, but do not fan it back into the generic presentation particle family.
     if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
@@ -3845,15 +3892,85 @@ export const vfx = {
     req.magnitude = 1;
     req.dv = 0;
     req.terrain = 0;
-    this._spawnArcadeStructuralBurst(req);
+    this._admitAndSpawnArcadeStructural('entity:killed', p || {});
     return !!entry;
   },
 
-  // PQ-134.01 third causal family is a projectile bank / ricochet.
-  // No bank, ricochet, or deflect event exists at ce340812 under src/combat/ or src/systems/.
-  // Future combat owner: emit a real domain receipt, then call _spawnArcadeStructuralBurst
-  // with cause: 'bank' and a lower blade count. Do not synthesise that event in the renderer.
+  _admitAndSpawnArcadeStructural(eventName, payload) {
+    const admitted = admitStructuralFxCue(eventName, payload || {}, this.state);
+    if (!admitted) return false;
+    const req = _arcadeStructuralBurstReq;
+    req.priority = admitted.admissionPriority;
+    req.cause = admitted.family;
+    return this._spawnArcadeStructuralBurst(req);
+  },
+
+  _onArcadeBankShot(p, eventName) {
+    if (!this._scene || !p) return false;
+    const pos = this._posFrom(p, p.targetId ?? p.id);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    const approach = p.approach || p.direction || p.dir || null;
+    const req = _arcadeStructuralBurstReq;
+    req.x = pos.x;
+    req.z = pos.z;
+    req.y = Number.isFinite(pos.y) ? pos.y : NaN;
+    req.classId = 'ordinary';
+    req.radius = Math.max(2, Number(p.radius) || 4);
+    if (approach && Number.isFinite(approach.x) && Number.isFinite(approach.z)) {
+      req.dirX = approach.x;
+      req.dirZ = approach.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = 0;
+      req.dirZ = 0;
+      req.hasDir = 0;
+    }
+    req.velX = 0;
+    req.velY = 0;
+    req.velZ = 0;
+    req.victimId = p.targetId ?? p.id;
+    req.axisAngle = 0;
+    req.magnitude = Math.max(0.6, Number(p.magnitude) || 1);
+    req.dv = 0;
+    req.terrain = 0;
+    return this._admitAndSpawnArcadeStructural(eventName, p);
+  },
+
+  _onArcadeStructuralPresentationCue(p) {
+    const pos = (p && p.position) || this._posFrom(p, p && (p.targetId ?? p.sourceId));
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+    const direction = p.direction || null;
+    const req = _arcadeStructuralBurstReq;
+    req.x = pos.x;
+    req.z = pos.z;
+    req.y = Number.isFinite(pos.y) ? pos.y : NaN;
+    req.classId = 'ordinary';
+    req.radius = Math.max(2, Number(p.radius) || Number(p.magnitude) || 4);
+    if (direction && Number.isFinite(direction.x) && Number.isFinite(direction.z)) {
+      req.dirX = direction.x;
+      req.dirZ = direction.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = 0;
+      req.dirZ = 0;
+      req.hasDir = 0;
+    }
+    req.velX = 0;
+    req.velY = 0;
+    req.velZ = 0;
+    req.victimId = p.targetId ?? p.sourceId ?? p.id;
+    req.axisAngle = 0;
+    req.magnitude = Math.max(0.6, Number(p.magnitude) || 1);
+    req.dv = 0;
+    req.terrain = 0;
+    return this._admitAndSpawnArcadeStructural('presentation:vfxCue', p);
+  },
+
+  // Kill, hard-collision, and bank-shot receipts request blades/arcs/shards through
+  // admitStructuralFxCue (deriveVfxAdmissionMetadata). Combat owns the bank receipt; the
+  // renderer never invents a bounce from an ordinary projectile:hit.
   _spawnArcadeStructuralBurst(req) {
+    this._initArcadeStructural();
     if (!this._arcadeStructural || !req) return false;
     if (this.state?.render?.openingGraphPublicationFrozen === true) return false;
     const x = req.x;
@@ -3876,7 +3993,9 @@ export const vfx = {
     const serial = (this._arcadeStructuralSerial | 0) + 1;
     this._arcadeStructuralSerial = serial;
     const mixed = (mixArcadeVictimId(req.victimId) ^ Math.imul(serial, 0x85ebca6b)) | 0;
-    const phase = req.cause === 'collision' ? 'collision-shear' : 'breakup';
+    const collision = req.cause === 'collision';
+    const bank = req.cause === 'bank';
+    const phase = collision ? 'collision-shear' : (bank ? 'kinetic-tear' : 'breakup');
     const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
     const lx = local.x;
     const lz = local.z;
@@ -3884,7 +4003,6 @@ export const vfx = {
     const priority = normalizeVfxAdmissionPriority(req.priority);
     const radius = Math.max(2, Number(req.radius) || 6);
     const capital = req.classId === 'capital';
-    const collision = req.cause === 'collision';
     const lifeScale = reduced ? 0.62 : 1;
     const tvx = Number.isFinite(req.velX) ? req.velX : 0;
     const tvy = Number.isFinite(req.velY) ? req.velY : 0;
@@ -3909,6 +4027,10 @@ export const vfx = {
       if (reduced) shardCount = Math.max(2, Math.round(shardCount * 0.5));
       else shardCount = Math.max(4, Math.min(10, shardCount));
       if (shardCount & 1) shardCount += 1;
+    } else if (bank) {
+      bladeCount = reduced ? 2 : 4;
+      arcCount = reduced ? 1 : 2;
+      shardCount = reduced ? 2 : 4;
     } else {
       bladeCount = capital ? (reduced ? 7 : 12) : (reduced ? 5 : 8);
       arcCount = capital ? (reduced ? 2 : 3) : (reduced ? 1 : 2);
@@ -3920,12 +4042,13 @@ export const vfx = {
 
     const spec = _arcadeStructuralSpawnSpec;
     const terrain = req.terrain === 1;
-    const bladeColor = collision ? (terrain ? 0xffe9c4 : 0xdfefff) : 0xfff4e2;
-    const bladeEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff6a28;
-    const arcColor = collision ? (terrain ? 0xf0d0a0 : 0xd4e6f5) : 0xffffff;
-    const arcEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xffa83c;
-    const shardColor = collision ? (terrain ? 0xffe1b2 : 0xdfefff) : 0xffe1b2;
-    const shardEnd = collision ? (terrain ? 0x8a6a52 : 0x8a6a52) : 0x8a341e;
+    const glancing = collision || bank;
+    const bladeColor = glancing ? (terrain ? 0xffe9c4 : 0xdfefff) : 0xfff4e2;
+    const bladeEnd = glancing ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff6a28;
+    const arcColor = glancing ? (terrain ? 0xf0d0a0 : 0xd4e6f5) : 0xffffff;
+    const arcEnd = glancing ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xffa83c;
+    const shardColor = glancing ? (terrain ? 0xffe1b2 : 0xdfefff) : 0xffe1b2;
+    const shardEnd = glancing ? (terrain ? 0x8a6a52 : 0x8a6a52) : 0x8a341e;
     let spawned = 0;
 
     for (let k = 0; k < bladeCount; k++) {
@@ -7679,30 +7802,25 @@ export const vfx = {
       this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
         2.6 * magnitude, 9, 120 + dv * 3);
     }
-    if (hard) {
-      const admission = deriveVfxAdmissionMetadata(p, this.state);
-      const victim = this._ent(p.targetId);
-      const req = _arcadeStructuralBurstReq;
-      req.x = pos.x;
-      req.z = pos.z;
-      req.y = NaN;
-      req.classId = 'ordinary';
-      req.radius = Math.max(2, Number(victim && victim.radius) || 6);
-      req.dirX = axisX;
-      req.dirZ = axisZ;
-      req.hasDir = 0;
-      req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
-      req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
-      req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
-      req.priority = admission.admissionPriority;
-      req.cause = 'collision';
-      req.victimId = p.targetId;
-      req.axisAngle = axisAngle;
-      req.magnitude = magnitude;
-      req.dv = dv;
-      req.terrain = terrain ? 1 : 0;
-      this._spawnArcadeStructuralBurst(req);
-    }
+    const victim = this._ent(p.targetId);
+    const req = _arcadeStructuralBurstReq;
+    req.x = pos.x;
+    req.z = pos.z;
+    req.y = NaN;
+    req.classId = 'ordinary';
+    req.radius = Math.max(2, Number(victim && victim.radius) || 6);
+    req.dirX = axisX;
+    req.dirZ = axisZ;
+    req.hasDir = 0;
+    req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
+    req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
+    req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
+    req.victimId = p.targetId;
+    req.axisAngle = axisAngle;
+    req.magnitude = magnitude;
+    req.dv = dv;
+    req.terrain = terrain ? 1 : 0;
+    this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
     return true;
   },
 
@@ -9378,6 +9496,7 @@ export const vfx = {
     const cam = this.state && this.state.render && this.state.render.camera;
     const viewportH = this.state && this.state.render && this.state.render.viewport
       && this.state.render.viewport.height || 1000;
+    this._initArcadeStructural();
     if (this._arcadeStructural) {
       this._arcadeStructural.update(dt, cam, viewportH);
     }
