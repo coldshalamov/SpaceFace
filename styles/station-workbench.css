@@ -943,7 +943,10 @@ button.sx-fab-in { cursor:pointer; }
 
 /* FACTIONS — one consequence field. Standing and identity float in the same
    projection as the relationship web instead of occupying two dashboard cards. */
-.sx-fac { grid-template-rows:76px minmax(0,1fr) 100px; gap:2px; }
+/* Row 3 was a hardcoded 100px carrying 136.8px of ladder — the standing scale lost its
+   bottom row and its caption to a magic number. It sizes to its content now; the relation
+   field above is the 1fr and absorbs the difference. */
+.sx-fac { grid-template-rows:76px minmax(0,1fr) auto; gap:2px; }
 .sx-fac-overview { position:relative; display:block; }
 .sx-fac-network {
   position:absolute; inset:0 0 0 300px;
@@ -2573,3 +2576,25 @@ html.sf-reduce-motion .sx-sw-bar__fill { transition: none; }
     color: CanvasText;
   }
 }
+
+/* ======================== FOOTER RESERVE =========================================
+   .sx-comms is position:fixed, so it takes up no space in any layout. Nothing
+   accounted for that band, and the consequence was worse than an overlap: .sx-app
+   clips (overflow-y:hidden), so content that ran past the fold was DESTROYED rather
+   than scrollable. Measured live at 1440x900, three of six tabs lost real content
+   off the bottom — the Factions standing ladder by 22.8px, the Bar's "Open Mission
+   Log" button by 23.9px, the Shipworks verb bar by 11.9px — and on Factions the
+   ladder and the NEXT MOVE caption were rendered underneath the badge.
+
+   Two tabs colliding with the same shell widget is a shell fault, not a tab fault,
+   so the reserve lives on the shell. Grid items that legitimately outgrow their
+   track now scroll inside themselves instead of spilling into the clip. */
+.sx-app { --sx-footer-reserve:58px; }
+.sx-app .sx-screen__body {
+  padding-bottom:var(--sx-footer-reserve);
+  scroll-padding-bottom:var(--sx-footer-reserve);
+}
+/* min-height:0 lets these tracks size below their content; without a scroller the
+   overflow escapes the box and is then clipped away by .sx-app. */
+.sx-app .sx-fac__detail,
+.sx-app .sx-bar__detail { overflow-y:auto; }
