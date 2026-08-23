@@ -160,10 +160,24 @@ concrete reason and date rather than a shrug.
 
 Up from **88 / 25** at the start of the session. Two of that original 25 (`New`, `production`) were
 parse artifacts of the hand-rolled expansion — `check-all.mjs` splits the chain correctly and does
-not reproduce them — so the real movement is **five checks closed**:
+not reproduce them — so the real movement is **four checks closed**:
 
 `check:market-first-loop` · `check:controls-discoverability` · `check:first-dock-handoff` ·
-`check:contracts` · `check:bundle`
+`check:contracts`
+
+**`check:bundle` was wrongly listed as a fifth and is corrected here.** Re-run directly it exits 1,
+and the reason is the machine rather than the code: `ENOSPC: no space left on device` while copying
+assets into `build/web.__building`. **The disk is 100% full — 613 MB free of 944 GB**, with
+`.devshots/` alone holding **6.5 GB** of gitignored capture artifacts (`perf` 2.6 G,
+`pq017-world-site` 993 M, `station-polish` 410 M …). It passed earlier in the same session and failed
+later, which is what a filling disk looks like.
+
+Worth recording how the bad claim arose, because it is a reusable trap: the hand-rolled expansion
+grepped the first line matching `/error|assert|fail/i` out of each step's output, and a `node --test`
+summary contains the literal line `ℹ fail 0`. So passing runs were captured with a "first error" that
+was actually a **pass** line — `check:bundle`, `check:perf-packets` and `check:depth-program:contracts`
+all show that shape in `suite-truth.txt`. `check-all.mjs` reports on the **exit code** and does not
+have this problem; the hand-rolled predecessor did.
 
 The remaining 18 run and report every time now, which is the point: a failure list is a thing you can
 work through, and the first casualty of a `&&` chain is not.
@@ -180,3 +194,29 @@ work through, and the first casualty of a `&&` chain is not.
 | `atlas` · `art` · `perf-packets` | assets, export, packaging |
 
 None is in this session's diff.
+
+---
+
+## 9. The queue is stale in BOTH directions
+
+Recorded here because the queue is the instrument the next agent uses to choose work, and it is
+currently wrong in the two ways that waste the most time.
+
+**Marked done, was broken.** `PQ-007` ("Restore auto-target and direct draw-to-fly control") carried
+state `integrated` with a route-acceptance receipt, while the feature was 50–64 WU off the player's
+drawn line on every curve. Its acceptance measured nothing about the geometry — the fixture asserted
+that *some* command was emitted on a two-point straight line. Repaired this session; an addendum on
+`PQ-007-route-acceptance-REPORT.md` records what the acceptance missed and why.
+
+**Marked open, is built.** `PQ-133.01` (Combat Lab extension) and `PQ-133.02` (Ten-wave shell) both
+read `ready`, while `npm run check:crucible:route` passes **13/13** — draft, results with an
+accountable death line, and same-seed restart all working — against eight `survival*` modules and a
+`survivalWaves` data set that exist on master.
+
+Their states are **left alone deliberately**. `.02` is well evidenced by that route check; `.01`
+(Combat Lab) was not separately verified here, and flipping a queue state on partial evidence is the
+same failure as the hollow acceptance directly above it. The discrepancy is recorded instead, so the
+next agent checks before either implementing what exists or trusting what does not.
+
+**The general rule this session kept re-learning:** a state, a check name, or a receipt is only as
+true as the weakest assertion behind it. Run the unit's own declared checks before believing its row.

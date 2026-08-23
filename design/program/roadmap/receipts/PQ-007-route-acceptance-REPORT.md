@@ -78,3 +78,35 @@ This is keyboard/pointer functional route acceptance, not a performance, GPU, ph
 art-quality, or broad accessibility verdict. No physical controller was present or claimed. The
 independent Electron result proves native-host parity for the exact keyboard/pointer semantics
 owned by this dispatch unit.
+
+---
+
+## Addendum 2026-08-23 — this acceptance was hollow, and is now repaired
+
+**The queue carried PQ-007 as `integrated` while the feature it names did not work.** The owner's
+report was that the ship "wobbles around the line and never goes where the line goes", and measured
+against the real propulsion kernel that was exactly right: the shipped controller sat **50–64 world
+units from the drawn stroke on every curved stroke, with excursions to 409 WU**. The chase camera
+shows roughly 93–125 WU of depth, so the hull was leaving the player's line by more than half a
+screen, every time.
+
+The route acceptance above did not catch it because nothing in it measured the geometry. The shipped
+fixture asserted that **some** flight command was produced on a **two-point straight line** — which
+passes for any controller that emits anything at all, including one flying in a circle.
+
+Repaired in `4a2b0aeb` (rebuild) and `a9fc5ebf` (four defects an independent adversarial review then
+found in the rebuild). The follower now resamples to uniform arc length, projects onto the path in a
+windowed forward search for signed cross-track error, governs speed by the curvature ahead using the
+propulsion catalog's real thrust authority, and commands a **velocity error** rather than a bearing.
+
+  gentle S 49.75 → 0.96 · switchback 62.70 → 1.84 · loop 63.53 → 0.35 · hairpin 56.94 → 0.16 (median WU)
+
+`check:draw-to-fly` (20 assertions) replaces the fixture: six stroke shapes plus two displaced-hull
+cases flown through the real kernel, measuring cross-track magnitude AND line-crossing density AND
+ordered coverage AND settling. Negative-tested — reverting the cross-track term, the speed governor,
+the bearing-vs-velocity command, the search window, the resample spacing, or the arrival rule each
+turns it red.
+
+**The lesson for this receipt's readers:** `integrated` in the queue meant the packet's own checks
+were green. They were green on a stand-in. State in the queue is only ever as true as the weakest
+assertion behind it.
