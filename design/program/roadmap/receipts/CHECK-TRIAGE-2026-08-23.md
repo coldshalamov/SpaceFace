@@ -111,3 +111,23 @@ after 72 commits.
 **Standing lesson, now three times confirmed:** a check that fails inside a 272-command sequential run
 should be re-run alone before anyone investigates it. Two of the twenty-one in the first run were
 load artefacts, and one of the two "new" failures here is as well.
+
+
+---
+
+## Do not run the check matrix while delegation lanes are active
+
+A run taken with four lanes working reported 16 failures, four of which were phantom — and two of
+those had passed standalone an hour earlier. Measured rather than assumed:
+
+- `check-station-tabs` asserted the Hull/Fuel/Hold meters are at least 60px wide and got 0. In a real
+  browser those tracks measure **184px**. The only track-less vital is Munitions, which the check's
+  own comment expects.
+- `check-station-egress` failed on `page.goto: Timeout 30000ms exceeded` — the page could not even
+  load inside thirty seconds.
+
+Both are the machine being saturated, not the game. The lanes also leave their in-progress edits in
+the working tree, so any runtime check is testing half-applied work.
+
+**Take the authoritative count when nothing else is running.** Everything else is a number that
+needs an asterisk, and the asterisk gets lost.
