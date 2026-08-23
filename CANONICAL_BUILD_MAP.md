@@ -1599,13 +1599,14 @@ The orphan branch `feat/arcade-vfx-foundation` (one commit, `20216c9c`) was pull
 `ce340812`: [`src/render/combat/arcadeStructuralFx.js`](./src/render/combat/arcadeStructuralFx.js) — a
 pooled, instanced structural-FX primitive set (**blades** 128, **broken arcs** 48, **shards** 64) with
 priority-aware slot admission, no camera-facing sprites, no radial alpha fields, no full shock rings. It
-has **zero consumers**. `PQ-134` wires it and becomes the VFX half of Crucible's causal grammar
+had **zero consumers** when this was written and no longer does (see the leaf table). `PQ-134`
+wires it and becomes the VFX half of Crucible's causal grammar
 (`CRU-051`): family / generation / material / status must read under saturation.
 
 | Leaf | Outcome | Done when |
 |---|---|---|
 | `PQ-134.00` | File on master, lint/import green | **DONE `ce340812`** |
-| `PQ-134.01` | `ArcadeStructuralFx` mounted in the presentation adapter behind `cueArbitration`; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat | Live combat shows the primitives at the chase camera; pool high-water stays ≤ capacity; `check:ui-effects` / VFX checks green; `check:playable` green |
+| `PQ-134.01` | `ArcadeStructuralFx` mounted in the presentation adapter behind `cueArbitration`; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat | **DONE** — mounted in `src/render/vfx.js`, admitted through `admitStructuralFxCue`, and driven by four live cue paths (`entity:killed`, `combat:collisionConsequence`, the bank-shot cue, and `presentation:vfxCue`). 16 tests green across `arcade-structural-fx-mount` and `vfx-arcade-structural-fx`, with a live probe wired as `check:arcade-structural-fx` |
 | `PQ-134.02` | Causal VFX/audio grammar (`CRU-051`): direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants | Four-way capture (Crucible wave 8, Foundry boss, Adventure fight, reduced-motion) reviewed at play size |
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
