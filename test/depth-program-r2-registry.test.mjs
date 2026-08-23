@@ -192,6 +192,6 @@ test('every equippable unique is a base-family salvage-only variant with no purc
     assert.equal(wreck.uniqueDropId, equippable[0]?.id || null, `${wreck.programSlot} primary grant is its first equippable variant`);
   }
 
-  assert.equal(uniqueIds.size, 12, 'the set contains one equippable unique per wreck');
+  assert.equal(uniqueIds.size, 14, 'the set contains every reserved equippable unique exactly once');
   assert.equal(storyRewardCount, 2, 'Lost Ledger and Cassandra Treaty are durable story rewards');
 });

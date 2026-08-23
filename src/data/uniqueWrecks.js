@@ -288,7 +288,10 @@ const RAW_UNIQUE_WRECKS = [
     wreckClass: 'battlefield', sectorId: 'sector_haumea_rift', factionId: 'faction_free',
     scanLabel: 'DEEPSURVEY · REPEATING ICE-FISSURE PING',
     uniqueDropId: 'unique_deepsurvey_suite',
-    uniqueDrops: [{ id: 'unique_deepsurvey_suite', kind: 'module', baseId: 'mod_survey_suite' }],
+    uniqueDrops: [
+      { id: 'unique_deepsurvey_suite', kind: 'module', baseId: 'mod_survey_suite' },
+      { id: 'unique_cryo_shroud_sink', kind: 'module', baseId: 'mod_thermal_sink_m' },
+    ],
     bearingSourceRef: 'bar.rift_observatory.deepsurvey',
     rumorSources: [{ id: 'okars_deep_ping', sourceRef: 'bar.rift_observatory.deepsurvey', channelId: 'bar' }],
     provenance: { lossId: 'loss_deepsurvey', incidentId: 'incident_okar_third_ping', sourceRef: 'bar.rift_observatory.deepsurvey', recordType: 'survey_loss' },
@@ -312,7 +315,10 @@ const RAW_UNIQUE_WRECKS = [
     wreckClass: 'battlefield', sectorId: 'sector_io_reach', factionId: 'faction_reach',
     scanLabel: 'SMOKESONG · TRACER-FLECHETTE BATTLEFIELD WRECK',
     uniqueDropId: 'unique_smokesong_chaff',
-    uniqueDrops: [{ id: 'unique_smokesong_chaff', kind: 'module', baseId: 'mod_chaff_dispenser_m' }],
+    uniqueDrops: [
+      { id: 'unique_smokesong_chaff', kind: 'module', baseId: 'mod_chaff_dispenser_m' },
+      { id: 'unique_phantom_scrambler', kind: 'module', baseId: 'mod_sensor_scrambler_m' },
+    ],
     bearingSourceRef: 'bar.io_mercenary.smokesong',
     rumorSources: [{ id: 'tirrs_smokesong', sourceRef: 'bar.io_mercenary.smokesong', channelId: 'bar' }],
     provenance: { lossId: 'loss_smokesong', incidentId: 'incident_tirr_tracer_cloud', sourceRef: 'bar.io_mercenary.smokesong', recordType: 'battlefield_loss' },
