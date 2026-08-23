@@ -66,7 +66,7 @@
     "check:asteroid-motion": "node scripts/check-asteroid-motion.mjs",
     "check:asteroid-works-render": "node --test test/asteroid-works-render.test.mjs",
     "check:crucible:arc": "node --test test/crucible-thirty-wave-arc.test.mjs test/crucible-survival-style.test.mjs",
-    "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs",
+    "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs test/weapons-five-verified-defects.test.mjs",
     "check:all": "node scripts/check-ci-report.mjs",
     "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs",
     "check:colour-tokens": "node scripts/check-colour-tokens.mjs",

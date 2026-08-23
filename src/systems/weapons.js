@@ -34,6 +34,7 @@ import { collectAttackModifiers } from './adventureMigration.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
 import {
   armAttackContinue,
   collectAttackCandidates,
@@ -145,6 +146,7 @@ export const weapons = {
 
     ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
     ctx.bus.on('projectile:hit', (payload) => this._onAttackHit(payload));
+    ctx.bus.on('sector:enter', () => handlePayloadSectorTransition(this.state));
   },
 
   update(dt, state) {
@@ -895,6 +897,13 @@ export const weapons = {
     const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
     const chain = live.spec && live.spec.propagation && live.spec.propagation.chain;
     const range = chain && Number.isFinite(chain.range) ? chain.range : 0;
+    const steer = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer;
+    const steerRange = projectile.data && Number.isFinite(projectile.data.maxDistance)
+      ? projectile.data.maxDistance
+      : 600;
+    const hostiles = steer
+      ? collectAttackCandidates(state, projectile.pos, steerRange, scratch, projectile.ownerId, projectile.team)
+      : null;
     const result = resolveLiveAttackHit({
       spec: live.spec,
       runtime: live.runtime,
@@ -903,12 +912,20 @@ export const weapons = {
       payload,
       tick,
       tetherAnchorId: tetherAnchorIdOf(state),
-      hostiles: null,
+      hostiles,
       candidates: range > 0
         ? (origin) => collectAttackCandidates(state, origin, range, scratch, projectile.ownerId, projectile.team)
         : [],
       applyHopDamage: (hop) => applyAttackHopDamage(this, projectile, live.spec, hop),
     });
+    if (result.children && result.children.length) {
+      spawnSplitChildren(this, projectile, live.spec, result.children, payload);
+    }
+    if (result.pierce && result.pierce.applyPayload === false) {
+      suppressHitPayload(payload);
+    } else if (result.payload && Number.isFinite(result.payload.scale) && result.payload.scale !== 1) {
+      scaleHitPayload(payload, result.payload.scale);
+    }
     if (result.consume) this._attackLive.delete(projectile.id);
   },
 
@@ -1342,6 +1359,97 @@ function findLiveAttackProjectile(state, live, payload) {
   return best;
 }
 
+function suppressHitPayload(payload) {
+  if (!payload) return;
+  payload.damage = 0;
+  payload.damagePacket = null;
+  payload.packet = null;
+  payload.statuses = [];
+  payload.heat = 0;
+  payload.impulse = null;
+}
+
+function scalePacketChannels(packet, scale) {
+  if (!packet || !(scale > 0) || scale === 1) return packet;
+  const next = { ...packet, channels: packet.channels ? { ...packet.channels } : {} };
+  const keys = Object.keys(next.channels);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    next.channels[key] = (Number(next.channels[key]) || 0) * scale;
+  }
+  return next;
+}
+
+function scaleHitPayload(payload, scale) {
+  if (!payload || !(scale > 0) || scale === 1) return;
+  payload.damage = (Number(payload.damage) || 0) * scale;
+  if (payload.damagePacket) payload.damagePacket = scalePacketChannels(payload.damagePacket, scale);
+  if (payload.packet) payload.packet = scalePacketChannels(payload.packet, scale);
+}
+
+function cloneProjectileDataScaled(data, scale) {
+  const next = { ...(data || {}) };
+  next.damage = (Number(next.damage) || 0) * scale;
+  if (next.damagePacket) next.damagePacket = scalePacketChannels(next.damagePacket, scale);
+  return next;
+}
+
+function splitFanRad(index, count) {
+  if (count <= 1) return 0;
+  const spreadDeg = 12;
+  const denom = Math.max(1, count - 1);
+  const offsetDeg = (index - (count - 1) / 2) * (spreadDeg / denom);
+  return offsetDeg * RAD;
+}
+
+function nudgeSpawnedAlongVelocity(body) {
+  if (!body || !body.pos || !body.vel) return;
+  const speed = Math.hypot(body.vel.x || 0, body.vel.z || 0);
+  if (!(speed > 0)) return;
+  const pad = (body.radius || 0.7) + 0.05;
+  body.pos.x += (body.vel.x / speed) * pad;
+  body.pos.z += (body.vel.z / speed) * pad;
+}
+
+function spawnSplitChildren(host, parent, spec, children, payload) {
+  const helpers = host && host.helpers;
+  if (!helpers || typeof helpers.spawnEntity !== 'function' || !Array.isArray(children)) return;
+  const vx = parent.vel && parent.vel.x || 0;
+  const vz = parent.vel && parent.vel.z || 0;
+  const speed = Math.hypot(vx, vz) || 1;
+  const heading = Math.atan2(vz, vx);
+  const count = children.length;
+  const pos = (payload && payload.pos) || parent.pos || { x: 0, z: 0 };
+  if (!host._attackLive) host._attackLive = new Map();
+  for (let i = 0; i < count; i++) {
+    const child = children[i];
+    const scale = Number.isFinite(child.payloadScale) ? child.payloadScale : 0.55;
+    const dir = heading + splitFanRad(i, count);
+    const vel = { x: Math.cos(dir) * speed, z: Math.sin(dir) * speed };
+    const spawned = helpers.spawnEntity({
+      type: 'projectile',
+      pos: { x: pos.x, z: pos.z },
+      vel,
+      rot: dir,
+      radius: parent.radius || 0.7,
+      mass: parent.mass || 0.1,
+      team: parent.team,
+      ownerId: parent.ownerId,
+      factionId: parent.factionId,
+      ttl: parent.ttl,
+      collides: true,
+      data: cloneProjectileDataScaled(parent.data, scale),
+    });
+    if (!spawned) continue;
+    nudgeSpawnedAlongVelocity(spawned);
+    host._attackLive.set(spawned.id, { spec, runtime: child.runtime });
+    const remaining = child.runtime && child.runtime.remaining;
+    if (remaining && (remaining.bounces > 0 || remaining.pierces > 0)) {
+      armAttackContinue(spawned);
+    }
+  }
+}
+
 function tetherAnchorIdOf(state) {
   const tether = state && state.player && state.player.tether;
   return tether && tether.targetId != null ? tether.targetId : null;
@@ -1350,9 +1458,18 @@ function tetherAnchorIdOf(state) {
 function applyAttackHopDamage(host, projectile, spec, hop) {
   const helpers = host && host.helpers;
   if (!helpers || typeof helpers.routeCombatDamage !== 'function') return;
-  const packet = projectile && projectile.data && projectile.data.damagePacket
-    ? { ...projectile.data.damagePacket }
-    : { statuses: [] };
+  const scale = hop && hop.resolved && Number.isFinite(hop.resolved.scale) ? hop.resolved.scale : 1;
+  const base = projectile && projectile.data && projectile.data.damagePacket;
+  const packet = base
+    ? { ...base, channels: base.channels ? { ...base.channels } : {} }
+    : { statuses: [], channels: {} };
+  if (scale !== 1 && packet.channels) {
+    const keys = Object.keys(packet.channels);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      packet.channels[key] = (Number(packet.channels[key]) || 0) * scale;
+    }
+  }
   const statuses = hop && hop.resolved && Array.isArray(hop.resolved.statuses)
     ? hop.resolved.statuses.map((status) => ({ id: status.id, stacks: status.stacks }))
     : [];

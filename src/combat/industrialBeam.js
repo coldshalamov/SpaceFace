@@ -221,6 +221,10 @@ export function handlePayloadSectorTransition(state) {
       
       entity.alive = false;
       if (typeof state.entities.delete === 'function') state.entities.delete(entity.id);
+      if (Array.isArray(state.entityList)) {
+        const idx = state.entityList.findIndex((row) => row && row.id === entity.id);
+        if (idx >= 0) state.entityList.splice(idx, 1);
+      }
       removed++;
     }
   }

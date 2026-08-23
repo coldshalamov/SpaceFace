@@ -11,7 +11,8 @@ import {
 } from '../core/surfaceContact.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { entityKey } from './runtime.js';
-import { tryPierce, tryChain } from './attackPropagation.js';
+import { canAct } from './attackLineage.js';
+import { tryPierce, tryChain, trySplit } from './attackPropagation.js';
 import { resolvePayload } from './attackPayload.js';
 import { resolveRicochet } from './surfaceReflection.js';
 
@@ -160,6 +161,19 @@ export function resolveLiveAttackHit(input = {}) {
   const pierced = tryPierce(runtime, { targetId: target.id, tick });
   if (pierced && pierced.continue) requestAttackContinue(projectile);
 
+  if (pierced && pierced.applyPayload === false) {
+    return {
+      ok: true,
+      consume: !(pierced && pierced.continue),
+      pierce: pierced,
+      payload: null,
+      hops,
+      children: [],
+      projectile,
+      runtime,
+    };
+  }
+
   const tetherAnchorId = input.tetherAnchorId != null ? input.tetherAnchorId : null;
   const resolved = resolvePayload(spec, {
     targetId: target.id,
@@ -167,6 +181,15 @@ export function resolveLiveAttackHit(input = {}) {
     generation: runtime.generation,
     hasBounced: runtime.hasBounced,
   });
+
+  const children = [];
+  const splitSpec = spec.propagation && spec.propagation.split;
+  if (splitSpec && runtime.remaining && runtime.remaining.splits > 0 && canAct(runtime, 'split')) {
+    const split = trySplit(runtime, spec, { targetId: target.id, tick });
+    if (split && split.ok && Array.isArray(split.children)) {
+      for (let i = 0; i < split.children.length; i++) children.push(split.children[i]);
+    }
+  }
 
   let current = runtime;
   let from = target;
@@ -211,6 +234,7 @@ export function resolveLiveAttackHit(input = {}) {
     pierce: pierced,
     payload: resolved,
     hops,
+    children,
     projectile,
     runtime: current,
   };
