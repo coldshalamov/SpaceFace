@@ -1650,7 +1650,10 @@ button.sx-fab-in { cursor:pointer; }
 .sx-mkt__list .sx-mkt-row {
   --family:#6dbdca;
   position:relative; inset:auto; left:auto; top:auto; z-index:2;
-  flex:0 0 236px; width:236px; height:94px; min-height:94px;
+  /* 105px is the height this row's OWN layout declares: tracks 40 + 12 + 36, gaps 2 + 2,
+     padding 7 + 6. It was pinned at 94px with overflow:hidden, so every market row cut 11px
+     off the bottom of its drivers strip -- the price-pressure readout the row exists to show. */
+  flex:0 0 236px; width:236px; height:105px; min-height:105px;
   display:grid; grid-template-columns:38px minmax(0,1fr) auto; grid-template-rows:1fr auto 36px; gap:2px 7px;
   align-items:center; padding:7px 9px 6px 7px;
   border:0; border-left:var(--sf-rail-w) solid color-mix(in srgb,var(--family) 52%,transparent); border-radius:0;
@@ -1726,11 +1729,13 @@ button.sx-fab-in { cursor:pointer; }
 .sx-mkt-driver-ribbon > span:last-child { border-right:0; }
 .sx-mkt-driver-ribbon b {
   overflow:hidden; white-space:normal;
-  color:#c5dcde; font:650 13px/1 var(--sx-mono); letter-spacing:.025em;
+  /* line-height 1 is smaller than the glyph box of any font; with overflow:hidden it clipped the
+     descenders off every driver label. 1.2 is the smallest value that fits 13px text. */
+  color:#c5dcde; font:650 13px/1.2 var(--sx-mono); letter-spacing:.025em;
 }
 .sx-mkt-driver-ribbon i {
   overflow:hidden; white-space:normal;
-  color:#6f8e92; font:500 13px/1 var(--sx-ui); font-style:normal;
+  color:#6f8e92; font:500 13px/1.2 var(--sx-ui); font-style:normal;
 }
 .sx-mkt-driver-ribbon > span[data-direction="up"] b { color:#d2a25d; }
 .sx-mkt-driver-ribbon > span[data-direction="down"] b { color:#91acbd; }
