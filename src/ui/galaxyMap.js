@@ -5885,7 +5885,14 @@ export const galaxyMapScreen = {
     // would run against controls that do not exist yet.
     this._syncRestoredControls(state);
 
-    this.refresh();
+    // OPENING A SCREEN SHOULD SIZE IT, NOT RENDER IT. `refresh()` draws the map and reads the
+    // inspector synchronously, so opening the galaxy map paid for a full draw plus two inspector
+    // updates before a single frame had been scheduled. The cheap DOM syncs still happen here; the
+    // expensive pair is marked dirty and the first cadence frame does it.
+    this._syncPublicIdentity();
+    this._syncScaleButtons();
+    this._updateHeaderWeather(this._ctx && this._ctx.state);
+    this._updateCargoDeck(this._ctx && this._ctx.state);
     this._wake();
   },
 
@@ -5989,7 +5996,7 @@ export const galaxyMapScreen = {
       btn.classList.toggle('active', !!this._layers[id]);
       btn.setAttribute('aria-pressed', this._layers[id] ? 'true' : 'false');
     }
-    if (this._activeTab) this._setTab(this._activeTab);
+    if (this._activeTab) this._setTab(this._activeTab, { defer: true });
   },
 
   /**
@@ -7364,7 +7371,7 @@ export const galaxyMapScreen = {
     this._setTab(ids[next], { focus: true });
   },
 
-  _setTab(id, { focus = false } = {}) {
+  _setTab(id, { focus = false, defer = false } = {}) {
     if (!id || MAP_INSPECTOR_TAB_IDS.indexOf(id) < 0) return false;
     const state = this._ctx && this._ctx.state;
     const avail = resolveInspectorTabAvailability(state, this._selectedTarget);
@@ -7373,7 +7380,9 @@ export const galaxyMapScreen = {
     this._activeTab = id;
     this._lastTabHtml = null;
     this._renderTabs(state);
-    this._updateInspector();
+    // `defer` is the screen-open path: the DOM state still has to be pushed, but the inspector
+    // is an expensive read and the first cadence frame will do it a few milliseconds later.
+    if (!defer) this._updateInspector();
     if (focus && HAS_DOC && this._root) {
       const btn = this._root.querySelector(`#gm-tab-${id}`);
       if (btn && typeof btn.focus === 'function') btn.focus();
