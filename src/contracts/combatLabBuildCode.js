@@ -28,9 +28,10 @@
 // checksum is FNV-1a (uint32, base36, 7-char padded) over the payload string.
 //
 // Worked example — energy_baseline / physics_swarm / helios_core / seed 1 / wave 1:
-//   SFCR1-0GWH-FVV1-*SHI-P_KE-STRE-L*0*-WPN_-PULS-E_LA-SER_-S*PH-YSIC-S_SW-ARM*-HELI-OS_C-ORE*-1*10-7VN1-XO
+//   SFCR1-0QYZ-CFO1-*SHI-P_KE-STRE-L*0*-WPN_-PULS-E_LA-SER_-S*PH-YSIC-S_SW-ARM*-HELI-OS_C-ORE*-1*10-7VN1-XO
 // The digest segment moves whenever the Lab catalogs change — adding the Lagrange Crucible and
-// Cinder Sluice arenas took it from 0U3BLV9 to 0GWHFVV, and every code minted before that now
+// Cinder Sluice arenas took it from 0U3BLV9 to 0GWHFVV, then Cryo Drift and Storm Lattice to
+// 0QYZCFO, and every code minted before the current value now
 // rejects with a contentDigest mismatch. That is the mechanism working, not a bug to route
 // around: a code that no longer describes a reproducible setup must not silently load one.
 // Readable summary:

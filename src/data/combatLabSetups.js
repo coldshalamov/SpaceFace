@@ -116,4 +116,16 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     sectorId: 'sector_ceres_belt',
     spawnPos: { x: -300, z: 200 },
   },
+  {
+    id: 'cryo_drift',
+    label: 'Cryo Drift',
+    sectorId: 'sector_vesta_forge',
+    spawnPos: { x: 680, z: 320 },
+  },
+  {
+    id: 'storm_lattice',
+    label: 'Storm Lattice',
+    sectorId: 'sector_tethys_junction',
+    spawnPos: { x: -640, z: -1180 },
+  },
 ]);

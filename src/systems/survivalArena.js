@@ -62,10 +62,30 @@ import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { gateBearing } from './waveMaterialization.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
+import {
+  CRYO_ARENA_ID,
+  applyCryoDrift,
+  createCryoRoomLineage,
+  planCryoInstall,
+} from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
+import {
+  STORM_ARENA_ID,
+  STORM_RELAY_COUNT,
+  STORM_RELAY_ORBIT,
+  STORM_RELAY_PERIOD,
+  placeStormRelays,
+  planStormInstall,
+} from './stormLatticeArena.js';
+import { orbitNodePose } from '../combat/orbitNodes.js';
 
-export { CINDER_ARENA_ID, LAGRANGE_ARENA_ID };
-export const LAW_ARENA_IDS = Object.freeze([LAGRANGE_ARENA_ID, CINDER_ARENA_ID]);
+export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID };
+export const LAW_ARENA_IDS = Object.freeze([
+  LAGRANGE_ARENA_ID,
+  CINDER_ARENA_ID,
+  CRYO_ARENA_ID,
+  STORM_ARENA_ID,
+]);
 
 const CINDER_CYCLE_PHASES = new Set([
   'idle',
@@ -160,14 +180,17 @@ function finalizeInstall(out) {
 }
 
 function isLawArena(arenaId) {
-  return arenaId === LAGRANGE_ARENA_ID || arenaId === CINDER_ARENA_ID;
+  return arenaId === LAGRANGE_ARENA_ID
+    || arenaId === CINDER_ARENA_ID
+    || arenaId === CRYO_ARENA_ID
+    || arenaId === STORM_ARENA_ID;
 }
 
 /**
  * PURE room description for one wave. No bus, no registry, no state.
  *
- * Helios keeps the eight-phase table. Lagrange and Cinder are arena-id laws: idle still has a room,
- * because the law IS the room. An unknown phase is inert on every arena — never a guess.
+ * Helios keeps the eight-phase table. Law arenas keep their law on idle, because the law IS the
+ * room. An unknown phase is inert on every arena — never a guess.
  *
  * Returns { phase, note, fields: [...], mines: [{x,z}], cover: boolean }.
  * `fields` is capped at ARENA_FIELD_SLOT_IDS.length and its entries already carry their slot id.
@@ -207,6 +230,16 @@ export function planArenaInstall({
   if (arenaId === CINDER_ARENA_ID) {
     return finalizeInstall(planCinderInstall({
       arenaPhase: phase, at, lane, across, spin,
+    }));
+  }
+  if (arenaId === CRYO_ARENA_ID) {
+    return finalizeInstall(planCryoInstall({
+      arenaPhase: phase, at, lane, across, spin,
+    }));
+  }
+  if (arenaId === STORM_ARENA_ID) {
+    return finalizeInstall(planStormInstall({
+      arenaPhase: phase, at, lane, across, spin, simTime: 0,
     }));
   }
 
@@ -380,6 +413,56 @@ function playerTeam(state) {
   return player && player.team != null ? player.team : 0;
 }
 
+function liveArenaBodies(state) {
+  const list = [];
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const entity of entities.values()) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+      list.push(entity);
+    }
+  } else if (state && Array.isArray(state.entityList)) {
+    for (let i = 0; i < state.entityList.length; i++) {
+      const entity = state.entityList[i];
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+      list.push(entity);
+    }
+  }
+  list.sort((a, b) => {
+    const as = String(a.id);
+    const bs = String(b.id);
+    if (as < bs) return -1;
+    if (as > bs) return 1;
+    return 0;
+  });
+  return list;
+}
+
+function bodySnapshot(entity) {
+  const vel = entity && entity.vel && typeof entity.vel === 'object' ? entity.vel : null;
+  const vx = Number.isFinite(entity && entity.vx) ? entity.vx : (vel && Number.isFinite(vel.x) ? vel.x : 0);
+  const vz = Number.isFinite(entity && entity.vz) ? entity.vz : (vel && Number.isFinite(vel.z) ? vel.z : 0);
+  return {
+    id: entity && entity.id,
+    pos: entity && entity.pos,
+    vx,
+    vz,
+    statuses: Array.isArray(entity && entity.statuses) ? entity.statuses : [],
+  };
+}
+
+function writeVel(entity, vx, vz) {
+  if (!entity) return;
+  if (entity.vel && typeof entity.vel === 'object') {
+    entity.vel.x = vx;
+    entity.vel.z = vz;
+  }
+  entity.vx = vx;
+  entity.vz = vz;
+}
+
 export const survivalArena = {
   name: 'survivalArena',
 
@@ -428,17 +511,33 @@ export const survivalArena = {
     });
   },
 
-  // Cinder machinery only. Helios and Lagrange are event-driven; this is a no-op unless that law is live.
+  // Law ticks. Helios and Lagrange are event-driven. A missing law id, or no live Survival run,
+  // is an immediate no-op — this must not be a global thermal or conductivity term.
   update(_dt, state) {
-    if (this._lawId !== CINDER_ARENA_ID || !this._cycleMachinery) return;
+    if (
+      this._lawId !== CINDER_ARENA_ID
+      && this._lawId !== CRYO_ARENA_ID
+      && this._lawId !== STORM_ARENA_ID
+    ) return;
     const st = state || this.state;
     if (!liveSurvivalRun(st)) return;
-    const system = this._fieldsSystem();
-    if (!system || typeof system.updateExternal !== 'function') return;
-    const elapsed = simTimeOf(st) - (this._installedAt || 0);
-    const cycle = stepCinderMachinery(elapsed);
-    const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
-    system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+    if (this._lawId === CINDER_ARENA_ID) {
+      if (!this._cycleMachinery) return;
+      const system = this._fieldsSystem();
+      if (!system || typeof system.updateExternal !== 'function') return;
+      const elapsed = simTimeOf(st) - (this._installedAt || 0);
+      const cycle = stepCinderMachinery(elapsed);
+      const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
+      system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+      return;
+    }
+    if (this._lawId === CRYO_ARENA_ID) {
+      this._tickCryo(st);
+      return;
+    }
+    if (this._lawId === STORM_ARENA_ID) {
+      this._tickStorm(st);
+    }
   },
 
   // ---- install --------------------------------------------------------------
@@ -472,6 +571,11 @@ export const survivalArena = {
     this._installedAt = simTimeOf(state);
     this._cycleMachinery = run.arenaId === CINDER_ARENA_ID && CINDER_CYCLE_PHASES.has(phase);
     this._authoredStrength = 0;
+    this._cryoRoom = run.arenaId === CRYO_ARENA_ID ? install : null;
+    this._stormAt = run.arenaId === STORM_ARENA_ID
+      ? { x: install.at ? install.at.x : playerAnchor(state).x, z: install.at ? install.at.z : playerAnchor(state).z }
+      : null;
+    this._cryoShocked = new Set();
     if (this._cycleMachinery) {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
       this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
@@ -621,6 +725,50 @@ export const survivalArena = {
     return true;
   },
 
+  _tickCryo(state) {
+    const room = this._cryoRoom;
+    if (!room) return;
+    const bodies = liveArenaBodies(state);
+    const lineage = createCryoRoomLineage(Number.isInteger(state && state.tick) ? state.tick : 0);
+    for (let i = 0; i < bodies.length; i++) {
+      const entity = bodies[i];
+      const before = bodySnapshot(entity);
+      const result = applyCryoDrift(before, room, { lineage });
+      if (result.zone === 'outside' || result.zone === 'insulated') {
+        if (this._cryoShocked) this._cryoShocked.delete(entity.id);
+        continue;
+      }
+      entity.controlScale = result.controlScale;
+      entity.statuses = result.statuses;
+      if (result.shock && result.shock.ok) {
+        if (!this._cryoShocked.has(entity.id)) {
+          this._cryoShocked.add(entity.id);
+          writeVel(entity, result.vx, result.vz);
+        }
+      } else if (this._cryoShocked) {
+        this._cryoShocked.delete(entity.id);
+      }
+    }
+  },
+
+  _tickStorm(state) {
+    const at = this._stormAt;
+    if (!at) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.updateExternal !== 'function') return;
+    const host = { x: at.x, z: at.z };
+    const simTime = simTimeOf(state);
+    const relays = placeStormRelays(at, simTime);
+    for (let i = 0; i < STORM_RELAY_COUNT; i++) {
+      const pose = relays[i] || orbitNodePose(host, i, STORM_RELAY_COUNT, STORM_RELAY_ORBIT, simTime, STORM_RELAY_PERIOD);
+      const pos = pose.pos || pose;
+      system.updateExternal(ARENA_FIELD_SLOT_IDS[i], {
+        center: { x: pos.x, z: pos.z },
+        strength: 0,
+      });
+    }
+  },
+
   _reset() {
     this._fieldIds = [];
     this._mineIds = [];
@@ -632,6 +780,9 @@ export const survivalArena = {
     this._installedAt = 0;
     this._cycleMachinery = false;
     this._authoredStrength = 0;
+    this._cryoRoom = null;
+    this._stormAt = null;
+    this._cryoShocked = new Set();
   },
 
   _emit(event, payload) {
