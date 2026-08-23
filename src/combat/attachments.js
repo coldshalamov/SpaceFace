@@ -10,6 +10,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
 const STANDARD_TETHER_PAYOUT_REVISION = 1;
+const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;
 const PREVIOUS_STANDARD_TETHER_BREAK = Object.freeze({
   maxTension: 1_050_000,
   maxImpulse: 19_000,
@@ -446,6 +447,7 @@ export function createAttachmentService(context) {
       impulse: attachment.lastImpulse,
       cueId: def && def.cues && def.cues.broken,
     });
+    pruneBrokenAttachmentHistory(state.combat.attachments.byId);
     return { ok: true, attachment };
   }
 
@@ -1096,6 +1098,18 @@ function serializableHandle(handle) {
 
 function byId(a, b) {
   return compareText(String(a.id), String(b.id));
+}
+
+function pruneBrokenAttachmentHistory(byId) {
+  const broken = Object.values(byId || {}).filter((attachment) => attachment && attachment.state === 'broken');
+  if (broken.length <= BROKEN_ATTACHMENT_HISTORY_LIMIT) return;
+  broken.sort((a, b) => {
+    const aTick = Number.isInteger(a.brokenTick) ? a.brokenTick : -1;
+    const bTick = Number.isInteger(b.brokenTick) ? b.brokenTick : -1;
+    return aTick - bTick || compareText(String(a.id), String(b.id));
+  });
+  const remove = broken.length - BROKEN_ATTACHMENT_HISTORY_LIMIT;
+  for (let i = 0; i < remove; i++) delete byId[broken[i].id];
 }
 
 function finiteOrZero(value) {

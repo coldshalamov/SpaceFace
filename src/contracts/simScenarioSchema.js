@@ -210,8 +210,8 @@ export function validateSimScenario(doc, options = {}) {
   if (!Number.isInteger(doc.ticks) || doc.ticks < 1) {
     issue('$.ticks', 'type', 'ticks must be a positive integer');
   }
-  if (doc.dt != null && (!(typeof doc.dt === 'number') || !(doc.dt > 0))) {
-    issue('$.dt', 'type', 'dt must be a positive number when present');
+  if (doc.dt != null && (typeof doc.dt !== 'number' || !Number.isFinite(doc.dt) || !(doc.dt > 0))) {
+    issue('$.dt', 'type', 'dt must be a finite positive number when present');
   }
   if (doc.runtimeProfile != null && typeof doc.runtimeProfile !== 'string') {
     issue('$.runtimeProfile', 'type', 'runtimeProfile must be a string when present');
@@ -633,7 +633,7 @@ export function compileSimScenario(doc, options = {}) {
     runtimeProfile: doc.runtimeProfile || 'focused-lab',
     seed: doc.seed >>> 0 || doc.seed,
     ticks: doc.ticks | 0,
-    dt: typeof doc.dt === 'number' && doc.dt > 0 ? doc.dt : 1 / 60,
+    dt: Number.isFinite(doc.dt) && doc.dt > 0 ? doc.dt : 1 / 60,
     world: {
       fixtureProfile: (doc.world && doc.world.fixtureProfile) || 'empty-flight',
       sectorId: (doc.world && doc.world.sectorId) || 'sector_helios_prime',

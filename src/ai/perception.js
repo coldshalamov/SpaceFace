@@ -184,7 +184,7 @@ export function aggregatePerceivedTelemetry(perceptions, freeze = Object.freeze)
     if (perception.self.hullFraction < 0.35) friendlyLowHull++;
     for (const contact of perception.contacts) {
       if (contact.kind === 'tether' && contact.confidence >= 0.4) tetherThreats++;
-      if (contact.team != null && contact.team !== perception.self.team && contact.kind === 'ship') {
+      if (contact.kind === 'ship' && contact.hostile === true) {
         hostileContacts++;
         hostileThreat += contact.threat * contact.confidence;
       }

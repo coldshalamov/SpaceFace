@@ -124,6 +124,13 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       return list;
     },
 
+    forget(entityId) {
+      const cacheKey = String(entityId);
+      const forgotList = listCache.delete(cacheKey);
+      const forgotSignature = signatureCache.delete(cacheKey);
+      return forgotList || forgotSignature;
+    },
+
     canStart(entityId, actionId, request = {}) {
       const def = kernel.catalog.actions.get(actionId);
       if (!def) return { ok: false, reason: 'unknown_action' };

@@ -247,6 +247,7 @@ export class TacticalAIStack {
     this.executor.forget(entityId);
     this.maneuver.forget(entityId);
     this.combatDoctrine.forget(entityId);
+    if (typeof this.ports.actions.forget === 'function') this.ports.actions.forget(entityId);
     this.perceptionCache.delete(entityId);
     this.lastDecisionByEntity.delete(entityId);
     this.entitySquad.delete(entityId);

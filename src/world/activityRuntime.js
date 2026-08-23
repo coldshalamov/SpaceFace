@@ -102,17 +102,6 @@ function wakeEventForEntity(entity) {
     || null;
 }
 
-function mixId(id) {
-  if (typeof id === 'number' && Number.isFinite(id)) return id | 0;
-  const text = String(id == null ? '' : id);
-  let hash = 2166136261;
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 function simCamera(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
@@ -164,6 +153,7 @@ function ensureRuntime(state) {
     runtime = {
       classifiedTick: -1,
       classifiedMembership: null,
+      classifiedStaticAuthority: null,
       ready: false,
       physicsReachWu: 0,
       glassHalfX: 0,
@@ -173,8 +163,9 @@ function ensureRuntime(state) {
       physicsStatics: [],
       physicsDynamics: [],
       physicsStaticVersion: 0,
-      _staticHash: 0,
-      _staticCount: 0,
+      _staticEntities: [],
+      _staticAuthorityVersion: entityIndexPhysicsStaticVersion(state),
+      _staticMembershipDirty: false,
       exactIds: [],
       nearIds: [],
       abstractIds: [],
@@ -620,9 +611,6 @@ function classifyWorld(state, runtime) {
   ctx.physicsReachWu = reach;
   ctx.currentTargetId = facts.targetId;
 
-  let staticHash = 0;
-  let staticCount = 0;
-
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
@@ -740,8 +728,6 @@ function classifyWorld(state, runtime) {
       dynamics.push(entity);
     } else {
       statics.push(entity);
-      staticHash = (staticHash ^ mixId(entity.id)) >>> 0;
-      staticCount++;
     }
   }
 
@@ -753,10 +739,19 @@ function classifyWorld(state, runtime) {
     runtime.seenEntityIds.delete(id);
   }
   counts.physics = statics.length + dynamics.length;
-  if (staticHash !== runtime._staticHash || staticCount !== runtime._staticCount) {
+  const priorStatics = runtime._staticEntities;
+  let staticMembershipChanged = runtime._staticMembershipDirty
+    || priorStatics.length !== statics.length;
+  for (let i = 0; !staticMembershipChanged && i < statics.length; i++) {
+    if (priorStatics[i] !== statics[i]) staticMembershipChanged = true;
+  }
+  const staticAuthorityVersion = entityIndexPhysicsStaticVersion(state);
+  if (staticMembershipChanged || staticAuthorityVersion !== runtime._staticAuthorityVersion) {
     runtime.physicsStaticVersion++;
-    runtime._staticHash = staticHash;
-    runtime._staticCount = staticCount;
+    priorStatics.length = statics.length;
+    for (let i = 0; i < statics.length; i++) priorStatics[i] = statics[i];
+    runtime._staticAuthorityVersion = staticAuthorityVersion;
+    runtime._staticMembershipDirty = false;
   }
 
 }
@@ -776,13 +771,16 @@ export function ensureActivityClassified(state) {
   // entityList edits are not sanctioned membership; without an index there is no cheap change
   // signal, so the frame is never cached and every caller classifies fresh.
   const membership = entityIndexVersion(state);
+  const staticAuthority = entityIndexPhysicsStaticVersion(state);
   if (membership != null && runtime.ready && runtime.classifiedTick === tick
-    && runtime.classifiedMembership === membership) {
+    && runtime.classifiedMembership === membership
+    && runtime.classifiedStaticAuthority === staticAuthority) {
     return runtime;
   }
   classifyWorld(state, runtime);
   runtime.classifiedTick = tick;
   runtime.classifiedMembership = membership;
+  runtime.classifiedStaticAuthority = staticAuthority;
   runtime.ready = true;
   publishScalars(state, runtime);
   return runtime;
@@ -795,12 +793,17 @@ function entityIndexVersion(state) {
     : null;
 }
 
+function entityIndexPhysicsStaticVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.physicsStaticVersion)
+    ? index.physicsStaticVersion
+    : null;
+}
+
 /**
  * Force one deterministic static-version bump after an in-place entity rebuild (save/load
- * respawn). A respawn keeps entity ids and counts stable, so the staticHash gate alone would
- * never move physicsStaticVersion and the layered physics sync would keep trusting records
- * bound to the retired (alive=false) objects. Poisoning the comparison makes the next
- * classification bump exactly once; ordinary ticks never call this.
+ * respawn). A respawn may keep entity ids and counts stable, so exact object membership must be
+ * compared again before the layered physics sync can trust its retained static records.
  */
 export function resetActivityRuntimeForRestore(state) {
   if (!state || typeof state !== 'object') return false;
@@ -808,8 +811,8 @@ export function resetActivityRuntimeForRestore(state) {
   if (!runtime) return false;
   runtime.ready = false;
   runtime.classifiedTick = -1;
-  runtime._staticHash = null;
-  runtime._staticCount = -1;
+  runtime.classifiedStaticAuthority = null;
+  runtime._staticMembershipDirty = true;
   return true;
 }
 

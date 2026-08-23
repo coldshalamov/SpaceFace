@@ -260,26 +260,30 @@ function releaseMetrics(gltf, bytes) {
   const ktx2TextureCount = textures.filter((texture) =>
     !!(texture.extensions && texture.extensions.KHR_texture_basisu)).length;
   const imageMimeTypes = new Set((gltf.images || []).map((image) => image && image.mimeType).filter(Boolean));
+  const meshoptBufferViews = new Set();
+  for (const [index, view] of (gltf.bufferViews || []).entries()) {
+    if (view.extensions && (view.extensions.EXT_meshopt_compression || view.extensions.KHR_meshopt_compression)) {
+      meshoptBufferViews.add(index);
+    }
+  }
   let primitiveCount = 0;
   let dracoPrimitiveCount = 0;
+  let meshoptPrimitiveCount = 0;
+  let compressedPrimitiveCount = 0;
   const usedMaterialIndices = new Set();
   for (const mesh of gltf.meshes || []) {
     for (const primitive of mesh.primitives || []) {
       primitiveCount++;
       if (Number.isInteger(primitive.material)) usedMaterialIndices.add(primitive.material);
-      if (primitive.extensions && primitive.extensions.KHR_draco_mesh_compression) dracoPrimitiveCount++;
+      const usesDraco = primitiveUsesDracoCompression(primitive);
+      const usesMeshopt = primitiveUsesMeshoptCompression(gltf, primitive, meshoptBufferViews);
+      if (usesDraco) dracoPrimitiveCount++;
+      if (usesMeshopt) meshoptPrimitiveCount++;
+      if (usesDraco || usesMeshopt) compressedPrimitiveCount++;
     }
   }
   const materialTextureSlotCount = countMaterialTextureSlots(gltf.materials || [], usedMaterialIndices);
-  let meshoptBufferViewCount = 0;
-  for (const view of gltf.bufferViews || []) {
-    if (view.extensions && (view.extensions.EXT_meshopt_compression || view.extensions.KHR_meshopt_compression)) {
-      meshoptBufferViewCount++;
-    }
-  }
-  const meshCompressionExtensions = [...SG04_RELEASE_ASSET_CONTRACT.meshCompressionExtensions];
-  const declaredMeshCompression = meshCompressionExtensions.some((name) =>
-    extensionsUsed.has(name) || extensionsRequired.has(name));
+  const meshoptBufferViewCount = meshoptBufferViews.size;
   return {
     bytes,
     textureCount,
@@ -288,6 +292,8 @@ function releaseMetrics(gltf, bytes) {
     imageMimeTypes: [...imageMimeTypes].sort(),
     primitiveCount,
     dracoPrimitiveCount,
+    meshoptPrimitiveCount,
+    compressedPrimitiveCount,
     meshoptBufferViewCount,
     extensionsUsed: [...extensionsUsed].sort(),
     extensionsRequired: [...extensionsRequired].sort(),
@@ -297,10 +303,43 @@ function releaseMetrics(gltf, bytes) {
       .filter((name) => /^(SOCKET|HOOK|MOUNT|LOD[0-2])/i.test(String(name || '')))
       .sort(),
     hasKtx2Textures: textureCount === 0 || ktx2TextureCount === textureCount,
-    hasMeshCompression: primitiveCount > 0 && (
-      dracoPrimitiveCount > 0 || meshoptBufferViewCount > 0 || declaredMeshCompression
-    ),
+    hasMeshCompression: primitiveCount > 0 && compressedPrimitiveCount === primitiveCount,
   };
+}
+
+function primitiveUsesDracoCompression(primitive) {
+  const extension = primitive && primitive.extensions
+    && primitive.extensions.KHR_draco_mesh_compression;
+  if (!extension || !Number.isInteger(extension.bufferView)
+    || !extension.attributes || typeof extension.attributes !== 'object') return false;
+  const attributes = Object.keys(primitive.attributes || {});
+  return attributes.length > 0
+    && attributes.every((name) => Number.isInteger(extension.attributes[name]));
+}
+
+function primitiveUsesMeshoptCompression(gltf, primitive, meshoptBufferViews) {
+  if (!primitive || !meshoptBufferViews || meshoptBufferViews.size === 0) return false;
+  const accessorIds = Object.values(primitive.attributes || {});
+  if (Number.isInteger(primitive.indices)) accessorIds.push(primitive.indices);
+  for (const target of (Array.isArray(primitive.targets) ? primitive.targets : [])) {
+    accessorIds.push(...Object.values(target || {}));
+  }
+  if (accessorIds.length === 0) return false;
+  const accessors = gltf.accessors || [];
+  return accessorIds.every((accessorId) => {
+    if (!Number.isInteger(accessorId)) return false;
+    const accessor = accessors[accessorId];
+    if (!accessor || typeof accessor !== 'object') return false;
+    const bufferViewIds = [];
+    if (Number.isInteger(accessor.bufferView)) bufferViewIds.push(accessor.bufferView);
+    if (accessor.sparse && typeof accessor.sparse === 'object') {
+      bufferViewIds.push(accessor.sparse.indices && accessor.sparse.indices.bufferView);
+      bufferViewIds.push(accessor.sparse.values && accessor.sparse.values.bufferView);
+    }
+    return bufferViewIds.length > 0
+      && bufferViewIds.every((bufferViewId) => Number.isInteger(bufferViewId)
+        && meshoptBufferViews.has(bufferViewId));
+  });
 }
 
 function countMaterialTextureSlots(materials, usedMaterialIndices) {
@@ -332,7 +371,7 @@ function releaseCompressionIssues(metrics) {
     issues.push({
       rule: 'release.mesh.compression',
       message: 'release geometry must use Draco or Meshopt compression',
-      detail: `primitives=${metrics.primitiveCount} draco=${metrics.dracoPrimitiveCount} meshoptViews=${metrics.meshoptBufferViewCount}`,
+      detail: `primitives=${metrics.primitiveCount} compressed=${metrics.compressedPrimitiveCount} draco=${metrics.dracoPrimitiveCount} meshopt=${metrics.meshoptPrimitiveCount} meshoptViews=${metrics.meshoptBufferViewCount}`,
     });
   }
   return issues;
@@ -347,6 +386,8 @@ function emptyMetrics(bytes) {
     imageMimeTypes: [],
     primitiveCount: 0,
     dracoPrimitiveCount: 0,
+    meshoptPrimitiveCount: 0,
+    compressedPrimitiveCount: 0,
     meshoptBufferViewCount: 0,
     extensionsUsed: [],
     extensionsRequired: [],

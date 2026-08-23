@@ -76,6 +76,7 @@ export function resolvePdCharge(self, state, perception = null) {
  */
 export function scorePdThreat(contact, chargePos, screenRadius, selfPos) {
   if (!contact || contact.alive === false || contact.valid === false) return -Infinity;
+  if (contact.hostile === false) return -Infinity;
   if (contact.hostile !== true && contact.kind !== ContactKind.PROJECTILE) return -Infinity;
   // Projectiles from friendlies are not threats (owner team handled by hostile flag when present).
   const pos = contact.pos;

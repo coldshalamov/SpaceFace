@@ -9,6 +9,7 @@ import {
   surfaceContactFromBodies,
   surfaceResponseFor,
 } from '../core/surfaceContact.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { entityKey } from './runtime.js';
 import { tryPierce, tryChain } from './attackPropagation.js';
 import { resolvePayload } from './attackPayload.js';
@@ -79,6 +80,9 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     scratch || [],
     state && state.entityList,
   );
+  const owner = ownerId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(ownerId)
+    : null;
   const out = [];
   const list = Array.isArray(nearby) ? nearby : [];
   for (let i = 0; i < list.length; i++) {
@@ -86,7 +90,9 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     if (!entity || entity.alive === false) continue;
     if (ownerId != null && entity.id === ownerId) continue;
     if (!ENTITY_TYPES.has(entity.type)) continue;
-    if (ownerTeam != null && entity.team != null && entity.team === ownerTeam) continue;
+    if (owner) {
+      if (!isHostileForAI(state, owner, entity)) continue;
+    } else if (ownerTeam != null && entity.team != null && entity.team === ownerTeam) continue;
     out.push({
       id: entity.id,
       pos: entity.pos,

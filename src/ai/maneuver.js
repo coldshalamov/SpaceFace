@@ -427,7 +427,7 @@ function retreat(self, contacts, fallback, counters, counterMode = 'legacy') {
   let x = 0, z = 0, weight = 0;
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
-    if (contact.kind !== ContactKind.SHIP || contact.team === self.team) continue;
+    if (contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
     const dx = self.pos.x - contact.pos.x, dz = self.pos.z - contact.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
     const w = (0.2 + contact.threat * contact.confidence) / Math.max(1, dist / 100);

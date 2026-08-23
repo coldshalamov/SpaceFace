@@ -72,7 +72,13 @@ export function resolveBeamVerb(descriptor, toolState = {}) {
       if (credits <= 0 && !hasScrap) {
         return { verb: 'repair', ok: false, reason: 'insufficient-resources', receiverHints: null };
       }
-      return { verb: 'repair', ok: true, reason: null, receiverHints: null };
+      return {
+        verb: 'repair',
+        ok: true,
+        reason: null,
+        componentId: selectedDamagedSubsystemId(descriptor, toolState.selectedComponentId),
+        receiverHints: null,
+      };
     }
 
     case 'transfer': {
@@ -142,6 +148,16 @@ function checkIsDamaged(descriptor) {
   }
   if (checkedAny || hasHullOrArmor) return false;
   return false;
+}
+
+function selectedDamagedSubsystemId(descriptor, selectedComponentId) {
+  if (!selectedComponentId) return null;
+  const components = descriptor && Array.isArray(descriptor.components) ? descriptor.components : [];
+  const selected = components.find((component) => component && component.componentId === selectedComponentId);
+  if (!selected || selected.kind !== 'subsystem') return null;
+  const healthDamaged = Number.isFinite(selected.health) && Number.isFinite(selected.maxHealth)
+    && selected.health < selected.maxHealth;
+  return selected.destroyed || selected.damaged || healthDamaged ? selected.componentId : null;
 }
 
 // -----------------------------------------------------------------------------

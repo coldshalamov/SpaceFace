@@ -226,6 +226,9 @@ export function normalizeRecord(raw, fallbackId) {
     : (typeof fallbackId === 'string' && fallbackId ? fallbackId : null);
   if (!recordId) return null;
   if (!finiteXZ(raw.pos)) return null;
+  // missionTag is the v1 live-entity spelling of the same durable contract identity. Canonicalize
+  // both fields so old saves cannot rematerialize an unowned target or miss kill attribution.
+  const missionId = raw.missionId || raw.missionTag || null;
 
   const rec = {
     recordId,
@@ -254,8 +257,8 @@ export function normalizeRecord(raw, fallbackId) {
     alive: raw.alive !== false,
     outcome: raw.outcome === 'defeated' || raw.outcome === 'destroyed' ? raw.outcome : 'active',
     // mission / convoy / wreck extras
-    missionId: raw.missionId || null,
-    missionTag: raw.missionTag || null,
+    missionId,
+    missionTag: missionId,
     jobId: raw.jobId || null,
     playerOwned: raw.playerOwned === true,
     playerCreated: raw.playerCreated === true,
@@ -1054,10 +1057,11 @@ export function bindEntityToRecord(entity, record) {
     entity.flags = entity.flags || {};
     entity.flags.missionPinned = true;
     entity.data.missionPinned = true;
-    if (record.missionId) {
-      entity.data.missionId = record.missionId;
+    const missionId = record.missionId || record.missionTag;
+    if (missionId) {
+      entity.data.missionId = missionId;
       // Keep missionTag in sync so missions adoption + kill attribution see rematerialized hosts.
-      entity.data.missionTag = record.missionId;
+      entity.data.missionTag = missionId;
     }
   }
   if (record.trafficRole) {

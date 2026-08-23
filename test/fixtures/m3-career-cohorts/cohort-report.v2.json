@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.m3.careerCohorts.v3",
-  "ok": true,
+  "ok": false,
   "horizonsMin": [
     30,
     60,
@@ -31,21 +31,21 @@
       "career": "hauler",
       "minutes": 30,
       "seed": 3232800769,
-      "credits": 9073,
-      "netWorth": 17073,
-      "earnedValue": 4073,
-      "creditsPerMin": 135.77,
-      "completedLoops": 25,
-      "completedContracts": 25,
+      "credits": 13057,
+      "netWorth": 21057,
+      "earnedValue": 8057,
+      "creditsPerMin": 268.57,
+      "completedLoops": 28,
+      "completedContracts": 28,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 1393.8,
-      "actionS": 400,
+      "travelS": 1343.2,
+      "actionS": 448,
       "bottlenecks": [
         {
           "code": "spread_collapse",
-          "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+          "detail": "Route cmdty_ore_iron→station_helios collapsed"
         }
       ],
       "adaptersUsed": [],
@@ -58,21 +58,21 @@
       "career": "hauler",
       "minutes": 60,
       "seed": 3232800769,
-      "credits": 13814,
-      "netWorth": 21814,
-      "earnedValue": 8814,
-      "creditsPerMin": 146.9,
-      "completedLoops": 48,
-      "completedContracts": 48,
+      "credits": 19614,
+      "netWorth": 27614,
+      "earnedValue": 14614,
+      "creditsPerMin": 243.57,
+      "completedLoops": 53,
+      "completedContracts": 53,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 2797.4,
-      "actionS": 768,
+      "travelS": 2757,
+      "actionS": 848,
       "bottlenecks": [
         {
           "code": "spread_collapse",
-          "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+          "detail": "Route cmdty_ore_iron→station_helios collapsed"
         }
       ],
       "adaptersUsed": [],
@@ -85,21 +85,21 @@
       "career": "hauler",
       "minutes": 90,
       "seed": 3232800769,
-      "credits": 17090,
-      "netWorth": 25090,
-      "earnedValue": 12090,
-      "creditsPerMin": 134.33,
-      "completedLoops": 69,
-      "completedContracts": 69,
+      "credits": 27392,
+      "netWorth": 35392,
+      "earnedValue": 22392,
+      "creditsPerMin": 248.8,
+      "completedLoops": 74,
+      "completedContracts": 74,
       "failedContracts": 0,
       "shipId": "ship_kestrel",
       "phase": "starter",
-      "travelS": 4262.2,
-      "actionS": 1104,
+      "travelS": 4199.8,
+      "actionS": 1184,
       "bottlenecks": [
         {
           "code": "spread_collapse",
-          "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+          "detail": "Route cmdty_ore_iron→station_helios collapsed"
         }
       ],
       "adaptersUsed": [],
@@ -194,17 +194,17 @@
       "career": "hunter",
       "minutes": 90,
       "seed": 3232804866,
-      "credits": 25586,
-      "netWorth": 33586,
-      "earnedValue": 26586,
-      "creditsPerMin": 295.4,
-      "completedLoops": 45,
-      "completedContracts": 45,
-      "failedContracts": 6,
+      "credits": 20466,
+      "netWorth": 28466,
+      "earnedValue": 21466,
+      "creditsPerMin": 238.51,
+      "completedLoops": 38,
+      "completedContracts": 38,
+      "failedContracts": 8,
       "shipId": "ship_kestrel",
       "phase": "researched",
-      "travelS": 4172.6,
-      "actionS": 437.3,
+      "travelS": 3814.2,
+      "actionS": 397.3,
       "bottlenecks": [
         {
           "code": "rp_gate",
@@ -220,7 +220,7 @@
         },
         {
           "code": "bounty_accept_failed",
-          "detail": "mo_station_tethys_6_0"
+          "detail": "mo_station_ceres_7_3_chain"
         }
       ],
       "adaptersUsed": [
@@ -230,7 +230,7 @@
           "authority": "adapter_warning"
         }
       ],
-      "authorityReceipts": 95,
+      "authorityReceipts": 83,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -239,10 +239,10 @@
       "career": "prospector",
       "minutes": 30,
       "seed": 3232808963,
-      "credits": 8461,
-      "netWorth": 16574,
-      "earnedValue": 3461,
-      "creditsPerMin": 115.37,
+      "credits": 8509,
+      "netWorth": 16626,
+      "earnedValue": 3509,
+      "creditsPerMin": 116.97,
       "completedLoops": 11,
       "completedContracts": 11,
       "failedContracts": 0,
@@ -267,10 +267,10 @@
       "career": "prospector",
       "minutes": 60,
       "seed": 3232808963,
-      "credits": 11060,
-      "netWorth": 19362,
-      "earnedValue": 6060,
-      "creditsPerMin": 101,
+      "credits": 11409,
+      "netWorth": 19766,
+      "earnedValue": 6409,
+      "creditsPerMin": 106.82,
       "completedLoops": 20,
       "completedContracts": 20,
       "failedContracts": 0,
@@ -300,15 +300,15 @@
       "career": "prospector",
       "minutes": 90,
       "seed": 3232808963,
-      "credits": 14723,
-      "netWorth": 22723,
-      "earnedValue": 9723,
-      "creditsPerMin": 108.03,
+      "credits": 278,
+      "netWorth": 15278,
+      "earnedValue": 10278,
+      "creditsPerMin": 114.2,
       "completedLoops": 32,
       "completedContracts": 32,
       "failedContracts": 0,
-      "shipId": "ship_kestrel",
-      "phase": "starter",
+      "shipId": "ship_pelican",
+      "phase": "pelican",
       "travelS": 2940.7,
       "actionS": 2456,
       "bottlenecks": [
@@ -325,8 +325,10 @@
         }
       ],
       "authorityReceipts": 0,
-      "ok": true,
-      "assertionFails": [],
+      "ok": false,
+      "assertionFails": [
+        "prospector_pelican_window"
+      ],
       "assertionWarns": []
     }
   ],
@@ -335,20 +337,20 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 9073,
-        "earnedValue": 4073,
-        "creditsPerMin": 135.77,
-        "netWorth": 17073,
-        "completedLoops": 25,
-        "completedContracts": 25,
+        "endingCapital": 13057,
+        "earnedValue": 8057,
+        "creditsPerMin": 268.57,
+        "netWorth": 21057,
+        "completedLoops": 28,
+        "completedContracts": 28,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 1793.8,
-          "travelS": 1393.8,
-          "actionS": 400,
+          "simS": 1791.2,
+          "travelS": 1343.2,
+          "actionS": 448,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -356,7 +358,7 @@
         "bottlenecks": [
           {
             "code": "spread_collapse",
-            "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+            "detail": "Route cmdty_ore_iron→station_helios collapsed"
           }
         ],
         "adaptersUsed": [],
@@ -382,20 +384,20 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 13814,
-        "earnedValue": 8814,
-        "creditsPerMin": 146.9,
-        "netWorth": 21814,
-        "completedLoops": 48,
-        "completedContracts": 48,
+        "endingCapital": 19614,
+        "earnedValue": 14614,
+        "creditsPerMin": 243.57,
+        "netWorth": 27614,
+        "completedLoops": 53,
+        "completedContracts": 53,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 3565.4,
-          "travelS": 2797.4,
-          "actionS": 768,
+          "simS": 3605,
+          "travelS": 2757,
+          "actionS": 848,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -403,7 +405,7 @@
         "bottlenecks": [
           {
             "code": "spread_collapse",
-            "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+            "detail": "Route cmdty_ore_iron→station_helios collapsed"
           }
         ],
         "adaptersUsed": [],
@@ -429,20 +431,20 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 17090,
-        "earnedValue": 12090,
-        "creditsPerMin": 134.33,
-        "netWorth": 25090,
-        "completedLoops": 69,
-        "completedContracts": 69,
+        "endingCapital": 27392,
+        "earnedValue": 22392,
+        "creditsPerMin": 248.8,
+        "netWorth": 35392,
+        "completedLoops": 74,
+        "completedContracts": 74,
         "failedContracts": 0,
         "shipId": "ship_kestrel",
         "phase": "starter",
         "purchases": [],
         "time": {
-          "simS": 5366.2,
-          "travelS": 4262.2,
-          "actionS": 1104,
+          "simS": 5383.8,
+          "travelS": 4199.8,
+          "actionS": 1184,
           "dockS": 0,
           "recoveryS": 0,
           "idleS": 0
@@ -450,7 +452,7 @@
         "bottlenecks": [
           {
             "code": "spread_collapse",
-            "detail": "Route cmdty_salvage_electronics→station_forge collapsed"
+            "detail": "Route cmdty_ore_iron→station_helios collapsed"
           }
         ],
         "adaptersUsed": [],
@@ -604,23 +606,23 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 25586,
-        "earnedValue": 26586,
-        "creditsPerMin": 295.4,
-        "netWorth": 33586,
-        "completedLoops": 45,
-        "completedContracts": 45,
-        "failedContracts": 6,
+        "endingCapital": 20466,
+        "earnedValue": 21466,
+        "creditsPerMin": 238.51,
+        "netWorth": 28466,
+        "completedLoops": 38,
+        "completedContracts": 38,
+        "failedContracts": 8,
         "shipId": "ship_kestrel",
         "phase": "researched",
         "purchases": [],
         "time": {
-          "simS": 5377.8,
-          "travelS": 4172.6,
-          "actionS": 437.3,
-          "dockS": 138,
+          "simS": 5659.5,
+          "travelS": 3814.2,
+          "actionS": 397.3,
+          "dockS": 126,
           "recoveryS": 90,
-          "idleS": 540
+          "idleS": 1232
         },
         "bottlenecks": [
           {
@@ -637,7 +639,7 @@
           },
           {
             "code": "bounty_accept_failed",
-            "detail": "mo_station_tethys_6_0"
+            "detail": "mo_station_ceres_7_3_chain"
           }
         ],
         "adaptersUsed": [
@@ -649,8 +651,8 @@
         ],
         "assertionFails": [],
         "assertionWarns": [],
-        "hullDamageHp": 31.7,
-        "readiness": 0.77,
+        "hullDamageHp": 0,
+        "readiness": 1,
         "ownedWeapons": [
           "wpn_pulse_laser_s"
         ],
@@ -673,10 +675,10 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 8461,
-        "earnedValue": 3461,
-        "creditsPerMin": 115.37,
-        "netWorth": 16574,
+        "endingCapital": 8509,
+        "earnedValue": 3509,
+        "creditsPerMin": 116.97,
+        "netWorth": 16626,
         "completedLoops": 11,
         "completedContracts": 11,
         "failedContracts": 0,
@@ -721,10 +723,10 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 11060,
-        "earnedValue": 6060,
-        "creditsPerMin": 101,
-        "netWorth": 19362,
+        "endingCapital": 11409,
+        "earnedValue": 6409,
+        "creditsPerMin": 106.82,
+        "netWorth": 19766,
         "completedLoops": 20,
         "completedContracts": 20,
         "failedContracts": 0,
@@ -772,18 +774,29 @@
         ]
       },
       "90": {
-        "ok": true,
+        "ok": false,
         "horizonMin": 90,
-        "endingCapital": 14723,
-        "earnedValue": 9723,
-        "creditsPerMin": 108.03,
-        "netWorth": 22723,
+        "endingCapital": 278,
+        "earnedValue": 10278,
+        "creditsPerMin": 114.2,
+        "netWorth": 15278,
         "completedLoops": 32,
         "completedContracts": 32,
         "failedContracts": 0,
-        "shipId": "ship_kestrel",
-        "phase": "starter",
-        "purchases": [],
+        "shipId": "ship_pelican",
+        "phase": "pelican",
+        "purchases": [
+          {
+            "kind": "ship",
+            "id": "ship_pelican",
+            "price": 15000,
+            "reason": "buyShip:ship_pelican",
+            "atS": 5396.8,
+            "creditsBefore": 15278,
+            "creditsAfter": 278,
+            "authority": "ships.buyShip"
+          }
+        ],
         "time": {
           "simS": 5396.8,
           "travelS": 2940.7,
@@ -805,7 +818,9 @@
             "authority": "adapter_warning"
           }
         ],
-        "assertionFails": [],
+        "assertionFails": [
+          "prospector_pelican_window"
+        ],
         "assertionWarns": [],
         "hullDamageHp": 0,
         "readiness": 1,
@@ -832,19 +847,19 @@
     "warns": [],
     "disparity": {
       "30": {
-        "min": 115.37,
+        "min": 116.97,
         "max": 288.7,
-        "ratio": 2.5
+        "ratio": 2.47
       },
       "60": {
-        "min": 101,
+        "min": 106.82,
         "max": 354.37,
-        "ratio": 3.51
+        "ratio": 3.32
       },
       "90": {
-        "min": 108.03,
-        "max": 295.4,
-        "ratio": 2.73
+        "min": 114.2,
+        "max": 248.8,
+        "ratio": 2.18
       }
     }
   },
@@ -867,31 +882,31 @@
       {
         "seed": 3232800769,
         "ok": true,
-        "endingCapital": 9073,
-        "earnedValue": 4073,
-        "creditsPerMin": 135.77,
-        "completedLoops": 25,
-        "completedContracts": 25,
+        "endingCapital": 13057,
+        "earnedValue": 8057,
+        "creditsPerMin": 268.57,
+        "completedLoops": 28,
+        "completedContracts": 28,
         "assertionFails": []
       },
       {
         "seed": 3232800785,
         "ok": true,
-        "endingCapital": 12303,
-        "earnedValue": 7303,
-        "creditsPerMin": 243.43,
-        "completedLoops": 22,
-        "completedContracts": 22,
+        "endingCapital": 10541,
+        "earnedValue": 5541,
+        "creditsPerMin": 184.7,
+        "completedLoops": 24,
+        "completedContracts": 24,
         "assertionFails": []
       },
       {
         "seed": 3232800801,
         "ok": true,
-        "endingCapital": 12416,
-        "earnedValue": 7416,
-        "creditsPerMin": 247.2,
-        "completedLoops": 23,
-        "completedContracts": 23,
+        "endingCapital": 10442,
+        "earnedValue": 5442,
+        "creditsPerMin": 181.4,
+        "completedLoops": 24,
+        "completedContracts": 24,
         "assertionFails": []
       }
     ],
@@ -909,9 +924,9 @@
       {
         "seed": 3232804882,
         "ok": true,
-        "endingCapital": 4943,
-        "earnedValue": 5943,
-        "creditsPerMin": 198.1,
+        "endingCapital": 4919,
+        "earnedValue": 5919,
+        "creditsPerMin": 197.3,
         "completedLoops": 13,
         "completedContracts": 13,
         "assertionFails": []
@@ -919,9 +934,9 @@
       {
         "seed": 3232804898,
         "ok": true,
-        "endingCapital": 5482,
-        "earnedValue": 6482,
-        "creditsPerMin": 216.07,
+        "endingCapital": 4868,
+        "earnedValue": 5868,
+        "creditsPerMin": 195.6,
         "completedLoops": 10,
         "completedContracts": 10,
         "assertionFails": []
@@ -931,9 +946,9 @@
       {
         "seed": 3232808963,
         "ok": true,
-        "endingCapital": 8461,
-        "earnedValue": 3461,
-        "creditsPerMin": 115.37,
+        "endingCapital": 8509,
+        "earnedValue": 3509,
+        "creditsPerMin": 116.97,
         "completedLoops": 11,
         "completedContracts": 11,
         "assertionFails": []
@@ -941,9 +956,9 @@
       {
         "seed": 3232808979,
         "ok": true,
-        "endingCapital": 8795,
-        "earnedValue": 3795,
-        "creditsPerMin": 126.5,
+        "endingCapital": 8945,
+        "earnedValue": 3945,
+        "creditsPerMin": 131.5,
         "completedLoops": 12,
         "completedContracts": 12,
         "assertionFails": []
@@ -951,9 +966,9 @@
       {
         "seed": 3232808995,
         "ok": true,
-        "endingCapital": 8723,
-        "earnedValue": 3723,
-        "creditsPerMin": 124.1,
+        "endingCapital": 8743,
+        "earnedValue": 3743,
+        "creditsPerMin": 124.77,
         "completedLoops": 11,
         "completedContracts": 11,
         "assertionFails": []
@@ -1103,10 +1118,21 @@
     },
     "prospector": {
       "roleHull": "ship_pelican",
-      "phase": "starter",
-      "purchases": [],
+      "phase": "pelican",
+      "purchases": [
+        {
+          "kind": "ship",
+          "id": "ship_pelican",
+          "price": 15000,
+          "reason": "buyShip:ship_pelican",
+          "atS": 5396.8,
+          "creditsBefore": 15278,
+          "creditsAfter": 278,
+          "authority": "ships.buyShip"
+        }
+      ],
       "researchUnlocks": [],
-      "firstPurchaseAtS": null
+      "firstPurchaseAtS": 5396.8
     }
   },
   "gate": "check-m3-career-cohorts",

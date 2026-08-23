@@ -18,6 +18,7 @@ export const ORBIT_DEFAULT_PERIOD_TICKS = 90;
 export const ORBIT_DEFAULT_STRENGTH = 40;
 
 const TAU = Math.PI * 2;
+const TICKS_PER_SECOND = 60;
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -95,7 +96,7 @@ export function orbitNodePose(host, index, count, radius, simTime, periodTicks) 
   const n = Math.max(1, Number.isInteger(count) && count > 0 ? count : 1);
   const r = finite(radius, ORBIT_DEFAULT_RADIUS);
   const period = finite(periodTicks, ORBIT_DEFAULT_PERIOD_TICKS);
-  const spin = period > 0 ? (finite(simTime) / period) * TAU : 0;
+  const spin = period > 0 ? (finite(simTime) * TICKS_PER_SECOND / period) * TAU : 0;
   const phase = (index / n) * TAU + spin;
   return {
     x: finite(host && host.x) + Math.cos(phase) * r,
@@ -177,7 +178,7 @@ export function trySpawnOrbitNodes(world, parent, spec, host, options = {}) {
   const periodTicks = finite(orbit.periodTicks, ORBIT_DEFAULT_PERIOD_TICKS);
   const strength = finite(orbit.impulse, ORBIT_DEFAULT_STRENGTH);
   const tick = Number.isInteger(options.tick) ? options.tick : parent.createdTick;
-  const simTime = finite(options.simTime, tick);
+  const simTime = finite(options.simTime, tick / TICKS_PER_SECOND);
   const hostId = host && host.id != null ? host.id : parent.sourceEntityId;
 
   for (let i = 0; i < want; i++) {

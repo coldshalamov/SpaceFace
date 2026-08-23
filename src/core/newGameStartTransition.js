@@ -67,6 +67,7 @@ export async function runNewGameStartTransition(options = {}) {
     if (typeof waitForWarmup === 'function') {
       publishProgress(reportProgress, current, 'render-pipelines', 0.78, 'Preparing flight shaders');
       const warmupReady = await waitForWarmup();
+      if (!current()) return stale();
       if (warmupReady === false) {
         throw new GameStartReadinessError(
           'RENDER_PIPELINE_UNAVAILABLE',
@@ -79,6 +80,7 @@ export async function runNewGameStartTransition(options = {}) {
     if (typeof waitForGpuResources === 'function') {
       publishProgress(reportProgress, current, 'gpu-resources', 0.9, 'Preparing the opening route');
       const gpuReady = await waitForGpuResources();
+      if (!current()) return stale();
       if (gpuReady === false) {
         throw new GameStartReadinessError(
           'GPU_RESIDENCY_UNAVAILABLE',
@@ -92,10 +94,12 @@ export async function runNewGameStartTransition(options = {}) {
     const enteredFlight = guard.commit(token, enterFlight);
     return enteredFlight ? { stale: false, enteredFlight: true } : stale();
   } catch (error) {
+    if (!current()) return stale();
     if (preparationStarted && current() && typeof discardRun === 'function') {
       try { await discardRun(); }
       catch (cleanupError) { error.cleanupError = cleanupError; }
     }
+    if (!current()) return stale();
     throw error;
   }
 }

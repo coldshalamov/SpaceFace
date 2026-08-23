@@ -17,6 +17,7 @@ const DEFAULTS = Object.freeze({
   heatLockoutFraction: 0.92,
   lowEnergyFraction: 0.14,
   maxIdenticalBlockedRetries: 3,
+  blockedRetryTicks: 30,
 });
 const EMPTY_REASONS = Object.freeze([]);
 
@@ -219,6 +220,7 @@ export class BehaviorExecutor {
           decision = 'blocked';
           reason = started.reason;
           state.blockedRetries++;
+          state.blockedRetryAtTick = retryTick(tick, null, this.config.blockedRetryTicks);
         } else {
           state.actionId = selected.actionId;
           state.targetId = selected.targetId;
@@ -241,7 +243,7 @@ export class BehaviorExecutor {
         decision = 'blocked';
         reason = gate.reason;
         state.blockedRetries++;
-        state.blockedRetryAtTick = gate.retryAtTick;
+        state.blockedRetryAtTick = retryTick(tick, gate.retryAtTick, this.config.blockedRetryTicks);
       }
     } else if (!state.actionId && selected.actionId == null) {
       state.targetId = null;
@@ -558,6 +560,12 @@ function normalizeGate(value) {
     reason: String(value.reason || (value.ok ? 'ok' : 'action_port_rejected')),
     retryAtTick: Number.isInteger(value.retryAtTick) ? value.retryAtTick : null,
   };
+}
+
+function retryTick(tick, explicitTick, backoffTicks) {
+  if (Number.isInteger(explicitTick)) return explicitTick;
+  const delay = Number.isInteger(backoffTicks) && backoffTicks > 0 ? backoffTicks : DEFAULTS.blockedRetryTicks;
+  return tick + delay;
 }
 
 function blockedContextFor(selected, directive) {

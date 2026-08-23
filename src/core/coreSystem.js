@@ -100,14 +100,13 @@ export const core = {
     });
     this.helpers = ctx.helpers;
 
-    // force-kill (missions/console)
-    bus.on('entity:kill', ({ id, killerId }) => {
-      const e = state.entities.get(id);
-      if (e && e.alive) { e.alive = false; e._killerId = killerId; }
-    });
-    bus.on('entity:spawnRequest', ({ spec }) => spawnEntity(spec));
-
     this._presentationJournalUnsubscribes.push(
+      // Force-kill command (missions/console).
+      bus.on('entity:kill', ({ id, killerId }) => {
+        const e = state.entities.get(id);
+        if (e && e.alive) { e.alive = false; e._killerId = killerId; }
+      }),
+      bus.on('entity:spawnRequest', ({ spec }) => spawnEntity(spec)),
       bus.on('ship:appearanceChanged', ({ id }) => markEntityVisualChanged(id)),
       bus.on('save:restoring', () => requestPresentationRebuild('save-restoring')),
       // Continue restores simTime without reconstructing core. Re-anchor the day boundary so the
