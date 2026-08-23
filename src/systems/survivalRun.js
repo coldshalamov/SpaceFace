@@ -7,6 +7,11 @@
 import { validateRunState } from '../core/runState.js';
 import { SURVIVAL_ARC_LENGTH, actIndexForWave, difficultyForWave } from '../data/survivalActs.js';
 import { planWave } from './survivalWavePlanner.js';
+import {
+  compileChallenge,
+  normalizeMutators,
+  takeQueuedChallenge,
+} from './survivalMutators.js';
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
@@ -150,6 +155,11 @@ export const survivalRun = {
 
   _onStarted(payload) {
     this._resetMachine();
+    const queued = takeQueuedChallenge();
+    const run = liveSurvivalRun(this.state);
+    if (run && queued) {
+      run.arenaMutators = queued.mutators.slice();
+    }
     if (payload && payload.kind === 'survival' && payload.phase === 'loadout') {
       this._phaseTicks = 0;
     }
@@ -168,6 +178,10 @@ export const survivalRun = {
     this._pendingTo = null;
     this._phaseTicks = 0;
     this._clearReceiptLatches();
+
+    if (phase === 'draft' && compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
+      this._draftResolved = true;
+    }
 
     if (phase === 'wave_intro') {
       this._planCurrentWaveIntro(run);
@@ -231,7 +245,7 @@ export const survivalRun = {
       wave: nextWave,
       act,
       difficulty: difficultyForWave(nextWave),
-      mutators: run.modifiers,
+      mutators: normalizeMutators(run.arenaMutators),
       buildSummary: null,
     });
     if (isPlanError(plan)) {

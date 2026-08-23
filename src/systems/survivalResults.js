@@ -9,6 +9,8 @@
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
+import { settleCrucibleRun } from './survivalRecords.js';
+import { challengeFromRun } from './survivalMutators.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -215,6 +217,17 @@ export const survivalResults = {
         recentCauses: run.style && Array.isArray(run.style.recentCauses) ? run.style.recentCauses.slice() : [],
       },
     };
+    const challenge = challengeFromRun(run);
+    result.ruleset = challenge.ruleset;
+    result.trialId = challenge.trialId;
+    result.mutators = challenge.mutators.slice();
+    result.unlocksEarned = [];
+    try {
+      const settled = settleCrucibleRun({ result, run });
+      result.unlocksEarned = settled.unlocksEarned.slice();
+    } catch {
+      // A local-record failure must not swallow the results the player is owed.
+    }
     this._result = result;
     this._emit('run:resultsReady', result);
   },
