@@ -1925,7 +1925,13 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ct-row:focus-visible,
 .sx-ct-row.is-active {
   position:relative; inset:auto; flex:0 0 268px; width:268px; height:78px; min-height:78px; transform:none;
-  display:grid; grid-template-columns:20px 27px minmax(0,1fr) auto; grid-template-rows:minmax(36px,1fr) 18px;
+  /* The last track was `auto`. The title spans tracks 3-4, and an item spanning INTO an auto
+     track can force that track wider than the card — measured in the real game at 412px inside
+     a 268px card, which is why the title's `text-overflow: ellipsis` never fired: the title was
+     not overflowing its parent, its parent had grown to fit it. minmax(0,auto) lets the track
+     size to content only up to the space available, so the title finally overflows and
+     truncates instead of being sliced mid-glyph by the card's own overflow:hidden. */
+  display:grid; grid-template-columns:20px 27px minmax(0,1fr) minmax(0,auto); grid-template-rows:minmax(36px,1fr) 18px;
   align-items:center; gap:3px 7px; padding:7px 8px; overflow:hidden; scroll-snap-align:start;
   border:0; border-left:var(--sf-rail-w) solid color-mix(in srgb,var(--signal) 50%,transparent); border-radius:0;
   background:linear-gradient(108deg,color-mix(in srgb,var(--signal) 8%,var(--sf-surface)),var(--sf-surface) 60%,var(--sf-surface));
@@ -1937,7 +1943,14 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ct-row::after { content:""; position:absolute; inset:auto 8px 0 49px; width:auto; height:1px; transform:none; background:linear-gradient(90deg,var(--signal),transparent); opacity:.5; }
 .sx-ct-row__seq { grid-column:1; grid-row:1; align-self:start; color:#496c70; font:500 13px/1 var(--sf-data-face); }
 .sx-ct-row__ic { position:static; grid-column:2; grid-row:1; width:27px; height:27px; display:grid; place-items:center; color:var(--signal); opacity:.9; }
-.sx-ct-row__mid { position:static; grid-column:3/5; grid-row:1; min-width:0; width:auto; max-width:none; padding:0; opacity:1; transform:none; pointer-events:none; }
+/* CONTRACT TITLES WERE SLICED MID-GLYPH — "SCORT A CONVOY TO CUSTOMS GAT" on the first content
+   after the header. Measured in the REAL game (not the mock lab, which disagreed): 509px of
+   title inside a 268px card. `text-overflow: ellipsis` was already set on the title and could
+   never fire, because the title was not overflowing its parent — the parent had grown to fit
+   it. A nowrap element's automatic minimum size is its full text width, and `max-width: none`
+   here (a LATER rule than every earlier attempt) cancelled any bound placed on it. Adding
+   overflow containment and a real max-width in the winning rule is what finally binds it. */
+.sx-ct-row__mid { position:static; grid-column:3/5; grid-row:1; min-width:0; width:auto; max-width:100%; overflow:hidden; padding:0; opacity:1; transform:none; pointer-events:none; }
 .sx-ct-row__title {
   display:-webkit-box; overflow:hidden; color:#dcebec; font:600 15px/1.18 var(--sx-ui);
   white-space:normal; -webkit-box-orient:vertical; -webkit-line-clamp:2;
