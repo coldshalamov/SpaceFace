@@ -33,6 +33,14 @@ reported the title fitting after attempt (2) while the captured frame was pixel-
 A measurement taken on a mock fixture is not evidence about the product. This is exactly why the
 grammar requires visual confirmation against a captured frame rather than a measurement.
 
+**Findings #2 and #3 — measured, and they do not reproduce.** After the rail fix, a sweep of the
+live station at the review's own 1440x900 framing finds **zero** elements whose content exceeds
+their box under `overflow: hidden` (deliberate `text-overflow: ellipsis` truncation excluded, since
+that is designed). The ACTIVE MISSIONS card is not cut off and nothing collides with the STATION
+COMMS badge. The most likely explanation is that both were downstream of the same rail overflow
+that finding #1 fixed — a 153px-wide element spilling out of a 268px card displaces what sits near
+it. Recorded as not-reproducing rather than fixed, because no separate change was made for them.
+
 Findings about hierarchy, density and the persistent amber resupply chip are art-direction calls
 and are left to the owner.
 
