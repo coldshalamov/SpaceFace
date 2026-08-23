@@ -305,3 +305,34 @@ failures; they need re-running with room.
 21 GB. `build/` regenerates and was reclaimed twice here. **Pruning the evidence is an owner decision,
 not a cleanup** — receipts cite some of it — but until the volume has headroom, no check result on
 this machine should be quoted without stating the free space it was measured at.
+
+---
+
+## 12. `check:flight:clean` — what the 4,212 warnings are, as far as it is established
+
+Every behavioural assertion in that gate passes. It fails on `noConsoleWarnings` alone, against
+**4,212 instances of one line**: `THREE.Texture: Unable to serialize Texture.`
+
+Established:
+
+- The warning is emitted by `serializeImage()` in the vendored three.js, reached from
+  `Texture.toJSON()`. It fires when a texture's image cannot be serialized.
+- `src/save/saveSystem.js` explicitly excludes meshes from its payload ("No mesh/THREE/Map/fn/…"),
+  so the ordinary save path is not the source.
+- **A live browser sitting on the intro screen produces ZERO of them.** So it is not boot, and it is
+  not idle rendering.
+- It floods in at least two DIFFERENT harnesses — `check:flight:clean` and `check:playable`.
+
+That combination points at harness-side serialization rather than a game defect: something those
+harnesses do — a state snapshot, a returned page value, a structured clone — reaches an object graph
+containing THREE materials, and anything with a `toJSON` gets called.
+
+**Not concluded, and deliberately not patched.** The decisive evidence would be a stack trace
+captured by patching `console.warn` or `Texture.prototype.toJSON` BEFORE page boot inside the
+harness. Two attempts at static reasoning have now failed to pin the caller, which is exactly the
+signal to stop reasoning and instrument.
+
+**It must not be fixed by adding the warning to an ignore list.** A `--strict-warnings` gate that
+ignores the only warning it ever sees is not a gate, and four thousand serialization attempts is a
+performance question as well as a noise one. Until the caller is named, treat `check:flight:clean`
+as reporting harness noise rather than flight health — every flight assertion inside it is green.
