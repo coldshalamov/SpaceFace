@@ -65,5 +65,17 @@ comment. Reverted rather than shipped.
 `check-sg04-release-assets`, `check-station-archetype-glb-load`, `check-authored-place-runtime`,
 `probe-ship-visual-stability`, `check-perf-packets`.
 
-The seven asset-family entries are worth triaging together — they may share the disk-full or
-dirty-tree root cause rather than being seven separate defects.
+**That hypothesis is wrong, and I checked it rather than leaving it standing.** I suggested the seven
+asset-family entries probably shared the disk-full or dirty-tree cause. `check-parts-manifest` run
+directly reports **4,181 ok, 559 fail** — and the failures are content, not environment: hundreds of
+`_export_tmp.glb` files were committed and are declared in the manifest, e.g.
+`revamp-evidence/weapon_railgun/_export_tmp.glb`, plus at least one place GLB whose runtime metadata
+will not load (`places/place_station_trade_hub.glb`).
+
+So the asset family is real authoring debt: temporary export artefacts that reached both the repo and
+the manifest. Clearing it means deleting committed GLBs and re-deriving manifest entries, which is
+the art lane's territory and the owner's call, not a check to be quietened.
+
+The disk is separately a real constraint — 446 MB free of 944 GB. Of that, `.devshots/perf` alone is
+2.6 GB and `pq017-world-site` 993 MB. These are evidence archives from past runs; pruning them
+destroys work products and is an owner decision, so nothing here has been deleted.
