@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-08-21
-baseCommit: ce340812111369247e4ef80ee2d2be73660a7aa0
+refreshed: 2026-08-22
+baseCommit: 2630d9a95b14a2fb827877321ca4e14fa51cec7c
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,8 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-133 / PQ-134 Crucible fleet run (admission, seam audit, then leaves .01+) | fable5-master-orchestrator + lanes (grok/codex/glm/kimi/opus) | IMPLEMENTING | `CANONICAL_BUILD_MAP.md` §12–14, `design/program/roadmap/active/PQ-13[234].md`, `design/program/roadmap/program-queue.json`, new files under `src/systems/survival*`, `src/combat/attack*`, `src/data/survival*`, `src/ui/screens/crucible*` | commit each reviewed leaf scoped to its paths; check:playable before every commit |
-| PQ-050.01 Hornet chase-camera form pass | opencode-pq050-hornet (+ Codex app); live again 2026-08-21 20:04 (cycle_152, chase-camera axis fix) | IMPLEMENTING | `tools/blender/build_hornet_mtx.py`, `tools/blender/spaceface_chase_camera.py`, `assets/ships/fleet_player_bodies_v1/hornet/**` | full-job chase cycles; Hitch untouched; other lanes keep off these paths |
+| _(none)_ | — | — | — | — |
 
 ## Uncommitted work without a confirmed live thread
 

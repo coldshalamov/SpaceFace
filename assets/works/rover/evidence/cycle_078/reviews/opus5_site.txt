@@ -1,0 +1,122 @@
+VERDICT: REVISE
+
+Reviewer: opus5-site. Still: review_1to1/works_site_1to1.png. Provenance confirmed -- the crop is an
+exact zero-difference crop of works_site.png at (941, 521), and the rover is 22x22 lit pixels inside
+it. Framing valid: site camera, not a cabin interior, not a studio three-quarter.
+
+0. CYCLE 78 vs CYCLE 77 -- THE SAME, PROVABLY
+
+Both site 1:1 crops carry exactly 484 lit pixels; identical luminance min/median/max
+(15.0 / 53.2 / 124.4); identical value buckets to within 2 px; identical accent hues. The entire pixel
+difference is confined to an 11x22 sub-box with a maximum per-channel delta of 7/255 -- invisible.
+Every defect cycle 77 named that survives to this camera (tan card body, yellow bar not a visor line,
+boom spine too faint) is still on camera unchanged. This is the literal Section 0 anti-gaming row:
+five iterations with the same stills defect.
+
+REVERT is wrong here only because there is nothing better to go back to -- cycle 77 is pixel-identical
+and was itself REVISE, so reverting is a no-op.
+
+1. DEFECTS FROM THIS SITE VIEW AT PLAY SIZE
+
+A. IT IS A CARD -- the headline. At play size the rover is a flat tan rounded-corner CARD with two dark
+bands ruled across it and a small yellow blob near the middle. The massing under it is a BOX. That is
+the toy/card/gray-plate read, and it is the dominant read, not a detail.
+
+B. Silhouette separates, but into the wrong shape. The rover separates cleanly against the surround
+(lum 15-124 vs 7-9) -- separation is not the problem. The shape it separates into is a SQUARE, 22x22
+px. Nothing overhangs, nothing notches, no negative space. Only the boom nub breaks the outline, by
+about 5 px. A square is not a mining rover.
+
+C. THERE IS NO MINE ON CAMERA. 99.98% of the 1920x1080 frame sits at luminance <=12; outside a single
+22x22 box the maximum luminance anywhere in the frame is 9, and row-mean varies only 7.79 -> 8.64 top
+to bottom. Boosted 6x, the surround is flat noise: no rock face, no bench, no muck pile, no berm, no
+other machines, no contact shadow, no horizon. I cannot distinguish "no site geometry was placed" from
+"a ground plane is there at near-zero exposure" -- the faint row-mean gradient hints a plane exists.
+Either way the still cannot answer "working machine in a mine vs toy on a texture" in the machine
+favour, because there is no mine to be parked in.
+
+D. Tracks -- NOT BELTS. Two dark horizontal SMEARS ruled across the top and bottom of the card,
+INBOARD of the card own edge. They do not carry the machine: the deck corners stick out past them, so
+the card sits on top of the tracks rather than the tracks defining the machine width. No stadium shape
+survives. No thin raised steel outer lip exists at all -- the entire dark bucket is 5 pixels across the
+whole rover, and two lipped belts cannot live in 5 pixels.
+
+E. Cab house -- ABSENT. No dark house on a mid steel tub. The cab does not separate from the deck in
+value or outline. Measured: 60.7% of the lit rover in one light band, 36.8% in one mid band, 1.0%
+dark; max/median luminance ratio 2.34. One value with a wobble.
+
+F. Windshield / visor -- WRONG ELEMENT. There is no dark windshield band. There is a small
+yellow-orange BLOB (7 px, 1.4%) with no dark glass for it to sit past. Every saturated pixel on the
+machine falls in hue 26-31 degrees, so the accent shares the body own hue family and reads as a hot
+spot on the tan, not a visor line.
+
+G. Hopper -- NOT A HOLE. Nothing reads as an opening from this camera. A short dark mark left of
+centre could be anything; no rim, no interior darkness distinguishable from the track smears. Cycle 77
+was told the mouth was a raw cut; from the site camera it is now not even a rectangle.
+
+H. Boom -- the only thing working, and it is a nub. A ~5 px dark stub with a bright tip pokes off the
+right edge. It is the sole asymmetry and the sole feature breaking the square -- KEEP IT. But there is
+no dark arm -> raised steel spine -> steel bit body -> bright tip chain; there is a stub and a dot.
+
+I. Material separation does not survive. Steel, painted, glass, rubber are indistinguishable. Mean
+saturation 0.56 with every hue inside a 5-degree band means one paint on everything. The belts read as
+slightly darker tan, not rubber. Glass and bare steel are simply absent.
+
+2. MTX ROWS FAILED
+
+  * MTX-55 role silhouette -- FAIL. The row tests at 40 px; this rover is 22 px and is a square with a
+    nub. A stranger cannot name the role, or that it is a vehicle.
+  * MTX-56 value hierarchy -- FAIL, and it is the row own named forbidden fake (whole ship one taupe):
+    60.7% light + 36.8% mid, 1.0% dark, max/median 2.34. Three distinct values do not exist.
+  * MTX-67 designed accent -- FAIL. 7 px at hue 26-31, the body own hue. Not a controlled colour beat.
+  * MTX-59 reads at play distance -- FAIL, and this is the close condition for the whole leaf: role,
+    2+ materials, and openings all fail to read.
+  * MTX-64 rest areas -- FAIL by inversion: the machine is ALL rest area, no detail clustered at
+    access, heat, or joints.
+  * Section 0 anti-gaming -- FAIL (same stills defect across iterations).
+  * Not judgeable from this view and NOT scored: MTX-57 (no opening resolves, so no rim assessable),
+    MTX-62 (gaps sub-pixel), MTX-63, MTX-66 (uniform saturation is not evidence about grazing-light
+    highlights).
+
+3. CONCRETE BLENDER ACTIONS
+
+Ordered by measured leverage -- the failure is exactly three things: no dark values, one hue, square
+plan.
+
+  1. DARKEN THE BELTS HARD. Rubber must be the darkest value on the machine by a wide margin, well
+     below the deck albedo. This alone moves the dark bucket from 1% toward 20-30%.
+  2. DESATURATE THE TUB. Move the deck/tub off hue 28 at saturation 0.56 to a low-saturation steel
+     gray. Saturation is reserved for the accent only. This is why it currently reads as one plastic
+     toy.
+  3. MOVE THE TRACKS OUTBOARD. The belts must be the widest points in plan, past the deck sides, with
+     daylight between deck underside and track top. The tracks carry the machine; the deck does not sit
+     on top of them.
+  4. RAISED OUTER LIP AS GEOMETRY, NOT TEXTURE: a thin rail 3-5 cm proud along the OUTER face of each
+     belt, shaded steel. At 22-38 px each belt then reads as a dark band with a light edge -- a
+     two-value read in one pixel. (This is the TRACK lip. It is not the steel lip ring cycle 77 banned
+     from the hopper.)
+  5. BREAK THE SQUARE IN PLAN. Push the boom arm out to 40-50% of hull length and extend the
+     counterweight the other way so the outline is L-shaped and asymmetric at stamp size. The recorded
+     0.1466 offset buys nothing visible.
+  6. Cab as a genuinely darker house on a mid tub: separate body, real gap at the base, tall enough to
+     break the top edge of the silhouette. Value separation makes it a house at 2 px, not modelling.
+  7. Windshield: recess a dark band across the cab front with real shell thickness, and put the yellow
+     line only on the lip PAST the glass. No yellow on cab sides, no yellow roof patch.
+  8. Hopper as a real hole: through-cut with wall thickness, mouth large enough to be 3-4 px at play
+     size, positioned to break the deck top edge in plan so it is seen against the ground rather than
+     swallowed inside the plate. Per cycle 77 standing instruction: KEEP the interior dark, NO steel
+     lip ring, DO NOT steel the well walls -- thickness only.
+  9. Boom chain: dark arm, a proud steel spine rail along its top (geometry, not a painted stripe),
+     into a chunkier steel bit body with a small hot machined tip as the one bright accent.
+
+NUMERIC GATE FOR CYCLE 79 -- re-measure on the same 38 px crop and require: dark bucket >= 20%,
+light+accent <= 35%, max/median luminance >= 4, and accent hue separated from body hue by more than 5
+degrees. Without a gate the next cycle can be another zero-delta and nobody will notice.
+
+SEPARATE FROM THE BLENDER WORK -- THE STILL ITSELF IS NOT EVIDENCE. Light the site and put the rover
+in contact with something (bench, muck pile, rim light, contact shadow), then re-cut the 1:1 at the
+same offset so cycles stay comparable. As shot, no site verdict is possible next cycle either. Also
+note the bundle is mixed: works_beside_flight.png places the TOP 1:1 beside the flight ship, not the
+site one, so the "does it hold up beside the real game" comparison was never made for this camera. In
+that beside-flight frame the courier reads as a manufactured ship with panel breaks, dark wells and
+coloured accents; the rover beside it reads as a tan card.

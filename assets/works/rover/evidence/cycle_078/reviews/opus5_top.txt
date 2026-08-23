@@ -1,0 +1,151 @@
+VERDICT: REVISE
+
+Reviewer: opus5-top. Still: works_top_1to1.png (320x320 native, ~120 px of rover). Framing valid --
+tilted top-down works camera, whole rover in frame, not a cabin interior, not a studio three-quarter.
+
+0. CYCLE 78 vs CYCLE 77 -- THE SAME PICTURE
+
+Diffed the two 1:1 crops pixel by pixel. 1,031 of 102,400 pixels differ = 1.0%. Mean delta over those
+pixels 7.9 summed RGB (~2.6 per channel), max 78. Every cluster except one is dust-level noise at
+anti-aliased edges. The only visible change is a thin bar at x173-210, y176-179: the boom spine got
+brighter. Nothing else moved.
+
+Everything cycle 77 named is unchanged -- tan/pale card body, black-rectangle hopper mouth from the
+top, yellow bar visor, absent steel lip. The single change traded "too faint to see" for a hard white
+pinstripe, which is the continuous-luminous-outline read this brief bans by name, applied to a
+different part. Section 0 anti-gaming bans iterations with the same stills defect; a 1%-of-pixels
+delta whose only structural content is one line's brightness is that row with a measurement on it.
+
+1. DEFECTS AT PLAY SIZE
+
+Silhouette -- PASSES. Squarish body slung between two track pills, boom off one corner. Legible as a
+tracked works rover.
+
+Tracks -- solid belts, but no outer lip, and the structure is paint.
+  * Belts are right: two dark stadium shapes ~20 px, solid, grouser cross-hatch. Not paperclips, not
+    wire loops, not a luminous outline.
+  * The raised steel outer lip DOES NOT EXIST. Vertical profiles at x=115/135/155/175 on both tracks:
+    ground R72-77; crossing the outer edge into the belt the value only ever DROPS (72,72,71->44 at
+    x=135; 72,72,70->44 at x=155; 72,69,68,62->36 at x=175). Nothing on the outer edge rises above
+    ground value along the straight run. Single-pixel spikes of 88 and 83 are corner glints,
+    indistinguishable from aliasing sparkle.
+  * The bright bead is on the WRONG EDGE -- the light-catching line runs the inner (deck-side) edge,
+    y=130 reading 81,93,94,99,102 then a mottled 65-83 run. Inner, not outer, and it varies, so it
+    reads as a stitched seam or decal edge.
+  * In clay the tracks are two featureless white lozenges -- no belt, no grousers, no lips, no road
+    wheels, no sprockets. All track structure lives in the surface, not the form.
+
+Mid tub -- THE GRAY PLATE, AND IT IS INVERTED. Row y=140 holds twenty-eight consecutive pixels of
+essentially one value (R97-98), about a quarter of the rover width: no gradient, no panel break, no
+seam channel, no thickness, no material change. It is also BRIGHTER than the terrain it sits on (tub
+97-98 vs ground 72-77). The brief asks for a dark cab house on a MID steel tub; this is the brightest
+large surface in the frame. That is a spec inversion, not just flatness. The two diagonal creases read
+as scuffs on a card.
+
+Cab house -- dark and correct, but a plain box. Reads R~40 against the deck. Roof is a flat brown
+rectangle with nothing on it; in clay it is a plain box.
+
+Windshield band -- visible, and a black rectangle sticker. Genuinely there and dark (x174-179, six px,
+y~152-166) but measures R1 G1 B5: flat across all six pixels, hard 90-degree corners, no frame, no
+mullion, no rim thickness, no depth cue, pasted on a flat roof. You cannot tell it is a hole rather
+than a painted square.
+
+Yellow visor line -- structurally CORRECT, executed as a glowing filament. Eight rows checked; order
+is right everywhere: cab roof (~40,24,4) -> glass (1,1,5) -> visor -> ground (76,60,42) from x=183.
+Thin vertical line, full height of the glass, only past the glass. NOT a roof postage stamp, not a
+U-frame, not two track bars, not yellow cab sides -- the ask is met. The problem is intensity: x=181
+reads R244 G197 B76 where the next brightest large surface is 98, ~2.5x anything else on the model.
+It reads as a lit filament, not a painted metal lip.
+
+Hopper well -- THIS ONE WORKS. DO NOT TOUCH IT. A real hole: lit near wall, both side walls, a ribbed
+floor, a deep shadow band at the far edge, a chamfered rim. In clay it has a dark floor at depth. It
+is distinct from the pane -- the hopper shows walls and a floor, the windshield shows nothing. That
+contrast is the single best thing in this still. Caveat: at native brightness it collapses toward a
+dark brown rectangle on a pale plate because the rim is the same cream deck material as its surround.
+That is a contrast problem in the surround, not a form problem in the well.
+
+Boom -- a dark card with a white racing stripe. The arm is a flat dark olive parallelogram (R~33), no
+thickness cue, no top-versus-side value break. The spine measures R123 G110 B94 over three pixels, 4x
+the arm, dead uniform its entire length: no break, no segmentation, no taper, no shading. Desaturated
+gray-white in an entirely warm frame, so it reads as a foreign decal rather than steel.
+
+Bit -- a white paper scrap, not a steel body with a bright tip. All cream-white, so there is no dark
+steel body for a bright tip to contrast against and "bright tip" carries no information. Shape is a
+small irregular ~6 px blob reading as a torn card chip. Not a tan mushroom and not a yellow hook --
+the previous two failure modes are gone -- but a white card scrap is its own banned read.
+
+Greebles -- confetti. Two dark clusters flanking the cab carry tiny cream specks with no readable
+hardware shape. Noise, not fasteners.
+
+Value structure -- ground 72-77, tub 97-98, belts 33-46, cab 40, arm 33, hopper 30-55. The model
+occupies two bands (dark mechanical, one bright plate) with no mid value of its own; the "mid" in the
+frame is the terrain. Everything outside those bands is a sticker: the 244 yellow, the 123 white, the
+1 black.
+
+Named banned reads, explicitly: GRAY PLATE = the mid tub, 28 px of constant R98, brighter than the
+ground. CARD = boom arm, cab roof, bit. BOX = cab house in clay. TOY = tracks as two smooth pills with
+tread printed on them. CLAY BLOCKOUT = the clay pass reads lozenge + lozenge + plate + box + wedge +
+stick.
+
+2. MTX ROWS FAILED
+
+  * Section 0 clay clause -- FAILS, and bars everything downstream: if the clay reads as stacked
+    primitives, no surface technique may be marked implemented.
+  * Section 0 anti-gaming -- FAILS (1%-pixel cycle, one line brightness).
+  * MTX-46 forbidden reads -- FAILS, and this alone fails the leaf. Two smooth pills + plate + box in
+    a supported works view is the LEGO-stack read.
+  * MTX-01 mid-poly edges -- FAILS. In clay the pills are smooth lozenges with no bevel-run highlight;
+    the tub plate has no edge highlight at all.
+  * MTX-03 skin-breaking boolean -- SPLIT. Hopper PASSES (opening, rim, wall thickness, empty mouth).
+    Windshield FAILS the same row: a six-pixel R1 black rectangle with no rim thickness is the
+    forbidden fake, "a dark plate named Recess".
+  * MTX-31 classify the substance -- FAILS. Rubber belt, steel lip, painted tub, glass and warning
+    yellow all sit in one warm taupe family. One Principled, five names.
+  * MTX-33 authored ORM -- no evidence of channel variation in this view; the tub 28-pixel constant
+    plateau is the flat-G defect class showing through to the beauty pass.
+  * MTX-39 cavity dirt is brown/gray not black crayon -- FAILS at the windshield (R1 G1 B5).
+  * MTX-52 macro form from reference -- FAILS. Rounded-rectangle pills, a box and a plate are
+    blockout, not authored mass.
+  * MTX-54 no silent revert -- not violated; the concern is the opposite, that nothing moved.
+
+3. CONCRETE BLENDER ACTIONS
+
+Honouring cycle 77 standing rulings: keep the dark hopper interior, no steel lip ring on the hopper,
+do not steel the well walls, do not put the boom cap back. Leave the hopper entirely alone. No cabin
+furniture, no seat.
+
+  1. Build the TRACK outer lip as geometry (this is the track lip, NOT the hopper lip ring c77
+     banned). Inset each belt outer face and extrude a 2-4 cm rail proud of the belt; bevel 2
+     segments; weighted-normal. Target: outer edge reads 1-2 px ABOVE ground value along the whole
+     straight run, not just at corners.
+  2. Move the bead off the inner edge so the eye reads outer-lip-then-belt, not belt-then-seam.
+  3. Put the belt in the mesh: grousers as extruded cleats at LOD0, plus drive sprocket and idler
+     bosses at the pill ends. The clay must stop reading as a smooth lozenge.
+  4. Break the tub plate: inset panel regions, solidify 2-6 cm, leave 1-2 cm seam channels, add a
+     raised coaming where deck meets each track. Nothing on this deck should hold one value for 28 px.
+  5. Darken the tub BELOW ground value -- from 97-98 into the 55-70 band -- so the cab house still
+     reads dark against it but the model stops being the brightest thing in the frame.
+  6. Cut the windshield instead of painting it: boolean the aperture through the cab roof with a
+     4-8 cm rim so the mouth shows wall thickness from above; add one mullion bar; lift the interior
+     off pure black into the 12-25 band. Rim and mullion only -- no seat, no console.
+  7. Model the visor as a LIP, not a stripe: extrude the roof edge past the glass 4-6 cm, bevel it,
+     paint that lip yellow. Drop the peak from 244 to ~150-180 and widen to 2 px. Keep its position
+     exactly -- past the glass, full glass height. That geometry is correct.
+  8. Break the boom spine into 4-6 segments with joints or bolt pads, taper toward the tip, let it die
+     2-3 px before the bit, pull its hue warm, drop its peak from 123 to about 90.
+  9. Give the boom arm thickness: solidify, let top face and side face carry different values.
+ 10. Give the bit a dark body in the 25-40 band, keep only the last 2 px of cutting edge bright. This
+     is a bit body, not the boom cap c77 removed.
+ 11. Consolidate the greebles into two or three recognizable fittings, or delete them.
+
+4. VERDICT
+
+REVISE. A taupe box with a black rectangle for glass, a yellow filament, a white pinstripe and a white
+paper bit is a gray box with stickers. Hitch-plus is the floor and this is well under it.
+
+NOT REVERT, and the diff is the reason: cycle 78 is cycle 77 to within 1% of pixels, so there is
+nothing to go back to. The one thing that changed -- the boom spine going from invisible to
+visible-but-wrong -- is not a regression; a legible wrong line is recoverable, an invisible one was
+not. Reverting would forfeit the only movement and land on an identical picture.
+
+The hopper well is the one element that is genuinely done. Protect it.

@@ -1,0 +1,181 @@
+VERDICT: REVISE
+
+Reviewer: opus5-edge. Still: review_1to1/works_edge_1to1.png (161x156 native -- this is play size).
+Framing valid: rover on the works pad, near-plan with a small rearward tilt exposing the aft flank.
+Not a cabin interior, not a studio three-quarter.
+
+0. CYCLE 78 vs CYCLE 77 -- THE SAME
+
+Not better, not worse. The same picture. Between the two works_edge frames only ~220 pixels changed
+by more than a rounding step, and every one sits in a single strip on the right (the boom/cab column).
+What actually moved: the white boom stick got about 2 px longer and shifted outboard, and the dark
+pane grew about 1 px. That is the BOOM_OFFSET nudge and nothing else.
+
+Everything cycle 77 reviewers named is still on camera, pixel-for-pixel unchanged:
+  * "Body still a tan card" -- the deck is still a large flat pale plate. Unchanged pixels.
+  * "Visor still a yellow bar" -- still a 3 px yellow bar, now the loudest value in the frame.
+  * "Boom spine still too faint" -- the spine is not faint, it is a bright white 2 px stripe; either
+    way it is not a raised steel spine. Unchanged in character.
+  * "Mouth is a raw cut" -- the hopper rim still transitions deck to wall in a single pixel. Unchanged.
+
+The one thing c77 asked to keep (dark hopper interior, no lip ring, no well steel, no boom cap) was
+kept. But keeping the prohibitions is not progress; nothing on the do-list moved.
+
+1. DEFECTS VISIBLE IN THIS WORKS-EDGE VIEW
+
+Side walls (the aft flank) -- the only vertical face this camera reveals is ~7 px wide and it is three
+flat vertical bands: saturated yellow, a blank near-white rectangle, saturated yellow. Nothing else.
+No fender, no step, no grab rail, no bolt course, no hose, no plate seam, no overlap. The strong-yellow
+columns run x22-34 with up to 44 saturated pixels per column -- a large saturated yellow field on a
+vertical face, which is exactly the "yellow cab sides" read the brief forbids. The flank carries zero
+manufacture.
+
+Track height / solid belts vs wire loops -- the belts are solid; there is no hollow, no daylight, no
+wire read. That is not the problem. The problems are:
+  * The top run is a smooth uniform plane. A belt seen from above must show discrete cross-cleats
+    marching down its length. Here the cleats exist only as a 2 px dashed line on the inboard edge;
+    the belt face itself is unbroken. Nothing breaks the top plane.
+  * The silhouette is a perfect stadium -- fully rounded both ends, no drive sprocket bulge, no idler,
+    no return rollers, no track frame. Two identical mirrored loaves.
+  * The material is wrong. Track top measures RGB (42,30,13), B/R = 0.30, an ochre-olive. The bill
+    says #3a3530 neutral dark rubber (B/R = 0.83). These read as clay loaves, not rubber composite.
+  * The aft end of each lozenge has a bright pale wedge crossed by a dark diagonal streak -- a shading
+    artifact, not a component.
+  * Track HEIGHT itself I will not grade: this camera shows about 3 px of side face and cannot carry
+    that verdict. The fix belongs in the actions list.
+
+Dark cab house, yellow only as a thin visor past glass -- half right, and the wrong half is the loud
+one.
+  * The house IS dark relative to the deck (roof sum ~78 vs deck 244) and it is not a yellow slab.
+  * But the house is a plain rectangular box with a flat unbroken lid. No hatch, no rib, no step, no
+    bevel, no roof rack, no antenna. Nothing on it reads as folded plate.
+  * The yellow is thin (3 px) and it does sit outboard of the glass -- the geometry of the
+    relationship is right. What is wrong is VALUE: the bar peaks at RGB (186,150,58), sum 513, against
+    a next-brightest of 364 anywhere on the vehicle. The bill says yellow stays a paint, not a light.
+    This bar is the brightest object in the frame by a wide margin, with no thickness cue, no shadow
+    under it, no return at either end. It reads as an emissive stripe, not a steel brow.
+  * On the roof: a 4x4 px pale disc at value 245 on a surface at value 78. Whether that is meant as
+    the lamp or a vent, it is a bright disk sitting on a plane with no hood, slit, or can.
+
+A dark pane that is actually visible -- YES. Columns x106-111, rows y57-74: a 6 x 17 px block at RGB
+~(6,3,5), effectively black. This requirement is met and it survives at play size. Note it is a perfect
+rectangle with square corners, no frame, no gasket, no reveal, so it reads as a dark decal rather than
+laminated glass in a welded frame -- but it IS visible and it IS dark.
+
+Hopper well -- an open well is present and the interior is dark. The failures:
+  * Deck 244 -> wall 110 happens across ONE pixel. There is no rim thickness at all. The deck plate
+    has no visible turn-down at the mouth, so the opening reads as a hole cut in paper.
+  * The interior is dead flat: 18 px of unvarying value ~54. No liner break, no fill, no rubble, no
+    burnished mouth, no scale.
+  * Ribbing exists on one wall only; the far and near walls are blank.
+  * The dark floor is a 6 px wedge along one edge -- a shadow sliver, not a floor. The well never
+    establishes depth.
+
+Darker boom with a raised steel spine into a steel bit body -- INVERTED ON EVERY COUNT.
+  * The boom slab is a constant-width rectangle from root to tip. No taper, no truss, no cylinder
+    section, no hydraulic ram, no pivot at the root. It just abuts the cab side.
+  * The "spine" is a 2 px line at sum 283-309 running along the MIDDLE of a slab at sum 62-75. A 4x
+    brightness jump, dead straight, no taper, no end return, only a weak value drop on one side. It
+    reads as a white stripe PAINTED on the boom, not a raised steel rib. The brief asks for a DARKER
+    boom with a raised spine; the boom is dark and the spine is white, which is the opposite
+    relationship.
+  * The "bit" is a 5x9 px irregular white blob at peak sum 364 -- the same white as the spine, so it
+    does not separate as a distinct forged body. No disc, no cone, no carbide teeth, no heat tint
+    anywhere (the bill calls for #848b93 running to #9a6f4a / #ff6242). It reads as the arrowhead
+    terminating the stripe.
+  * The tip overhangs the pad edge with pure black behind it, which flattens it further.
+
+Scar plate -- THIS IS THE LEAD DEFECT, because the material bill names this exact still as its proving
+view ("Flank, readable at works_edge"). What is on the flank is a blank near-white rectangle, ~7 x 42
+px, value sum 228 -- the second-brightest large surface on the whole vehicle. No soot. No gas-breach
+chip. No bolts, no bevel, no edge wear, square corners, zero texture. Either that rectangle IS the scar
+plate, in which case it is value-inverted from "sooted steel" and carries no damage story at all; or
+the scar plate is ABSENT from the flank and this is an unrelated blank plate occupying its place. Both
+fail the same row, and both fail it in the one view the contract nominated.
+
+Toy / clay / card / box / gray plate -- FOUR OF THEM:
+  1. THE DECK IS A CARD. It is the largest surface on the vehicle and it is a flat, featureless,
+     near-white plate: RGB (99,81,65), sum 244. It is BRIGHTER than the ground it sits on (169) and
+     LESS saturated (B/R 0.63 vs the pad 0.53). The bill puts safety-yellow #ffd23f livery here. This
+     is not an exposure artifact -- the cab roof faces the same way, sits higher, and would catch more
+     of the weak overhead rim, yet it comes back darker (78) and far more saturated (B/R 0.10).
+     Different material, not different light. The deck has gone bare gray-white plate, and it carries
+     no plate steps, no seam channels, no bolt courses, no chevrons, no wear.
+  2. THE FLANK PANEL IS A WHITE STICKER (above).
+  3. THE CAB IS A BOX -- rectangular prism, flat lid, painted stripes on the front face.
+  4. THE TRACKS ARE CLAY LOAVES -- smooth ochre stadiums with no mechanism.
+
+Two further absences from this view: NO CHEVRON PLATES anywhere (the bill wants separate #161008 bars
+reading as dark bars from above; there are none), and NO CONTACT SHADOW -- the pad immediately above
+the track reads 163 against a far-corner 172, about 5% darker. The rover looks decaled onto the pad
+rather than standing on it. That last one is a scene/key observation, not a mesh defect.
+
+2. MTX ROWS FAILED AT THIS PLAY SIZE
+
+  * MTX-46 forbidden reads stay forbidden -- four separate blank white plates (deck, flank panel, boom
+    stripe, bit blob) plus a bright disc on a lid gives a plastic-toy read. This row fails the leaf on
+    its own, regardless of everything else.
+  * MTX-56 value hierarchy -- the hierarchy exists but is assigned BACKWARDS. The tracks, which the
+    bill calls the darkest mass, sit at 84 -- lighter than the boom (62), the well (54), the well floor
+    (28) and the glass (19). The deck, which should be mid paint, is the lightest surface in the shot.
+    The "accents" are not saturated colour beats; they are four unrelated whites.
+  * MTX-57 visible shell thickness -- the hopper mouth turns from deck to wall in one pixel.
+  * MTX-45 recessed emission -- a 4x4 px disc at value 245 sitting flat on a lid. The row named
+    forbidden fake is "a bright disk on a surface".
+  * MTX-05 panelization with gaps -- the deck, the flank, the cab and the boom are single unbroken
+    faces. No stepped plates, no seam channels anywhere in this view.
+  * MTX-42 / MTX-43 stencil as spray / decal -- the boom spine and the visor bar are functioning as
+    decals doing a structural job. Markings may have no thickness; ribs and brows must.
+  * MTX-12 fasteners at interfaces -- the only bolt heads in frame are on two small bracket clusters.
+    Deck-to-flank, cab-to-deck, boom-to-cab, track-frame-to-hull: all bare butt joints.
+  * MTX-31 / MTX-38 classify the substance -- the track belt is ochre paint-value, not rubber. Nothing
+    in frame separates paint from steel from rubber by value or specular.
+  * MTX-61 joint language -- no weld bead, gasket, or countersink at any plate meeting.
+  * MTX-14 / MTX-60 broken symmetry from service -- the two tracks are exact mirrors; the deck is
+    symmetric; the only asymmetry is the boom, which is design, not service. No authored repair,
+    stencil, or replaced plate.
+  * MTX-55 (principle, at the works analogue of 120 px/cell) -- of the five planform shapes the asset
+    owes, this view resolves two cleanly (stadiums, offset boom), one weakly (the well), and two not at
+    all (raised cab as a distinct mass, steel bit as a disc/cone).
+
+3. BLENDER ACTIONS
+
+Ordered by how much each buys at 120 px/cell. None are cabin furniture, and none reinstate what cycle
+77 ruled out -- no lip ring, no well steel, no boom cap.
+
+  1. REPAINT THE DECK. It is the biggest surface and it is the wrong material. Assign the livery plate
+     #ffd23f dielectric to the deck, hopper outer walls, cab sides and boom as the bill specifies.
+     Target a mid value clearly BELOW the pad ground, not above it. The flank yellow already reads
+     correctly -- match the deck to it.
+  2. FIX THE SCAR PLATE. Give the flank plate sooted steel: dark base, roughness 0.55-0.70, metallic
+     0.50-0.70. Model the gas-breach chip as real geometry -- a torn edge or punched crater with wall
+     thickness, not a texture -- and add the bolt course around its perimeter. It must read as the
+     darkest thing on the flank, not the brightest.
+  3. CLEAT THE BELTS. Model discrete cross-cleats that break the top plane of each track -- extruded
+     bars across the belt width, spaced so they resolve as repeating marks from directly above.
+     Retexture the belt to neutral dark #3a3530 so it becomes the darkest mass in the value ladder.
+     Break the stadium: sprocket at one end, idler at the other, so the outline is no longer a pill.
+  4. FOLD THE HOPPER LIP. Turn the deck plate down into the well as a folded lip 2-3 px deep at play
+     size, in the SAME yellow paint -- thickness reads by value break and AO, not by a bright metal
+     ring. Then give the interior something: a stepped liner course on the far wall and one hopper fill
+     volume so the well has a floor instead of a shadow wedge.
+  5. REBUILD THE BOOM AS A SECTION, NOT A CARD. Loft a tapered box beam -- thick at the pivot, thinner
+     at the tip. Model the spine as an actual raised rib on the crown with side faces, in STEEL value
+     (mid-dark metal), not white -- it should read by its shadow and its silhouette bump, not by
+     brightness. Add a pivot yoke and one hydraulic ram at the root.
+  6. BUILD THE BIT AS A BODY. A forged drum or cone with a real diameter larger than the boom spine,
+     carbide inserts as small solids, and a heat gradient #848b93 -> #9a6f4a -> #ff6242 toward the tip.
+     It must separate from the boom by both form and colour.
+  7. GIVE THE CAB VOLUME. Bevel the roof edges, break the lid with a hatch and one rib, and put a frame
+     with visible thickness around the dark pane so the glass sits in a reveal rather than on a face.
+     Bring the yellow brow down from 513 to a paint value -- brightest PAINT, not brightest OBJECT.
+  8. RECESS THE ROOF FIXTURE. Sink the disc into a hood or a slit so the fixture reads with emission
+     off.
+  9. PANELIZE. Inset and solidify plate courses on the deck and flank with 1-2 cm seam channels, and
+     bolt heads at the four real interfaces (deck-to-flank, cab-to-deck, boom-to-cab,
+     track-frame-to-hull). Add the separate #161008 chevron plates on the deck -- bolted-on plates, not
+     painted stripes.
+ 10. AUTHOR ONE SERVICE ASYMMETRY. One replaced plate or one patch, off-centre, so the mirror breaks.
+
+FLOOR CHECK: Hitch-plus is the floor and this is well under it. A yellow box with white plates on it,
+unchanged from last cycle except a two-pixel boom nudge. REVISE.
