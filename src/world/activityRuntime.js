@@ -675,9 +675,15 @@ function classifyWorld(state, runtime) {
     const authoredActiveCombat = authoredPresence && ai && ai.passive === false
       && (ai.combatant === true || ai.engagementTrigger != null
         || (ai.activity && ai.activity.kind === 'attack_run'));
+    const namedAceActor = !!(
+      data.namedAceId
+      || (data.aceMemory && data.aceMemory.aceId)
+      || (ai && ai.namedAceId)
+    );
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
+      || namedAceActor
       || (entity.flags && entity.flags.missionPinned)
       // K1 authored active presence is a named, durable combat actor even when its global sector
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
