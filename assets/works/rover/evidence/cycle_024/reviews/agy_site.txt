@@ -1,0 +1,35 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 24) ΓÇö Site View Review
+
+**Image Reviewed:** `assets/works/rover/evidence/cycle_024/review_1to1/works_site_1to1.png` (glanced at `works_site.png`)  
+**Framing:** Valid (Top-down orthographic works_site view, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Obvious Defects From This Site View
+* **Chassis Reads as a Gray Cassette / Electronic Stamp:** The main body collapses into a flat, monolithic gray rectangle with two square cutouts, reading more like an IC chip or cassette tape than a heavy mining vehicle.
+* **Hollow Yellow Highlighter Box:** The yellow livery renders as a high-contrast hollow rectangular outline (a "National Geographic" frame) surrounding a dark center. It reads like a floating UI selection box or a hollow toy sticker rather than a solid, structural cab-roof armor patch.
+* **Invisible / Swallowed Track Undercarriage:** The port and starboard stadium tracks have virtually no contrast against the dark cell background and shadows. The outer track loops, cog wheels, and grouser cleats vanish entirely, eliminating the tracked-crawler silhouette.
+* **Weak, Indistinct Boom Finger:** The offset boom on the right is a tiny 2-pixel gray nub with a single pale pixel at the tip. It fails to read as an articulated industrial steel boom with an excavation bit.
+* **Flat 2D Well Cutout:** The excavation well reads as a flat 2D black pixel patch rather than a deep, volumetric chassis bite with internal mechanical relief.
+
+---
+
+### (2) MTX Defects Readable at This Size
+* **`TRACK_CONTRAST_PORT` (-1.14) & `TRACK_CONTRAST_STARBOARD` (-20.63) [Floor >= 18.0]:** Negative contrast values confirm the tracks are darker than or lost inside background shadow, failing to define the outer silhouette.
+* **`ONE_BODY` (0.70) [Floor >= 0.90]:** Visual silhouette breaks into disjointed fragments (floating yellow ring, gray slab, tiny nub) rather than a cohesive vehicular body.
+* **`WELL_IS_A_HOLE` (0.069) [Floor >= 0.24]:** Depth difference between well and deck is insufficient to create legible ambient occlusion / shadowing at 22 px.
+* **`LIVERY_SAT_RENDERED` (0.227) [Floor >= 0.30]:** Thin frame geometry causes rendered livery saturation to dilute and disperse rather than presenting a concentrated industrial yellow read.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+1. **Solidify Cab Roof Livery:** Fill the cab roof into a solid, raised geometric yellow patch (inset from hull edges) rather than a thin perimeter frame outline.
+2. **Brighten & Widen Track Outlines / Grousers:** Push track geometry slightly outward and add lighter edge/sprocket values or grouser teeth highlights so the track loops stand out against dark asteroid terrain.
+3. **Lengthen & Articulate the Offset Boom:** Extend the boom arm by 2ΓÇô3 px, add a clear dark notch/joint separating it from the front chassis, and enlarge the bit head to clearly register as an asymmetric tool head.
+4. **Bevel Well Lip & Deepen Shadow:** Add a subtle highlight along the top lip of the well bite and increase internal cavity occlusion so the hopper reads as an open top cavity.
+5. **Chassis Value Separation:** Add subtle tonal contrast between the center deck plate, cab structure, and track guards to prevent the hull from reading as a flat gray block.
+
+---
+
+### (4) Verdict
+**REVISE**

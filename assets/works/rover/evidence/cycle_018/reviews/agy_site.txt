@@ -1,0 +1,42 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 18) ΓÇö Site View
+
+**Files Evaluated:**
+- [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_018/review_1to1/works_site_1to1.png)
+- [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_018/works_site.png)
+
+**Framing:** **VALID** (Orthographic site view at ~19 px/cell with rover silhouette ~22 px; full vehicle visible, top-down site perspective).
+
+---
+
+### (1) Obvious Defects From This Site View (~22 px)
+
+- **Floating Yellow Highlighter Bars:** The yellow hull markings read as two saturated, flat, glowing yellow rectangles. Without dark structural framing, bevels, or recessed panel borders, they look like bright stickers slapped onto a gray block rather than bolted industrial armor plates.
+- **Corner "Prongs" vs Continuous Crawler Tracks:** The track assemblies do not read as solid, continuous dark crawler belts under mechanical tension. Instead, four steel corner end-caps stick out like disconnected brackets/prongs around the yellow bars, degrading the heavy tracked crawler read.
+- **2D "Cookie-Cutter" Well Void:** The central well reads as a flat, pitch-black square cutout rather than a recessed mechanical cargo hopper with readable 3D depth and illuminated rim geometry.
+- **Muddled Boom Arm & Blunt Bit:** The offset boom on the lower right clumps visually with the lower track sponson. It lacks a defined clearance notch at the root and the cutter bit lacks distinct specular separation to read clearly as an offset steel tool finger.
+- **Fragmented Visual Mass:** The rover breaks into disconnected high-contrast primitives (two yellow bars, a central black hole, steel corner prongs, and a gray cab/boom block) instead of reading as a cohesive, single-body mining vehicle.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **`TRACK_CONTRAST_STARBOARD` (-21.91 vs 18.0 floor ΓÇö FAIL) & `TRACK_CONTRAST_PORT` (-3.49 vs 18.0 floor ΓÇö FAIL):** Severe negative track contrast causes track belts to blend into hull shadows and surrounding geometry, destroying tread belt legibility.
+- **`ONE_BODY` (0.3603 vs 0.90 floor ΓÇö FAIL):** Excessive visual separation and negative space between track sponsons and central chassis, failing the single unified body requirement.
+- **`WELL_IS_A_HOLE` (0.0851 vs 0.24 floor ΓÇö FAIL):** Inadequate depth difference between the hopper floor and the main deck, flattening the cargo well into a 2D dark stamp.
+- **`CAB_PANE` (Clay: 0.0136 vs 0.02 floor ΓÇö FAIL):** Cab glass/pane geometry is under-sized and occluded in the clay planform silhouette.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Darken Track Belt Albedo (`TRACK_CONTRAST`):** Drop track belt albedo and strengthen ambient occlusion along the sponsons so the track runs clearly read as dark continuous bands between the bright steel end-caps.
+2. **Bridge Sponsons to Central Chassis (`ONE_BODY`):** Add solid deck-height structural bridge plates and cross-members between the central tub and the track units to close shadow voids and unite the silhouette.
+3. **Frame and Bevel Yellow Hazard Plates:** Recess the yellow shoulder plates inside dark steel perimeter borders with subtle top-edge chamfers to eliminate the floating highlighter sticker read.
+4. **Deepen and Rim-Highlight Hopper Well (`WELL_IS_A_HOLE`):** Drop the hopper floor deeper below the deck plane and bevel the top rim lip to catch directional top lighting for readable cavity depth at 22 px.
+5. **Articulate Boom Shoulder & Highlight Bit Tip:** Model a distinct clearance notch at the boom root to separate it from the track sponson, and give the cutter bit a high-specular / metallic relief to establish a crisp offset tool finger.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,44 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 28) ΓÇö Site View Review
+
+**Image Reviewed:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_028/review_1to1/works_site_1to1.png) (glanced at [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_028/works_site.png))  
+**Framing:** Valid (Orthographic top-down site view on pad, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Every Obvious Defect From This Site View
+
+* **Yellow Postage-Stamp / Toy Square Cab:** The yellow operator cab reads as an undivided yellow square/sticker pasted onto the deck. The cab window pane is completely crushed and lost at this resolution, and the lack of a thick dark bezel makes it register as a toy paint dot rather than an armored cabin.
+* **Track Contrast & Starboard Dropout:** While the dual stadium tracks are present in geometry, the starboard track edge loses contrast against the dark brown site ground, failing to consistently hold a crisp, continuous 1 px light-catching steel lip.
+* **Flat Well Void / C-Bracket Silhouette:** The central excavation hopper well reads as a flat black punch-hole rather than a deep mechanical cavity with volumetric depth, causing the hull to read like an open gray C-bracket wrapped around an empty void.
+* **Boom Legibility & Offset:** The boom arm extending to the forward cutter bit lacks sufficient offset separation and edge definition from the main hull, causing the bright bit to read slightly detached rather than firmly mounted on an articulated mechanical finger.
+* **Chassis Fragmentation (`ONE_BODY` Failure):** At ~22 px, the crawler does not resolve into a single cohesive heavy mining vehicle; it fractures into disjointed visual fragments (gray hull horseshoe, black hole, yellow square stamp, pale dot).
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+From [planform_report.json](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_028/planform_report.json):
+
+* **`CAB_PANE` (0.0028) [Floor >= 0.0200]:** Window glazing is crushed, collapsing the cab into an unpaneled yellow patch.
+* **`TRACK_CONTRAST_STARBOARD` (-7.714) & `TRACK_CONTRAST_PORT` (17.124) [Floor >= 18.0]:** Outer track edges fail contrast requirements against the site surface (particularly severe on starboard).
+* **`TRACK_OUTERMOST_PORT` (0.0670) & `TRACK_OUTERMOST_STARBOARD` (0.0077) [Floor >= 0.8000]:** Outer track lips fail to clearly establish the outer bounds under textured lighting.
+* **`ONE_BODY` (0.4368) [Floor >= 0.9000]:** Silhouette breaks into fragmented patches rather than a single unified crawler body.
+* **`BOOM_OFFSET` (0.1384) [Floor >= 0.1500]:** Boom arm geometry lacks sufficient lateral offset and distinct structural separation.
+* **`WELL_IS_A_HOLE` (0.0694) [Floor >= 0.2400]:** Hopper well cavity lacks sufficient depth relief and shadow gradient.
+* **`LIVERY_SAT_RENDERED` (0.1474) [Floor >= 0.3000]:** Rendered yellow livery saturation falls well below the floor under site lighting.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Bezel & Pane the Cab:** Encase the yellow cab roof within a thick dark structural steel bezel, and widen/deepen the dark visor glazing geometry so the window reliably resolves as a clean 1 px dark glass slit inside the yellow patch.
+2. **Raise & Highlight Outer Track Lips:** Flange and raise the outer edges of both stadium track guards with a higher metallic/specular rim to catch a crisp, continuous 1 px edge highlight against the ground pad.
+3. **Bevel Well Rim & Deepen Cavity Shading:** Add a prominent chamfer to the top perimeter rim of the hopper well to catch top directional light, while deepening internal cavity ambient occlusion for readable volumetric depth.
+4. **Thicken & Offset the Boom Arm:** Increase the cross-section and lateral offset of the boom arm, adding a light-catching ridge along the arm so the cutter bit reads clearly as an offset mechanical tool finger.
+5. **Bridge Deck & Sponsons:** Add structural decking and gusset transitions between the central chassis and track sponsons to unify the overall silhouette into a solid, heavy-duty crawler.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,77 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down framing.
+- **Check**: Rover is centered and viewed from the works-edge camera (+X forward to the right, +Y port top, -Y starboard bottom). Camera is not inside a cabin and is not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate**:
+   - **Light-Gray Boxy Cab Roof**: The cab roof reads as a stark, unmodeled flat light-gray cuboid box / slab, completely breaking the industrial dark cab finish and reading as a toy block or untextured card plate.
+   - **Aft Transom Gray Plate**: A flat, unmodeled light-gray rectangular card/plate is pasted directly onto the rear transom/bumper without chamfers, plate gauge, or mechanical mounting relief.
+   - **Plastic Yellow Square on Roof/Brow**: The yellow accent sits on the front brow notch as a thick, isolated plastic button/square tab rather than an integrated, ultra-thin sheet-metal visor extending forward past the canopy glass.
+   - **Hopper Flared Cards**: Transitional chamfers and flare walls around the hopper well perimeter are razor-thin 2D polygon sheets reading as papercraft cutouts or matte clay flats.
+   - **Mid-Chassis Deck & Skirt Cards**: Deck infills and side skirt transitions between the tracks and central tub consist of flat planar cards with rudimentary punched bolt circles rather than heavy-gauge structural armor plates.
+   - **Scar Plate Card**: The scar plate reads as a flat 2D sheet metal strip with simple punched holes, lacking plate thickness and welded standoffs.
+
+2. **Side Walls**:
+   - Chassis side walls and sponson transitions between the crawler tracks and the central tub/hopper are flat, zero-gauge planar sheets lacking structural plate thickness, welded flanges, stiffener ribs, and mechanical depth.
+
+3. **Track Height as Solid Rubber Belts (Not Wire Loops)**:
+   - Although transverse tread pads/grousers are present, the track assemblies lack solid vertical cross-sectional depth and volumetric rubber mass. They read as thin perimeter loop shells wrapped around empty voids rather than heavy, solid continuous rubber crawler belts.
+
+4. **Dark Cab House with Yellow Only as a Thin Visor Past Glass**:
+   - The cab house roof is rendered in bright, flat light-gray rather than a unified dark cab armor finish.
+   - The yellow accent is an unintegrated plastic square/tab on the roof brow rather than a crisp, ultra-thin visor projecting strictly forward past the canopy glass.
+
+5. **Dark Canopy Pane Actually Visible**:
+   - The dark pane on the cab front is nearly lost in the roof notch/bezel, lacking clear glass definition, recessed structural framing, and distinct visible area.
+
+6. **Hopper Well**:
+   - The hopper well is a shallow, stepped square pit lined with thin transitional sheets, lacking continuous heavy-gauge sloped chute walls, steel wear-plate liners, and reinforced top coamings.
+
+7. **Darker Boom with Raised Steel Spine into Steel Bit Body**:
+   - The boom arm is a dark tapered beam, but the raised steel spine along its top centerline is faint and lacks prominent structural ridge definition and contrast.
+   - The mining bit terminates in a generic point rather than a machined tool steel bit body with distinct fluting and a well-proportioned mechanical collar mount.
+
+8. **Scar Plate**:
+   - The scar plate and intermediate side reinforcement cards appear as flat 2D sheet metal strips with simple punched holes, lacking heavy plate gauge, bevels, and integrated welded mounts.
+
+---
+
+### (2) MTX Defects Visible at This Play Size
+
+- **High-Contrast Gray Box Read**: The stark contrast between the bright light-gray cab roof box / rear gray card and the dark chassis creates an unfinished, toy-like appearance at in-game resolution.
+- **Papercraft Silhouette & Zero-Gauge Edges**: Razor-thin planar sheets on the hopper flare, rear transom, and side skirts create papercraft edges under lighting, destroying the illusion of heavy industrial machinery.
+- **Floating Plastic Accent**: The yellow visor reads as a floating plastic pixel/square rather than a functional vehicle component.
+- **Low Feature Contrast in Tool Assembly**: Dark boom geometry and bit collar blend together under top lighting, lacking bright metallic edge highlights and structural spine definition.
+- **Track Cross-Section Profile**: Thin track belt loops lack solid rubber mass and side-wall depth when viewed in relation to the main hull.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Rework Cab House & Canopy**:
+   - Rematerialize the light-gray cab house roof into dark heavy armor plate / dark hull material (eliminate the untextured light-gray box read).
+   - Model a proper dark canopy glass pane recessed within a modeled structural frame/bezel with defined perimeter edges.
+   - Reshape the yellow brow into a crisp, ultra-thin sheet-metal visor projecting forward past the canopy glass.
+
+2. **Rework Boom Arm & Machined Bit Body**:
+   - Thicken and raise the centerline steel spine (`BoomSpine`) along the top face of the dark boom arm into a prominent structural ridge.
+   - Replace the generic bit point with a machined steel bit body featuring distinct tool fluting and a well-proportioned mechanical collar mount.
+
+3. **Thicken Track Crawler Belts**:
+   - Extrude the track cross-sections vertically and inward to give the crawler belts heavy, solid rubber mass and vertical height, eliminating the thin loop shell profile.
+
+4. **Reconstruct Hopper Well**:
+   - Replace the stepped card facets with continuous symmetrical sloped chute walls lined with heavy-duty wear plates and reinforced top coamings.
+
+5. **Replace Planar Cards & Articulate Side Walls**:
+   - Replace the flat rear transom gray plate with an integrated, beveled heavy-duty bumper plate with modeled fasteners.
+   - Replace all flat 2D card polygons on the deck, side skirts, side walls, and scar plate with beveled, heavy-gauge welded steel armor plates with structural panel seams and stiffener ribs.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,53 @@
+1. Obvious defects from this Works view
+
+- The rover reads as a dim rectangular toy assembled from flat cards and boxes. The central body is dominated by a broad gray/tan plate with sticker-like details rather than a convincing dark cab house mounted on a distinct mid-steel tub.
+- The silhouette is too rectangular and compressed. Cab, tub, hopper, track assemblies, and drilling boom merge into one slab instead of forming a clear industrial-rover hierarchy.
+- Both tracks have the intended stadium footprint, but they are nearly swallowed by the lighting. Their solid rubber-belt mass is weak, tread articulation is barely readable, and the thin raised steel outer lips do not catch enough controlled light to describe their construction.
+- The large dark rectangular area on the left reads ambiguously as a dark inset pane or applied square. It does not convincingly establish a deep hopper well with visible rim thickness and a recessed floor.
+- The windshield band is not visibly established. The tiny yellow vertical mark near the rover’s right side reads as a roof-mounted postage stamp or isolated light, not a thin visor line extending beyond a clearly visible dark glass band.
+- The cab sides remain pale gray/tan, so the cab does not read as the required dark house.
+- The boom disappears into the background. Its dark arm is barely separable from the shadow, the raised steel spine is not readable, and the connection into the bit body is visually unresolved.
+- The boom end reads as a tiny hook or speck. There is no clearly modeled steel bit body followed by a controlled bright working tip.
+- Several pale rectangles on the body read as attached cards, gray plates, or stickers. They do not show convincing thickness, seams, fastened interfaces, or functional mounting.
+- Material separation is insufficient at play size. Rubber, painted cab, structural steel, glass, and tool steel collapse into similar muddy brown-gray values.
+- The lighting is too underexposed to support the intended construction. Important dark components disappear instead of being described by restrained edge and grazing highlights.
+- The square ground patch behind the rover remains conspicuous in the crop and competes with the vehicle’s already weak silhouette.
+
+2. Visible MTX defects
+
+- MTX-01 / MTX-13 / MTX-15: Edge treatment and repaired normals are not visibly demonstrated. Large faces remain flat and card-like; thin manufactured highlights are largely absent.
+- MTX-02: The main body lacks a clearly authored changing cross-section. It reads as stacked rectangular masses.
+- MTX-03 / MTX-04: The supposed hopper opening does not unambiguously read as a skin-breaking hole with wall thickness and internal volume.
+- MTX-05: Panelization reads as applied rectangles rather than stepped plates with gaps, overlap, and thickness.
+- MTX-11 / MTX-12: Boom connections and body interfaces lack readable fittings, clamps, pivots, or selectively placed fasteners.
+- MTX-31: Substances are not clearly classified in the rendered result.
+- MTX-33 / MTX-35 / MTX-36: Roughness and specular response do not clearly distinguish rubber, machined steel, paint, and glass.
+- MTX-39 / MTX-40: There is no controlled cavity dirt or interface-driven edge wear visible at this scale; the result is uniformly murky instead.
+- MTX-45: The yellow accent lacks a visibly modeled lamp/visor housing and currently reads as a detached bright mark.
+- MTX-46: The supported view retains obvious toy, card, box, gray-plate, and sticker reads.
+- MTX-55 / MTX-65: The 120 px silhouette does not immediately communicate a purpose-built drilling rover; it reads as a generic tracked rectangle.
+- MTX-56: The required value hierarchy is weak. Dark mechanisms disappear, while the mid-value body plate dominates.
+- MTX-57: Hopper rim and other opening thickness are not clearly visible.
+- MTX-61: Joints lack a coherent manufactured language such as welds, gaskets, countersinks, pinned pivots, or bolted flanges.
+- MTX-62: The boom and body panels do not read as convincingly separated mechanical parts with functional gaps.
+- MTX-64: The model has large quiet areas, but detail is not convincingly clustered around access points, joints, and the drilling mechanism.
+- MTX-66: Distinct manufactured substances do not produce distinct highlights.
+- MTX-67: The yellow accent is too small and disconnected to function as a designed color beat.
+
+3. Concrete Blender actions
+
+- Rebuild the center as two unmistakable masses: a dark, beveled cab house and a lower mid-steel structural tub. Remove or integrate the broad pale card-like plates.
+- Cut the hopper through the upper skin with an Exact Boolean. Extrude a visibly thick rim inward and build a recessed floor plus four thin walls so it reads as a real dark hole from this exact camera.
+- Build the windshield as a wide, dark, thin-shell glass band in a metal frame. Place a narrow yellow visor strip immediately beyond that glass band; keep yellow off the cab sides and tracks.
+- Preserve the stadium track shape but deepen both solid rubber belts. Add restrained tread blocks and separate thin steel outer lips with enough bevel and metallic response to catch narrow highlights in shadow.
+- Give the track mounts visible steel brackets or suspension interfaces so the belts do not appear pasted around the body.
+- Rebuild the boom as an offset articulated assembly: dark structural arm, separate raised steel spine, visible pivot/flange at the tub, tapered steel bit body, and a small bright tip recessed into or mounted on that body.
+- Increase value separation without making the asset luminous: near-black rubber, dark painted cab, mid-value steel tub, low-roughness dark glass, brighter worn steel on the boom spine and bit.
+- Replace sticker-like rectangles with inset access panels or thin solidified plates. Add gaps, bevels, and fasteners only at actual interfaces.
+- Apply scale before beveling. Use narrow two-segment bevels and weighted/custom normals so broad faces remain flat while track lips, tub edges, hopper rim, and boom spine catch controlled light.
+- Adjust the Works lighting or exposure so the dark cab, tracks, glass, hopper depth, boom arm, and bit remain distinguishable while preserving the night setting.
+- Remove the visible square-ground-card read or blend its boundary into the surrounding Works surface.
+
+4. Verdict
+
+REVISE.

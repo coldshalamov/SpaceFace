@@ -1,0 +1,64 @@
+## 1. Obvious defects in this Works view
+
+- The silhouette reads as a squared C-shaped chassis assembled from bars and plates, not a purpose-built industrial rover. The outer contour has little mass hierarchy or structural transition.
+- Both tracks are too light and low-contrast to read as two dark stadium tracks. Their belts merge with the brown chassis and terrain.
+- The repeated tread marks look like small circular studs. This gives the undercarriage a toy/LEGO character.
+- Steel end caps are suggested by circular pieces, but they read as flat washers pasted onto the track ends rather than load-bearing wheel housings.
+- The hopper is dark, but its nearly perfect rectangular mouth reads more like a black card or deleted face than a real hole. Rim thickness and sloped steel walls are not visibly established.
+- The hopper’s surrounding frame is made from straight, uniform-width bars, reinforcing the box/card construction.
+- The cab is a small stack of gray rectangular plates. It does not clearly read as a raised, enclosed cab volume.
+- A framed dark roof pane is not legible at this size. The small dark areas around the cab could be gaps, windows, or material noise.
+- The boom is offset, but it is thin and plate-like rather than fat steel machinery. Its connection to the chassis lacks a readable pivot, bearing, or reinforced mount.
+- The blue-gray end resembles a blunt painted paddle. An attached working bit is not clearly distinguishable.
+- The two yellow aft safety panels are flat, uniformly bright strips. They read as yellow stickers or plastic inserts attached to gray bars, not painted safety panels integrated into a steel machine.
+- The gray and brown materials have little visible separation by manufacture. Chassis, cab, track hardware, and boom largely share the same clay-like response.
+- Large pieces look like unmodified boxes or flat cards. The model therefore retains obvious toy, clay-blockout, card, box, and gray-plate reads.
+- At the scale shown in `works_top.png`, most secondary construction disappears. What survives is the rectangular hopper, two yellow bars, studded rails, and a gray projecting plate. That is below the Hitch-plus floor.
+
+## 2. Visible MTX defects
+
+- **MTX-01 — Mid-poly edges and weighted/custom normals:** No controlled edge highlights distinguish steel plate thickness. Forms look softly muddy or flat rather than machined.
+- **MTX-02 — Authored cross-section loft:** The chassis and boom read as scaled rectangular pieces without meaningful shoulders, tapers, or changing cross-sections.
+- **MTX-03 — Skin-breaking hole with wall thickness:** The hopper mouth is dark, but this view does not visibly prove a cut shell, thick rim, or constructed inner walls.
+- **MTX-04 — Readable opening volume:** The hopper lacks a convincing depth gradient and visible sloped wall planes. It reads too close to a black rectangle.
+- **MTX-05 — Panelization with gaps:** There are attached slabs and bars, but no convincing stepped steel skin, overlap logic, or seam channels.
+- **MTX-07 — Framed dark canopy/roof pane:** The cab’s dark roof pane and surrounding metal frame are not legible.
+- **MTX-10 — Hardware:** The boom head and bit lack readable mechanical articulation and working-tool construction.
+- **MTX-12 — Fasteners at interfaces:** The repeated circular details appear decorative and evenly distributed rather than concentrated at meaningful joints.
+- **MTX-31/35 — Substance classification and machined metal:** Steel does not present a clearly metallic, manufactured response. Most surfaces read as gray-brown clay or plastic.
+- **MTX-33 — Authored ORM:** Roughness and metallic variation are not visibly separating paint, bare steel, track material, glass, and dirt.
+- **MTX-39 — Cavity dirt:** The hopper is broadly black rather than showing controlled contact darkening along seams and wall intersections.
+- **MTX-40 — Curvature-driven wear:** There is no readable, restrained wear pattern identifying exposed steel edges.
+- **MTX-42 — Stencilled paint:** The yellow panels look like perfect flat stickers or separate plastic bars rather than safety paint applied to steel panels.
+- **MTX-46 — Forbidden reads:** Toy, clay blockout, stacked boxes, flat cards, and gray plates remain plainly visible.
+- **MTX-55 — Role silhouette:** The object is identifiable as a tracked machine only in a generic sense; its mining-rover role and boom/tool identity are weak.
+- **MTX-56 — Value hierarchy:** Dark hopper, middle chassis, and yellow accent exist, but the tracks do not hold as a distinct dark mechanical mass.
+- **MTX-57 — Visible shell thickness:** Hopper and cab openings do not visibly demonstrate convincing thickness.
+- **MTX-59 — Reads at play distance:** The intended construction loses clarity in the full Works frame.
+- **MTX-61 — Joint language:** Track mounts, chassis members, cab, and boom meet without visible welds, gaskets, gussets, bearings, or countersunk interfaces.
+- **MTX-62 — Separated moving parts:** The boom lacks a clear pivot gap and independently readable tool assembly.
+- **MTX-63 — Two-scale surfaces:** There is no convincing meso-scale plate construction supported by finer material detail.
+- **MTX-65 — Role-specific massing:** The dominant mass is a rectangular frame, not a strongly authored mining-machine chassis.
+- **MTX-66 — Specular by manufacture:** Paint, steel, track material, and glazing do not show distinct highlight behavior.
+- **MTX-67 — Designed accent:** Yellow is conspicuous but reads as stuck-on plastic/stickers rather than two aft safety-painted steel panels.
+
+## 3. Concrete Blender actions
+
+- Rebuild the chassis as a coherent steel shell with changing cross-sections, tapered shoulders, structural gussets, and deliberate cutouts. Remove the visible stack-of-bars construction.
+- Make each track a dark continuous stadium belt around clearly recessed wheels. Give the belt real thickness, use broad tread blocks instead of circular studs, and build substantial steel end-cap housings with hubs and axle interfaces.
+- Boolean the hopper completely through the upper shell. Add a thick steel rim and four visibly sloped inner wall plates leading to a darker floor. Use separate wall planes and edge highlights so the cavity remains legible at 120 px.
+- Raise and enlarge the cab enough for its mass to survive this camera. Cut a true roof opening and place a dark thin pane inside a distinct steel frame.
+- Rebuild the boom with a thick tapered or boxed steel cross-section, reinforced root, visible pivot pin or bearing housing, and a clear separation gap from the chassis.
+- Model the working bit as an attached, unmistakable tool with its own socket, collar, and harder steel material. Avoid a flat paddle silhouette.
+- Convert the yellow strips into two aft steel safety panels: inset or panelize them into the machine, retain dark seams around them, use safety-yellow paint with restrained edge wear revealing steel, and avoid plastic-like gloss.
+- Apply scale before beveling. Use narrow two-segment bevels and weighted/custom normals so broad faces remain flat and steel edges catch thin highlights.
+- Add joint language only where construction requires it: weld beads or gussets at frame junctions, bolts at removable housings, and a bearing interface at the boom pivot.
+- Separate material responses: dark rubber/metal tracks, painted structural steel, exposed machined steel on the boom and bit, dark cab glazing, and dirt confined chiefly to cavities and track contact regions.
+- Author unique AO, curvature, normal, and ORM variation so hopper corners deepen, exposed edges wear selectively, and steel does not share the same roughness response as paint or glass.
+- Recheck the model in clay from this exact Works camera before surfacing. The hopper, cab, stadium tracks, boom, and bit must all remain identifiable without yellow paint or dark decals.
+
+## 4. Verdict
+
+**REVISE**
+
+The current rover reads as a gray-brown box-and-card assembly with yellow stickers, studded toy tracks, an insufficiently volumetric hopper, and a plate-like boom. It does not meet the Hitch-plus floor from the Works camera.

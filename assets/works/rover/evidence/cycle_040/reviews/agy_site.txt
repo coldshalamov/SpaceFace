@@ -1,0 +1,41 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 40 ΓÇö `works_site`)
+
+**Framing Check:** Valid `works_site` camera framing (~19 px/cell, rover at ~22 px scale). Whole rover is in frame in site perspective.
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Floppy-Disk Read:** The main chassis reads as a flat, desaturated gray/brown rectangular card with a square hole cut in the center rather than a heavy, layered tracked industrial mining crawler.
+- **Hollow "Paperclip" Tracks:** Both port and starboard tracks render as thin wire loop outlines enclosing empty/hollow interiors. They fail to read as solid, dense dark rubber crawler belts with crisp, raised 1-pixel steel catch lips.
+- **Visor Reads as an Isolated Yellow Hook / Block:** The yellow livery does not form a clean, thin overhanging visor line shading the dark windshield; instead, it reads as a chunky yellow crescent/hook glued to the forward side.
+- **Cab & Windshield Collapse:** The dark cab roof and windshield band lack clear definition, framing, and depth, merging into an indistinct dark patch behind the yellow hook.
+- **Cookie-Cutter Well Cavity:** The central well reads as a raw, flat square punch-hole in the mid-steel tub ("square washer" read) rather than an engineered, stepped mechanical bay.
+- **Indistinct Boom & Muddy Tip:** The boom reads as a dark stick/claw with a muddy yellow/orange speck at the end, failing to read as an articulated offset finger with a raised steel spine catching a 1-pixel highlight connecting into a bright faceted bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Track Outer Dominance:** Port and starboard track outer boundaries fail silhouette dominance (`TRACK_OUTERMOST_PORT` = 0.3713, `TRACK_OUTERMOST_STARBOARD` = 0.3686 vs. 0.80 floor), directly causing the hollow wireframe / paperclip artifact.
+- **Starboard Track Contrast:** Starboard track contrast fails severely (`TRACK_CONTRAST_STARBOARD` = 7.988 vs. 18.0 floor), causing the lower track to lose separation against chassis shadow and the ground.
+- **Rendered Livery Saturation:** Hull deck lacks proper livery distribution (`LIVERY_SAT_RENDERED` = 0.1053 vs. 0.30 floor), producing the monochrome "gray stamp" appearance.
+- **Chassis Cohesion & Vertical Relief:** Body cohesion (`ONE_BODY` = 0.4368 vs. 0.90 floor), well depth relief (`WELL_IS_A_HOLE` = 0.0694 vs. 0.24 floor), and cab elevation (`CAB_IS_RAISED` = 0.1770 vs. 0.28 floor) all fail, causing the flat 2D cutout read.
+- **Boom Lateral Offset:** Boom lateral clearance fails target (`BOOM_OFFSET` = 0.1384 vs. 0.15 floor).
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Infill & Solidify Track Belts:** Widen the track belt geometry and add solid internal road wheel/bogey and dark rubber backing geometry so crawler belts read as dense, solid dark stadium pads with raised steel lips catching a 1-pixel edge highlight.
+2. **Correct Starboard Track Shading & Contrast:** Adjust normal angles, bevels, and material tones on the starboard track to bring contrast above the 18.0 floor and guarantee clean separation from chassis shadows.
+3. **Refine Yellow Visor to a Thin Brow:** Thin and reshape the yellow visor geometry into a sharp, forward-projecting brow that catches a clean 1-pixel highlight line across the top of a recessed, dark glazed windshield band.
+4. **Rebalance Upper Hull Livery:** Assign industrial yellow livery to key upper tub deck plates to eliminate the monochrome "gray stamp" read while maintaining `YELLOW_MINORITY` budget.
+5. **Chamfer & Step the Central Well:** Add beveled outer rims and stepped interior mechanical ledges inside the well bay to ensure it reads as a functional recessed equipment bay rather than a flat black punch-hole.
+6. **Re-articulate Boom Spine & Cutting Bit:** Thicken the structural boom arm, assign a high-specular steel spine along the top ridge to catch a continuous 1-pixel highlight line, and enlarge/brighten the faceted cutting bit tip.
+
+---
+
+### (4) Verdict
+
+**REVISE**

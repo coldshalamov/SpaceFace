@@ -1,0 +1,70 @@
+1. Obvious defects from this Works view
+
+- The rover reads as a small gray box between two tracks, not as a resolved industrial mining vehicle.
+- The two stadium-shaped tracks are recognizable, but their bodies are too uniformly dark and shallow. The thin raised steel outer lips do not catch enough light to establish separate metal rims around solid rubber belts.
+- The track tread pattern is faint and visually merges with the surrounding darkness. The belts need stronger thickness, sidewalls, and grounded suspension interfaces.
+- The cab house reads predominantly pale gray rather than as a dark cab mounted on a mid-value steel tub.
+- The body is dominated by one large flat gray plate. This creates an obvious card/box/blockout read.
+- A distinct dark windshield band is not visible. The large dark trapezoidal area reads more like a single black pane, opening, or pasted rectangle than framed glass.
+- The thin yellow visor line does not clearly read as an element extending beyond an already-visible windshield band. It appears as an isolated vertical yellow mark on the body.
+- The hopper well is not clearly distinguishable from the dark pane. This view presents one dominant dark rectangular/trapezoidal area where two different functional volumes should be legible.
+- The hopper lacks a visibly thick rim and a sufficiently dark, deep interior. It reads as a dark graphic applied to a gray surface rather than a real hole.
+- The offset boom is not structurally legible. Its projecting end reads as a tan mushroom or rounded lump.
+- A dark boom arm, raised steel load-bearing spine, steel bit body, and bright working tip cannot be followed as a connected mechanical assembly.
+- The small pale feature at the boom end is too weak and ambiguous to establish a bright drill tip.
+- The boom-to-chassis joint lacks a readable bearing, pivot, bracket, or reinforced mounting interface.
+- Small square details around the yellow mark read like stickers or toy buttons rather than recessed industrial controls or service hardware.
+- Major forms have hard, simple rectangular boundaries with insufficient bevel, overlap, joint, and thickness information.
+- Materials collapse into muddy brown, gray, and black. Painted cab, exposed steel, rubber tracks, glass, and drill hardware do not produce clearly different highlights.
+- The result has an unmistakable toy/clay/card/box/gray-plate quality at play size.
+
+2. Visible MTX defects at play size
+
+- MTX-03 / MTX-57: The hopper and glazing do not show convincing recessed cavities with visible shell thickness.
+- MTX-05: The large gray body surface reads as a flat plate without convincing stepped construction, seam channels, or manufactured panel hierarchy.
+- MTX-07 / MTX-36: The canopy treatment does not read as a thin dark glass shell over a cut tub. There is no clearly framed dark windshield band.
+- MTX-11: No mechanically routed hoses or cables with visible end fittings support the boom assembly.
+- MTX-12 / MTX-61: Fasteners and joint language are not legible at the important boom, cab, tub, and track interfaces.
+- MTX-13: Edge treatment appears too uniform and blunt for the different scales of body plates, track lips, visor, and boom hardware.
+- MTX-31: Substance classification is weak; steel, paint, rubber, glass, and drill hardware are not immediately separable.
+- MTX-33 / MTX-35 / MTX-66: Roughness, metallic response, and specular behavior do not distinguish painted panels from machined steel or rubber.
+- MTX-39 / MTX-40: There is little readable cavity dirt, contact darkening, or curvature-driven wear defining construction.
+- MTX-45: The yellow accent lacks a convincing recessed or housed fixture and reads as a surface mark.
+- MTX-46: The supported view still contains forbidden plastic-toy, clay-blockout, box, and gray-plate reads.
+- MTX-47: Camera-visible construction is insufficiently preserved; the model reads as primary masses plus small attached blocks.
+- MTX-55: The tracked-rover role is barely carried by the tracks, but the cab, hopper, and mining tool do not survive as distinct role-defining forms.
+- MTX-56: The required value hierarchy is confused. The dark opening, dark mechanical zones, glass, and track bodies merge, while the gray plate dominates.
+- MTX-59: At the supplied play scale, the major openings, material identities, and mining mechanism do not read clearly.
+- MTX-60: No convincing service-driven asymmetry is visible beyond the boom’s placement.
+- MTX-62: The boom and its joints do not read as separated moving mechanical parts with functional gaps.
+- MTX-63: Neither meso-scale construction nor micro-scale surface treatment reads strongly enough.
+- MTX-64: The body has a rest area, but surrounding detail is not organized around access points, joints, and working machinery; it instead resembles scattered stickers.
+- MTX-65: The industrial mining role is underdeveloped because the hopper and drill mechanism are visually ambiguous.
+- MTX-67: The yellow accent is an isolated line rather than a controlled, integrated design beat.
+
+3. Concrete Blender actions
+
+- Keep the two stadium-shaped track silhouettes, but give each belt a thick solid-rubber cross-section and dark sidewall. Add a separate, thin steel outer lip raised above the belt, with enough bevel to catch grazing light without becoming a continuous luminous outline.
+- Strengthen the tread blocks and recess their gaps so the belt remains readable in shadow.
+- Add visible bogie or suspension attachment masses between the steel tub and each track; avoid leaving the tub apparently floating between belts.
+- Rebuild the vehicle around a mid-value steel tub with visible depth, bevels, and overlapping structural plates.
+- Darken the cab house as a separate manufactured volume. Preserve restrained mid-steel framing so it does not become one black block.
+- Cut a real windshield opening into the cab. Place thin, dark glass inside a metal frame and ensure it forms a clearly visible horizontal windshield band in this exact top view.
+- Extend one thin yellow visor beyond the glass edge only. Keep it narrow, separated from the cab sides, and supported by small metal brackets.
+- Boolean a separate hopper well into the tub. Give it a thick steel rim, sloped internal walls, and a substantially darker bottom so it cannot be confused with the windshield.
+- Separate the hopper and windshield spatially and by shape: industrial open well versus framed dark glass band.
+- Rebuild the boom as a connected articulated assembly: dark primary arm, separate raised steel spine, visible pivot housing at the tub, and a reinforced joint between arm and bit body.
+- Replace the tan rounded end with a machined steel bit body. Use stepped cylindrical or faceted sections, a darker collar, and a small bright working tip.
+- Make the tip bright through material contrast and a restrained recessed work light or hot tool face, not by turning the boom yellow.
+- Add bearing caps, hinge gaps, welds, countersinks, and fasteners only where the cab, hopper, track mounts, boom pivot, spine, and bit body actually meet.
+- Add one or two properly routed hydraulic hoses from chassis fittings to boom fittings, with no floating ends.
+- Apply object scale before setting bevel widths. Use larger softened edges on the tub and cab, tighter bevels on the steel lips and boom components, and very small bevels on brackets.
+- Repair normals after every hopper or window boolean and check the rims under grazing light.
+- Author distinct materials for dark rubber, dark coated cab, mid-value painted steel tub, bare machined boom steel, dark glass, and the restrained yellow visor.
+- Vary roughness by manufacture: matte rubber, moderately rough paint, directional brushed metal, and tight dark-glass highlights.
+- Add curvature-driven wear only to exposed track lips, hopper rim, tub corners, and boom interfaces. Keep broad plates comparatively quiet.
+- Re-render this same Works camera at the same play scale and require the windshield band, separate hopper hole, solid rubber belts with steel lips, and complete boom-to-tip structure to read without enlargement.
+
+4. Verdict
+
+REVISE.

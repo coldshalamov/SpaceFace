@@ -1,0 +1,46 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 46)
+
+**Framing:** Valid works_site camera (~19 px/cell site view, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_046/review_1to1/works_site_1to1.png) (with reference to [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_046/works_site.png)).
+
+---
+
+### 1. Obvious Defects from this Site View
+
+* **Gray Cassette / Stamp Read:** The overall silhouette still reads as a monolithic, rectangular gray block with a dark central cavity cutout rather than an articulated tracked mining crawler.
+* **Track Definition Failure:** Neither port nor starboard track reads as an independent stadium belt. The dark rubber track walls are missing contrast against the chassis, and there is no 1 px steel lip catching light to define the running gear boundaries. The starboard track completely bleeds into the right hull volume.
+* **Misplaced Yellow Livery / Cab Read:** The cab structure does not register as a dark cab resting on a mid-steel tub. The intended thin yellow visor line across the windshield band is missing; instead, yellow appears as a chunky vertical patch clustered along the right bulkhead/interior wall.
+* **Well vs. Windshield Merged:** The equipment well fails to read as a distinct recessed architectural pocket. It collapses into the cockpit void, appearing as a single generic dark hole in the center-left deck.
+* **Muddy Boom Silhouette:** The boom arm on the right does not read as an offset articulated finger. Its arm body lacks dark-to-steel value contrast, and the spine/bit tip lacks the bright steel specular highlight needed to separate it from the ground shadow and hull edge.
+
+---
+
+### 2. MTX Defects Readable at this Size
+
+* **Albedo & Value Inversion:** Deck and hull plating albedos remain too bright/flat relative to the cab and tracks, crushing the value hierarchy required at 22 px.
+* **Missing Specular Edge Cues:** No specular highlights on track outer perimeters or chassis bevels, causing the vehicle boundary to blend into surrounding ground pixels.
+* **Livery Texture Mapping:** Yellow livery is mapped onto vertical side geometry rather than a crisp 1 px horizontal forward visor bar.
+* **Starboard Track Contrast Collapse:** Starboard track lacks any dark rubber albedo separation from the adjacent hull metal.
+
+---
+
+### 3. Concrete Blender Actions to Fix Site Silhouette
+
+1. **Define Dual Stadium Tracks:**
+   * Lower the base color albedo and raise roughness on the track rubber belts (both port and starboard) to create dark rubber walls.
+   * Add a bevel / raised perimeter rim with a bright steel material along outer track edges to catch a sharp 1 px specular highlight.
+   * Deepen the geometric separation / shadow groove between the track pods and the central chassis.
+2. **Rebuild Cab & Visor Structure:**
+   * Lower the value of the cab roof/walls so the dark cab sits distinctly on a mid-value steel tub.
+   * Remap the yellow livery to form a single continuous 1 px horizontal visor line directly across the front rim of the dark windshield band.
+   * Strip all yellow paint patches from the interior bulkhead and right chassis flank.
+3. **Separate Equipment Well from Windshield:**
+   * Add a dividing structural deck bridge between the cockpit glazing band and the equipment well, stepping the well down as a dedicated shadowed pocket.
+4. **Sharpen Boom Arm & Bit Tip:**
+   * Thicken/raise the boom spine ridge geometry and assign a high-metallic steel material to catch top lighting.
+   * Give the tool bit a bright steel tip highlight so the boom reads cleanly as an articulated offset finger against dark terrain shadows.
+
+---
+
+### 4. Verdict
+
+**REVISE**

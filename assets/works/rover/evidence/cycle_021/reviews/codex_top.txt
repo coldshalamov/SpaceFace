@@ -1,0 +1,70 @@
+1. Obvious defects from this Works view at play size
+
+- The rover reads as a gray rectangular box with yellow plates attached. Its silhouette is generic and toy-like rather than a purpose-built industrial crawler.
+- The two track assemblies do not convincingly read as dark stadium-shaped continuous belts. They look like straight dark bars with four circular corner wheels/end caps.
+- The steel end caps are visually weak and too wheel-like. Their mounting structure, hubs, and connection to the track frames are unclear.
+- The yellow regions read as bright rectangular inserts or hull stickers. They do not yet read as inner-track steel safety guards separated from dark outer rubber belts.
+- The upper and lower yellow strips are too broad, flat, clean, and saturated. This gives the vehicle a yellow-plastic-toy/LEGO character.
+- The hopper is the strongest functional cue, but its opening reads as a flat dark rectangle bordered by thick gray slabs. The sloped steel walls, rim thickness, and actual depth of the well are not sufficiently legible.
+- The main body is dominated by large, uniformly gray, square-edged plates. It reads as a gray box/card construction rather than assembled heavy steel.
+- The raised cab is not clearly resolved as a raised enclosed mass. Its roof pane appears as a small dark marking or missing patch instead of a framed dark glass pane seated over a cabin opening.
+- The cab/hopper boundary is visually confused by small black markings and thin plate fragments that do not resolve into joints, frames, or service hardware at this size.
+- The boom is offset, but it remains a plain beige rectangular extrusion. It lacks the mass, section changes, pivots, reinforcement, hydraulic attachment, and steel material response expected of a fat industrial boom.
+- The bit is attached, but its pale blocky shape is blunt and indistinct. It does not read decisively as a cutting, drilling, or breaking tool.
+- Boom and bit share nearly the same clay-colored treatment, further weakening their separation into manufactured components.
+- The four circular end details contribute to a toy-car read because they resemble exposed wheels rather than steel track end caps enclosed by crawler structure.
+- Plate edges are uniformly thick and blunt. There is little evidence of designed bevel hierarchy, welded construction, gaskets, countersinks, or overlapping fabricated steel.
+- There is no convincing material separation among painted steel, exposed/machined steel, rubber, glass, and dirt. Most of the rover reads as gray clay or cardboard.
+- The vehicle lacks authored service asymmetry, wear concentration, repair history, or purposeful industrial markings.
+- Large flat surfaces have little specular or roughness differentiation. The image therefore collapses into gray plates, black shapes, and yellow rectangles.
+- At the scale shown in `works_top.png`, the hopper and crawler outline remain identifiable, but the cab, boom mechanism, track construction, and material story lose clarity.
+
+2. MTX defects visible at this play size
+
+- **MTX-01 / MTX-13:** Edge treatment looks uniformly blunt or minimally beveled. Part-scale bevel hierarchy is not visible.
+- **MTX-03 / MTX-57:** The hopper does not convincingly show a deep cut volume with clearly readable shell thickness and sloped interior walls.
+- **MTX-05:** The body reads as stacked slabs and boxes rather than stepped manufactured plates with purposeful seam channels.
+- **MTX-07 / MTX-36:** The cab lacks a clearly framed dark roof pane over a darker cabin volume. It reads more like a dark mark in a gray box.
+- **MTX-11:** No hoses or service lines with visible end fittings are readable around the boom or crawler mechanism.
+- **MTX-12:** Fasteners and attachment hardware are not legible at the important interfaces: track frames, boom root, cab frame, hopper rim, and bit attachment.
+- **MTX-14 / MTX-60:** No designed service asymmetry, repair, replacement panel, or credible off-center marking is apparent.
+- **MTX-31:** Substance classification is weak. Painted steel, bare steel, rubber, glass, and tool metal do not separate convincingly.
+- **MTX-33 / MTX-66:** Roughness, metallic response, and manufacture-specific highlights are not readable. Gray surfaces share a clay-like response.
+- **MTX-34:** The gray painted panels lack a convincing coated-steel finish.
+- **MTX-35:** The boom, track end hardware, hopper walls, and bit do not read as machined or fabricated steel.
+- **MTX-39 / MTX-40:** There is no convincing cavity dirt or impact-driven edge wear to articulate construction. Any darkness is too broad to establish those effects.
+- **MTX-42:** The yellow treatment behaves visually like applied rectangular stickers or separate plastic blocks, not safety paint integrated into steel guards.
+- **MTX-46:** The supported view contains explicit forbidden reads: plastic toy, clay blockout, box construction, card-like plates, and undifferentiated gray plate.
+- **MTX-55:** The crawler role survives at 120 px primarily through the tracks and boom, but the silhouette remains generic and underdesigned.
+- **MTX-56:** There are three broad values, but the yellow accent is doing too much of the identification work and reads as toy plastic rather than industrial safety treatment.
+- **MTX-59:** Major functions are only partly legible at play distance. Hopper, cab, track mechanics, and boom articulation are not all sufficiently resolved.
+- **MTX-61:** Interfaces do not show a consistent joint language such as welds, gaskets, recessed bolts, pins, or seam channels.
+- **MTX-62:** The boom, bit, roof frame, and crawler components do not consistently read as separated manufactured or movable parts with visible gaps.
+- **MTX-63:** Large forms lack meso-scale construction detail; surface color is carrying distinctions that should also exist in geometry and baked form.
+- **MTX-64:** The model has quiet areas, but detail is not convincingly clustered around access points, joints, drive components, or the working tool.
+- **MTX-67:** Yellow is a controlled accent in position, but its shape and material treatment make it read as a plastic brick rather than designed safety paint.
+
+The top view cannot establish UV uniqueness, bake-source construction, cage correctness, tangent basis, hidden geometry, or export settings. Those rows should not be inferred from this still.
+
+3. Concrete Blender actions
+
+- Rebuild each crawler as a genuine stadium-shaped track assembly: continuous dark rubber outer belt, curved ends, recessed steel wheels or sprockets, and clearly separate steel end caps.
+- Move the yellow inward and model it as painted steel safety guards inside each crawler frame. Give the guards folded edges, mounting brackets, narrow gaps, and restrained chipped paint; keep the complete outer belt dark rubber.
+- Deepen the hopper with a real boolean opening. Add a thick rim, four sloped fabricated-steel walls, a visibly darker bottom, corner seams, and localized abrasion along material-flow surfaces.
+- Break the main gray rectangle into a load-bearing chassis, hopper surround, raised cab pedestal, crawler mounts, and service-access plates. Use stepped overlaps and recessed seam channels instead of stacked rectangular slabs.
+- Raise and clarify the cab. Cut a proper roof opening, install a thin dark glass shell, and surround it with a substantial four-sided steel frame and gasket. Keep the interior as a simple dark volume.
+- Give the boom a fabricated structural section rather than a rectangular stick: tapered or boxed steel members, reinforced root, large pivot pin, clevises, hydraulic cylinder or actuator, and visible attachment gaps.
+- Remodel the bit as recognizable working hardware with a steel collar, retained pin or flange, tapered cutting mass, and distinct worn-tool-metal material.
+- Apply object scales before beveling. Use smaller bevels on thin guards and plates, larger radii on cast end caps and the boom root, and tight bevels on tool edges.
+- Add interface-specific construction: weld beads around hopper plates, recessed bolts at crawler and boom mounts, pin retainers at pivots, and gaskets around the roof pane.
+- Establish separate materials for dark rubber, yellow painted steel, gray coated steel, bare/machined steel, dark glass, and dirty hopper interiors.
+- Author roughness and metallic variation by manufacture: dry rubber belts, moderately rough painted panels, directional brushed steel on pins and tool hardware, and low-roughness coated glass.
+- Add restrained curvature-driven wear to exposed steel edges, track guards, hopper rim, and bit. Concentrate dirt in seams, the hopper bottom, crawler recesses, and boom pivots.
+- Introduce one credible service asymmetry, such as a replaced hopper plate, repaired guard, inspection stencil, or differently worn crawler component. Do not add arbitrary boxes.
+- Recheck the exported asset at the exact `works_top` play scale. The dark stadium belts, steel end caps, yellow inner guards, deep hopper, framed roof pane, offset boom, and attached bit must remain independently legible without relying on close crops.
+
+4. Verdict
+
+**REVISE**
+
+The functional layout is present, but this still remains a gray box with yellow plate-like accents. It does not yet clear the required toy/clay/card/box/gray-plate failures or the Hitch-plus material and construction floor.

@@ -1,0 +1,133 @@
+{
+  "textured": {
+    "YELLOW_MINORITY": {
+      "value": 0.4048,
+      "floor": 0.45,
+      "op": "<=",
+      "pass": true
+    },
+    "TRACK_BAND": {
+      "value": 0.2874,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.1139,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0481,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.1963,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.1743,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "texturedPass": true,
+  "clay": {
+    "TRACK_BAND": {
+      "value": 0.3912,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.101,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0305,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.2672,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.2598,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "clayHolds": true,
+  "texturedRaw": {
+    "YELLOW_MINORITY": 0.4048,
+    "TRACK_BAND": 0.2874,
+    "TRACK_OUTERMOST_PORT": 1.0,
+    "TRACK_OUTERMOST_STARBOARD": 1.0,
+    "WELL_HOLE": 0.1139,
+    "CAB_PANE": 0.0481,
+    "BOOM_REACH": 0.1963,
+    "BOOM_OFFSET": 0.1743,
+    "silhouettePixels": 8320,
+    "bbox": [
+      908,
+      491,
+      1015,
+      588
+    ]
+  },
+  "clayRaw": {
+    "YELLOW_MINORITY": 0.0,
+    "TRACK_BAND": 0.3912,
+    "TRACK_OUTERMOST_PORT": 1.0,
+    "TRACK_OUTERMOST_STARBOARD": 1.0,
+    "WELL_HOLE": 0.101,
+    "CAB_PANE": 0.0305,
+    "BOOM_REACH": 0.2672,
+    "BOOM_OFFSET": 0.2598,
+    "silhouettePixels": 12161,
+    "bbox": [
+      894,
+      474,
+      1025,
+      605
+    ]
+  },
+  "pass": true
+}

@@ -1,0 +1,42 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 42 ΓÇö `works_site`)
+
+**Framing Check:** Valid `works_site` camera framing (~19 px/cell, rover at ~22 px scale). Full vehicle is visible in game-scale site orthographic perspective.
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Floppy-Disk Silhouette:** The main chassis reads as a flat, desaturated grayish-tan rectangular card / 3.5" floppy disk with a center cutout rather than a heavy, rugged tracked mining crawler.
+- **Hollow "Paperclip" Track Loops:** Both port (top) and starboard (bottom) tracks read as wire loops / hollow paperclips. Thin bright perimeter lips enclose dark empty troughs rather than reading as solid, heavy dark rubber crawler belts with crisp 1-pixel steel catch lips.
+- **Isolated Yellow Hook / Crescent Instead of Visor Brow:** The yellow livery registers as an isolated, curved yellow hook/crescent sitting awkwardly on the forward deck/well coaming rather than a crisp, thin forward-projecting yellow visor line shading a recessed dark windshield band.
+- **Cab & Windshield Collapse:** The operator cab lacks vertical relief and structural definition from the mid-steel tub, reading as a flat dark square patch adjacent to the yellow hook rather than an elevated, glazed enclosure.
+- **Cookie-Cutter Well Cavity:** The central well reads as a flat, 2D punch-hole / washer cutout through the chassis rather than an engineered mechanical hopper with coaming and stepped depth.
+- **Weak Boom Silhouette & Muddy Tip:** The boom reads as a flimsy dark horizontal stick with a dull orange/yellow dot at the tip. It lacks the distinct offset geometry, raised steel spine (needed to catch a 1-pixel specular highlight line), and bright faceted steel bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Track Outer Dominance:** `TRACK_OUTERMOST_PORT` = 0.3713 and `TRACK_OUTERMOST_STARBOARD` = 0.3686 (vs. $\ge 0.80$ floor) ΓÇö perimeter lips dominate the outline, directly causing the hollow wire loop / paperclip defect.
+- **Starboard Track Contrast:** `TRACK_CONTRAST_STARBOARD` = 7.988 (vs. $\ge 18.0$ floor) ΓÇö lower track lacks sufficient value separation and gets swallowed by hull shadow.
+- **Rendered Livery Saturation:** `LIVERY_SAT_RENDERED` = 0.1053 (vs. $\ge 0.30$ floor) ΓÇö overall vehicle is severely desaturated, resulting in the monochrome "gray stamp" read.
+- **Chassis Depth & 3D Relief:** `ONE_BODY` = 0.4368 (vs. $\ge 0.90$ floor), `WELL_IS_A_HOLE` = 0.0694 (vs. $\ge 0.24$ floor), and `CAB_IS_RAISED` = 0.1770 (vs. $\ge 0.28$ floor) all fail, flattening the vehicle into a 2D cutout.
+- **Boom Lateral Offset:** `BOOM_OFFSET` = 0.1384 (vs. $\ge 0.15$ floor) ΓÇö boom arm does not achieve sufficient lateral clearance from the hull.
+- **Triangle Budget:** LOD0 triangle count is 20,750 tris (exceeds the 18,000 budget; `triOverBudget`: true).
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Solidify Track Assemblies:** Fill out rubber belt thickness and undercarriage/bogey volume flush under the steel lips so the tracks read as dense, solid dark rubber crawler walls with 1-pixel specular lips rather than hollow wireframes. Adjust bevels and surface normals on the starboard track to bring contrast above the 18.0 threshold.
+2. **Reshape Yellow Visor into a Clean Brow:** Strip out the yellow hook/crescent geometry. Model a crisp, thin forward-projecting yellow visor brow line along the leading edge of the cab roof shading a recessed, dark glazed windshield band.
+3. **Elevate and Bevel the Cab:** Increase cab height and roof chamfers (`CAB_IS_RAISED` $\ge 0.28$) so the dark cab clearly steps up above the mid-steel tub.
+4. **Step and Collar the Central Well:** Add an elevated, chamfered steel coaming collar and interior stepped ledge geometry (`WELL_IS_A_HOLE` $\ge 0.24$) to give the well clear recessed depth distinct from the windshield.
+5. **Re-articulate Boom Spine & Cutting Bit:** Thicken the boom arm, increase lateral offset (`BOOM_OFFSET` $\ge 0.15$), add a prominent high-specular steel spine along the upper ridge to catch a clean 1-pixel highlight line, and replace the muddy yellow tip with a faceted, bright steel cutting bit.
+6. **Decimate LOD0 Geometry:** Optimize and decimate non-silhouette geometry to bring LOD0 below the 18,000 triangle budget limit.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,94 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 62) ΓÇö `works_edge`
+
+---
+
+### Framing Check
+* **Camera / View:** `works_edge` (valid works perspective framing at frame edge). Camera is not inside a cabin and not a studio three-quarter. Framing is **VALID**.
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Side Walls:**
+  * Flanking the hopper well, the side walls consist of flat, planar triangular card/clay wedges sloping into the body rather than structural, heavy-duty industrial sidewall plating.
+  * Lacks plate thickness, chamfered reinforcement flanges, weld seams, or realistic debris shedding angles.
+
+* **Track Height & Assembly (Solid Rubber Belts vs Wire Loops):**
+  * Tracks read as blocky, rounded stadium treads with segmented pads, but lack proper integration with an undercarriage suspension, drive sprockets, and tensioner assemblies.
+  * Treads float alongside the body without solid structural track frames anchoring them into the chassis.
+
+* **Cab House & Yellow Visor:**
+  * The cab house is a dark, primitive rectilinear block with an unresolved flat circular cylinder/disc button sitting on the roof.
+  * Yellow livery is applied as a chunky frame/square block around the front glass rather than being strictly restricted to a crisp, thin overhanging visor extending forward past the dark glass.
+  * Lacks armored structural pillars, chamfers, or industrial equipment enclosure shaping.
+
+* **Dark Cab Pane:**
+  * The dark pane is rendered as a flat, unshaded pitch-black rectangle on the cab face.
+  * Missing a structural steel bezel, rubber gasket seal, recessed mounting depth, or specular glass reflectivity.
+
+* **Hopper Well:**
+  * The central hopper well is a primitive stepped square depression bordered by flat planar aprons.
+  * Lacks interior AR-plate wear liners, corner gussets, welded stiffeners, and mechanical depth connecting into the lower chassis.
+
+* **Boom & Drill Bit Assembly:**
+  * The boom extending to the starboard side (+X forward) is a flat, dark olive/brown trapezoidal slab.
+  * Lacks a darker structural boom arm with a distinct, high-contrast raised machined steel spine/feed rail terminating into a dedicated multi-faceted steel drill bit body.
+  * The bit at the tip is currently a tiny, undefined conical nub.
+
+* **Scar Plate:**
+  * The rear scar plate is a completely flat, featureless light-gray card/plate slapped onto the aft crossmember.
+  * Lacks plate thickness, hex fastener hardware, corner bevels, or tow/recovery mount integration.
+
+* **Toy / Clay / Card / Box / Gray Plate Artifacts:**
+  * Planar gray/tan card wedges flanking the hopper well.
+  * Flat, unfilleted light-gray decking filler strips between the hopper walls and the track frames.
+  * Flat rectangular gray card applied as the rear scar plate.
+  * Primitive cylinder/disc glued onto the cab roof.
+  * Overall silhouette still reads as a collection of primitive boxes and slapped-on flat card geometry (toy/clay/card look).
+
+---
+
+### 2. MTX Defects (Visible at Play Size)
+
+* **Flat Diffuse Shaders:** Materials lack proper PBR separation; chassis, cab, and boom share muddy, low-contrast diffuse tones with minimal metallic or roughness response.
+* **Untextured Gray/Clay Cards:** Flank wedges, deck filler strips, and the rear scar plate appear as untextured, default gray/tan clay surfaces.
+* **Yellow Livery Response:** Yellow visor accent reads as a flat, non-dielectric plastic block rather than industrial coated safety yellow alkyd enamel over zinc primer.
+* **Glass Shading:** Cab pane is an unlit, flat black hole with zero Fresnel response, roughness variation, or environmental reflection.
+* **Lack of Normal Relief:** Missing micro-relief, hex bolt heads, plate overlap offsets, weld seams, and edge bevels across the atlas.
+
+---
+
+### 3. Concrete Blender Actions (External Only ΓÇö No Cabin Furniture)
+
+1. **Rebuild Side Walls & Hopper:**
+   * Remove the flat triangular card wedges flanking the well.
+   * Extrude structural, heavy-gauge steel sidewalls with chamfered stiffener ribs, plate courses, and welded seams.
+   * Deepen the internal hopper well; model interior AR-plate wear liners and corner reinforcement gussets.
+
+2. **Refine Deck & Chassis:**
+   * Delete flat gray filler card plates between the hopper well and track housings; model a continuous, beveled structural hull plate with mechanical cutouts and mounting brackets.
+
+3. **Reconstruct Cab House, Visor, & Pane:**
+   * Bevel and shape the dark cab house into an armored equipment pod.
+   * Remove the roof cylinder disc; replace with a flush/recessed maintenance hatch or intake grille.
+   * Remodel the yellow livery strictly as a thin, crisp protective visor shelf projecting forward past the glass; remove yellow from cab sides and roof framing.
+   * Recess the dark cab pane into a dedicated rubber seal and bolted steel retaining frame with tinted specular glass shading.
+
+4. **Detail Boom & Steel Spine / Bit Body:**
+   * Model a darker structural boxed boom arm with heavy-duty pivot brackets.
+   * Add a distinct, raised machined steel rail/spine along the top of the boom arm leading directly into a faceted steel drill bit head.
+
+5. **Reconstruct Rear Scar Plate:**
+   * Replace the slapped-on flat gray card with a thick, beveled steel scar plate secured with modelled hex bolts and integrated tow points.
+
+6. **Refine Track Undercarriage:**
+   * Model solid rubber continuous track belts with defined cleats/grooves, supported by structural track frames, idlers, and roller guides.
+
+7. **PBR Material & Atlas Alignment:**
+   * Assign distinct PBR properties: dark abraded rubber for tracks (`#3a3530`), dark coated metal for cab/boom (`#2a2722`), bare machined steel for the boom spine and bit (`#848b93`), dielectric safety yellow for the visor (`#ffd23f`), and tinted specular glass for the cab pane (`#161009`).
+
+---
+
+### 4. Verdict
+
+**REVISE**

@@ -1,0 +1,61 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down camera angle.
+- **Check**: Not inside a cabin and not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate Aesthetic**:
+   - The central chassis, fenders, and deck surfaces read as flat, untextured gray slab primitives with sharp right-angle cutouts. The geometry resembles cardboard cutouts or plastic toy plates rather than heavy industrial machinery.
+2. **Drill Boom & Bit Body**:
+   - The boom is a flat, uniform light-gray rectangular bar lacking a darker structural boom housing and a raised steel central spine.
+   - The tool head ends in a basic yellow plastic cap instead of a machined steel bit body.
+3. **Cab House & Visor**:
+   - The cab house is a generic dark box with a floating gray cylinder primitive on the roof.
+   - Lacks structural yellow side panels framing the dark cab house.
+   - The front yellow strip reads as an exterior plastic roof lip/bumper glued to the top edge rather than a thin, defined yellow visor line set in front of a visible, recessed dark glass pane.
+4. **Track Height (Rubber Belts vs. Wire Loops)**:
+   - The track assemblies appear as flat, thin loops with faint rung lines rather than tall, thick, solid rubber conveyor-style belts with physical height, tread depth, and drive sprocket definition.
+5. **Hopper Well**:
+   - Modeled as a basic box cavity with an unintegrated dark floor square and an asymmetrical stepped ramp, lacking industrial depth, sloped chute transitions, and reinforced liner plating.
+6. **Side Walls**:
+   - The side walls connecting the central hull to the track sponsons are flat, featureless gray slabs with no chamfers, structural ribs, or panel seams.
+7. **Scar Plate**:
+   - Missing dedicated front/leading-edge scar wear plates to protect the forward hull against abrasive regolith impact.
+
+---
+
+### (2) MTX Defects (Play Size)
+
+- **Contrast & Value Hierarchy**: The dark windshield, dark cab roof, and hopper floor bleed into indistinguishable black patches at 1:1 scale, while the flat gray chassis washes out against the dark ground plane.
+- **Boom Readability**: The drill boom is thin and stick-like with insufficient silhouette presence; the yellow tip is too small and reads as visual noise rather than an industrial mining tool.
+- **Material Flatness**: Gray surfaces show uniform matte diffuse shading with no metallic variation, bevel highlights, or structural fasteners, giving the asset an unfinished blockout look in-game.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Boom & Bit Reconstruction**:
+   - Darken the main boom arm structure.
+   - Model a raised steel spine running along the top center of the boom.
+   - Replace the yellow corner block with a dedicated steel bit body and mechanical collar assembly.
+2. **Cab House & Visor Overhaul**:
+   - Model structural yellow side panels/cheeks framing the dark cab house.
+   - Recess the dark canopy glass pane and add a distinct, thin yellow visor line properly integrated within the glass housing.
+   - Remove the unintegrated gray cylinder primitive from the roof.
+3. **Track Belts & Undercarriage**:
+   - Increase track height and cross-sectional thickness to read as solid, heavy-duty rubber belts.
+   - Deepen track wells and define drive sprocket housings beneath the sponson guards.
+4. **Hopper Well Rework**:
+   - Deepen the hopper cavity and bevel the internal transitions.
+   - Add segmented wear-plate ribs and a functional sloped floor chute.
+5. **Chassis & Scar Plate Detailing**:
+   - Add bevels, panel seams, and chamfers across the flat gray side walls and hull cards.
+   - Model a heavy-duty reinforced scar plate on the leading edge of the chassis.
+
+---
+
+### (4) Verdict
+
+**REVISE**

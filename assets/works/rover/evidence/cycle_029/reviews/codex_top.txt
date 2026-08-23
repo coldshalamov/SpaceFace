@@ -1,0 +1,58 @@
+1. Obvious defects from this Works view at play size
+
+- Silhouette reads as a generic tracked construction rover, but the central body is dominated by a square gray deck. The cab, hopper, and boom do not create a strong enough industrial profile to clear the Hitch-plus floor.
+- The two dark stadium tracks are readable. Their thin raised steel outer lips catch light, but the tracks still resemble toy tank-track loops because their internal tread construction, suspension, and attachment to the chassis are not legible.
+- Required yellow cab-side identification is absent. The only substantial warm area is the pale yellow/tan block at the boom end; there is no readable yellow treatment on the cab sides.
+- The steel cab house is too small and box-like. A dark pane exists, but at this size it reads more like a black square applied to a gray box than framed glazing over a cabin opening.
+- The hopper well is visibly dark and appears open, but it still reads as a rectangular black cutout. Its sloped steel walls and rim thickness are too weak to establish a convincing deep fabricated hopper.
+- The boom is offset, but it is chiefly a pale rectangular/cylindrical extrusion. The required dark structural ridge is not clearly readable, and the bright attached bit is only a tiny terminal speck without a convincing chuck, collar, or tool connection.
+- The main gray deck is an obvious flat gray plate.
+- The cab is an obvious gray box with dark sticker-like rectangles.
+- The boom assembly is built from boxy toy-like primitives.
+- The tracks, especially their clean capsule outlines and sparse circular details, give the rover a toy/clay-model character.
+- The large uninterrupted rectangular deck and sharply separated components make the assembly read as stacked cards and boxes rather than a welded, load-bearing mining machine.
+- Material differentiation is weak: deck, cab, hopper walls, and structural members share nearly the same pale gray/taupe response.
+
+2. MTX defects visible at this play size
+
+- MTX-03 / MTX-04: The hopper does not convincingly show a boolean-cut cavity with readable shell thickness and sloped interior structure.
+- MTX-05: The deck lacks convincing stepped plate construction and dark seam channels; it reads as one gray card.
+- MTX-11: No hydraulic hoses or service runs with visible end fittings support the boom’s function.
+- MTX-12: Fasteners and pivots are not legible at the important cab, boom, hopper, and chassis interfaces.
+- MTX-13: Bevel scale appears inconsistent. The track lips catch light, while the cab, deck, hopper, and boom remain hard-edged boxes.
+- MTX-14 / MTX-60: There is no readable service-driven or designed asymmetry beyond the functional boom placement.
+- MTX-31 / MTX-35: Steel surfaces do not read as distinct painted, brushed, or worn manufactured metals; they share a clay/plastic response.
+- MTX-33: Roughness and metallic variation are not apparent across the major substances.
+- MTX-39 / MTX-40: Cavities lack controlled contact dirt, and exposed working edges lack credible curvature-driven wear.
+- MTX-46: The supported view contains explicit toy, clay, box, card, and gray-plate reads.
+- MTX-55: The tracked-rover role survives at play size, but the silhouette remains generic and lacks a distinctive mining-machine identity.
+- MTX-56: There are dark, middle, and light values, but the hierarchy is poorly assigned: the dark tracks and hopper dominate while the cab and machinery merge into one pale block.
+- MTX-57: Opening-wall thickness is not sufficiently visible around the hopper or cab pane.
+- MTX-61: Plate joints lack readable gaskets, welds, countersinks, or fabricated seams.
+- MTX-62: The boom’s pivots and moving sections do not read as separated mechanical bodies with functional gaps.
+- MTX-63: Neither meso-scale fabricated construction nor micro-scale surface treatment survives at play size.
+- MTX-66: Paint, bare steel, track material, glazing, and tool metal do not produce clearly different highlights.
+- MTX-67: The intended yellow accent is misplaced on the boom-end block instead of forming a controlled, readable cab-side color beat.
+
+3. Concrete Blender actions
+
+- Replace the rectangular deck slab with a fabricated chassis: bevel the perimeter at real scale, add two or three stepped load-bearing plates, and cut narrow recessed seam channels where those plates meet.
+- Preserve the stadium track planform, but add readable tread segmentation, inner guide structure, two or three shadowed suspension masses per side, and brackets connecting each track unit to the chassis.
+- Keep the thin raised steel track lips and strengthen their highlight response with a distinct brushed-steel material and consistent small-radius bevel.
+- Rebuild the cab as a steel shell rather than a box. Cut the pane opening into the shell, give the opening visible wall thickness, recess a dark glass pane behind a metal frame, and bevel the cab’s structural edges.
+- Apply the yellow paint to substantial cab-side panels on both visible sides. Keep the roof predominantly steel; do not use a small yellow roof patch as the accent.
+- Deepen the hopper with an actual boolean opening, a thick fabricated rim, four clearly sloped steel walls, and a darker bottom below them. Add welded corner seams or reinforcing ribs where the walls meet.
+- Rebuild the boom from separated mechanical bodies: an offset steel spine, a darker raised ridge along that spine, visible pivot housings, and gaps at each moving interface.
+- Add hydraulic hoses as beveled curves routed from the chassis or cab machinery to the boom joints, with metal fittings touching ports at both ends.
+- Give the tool end a visible dark chuck or collar and mount a brighter steel bit inside it. Taper or flute the bit enough to remain distinct from the boom at this scale.
+- Add interface hardware only where mechanically justified: pivot pins, hopper-rim bolts, track-mount fasteners, hinge plates, and hose clamps.
+- Establish separate materials for yellow painted cab steel, neutral painted chassis steel, brushed bare-metal lips and tool, dark track material, and dark cab glass. Vary roughness and highlight shape by manufacture.
+- Add restrained cavity grime inside the hopper, beneath the cab, and around track mounts; add edge wear only to exposed lips, steps, boom corners, and tool-contact areas.
+- Break the sterile model symmetry with one authored service feature such as an off-center repair plate, inspection stencil, or replaced cab-side panel.
+- Check the result again at this exact 120-pixel-per-cell Works camera. The cab-side yellow, framed pane, hopper slopes, boom ridge, chuck, bit, track lips, and chassis seams must all remain readable without magnification.
+
+4. Verdict
+
+**REVISE**
+
+The rover’s role and two-track arrangement are recognizable, but it is presently a gray plate carrying toy-like boxes, with insufficient cab-side yellow, an under-resolved hopper, and a blocky boom. It does not meet the Hitch-plus floor from this Works view.

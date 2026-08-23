@@ -1,0 +1,41 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 25) ΓÇö Site View Review
+
+**Image Reviewed:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_025/review_1to1/works_site_1to1.png) (glanced at [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_025/works_site.png))  
+**Framing:** Valid (Orthographic top-down site view on pad, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Obvious Defects From This Site View
+
+* **Isolated Yellow Square / Postage Stamp Read:** While no longer a hollow frame, the yellow cab roof now reads as an unintegrated, flat yellow square block pasted onto the right-center of the vehicle. It lacks structural bevels, frame integration, or an identifiable cab pane at 1:1, reading like a bright toy sticker rather than an armored cab roof.
+* **Tracks Swallowed by Pad with Broken/Speckled Outlines:** The dark stadium track belts lack contrast and are almost entirely swallowed by the pad and surrounding shadow. Instead of continuous dark stadium loops with a crisp 1 px steel outer lip catching the light, the tracks register as faint, broken gray speckles / pale nubs along the top and bottom.
+* **Chassis Reads as a Fragmented Gray Slab:** The rear chassis is a flat, matte gray rectangle without structural tonal hierarchy. Together with the isolated yellow square and the boom nub, the vehicle fails to read as a unified crawler body, looking instead like disjointed rectangular blocks.
+* **Blunt, Under-Articulated Boom Arm:** The forward boom reads as a short, stubby horizontal gray bar with an indistinct pale tip rather than an offset, articulated steel excavation arm and cutter bit with legible negative space.
+* **Flat 2D Well Cutout:** The excavation well reads as a flat black rectangular hole cut out of a gray stamp, lacking depth relief, chamfered rim highlights, or internal mechanical detail.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+* **`TRACK_CONTRAST_STARBOARD` (-21.56) & `TRACK_CONTRAST_PORT` (1.07) [Floor >= 18.0]:** Severe track contrast failure. The track assemblies do not separate from the dark terrain pad, destroying the tracked-chassis profile.
+* **`TRACK_OUTERMOST_PORT` (0.7609) & `TRACK_OUTERMOST_STARBOARD` (0.7778) [Floor >= 0.80]:** The rendered outer track edges fail to establish the full outer perimeter bounds of the vehicle footprint.
+* **`ONE_BODY` (0.6620) [Floor >= 0.90]:** Visual silhouette breaks apart into separate disconnected color blocks (gray body slab, floating yellow square, stubby snout) rather than reading as a single unified vehicle.
+* **`WELL_IS_A_HOLE` (0.0694) [Floor >= 0.24]:** Insufficient apparent depth and shadow gradient in the well cavity, leaving it as a flat 2D black patch.
+* **`CAB_PANE` (0.0019) [Floor >= 0.0200]:** Cab glazing / window separation is obliterated at rendered scale.
+* **`BOOM_OFFSET` (0.1451) [Floor >= 0.1500]:** Boom arm offset is insufficient, reducing mechanical asymmetry and legibility against the front hull.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Widen & Highlight Track Outer Lips:** Extrude and brighten the outer steel track lip/guards with a high-specular / high-value metal material so that a continuous 1 px highlight rings each stadium belt, clearly separating the dark treads from the dark pad.
+2. **Integrate Cab Roof Structure:** Inset and bevel the yellow cab armor patch with a dark structural collar/bezel and restore a distinct high-contrast dark cab pane/visor to break up the solid yellow square block.
+3. **Deepen Well Relief & Add Lip Chamfer:** Bevel the top rim of the hopper well to catch a highlight and increase ambient occlusion / shadow depth inside the cavity so it reads as a true recessed cargo/mining bite.
+4. **Articulate & Offset the Boom Finger:** Increase the boom's lateral offset, sharpen the knuckle/joint notch where it meets the chassis to introduce 1ΓÇô2 px of negative space, and define the bit head with a higher-contrast metallic tool geometry.
+5. **Add Ground Contact Occlusion:** Strengthen contact shadow under the crawler tracks and chassis belly to pop the entire 22 px silhouette off the pad surface.
+
+---
+
+### (4) Verdict
+
+**REVISE**

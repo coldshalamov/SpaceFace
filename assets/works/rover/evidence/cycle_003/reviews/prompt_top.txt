@@ -1,0 +1,20 @@
+You are reviewing one still of the Asteroid Works rover (PQ-131.01) for SpaceFace.
+
+This mine is seen through a 31° perspective camera looking nearly straight down. The player never walks on the rover. Open the image at original resolution with the file reader (do not use a thumbnail):
+
+C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_003\works_top_1to1.png
+
+That file is a 1:1 pixel crop of works_top (120 px per cell). The full 1920x1080 still is assets/works/rover/evidence/cycle_003/works_top.png. Also open the 1:1 file. Do not INVALID_FRAMING this crop because the rover fills it — that is the required 1:1 inspection of play-size pixels.
+
+If the camera is inside a cabin, or this is a studio three-quarter beauty shot of a different camera, reply INVALID_FRAMING and stop.
+
+Then list:
+1. Every obvious defect a player would notice FROM THIS WORKS VIEW at play size (~102x96 px in the full frame; you are looking at those pixels 1:1). Silhouette, planform (two dark stadium tracks, aft hopper well as a real hole, raised cab with dark roof pane, offset boom, steel bit), paint, toy/clay/card/box/gray plate. Do not ask for a seat. Do not praise interior furniture. If you skip an obvious toy/clay/card/box/gray plate, the review is a fail.
+2. Each mandatory MTX defect visible at this play size (docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md, then the MTX rows). Camera law for this asset is the works camera, not the flight chase camera.
+3. What to build next, concrete Blender actions, not adjectives. Actions that only help a camera inside the cab are invalid.
+4. Verdict: KEEP | REVISE | REVERT.
+
+Compare against a 2026 A-list industrial vehicle at tabletop/mine-map size, and against the flight ships in the same game. Hitch-plus is the floor. A yellow box with plates is REVISE. Gray tube with plates is REVISE.
+
+Do not praise process, triangle count, or iteration number.
+Read-only. Do not edit files. Print the full review as your final message.

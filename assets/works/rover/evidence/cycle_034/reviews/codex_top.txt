@@ -1,0 +1,50 @@
+1. Obvious defects at play size
+
+- Silhouette: reads as a generic square tracked cart with a side-mounted yellow attachment. The steel cab house, chassis, hopper, and boom do not form a convincing industrial rover silhouette.
+- Tracks: both dark stadium-shaped tracks are readable, and their thin raised steel outer lips do catch light. However, the tracks resemble two outlined bars or toy tank treads. The inner tread construction, rollers, suspension, and attachment to the chassis disappear at this size.
+- Cab house: reads as a flat gray box/plate rather than a fabricated steel enclosure. Its broad faces are nearly featureless and lack convincing seams, thickness, joints, or manufactured highlight behavior.
+- Windshield and visor: no clearly readable dark windshield band is established at play size. The small dark marks look like stickers or disconnected black pixels. The yellow element reads as a vertical roof-side postage stamp or block, not a thin visor projecting only beyond visible glass.
+- Hopper well: the left-side area does not unambiguously read as a real open hole. It resembles a gray inset plate or shallow dark graphic. The mouth, rim thickness, inner walls, and deeper floor are insufficiently separated from the surrounding pane.
+- Boom: the offset right-side boom is identifiable, but its connection is weak. The narrow bright metal spine is either missing or too visually interrupted to demonstrate a continuous structural connection into the bright attached bit. The yellow block and pale end piece read as toy parts clipped onto a short bar.
+- Construction: the central machine is dominated by rectangular slabs and graphic-like black marks. Several details appear applied as stickers rather than built interfaces.
+- Material read: the light body reads as gray plastic or clay, not steel. The yellow attachment reads as painted toy plastic. There is little visible distinction among painted steel, exposed bright metal, glass, track rubber/steel, and hopper interior.
+- Overall read: obvious toy/clay/card/box/gray-plate failure. It resembles a small board-game token assembled from flat plates and rounded track bars, below the Hitch-plus floor.
+
+2. Visible MTX defects
+
+- MTX-01: edge highlights do not consistently demonstrate scale-correct bevels with flat weighted-normal faces. The cab remains slab-like.
+- MTX-02: the primary body lacks authored sectional transitions; it reads as a rectangular box surrounded by attached pieces.
+- MTX-03/04: the hopper is not proven as a skin-breaking opening with visible wall thickness and readable internal volume.
+- MTX-05: panelization reads as dark surface markings or stickers, not plates with gaps, overlap, and thickness.
+- MTX-11/12: the boom lacks convincing connected service structure and interface hardware. Fasteners or clamps do not read where the boom joins the chassis and tool.
+- MTX-31/35/36: substance classification fails visually. Steel, bright machined metal, glass, paint, and track materials do not produce distinct responses.
+- MTX-39/40: cavities, contacts, and exposed working edges lack controlled cavity dirt and wear that would reinforce construction.
+- MTX-46: the forbidden plastic-toy, clay-blockout, LEGO-stack, and gray-plate reads remain plainly visible.
+- MTX-55: the stamp-size silhouette communicates “tracked object,” but not a distinctive Asteroid Works mining rover.
+- MTX-56: there are nominal dark, gray, and yellow values, but the hierarchy is poorly assigned. The supposed glass, hopper hole, and mechanical joints do not receive decisive dark values.
+- MTX-57: hopper shell thickness is not legible.
+- MTX-59: the key materials and openings do not survive at the actual Works play size.
+- MTX-61: joints lack a consistent gasket, weld, flange, countersink, or clamp language.
+- MTX-64: the broad quiet plates are not balanced by credible detail clusters at access points and mechanical interfaces; instead, sparse black marks resemble stickers.
+- MTX-65: role-specific massing is weak. The object could be a generic tracked utility cart.
+- MTX-66: paint, steel, glass, and bright metal do not show manufacture-specific specular responses.
+- MTX-67: the yellow accent is a block attached to the side, not a controlled industrial visor/tool accent integrated with the construction.
+
+3. Concrete Blender actions
+
+- Rebuild the cab house as a fabricated steel shell with a modest roof shoulder, side-wall taper, inset panel seams, visible plate thickness, and scale-correct two-segment bevels. Apply scale, shade by angle, and use weighted normals.
+- Cut a true horizontal windshield cavity into the cab. Give it a dark recessed interior mass, thin framed glass, and an unmistakable dark band visible from this exact Works camera.
+- Build the yellow visor as a thin separate sheet or shallow loft projecting beyond the windshield’s outer edge only. Remove the current vertical yellow-block/postage-stamp read.
+- Boolean the hopper through the upper skin. Add a clearly lit rim, four inner walls, and a substantially darker lower floor so it reads immediately as a hole rather than a pane or gray plate.
+- Give the hopper rim enough thickness to survive the 120-pixel cell presentation. Avoid fine details that collapse into a single gray patch.
+- Reconstruct the boom around one continuous narrow bright-metal spine running from a visible chassis pivot or flange into the bright attached tool. Add a compact yoke, pin, collar, or clamp at each end.
+- Taper and bevel the yellow boom housing instead of using rectangular blocks. Preserve the offset silhouette while making the load path mechanically credible.
+- Add modeled track construction inside each stadium outline: a dark continuous belt, a few large readable rollers or bogie masses, and visible chassis mounting. Keep the thin raised steel outer lips because their shadow highlights help.
+- Replace black sticker-like marks with a small number of readable modeled seams, recessed access panels, hinges, clamps, and interface fasteners. Cluster them around the hopper, cab, track mounts, and boom pivot.
+- Separate materials decisively: brushed or worn steel for lips and boom spine, painted steel for the cab, dark low-roughness glass for the windshield, high-roughness track material, and a deep matte hopper interior. Use authored roughness variation rather than color alone.
+- Introduce restrained contact dirt around the hopper rim, track mounts, and boom joint, plus localized edge wear on exposed steel interfaces. Do not cover the quiet cab plates in uniform noise.
+- Recheck the exported rover from this exact Works camera at 120 pixels per cell before accepting any detail.
+
+4. Verdict
+
+REVISE. The framing is valid, but the rover remains a gray box/plate assembly with toy-like stadium tracks, sticker details, an unclear hopper, an unreadable windshield/visor relationship, and a block-built boom. It does not meet the Hitch-plus floor.

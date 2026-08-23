@@ -1,0 +1,78 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 69) ΓÇö `works_site`
+
+---
+
+### Framing Verification
+- **Status:** Valid `works_site` camera view (~19 px/cell site scale, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_069/review_1to1/works_site_1to1.png) and cross-referenced with [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_069/works_site.png).
+- **Check:** Overhead orthographic perspective correctly captures the rover in-situ on the terrain. The camera is not inside a cabin and is not a studio three-quarter view. Framing is **VALID**.
+
+---
+
+### (1) Obvious Defects FROM THIS SITE VIEW
+
+1. **Gestalt & Chunky Stamp / Yellow Blob Read:**
+   - At ~22 px site scale, the rover fails to read as a cohesive, heavy industrial tracked mining crawler.
+   - The silhouette fractures into an indistinct dark/gray rectangular stamp disrupted on the starboard forward side by a chunky yellow block/hook rather than reading as articulated functional machinery.
+
+2. **Track Belt Dissolution & Missing 1 px Outer Steel Lips:**
+   - Neither the port nor starboard stadium belt holds cleanly as a solid dark rubber wall defined by a thin raised steel lip catching a 1 px specular highlight.
+   - The outer track edges bleed into the terrain shadows with negative contrast (`TRACK_CONTRAST_PORT` = -26.99, `TRACK_CONTRAST_STARBOARD` = -23.78), while inner track edges form overly thick, light bands.
+
+3. **Yellow Visor Failure & Misplaced Livery:**
+   - The 1 px forward yellow visor line is completely missing/washed out in front of the dark windshield band (`LIVERY_SAT_RENDERED` = 0.0), losing the defining forward-facing brow read.
+   - High-contrast yellow paint is clumped at the boom mount / starboard flank, reading as an asymmetrical yellow block rather than a purposeful hazard visor.
+
+4. **Cab Sunken & Undefined Windshield Band:**
+   - The cab structure is depressed below the deck (`CAB_IS_RAISED` = -0.1193 vs. +0.28 min) and the windshield aperture remains undersized (`CAB_PANE` = 0.0131 in clay).
+   - The dark windshield band lacks a crisp mid-steel framing bezel, blurring directly into adjacent chassis geometry.
+
+5. **Intake Hopper Well Lacks Defined Coaming Lip:**
+   - The well opening is undersized in clay (`WELL_HOLE` = 0.0277 vs. 0.04 min) and lacks a raised mid-steel coaming lip, reading as an ambiguous dark smudge rather than an engineered hopper cavity.
+
+6. **Boom Arm Clumping & Missing Articulated Steel Bit:**
+   - Insufficient offset (`BOOM_OFFSET` = 0.1389 vs. 0.15 min) causes the boom arm to clump against the starboard track.
+   - The boom body lacks a readable raised steel spine and faceted specular bit tip, resolving as a stubby yellow hook rather than an offset articulated finger with a mining bit.
+
+7. **Silhouette Fragmentation:**
+   - The rover fragments into disconnected light and dark patches (`ONE_BODY` = 0.3556 vs. 0.9 min) rather than reading as a single unified crawler chassis.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **MTX-55 (Role silhouette at 40 px / 22 px):** Fails to project an industrial mining crawler role; reads as a fractured gray box with an asymmetric yellow corner chunk.
+- **MTX-56 (Value hierarchy):** Severe negative contrast on crawler tracks (`TRACK_CONTRAST_PORT` = -26.99, `TRACK_CONTRAST_STARBOARD` = -23.78 vs. 18.0 min); tracks dissolve into terrain background.
+- **MTX-01 / MTX-13 (Mid-poly edges & scale-correct bevels):** Outer track flanges lack the raised geometry required to catch a crisp 1 px specular highlight against the terrain.
+- **MTX-03 / MTX-04 (Skin-breaking well & readable volume):** Intake hopper is undersized in clay (`WELL_HOLE` = 0.0277 vs. 0.04 min) and lacks coaming wall thickness.
+- **MTX-07 / MTX-36 (Thin-shell canopy / cab glazing):** Cab lacks elevation (`CAB_IS_RAISED` = -0.1193) and the glazed pane is undersized (`CAB_PANE` = 0.0131 vs. 0.02 min).
+- **MTX-31 / MTX-67 (Designed accent / substance classification):** Yellow livery fails to concentrate on the forward visor brow (`LIVERY_SAT_RENDERED` = 0.0 vs. 0.3 min) and bleeds onto the boom mount.
+- **MTX-62 (Separated moving parts / boom articulation):** Inadequate negative clearance (`BOOM_OFFSET` = 0.1389 vs. 0.15 min) fuses the boom arm into the starboard track silhouette.
+
+---
+
+### (3) Concrete Blender Actions that Help this Site Silhouette
+
+1. **Re-establish Track Separation & 1 px Outer Steel Lips:**
+   - Sharpen and elevate the outer steel flanges on both port and starboard stadium tracks so they reliably catch a 1 px specular highlight against the terrain.
+   - Deepen the longitudinal shadow reveal channels between the chassis tub and crawler belts to achieve positive track contrast (`TRACK_CONTRAST` >= 18.0 on both sides).
+
+2. **Confine Safety Yellow Strictly to a 1 px Leading Brow Visor:**
+   - Strip yellow shader assignments from the boom mount, cab flanks, and side structures.
+   - Confine safety yellow strictly to the leading 1 px horizontal visor shelf extending forward directly above the windshield band (`LIVERY_SAT_RENDERED` >= 0.3).
+
+3. **Elevate Cab & Frame Windshield Band:**
+   - Raise the cab roof geometry above the main deck (`CAB_IS_RAISED` >= 0.28) and expand the windshield glazing geometry (`CAB_PANE` >= 0.02 in clay).
+   - Add a crisp mid-steel bezel surrounding the dark windshield glass to separate the cab cleanly from the chassis tub.
+
+4. **Enlarge and Rim the Intake Well:**
+   - Expand the hopper opening (`WELL_HOLE` >= 0.04 in clay) and add an extruded mid-steel coaming rim around the perimeter to ensure the well reads as a distinct mechanical bite.
+
+5. **Offset Boom Arm & Accentuate Machined Steel Spine / Bit Tip:**
+   - Rotate/offset the boom arm outward to ensure `BOOM_OFFSET` >= 0.15, establishing negative space against the starboard track.
+   - Assign dark structural steel to the boom arm body, add a raised machined steel spine along its top ridge, and terminate with a faceted steel bit tip that catches a 1 px specular point highlight.
+
+---
+
+### (4) Verdict
+
+**REVISE**

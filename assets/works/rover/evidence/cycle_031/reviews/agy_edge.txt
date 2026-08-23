@@ -1,0 +1,58 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 31) ΓÇö `works_edge`
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Steel Cab House, Yellow Sides, Yellow Brow & Dark Pane**:
+  * The cab house is rendered as a raw gray primitive box with a yellow plastic-looking strip/lip glued across the top/front brow rather than reading as painted industrial steel across the cab body.
+  * The sides of the cab are gray instead of yellow painted steel.
+  * The window/dark pane reads as a hollow, cut-out black void with no glass shader depth, rim framing, or specular response.
+* **Toy / Clay / Cardboard / Box / Gray Plate Appearance**:
+  * The entire central hull and rear deck are flat, untextured gray plates with sharp CG edges, resembling raw grey cardboard or unbaked clay primitives rather than welded, heavy-gauge space industrial steel.
+  * No panel seams, rivet lines, wear, or material breakup across the large horizontal gray surfaces.
+* **Side Walls**:
+  * The side walls flanking the mid-chassis are flat extruded slabs with arbitrary 45-degree chamfers; they lack structural framing, thickness variation, or mounting flanges.
+* **Hopper Well**:
+  * The rear hopper is merely an unlit, square hollow pit punched into the top deck plate without an interior rim, sloped hopper chute walls, or mechanical interior depth.
+* **Steel Boom & Dark Ridge**:
+  * The front boom reads as a flat dark trapezoidal silhouette with a pale conical drill tip. It lacks defined steel structure, mechanical articulation, and the required dark central ridge.
+* **Scar Plate & Mount Points**:
+  * The dual black rectangular mount points behind the cab with tiny yellow markers look like flat stickers/cards floating on the gray plate rather than heavy bolted steel scar plates.
+* **Track Height & Track Assemblies**:
+  * The caterpillar tracks look like extruded 2D pill shapes with shiny metallic loop outlines and flat dot rollers. They lack track grouser/cleat definition, proper track height proportion, and heavy undercarriage mechanical depth.
+
+---
+
+### 2. MTX Defects Visible at Play Size
+
+* **Lost Micro-Detail & Aliasing**: The tiny yellow bracket pins, track edge highlights, and thin boom outlines alias and dissolve into subpixel noise at native game/play resolution.
+* **Hollow Void Read**: The dark hopper opening and dark cab pane read as identical uninformative black squares, confusing the rover's forward/rear silhouette.
+* **Monolithic Gray Silhouette**: At small scale, the chassis, cab walls, and rear deck blur into an undifferentiated grey blob with zero material contrast separating functional zones.
+* **Boom Readability**: The dark boom silhouette blends directly into dark terrain/background space, leaving only the floating drill cone visible.
+
+---
+
+### 3. Concrete Blender Actions (No Cabin Furniture)
+
+1. **Cab House & Materials**:
+   * Apply a dedicated yellow painted steel PBR material (with subtle edge wear and roughness variance) extending across the cab roof brow and side walls.
+   * Model a proper window bezel with beveled edges and apply a dark reflective/translucent glass shader to the pane rather than leaving an open black cutout.
+2. **Hull, Deck & Side Walls**:
+   * Add a `Bevel` modifier (2ΓÇô3 segments, weighted normals) to all sharp chassis and side wall edges.
+   * Inset structural panel seams and weld beads into the flat gray deck to eliminate the toy/cardboard plate read.
+   * Add roughness and normal grunge to break up the flat matte grey shader.
+3. **Hopper Well**:
+   * Model sloped interior chute plates, an extruded reinforced top lip flange, and interior structural liners inside the hopper well.
+4. **Boom Assembly**:
+   * Rework the boom geometry into structural steel box sections with a distinct, raised dark longitudinal spine/ridge, hydraulic ram brackets, and a machined metallic shader on the nose drill/tool.
+5. **Scar Plates**:
+   * Extrude defined steel scar/wear plates with visible bevels, countersunk hex bolt fasteners, and dark weathered steel materials.
+6. **Tracks**:
+   * Model discrete tread cleats/grousers around the track circumference; add drive sprockets, guide flanges, and adjust track height and shader roughness to remove the plastic/rim-highlight toy appearance.
+
+---
+
+### 4. Verdict
+
+**REVISE**

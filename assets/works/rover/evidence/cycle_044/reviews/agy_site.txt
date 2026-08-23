@@ -1,0 +1,54 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 44 ΓÇö `works_site`)
+
+**Framing Check:** Valid `works_site` orthographic camera framing (~19 px/cell, vehicle at ~22 px scale). Subject is rendered at in-game site resolution. Camera is neither inside a cabin nor a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+1. **Gray Stamp / Floppy Disk Read:** The chassis reads as a flat, desaturated gray square stamp / electronic cassette with an interior cutout rather than a heavy industrial tracked mining crawler.
+2. **Yellow Crescent / Hook Defect:** The yellow livery registers as an awkward curved yellow crescent/hook wrapping around the central well cutout and a yellow blotch at the aft-starboard corner, completely missing the required crisp, thin yellow visor brow line over the windshield band.
+3. **Starboard Track Dark Crush:** The starboard (bottom) crawler belt suffers severe value crushing against the hull shadow (`TRACK_CONTRAST_STARBOARD` = 3.20 vs $\ge 18.0$), reading as an indistinct dark smear rather than a solid rubber wall with a 1-pixel steel catch lip.
+4. **Port Track Wire Loop:** The port (top) track reads as a bright perimeter wire/outline framing a dark void rather than a solid, dense rubber crawler belt.
+5. **Flattened Cab & Windshield:** The cab lacks vertical step relief (`CAB_IS_RAISED` = 0.1529 vs $\ge 0.28$), collapsing into a flat dark rectangular square patch flush with the deck without visor shading.
+6. **2D Punch-Hole Well:** The central well reads as a flat 2D punch-hole cutout (`WELL_IS_A_HOLE` = 0.0694 vs $\ge 0.24$) rather than a recessed hopper with raised steel coaming.
+7. **Boom Offset & Spine Definition:** The boom arm is tucked too tightly against the hull (`BOOM_OFFSET` = 0.1418 vs $\ge 0.15$) and lacks a raised specular steel spine along the dark arm to catch a 1-pixel highlight line connecting into a faceted steel bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Boom Offset:** `BOOM_OFFSET` = 0.1418 (fails floor $\ge 0.15$) ΓÇö boom lacks sufficient lateral silhouette separation from the hull.
+- **Starboard Track Contrast:** `TRACK_CONTRAST_STARBOARD` = 3.2046 (fails floor $\ge 18.0$) ΓÇö severe contrast loss and value crushing on the lower track.
+- **Starboard Tread Pad Count:** `TREAD_PADS_STARBOARD` = 13.0 (fails floor $\ge 14.0$) ΓÇö lower belt fails to resolve discrete tread pads.
+- **Rendered Livery Saturation:** `LIVERY_SAT_RENDERED` = 0.0127 (fails floor $\ge 0.30$) ΓÇö sprite livery is severely desaturated, causing the monochrome "gray stamp" read.
+- **Depth Relief & Volumetric Cohesion:**
+  - `ONE_BODY` = 0.5253 (fails floor $\ge 0.90$)
+  - `WELL_IS_A_HOLE` = 0.0694 (fails floor $\ge 0.24$)
+  - `CAB_IS_RAISED` = 0.1529 (fails floor $\ge 0.28$)
+  - The hull, cab, and well lack vertical 3D stepping and read as planar laminates.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Reconstruct Yellow Visor Brow:**
+   - Remove the curved yellow crescent/hook geometry bordering the well.
+   - Model a crisp, thin forward-projecting yellow visor brow line along the leading edge of the cab roof shading a recessed, dark glazed windshield band.
+2. **Elevate Cab & Deepen Hopper Well:**
+   - Elevate the cab roof geometry and apply distinct bevels to achieve `CAB_IS_RAISED` $\ge 0.28$.
+   - Deepen the hopper well cavity and add an elevated, chamfered steel coaming collar to achieve `WELL_IS_A_HOLE` $\ge 0.24$ and `ONE_BODY` $\ge 0.90$.
+3. **Offset Boom Arm & Detail Steel Spine / Bit:**
+   - Shift the boom pivot and arm laterally outward past `BOOM_OFFSET` $\ge 0.15$.
+   - Extrude a raised, specular steel spine running along the upper edge of the dark boom arm to catch a clean 1-pixel highlight line.
+   - Define a bright, faceted machined steel drill bit at the tip.
+4. **Separate & Shade Starboard Track:**
+   - Adjust starboard track bevels, normal angles, and hull standoff distance to pull the track out of shadow crush, bringing `TRACK_CONTRAST_STARBOARD` $\ge 18.0$ and `TREAD_PADS_STARBOARD` $\ge 14.0$.
+5. **Solidify Track Rubber & Catch Lips:**
+   - Thicken rubber tread cross-sections beneath the raised steel retention lips so belts read as solid dark rubber masses rather than hollow wire loops.
+
+---
+
+### (4) Verdict
+
+**REVISE**

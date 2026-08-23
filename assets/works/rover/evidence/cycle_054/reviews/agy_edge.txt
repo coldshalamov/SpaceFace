@@ -1,0 +1,77 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down framing.
+- **Check**: Rover is properly captured from the works-edge camera view facing forward (+X to the right). The camera is not inside a cabin and is not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate**:
+   - **Rear Transom Gray Plate**: A flat, unmodeled light-gray rectangular card/plate is pasted directly onto the rear bumper without chamfers, structural integration, or mechanical mounting relief.
+   - **Hopper Flared Cards**: The flared side walls and transitional chamfers around the hopper well are razor-thin 2D polygon sheets that read as papercraft cutouts or matte clay flats.
+   - **Boxy Cab House**: The cab house is a primitive rectangular cuboid block with sharp, unarticulated corners, reading as a toy block.
+   - **Roof Disc Primitive**: A flat circular disc/cylinder puck (vent cap) sits slapped directly onto the cab roof without housing integration.
+   - **Mid-Chassis Deck & Skirt Cards**: Deck infills and side skirt transitions consist of flat planar cards with simple punched bolt circles rather than heavy-gauge structural plates.
+
+2. **Side Walls**:
+   - The chassis side walls and sponson transitions between the tracks and the central tub are flat, zero-gauge sheet cards lacking structural plate thickness, welded flanges, or stiffener ribs.
+
+3. **Track Height as Solid Rubber Belts (Not Wire Loops)**:
+   - Although transverse tread ribs are present, the track assemblies lack solid vertical cross-sectional depth and volumetric rubber mass. They still read as thin perimeter loop shells wrapped around empty sponson voids rather than heavy, solid rubber crawler belts.
+
+4. **Dark Cab House with Yellow Only as a Thin Visor Past Glass**:
+   - The cab house itself is correctly dark (no yellow on cab sides), but the yellow accent on the front brow is a flat rectangular bar/tab rather than a sharp, ultra-thin visor brow extending strictly forward past the canopy glass.
+   - The cab roof still contains an unintegrated circular disc primitive.
+
+5. **Dark Canopy Pane Actually Visible**:
+   - The dark pane is visible on the front face of the cab, but it is an unmodeled, flush dark rectangle directly abutting the yellow bar without a recessed structural bezel, rubber weatherstripping, or frame relief.
+
+6. **Hopper Well**:
+   - The hopper well is a faceted, stepped square pit lined with thin transitional sheets. It lacks continuous, heavy-gauge sloped chute walls, steel wear-plate liners, and reinforced top coaming edges.
+
+7. **Darker Boom with Raised Steel Spine into Steel Bit Body**:
+   - The boom arm is a dark tapered beam, but it lacks a distinct, raised bright steel spine running along its upper centerline.
+   - While the collar size has been reduced from previous cycles, the mining head still terminates in a generic point without a machined steel bit body, tool flutes, or distinct mechanical collar mounting.
+
+8. **Scar Plate**:
+   - The scar plate and intermediate transition plates flanking the cab and hopper well appear as flat 2D sheet metal flanges with primitive punched holes, lacking heavy plate gauge, beveled edges, and structural welded integration.
+
+---
+
+### (2) MTX Defects Visible at This Play Size
+
+- **Cardboard Silhouette & Zero-Gauge Edges**: Razor-thin planar sheets on the hopper flare, rear transom, and side skirts create papercraft edges under lighting, destroying the illusion of heavy industrial machinery.
+- **Primitive Geometry Add-ons**: The roof disc puck, rear gray plate, and boxy cab read as primitive geometric shapes slapped together rather than manufactured equipment.
+- **Value Pooling & Contrast Loss**: The dark cab house, dark boom arm, and sunken hopper floor pool into an undifferentiated dark mass with minimal specular edge definition.
+- **Material Inconsistency**: The light gray/tan deck plates read as untextured matte clay/plastic against the dark cab, while the yellow visor reads as a flat plastic strip.
+- **Tool Head Readability**: The boom arm and bit lack bright metallic edge contrast and a prominent bright steel spine, causing the forward tool assembly to read as an ambiguous dark silhouette at play resolution.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Rework Boom Arm & Machined Bit Body**:
+   - Extrude and model a distinct, raised bright steel spine along the upper centerline of the dark boom arm.
+   - Replace the generic bit point with a machined steel bit body featuring distinct tool fluting and a well-proportioned mechanical collar mount.
+
+2. **Refine Cab House & Canopy Frame**:
+   - Remove the unintegrated circular disc primitive from the cab roof and bevel the cab housing corners.
+   - Reshape the yellow accent into a crisp, ultra-thin brow overhang extending strictly forward past the dark canopy glass pane.
+   - Recess the dark canopy glass pane into a defined structural frame/bezel.
+
+3. **Thicken Track Crawler Belts**:
+   - Extrude the track cross-sections vertically and inward to give the crawler belts heavy, solid rubber mass and vertical height, eliminating the thin loop shell profile.
+
+4. **Reconstruct Hopper Well**:
+   - Replace the stepped card facets with continuous symmetrical sloped chute walls lined with heavy-duty wear plates and reinforced top coamings.
+
+5. **Replace Planar Cards & Articulate Side Walls**:
+   - Replace the flat rear transom gray plate with an integrated, beveled heavy-duty bumper plate with modeled fasteners.
+   - Replace all flat 2D card polygons on the deck, side skirts, and side walls with beveled, heavy-gauge welded steel armor plates with structural panel seams and stiffener ribs.
+   - Give the scar plate heavy-gauge plate thickness and recessed bolt hardware.
+
+---
+
+### (4) Verdict
+
+**REVISE**

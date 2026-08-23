@@ -1,0 +1,73 @@
+### Visual Review: Asteroid Works Rover (`PQ-131.01`, Cycle 77)
+**Viewpoint:** `works_edge` (Top-Down Orthogonal / Edge View)
+
+---
+
+### (1) Obvious Defects from Works-Edge View
+
+- **Toy / Clay / Card / Box / Gray Plate:**
+  - **Starboard Gray Deck Plate:** A glaring flat, featureless rectangular light-gray card/plate remains between the starboard side of the cab house and the track. It reads as a raw primitive slab with zero panel seams, diamond/grip tread, fasteners, or service routing.
+  - **Chassis & Hull Form:** The core body between the tracks remains heavily planar and boxy, reading as stacked polygonal cards and flat plates rather than an integrated heavy industrial casting.
+  - **Rear Plate:** The rear deck transition and scar plate area still read as flat, unchamfered card sheets.
+  - **Mounting Flanges:** The center bracket plates with dot markings have a flat, toy-like printed/sticker appearance rather than heavy bolted structural gussets.
+
+- **Side Walls:**
+  - The hopper sidewalls are flat, planar faceted sheets lacking structural reinforcement ribs, weld beads, rolled top flanges, or corner gussets.
+
+- **Track Height as Solid Rubber Belts (Not Wire Loops):**
+  - Track height is solid and correctly forms thick continuous rubber stadium belts with segmented cleat treads (not wire loops).
+  - However, the inner sponson cavities and sprocket interfaces remain planar and dark, lacking mechanical depth, roller definition, and accumulated grime.
+
+- **Dark Cab House & Yellow Visor:**
+  - The cab house is dark brown/gray (correctly avoiding yellow cab sides or a plastic square on the roof; yellow is strictly confined to the thin forward visor strip past the glass).
+  - The cab house geometry remains a sharp-cornered 90-degree box extrusion, and the roof feature is a primitive flat cylindrical stud.
+
+- **Dark Pane:**
+  - The dark windshield pane is visible behind the yellow visor strip.
+  - However, it is narrow/cramped and lacks a defined recessed frame, rubber bezel gasket, or specular depth, risking the yellow visor reading as a detached strip rather than an overhung visor.
+
+- **Hopper Well:**
+  - The hopper well is a clearly readable open cavity with slatted bottom floor ribs.
+  - Following the removal of the bright lip sheets, the perimeter rim is a raw boolean cut edge that lacks a modeled structural coaming, chamfered entry lip, or catch-edge highlights.
+
+- **Darker Boom with Raised Steel Spine into Steel Bit Body:**
+  - The boom body is dark with a distinct raised bright steel spine extending along its top face into the steel cutter bit head at the front starboard side.
+  - The boom section is blocky, and the junction where the steel spine terminates into the bit body lacks a mechanical gland, collar, or hydraulic/mechanical fitting.
+
+- **Scar Plate:**
+  - The rear scar plate is a simple flat gray rectangular insert lacking bolt geometry, edge chamfers, or tow/hitch interface details.
+
+*(Note: No seat requested, adhering to works-edge specifications.)*
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **MTX-01 (Edge Bevels & Normals):** Razor-sharp 90-degree CG edges across the cab house, hopper mouth, boom housing, and chassis corners due to lack of scale-correct bevels with weighted normals.
+- **MTX-02 (Mass & Cross-Section):** The cab and center hull lack sectional variation, reading as primitive stacked rectangular boxes.
+- **MTX-05 (Panelization & Fasteners):** Deck plates and the scar plate sit on the hull like flat paper cards without modeled panel gaps, fasteners, or structural joints.
+- **MTX-31 / MTX-33 / MTX-35 (Material & Specular Separation):** Muddy value and roughness distinction across mid-steel, painted dark hull, and track rubber; dark glass and rubber lack distinct specular sheen.
+- **MTX-46 (Toy / Clay / Card Read):** The untextured starboard gray deck plate and slab-like chassis preserve an obvious toy/clay/box aesthetic at play scale.
+- **MTX-56 (Value Hierarchy):** Mid-tone body and dark cavity values compress together under lighting, reducing read clarity between the cab, deck, and inner sponsons.
+- **MTX-61 (Joints & Articulation):** The boom-to-spine and spine-to-bit transitions lack mechanical joint language (collars, sleeves, pins).
+- **MTX-67 (Visor & Glass Legibility):** The dark glass band is narrow and lacks bezel depth, allowing the yellow visor to appear as an isolated bar rather than a visor past glass.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Detail the Starboard Gray Deck Plate:** Replace the flat gray card slab beside the cab with an embossed diamond-tread grip pattern, perimeter countersunk bolts, and a recessed conduit channel.
+2. **Bevel Chassis & Cab Edges:** Add restrained 2-segment bevels with weighted normal modifiers to the cab house, boom housing, and hopper rim to catch controlled highlights and eliminate razor CG edges.
+3. **Model Hopper Mouth Coaming:** Add a chamfered, structural coaming lip with realistic wall thickness around the boolean opening to ground the intake well without reintroducing a detached bright frame.
+4. **Detail Boom & Bit Junction:** Model a tapered structural profile on the boom housing and add a mechanical sleeve/collar gland where the steel spine terminates into the steel bit body.
+5. **Frame the Windshield:** Widen the dark glass band slightly, recess it within a dark gasket/bezel frame, and adjust glass roughness/fresnel for a distinct specular highlight behind the yellow visor.
+6. **Material & Surface Tuning:**
+   - Add roughness contrast between the matte rubber tracks, mid-steel hull, bright steel spine/bit, and glossy dark glass.
+   - Recess the rear scar plate and add corner mounting hardware.
+   - Bake contact ambient occlusion into the cab-to-chassis junction, hopper corners, and track sponsons.
+
+---
+
+### (4) Verdict
+
+**REVISE**

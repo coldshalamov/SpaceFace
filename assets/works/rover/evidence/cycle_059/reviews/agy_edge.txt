@@ -1,0 +1,83 @@
+### Framing Verification
+- **Status**: Valid `works_edge` camera framing.
+- **Check**: Evaluated at 1:1 original resolution in [`works_edge_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_059/review_1to1/works_edge_1to1.png) and confirmed against [`works_edge.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_059/works_edge.png). The camera presents an orthographic overhead works-edge planform view (+X forward to the right, +Y port top, -Y starboard bottom). The camera is not inside a cabin and is not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects FROM THIS WORKS-EDGE VIEW
+
+1. **Toy / Clay / Card / Box / Gray Plate**:
+   - **Aft Transom Gray Plate**: A completely unchamfered, flat, light-gray rectangular card/plate is pasted onto the rear transom/bumper without plate gauge thickness, edge bevels, or mechanical mounting relief.
+   - **Hopper Transitional Flared Cards**: The flared transitional walls sloping into the intake hopper read as paper-thin 2D polygon sheets/cards lacking solid steel wall thickness, welded gussets, and wear-liner relief.
+   - **Deck & Sponson Skirt Cards**: Infill deck surfaces and side skirt transitions between the tracks and the central tub consist of flat planar cards with punched bolt circles rather than heavy-gauge structural armor plates.
+   - **Scar Plate Card**: The scar plate reads as a flat 2D sheet cutout with simple punched holes, lacking gauge thickness, beveled edges, and structural standoff mounts.
+   - **Plastic Yellow Square on Cab Brow**: The yellow safety livery is placed as a blocky plastic square/tab on the cab brow/roof rather than an integrated, razor-thin sheet-metal visor extending strictly forward past the canopy glass.
+   - **Dark Box Cab**: The cab house reads as a monolithic dark rectangular block with a rudimentary circular dot on top, giving a toy-brick impression.
+
+2. **Side Walls**:
+   - Chassis side walls and sponson transitions between the crawlers and the central tub/hopper remain flat, zero-gauge planar sheets lacking welded flanges, stiffener ribs, and structural mechanical depth.
+
+3. **Track Height as Solid Rubber Belts (Not Wire Loops)**:
+   - While transverse tread pads/grousers are present, the track assemblies lack solid vertical cross-sectional depth and rubber mass. They read as thin perimeter loop shells wrapped around empty space rather than heavy, thick, continuous solid rubber crawler belts.
+
+4. **Dark Cab House with Yellow Only as a Thin Visor Past Glass**:
+   - The cab body is dark, but the yellow accent is modeled as a blocky plastic square tab on the cab roof/brow rather than an ultra-thin visor projecting forward past the canopy glass.
+   - Yellow must not appear on cab sides or as a plastic square on the roof.
+
+5. **Dark Canopy Pane Actually Visible**:
+   - The dark windshield/canopy pane is crushed against the cab brow and yellow tab (`CAB_PANE` = 0.0164 vs. 0.02 min), lacking visible aperture area, distinct glass definition, and recessed structural framing.
+
+6. **Hopper Well**:
+   - The hopper well is a shallow, stepped square cavity surrounded by thin flared card sheets (`WELL_IS_A_HOLE` = 0.0694 vs. 0.24 min), lacking continuous heavy-gauge sloped chute walls, steel wear-plate liners, and reinforced coaming rims.
+
+7. **Darker Boom with Raised Steel Spine into Steel Bit Body**:
+   - The boom arm is a dark tapered beam, but it lacks a prominent raised centerline steel spine along its top face.
+   - The mining tool terminates in a generic pointed cone rather than a machined tool steel bit body with distinct fluting and a well-proportioned mechanical collar mount.
+   - The boom arm crowds the starboard track with insufficient lateral clearance (`BOOM_OFFSET` = 0.1410 vs. 0.15 min).
+
+8. **Scar Plate**:
+   - The scar plate appears as a flat 2D card with simple punched holes, lacking heavy plate gauge, beveled edges, and welded standoff mounts.
+
+---
+
+### (2) MTX Defects Visible at This Play Size
+
+- **`CAB_PANE` (0.0164 vs. 0.02 min)**: Dark canopy glazing is crushed and lost beneath the cab brow and yellow tab.
+- **`BOOM_OFFSET` (0.1410 vs. 0.15 min)**: Boom arm lacks lateral negative space from the starboard track, crowding the forward silhouette.
+- **`TRACK_CONTRAST_STARBOARD` (-10.004 vs. 18.0 min)**: Starboard crawler belt sinks into shadow, lacking rim highlight contrast and separation from the chassis.
+- **`LIVERY_SAT_RENDERED` (0.0654 vs. 0.3 min)**: Yellow accent reads as a diffuse, low-saturation blocky tab rather than a sharp, vibrant visor line.
+- **`WELL_IS_A_HOLE` (0.0694 vs. 0.24 min)**: Intake hopper lacks stepped mechanical depth, continuous sloped walls, and coaming lip relief.
+- **`ONE_BODY` (0.5425 vs. 0.9 min)**: Rover reads as disconnected planar cards, dark cavities, and disjointed modules rather than a unified heavy machinery body.
+- **`triOverBudget` (20,308 vs. 18,000 max at LOD0)**: Triangle count exceeds the LOD0 budget.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Rework Cab House & Canopy Glass**:
+   - Enlarge and recess the dark canopy glass pane within a defined structural frame/bezel to achieve `CAB_PANE` >= 0.02.
+   - Convert the blocky yellow plastic square tab on the cab roof into an ultra-thin sheet-metal visor projecting strictly forward past the canopy glass (`LIVERY_SAT_RENDERED` >= 0.3).
+
+2. **Articulate Boom Arm, Steel Spine, & Tool Bit**:
+   - Splay the boom arm outward to achieve `BOOM_OFFSET` >= 0.15, restoring visible negative space against the starboard track.
+   - Extrude a prominent raised centerline steel spine (`BoomSpine`) along the top face of the dark boom arm.
+   - Replace the generic bit cone with a machined tool steel bit body featuring distinct fluting and a robust collar mount.
+
+3. **Thicken Track Crawler Belts & Boost Starboard Contrast**:
+   - Extrude track cross-sections vertically and inward to give crawler belts solid rubber mass and vertical height, eliminating thin wire loop profiles.
+   - Model a longitudinal separation/shadow groove and a raised outer steel guide lip on the starboard track to achieve `TRACK_CONTRAST_STARBOARD` >= 18.0.
+
+4. **Reconstruct Hopper Well & Structural Side Walls**:
+   - Replace thin flared card sheets with continuous symmetrical sloped chute walls lined with wear plates and a reinforced coaming rim (`WELL_IS_A_HOLE` >= 0.24).
+   - Give chassis side walls and sponson transitions true plate gauge thickness, welded flanges, and structural stiffener ribs.
+
+5. **Eliminate Planar Cards & Optimize Geometry**:
+   - Replace the flat rear transom gray card with an integrated, beveled heavy-duty bumper plate with modeled fasteners.
+   - Replace flat 2D deck infill cards and the scar plate cutout with beveled, heavy-gauge welded steel armor plates to achieve `ONE_BODY` >= 0.9.
+   - Optimize LOD0 mesh density to reduce triangle count from 20,308 to under the 18,000 budget limit.
+
+---
+
+### (4) Verdict
+
+**REVISE**

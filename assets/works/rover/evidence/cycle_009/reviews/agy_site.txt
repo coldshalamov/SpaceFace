@@ -1,0 +1,60 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 9) ΓÇö Site View
+
+**Images Inspected:**
+- [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_009/review_1to1/works_site_1to1.png) (1:1 native crop, ~22 px rover)
+- [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_009/works_site.png) (Full site frame context, ~19 px/cell)
+
+**Framing Check:**
+- **Status:** **VALID_FRAMING** (Orthographic top-down site context at ~19 px/cell with ~22 px rover; camera is exterior gameplay framing, not inside a cabin or in a studio three-quarter pose).
+
+---
+
+### (1) Obvious Defects Visible from Site View (~22 px Read)
+
+1. **Fragmented "Twin-Dot / Gray Block" CAD Read (Chassis Cohesion Failure):**
+   - The vehicle does not read as a cohesive heavy industrial mining machine. The central chassis is a flat, muted gray rectangular block broken only by two isolated, tiny yellow squares/dots on the upper and lower mid-flanks. 
+   - Rather than reading as structural hazard-painted bodywork or heavy cowlings, the yellow elements look like floating toy stickers or random bright pixels on a CAD blockout (`ONE_BODY` failure at `0.3939` vs `0.90` floor).
+2. **Drill Bit Visual Detachment:**
+   - The boom arm extending to the starboard side is dark gray and very thin, while the cutter head at the tip is a bright pale circle/dot.
+   - At 22 px, the boom shaft blends into the dark background while the cutter bit pops as a disconnected, floating white dot rather than the rigid tool head of a heavy articulated arm.
+3. **Weak Excavation Well Rim Definition:**
+   - The excavation well registers as a dark circular cavity ("dark bite"), but the framing collar lacks top-lit specular pop and bevel width. The boundary between the well and the surrounding gray deck is soft and muddy rather than a crisp, reinforced structural coaming (`WELL_IS_A_HOLE` at `0.2190` vs `0.24` floor).
+4. **Starboard Track Shadow Bleed & Value Loss:**
+   - While the port (top) track displays distinct sprockets and tread segments, the starboard (bottom) track run lacks sufficient value separation from its own contact shadow and the dark ground plane, losing clean track silhouette definition (`TRACK_CONTRAST_STARBOARD` at `17.27` vs `18.0` floor).
+5. **Indeterminate Central Superstructure & Cab:**
+   - The forward bridge and operator cab area are unresolved flat gray masses with no distinctive glass specular highlight, roof cowl, or structural beveling to convey forward orientation or operational volume.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+- **[MTX-01](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L139) (Bevel Highlights & Edge Read):** Hull boundaries and deck steps lack top-facing bevels and weighted normals, causing the body to render as a flat polygonal box.
+- **[MTX-03](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L185) / [MTX-04](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L213) (Well Cavity & Coaming Structure):** The excavation hopper lacks an extruded, highlighted rim flange to give the well clear dimensional depth and physical wall thickness against the deck.
+- **[MTX-05](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L235) / [MTX-33](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L559) (Livery Distribution & Panelization):** Yellow industrial livery is restricted to two tiny isolated spots (~2.59% area) instead of readable, panelized hazard bodywork with recessed dark seam channels.
+- **[MTX-38](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L593) / [MTX-39](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L599) (Track Running Gear Contrast):** Starboard tread band merges into ambient occlusion/ground contact shadow without crisp outer grouser and idler cap separation.
+- **[MTX-46](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L644) (Forbidden Reads):** The asset exhibits the forbidden "toy CAD blockout / gray plate with dot stickers" read at play scale.
+- **[MTX-61](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L752) / [MTX-62](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L761) (Boom Structural Girth & Linkage):** The boom arm is too narrow and dark to bridge the chassis to the cutter head, visually severing the tool head.
+
+---
+
+### (3) Concrete Blender Actions for Site Silhouette
+
+1. **Unify Chassis Body & Broaden Livery Panels:**
+   - Extend the yellow livery across structural sponson cowlings with clean `0.015ΓÇô0.02 wu` dark panel seams, replacing the tiny twin-dot read with unified industrial machinery plating.
+   - Bevel top deck plate shoulders (`0.015 wu`) with Weighted Normal modifiers to catch directional top lighting.
+2. **Thicken & Brighten Boom Arm:**
+   - Increase the box-girder width/girth of the starboard boom arm and raise its top-facet albedo/specular value to create a continuous, readable structural line connecting the hull mount directly to the cutter bit.
+3. **Elevate and Highlight Well Coaming Rim:**
+   - Extrude a raised, bevelled collar (`0.03 wu` wide, `0.02 wu` proud) surrounding the excavation well to catch direct light and sharply outline the dark well cavity.
+4. **Boost Starboard Track Clearance & Grouser Contrast:**
+   - Slightly increase ground clearance and outer edge bevels on the starboard track assembly so the lower tread band and steel end sprockets separate cleanly from the terrain shadow.
+5. **Define Forward Cab Structure:**
+   - Add a high-specular dielectric cab window pane or raised roof cowl highlight to give the forward hull an unmistakable front-facing operator volume.
+
+---
+
+### (4) Verdict
+
+**REVISE**
+
+*Rationale:* The asset avoids being a solid yellow postage stamp, but fails key site-read gates (`ONE_BODY`, `TRACK_CONTRAST_STARBOARD`, `WELL_IS_A_HOLE`). It reads as a flat gray CAD block with two disconnected yellow dots, a dark well lacking rim highlight, an undersaturated starboard track merging into ground shadow, and a visually detached drill bit dot.

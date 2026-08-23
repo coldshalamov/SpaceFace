@@ -1,0 +1,53 @@
+## Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 36)
+
+**Reviewed Assets:**
+- [`works_edge_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_036/review_1to1/works_edge_1to1.png)
+- [`works_edge.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_036/works_edge.png)
+
+---
+
+### 1. Obvious Defects from Works-Edge View
+
+- **Toy / Clay / Card / Box / Gray Plate Appearance:** The central hull, deck, and cab are primitive, unfilleted flat gray extrusions that read entirely as toy plastic or cardboard gray plates rather than heavy industrial machinery.
+- **Steel Cab House & Yellow Sides:** The cab structure lacks the defined steel cab house form and is missing yellow side paneling along the cab flanks.
+- **Visor & Dark Glass Pane:** The yellow component on the nose reads as a solid yellow plastic rectangular block/cap stuck to the roof/front rather than a thin yellow visor bar suspended in front of a visible dark glass window pane.
+- **Side Walls:** The side walls between tracks and main body are flat, featureless vertical gray slabs with basic triangular negative-space cutouts, completely lacking structural ribbing, mounting flanges, or panel breaks.
+- **Track Height:** Track assemblies appear too flat and lack vertical depth/profile definition relative to the chassis height, looking like flat pill extrusions rather than heavy articulated continuous tracks with internal roller depth.
+- **Hopper Well:** The hopper reads as a simple square hole punched through a gray plate with a flat illuminated ramp, lacking proper hopper well framing, containment lips, or mechanical feed geometry.
+- **Boom & Spine to Bit:** There is no distinct darker boom structure, and it lacks the narrow bright metal spine leading into the forward bit/tooling interface.
+- **Scar Plate:** No reinforced scar plate, scuff skirts, or armored wear plating present on leading edges or lower hull sections.
+
+---
+
+### 2. MTX Defects Visible at Play Size
+
+- **Uniform Plastic/Clay Shader:** Hull and cab surfaces share a uniform matte gray value with zero metallic variation, panel roughness modulation, or surface breakup.
+- **Plastic Yellow Material:** The yellow element is unshaded, non-metallic, flat yellow plastic with no industrial paint coating qualities or edge wear.
+- **Missing Glass/Translucent MTX:** Absence of any dark, reflective, or tinted glass material for the cab pane beneath the visor.
+- **Missing Bright Metal MTX:** Absence of bright metallic material on the boom spine and hydraulic/mechanical hardware.
+- **Flat Void Cavities:** The hopper cavity and side cutouts have harsh, unshaded black interiors with no ambient occlusion gradation or internal material definition.
+
+---
+
+### 3. Concrete Blender Actions (No Cabin Furniture)
+
+1. **Cab House & Visor:**
+   - Model a distinct dark glass windscreen pane into the forward face of the cab.
+   - Reshape the yellow block into a thin, crisp yellow visor bar offset in front of and above the dark glass pane.
+   - Assign a dark steel/metal material to the cab housing and apply yellow panel materials to the cab house sides.
+2. **Chassis, Side Walls & Scar Plate:**
+   - Add bevels, panel joints, and structural stiffeners to all gray hull plates to eliminate the clay/cardboard box aesthetic.
+   - Extrude reinforced scar plates along the lower hull perimeter and leading nose edges.
+   - Detail the side walls with functional mounting geometry and recessed structural sections.
+3. **Track Pods:**
+   - Increase track assembly vertical height and add recessed inner drive wheels/sprockets visible in the track loops.
+4. **Hopper Well:**
+   - Add a defined top lip flange and segmented wear liners inside the hopper well.
+5. **Boom & Spine:**
+   - Separate the boom geometry, darken its base material, and model a narrow, bright polished metal spine running along the center into the bit assembly.
+
+---
+
+### 4. Verdict
+
+**REVISE**

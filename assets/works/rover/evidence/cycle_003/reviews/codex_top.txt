@@ -1,0 +1,12 @@
+Decision: **revise**
+
+Reviewed subject: entire visible rover, original 320×320 image, SHA-256 `E33CBA5E…D27711E2`.
+
+- **G1 — fail, whole-asset scope (P1):** The top silhouette identifies a compact tracked rover and establishes direction through the forward arm. However, the body remains a rectangular slab between two capsule-like track assemblies. The tracks, chassis, cabin, and tool lack convincing structural transitions or useful negative space.
+- **G2 — fail, whole-asset scope (P1):** Major components read as stacked primitives: box body, repeated track blocks, flat dark panels, and a thin rod ending in a small sphere. Track mounting, suspension, wheel/track mechanics, arm articulation, protective structure, and service interfaces are not visually explained.
+- **G4 — fail, whole-asset scope (P1):** Most surfaces are distinguished by flat yellow, brown, or black values rather than readable substances. The yellow body reads toy-like; the tracks merge into muddy darkness; the central black areas lose internal detail. There is no convincing metal, rubber, glazing, dust, abrasion, or functional heat/contact history.
+- **Presentation:** The rover occupies only about one-third of the frame width, while the near-black environment suppresses its darkest components. The square brown ground patch also reads like an evidence pedestal rather than a representative operating surface.
+- **What succeeds:** Strong yellow/black industrial palette, immediate top-down orientation, broadly readable tracked footprint, and a visible forward tool.
+- **Acceptance condition:** Preserve those successful traits, but establish manufactured chassis sections, credible track and suspension construction, a rooted articulated tool, clearer cabin/equipment hierarchy, and physically distinct painted metal, bare hardware, glazing, and track materials. Re-render larger in frame with enough neutral and grazing illumination to judge edges and surface response.
+
+This still should be **kept as iteration evidence**, but it does not support whole-asset visual acceptance or closure of G1, G2, or G4.

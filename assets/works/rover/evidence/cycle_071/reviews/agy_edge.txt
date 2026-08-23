@@ -1,0 +1,63 @@
+### Works-Edge Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 71)
+
+**Framing Check:** Valid `works_edge` orthographic/overhead framing. Rover is positioned on the right-side pad overlooking the field; view is exterior top-down (not inside a cabin, not a studio three-quarter).
+
+---
+
+### (1) Obvious Defects from Works-Edge View
+
+* **Side Walls & Hopper Well:**
+  * Hopper side walls look like thin, planar cardboard/sheet panels without structural wall thickness, top lip flanges, or reinforcement gussets.
+  * Hopper well transitions sharply into a ribbed base without heavy-duty wear plating, corner bevels, or welded seam details.
+* **Tracks & Undercarriage:**
+  * Tracks appear as monolithic solid rubber/metal blocks with simple transverse incisions rather than articulate, high-detail crawler belts or track shoes.
+  * Inner track frames and undercarriage mountings are blocky, clay-like gray shapes lacking drive sprockets, rollers, or suspension linkages.
+* **Cab House & Glass Pane:**
+  * The cab house is a primitive, sharp-edged dark rectangular box (toy/box artifact).
+  * Roof features a simple flat circular button/cylinder without realistic hatch seams or seals.
+  * The front pane is a flat, solid black matte rectangle lacking glass depth, reflection, or fresnel falloff.
+  * The yellow accent is present as a visor strip at the leading edge past the glass, but the surrounding cab geometry is boxy and unrefined.
+* **Boom Arm & Drill Body:**
+  * Boom arm is a low-poly tapered extrusion with sharp un-beveled corners.
+  * The central raised steel spine is rendered as a flat, straight strip without hydraulic hose runs, actuator housings, or articulated joint mounts connecting to the chassis.
+  * The drill bit body is a primitive geometric cone/wedge lacking mechanical tooling or chuck details.
+* **Scar Plate & Toy/Clay/Card/Box/Gray Plate Artifacts:**
+  * **Rear Scar Plate:** A completely flat, untextured light-gray rectangle slapped onto the rear bumper/transom like a floating placeholder card.
+  * **Mid-Chassis Deck Plate:** A flat, untextured gray polygonal filler plate sitting between the lower/right track and the cab/boom assembly.
+  * **Cab-to-Hopper Transition:** A flat plate/bridge piece with primitive dimple rivets stuck between the hopper and cab house.
+  * **Overall Geometry:** Pervasive clay/box/cardboard appearance across the hull, boom, and chassis due to lack of edge bevels, mechanical seams, and structural depth.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+* **Placeholder Materials:** The rear scar plate and mid-chassis deck plate appear to use untextured, flat default gray shaders.
+* **Flat Diffuse Shading:** Chassis, boom, and hopper materials lack micro-roughness variation, ambient occlusion depth, and edge wear.
+* **Missing Metallic Definition:** The raised boom spine and drill bit body lack realistic metallic reflectivity and contrast against the darker boom casing.
+* **Dead Window Shader:** The cab windshield pane is totally black and matte without specular gloss or environmental reflection.
+* **Uniform Track MTX:** Rubber/track assemblies have uniform matte brown-gray coloring with no dirt buildup, metallic track-pin contrast, or surface roughness map.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+* **Mesh & Geometry Refinements:**
+  * Add a `Bevel` modifier (or manual chamfers) to the cab house, boom casing, and hopper rims to eliminate razor-sharp toy/box edges.
+  * Extrude structural wall thickness and rolled/flanged lips around the hopper side walls; add corner gusset plates.
+  * Recess the rear scar plate into a dedicated mounting bracket on the transom with mounting bolt geometry.
+  * Add mechanical depth to the mid-chassis deck: add treadplate/grate geometry, hydraulic lines, or structural frame ribs instead of a flat gray polygon.
+  * Model pivot joints, cylinder mounts, and hydraulic line conduits where the boom attaches to the chassis and terminates at the drill bit body.
+  * Refine the track meshes with distinct idlers, sprockets, and articulated belt/shoe segments.
+* **Material & Shader Setup:**
+  * Replace default gray materials on the scar plate and mid-deck with textured industrial metal/painted steel shaders with edge wear.
+  * Assign a proper glass/tinted acrylic shader with specular reflection and subtle fresnel to the front dark cab pane.
+  * Add roughness, metallic, and ambient occlusion maps across the hull, boom arm, steel spine, and hopper bed.
+  * Tune the yellow visor shader for a clean, distinct industrial accent/emissive strip without light bleeding into the dark cab hull.
+
+---
+
+### (4) Verdict
+
+**REVISE**
+
+*Reason:* The silhouette and layout are properly aligned with the works-edge requirements (dark cab house, yellow visor strip, open hopper, asymmetrical boom with spine), but the asset contains prominent flat gray placeholder plates, card-thin hopper walls, low-poly boxy cab geometry, and flat untextured materials.

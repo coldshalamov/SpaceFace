@@ -1,0 +1,111 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01) ΓÇö Cycle 007
+
+**Camera / Still Checked:** `works_edge` (Top-down chase camera; rover situated at the starboard frame boundary of the mine cell)  
+**Evidence Evaluated:**
+- Full frame: [works_edge.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_007/works_edge.png)
+- 1:1 pixel inspection: [works_edge_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_007/review_1to1/works_edge_1to1.png)
+- Technical contract: [ADVANCED_MODEL_TECHNIQUE_CONTRACT.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)
+
+---
+
+### Framing Check
+- **Camera:** Valid `works_edge` chase framing (exterior gameplay chase camera viewing the rover at the starboard frame boundary, inspected at native 1:1 pixel crop).
+- **Status:** **VALID_FRAMING** (exterior gameplay chase camera; not an interior cabin shot, not a studio three-quarter).
+
+---
+
+### (1) Obvious Defects Visible from `works_edge` View
+
+1. **Toy / Clay / Card / Box / Gray Plate Read (Primary Visual Defect):**
+   - The vehicle directly reads as a yellow toy box / CAD blockout with flat gray card strips and cutout plates glued across the upper hull deck.
+   - The main hull remains a monolithic yellow rectangular prism rather than an authentic fabricated mining vehicle chassis with structural cross-sections and plate weldments.
+   - Dark gray framing elements and bridge straps read as thin 2D cardboard strips rather than load-bearing structural members.
+   - The cutter head assembly reads as a raw, low-poly gray toy cone/frustum primitive attached to a flat polygonal stick.
+
+2. **Side Walls:**
+   - The lateral hull flanks between the track sponsons and main deck are sheer, flat yellow vertical walls.
+   - Completely missing structural rocker sills, undercarriage mounting brackets, access panels, heavy lift points, and armor weld seams.
+
+3. **Track Height & Undercarriage:**
+   - The track assemblies consist of extruded blocky tread pads wrapped around two end cylindrical bobbins with hollow voids in between.
+   - Total lack of mechanical undercarriage suspension: no bogie wheels, return rollers, track tensioner cylinders, center guide horns, or track frame mounting struts connecting the tracks to the hull.
+
+4. **Cab House:**
+   - The operator cab is a crude yellow block with a hollow square roof cutout capped by a thick gray square frame collar, reading like a Lego brick / toy cutout.
+   - The roof window opening is an empty black void lacking dielectric glazing, rubber perimeter gaskets, or a welded structural ROPS (rollover protection system) cage.
+   - Missing roof utility hardware (hooded vent cowl, flush antenna mount, and armored floodlight fixture).
+
+5. **Hopper Well:**
+   - The hopper well is a basic rectangular boolean cutout framed by flat gray sheet brackets dropping into an unrendered flat dark void.
+   - Missing angled wear-plate liners, deflection ramps, structural internal gussets, reinforced top rim flanges, and articulated rear dump/tailgate hinge hardware.
+
+6. **Boom & Cutter Bit:**
+   - The boom arm is a solid, flat-sided dark gray polygonal wedge cantilevered off the front starboard deck without mechanical joint articulation.
+   - Missing a dual-clevis base pivot hinge with heavy pin, hydraulic elevation cylinder (barrel and chrome piston rod), and hydraulic service hoses.
+   - The cutter head is a simplified gray conical frustum with a blunt tip, completely lacking rotary pick teeth drums, bearing seals, and friction thermal heat staining.
+
+7. **Scar Plate:**
+   - The armor/scar plates fail to read as distinct, heavy, bolt-on replaceable wear plates. They lack defined plate bevels, perimeter hex fastener clusters, and localized impact/grime material contrast.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **[MTX-01](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L139) (Mid-Poly Edges & Weighted Normals):** Hull edges, cab framing, and boom geometry retain sharp, faceted CAD edges without bevel highlights and weighted normals.
+- **[MTX-02](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L162) (Authored Cross-Section Loft):** Chassis is a primitive scaled box with boolean voids rather than sequenced, lofted chassis weldments.
+- **[MTX-03](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L185) / [MTX-04](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L213) / [MTX-57](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L714) (Skin-Breaking Booleans, Readable Volumes & Wall Thickness):** The hopper well and cab roof opening are hollow boolean cutouts lacking internal machinery and structural wall thickness.
+- **[MTX-05](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L235) (Panelization with Gaps):** The yellow body shell lacks overlapping armor courses, stepped plate seams, and recessed drainage channels.
+- **[MTX-07](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L272) / [MTX-36](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L584) (Thin-Shell Glazing & Framed Tub):** The cab window lacks an authored inset gasket and dielectric glass pane with clearcoat specular response.
+- **[MTX-10](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L321) (Sensors & Hardware):** Exterior utility hardware (work lights, vent covers, antennas) is entirely unmodeled.
+- **[MTX-11](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L331) (Cables and Hoses as Curves):** Absence of 3D Bezier curve hydraulic lines and conduit harnesses connecting the chassis manifold to the boom and cutter head.
+- **[MTX-12](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L341) (Fasteners Only at Interfaces):** Structural hex bolt patterns are missing from track sponsons, plate seams, and boom mounting collars.
+- **[MTX-33](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L559) / [MTX-34](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L567) / [MTX-35](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L575) / [MTX-38](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L593) (Substance Classification & Authored ORM):**
+  - Yellow industrial enamel lacks distinct roughness variation and clearcoat micro-texture.
+  - Steel frame, rubber tracks, and painted hull collapse into uniform flat shader values.
+- **[MTX-39](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L599) / [MTX-40](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L604) (Cavity Dirt & Curvature Edge Wear):** Lacks curvature-driven edge wear revealing bare primer/metal on heavy wear rims, and lacks baked AO dirt in undercarriage recesses.
+- **[MTX-41](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L610) (Heat Stain):** Cutter pick assembly lacks thermal oxide discoloration (straw/purple/blue/soot gradient).
+- **[MTX-46](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L644) (Forbidden Reads):** Explicit violation of the forbidden "toy / yellow box with plates / CAD blockout" read.
+- **[MTX-56](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L703) (Value Hierarchy):** Over-simplified two-tone scheme (flat yellow and dark gray/black) without readable mid-tone structural elements and mechanical highlights.
+- **[MTX-61](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L752) / [MTX-62](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L761) (Joint Language & Separated Moving Parts):** Boom arm is fused as a rigid mesh without distinct pivot yokes, hinge pins, or hydraulic cylinder separation.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Chassis & Flanks:**
+   - Inset the lower hull side walls by `0.06 wu` and extrude a heavy lower structural rocker sill and bottom chassis keel between track frames.
+   - Break the top yellow deck into overlapping structural steel plates with `0.015ΓÇô0.02 wu` recessed seam channels ([MTX-05](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L235)).
+   - Remodel the `scar_plate` as an independent plate mesh proud of the flank by `0.02 wu` with 4 corner hex bolts, beveled perimeter edges, and heavy abrasion/scorch texturing.
+
+2. **Track Undercarriage & Running Gear:**
+   - Inside the track loop, add 4 pairs of cylindrical track rollers/bobbins, center guide teeth, a toothed drive sprocket at the rear, and an idler wheel with tensioner cylinders at the front.
+   - Refine the track mesh with individual grouser bars and recessed link pins.
+
+3. **Cab House & Glazing:**
+   - Extrude a `0.04 wu` wide by `0.02 wu` proud welded structural bezel around the roof window cutout.
+   - Add a `0.015 wu` rubber gasket step and insert a dark dielectric glass pane with clearcoat specular response ([MTX-07](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L272), [MTX-36](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L584)).
+   - Model an armored work light fixture (hooded cylinder with recessed glass lens) and a louvered vent cap on the cab roof ([MTX-10](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L321)).
+
+4. **Hopper Well:**
+   - Extrude 4 interior AR-plate liner walls inside the hopper with an angled forward deflection ramp ([MTX-03](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L185), [MTX-04](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L213)).
+   - Add a `0.03 wu` reinforced lip collar with bolt flanges around the top opening.
+   - Model the rear tailgate as a separate hinged plate with pivot lugs ([MTX-62](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L761)).
+
+5. **Boom Assembly & Cutter Bit:**
+   - Replace the flat wedge boom with a tapered box-girder arm featuring side web cutouts.
+   - Model a dual-clevis base pivot mount with a heavy cylindrical hinge pin on the deck.
+   - Model a separate hydraulic elevation cylinder (outer barrel + chrome piston rod) anchored from a chassis lug to the boom underside.
+   - Add Bezier curve hydraulic hoses (radius `0.012 wu`) with threaded hex fittings routed from deck manifolds to the boom cylinder and cutter head ([MTX-11](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L331)).
+   - Remodel the cutter bit as a cylindrical cutting drum with an array of conical carbide pick teeth, and apply a baked thermal oxide heat stain gradient ([MTX-41](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L610)).
+
+6. **Texture Bakes & Material Finish:**
+   - Bake Curvature ([MTX-24](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L481)) into the roughness/albedo channels to create authentic chipped paint and edge wear along the hopper rim, track sponsons, and boom edges ([MTX-40](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L604)).
+   - Bake Ambient Occlusion ([MTX-23](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L467)) into track running gear recesses, hinge clevises, and hopper corners ([MTX-39](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L599)).
+
+---
+
+### (4) Verdict
+
+**REVISE**
+
+*Rationale:* The asset remains a primitive yellow box with glued flat gray card plates, hollow boolean cutouts, unarticulated boom geometry, and zero undercarriage suspension. It strongly violates MTX contract requirements and requires structural remodeling of the chassis, track running gear, boom kinematics, and hopper interior.

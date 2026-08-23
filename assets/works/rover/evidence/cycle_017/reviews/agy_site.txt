@@ -1,0 +1,44 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 17) ΓÇö Site View
+
+**Files Evaluated:**
+- [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_017/review_1to1/works_site_1to1.png)
+- [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_017/works_site.png)
+
+**Framing:** **VALID** (Orthographic site view at ~19 px/cell with rover silhouette ~22 px; full vehicle in frame, overhead perspective).
+
+---
+
+### (1) Obvious Defects From This Site View (~22 px)
+
+- **Dual Yellow Highlighter Bars / Floating Stickers:** The safety-yellow shoulders read as two isolated, flat, glowing yellow rectangles. Without dark structural framing, bevels, or recessed panel borders, they look like bright stickers pasted onto a gray base rather than bolted industrial armor plates.
+- **Corner "Ears / Prongs" Track Read vs Heavy Continuous Crawler:** The track assemblies fail to read as solid, continuous dark crawler belts under mechanical tension. The bright gray corner hubs stick out like four bracket prongs/ears around the yellow blocks, losing the read of heavy continuous track loops.
+- **Flat 2D "Cookie-Cutter" Well Void:** The central hopper reads as a flat, pitch-black square cutout rather than a deep, volumetric 3D cavity with illuminated interior rims or visible cargo bed depth.
+- **Chunky Undifferentiated Boom & Muted Bit:** The offset boom arm on the starboard front reads as a blunt, stepped gray block. It lacks an articulated shoulder knuckle and the cutter bit fails to separate with high-contrast specular or distinct tool geometry.
+- **Fragmented Chassis Silhouette:** The vehicle lacks cohesive visual mass, reading as separate floating parts (two yellow bars, a central dark square hole, steel corner ears, and a gray cab peg) rather than a unified, heavy-duty mining machine.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **`TRACK_CONTRAST_STARBOARD` (-21.91 vs 18.0 floor ΓÇö FAIL) & `TRACK_CONTRAST_PORT` (-3.43 vs 18.0 floor ΓÇö FAIL):** Negative track contrast causes track belts to wash into hull shadows and surrounding geometry, completely destroying tread belt definition.
+- **`ONE_BODY` (0.3984 vs 0.90 floor ΓÇö FAIL):** Excessive negative space and disconnected elements between track sponsons and center hull, failing the single unified body requirement.
+- **`WELL_IS_A_HOLE` (0.0738 vs 0.24 floor ΓÇö FAIL):** Inadequate depth difference between the hopper floor and the main deck, collapsing the cargo well into a flat 2D square.
+- **`CAB_IS_RAISED` (0.2586 vs 0.28 floor ΓÇö FAIL):** Insufficient vertical elevation and rim highlight separation above the deck plane.
+- **`LOD0 Tri Budget` (19,126 vs 18,000 budget ΓÇö FAIL):** LOD0 geometry remains over budget.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Re-balance Track Belt Albedo and Contrast (`TRACK_CONTRAST`):** Darken the track belt texture albedo and ensure proper ambient occlusion / lighting separation so track runs clearly read as dark continuous bands between the bright steel end-caps.
+2. **Bridge Chassis to Sponsons (`ONE_BODY`):** Model solid, deck-height structural bridge plates and cross-members between the central tub and the track units to close shadow voids and unite the silhouette.
+3. **Frame and Bevel Yellow Hazard Plates:** Recess the yellow shoulder plates inside dark steel perimeter borders with subtle top-edge chamfers to kill the floating highlighter sticker look.
+4. **Step and Rim-Light the Hopper Well (`WELL_IS_A_HOLE`):** Add a beveled upper rim lip that catches directional top lighting and lower/detail the well floor with stepped geometry so depth is readable at 22 px.
+5. **Articulate Boom Shoulder & Highlight Bit Tip:** Model a distinct mechanical pivot notch at the boom root and give the cutter bit a bright metallic/carbide highlight to read as an offset tool finger.
+6. **Decimate LOD0 Geometry:** Optimize non-silhouette internal loops and chamfers to bring triangle count below the 18,000 budget ceiling.
+
+---
+
+### (4) Verdict
+
+**REVISE**

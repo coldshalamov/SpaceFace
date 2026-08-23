@@ -1,0 +1,48 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 22 ΓÇö Works Edge)
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+* **Toy / Clay / Card / Box / Gray Plate Aesthetic**: The rover reads as an assembly of flat, unfilleted cardboard/clay primitive boxes and extruded gray plates rather than a heavy, ruggedized industrial space-mining vehicle.
+* **Side Walls**: The outer hull flanks are featureless, razor-thin vertical gray slabs enclosing the hopper and cab without structural ribs, armor plating, weld seams, access covers, or mounting points to the track assemblies.
+* **Cab House**: The forward-offset cabin is a primitive hollow rectangular box with a bare square roof cutout and hard 90┬░ planar corners, lacking visor bevels, seal collars, sensor housings, or armored structural framing.
+* **Hopper Well**: The central hopper is an unarticulated deep square void with basic stepped/slanted interior gray walls; it lacks wear liners, sediment grizzly grates, structural baffles, or ejection mechanisms.
+* **Boom / Front Implement**: The forward nose/bucket is a faceted beige/tan wedge attached to the cab front like an untextured clay block, completely missing hydraulic rams, pivot yokes, hinge pins, and fluid hoses.
+* **Scar Plate & Pivot Mounts**: The intermediate hinge area between hopper and cab consists of two small disconnected black square blocks with tiny yellow prongs, looking like loose plastic toy pegs rather than heavy load-bearing pivot hardware.
+* **Track Assembly & Yellow Accents**: Tread units are thick, detached blocks with simple circular sprocket marks. The yellow inner-track stripes exist, but float as isolated solid yellow bars rather than being integrated as structural track guide wear-rails on a weathered steel chassis.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+* **Diffuse / Clay Surface Shading**: Hull surfaces have completely flat diffuse shading with no metallic response, roughness variation, or industrial PBR properties.
+* **Primitive Color Blocking**: Machine is divided into stark, untextured swatches (flat medium gray hull, deep black tracks/hinges, solid yellow strips, flat cream/tan nose) with zero dirt, regolith accumulation, paint chipping, or grease.
+* **Missing Micro-Surface Relief**: No normal/bump detail for panel gaps, rivet heads, tread traction grousers, or welded steel joints at 1:1 pixel resolution, making the silhouette appear low-poly and toy-like.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Hull & Side Wall Rework**:
+   * Add bevel modifiers or explicit chamfers to all 90┬░ exterior edges.
+   * Extrude structural stiffener ribs, recess maintenance hatches, and model welded seam geometry along the side walls.
+   * Anchor the side walls securely into the track chassis frames.
+2. **Hopper Well Reconstruction**:
+   * Model industrial hopper liners with reinforced angled feeder plates and an intake grizzly grate over the void.
+   * Add hydraulic actuator mounts or a bottom discharge chute chute/ejection plate.
+3. **Boom & Nose Tool Refinement**:
+   * Replace the flat beige wedge with a heavy-duty cast/welded bucket or cutter head.
+   * Model structural mounting yokes, dual hydraulic cylinders, pivot pins, and reinforced cutting teeth.
+4. **Hinge & Scar Plate Integration**:
+   * Merge the floating black hinge blocks into a single cast steel pivot crossbeam with heavy pin collars.
+5. **PBR Materials & Texturing**:
+   * Apply an industrial weathered steel shader (specular/roughness maps with edge wear and crevice AO).
+   * Integrate the yellow inner track rails with scratched/worn painted metal shader.
+   * Unify the front tool material with the heavy machinery palette (dark hardened steel with chipped wear edges).
+
+---
+
+### (4) Verdict
+
+**REVISE**

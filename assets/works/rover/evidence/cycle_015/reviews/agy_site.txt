@@ -1,0 +1,44 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 15) ΓÇö Site View
+
+**Files Evaluated:**
+- [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_015/review_1to1/works_site_1to1.png)
+- [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_015/works_site.png)
+
+**Framing:** VALID (Orthographic site view; rover occupies ~22 px on the ~19 px/cell site grid; full vehicle in frame, overhead perspective).
+
+---
+
+### (1) Obvious Defects From This Site View (~22 px)
+
+- **Fragmented Chassis Silhouette (`ONE_BODY` failure):** The crawler still reads as disjointed floating segments (outer track bars, two yellow shoulder blocks, center tub, and boom peg) rather than a single unified heavy industrial vehicle. Structural bridge geometry fails to close the visual void between the track carriages and the central hull under overhead lighting.
+- **Isolated "Highlighter Sticker" Livery:** Yellow paint remains restricted to two isolated, unbordered rectangular patches flanking the hopper. At play scale, these read as two bright stickers slapped onto a gray box rather than integrated machine hazard livery.
+- **Washed-Out Track Belts (Missing "Dark Band" Read):** The track belts lack dark tonal density and contrast. The starboard track in particular washes out into the mid-tone hull gray, failing to deliver the required "dark continuous belt with bright steel end caps" read.
+- **Flat Dark Square Hopper Well:** The central cargo hopper registers as a flat 2D dark square cutout rather than a volumetric, recessed mining hopper cavity with chamfered rim illumination or depth gradient.
+- **Blunt / Muddy Boom & Bit Tip:** The offset starboard boom arm extends as a plain gray peg whose cutter bit lacks sharp specular contrast, blurring into a muddy gray-blue tip against the terrain.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **`ONE_BODY` (0.3831 vs 0.90 floor ΓÇö FAIL):** Severe visual disconnection between track assemblies and main chassis tub.
+- **`TRACK_BAND` (0.1174 vs 0.16 floor ΓÇö FAIL):** Running gear tread belts lack adequate thickness and tonal definition.
+- **`TRACK_CONTRAST_STARBOARD` (-4.9226 vs 18.0 floor ΓÇö FAIL) & `TRACK_CONTRAST_PORT` (12.8516 vs 18.0 floor ΓÇö FAIL):** Starboard track belt has negative contrast against the chassis, completely losing its dark tread read.
+- **`TRACK_OUTERMOST_PORT` & `TRACK_OUTERMOST_STARBOARD` (0.7712 & 0.7708 vs 0.80 floor ΓÇö FAIL):** Tracks do not solidly define the lateral envelope profile.
+- **`WELL_IS_A_HOLE` (0.0630 vs 0.24 floor ΓÇö FAIL):** Hopper well floor lacks depth relief and internal shelf illumination.
+- **`CAB_IS_RAISED` (0.2601 vs 0.28 floor ΓÇö FAIL):** Cab volume lacks sufficient vertical projection and highlight separation from the deck.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Raise Structural Bridges to Deck Height:** Model deck-flush structural cross-members and fender flanges between the center tub and track frames so overhead light catches them, eliminating negative-space shadows and unifying the silhouette (`ONE_BODY`).
+2. **Darken Track Belts & Boost Hub Highlights:** Darken the tread belt albedo significantly (especially starboard) and boost specular reflection on the front idler and rear drive sprocket caps to enforce the "dark band with steel end caps" read.
+3. **Bevel and Frame Yellow Shoulder Panels:** Recess the yellow sponson plates within dark steel structural frames and distribute minor hazard accents (e.g., cab roof edge or fender corners) to eliminate the floating sticker look.
+4. **Deepen Hopper Mouth with Lit Chamfer & Shelf:** Add a wide top-lip chamfer that catches directional overhead light and a stepped inner shelf so the hopper reads as an excavated 3D vessel rather than a flat black hole.
+5. **Articulate Boom Shoulder & Bit Head:** Strengthen the boom mounting knuckle with dark recessed pivot joints and apply bright metallic/tungsten specular highlights to the cutter bit teeth.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,37 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 36 ΓÇö `works_site`)
+
+---
+
+### 1. Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Plastic Key-Fob Chassis Read:** The main hull reads as a flat, desaturated pale-gray rectangular cassette slab rather than a rugged, industrial tracked mining crawler.
+- **Missing Industrial Yellow Identity:** The vehicle lacks readable yellow livery across its primary mass. The yellow is confined to a tiny isolated front tab/bumper block and two minute hinge specks, reducing the overall vehicle to an anonymous gray stamp.
+- **Hollow Wire / Paperclip Track Read:** Both stadium track loops appear as thin, hollow white/gray perimeter loops encircling empty black voids, resembling paperclips or wire outlines rather than heavy, solid crawler track belts grounded in deep shadow with raised steel guide lips.
+- **Undefined Visor & Windshield Band:** The cabin area fails to read as a dark windshield slit hooded by a crisp yellow visor brow. Instead, it reads as a solid gray block with an abrupt yellow postage-stamp tab stuck to the leading edge.
+- **Cookie-Cutter Well Hole:** The center well appears as a raw, harsh black square cutout punched directly into the gray deck rather than a sculpted, mechanically integrated machinery bay with readable depth distinct from the forward cab.
+- **Boom Reads as a Pale Stick with a Tan Mushroom Tip:** The mining boom extends to the right as an indistinct pale tan stick terminating in a flat, tan arrowhead/mushroom tip, completely lacking the read of an offset dark hydraulic arm, narrow bright metal spine, and sharp industrial cutting bit.
+
+---
+
+### 2. MTX Defects Readable at this Size
+
+- **Albedo / Livery Distribution:** Primary industrial yellow material is virtually absent from the top hull and cab shell (deck plates are mapped to dull neutral gray).
+- **Track Material Contrast & Occlusion:** Track interiors lack road wheel / sprocket geometry and ambient occlusion, causing the track perimeter to produce a uniform specular ring around total blackness.
+- **Cab & Glass Contrast:** Glass area lacks dark specular value separation from the surrounding gray frame, and the visor is textured as a solid yellow block rather than an overhanging armor lip.
+- **Boom Material Separation:** The arm and bit share a low-contrast, muddy tan diffuse tone with no material distinction between dark structural steel, specular metal spine, and a bright hardened drill bit.
+
+---
+
+### 3. Concrete Blender Actions
+
+1. **Re-establish Industrial Yellow Deck Livery:** Assign the primary yellow livery material to the main hull roof and cabin armor plates, keeping the frame recesses, track wells, and undercarriage matte dark charcoal.
+2. **Rebuild Visor & Windshield Architecture:** Model a recessed, dark horizontal windshield band sheltered by a thin, forward-projecting yellow visor brow configured to catch a clean 1-pixel highlight across the cabin front.
+3. **Solidify Crawler Track Mesh & Shadow:** Fill the open track interiors with solid dark drive sprockets, rollers, and occluded geometry so the treads read as heavy, continuous belts where only the raised steel lips catch glancing 1-pixel light.
+4. **Chamfer & Integrate Well Cavity:** Add bevels, interior step-downs, and dark mechanical elements to the central well opening so it reads as an intentional equipment recess rather than a flat black square hole.
+5. **Re-articulate Boom & Cutting Head:** Rebuild the offset boom assembly using a dark matte structural arm, a narrow high-specular metal spine along the upper ridge, and a sharp, faceted, high-brightness metallic cutting bit to eliminate the tan mushroom/peg read.
+
+---
+
+### 4. Verdict
+
+**REVISE**

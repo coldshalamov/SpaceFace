@@ -1,0 +1,222 @@
+{
+  "glb": "assets\\works\\rover\\source\\rover_lod0.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_Merged_Material_Bit_Boom",
+      "lod": 0,
+      "faces": 336,
+      "visible": 1,
+      "hidden": 335,
+      "hiddenFrac": 0.997
+    },
+    {
+      "object": "LOD0_Merged_Material_Chevron_Boom",
+      "lod": 0,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_Merged_Material_Livery_Boom",
+      "lod": 0,
+      "faces": 248,
+      "visible": 1,
+      "hidden": 247,
+      "hiddenFrac": 0.996
+    },
+    {
+      "object": "LOD0_Merged_Material_Steel_Boom",
+      "lod": 0,
+      "faces": 760,
+      "visible": 0,
+      "hidden": 760,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_fill_0",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_fill_1",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_fill_2",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_fill_3",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_fill_4",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "hopper_lid",
+      "lod": null,
+      "faces": 108,
+      "visible": 2,
+      "hidden": 106,
+      "hiddenFrac": 0.9815
+    },
+    {
+      "object": "LOD0_Merged_Material_Chevron_LidRib",
+      "lod": 0,
+      "faces": 324,
+      "visible": 0,
+      "hidden": 324,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_Merged_Material_Chevron",
+      "lod": 0,
+      "faces": 756,
+      "visible": 2,
+      "hidden": 754,
+      "hiddenFrac": 0.9974
+    },
+    {
+      "object": "LOD0_Merged_Material_Glass",
+      "lod": 0,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_Merged_Material_Lamp",
+      "lod": 0,
+      "faces": 116,
+      "visible": 0,
+      "hidden": 116,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_Merged_Material_Livery",
+      "lod": 0,
+      "faces": 1016,
+      "visible": 23,
+      "hidden": 993,
+      "hiddenFrac": 0.9774
+    },
+    {
+      "object": "LOD0_Merged_Material_Steel",
+      "lod": 0,
+      "faces": 5824,
+      "visible": 7,
+      "hidden": 5817,
+      "hiddenFrac": 0.9988
+    },
+    {
+      "object": "scar_plate",
+      "lod": null,
+      "faces": 108,
+      "visible": 0,
+      "hidden": 108,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "track_L",
+      "lod": null,
+      "faces": 960,
+      "visible": 24,
+      "hidden": 936,
+      "hiddenFrac": 0.975
+    },
+    {
+      "object": "track_R",
+      "lod": null,
+      "faces": 960,
+      "visible": 20,
+      "hidden": 940,
+      "hiddenFrac": 0.9792
+    }
+  ],
+  "hiddenFaces": 12192,
+  "faces": 12272,
+  "hiddenFrac": 0.9935,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+}

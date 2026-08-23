@@ -1,0 +1,43 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 20) ΓÇö `works_site`
+
+---
+
+### (1) Obvious Defects (Site View Readability at ~22 px)
+
+* **Yellow Highlighter Bar / Toy Read:** The safety-yellow areas still read as two prominent, hyper-saturated horizontal rectangular stickers/bars slapped onto the flanks. They dominate the visual footprint and create a toy/postage-stamp impression rather than integrated industrial safety plating.
+* **Track Disconnection (Four-Nub Failure):** The tracks do not read as continuous, grounded dark stadium bands with bright end caps. Instead, the track assemblies dissolve into four isolated, faint gray corner nubs/ears protruding from the hull corners, with no continuous dark belt silhouette connecting them.
+* **Hopper Reads as Flat Black Tile/Cutout:** The central hopper well reads as a flat 2D black square punched into the rear deck. There is no visible raised lip, lit coaming highlight, or sloped interior wall shading to read as a recessed hopper basin.
+* **Boom Arm / Bit Muddy Articulation:** The forward boom extends as a generic, stepped gray tongue/finger on the starboard side. The transition between the boom arm, articulation knuckle, and the cutting head lacks visual definition, reading as a blunt gray tab with a slightly lighter tip rather than an articulated mechanical tool.
+* **Chassis Value Flatness:** The central chassis and cab structure merge into an undifferentiated cluster of mid-gray pixels, lacking edge separation or distinct mechanical housing forms.
+
+---
+
+### (2) MTX Defects Readable at Site Size
+
+* **Track Belt Luminance & Continuity Breakdown:** Track tread material fails to provide a readable dark band against the terrain and hull; the belts are lost in shading, leaving only the outer corner geometry visible.
+* **Material Value Collapse:** The asset collapses into three crude, flat value steps: ultra-saturated yellow bars, uniform mid-gray structural metal, and pure-black voids (hopper/windows), giving it an icon/sticker read rather than realistic heavy machinery.
+* **Missing Coaming & Wear Highlights on Hopper Rim:** Lack of a brightly catching, beveled metallic lip around the hopper mouth prevents the eye from perceiving depth and volume for the collection well.
+* **Boom & Tool Material Hierarchy Slump:** The boom arm and cutter head share nearly identical diffuse/specular values, failing to establish a clear material hierarchy (dark structural arm $\rightarrow$ dark recessed joint $\rightarrow$ bright hardened carbide cutter).
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Track Continuous Belt & End Caps:**
+   * Widen and project the dark track belts outward slightly so a continuous 1ΓÇô2 px dark band is maintained along the vehicle sides.
+   * Enlarge and bevel the drive/idler end caps with high-specular steel so bright corner highlights anchor the dark track loop.
+2. **Hopper Lip & Interior Depth:**
+   * Extrude a raised, beveled perimeter coaming (rim) around the hopper mouth with worn steel material to catch top-down directional light.
+   * Angle the interior hopper walls to receive directional illumination, preventing the well from rendering as a flat black void.
+3. **Hazard Yellow Framing & Breakup:**
+   * Recess yellow hazard panels into distinct, dark structural steel framing/pockets with dark borders to eliminate the "floating decal" effect.
+   * Break the solid yellow strips into distinct segmented modular plates.
+4. **Boom Arm & Bit Definition:**
+   * Taper the boom arm and introduce a distinct dark recess/notch at the knuckle joint.
+   * Flare/notch the cutting bit geometry and assign a high-value, high-specular carbide/hardened steel material to produce a sharp, readable bright focal point at the working tip.
+
+---
+
+### (4) Verdict
+
+**REVISE**

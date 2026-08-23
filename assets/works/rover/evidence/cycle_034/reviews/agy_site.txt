@@ -1,0 +1,66 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 34) ΓÇö `works_site`
+
+---
+
+### Framing Check
+* **Framing:** **VALID** (Orthographic top-down site view at ~19 px/cell scale; rover occupies expected ~22 px footprint; camera is not inside a cabin; not a studio three-quarter view).
+
+---
+
+### (1) Defects From This Site View
+
+1. **Yellow Postage Stamp / Toy Tab Read at Cab Visor:**
+   * The safety-yellow geometry on the front-right of the cab reads as a solid, flat yellow tab / postage stamp stuck onto the hull rather than a thin, formed sheet-metal visor/brow overhanging an enclosed cab.
+   * Because the dark windshield band beneath/behind it is cramped and unarticulated, the yellow feature fails to read as an industrial cab visor and instead presents as an applied toy block.
+2. **Monolithic Gray Stamp / Boxy Hull Read:**
+   * The central hull and rear deck between the track assemblies form a flat, unbroken gray rectangular slab. It reads as a gray stamp rather than an articulated, heavy-duty mining crawler chassis.
+3. **Starboard Track Trough Washout & Weak Shadow Contrast:**
+   * While the port (top) stadium track catches a thin 1-px outer steel lip and holds a defined internal shadow trough, the starboard (bottom) track interior is washed out, failing to hold shadow depth against the lower hull and weakening the crawler read.
+4. **Shallow Hopper Well Cavity:**
+   * The central cargo well appears as a flat dark 2D square cutout on the deck plate rather than a deep, volumetric ore hopper with occluded shadow depth and crisp rim bevels.
+5. **Boom Arm / Spine Read:**
+   * While the forward offset boom finger and bright drill bit are discernible, the connecting structural arm is rendered in a uniform light tone. It lacks a darker structural arm body contrasted against a narrow, high-contrast bright metal spine catching a distinct 1-px highlight into the bit.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+1. **`CAB_PANE` Failure (0.0189 vs. ΓëÑ 0.02):**
+   * Dark cockpit glass area is slightly below threshold and compressed by adjacent geometry, failing to resolve as a distinct dark glazed band beneath the yellow visor.
+2. **`TRACK_CONTRAST_PORT` (12.02) & `TRACK_CONTRAST_STARBOARD` (-9.64 vs. ΓëÑ 18.0):**
+   * Luminance contrast across track channels is insufficient; the starboard track trough is completely washed out and brighter than the hull.
+3. **`TRACK_OUTERMOST_PORT` (0.3694) & `TRACK_OUTERMOST_STARBOARD` (0.3647 vs. ΓëÑ 0.80):**
+   * Track assemblies fail to define the outermost lateral silhouette boundaries across the length of the vehicle.
+4. **`WELL_IS_A_HOLE` Failure (0.0694 vs. ΓëÑ 0.24):**
+   * Depth delta between the cargo well floor and main deck is far too shallow in the depth pass.
+5. **`LIVERY_SAT_RENDERED` Failure (0.2241 vs. ΓëÑ 0.30):**
+   * Rendered yellow saturation is suppressed under scene illumination.
+6. **`CAB_IS_RAISED` Failure (0.2708 vs. ΓëÑ 0.28):**
+   * Cab structure elevation above the main deck remains slightly below required height.
+7. **`ONE_BODY` Failure (0.3776 vs. ΓëÑ 0.90):**
+   * Discontinuous hull and chassis integration metric.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Reshape Yellow Visor & Re-establish Wide Dark Windshield:**
+   * Reshape the yellow mesh into a thin, forward-cantilevered sheet-metal visor/brow overhanging the cab front.
+   * Widen and elevate the dark cockpit glass pane (`glass`) directly behind/beneath the visor to ensure a crisp, continuous dark windshield band is readable (`CAB_PANE` ΓëÑ 0.02).
+2. **Deepen Track Troughs & Darken Starboard Belt:**
+   * Inset the rubber belt geometry deeper along the Z-axis and darken the rubber tread albedo/roughness to ensure both port and starboard stadium troughs hold strong shadow contrast (`TRACK_CONTRAST` ΓëÑ 18.0).
+   * Widen track assemblies so the outer lips define the vehicle's maximum lateral silhouette (`TRACK_OUTERMOST` ΓëÑ 0.80).
+3. **Deepen Hopper Well on Z-Axis & Add Coaming Lip:**
+   * Drop the cargo well floor deeper into the chassis geometry (`WELL_IS_A_HOLE` ΓëÑ 0.24) and extrude a thin, raised, beveled perimeter coaming lip around the deck opening to cast cavity shadow.
+4. **Darken Boom Arm Body & Add Bright Spine Ridge:**
+   * Darken the structural arm body (`steel_dark`) and model a narrow, raised, beveled tool-steel spine ridge (`steel_bright` / `bit`) along the top crest to catch a continuous 1-px specular highlight running into the cutter bit.
+5. **Articulate Hull & Rear Deck:**
+   * Add corner chamfers and recessed panel separation grooves across the central deck to eliminate the flat gray rectangular stamp profile.
+6. **Boost Base Livery Saturation:**
+   * Increase yellow basecolor saturation in the texture atlas so rendered visor saturation stays ΓëÑ 0.30 under site lighting.
+
+---
+
+### (4) Verdict
+
+**REVISE**

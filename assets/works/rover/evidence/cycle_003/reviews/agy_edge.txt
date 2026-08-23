@@ -1,0 +1,99 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01) ΓÇö Cycle 003
+**Camera / Still Checked:** `works_edge` (31┬░ top-down perspective, object at frame edge)  
+**Evidence Evaluated:**
+- Full frame: [works_edge.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_003/works_edge.png)
+- 1:1 pixel inspection: [works_edge_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_003/review_1to1/works_edge_1to1.png)
+- Reference contract: [ADVANCED_MODEL_TECHNIQUE_CONTRACT.md](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)
+
+---
+
+### Framing Check
+- **Camera:** Valid `works_edge` view (31┬░ perspective looking down into the mine cell with the rover at the starboard frame edge).
+- **Status:** **VALID_FRAMING** (not a cabin interior, not a studio beauty shot).
+
+---
+
+### (1) Obvious Defects Visible at Play Size (`works_edge`)
+
+1. **Toy / Plastic / CAD Box Read (Primary Visual Defect):**
+   - The vehicle reads instantly as a stamped yellow plastic toy bulldozer or blockout primitive. The main body is a flat, monolithic yellow slab with sharp rectangular boolean cutouts and no authentic sheet-metal construction language.
+2. **Side Walls:**
+   - The flanks dropping from the deck to the tracks are sheer, featureless yellow vertical planes. They lack rocker sills, equipment access doors, heavy lifting lugs, frame gussets, or welded structural seams.
+3. **Track Assembly & Height:**
+   - The tracks are flat, uniform dark rubber/composite bands with simple rectangular pad extrusions.
+   - There is zero visible mechanical undercarriage between the hull and track belts: no drive sprockets, front idler wheels, return rollers, bogie bobbins, or track guide flanges. The tracks appear to float next to the hull.
+4. **Cab House:**
+   - The cab is a basic rectangular yellow box protrusion with a square hole in the roof.
+   - The cab window is a flat dark pit with no structural metal frame, rubber seal, protective rollover bar (ROPS), or glazing highlight.
+   - Roof penetrations (lamp/vent sockets) are simple raw circular puncture holes resembling peg sockets on a molded toy.
+5. **Hopper Well:**
+   - The hopper well is a featureless dark square hole cut into the yellow deck.
+   - It lacks sloped interior deflection plates, AR-plate wear liners, corner gussets, rim reinforcement flanges, or a functional tailgate/hinge assembly.
+6. **Boom & Cutter Bit:**
+   - The boom is an unrealistically thin, flat yellow stick protruding horizontally from the starboard flank without mechanical mass.
+   - It lacks a boxed girder/truss profile, heavy pivot clevis, hydraulic lift/tilt cylinders, and hydraulic hose lines.
+   - The cutter bit is a tiny, low-poly faceted gray conical stub with an unnatural cool tint, lacking carbide pick teeth, rotational housing mass, and heat discoloration.
+7. **Scar Plate:**
+   - The scar plate on the flank is visually nonexistent at play size. It completely fails to read as a distinct, replaceable, sooted/damaged steel plate.
+8. **Plates & Fasteners:**
+   - The black chevron plates between the cab and hopper read as flat black decals stamped onto the yellow deck.
+   - Fasteners are four tiny isolated dark dots placed on open planar areas rather than structural hex bolts clamping plate seams.
+
+---
+
+### (2) MTX Contract Defects Visible at Play Size
+
+- **MTX-02 (Authored Cross-Section Loft):** The hull fails the authored station requirement; it is a single scaled box with cutouts rather than a sequenced structural chassis.
+- **MTX-03 / MTX-04 / MTX-57 (Skin-Breaking Booleans, Readable Volumes & Wall Thickness):** The hopper well and cab window are empty box cutouts into uniform darkness with uniform flat walls, lacking interior engineering, liner steps, and structural rim thickness.
+- **MTX-05 (Panelization with Gaps):** The deck and flanks lack stepped plate courses, overlapping armor plates, and recessed seam channels.
+- **MTX-07 / MTX-36 (Thin-Shell Glazing & Framed Tub):** The cab window lacks an authored perimeter frame, gasket channel, and clearcoat dielectric response.
+- **MTX-10 (Sensors & Hardware):** Roof utility ports are raw cylindrical voids rather than modeled lamp cans with bezels/lenses and hooded vent stacks.
+- **MTX-11 (Cables and Hoses as Curves):** Zero hydraulic hoses or service conduits exist along the chassis or feeding the boom actuator and bit.
+- **MTX-12 (Fasteners Only at Interfaces):** Missing structural bolt patterns along plate seams, bearing caps, and track sponsons; existing fastener marks are arbitrary dots on flat faces.
+- **MTX-33 / MTX-34 / MTX-35 / MTX-38 (Substance Classification & Authored ORM):**
+  - Yellow paint has uniform flat roughness without clearcoat/orange peel response.
+  - Track material lacks distinct roughness/metallic differentiation for rubber pads vs steel link chains.
+- **MTX-39 / MTX-40 (Cavity Dirt & Curvature Edge Wear):** No curvature-driven edge wear peeling yellow paint to bare steel/primer along the hopper lip, track edges, or boom corners; cavities lack grime in raking light.
+- **MTX-41 (Heat Stain):** Cutter bit lacks an authored thermal gradient (straw/purple/blue/soot) from high-friction ore contact.
+- **MTX-46 (Forbidden Reads):** Direct violation of the forbidden "plastic toy / yellow box with plates / CAD blockout" read.
+- **MTX-56 (Value Hierarchy):** Collapses into high-contrast yellow vs pitch-black cavities; missing mid-tone mechanical steel, exposed frames, and wear highlights.
+- **MTX-61 (Joint Language):** Missing weld beads, flange joints, and mounting brackets at the cab-to-deck, boom-to-hull, and track-to-chassis interfaces.
+- **MTX-62 (Separated Moving Parts):** The boom is modeled as a fused rigid stick with no articulated pivot yoke or hydraulic cylinder separation.
+
+---
+
+### (3) What to Build Next (Concrete Blender Actions)
+
+1. **Chassis & Hull Flanks:**
+   - Inset the lower hull sides by 0.06 wu and extrude a stepped structural rocker sill and bottom chassis rail between the tracks.
+   - Cut and separate the continuous yellow deck into three distinct overlapping plate courses with 0.015 wu seam channels (MTX-05).
+   - Model the `scar_plate` on the flank as an independent mesh object proud of the hull by 0.02 wu with 4 corner hex bolts, a beveled notch, and assigned to the dark sooted steel material.
+2. **Tracks & Undercarriage:**
+   - Inset the track inner loop and model 4 cylindrical track roller bobbins and a continuous center girder linking the hull sponson to the track frame.
+   - Model drive sprockets at the rear and idler wheels at the front with center guide teeth protruding between track links.
+   - Extrude individual tread grousers and recessed link pins on the track belt mesh (MTX-01/12).
+3. **Cab House:**
+   - Extrude a 0.04 wu wide by 0.02 wu proud welded structural frame around the roof window perimeter.
+   - Inset a 0.015 wu rubber gasket step (MTX-38) around the window and recess the dark glass pane by 0.03 wu.
+   - Replace the roof puncture holes with a modeled floodlight can (hooded cylinder + recessed lens) at `lamp_socket` and a louvered cap at `vent_stack`.
+4. **Hopper Well:**
+   - Extrude four interior AR-plate liner walls inside the hopper with an angled forward/aft floor ramp (MTX-03/04).
+   - Add a 0.03 wu reinforced lip collar around the top mouth with visible hex fasteners.
+   - Model the rear tailgate/hopper lid as a separate articulated plate with hinge lugs and pivot pins (MTX-62).
+5. **Boom Arm & Cutter Bit:**
+   - Replace the thin stick boom with a heavy tapered box-girder weldment (0.16 wu base tapering to 0.09 wu at the bit collar) with side lightening/web cutouts.
+   - Model a dual-clevis pivot yoke with a heavy cylindrical hinge pin at the deck base (`boom_pivot`).
+   - Model a separate hydraulic cylinder (barrel + chrome piston rod) anchored from a deck bracket to the underside of the boom arm.
+   - Add two Bezier curve hydraulic hoses (radius 0.012 wu) with threaded hex fitting nuts routed from the deck manifold to the hydraulic ram and bit collar (MTX-11).
+   - Re-model the cutter bit (`bit_tip`) as a heavy cylindrical cutter drum with arrayed conical carbide pick teeth and a thermal gradient bake (straw/purple/blue/dark oxide) (MTX-41).
+6. **Bakes & Surface Finish:**
+   - Bake curvature map (MTX-24) to drive edge wear (bare steel/primer exposure) on the hopper lip, track sponsons, and boom edges (MTX-40).
+   - Bake ambient occlusion (MTX-23) into the track gear, hinge clevises, and well corners (MTX-39).
+
+---
+
+### (4) Verdict
+
+**REVISE**
+
+*Rationale:* The asset remains a primitive yellow box with glued plates and a stick boom. It does not meet the Hitch-plus baseline or the material standard set by the game's flight fleet. It requires structural remodeling of the chassis, undercarriage, boom hydraulics, and hopper well before passing review.

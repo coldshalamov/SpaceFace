@@ -1,0 +1,47 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 67)
+**Target Asset:** `works_site_1to1.png` / `works_site.png` (Top-down site cell view, ~22 px rover silhouette)
+
+---
+
+### (1) Obvious Defects from this Site View
+
+- **Track Structure & Belt Read:** The treads fail to read as solid, continuous rubber stadium belts. The top belt is a muddy, low-contrast dark band lacking a crisp 1 px steel lip catch against the terrain. The bottom belt is visually disrupted and eclipsed on the right by a bright yellow blob, breaking the parallel track crawler silhouette.
+- **Cab & Visor Silhouette:** Instead of a crisp, thin 1 px yellow visor line capping a distinct dark windshield band, yellow paint/geometry creates a thick vertical bracket/spine across the midsection. This reads as a chunky yellow U-frame / bracket rather than a forward-facing cab visor.
+- **Windshield vs. Well Separation:** The dark cab glass and the mining well void read as two disconnected, ambiguous dark cavities separated by the yellow vertical bar, rather than a distinct forward windshield band and an offset dark cargo/tool well bite.
+- **Boom / Tool Assembly:** The boom at the lower right reads as an amorphous, saturated yellow hook / blob rather than an articulated dark arm with a raised steel spine and a distinct steel bit/tip.
+- **Overall Gestalt:** The silhouette reads as an abstract mechanical bracket or postage-stamp component rather than a heavy tracked mining crawler.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Albedo & Value Balance:** Oversaturated yellow albedo on thick mid-body structures creates high-contrast visual noise, overpowering the chassis silhouette while dark rubber treads and mid-steel tub elements sink into the background value range.
+- **Specular / Rim Highlights:** Track steel lips lack the necessary edge bevel / specular reflectivity to catch the 1 px highlight needed to separate the dark rubber from the dark ground.
+- **Boom Material Assignment:** The tool head is mapped with primary yellow hull material rather than dark structural steel with a localized, high-specular carbide/steel bit tip.
+- **Glazing / Cavity Values:** No distinction in surface response between the cab glazing and the open well cavity, resulting in flat, muddy dark rectangles.
+
+---
+
+### (3) Concrete Blender Actions to Fix Site Silhouette
+
+1. **Track Lips & Belts:**
+   - Extrude and sharpen the raised steel flanges/lips on both upper and lower stadium tracks.
+   - Adjust track lip normal/bevel angles to reliably catch a 1 px key light edge across the full track length.
+   - Ensure the lower track geometry runs continuously beneath the boom pivot.
+2. **Visor & Cab Geometry:**
+   - Constrain the yellow visor accent to a single thin forward-facing edge (1 px effective raster width).
+   - Strip yellow shader assignments from the cab flanks/vertical pillars, returning them to mid-tone steel.
+   - Unify the forward windshield as a continuous horizontal dark band.
+3. **Well Definition:**
+   - Add a defined mid-steel divider/lip between the rear of the cab and the well recess.
+   - Deepen well ambient occlusion / cavity shadowing so it reads as an internal negative volume rather than a window.
+4. **Boom / Tool Assembly:**
+   - Remap the boom arm structure to dark matte frame steel.
+   - Restrict yellow to a thin hazard/accent line along the boom spine.
+   - Replace the yellow hook tip with a tapered steel/tungsten bit mesh featuring a high-specular tip point.
+
+---
+
+### (4) Verdict
+
+**REVISE**

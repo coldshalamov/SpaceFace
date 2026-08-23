@@ -1,0 +1,59 @@
+## 1. Obvious defects at play size
+
+- The rover reads as a **gray rectangular box/plate between two tracks**, not a resolved industrial mining crawler. Its silhouette is generic and lacks strong functional massing.
+- The central body has a pronounced **cardboard/box construction**: broad flat gray planes, sharp planar transitions, and little readable shell thickness or structural layering.
+- The two dark stadium tracks are recognizable, but the raised grousers merge into the belts. The small steel hubs are present yet too dark and small to read clearly as steel mechanisms.
+- The yellow cab-roof wrap is correctly inside the crawler outline and surrounds a dark pane, but it is much too thick, square, bright, and uniform. It reads as a **yellow plastic toy frame** attached to the gray box rather than painted structural roof metal around framed glazing.
+- The framed pane lacks enough dark recess, gasket, glass response, or surrounding roof construction to read convincingly as a canopy opening.
+- The hopper well reads as a dark opening and shows some sloped-wall intent, but at this size it is close to a **black rectangle pasted into a gray plate**. Rim thickness, wall planes, abrasion, and bottom depth are insufficiently legible.
+- The boom is offset and attached, but it is not a convincing fat steel mining boom. It reads as a thin beige bar or card extending from the hull.
+- The terminal bit is an indistinct pale blob with a cross-like silhouette. It does not read as a mounted drill, cutter, breaker, or other engineered tool.
+- The boom root has no clearly readable pivot, bearing, hydraulic linkage, collar, or reinforced attachment structure.
+- The gray hull surfaces have almost no visible seams, joints, fasteners, wear logic, or material differentiation. They resemble flat gray stickers or unworked plates.
+- Track guards, chassis, hopper, cab, and boom share the same simplified primitive language. There is no convincing hierarchy between armored shell, fabricated steel, glass, running gear, and working tool.
+- The top-view silhouette is dominated by a central rectangle; the boom adds length but not enough mechanical character to raise the asset above toy construction.
+- The model does not meet the Hitch-plus floor in this view.
+
+## 2. Visible MTX defects
+
+- **MTX-03 / MTX-04 — Real cavities and sloped wells:** The hopper has the beginning of a real opening, but the rim thickness and sloped steel walls do not read strongly enough at play size. It remains visually close to a dark inset graphic.
+- **MTX-05 — Layered shell construction:** The chassis is composed of large flat gray planes without readable stepped plates, seam channels, or fabricated shell layering.
+- **MTX-07 / MTX-36 — Thin-shell framed glass:** The dark pane is framed, but the oversized yellow surround reads as a solid toy ring. The image does not clearly show a thin glass shell over a cut tub, a gasket, or a dark interior volume.
+- **MTX-11 — Hoses and service runs:** No hydraulic hoses, routed service lines, or terminated fittings are legible around the boom.
+- **MTX-12 — Fasteners at interfaces:** Essential fasteners are not visible at the boom pivot, cab frame, hopper rim, chassis joints, or track-running hardware.
+- **MTX-13 — Scale-correct bevels:** Major body edges appear nearly razor-flat while the yellow surround has disproportionately chunky edges.
+- **MTX-14 / MTX-60 — Designed asymmetry:** The offset boom supplies functional asymmetry, but there is no additional authored service history such as a repair, replaced plate, or stencil.
+- **MTX-31 / MTX-35 — Substance classification and machined metal:** The boom, hull plates, and visible running gear do not exhibit distinct manufactured-metal responses. The boom especially reads beige rather than steel.
+- **MTX-33 / MTX-39 / MTX-40 — Authored ORM, cavity dirt, and curvature wear:** Open plates are nearly uniform, with little readable roughness variation, contact dirt, or edge wear tied to actual use.
+- **MTX-42 — Stencil treatment:** No useful scale or operational markings are legible. The broad gray regions instead risk reading as sticker-like surface fills.
+- **MTX-46 — Forbidden reads:** The supported view contains clear **plastic-toy, clay/blockout, card, box, and gray-plate** reads.
+- **MTX-55 / MTX-65 — Role silhouette and role-specific massing:** It reads as a generic tracked rectangle with an appendage, not immediately as a robust asteroid-processing rover.
+- **MTX-56 — Value hierarchy:** Dark tracks, gray body, and yellow accent provide three nominal values, but the hierarchy is crude. The yellow ring overwhelms the cab while most mechanical information collapses into darkness.
+- **MTX-57 — Visible shell thickness:** Hopper and canopy openings do not show convincing wall thickness consistently.
+- **MTX-59 — Reads at play distance:** Tracks and the yellow square survive, but the hopper construction, steel hubs, boom mechanism, and tool identity do not.
+- **MTX-61 — Joint language:** Plate and mechanism interfaces lack readable welds, gaskets, countersinks, collars, or seam construction.
+- **MTX-62 — Separated moving parts:** The boom’s functional separation is visible, but its pivot and articulation gaps are not.
+- **MTX-64 — Rest areas:** There are quiet plates, but they appear unfinished rather than intentionally balanced against clustered functional detail.
+- **MTX-66 — Specular by manufacture:** Glass, paint, steel, and boom hardware do not show sufficiently distinct highlight behavior.
+- **MTX-67 — Designed accent:** Yellow is a controlled accent in placement, but its thick, uniform construction makes it a plastic brick rather than a cab-roof wrap.
+
+## 3. Concrete Blender actions
+
+- Rebuild the central chassis from a single rectangular box into a fabricated crawler body: taper or step the side masses, bevel structural edges at real scale, and add recessed seams where panels genuinely meet.
+- Preserve the two stadium-track silhouettes, but enlarge and brighten the steel hubs enough to survive this camera. Give the grousers stronger height, spacing, and edge highlights without turning them into evenly sprinkled blocks.
+- Cut the hopper fully through the top shell with a Boolean, then model four distinct sloped steel walls and a visibly thick rim. Darken the bottom cavity while keeping the wall planes readable. Add localized abrasion and accumulated dirt inside the well.
+- Replace the yellow square extrusion with a thinner cab-roof wrap conforming to the crawler structure. Use separate painted-metal frame pieces, a narrow dark gasket, and a recessed dark glass pane over a cut tub.
+- Reduce the yellow wrap’s saturation or weather it selectively so it reads as coated industrial metal, not molded plastic.
+- Rebuild the boom as a thick tapered steel fabrication with a boxed or tubular section, reinforced root, visible pivot pin, bearing housings, and one hydraulic cylinder or actuator.
+- Route hydraulic hoses as curves with real thickness and fittings touching ports at both ends.
+- Replace the pale terminal blob with an identifiable tool assembly: mounting collar, steel tool body, and a clearly shaped drill, breaker, or cutter bit. Give the tool a darker machined-metal value than the current beige form.
+- Add weld beads, countersunk fasteners, or gasket seams only at genuine interfaces: hopper rim, cab frame, boom bearing, access panels, and track housings.
+- Separate chassis paint, exposed steel, glass, rubber seals, and track material in both color and roughness. Use directional brushing on the boom and hubs; reserve rubber response for track pads and seals.
+- Add restrained curvature-driven edge wear to exposed corners, cavity dirt around the hopper and running gear, and one deliberate off-center repair plate or operational stencil.
+- Recheck the asset at exactly this 120-pixel-per-cell Works view after each major geometry pass. The hopper, cab glazing, track hubs, boom pivot, and tool type must read without a close studio crop.
+
+## 4. Verdict
+
+**REVISE**
+
+The framing is valid, but the rover remains a gray box/plate assembly with an oversized yellow plastic-looking frame and an under-resolved boom. Its tracks establish the crawler category, yet the asset does not presently clear the Hitch-plus floor.

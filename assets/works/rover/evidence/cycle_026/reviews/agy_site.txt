@@ -1,0 +1,44 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 26) ΓÇö Site View Review
+
+**Image Reviewed:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_026/review_1to1/works_site_1to1.png) (glanced at [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_026/works_site.png))  
+**Framing:** Valid (Orthographic top-down site view on pad, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Every Obvious Defect From This Site View
+
+* **Yellow Postage-Stamp / Toy Square Cab:** The yellow cab roof reads at 22 px as a flat, monolithic yellow square block stamped onto the forward-center deck. Because the cab window/glazing is completely lost and the yellow lacks internal structural division or framing relief, it pops as a bright sticker/toy block rather than an integrated armored operator cab.
+* **Starboard Track Swallowed by Pad:** While the port track catches a faint upper outline, the starboard (lower) track belt has negative contrast against the dark brown site ground, causing the lower stadium track to be swallowed into the pad and shadow. The crawler fails to present two distinct, balanced continuous track loops.
+* **Fragmented Multi-Piece Read (`ONE_BODY` Failure):** The vehicle does not resolve as a single cohesive heavy mining crawler. Instead, it breaks into three disjointed visual chunks: a dull gray rear slab with a black notch, a floating yellow square, and a forward gray peg.
+* **Flat 2D Well Cutout:** The excavation hopper well reads as a flat 2D black rectangular bite out of the chassis slab rather than a recessed mechanical cavity with depth gradients or rim highlights.
+* **Under-Articulated, Low-Offset Boom:** The boom arm projects almost straight forward with minimal lateral offset, lacking clear negative-space separation from the front hull. The cutter bit at the tip blurs into an indistinct pale smudge rather than reading as a distinct industrial cutter head.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+From [planform_report.json](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_026/planform_report.json):
+
+* **`TRACK_CONTRAST_STARBOARD` (-14.28) & `TRACK_CONTRAST_PORT` (7.59) [Floor >= 18.0]:** Severe contrast deficit against the site pad, particularly on the starboard side where contrast is negative, obscuring track loop definition.
+* **`TRACK_OUTERMOST_PORT` (0.3860) & `TRACK_OUTERMOST_STARBOARD` (0.3852) [Floor >= 0.8000]:** Track outer lips do not reliably form the outer perimeter of the silhouette at this resolution.
+* **`CAB_PANE` (0.0019) [Floor >= 0.0200]:** Cab glazing is completely obliterated at 1:1 scale, leaving the cab as an undivided yellow square.
+* **`ONE_BODY` (0.6054) [Floor >= 0.9000]:** Vehicle silhouette fragments into separate disconnected color/value patches.
+* **`WELL_IS_A_HOLE` (0.0694) [Floor >= 0.2400]:** Well cavity lacks the necessary depth relief and internal shadowing.
+* **`BOOM_OFFSET` (0.1430) [Floor >= 0.1500]:** Boom arm offset is insufficient, reducing readable asymmetry.
+* **`LIVERY_SAT_RENDERED` (0.2135) [Floor >= 0.3000]:** Rendered yellow livery saturation falls below target floor under site lighting.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Widen & Brighten Outer Track Lips:** Widen the outer track guard/lip geometry and increase its metallic specular highlight value so that both port and starboard tracks present a crisp, continuous 1 px light-catching outer rim against the dark terrain.
+2. **Break Up the Yellow Cab Block:** Inset the yellow livery within a dark structural steel bezel/collar, and widen/darken the cab visor/glazing geometry so the window reliably resolves at 22 px to eliminate the postage-stamp read.
+3. **Chamfer Well Rim & Deepen Cavity:** Add a top chamfer/bevel along the hopper lip to catch directional light and deepen the internal cavity floor with ambient occlusion to give the dark well unmistakable volumetric depth.
+4. **Increase Boom Offset & Notch Separation:** Shift the boom arm further starboard and carve out a 1ΓÇô2 px negative-space notch at the boom mount to clearly detach the arm from the front hull; sharpen cutter bit geometry and value contrast.
+5. **Unify Chassis Deck & Contact Shadowing:** Bridge the central hull and track housings with structural deck bevels and deepen ground contact shadows to visually tie the crawler into a single cohesive vehicle silhouette.
+
+---
+
+### (4) Verdict
+
+**REVISE**

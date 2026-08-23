@@ -1,0 +1,24 @@
+You are reviewing one still of the Asteroid Works rover (PQ-131.01) for SpaceFace.
+
+This mine also has a site register at ~19 px per cell. Open the image at original resolution with the file reader (do not use a thumbnail):
+
+C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_003\works_site.png
+
+Also open this 1:1 crop of the same still:
+
+C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_003\review_1to1\works_site_1to1.png
+
+The rover is supposed to be tiny here (~22 px). That is valid works_site framing. Do not INVALID_FRAMING because it is small. Judge only what a player can read at that size: silhouette job (tracked mining crawler vs yellow square), tracks as dark bands, well as a dark bite, boom as an offset finger. If it is just a yellow postage stamp, that is a defect.
+
+If the camera is inside a cabin, or this is a studio three-quarter, reply INVALID_FRAMING and stop.
+
+Then list:
+1. Every obvious defect a player would notice FROM THIS SITE VIEW at ~19 px/cell. Silhouette, toy/clay/card/box. If you skip an obvious toy/box/postage-stamp read, the review is a fail.
+2. Each mandatory MTX defect still readable at this tiny size (docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md). Works camera.
+3. What to build next, concrete Blender actions that help THIS site silhouette, not cabin furniture.
+4. Verdict: KEEP | REVISE | REVERT.
+
+Compare against a 2026 A-list industrial vehicle icon at map size, and against flight ships in the same game. A yellow square is REVISE.
+
+Do not praise process, triangle count, or iteration number.
+Read-only. Do not edit files. Print the full review as your final message.

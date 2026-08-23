@@ -1,0 +1,43 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 29) ΓÇö Site View Review
+
+**Image Reviewed:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_029/review_1to1/works_site_1to1.png) (glanced at [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_029/works_site.png))  
+**Framing:** Valid (Orthographic top-down site view on pad, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Every Obvious Defect From This Site View
+
+* **Hollow C-Bracket / Disjointed Chassis (`ONE_BODY` Failure):** At ~22 px, the crawler reads like a hollow gray horseshoe/bracket surrounding a black cutout, flanked by two detached stadium loops. It fails to read as a single cohesive heavy mining vehicle.
+* **Track Lip Dropout & Starboard Ground Blending:** The outer lips of the stadium tracks fail to catch a crisp, continuous 1 px light highlight. On the starboard (lower) track, the outer edge drops out and blends directly into the dark brown pad terrain.
+* **Flat Black Hole Well:** The excavation hopper well reads as a flat 2D pitch-black punch-hole rather than a deep, mechanical cavity with bevel highlights and volumetric depth.
+* **Muddy / Desaturated Livery Paint:** The yellow side paint is rendered so dark and desaturated that it reads as a murky olive-gray smudge next to the boom root rather than crisp high-visibility industrial side paint.
+* **Boom Arm Ridge & Offset Definition:** The boom arm lacks sufficient lateral clearance and ridge shading against the forward hull shoulder, causing the cutter bit to read like a detached light dot rather than a tool mounted on an offset articulated finger.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+From [planform_report.json](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_029/planform_report.json):
+
+* **`ONE_BODY` (0.5355) [Floor >= 0.9000]:** Body fractures into isolated visual fragments and voids instead of a solid unified crawler mass.
+* **`TRACK_CONTRAST_STARBOARD` (-13.7100) & `TRACK_CONTRAST_PORT` (11.7714) [Floor >= 18.0]:** Outer track edges fail required contrast against the site pad surface (severe blending on starboard).
+* **`TRACK_OUTERMOST_PORT` (0.3860) & `TRACK_OUTERMOST_STARBOARD` (0.3899) [Floor >= 0.8000]:** Outer track lips fail to consistently define the outer hull boundary.
+* **`LIVERY_SAT_RENDERED` (0.0129) [Floor >= 0.3000]:** Rendered yellow livery saturation is completely crushed under site lighting.
+* **`WELL_IS_A_HOLE` (0.0694) [Floor >= 0.2400]:** Hopper well cavity lacks sufficient depth relief and internal shading gradient.
+* **`BOOM_OFFSET` (0.1463) [Floor >= 0.1500]:** Boom arm geometry lacks required structural offset from the hull.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Bridge Hull Mass to Tracks:** Add solid structural deck plates and gusset transitions connecting the central chassis to the track sponsons to eliminate the hollow C-bracket look and unify `ONE_BODY`.
+2. **Raise & Highlight Outer Track Lips:** Flange and bevel the outer steel rims of both stadium track guards with a higher metallic/specular response so they consistently catch a sharp 1 px edge highlight against the ground.
+3. **Bevel Well Rim & Add Floor Relief:** Add a prominent top bevel/chamfer to the hopper well rim to catch top directional light, and elevate internal well floor geometry to provide readable cavity depth rather than a flat black hole.
+4. **Boost Livery Saturation & Material Response:** Increase the basecolor saturation and tuning on the yellow side paint material so it registers as vibrant construction paint under site lighting.
+5. **Thicken & Offset Boom Arm:** Increase the lateral offset of the boom pivot and sharpen its upper spine ridge to cast a distinct 1 px shadow line separating the boom arm from the main hull.
+
+---
+
+### (4) Verdict
+
+**REVISE**

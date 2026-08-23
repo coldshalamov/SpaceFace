@@ -1,0 +1,62 @@
+I have launched the pixel grid analysis tool and am waiting for the command to return the detailed values.
+### Visual Review: Asteroid Works Rover (`works_site` View, Cycle 005)
+
+**Files Reviewed:**
+- [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_005/review_1to1/works_site_1to1.png) (320├ù320 crop at 1:1 pixel scale)
+- [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_005/works_site.png) (1920├ù1080 site overview, ~19 px/cell grid)
+
+---
+
+### Framing Check
+- **Camera:** Tilted top-down site view (~19 px/cell site grid, rover ~22 px).
+- **Status:** **VALID_FRAMING**.
+
+---
+
+### (1) Obvious Defects From This Site View
+
+1. **Yellow Postage-Stamp / Flat Block Dominance:**
+   - At site resolution (~22 px total bounding box), the asset is visually dominated by a flat, high-saturation yellow rectangular field (`RGB ~244, 198, 65`). It reads primarily as a bright yellow postage stamp or 2D icon rather than a heavy industrial 3D vehicle.
+2. **Track-to-Terrain Bleed:**
+   - The port and starboard caterpillar tracks (`RGB ~70ΓÇô80, 55ΓÇô60, 25ΓÇô30`) have very low contrast against the dark background terrain tile (`RGB ~45ΓÇô50, 32ΓÇô36, 15ΓÇô18`). 
+   - Without bright idler hubs or drive sprockets at the track ends, the tracks sink into the terrain shadows, leaving the yellow chassis floating without a grounded, heavy crawler footprint.
+3. **Boom Merges into Chassis Body:**
+   - The forward starboard boom arm does not have sufficient negative space or shoulder separation from the main cab deck; it reads as an asymmetric yellow bulge/protrusion rather than an articulated mining arm.
+   - The cutter head bit at the tip resolves to only 1ΓÇô2 muted grayish pixels with low luminance contrast, failing to read clearly as a heavy rotating cutting tool.
+4. **Hopper Well Reads as a Raw Cut Notch:**
+   - The aft hopper cavity resolves as a dark 2├ù2 pixel slot without visible rim lip thickness or an aft retaining tailgate, reading more like an open fork or missing polygon than an enclosed, deep payload bin.
+5. **Cab Window Reads as a Punched Hole:**
+   - The cab window is an isolated 1-pixel dark puncture in the yellow plate lacking a structural frame border or glass specular highlight.
+
+---
+
+### (2) MTX Contract Defects Readable at Site Scale
+
+- **MTX-46 (Forbidden Reads):** Violates the forbidden "plastic toy / yellow postage stamp / CAD blockout" read due to unbroken yellow albedo fields across the hull.
+- **MTX-55 (Role Silhouette at Small Scale):** Fails to unmistakably communicate "tracked industrial mining crawler" at ~22 px; the crawler tracks and cutter bit lack the silhouette clarity and contrast needed against dark asteroid soil.
+- **MTX-56 (Value Hierarchy):** The three-value hierarchy (dark mechanical recesses, mid structural paint, high-contrast hardware accents) is collapsed. Solid saturated yellow overpowers the intermediate steel and mechanical deck values.
+- **MTX-03 / MTX-04 (Readable Volume & Wall Thickness):** Hopper well and cab openings read as 2D color dropouts rather than 3D geometric cavities with visible structural rim coaming.
+- **MTX-65 (Role-Specific Massing):** Track endpoints lack defined sprocket/idler masses, and the mining boom lacks a distinct root pivot shoulder.
+
+---
+
+### (3) Concrete Blender Actions to Fix Site Silhouette
+
+1. **High-Contrast Track Sprockets & Idlers:**
+   - Model distinct, brighter steel drive sprockets at the aft ends and raised idler hubs at the fore ends of the track sponsons (using bare metallic steel material) so the track silhouette punches crisply against dark terrain tiles.
+2. **Carve Negative Space at the Boom Root:**
+   - Cut a 0.08ΓÇô0.12 wu notch/channel between the central cab and the starboard boom shoulder to physically separate the arm from the main hull mass in top-down silhouette.
+3. **Scale and Contrast the Cutter Head:**
+   - Enlarge the cylindrical cutter bit drum by ~15ΓÇô20% and apply a high-contrast metallic material with a dark carbide pick pattern to make the offset tool finger instantly recognizable at 22 px.
+4. **Enclose and Frame the Hopper Basin:**
+   - Add a raised perimeter coaming lip (0.04 wu) and a structural aft tailgate crossbar across the hopper well ([MTX-04](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L213)) to define an enclosed payload volume.
+5. **Break Dorsal Yellow Masses with Mechanical Insets:**
+   - Inset dark steel radiator grilles, panel gaps, and spine maintenance channels ([MTX-05](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md#L235)) into the large yellow deck plates to eliminate the monolithic yellow stamp read.
+6. **Frame the Cab Window Opening:**
+   - Add a proud 0.04 wu structural metallic frame and dark dielectric pane to the cab roof aperture.
+
+---
+
+### (4) Verdict
+
+**REVISE**

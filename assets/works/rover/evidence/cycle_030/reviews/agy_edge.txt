@@ -1,0 +1,72 @@
+### Framing Check
+**VALID** (works_edge camera; top-down orthographic planform view on edge apron, full rover body in frame; not inside a cabin, not a studio three-quarter).
+
+---
+
+### (1) Obvious Defects From This Works-Edge View
+
+* **Toy / Clay / Card / Box / Gray Plate Aesthetic**: The vehicle reads as a primitive gray box with plates and a snapped-on yellow plastic bracket rather than a heavy industrial asteroid crawler. The hull consists of flat, razor-thin CG card sheets, unfilleted 90┬░ planar boundaries, and featureless extruded boxes.
+* **Side Walls**:
+  * The port side wall tapers forward into an unreinforced, razor-sharp knife edge.
+  * The starboard side wall terminates abruptly at the cab notch.
+  * Both walls are paper-thin vertical gray sheets lacking physical gauge thickness, rolled top coamings, vertical exterior stiffener ribs, structural gussets, and load-bearing sponson ties into the track assemblies.
+  * An empty "tuning-fork" void remains between the forward port track and the cab/deck.
+* **Track Height & Track Assemblies**:
+  * The port and starboard stadium tracks have insufficient vertical height/mass and remain flat, low-profile oval bands.
+  * The inner belt trough is a hollow, flat dark trench with two isolated circular dot/pin markings rather than modeled drive sprockets, idler wheels, track tensioners, roller bogies, or rock scrapers.
+* **Steel Cab House with Yellow Sides/Brow & Dark Pane**:
+  * The cab house is a generic gray box with a bright yellow U-shaped / horseshoe border slapped around the roof/sides and a flat dark rectangular pane cutout.
+  * Yellow reads as a toy plastic square/bracket clipped onto the roof rather than heavy painted steel structural plating on the cab sides and forward protective brow.
+  * Lacks welded seams, beveled/chamfered window framing, angled forward visor geometry, external work-light housings, and sensor/antenna mounting bosses.
+* **Hopper Well**:
+  * A stark, unarticulated black square cutout in the aft deck behind a ribbed sloped ramp.
+  * Surrounded by featureless, flat gray deck plate.
+  * Lacks a heavy intake grizzly sorting grate across the top opening, replaceable internal wear liner plates with bolted flanges, corner gussets, and hydraulic ejector ram mechanisms.
+* **Steel Boom with Dark Ridge & Tool Tip**:
+  * The forward starboard implement is a static, dark/black trapezoidal wedge ending in a blunt beige/tan cone.
+  * It completely lacks an articulated steel boom arm with a distinct dark structural spine/ridge, pivot trunnions, hydraulic lift/tilt cylinders, armored hydraulic lines, and defined carbide cutting teeth or an excavator bucket.
+* **Scar Plate**:
+  * The mid-deck hinge interface consists of two disconnected black rectangular blocks with tiny protruding yellow/gold cylindrical pegs.
+  * Reads as toy snap-connectors or plastic hinge tabs rather than a single continuous, heavy cast-steel scar plate / structural transverse bulkhead.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+* **Toy-Like Flat Albedo & High Contrast**: Stark, unweathered color blocking between uniform flat gray hull plates, pitch-black cavities/tracks, high-saturation yellow cab trim, and beige nose cone.
+* **Lack of Specular Response & PBR Micro-Detail**: Hull plates, track bands, and boom surfaces exhibit flat diffuse reflectance with no metallic sheen, roughness variation, or anisotropic highlights on machined steel edges.
+* **Missing Contact AO & Edge Shading**: Recesses, seams, underside track cowlings, and the scar block joins lack contact ambient occlusion shadowing, making components look like floating, unattached layers.
+* **Zero Weathering**: No regolith dust accumulation in crevices or tread valleys, no grease/hydraulic seepage around hinge pins, and no edge paint chipping or dark primer reveal on the yellow cab.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Hull & Side Wall Reinforcement**:
+   * Extrude side walls to structural steel plate gauge and apply Bevel modifiers across all 90┬░ exterior edges to eliminate knife-edge card boundaries.
+   * Add exterior vertical stiffener ribs, fastener rows, and structural sponsons rigidly anchoring the hull into both track frames.
+   * Infill the hollow void between the port track and cab with recessed mechanical machinery (heat dissipation vanes, hydraulic manifold).
+2. **Steel Cab House with Painted Yellow Armor**:
+   * Rebuild the cab house as an integrated welded steel structure with painted yellow side plating and an angled forward steel brow/sun visor, eliminating the floating yellow plastic roof ring.
+   * Add a beveled pane frame, structural weld fillets at the deck join, and external floodlight mounting brackets.
+3. **Track Assembly Depth & Gearing**:
+   * Increase track assembly vertical profile and depth.
+   * Model physical drive sprockets, guide rollers, tensioner hubs, and heavy grouser cleats inside the track troughs.
+   * Thicken the outer steel retaining lip to catch a continuous specular highlight line.
+4. **Hopper Well Grate & Liners**:
+   * Construct a heavy-duty grizzly sorting grate across the top well aperture.
+   * Model internal bolted wear liner plates, corner gussets, and rear hydraulic ejector cylinder geometry.
+5. **Articulated Steel Boom with Dark Ridge**:
+   * Replace the static dark wedge with a multi-section articulated steel boom featuring a raised dark structural central ridge, cast pivot knuckles, dual hydraulic lift/tilt cylinders, and flexible armored hose bundles.
+   * Model the tool head as a high-specular rotary cutter drum with carbide teeth or a reinforced excavator bucket.
+6. **Continuous Scar Plate**:
+   * Bridge and merge the two disconnected black hinge blocks into a single continuous transverse cast-steel scar plate with heavy trunnion pin bosses and reinforcement ribs.
+7. **PBR Materials & Weathering**:
+   * Configure industrial PBR materials with subtle metallic roughness variation, ambient occlusion maps in seams, and edge wear.
+   * Texture the yellow cab as weathered safety enamel over dark primer with edge chipping, and add subtle regolith dust accumulation in tread recesses and deck crevices.
+
+---
+
+### (4) Verdict
+
+**REVISE**

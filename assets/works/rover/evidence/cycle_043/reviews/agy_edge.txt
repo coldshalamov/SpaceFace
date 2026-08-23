@@ -1,0 +1,71 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down camera framing.
+- **Check**: Camera is neither inside a cabin nor a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate Aesthetic**:
+   - The main hull, side decking, and front transitions consist of flat, featureless untextured gray planar cards and boxy stepped slabs. The vehicle reads as an assembly of cardboard cutouts and plastic toy plates rather than heavy industrial mining machinery.
+   - An unintegrated floating gray cylinder primitive sits on the cab roof.
+
+2. **Track Height (Solid Rubber Belts vs. Wire Loops)**:
+   - The track assemblies lack vertical body height and solid mass. The outer frames read as thin perimeter wire loops/capsules enclosing flat tread ribbons rather than tall, heavy-duty solid rubber belts with substantial cross-sectional profile and drive depth.
+
+3. **Cab House & Yellow Visor Placement**:
+   - The yellow canopy detail is modeled as a thick plastic square/block stuck directly to the cab roof/front face.
+   - The cab house lacks proper structural yellow framing where needed and should feature yellow strictly as a thin visor past/over the glass rather than a roof-mounted plastic slab.
+
+4. **Dark Canopy Pane**:
+   - There is no clearly defined, visible dark canopy glass pane; the front of the cab reads as an undifferentiated dark block obscured by the yellow roof block.
+
+5. **Drill Boom, Steel Spine & Bit Body**:
+   - The boom arm is a flat, uniform light-gray bar matching the hull color rather than a darker structural housing.
+   - Missing a raised steel spine running down the center length of the boom.
+   - The drill tip terminates in a small yellow toy block instead of a defined, machined steel bit body.
+
+6. **Hopper Well**:
+   - The hopper cavity reads as a shallow cutout card with an asymmetrical stepped ribbed slope and flat dark floor plate rather than an industrial sloped funnel well with reinforced wear plates.
+
+7. **Side Walls**:
+   - The side walls connecting the hull body to the track sponsons are flat, unarticulated gray plates without bevels, structural ribs, panel seams, or depth.
+
+8. **Scar Plate**:
+   - Missing a dedicated, heavy-duty reinforced scar wear plate across the leading front edge of the hull chassis.
+
+---
+
+### (2) MTX Defects (Play Size)
+
+- **Value Crushing & Contrast**: The dark cab house, dark hopper floor, and drop shadows collapse into flat, unreadable dark pools against the uniform pale gray chassis cards at 1:1 play scale.
+- **Silhouette & Edge Flatness**: The planar gray plates lack specular edge highlights, bevels, or panel separation, resulting in a flat cardboard cutout silhouette.
+- **Boom & Bit Readability**: The pale gray boom arm blends visually into the front hull; the yellow tip is too small and reads as a pixel artifact rather than a prominent mining tool.
+- **Material Realism**: The yellow accents appear as toy-like plastic stamp-ons rather than painted industrial steel or functional visor elements.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Boom & Bit Overhaul**:
+   - Assign a darker structural material to the main boom arm.
+   - Extrude a raised steel spine along the top centerline of the boom.
+   - Replace the yellow tip block with a machined steel bit body and mechanical collar assembly.
+2. **Cab House & Visor Restructure**:
+   - Model a clearly visible, recessed dark canopy glass pane on the cab front.
+   - Position a crisp, thin yellow visor line extending past the dark glass pane, eliminating the thick yellow plastic square on the roof.
+   - Remove the loose floating cylindrical primitive from the cab roof.
+3. **Thicken Rubber Tracks**:
+   - Increase track cross-sectional thickness and height inward to represent heavy solid rubber crawler belts rather than thin loop shells.
+   - Recess the track wells and define drive sprocket and idler wheel geometry.
+4. **Rework Hopper Well**:
+   - Deepen the hopper well cavity, replacing the stepped card ramp with symmetrical sloped chute walls and heavy wear-plate ridges.
+5. **Detail Side Walls & Front Hull**:
+   - Add bevels, chamfers, structural panel seams, and reinforcing ribs across the flat gray side walls.
+   - Add a dedicated heavy-gauge steel scar plate across the leading edge of the front chassis.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,56 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 31) ΓÇö `works_site`
+
+---
+
+### Framing Check
+**VALID** (Orthographic site view at ~19 px/cell scale; rover is ~22 px tiny footprint).
+
+---
+
+### (1) Defects From This Site View
+
+1. **Unbalanced "Tuning Fork" / Asymmetric Claw Silhouette**:
+   * The port (upper) stadium track extends forward into empty space with a large negative cutout between the track and the cab, giving the front half an open "C"/"E" claw read rather than a unified, dense mining chassis.
+2. **Flat Gray Deck Plate / Box Read**:
+   * The rear and central hull reads as a flat, unsegmented gray slab with hard rectangular corners, retaining a blocky cardboard/toy-stamp silhouette between the tracks.
+3. **Dual Void Ambiguity (Well vs. Cab Window)**:
+   * The rear hopper well and the cab interior/windshield read as two nearly identical dark/black square bites punched side-by-side into the gray deck, causing confusion between the cargo hopper and the cockpit.
+4. **Isolated Yellow Sliver Brow**:
+   * The yellow livery is reduced to a narrow 1ΓÇô2 px vertical strip on the front edge of the cab. While it avoids the yellow postage-stamp defect, it currently reads as an unanchored floating yellow line stuck to the side of a black cutout rather than a structural cab visor over a solid cab body.
+5. **Boom Shaft Disconnection**:
+   * The dark body/ridge of the steel boom blends directly into the dark ground/shadow, causing the bright drill bit tip to read as a detached floating dot rather than a continuous articulated tool arm extending from the chassis.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+1. **Lost Boom Ridge & Arm Contrast**:
+   * The steel boom lacks top-edge specular relief or value separation against the asteroid floor; the structural arm drops below readable threshold, leaving only the bit visible.
+2. **Track Belt Flatness**:
+   * While the 1 px outer stadium lips catch specular highlight cleanly, the inner track belt is a flat dark trench devoid of subtle grouser/pad tick marks.
+3. **Zero Cab Glass Glint**:
+   * The cab pane has no specular response or glass shader sheen, reading as an empty hole indistinguishable from the hopper well.
+4. **Lack of Deck Occlusion & Bevel Highlights**:
+   * The edges of the main deck and hopper rim do not catch 1 px specular highlights or cast contact ambient occlusion, exaggerating the flat polygon look.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Infill Front Port Chassis Gap**:
+   * Add recessed mechanical geometry (dark engine grating, hydraulic runs, or chassis bridge plates) into the notch between the upper track and cab to solidify the core silhouette while retaining the stadium track loop.
+2. **Articulate the Boom Root & Arm Highlight**:
+   * Add a distinct raised mounting boss at the boom pivot and a thin, high-value steel top-edge bevel along the boom finger so the dark spine separates cleanly from ground shadow before reaching the bright bit.
+3. **Differentiate Hopper Well from Cab Pane**:
+   * Add a 1 px raised/beveled steel lip around the hopper opening and sloped interior sidewalls.
+   * Model a solid beveled cab housing beneath the yellow brow and give the windshield a subtle reflective glint to eliminate the raw black cutout read.
+4. **Chamfer & Detail Rear Deck**:
+   * Add 45-degree chamfers to the rear chassis corners and cut 1 px panel/seam insets across the rear plate to break up the gray box stamp.
+5. **Add Track Tread Micro-Ticks**:
+   * Inset subtle normal/geometry grousers on the track loop centers to catch subpixel highlights along the belt run.
+
+---
+
+### (4) Verdict
+
+**REVISE**

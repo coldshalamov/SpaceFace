@@ -1,0 +1,52 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 19) ΓÇö `works_edge`
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+* **Toy / Clay / Card / Box / Gray Plate Read:** The rover currently reads as a primitive gray blockout with flat yellow stickers slapped on top. The entire silhouette is dominated by sharp 90-degree boolean cutouts and monolithic gray slabs lacking mechanical mass, structural framing, panel seams, or industrial hierarchy.
+* **Side Walls & Fenders:** The side sponsons are flat, unchamfered rectangular gray blocks. The yellow strips placed on top read as flat toy stickers/decals rather than heavy-gauge, recessed safety access panels bolted onto a structural steel chassis.
+* **Cab House:** The cab is a hollow, razor-thin cardboard-style cutout with a square roof hole. It lacks structural pillar thickness, roll-cage framing, armored visors, cowl bevels, grab handles, or external sensor/light fixtures.
+* **Hopper Well:** The hopper is an unarticulated rectangular boolean hole dropped into the rear hull. It lacks interior sloped deflector plates, liner wear-ribs, reinforced top-lip rims, hinge lugs, or hydraulic lift points.
+* **Boom & Linkage:** The midsection linkage consists of rudimentary yellow pins stuck into black brackets. It lacks hydraulic cylinders, actuator housings, fluid lines, and structural mounting clevises.
+* **Scar Plate / Snout:** The front tool is a low-poly tapered gray wedge stuck directly onto the front-right body. It shows flat faceting, no articulated mounting bracket/push-frame, no hydraulic rams, and no hardened carbide cutting teeth or wear plates.
+* **Track Height & Assemblies:** The tracks appear as thin, simplified extruded bands with generic circular hub insets. They lack individual tread links/grousers, track tensioners, bogie clusters, and visible drive sprockets engaging the tread.
+
+---
+
+### (2) MTX Defects (Play Size / Works-Edge)
+
+* **Monochromatic Gray Value Slump:** Chassis, cab structure, and front scar plate share the same flat, medium-gray diffuse tone, flattening the silhouette into an undifferentiated mass at gameplay zoom.
+* **Unanchored Safety Panels:** The yellow safety zones lack dark perimeter gaskets, bevel highlights, or bolt borders, causing them to read as floating bright pixel smudges instead of painted steel hazard covers.
+* **Hopper Void Contrast:** The hopper interior is an unlit, flat black void lacking rim highlights, depth falloff, or material separation from the surrounding hull.
+* **Zero PBR / Material Differentiation:** No discernible material contrast between cast-iron chassis framing, sheet-metal access panels, hardened cutting steel, and rubber/steel tread pads.
+* **Track Silhouette Loss:** Outer tread teeth blur into the ground/shadow plane at play distance due to lack of distinct grouser geometry and ambient occlusion.
+
+---
+
+### (3) Concrete Blender Actions (Exterior Heavy Machinery Only ΓÇö No Cabin Furniture)
+
+1. **Hull & Sponsons:**
+   * Apply bevel modifiers to all sharp 90┬░ box edges.
+   * Model recessed panel lines, bolt flanges, lifting eyes, and structural side-skirt steps along the gray flanks.
+   * Recess the yellow safety panels into dedicated structural steel frames with dark perimeter relief and corner mounting bolts.
+2. **Cab House:**
+   * Thicken the structural pillars and add a sloped overhead protective rollover brow/cowl.
+   * Add external industrial hardpoints: beacon/work-light pods, antenna mounts, and forward sensor housings.
+3. **Hopper Well:**
+   * Model interior sloped chute geometry with heavy-duty wear ribs.
+   * Add a reinforced, beveled top perimeter flange and rear hinge/pivot pivot blocks.
+4. **Boom & Scarifier Assembly:**
+   * Replace the single-piece wedge with an articulated heavy dozer/scarifier blade featuring individual reinforced teeth/bits.
+   * Model functional hydraulic cylinders (cylinder body, chrome rod, pivot pins, and hydraulic hose fittings) connecting the tool to chassis mounting ears.
+5. **Track Assemblies:**
+   * Model distinct grouser teeth/tread pads and guide horns along the track perimeter.
+   * Detail the drive sprockets and road wheel bogies with heavy hub bolts and tensioning mechanisms.
+6. **Material Setup:**
+   * Separate structural cast dark steel, machined mechanical joints, and powder-coated yellow safety panels into distinct shader slots with appropriate roughness and edge-wear maps.
+
+---
+
+### (4) Verdict
+
+**REVISE**

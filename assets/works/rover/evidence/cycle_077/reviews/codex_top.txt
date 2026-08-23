@@ -1,0 +1,49 @@
+1. Obvious defects at play size
+
+- The silhouette reads as a rectangular chassis placed between two tracks, not a convincingly constructed industrial rover. The body remains notably box/card-like and below the Hitch-plus floor.
+- Both tracks have the correct stadium-belt outline, but they are nearly featureless dark masses. Their thin raised steel outer lips do not catch enough light to remain reliably visible in shadow.
+- The cab house is insufficiently separated from the mid-steel tub. Its roof and surrounding plates merge into a stack of flat brown/gray rectangles.
+- The dark windshield band is present, but weak and cramped. The yellow visor line is visible beyond the glass, yet it risks reading as a yellow bar attached to the cab because the intervening glass lacks enough width and specular distinction.
+- The hopper well reads as a dark opening distinct from the windshield, but its rim and wall thickness are weak. It still resembles a black rectangular pane in places rather than an unmistakable deep steel well.
+- The boom is offset and has a dark arm, but the raised steel spine is too low-contrast and thin to establish a strong load-bearing connection.
+- The bit body reads as a simple narrow plate with a tiny bright end. It lacks enough sectional construction to read as substantial drilling hardware.
+- The rover is dominated by flat brown, gray, and black plates. Material separation is muddy; steel, painted structure, glass, and rubber do not produce clearly different highlights.
+- Small square markings on the central body read like stickers or toy controls rather than manufactured interfaces.
+- Overall, the visible construction remains toy-like: stacked boxes, cards, gray plates, shallow seams, and weakly differentiated materials.
+
+2. Visible MTX defects
+
+- **MTX-01:** Edge highlights are too weak and inconsistent to demonstrate scale-correct bevels with repaired weighted normals.
+- **MTX-02:** The central body lacks authored cross-section changes; it reads primarily as rectangular masses.
+- **MTX-03 / MTX-04:** The hopper is dark, but its shell thickness and internal volume are not sufficiently legible at this size.
+- **MTX-05:** Panelization reads as plates placed on a box, with few convincing gaps, overlaps, or structural seams.
+- **MTX-11 / MTX-12:** No readable routed service connection or interface-specific fastening supports the boom and bit assembly.
+- **MTX-31 / MTX-33 / MTX-35 / MTX-36:** Rubber, painted tub, bare steel, and glass do not have sufficiently distinct roughness, metallic response, or highlight behavior.
+- **MTX-39 / MTX-40:** Cavity dirt and edge wear do not visibly reinforce construction; the surfaces instead appear uniformly brown and dim.
+- **MTX-46:** The supported view still contains obvious toy, box, card, and gray-plate reads.
+- **MTX-55:** The broad tracked-rover role survives at 120 px, but the chassis identity depends mostly on the two tracks and rectangular boom.
+- **MTX-56:** Dark wells, mid steel, and yellow accent technically provide three values, but the mid-value body hierarchy is compressed and muddy.
+- **MTX-57:** Hopper wall thickness is not clearly demonstrated.
+- **MTX-59:** The major pieces remain identifiable, but the windshield, steel spine, material distinctions, and bit construction are too weak at play distance.
+- **MTX-61:** Plate joints lack readable gasket, weld, countersink, or equivalent manufactured joint language.
+- **MTX-63:** There is insufficient visible meso-scale construction; much of the detail reads as tiny markings over broad flat surfaces.
+- **MTX-66:** Glass, painted metal, bare steel, and rubber do not show manufacture-specific specular behavior.
+- **MTX-67:** The yellow accent is controlled, but the weak windshield separation lets it approach an isolated yellow bar rather than a designed visor beyond glass.
+
+3. Concrete Blender actions
+
+- Rebuild the cab and tub as connected shaped shells with changing cross-sections, shoulders, and recessed joints—not overlapping rectangular slabs.
+- Deepen the hopper boolean, add a clearly illuminated steel rim, and extrude visible inner walls so it reads as a genuine hole at 120 px.
+- Widen and expose the windshield band slightly. Use thin glass over a dark cavity, a metal frame, and a distinct low-roughness highlight. Keep the yellow visor as a separate narrow element beyond the glass.
+- Preserve the solid dark stadium belts, but add narrow raised steel lips along their outer edges. Give those lips a brighter brushed-steel response without creating a continuous emissive outline.
+- Apply scale, add restrained two-segment bevels, shade by angle, and repair weighted normals so major steel edges catch thin highlights while broad faces remain flat.
+- Give the boom arm a tapered structural section. Raise and widen the steel spine enough to survive play-size downsampling, then terminate it through a modeled collar or pinned joint at both the chassis and bit body.
+- Rebuild the bit body as a stepped steel housing with a real cross-section, collar, and replaceable bright cutting tip. Avoid a flat card, yellow hook, or tan mushroom silhouette.
+- Add visible joint language only at real interfaces: hinge pins, countersunk fasteners, weld seams, clamps, and boom pivots.
+- Separate materials decisively: matte dark rubber belts, mid-value painted tub, brighter brushed-steel lips/spine/bit, and glossy dark glass.
+- Remove or recess sticker-like square details. Replace them with a small framed service panel, fasteners, or a shallow manufactured recess that remains structural at play size.
+- Improve lighting so the track lips, windshield, hopper rim, boom spine, and bit casing each retain one controlled highlight without lifting the dark wells.
+
+4. Verdict
+
+**REVISE** — the required components are broadly present, but the rover still reads as a brown/gray box assembled from plates between two tracks. The hopper depth, windshield hierarchy, steel track lips, boom construction, bit body, and material-specific highlights must become unmistakable at play size.

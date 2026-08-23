@@ -1,0 +1,32 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 35 ΓÇö `works_site`)
+
+---
+
+### 1. Obvious Defects from Site View (~22 px Scale)
+- **Chassis / Body Read (Gray Stamp / Cassette Defect):** The central hull reads as a flat, desaturated pale-gray rounded rectangular slab (resembling a cassette tape or plastic key fob) rather than a heavy industrial mining crawler.
+- **Missing Yellow Identity & Visor:** The main yellow hull identity is virtually absent across the body. Instead of a distinct dark windshield band hooded by a crisp, thin yellow visor, the center presents an ambiguous dark square cavity punched into the gray slab with no readable visor silhouette.
+- **Muddy Well / Cavity Definition:** The well does not read as a distinct dark bite separate from the windshield; the cabin opening and recessed gut blend into a single dark hole next to a faint, muddy hourglass indentation.
+- **Boom Reads as a Lollipop / Peg:** The mining arm appears as a blunt tan/yellowish mushroom peg or lollipop sticking out to the right, lacking the articulation of an offset dark hydraulic arm, narrow bright metal spine, and crisp cutting bit.
+- **Track Read (Hollow Wireframe / Paperclips):** The tracks appear as thin, hollow white/gray loop outlines surrounding empty black voids rather than solid, heavy stadium crawler belts grounded in shadow with subtle top-edge steel lip highlights.
+
+---
+
+### 2. MTX Defects Readable at this Size
+- **Albedo / Paint Distribution:** Lack of primary industrial yellow on the hull shell; yellow is reduced to two tiny mustard spots at the boom root, leaving the hull as uniform dull gray.
+- **Material Separation:** Zero contrast between structural armor plates, mechanical undercarriage, and cabin glass.
+- **Track Shading & Specularity:** Track loops have uniform 1-px perimeter specular ringing instead of directional anisotropic highlights on the steel guide lips and dark, occluded rubber/steel tread links.
+- **Boom Materials:** Boom stalk and tip share an indistinct muddy tan tone without the high-contrast bright metal spine and bit against a dark arm frame.
+
+---
+
+### 3. Concrete Blender Actions
+1. **Re-establish Yellow Industrial Palette:** Assign the primary industrial yellow material to the top hull / cabin armor plates, reserving matte dark charcoal for the recessed frame, undercarriage, and track wells.
+2. **Rebuild Visor & Windshield Separation:** Form a distinct, raised horizontal yellow visor overhang positioned directly in front of a narrow, dark, glossy windshield slit to catch a crisp 1-px top highlight and cleanly separate the cab from the body.
+3. **Carve Distinct Well Geometry:** Deepen and sharply define the recessed mechanical well bite, ensuring it does not visually merge with the forward cabin glass aperture.
+4. **Solidify Stadium Track Meshes:** Fill the hollow track cavities with solid dark road wheels / sprockets and occluded shadow; tighten the outer tread mesh so only the raised steel lips catch 1 px of glancing light.
+5. **Re-articulate Boom Assembly:** Rebuild the offset boom with a dark matte structural arm, a thin, high-specular metal spine running along the top, and a sharp, bright geometric mining bit at the tip to eliminate the bulbous peg silhouette.
+
+---
+
+### 4. Verdict
+**REVISE**

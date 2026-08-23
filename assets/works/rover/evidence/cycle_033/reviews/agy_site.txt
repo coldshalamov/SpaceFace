@@ -1,0 +1,63 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 33) ΓÇö `works_site`
+
+---
+
+### Framing Check
+**VALID** (Orthographic top-down site view at ~19 px/cell scale; rover occupies expected ~22 px footprint).
+
+---
+
+### (1) Defects From This Site View
+
+1. **Solid Yellow Stamp / Missing Dark Windshield**:
+   * The yellow livery renders as a solid, flat yellow block/crescent attached to the front-right of the cab. Because there is no dark recessed cockpit glass or glint visible behind or beneath it, the yellow reads as an applied yellow postage stamp / toy brick rather than a functional visor hood framing an enclosed industrial cab.
+2. **Monolithic Gray Stamp / Boxy Hull Read**:
+   * The central hull and rear deck form a flat, unbroken gray slab between the tracks. It reads as a gray rectangular stamp rather than an articulated, heavy-duty mining crawler chassis.
+3. **Starboard Track Trough Washout & Weak Outer Boundary Dominance**:
+   * While the port (top) track loop exhibits a thin bright lip with internal shadow, the starboard (bottom) track interior is severely washed out and fails to hold shadow contrast against the lower chassis. Neither track loop asserts full silhouette dominance across the vehicle's lateral edges.
+4. **Shallow Hopper Cavity**:
+   * The cargo well appears as a flat dark square cutout on the deck plate rather than a deep, volumetric ore hopper with occluded shadow depth and crisp rim bevels.
+5. **Faint Boom Spine Definition**:
+   * The offset boom finger and bright drill bit are discernible, but the connecting steel structural arm lacks a sharp specular spine highlight, weakening the mechanical read of the tool arm at 1:1 pixel scale.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+1. **`CAB_PANE` Failure (0.0074 vs. ΓëÑ 0.02)**:
+   * Cockpit glass area collapsed to near-zero; the dark windshield is absent, leaving only the solid yellow visor stamp.
+2. **`TRACK_CONTRAST_PORT` (12.02) & `TRACK_CONTRAST_STARBOARD` (-9.64 vs. ΓëÑ 18.0)**:
+   * Insufficient luminance contrast in the track channels; the starboard track trough is completely washed out and brighter than the hull.
+3. **`TRACK_OUTERMOST_PORT` (0.3694) & `TRACK_OUTERMOST_STARBOARD` (0.3647 vs. ΓëÑ 0.80)**:
+   * Track assemblies fail to define the outermost lateral bounds across the length of the hull.
+4. **`WELL_IS_A_HOLE` Failure (0.0694 vs. ΓëÑ 0.24)**:
+   * Depth delta between the cargo well floor and the main deck is far too shallow in the depth pass.
+5. **`LIVERY_SAT_RENDERED` Failure (0.2253 vs. ΓëÑ 0.30)**:
+   * Rendered yellow visor saturation drops below threshold under scene lighting.
+6. **`CAB_IS_RAISED` Failure (0.2698 vs. ΓëÑ 0.28)**:
+   * Cab structure height delta above the main deck remains slightly below required elevation.
+7. **`ONE_BODY` Failure (0.4744 vs. ΓëÑ 0.90)**:
+   * Discontinuous hull/chassis silhouette connectivity metric.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Re-establish Recessed Cab Windshield**:
+   * Inset a dark, low-roughness cockpit glass pane directly behind/beneath the yellow visor geometry so the yellow reads strictly as an overhanging brow over a dark glazed cab.
+2. **Deepen Track Troughs & Darken Belt Albedo**:
+   * Lower the inner track channel geometry on the Z-axis, darken the tread belt albedo/roughness to restore strong shadow contrast (`TRACK_CONTRAST` ΓëÑ 18.0), and widen track loops to dominate the vehicle's lateral silhouette (`TRACK_OUTERMOST` ΓëÑ 0.80).
+3. **Deepen Hopper Well on Z-Axis**:
+   * Drop the cargo well floor deeper into the chassis geometry and sharpen/lip the rim edges to cast strong internal self-shadows (`WELL_IS_A_HOLE` ΓëÑ 0.24).
+4. **Chamfer & Articulate Rear Chassis**:
+   * Add 45┬░ corner chamfers and cut recessed panel grooves into the rear deck plate to break up the flat gray rectangular stamp profile.
+5. **Sharpen Boom Spine Ridge**:
+   * Add a beveled, bright steel spine ridge along the top of the boom arm to ensure a continuous high-value specular line connects the pivot boss to the bright bit.
+6. **Boost Yellow Basecolor Saturation**:
+   * Increase base yellow albedo saturation in the atlas so rendered livery stays ΓëÑ 0.30 saturation after shading.
+
+---
+
+### (4) Verdict
+
+**REVISE**

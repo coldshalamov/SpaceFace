@@ -1,0 +1,44 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 16) ΓÇö Site View
+
+**Files Evaluated:**
+- [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_016/review_1to1/works_site_1to1.png)
+- [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_016/works_site.png)
+
+**Framing:** **VALID** (Orthographic site view; rover occupies ~22 px on the ~19 px/cell site grid; full vehicle in frame, overhead perspective).
+
+---
+
+### (1) Obvious Defects From This Site View (~22 px)
+
+- **Floating "Yellow Postage Stamp" Livery:** The yellow livery reads as two isolated, flat rectangular yellow stickers slapped onto a mid-gray chassis box. Without structural borders, chamfers, or panel breaks, it creates a toy-like postage stamp appearance.
+- **Washed-Out Starboard Track Tread:** The track assemblies fail to read as distinct continuous dark belts flanked by steel end caps. The starboard (lower) track in particular washes out into the mid-tone gray chassis body, losing tread separation and contrast.
+- **Fragmented Chassis Silhouette (`ONE_BODY`):** The vehicle reads as disconnected floating componentsΓÇöseparated track bars, yellow shoulder blocks, center tub, and boom pegΓÇörather than a single solid, heavy industrial mining crawler.
+- **Flat 2D Hopper Well:** The central cargo hopper registers as a flat dark rectangular square cutout rather than a deep, volumetric recessed cavity with rim highlights or internal shelving.
+- **Chunky / Muddy Boom & Bit:** The starboard boom arm extends as a blunt, uniform gray peg with a muddy bluish-gray tip, failing to read clearly as an articulated mechanical arm with a distinct cutter bit.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **`ONE_BODY` (0.3890 vs 0.90 floor ΓÇö FAIL):** Severe visual disconnection and negative-space gap between track units and chassis body.
+- **`TRACK_BAND` (0.1317 vs 0.16 floor ΓÇö FAIL):** Track tread belts lack sufficient continuous visual thickness and presence.
+- **`TRACK_CONTRAST_STARBOARD` (2.4986 vs 18.0 floor ΓÇö FAIL):** Starboard track belt has near-zero contrast against the adjacent hull gray.
+- **`TRACK_OUTERMOST_PORT` & `TRACK_OUTERMOST_STARBOARD` (0.7712 & 0.7708 vs 0.80 floor ΓÇö FAIL):** Track assemblies do not solidly dominate the lateral vehicle envelope.
+- **`WELL_IS_A_HOLE` (0.0943 vs 0.24 floor ΓÇö FAIL):** Insufficient depth delta between hopper cavity floor and deck.
+- **`CAB_IS_RAISED` (0.2362 vs 0.28 floor ΓÇö FAIL):** Cab volume lacks sufficient vertical projection above deck level to produce clear rim lighting separation.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Unify Chassis Hull to Track Sponsons (`ONE_BODY`):** Model solid, deck-flush structural cross-members and fender plating spanning the gaps between the center tub and track carriages so overhead light catches them, eliminating void shadows.
+2. **Darken Starboard Track Belt & Boost End-Cap Specular:** Significantly lower the base color albedo on the starboard track belt texture to restore dark band contrast (`TRACK_CONTRAST_STARBOARD`), and increase specular reflectivity on front idlers and rear drive sprockets.
+3. **Frame and Bevel Yellow Sponson Panels:** Recess yellow hazard panels within dark metallic structural frames and bevel the plate edges to eliminate the floating sticker/stamp look.
+4. **Add Lit Hopper Chamfer & Step Lip:** Add a wide top chamfer to the hopper rim to catch directional lighting and introduce a stepped inner shelf so the well reads as a true 3D cavity.
+5. **Articulate Boom Knuckle & Highlight Bit Tip:** Cut a recessed pivot knuckle at the boom shoulder and assign a high-contrast bright steel/carbide specular highlight to the cutter bit head.
+
+---
+
+### (4) Verdict
+
+**REVISE**

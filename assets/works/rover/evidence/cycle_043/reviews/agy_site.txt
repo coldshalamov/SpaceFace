@@ -1,0 +1,55 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 43 ΓÇö `works_site`)
+
+**Framing Check:** Valid `works_site` orthographic camera framing (~19 px/cell, vehicle at ~22 px scale). The vehicle is fully framed at in-game site resolution. Camera is neither inside a cabin nor a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+1. **Gray Stamp / Floppy Disk Read:** The chassis reads as a flat, desaturated gray rectangular plate/card with an asymmetrical cutout rather than a heavy, rugged 3D tracked mining crawler.
+2. **Yellow Crescent / Hook Defect:** The yellow livery registers as an isolated, curved yellow hook/crescent wrapping awkwardly around the central well/cab junction rather than a crisp, thin forward-projecting yellow visor line shading a dark recessed windshield band.
+3. **Starboard Track Dark Collapse:** The lower (starboard) crawler belt lacks contrast and edge definition against the hull and shadow (`TRACK_CONTRAST_STARBOARD` = 7.20 vs $\ge 18.0$), reading as a muddy, crushed dark strip rather than a solid rubber wall with a crisp 1-pixel steel catch lip.
+4. **Port Track Enclosure:** While outer track dominance improved, the upper track still tends toward a bright perimeter outline framing a dark trough rather than reading as a dense, solid rubber crawler mass with a distinct top catch lip.
+5. **Flattened Cab & Windshield:** The operator cab lacks vertical relief from the mid-steel tub (`CAB_IS_RAISED` = 0.1802 vs $\ge 0.28$), collapsing into a flat dark rectangular square patch flush with the deck.
+6. **2D Punch-Hole Well:** The central well reads as a flat cookie-cutter cutout (`WELL_IS_A_HOLE` = 0.0694 vs $\ge 0.24$) rather than a heavy industrial hopper with raised steel coaming.
+7. **Boom Offset & Tip Blob:** The boom finger lacks sufficient lateral clearance (`BOOM_OFFSET` = 0.1424 vs $\ge 0.15$), lacks a crisp specular steel spine to catch a 1-pixel highlight line, and terminates in a muddy yellow/orange blob instead of a bright, faceted steel bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Boom Lateral Clearance:** `BOOM_OFFSET` = 0.1424 (fails floor $\ge 0.15$) ΓÇö boom arm is tucked too close to the hull centerline.
+- **Starboard Track Contrast:** `TRACK_CONTRAST_STARBOARD` = 7.2046 (fails floor $\ge 18.0$) ΓÇö lower track suffers severe value crushing against the hull shadow.
+- **Starboard Tread Pad Count:** `TREAD_PADS_STARBOARD` = 13.0 (fails floor $\ge 14.0$) ΓÇö insufficient pad definition along the lower belt.
+- **Rendered Livery Saturation:** `LIVERY_SAT_RENDERED` = 0.1070 (fails floor $\ge 0.30$) ΓÇö overall vehicle livery is severely desaturated, driving the monochrome "gray stamp" read.
+- **Depth Relief & Volumetric Cohesion:**
+  - `ONE_BODY` = 0.4439 (fails floor $\ge 0.90$)
+  - `WELL_IS_A_HOLE` = 0.0694 (fails floor $\ge 0.24$)
+  - `CAB_IS_RAISED` = 0.1802 (fails floor $\ge 0.28$)
+  - The chassis, cab, and well remain flattened planar cards lacking 3D stepped relief.
+- **Triangle Budget:** LOD0 triangle count is 20,510 tris (exceeds the 18,000 budget; `triOverBudget`: true).
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Reconstruct Yellow Visor Brow:** Eliminate the curved yellow crescent/hook geometry bordering the well. Model a crisp, thin forward-projecting yellow visor brow line running across the leading edge of the cab roof shading a recessed, dark glazed windshield band.
+2. **Elevate Cab & Deepen Hopper Well:**
+   - Raise the cab height and apply clear roof chamfers to push `CAB_IS_RAISED` $\ge 0.28$.
+   - Deepen the hopper well cavity and add an elevated, chamfered steel coaming collar to achieve `WELL_IS_A_HOLE` $\ge 0.24$ and `ONE_BODY` $\ge 0.90$.
+3. **Offset Boom & Detail Steel Spine / Bit:**
+   - Translate the boom pivot outward laterally to exceed `BOOM_OFFSET` $\ge 0.15$.
+   - Extrude a raised, high-specular steel spine along the upper ridge of the dark boom arm so it catches a clean 1-pixel highlight line.
+   - Replace the yellow tip blob with a bright, faceted machined steel drill bit.
+4. **Boost Starboard Track Separation:**
+   - Adjust starboard track bevels, normal angles, and undercarriage shading to raise `TRACK_CONTRAST_STARBOARD` above 18.0 and ensure $\ge 14$ tread pads are resolved.
+5. **Solidify Track Rubber & Catch Lips:**
+   - Thicken rubber belt cross-sections inward under the steel lips to eliminate the hollow wire loop appearance.
+6. **Decimate LOD0 Geometry:**
+   - Optimize and decimate non-silhouette interior geometry to bring LOD0 below the 18,000 triangle budget limit.
+
+---
+
+### (4) Verdict
+
+**REVISE**

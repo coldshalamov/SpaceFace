@@ -1,0 +1,44 @@
+## Asteroid Works Rover (PQ-131.01 Cycle 27) ΓÇö Site View Review
+
+**Image Reviewed:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_027/review_1to1/works_site_1to1.png) (glanced at [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_027/works_site.png))  
+**Framing:** Valid (Orthographic top-down site view on pad, ~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Every Obvious Defect From This Site View
+
+* **Yellow Postage-Stamp / Toy Blob Cab:** The yellow cab roof reads as a flat, unsegmented blob/sticker stamped onto the starboard forward deck. The window pane (`CAB_PANE`) is completely lost at this resolution, and the yellow lacks a readable surrounding dark bezel, making it pop as a bright toy paint dot rather than an integrated armored operator cab.
+* **Floating / Disconnected Cutter Bit:** The mining bit (the pale cross `+` on the starboard front) visually detaches from the chassis. The boom arm connecting it is swallowed into dark shadows or lacks sufficient thickness, causing the bit to read as a floating icon/sparkle rather than a mechanical tool mounted to an articulated arm.
+* **Severe Track Contrast & Silhouette Dropout:** While the stadium track geometry is present, the track edges suffer from severe contrast loss against the dark ground (particularly starboard), failing to present crisp, balanced 1 px light-catching steel lips that hold the outer crawler silhouette.
+* **Flat 2D Well Void:** The excavation hopper well reads as a harsh, flat black hole punched into the middle of the gray hull plate rather than a deep, structural mechanical cavity with rim bevels and volumetric depth gradients.
+* **Fragmented Vehicle Read (`ONE_BODY` Failure):** The vehicle does not resolve into a single cohesive heavy mining crawler. At ~22 px, it breaks apart into disconnected visual fragments: an open gray C-bracket hull, an empty black void, a yellow paint sticker, and a floating disconnected bit.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+From [planform_report.json](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_027/planform_report.json):
+
+* **`CAB_PANE` (0.0043) [Floor >= 0.0200]:** Window glazing is completely crushed, reducing the cab to an undivided yellow postage-stamp patch.
+* **`TRACK_CONTRAST_STARBOARD` (-18.349) & `TRACK_CONTRAST_PORT` (6.345) [Floor >= 18.0]:** Severe contrast failure against site ground, completely losing track loop definition on the starboard flank.
+* **`TRACK_OUTERMOST_PORT` (0.0670) & `TRACK_OUTERMOST_STARBOARD` (0.0077) [Floor >= 0.8000]:** Outer track lips fail to establish the outermost vehicle boundary under textured lighting.
+* **`ONE_BODY` (0.4476) [Floor >= 0.9000]:** Vehicle silhouette fractures into disjointed value and color patches.
+* **`BOOM_OFFSET` (0.1376) [Floor >= 0.1500]:** Boom geometry is under-offset and visually collapses, detaching the cutter bit.
+* **`WELL_IS_A_HOLE` (0.0694) [Floor >= 0.2400]:** Well cavity lacks the required depth relief and internal shadowing.
+* **`LIVERY_SAT_RENDERED` (0.2020) [Floor >= 0.3000]:** Rendered yellow livery saturation drops below required floor under site illumination.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Bezel & Pane the Cab:** Frame the yellow livery inside a dark structural steel bezel/collar, and widen/deepen the dark cab visor glass geometry so the window reliably resolves as a 1 px dark slit inside the yellow patch.
+2. **Thicken & Highlight Boom Arm:** Increase the mesh cross-section of the boom arm and apply a distinct mid-tone/specular ridge so it visibly connects the forward chassis to the cutter bit, eliminating the floating `+` bit read.
+3. **Broaden & Raise Outer Track Lips:** Widen the outer track guard flanges and sharpen their metallic rim highlight to catch a solid, continuous 1 px edge that defines both stadium loops against the pad.
+4. **Bevel Well Perimeter & Add Cavity Gradient:** Chamfer the upper perimeter of the hopper well to catch top directional light, and deepen the ambient occlusion within the well to give the cavity volumetric depth rather than a flat black cutout.
+5. **Bridge Deck & Track Housings:** Add substantial deck plating and transition fillets between the central chassis and track sponsons to unify the silhouette into a single solid crawler body.
+
+---
+
+### (4) Verdict
+
+**REVISE**

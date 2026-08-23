@@ -1,0 +1,59 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 29 ΓÇö Works Edge)
+
+**Reviewed Stills:**
+- [works_edge_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_029/review_1to1/works_edge_1to1.png) (1:1 crop, original resolution)
+- [works_edge.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_029/works_edge.png) (Full frame context)
+
+**Framing:** Valid works_edge framing. Rover is positioned on the edge apron with the full planform profile clearly visible.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+* **Toy / Clay / Card / Box / Gray Plate Aesthetic**: The vehicle continues to read as a primitive cardboard/clay mockup and a "yellow box with plates" rather than a functional heavy asteroid industrial machine. The hull is dominated by flat, unfilleted gray sheets, harsh 90┬░ computer-graphics edges, and unarticulated extruded rectangular blocks.
+* **Side Walls**: The lateral side walls are paper-thin, flat vertical gray sheets. The port side wall tapers forward to an arbitrary sharp knife-edge, while the starboard side terminates abruptly at the cab notch. They lack physical plate thickness/gauge, rolled or reinforced top coaming edges, exterior vertical stiffener ribs, structural gusseting, fastener lines, and heavy load-bearing structural sponsons connecting into the track frames.
+* **Track Height & Track Assemblies**: The track assemblies are flat with insufficient vertical relief and structural mass. The outer tread perimeter features basic notched bands but lacks a continuous, robust steel outer lip/housing to catch specular highlights. The inner belt loop is a flat dark oval with two generic white circle pins/dots, completely lacking modeled drive sprockets, track tensioners, roller bogies, suspension linkages, and rock/debris scrapers.
+* **Steel Cab House (Yellow Sides & Dark Pane)**: The cab house remains a basic boxy cutout on the starboard side. It lacks proper painted yellow steel side plating (yellow currently only appears as tiny snap-pegs on the deck blocks). The cab structure is a hollow gray frame surrounding a dark square cutout/pane, reading like a card cutout rather than heavy industrial welded steel. It lacks chamfered bevels, perimeter weld seams, retaining fasteners, an angled forward protective steel brow/visor, and external mounting bosses for work lights or comms antennas.
+* **Hopper Well**: The cargo well is an unarticulated rectangular cavity behind a ribbed sloped ramp. The surrounding deck coaming is a flat, featureless gray plate. It lacks a heavy grizzly sorting grate across the top intake opening, replaceable interior wear liner plates with exposed hex fasteners, corner reinforcement gussets, and hydraulic ejector/dump cylinder mechanisms.
+* **Steel Boom with Dark Ridge / Front Implement**: The forward attachment is a static, low-poly gray wedge terminating in a blunt beige/tan polygonal nose cone. It completely lacks an articulated steel boom arm with a dark structural ridge, pivot yokes, hydraulic lift/tilt cylinders, armored hydraulic hose routing, or modeled cutting/excavation teeth.
+* **Scar Plate & Pivot Mounts**: The mid-deck interface between the hopper ramp and the front cab deck consists of two disjointed black rectangular blocks with tiny protruding yellow/gold pegs. These read as fragile toy snap-connectors or Lego pin tabs rather than a single continuous, heavy cast-steel scar plate / structural bulkhead with reinforced pivot trunnions.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+* **Flat Diffuse Shading & Lack of Specular Response**: Hull plates, track bands, and the front nose wedge display flat, uniform diffuse shading without metallic reflectance, surface roughness variation, or contact ambient occlusion in seams, corners, and recesses.
+* **Toy-Like Color Blocking**: High-contrast, unweathered separation between flat neutral gray hull plates, pitch-black cavities/tracks, beige nose cone, and tiny yellow deck pegs. There is no industrial weathering, edge paint chipping, primer show-through, regolith dust accumulation, grease seepage, or wear gradients.
+* **Absence of Micro-Surface Relief & Normal Definition**: At 1:1 play scale, surfaces lack normal/bump definition for structural weld beads, heavy bolt patterns, panel seams, cast steel grain, and track link pins, leaving sharp low-polygon silhouette edges exposed.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Chassis & Side Wall Reinforcement**:
+   * Add Bevel modifiers / chamfers across all sharp 90┬░ exterior edges to eliminate razor-thin CG card boundaries.
+   * Thicken side walls into heavy structural plate gauge; model exterior welded vertical stiffener ribs, recessed bolted access panels, and heavy structural mounting sponsons tying directly into the track frames.
+2. **Steel Cab House with Yellow Sides**:
+   * Reconstruct the cab house with painted yellow steel side panels, heavy welded steel framing, chamfered dark pane bezel, angled forward steel sun visor/brow, external work-light fixtures, and comms antenna mounting bosses.
+3. **Track Assembly Upgrades**:
+   * Increase the vertical profile and physical depth of the track assemblies.
+   * Model a continuous, raised steel outer lip along the track frames that catches a solid highlight line.
+   * Model physical drive sprockets, track tensioner cylinders, roller bogies, and reinforced grouser cleats.
+4. **Hopper Well Upgrades**:
+   * Model a heavy-duty intake grizzly sorting grate across the top opening of the hopper well.
+   * Add internal replaceable wear liner plates with exposed hex fasteners, corner reinforcement gussets, and rear hydraulic ejector ram geometry.
+5. **Articulated Steel Boom with Dark Ridge**:
+   * Replace the static nose wedge with an articulated steel boom featuring a dark central structural ridge, twin hydraulic lift/tilt cylinders, cast-steel pivot knuckles, heavy hinge pins with retaining collars, and flexible armored hydraulic lines.
+   * Model the forward tool head as a reinforced excavation bucket or cutting drum with carbide wear teeth.
+6. **Unified Scar Plate**:
+   * Fuse the two disconnected black hinge blocks into a single continuous heavy cast-steel scar plate / structural bulkhead across the mid-deck, complete with reinforced trunnion pin collars and structural ribbing.
+7. **PBR Materials & Weathering Pipeline**:
+   * Assign an industrial PBR material setup to the steel hull with roughness maps, subtle metallic sheen, and contact ambient occlusion in recesses and seams.
+   * Texture the yellow cab sides as heavy safety alkyd enamel with edge wear, scratch maps, and dark primer show-through.
+   * Apply regolith dust accumulation in crevices, track tread recesses, and lower hull surfaces.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,40 @@
+### SpaceFace Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 45)
+**Site Resolution Check:** Valid Framing (~19 px/cell site view, ~22 px rover silhouette).
+
+---
+
+### 1. Obvious Defects from this Site View
+* **Gray Stamp / Cassette Read:** The rover does not read as an articulated tracked mining crawler. The main body reads as a flat, monolithic gray rectangular stamp/box with a dark square cutout in the center (resembling an electrical outlet or floppy disk).
+* **Missing Stadium Belt Tracks:** The tracks have completely merged into the body volume. There are no readable solid dark rubber track walls or 1 px steel lip highlights defining the left/right running gear.
+* **Cab & Visor Structure:** The cab structure lacks the intended dark cab on mid-steel tub hierarchy; instead, the top/flank is light gray. The thin yellow visor line across the windshield band is absent, replaced by vertical yellow chunks/patches clustered along the right bulkhead.
+* **Indistinct Equipment Well:** The equipment well does not read as a dedicated dark architectural bite distinct from the cab/interior void; it collapses into a generic dark rectangular cavity.
+* **Muddy / Collapsed Boom Silhouette:** The boom arm to the right lacks clear articulation as an offset finger. Its arm body blends into the dark ground cast shadow, lacking the distinct raised steel spine and crisp bright bit tip required for readability at this pixel budget.
+
+---
+
+### 2. MTX Defects Readable at this Size
+* **Albedo & Value Collapse:** The upper hull and chassis plate materials are blown out into a uniform light-gray value, obliterating the contrast needed between dark rubber treads, metallic steel chassis, and cab superstructure.
+* **Missing Specular Edge Cues:** Lack of crisp edge highlights along track rims, chassis bevels, and the boom spine to separate vehicle geometry against shadow and terrain.
+* **Misplaced Yellow Accents:** Yellow identification/visor paint is improperly mapped as clumpy blocks on the right hull side rather than a crisp, 1 px forward visor accent.
+
+---
+
+### 3. Concrete Blender Actions to Fix Site Silhouette
+1. **Define Dual Track Pods:**
+   * Assign a dark rubber/tread shader (low albedo, high roughness) to the track belts.
+   * Add a bevel/raised lip with a bright steel material along the outer track rims to catch a distinct 1 px specular rim highlight.
+   * Introduce a slight geometry gap / ambient occlusion shadow between the track pods and the center chassis tub.
+2. **Rebuild Cab & Visor Hierarchy:**
+   * Set the cab volume to a darker value resting on a mid-steel chassis tub.
+   * Apply a sharp 1 px yellow visor band directly across the front edge of the dark windshield band.
+   * Remove the yellow side blotches on the right hull.
+3. **Carve Equipment Well vs. Windshield:**
+   * Geometry-separate the cockpit/windshield band from the equipment well so the well registers as a distinct dark recessed pocket rather than a centered hole.
+4. **Sharpen Boom Arm Geometry & Shader:**
+   * Widen/raise the boom spine geometry with a high-metallic steel material that catches top light.
+   * Terminate the arm in a high-contrast bright steel bit tip to read cleanly as an offset articulated finger against ground shadows.
+
+---
+
+### 4. Verdict
+**REVISE**

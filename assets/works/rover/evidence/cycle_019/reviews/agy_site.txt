@@ -1,0 +1,44 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 19) ΓÇö `works_site`
+
+---
+
+### (1) Obvious Defects (Site View Readability at ~22 px)
+
+* **Gray Block / Postage-Stamp Read:** At site scale (~19ΓÇô22 px), the asset predominantly reads as a flat, stepped gray box with two bright yellow side stripes rather than an articulated, heavy-duty industrial crawler.
+* **Track Band Failure:** The tracks do not read as continuous dark stadium bands with distinct steel end caps. Instead, the tracks blend into the gray chassis and background shadow, leaving only four faint, disconnected corner nubs protruding at the extreme corners.
+* **Boom & Snout Lack Articulation:** The forward tool reads as a monolithic, flat gray rectangular tab/tongue extending from the starboard side. There is no visual separation between the boom arm, hydraulic pivot/knuckle, and cutting bit/head.
+* **Hopper Well Void:** The hopper well reads as a flat dark square punched into the aft hull without a beveled lip, rim highlight, or interior depth gradient to signal an industrial collection hopper.
+* **Livery Sticker Effect:** The two yellow hazard stripes read as floating horizontal decal bars placed on a gray block rather than heavy-duty, recessed safety plating integrated into a structural steel chassis.
+* **Cab Indistinctness:** The central cab block lacks structural definition and roof-pane contrast, blending directly into the hull deck.
+
+---
+
+### (2) MTX Defects Readable at Site Size
+
+* **Negative Track-to-Hull Luminance Contrast:** The tracks fail to provide the required dark ground-contact framing against the hull (failing `TRACK_CONTRAST` metrics), causing the vehicle to lose its tracked-base silhouette at gameplay resolution.
+* **Hull-to-Boom Value Slump:** Chassis and forward boom tool share identical medium-gray diffuse values, merging the entire front half into an undifferentiated gray silhouette step.
+* **Absence of Edge & Highlight Definition:** Lack of prominent edge bevels and material specular variation means high-contrast light catching is absent, preventing the eye from parsing mechanical depth, hopper walls, or track sprockets at low pixel counts.
+* **Material Hierarchy Collapse:** The vehicle reduces to only three flat value steps (high-saturation yellow bars, flat medium-gray body, dark void/dots), reading as a flat icon rather than PBR heavy machinery.
+
+---
+
+### (3) Concrete Blender Actions to Enhance Site Silhouette
+
+1. **Track Assembly & Contrast:**
+   * Darken the track band material significantly (deep charcoal/dark rubberized steel) to create strong value separation against the hull and site terrain.
+   * Broaden the track sponsons and enlarge the steel drive/idler end caps with chamfered geometry that catches top-down highlights.
+2. **Boom & Bit Articulation:**
+   * Taper the boom arm neck and flare/notch the cutting bit head to create a distinct silhouette hierarchy (arm $\rightarrow$ knuckle $\rightarrow$ scarifier head).
+   * Apply distinct material values: dark mechanical steel for the boom linkage/actuators and bright hardened steel/carbide for the cutter teeth.
+3. **Hopper Well Rim:**
+   * Extrude a raised, beveled perimeter coaming/rim around the hopper well to catch top lighting and clearly define the dark collection void.
+   * Angle internal chute faces or add raised wear ribs to provide internal depth shading.
+4. **Cab & Hazard Livery Integration:**
+   * Add a dark perimeter frame and distinct specular roof pane to separate the cab block from the surrounding deck.
+   * Recess the yellow safety panels into dark structural chassis pockets with distinct outer metal framing.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,85 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 35) ΓÇö `works_edge`
+
+---
+
+### Framing Check
+* **Framing:** **VALID** (`works_edge` orthographic/planform top-down view on pad perimeter; complete vehicle in frame; camera is not inside a cabin; not a studio three-quarter view).
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Steel Cab House with Yellow Sides, Thin Yellow Visor & Dark Pane:**
+  * **Visor Read:** The yellow element at the front of the cab reads as a thick, blunt rectangular plastic block / tab stuck onto the roof edge rather than a thin, formed sheet-metal sun visor cantilevered in front of a windshield.
+  * **Yellow Sides:** The cab house side panels remain plain structural gray steel rather than painted safety-yellow.
+  * **Dark Pane:** The windshield area behind the yellow block reads as an unarticulated dark cutout void / hole without distinct glazing framing, glass tint, or specular response.
+  * **Cab House Geometry:** The cab reads as a primitive gray box frame rather than an integrated, fabricated steel operator enclosure.
+
+* **Toy / Clay / Card / Box / Gray Plate Read:**
+  * The main central tub, chassis floor, side decks, and fenders are flat, unbroken matte-gray slabs with sharp, non-beveled polygonal edges.
+  * The vehicle strongly reads as an unpainted clay block, plastic toy kit, or laser-cut cardboard mock-up due to the total absence of panel separation lines, surface relief, stiffening ribs, or structural weld seams.
+
+* **Side Walls:**
+  * Flanking side walls are flat, two-dimensional sheet plates with simple 45┬░ angular chamfer notches.
+  * They lack physical extruded edge thickness, rolled flanges, stiffeners, or structural mounting gussets, reinforcing the flat cardboard/plate aesthetic.
+
+* **Track Height & Profile:**
+  * The track sponsons lack sufficient vertical depth and presence, remaining compressed against the lower hull.
+  * The track belts are smooth stadium loops lacking discrete grouser/cleat relief, and the drive sprockets/idlers are represented only by flat circular pin dots.
+
+* **Hopper Well:**
+  * The hopper well is punched into the rear deck as a simple rectangular pit with a sloped ramp.
+  * It lacks an extruded, raised perimeter coaming lip / debris deflector around the upper deck opening to define the edge against the flat deck.
+
+* **Darker Boom with Narrow Bright Metal Spine into the Bit:**
+  * The boom arm extending forward is light tan/gray instead of a darker structural steel arm body.
+  * It completely lacks the specified narrow, bright polished metal centerline spine running into the cutting bit.
+  * The bit is a flat spade/cone attached directly to the end of the arm without a heavy mechanical collar or reinforced housing.
+
+* **Scar Plates:**
+  * The twin black rectangular plates with yellow tabs behind the cab read as flat 2D sticker decals applied directly onto the gray deck plate rather than heavy, beveled, bolted steel wear/hinge plates.
+
+---
+
+### 2. MTX Defects Visible at Play Size
+
+* **Plastic Toy / Decal Read:** At 1:1 play scale, the yellow feature resolves as a small plastic toy block or painted tab rather than an overhanging visor over glass.
+* **Monolithic Gray Mass:** The low-contrast mid-gray palette across the entire hull, side walls, and deck causes structural components to blend into a flat silhouette with inadequate functional contrast.
+* **Boom & Spine Contrast Failure:** The boom is light-toned and flat, failing to produce the required dark-arm / bright-ridge pair readable at play distance.
+* **Void Ambiguity:** The hopper opening and cab window read as flat black holes lacking depth falloff, lip highlights, or ambient contact occlusion.
+
+---
+
+### 3. Concrete Blender Actions (No Cabin Furniture)
+
+1. **Cab House, Visor & Windshield:**
+   * Re-model the yellow visor as a thin, formed sheet-metal overhang projecting forward in front of the windshield.
+   * Assign safety-yellow material to the exterior cab side panels and structural gray steel to the roof and pillars.
+   * Model a distinct beveled window frame around the dark windshield pane and assign a dark tinted glass material with subtle specular reflectivity.
+
+2. **Chassis, Deck & Side Walls (Eliminating Clay/Card/Box Read):**
+   * Apply `Bevel` modifiers with weighted normals across all chassis, deck, and side wall perimeter edges.
+   * Add physical extrusion thickness, rolled lip flanges, and structural stiffener corrugations/gussets to the flanking side walls.
+   * Inset panel separation lines, access plates, and bolted fasteners across the flat central deck.
+
+3. **Boom Assembly, Central Spine & Bit:**
+   * Change the boom arm body material to a dark structural metal (`steel_dark`).
+   * Model a raised, narrow, beveled bright polished metal centerline spine (`steel_bright`) along the top face of the arm running directly into the conical bit.
+   * Add a reinforced mechanical mounting collar coupling the bit to the boom arm.
+
+4. **Hopper Well:**
+   * Extrude a raised, beveled perimeter coaming lip around the mouth of the hopper on the upper deck.
+   * Add interior chute plates/wear liners with contact shadow definition.
+
+5. **Scar Plates:**
+   * Give the twin wear plates physical extrusion depth with beveled chamfers.
+   * Replace flat yellow tabs with modeled hex bolt heads or hinge knuckle geometry.
+
+6. **Track Assemblies:**
+   * Increase vertical height/depth of the track sponsons and extrude discrete raised grouser treads along the rubber belt loops.
+
+---
+
+### 4. Verdict
+
+**REVISE**

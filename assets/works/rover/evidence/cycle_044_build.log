@@ -1,0 +1,266 @@
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:620: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  material.use_nodes = True
+works rover cycle 44: atlas 4x4, map ladder {0: 2048, 1: 1024, 2: 512}
+Info: Removed 0 vertices
+Info: Removed 0 vertices
+lod0 bbox wu=[1.8818, 1.81, 1.03] cells=[0.8554, 0.8227, 0.4682] zMin=0.0
+WARN lod0 triangles 20522 over budget 18000 (named features kept)
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+14:36:45 | INFO: Starting glTF 2.0 export
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Bit_Boom
+14:36:45 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Chevron_Boom
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Steel_Boom
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_fill_0
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_fill_1
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_fill_2
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_fill_3
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_fill_4
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: hopper_lid
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Chevron
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Glass
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Lamp
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Livery
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Rubble
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Scar
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Steel
+14:36:45 | INFO: Primitives created: 1
+14:36:45 | INFO: Extracting primitive: LOD0_Merged_Material_Track
+14:36:46 | INFO: Primitives created: 1
+14:36:46 | INFO: Extracting primitive: scar_plate
+14:36:46 | INFO: Primitives created: 1
+14:36:46 | INFO: Extracting primitive: track_L
+14:36:46 | INFO: Primitives created: 1
+14:36:46 | INFO: Extracting primitive: track_R
+14:36:46 | INFO: Primitives created: 1
+14:36:46 | INFO: Finished glTF 2.0 export in 0.5773224830627441 s
+
+{
+  "lod": 0,
+  "triangles": 20522,
+  "draws": 20,
+  "bytes": 14404476,
+  "sha256": "EB9ECA2E8EBABE2AB6702CE7E16CB6DFA6EDD469D848584922DF55AFD5430DDB"
+}
+Info: Removed 0 vertices
+Info: Removed 0 vertices
+lod1 bbox wu=[1.8826, 1.81, 1.03] cells=[0.8557, 0.8227, 0.4682] zMin=0.0
+14:37:09 | INFO: Starting glTF 2.0 export
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Bit_Boom
+14:37:09 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Chevron_Boom
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Steel_Boom
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_fill_0
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_fill_1
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_fill_2
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_fill_3
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_fill_4
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: hopper_lid
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Chevron
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Glass
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Lamp
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Livery
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Rubble
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Scar
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Steel
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: LOD1_Merged_Material_Track
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: scar_plate
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: track_L
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Extracting primitive: track_R
+14:37:09 | INFO: Primitives created: 1
+14:37:09 | INFO: Finished glTF 2.0 export in 0.14397501945495605 s
+
+{
+  "lod": 1,
+  "triangles": 3020,
+  "draws": 20,
+  "bytes": 3297236,
+  "sha256": "0E2B58F7D7C5EC6EF80B0967E8B528410EF6F182020D50C3FCEED5397DEA7899"
+}
+Info: Removed 0 vertices
+Info: Removed 0 vertices
+lod2 bbox wu=[1.8706, 1.81, 1.03] cells=[0.8503, 0.8227, 0.4682] zMin=0.0
+14:37:29 | INFO: Starting glTF 2.0 export
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Bit_Boom
+14:37:29 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Chevron_Boom
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Steel_Boom
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_fill_0
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_fill_1
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_fill_2
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_fill_3
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_fill_4
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: hopper_lid
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Chevron
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Glass
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Lamp
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Livery
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Rubble
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Scar
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Steel
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: LOD2_Merged_Material_Track
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: scar_plate
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: track_L
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Extracting primitive: track_R
+14:37:29 | INFO: Primitives created: 1
+14:37:29 | INFO: Finished glTF 2.0 export in 0.1629934310913086 s
+
+{
+  "lod": 2,
+  "triangles": 1998,
+  "draws": 20,
+  "bytes": 995172,
+  "sha256": "395320E4FC54322B8842D1588B208B5991B2B88CEDB2430ACC028E952684344C"
+}
+purged cycle-1 textures: 0
+14:37:29 | INFO: Data are loaded, start creating Blender stuff
+14:37:29 | INFO: Blender create Mesh node LOD0_Merged_Material_Bit_Boom
+14:37:29 | INFO: Blender create Mesh node LOD0_Merged_Material_Chevron_Boom
+14:37:29 | INFO: Blender create Mesh node LOD0_Merged_Material_Steel_Boom
+14:37:30 | INFO: Blender create Mesh node hopper_fill_0
+14:37:30 | INFO: Blender create Mesh node hopper_fill_1
+14:37:30 | INFO: Blender create Mesh node hopper_fill_2
+14:37:30 | INFO: Blender create Mesh node hopper_fill_3
+14:37:30 | INFO: Blender create Mesh node hopper_fill_4
+14:37:30 | INFO: Blender create Mesh node hopper_lid
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Chevron
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Glass
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Lamp
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Livery
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Rubble
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Scar
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Steel
+14:37:30 | INFO: Blender create Mesh node LOD0_Merged_Material_Track
+14:37:30 | INFO: Blender create Mesh node scar_plate
+14:37:30 | INFO: Blender create Mesh node track_L
+14:37:30 | INFO: Blender create Mesh node track_R
+14:37:30 | INFO: glTF import finished in 0.66s
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:2029: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:2044: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  pad_mat.use_nodes = True
+01:50.312  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_top.png'
+02:02.891  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_edge.png'
+02:17.625  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_site.png'
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:2128: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  clay.use_nodes = True
+02:33.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_top_clay.png'
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:3014: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  if world and world.use_nodes:
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:2176: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+02:47.094  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_top_mask.png'
+03:01.750  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_edge_mask.png'
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\blender\build_works_rover_mtx.py:2092: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+03:08.516  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\works\rover\evidence\cycle_044\works_top_depth.png'
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+planform_report textured:
+  YELLOW_MINORITY              0.0197 <= 0.4500  PASS
+  TRACK_BAND                   0.3934 >= 0.1600  PASS
+  TRACK_OUTERMOST_PORT         0.9110 >= 0.8000  PASS
+  TRACK_OUTERMOST_STARBOARD    0.9122 >= 0.8000  PASS
+  WELL_HOLE                    0.0490 >= 0.0400  PASS
+  CAB_PANE                     0.0213 >= 0.0200  PASS
+  BOOM_REACH                   0.2857 >= 0.1000  PASS
+  BOOM_OFFSET                  0.1418 >= 0.1500  FAIL
+planform_report clay (object silhouette, not pad):
+  TRACK_BAND                   0.3542 >= 0.1600  PASS
+  TRACK_OUTERMOST_PORT         1.0000 >= 0.8000  PASS
+  TRACK_OUTERMOST_STARBOARD    1.0000 >= 0.8000  PASS
+  WELL_HOLE                    0.0919 >= 0.0400  PASS
+  CAB_PANE                     0.0569 >= 0.0200  PASS
+  BOOM_REACH                   0.2857 >= 0.1000  PASS
+  BOOM_OFFSET                  0.1418 >= 0.1500  FAIL
+  CLAY_HOLDS False
+planform_report cycle3:
+  TRACK_CONTRAST_PORT          29.8986 >= 18.0000  PASS
+  TRACK_CONTRAST_STARBOARD     3.2046 >= 18.0000  FAIL
+  LIVERY_SAT_RENDERED          0.0127 >= 0.3000  FAIL
+  HAS_MASS                     0.9412 >= 0.7200  PASS
+  WELL_IS_A_HOLE               0.0694 >= 0.2400  FAIL
+  CAB_IS_RAISED                0.1529 >= 0.2800  FAIL
+  WELL_CAB_DIFFER              [0.0694, -0.1529] signs opposite signs  PASS
+  ONE_BODY                     0.5253 >= 0.9000  FAIL
+  TREAD_PADS_PORT              19.0000 >= 14.0000  PASS
+  TREAD_PADS_STARBOARD         13.0000 >= 14.0000  FAIL
+  TRACK_ENDS_ROUND_PORT        0.2205 >= 0.0600  PASS
+  TRACK_ENDS_ROUND_STARBOARD   0.1341 >= 0.0600  PASS
+  NORMAL_RELIEF                0.2477 >= 0.0400  PASS
+  NORMAL_RELIEF_LIVERY         0.2445 >= 0.0300  PASS
+  CLAY_SHADING                 55.1653 >= 14.0000  PASS
+  LIVERY_HUE                   46.7908 range 44.0000..54.0000  PASS
+  LIVERY_SAT                   0.7402 >= 0.7000  PASS
+  BIT_NOT_PINK                 35.8573 hue outside 330-25  PASS
+  EDGE_SHOWS_WALL              1.1562 >= 1.1000  PASS
+  object bbox px=[908, 489, 1013, 590] sil=8033
+texture_report:
+  pngCount 9 <= 9
+  rover_lod0.glb 14404476 <= 14680064  PASS
+  rover_lod1.glb 3297236 <= 5242880  PASS
+  rover_lod2.glb 995172 <= 2097152  PASS
+{
+  "ok": true,
+  "cycle": 44,
+  "tris0": 20522,
+  "bbox": [
+    1.8818,
+    1.81,
+    1.03
+  ],
+  "pngCount": 9,
+  "planformPass": false
+}

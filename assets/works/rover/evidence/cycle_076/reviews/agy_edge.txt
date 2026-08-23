@@ -1,0 +1,55 @@
+### Visual Review: Asteroid Works Rover (`PQ-131.01`, Cycle 76)
+**Viewpoint:** `works_edge` (top-down / site-edge crop)
+
+---
+
+### (1) Obvious Defects from Works-Edge View
+
+- **Toy / Clay / Card / Box / Gray Plate:**
+  - Glaring flat, featureless rectangular gray deck plate between the starboard side of the cab house and the upper track. It reads as a raw primitive card/clay slab with zero mechanical surface breakup, fasteners, grip texture, or seam integration.
+  - Rear deck and bumper transitions still present flat, card-like planar sheets.
+- **Side Walls:**
+  - Hopper side walls are flat extruded planar facets lacking structural stiffener ribs, gusset plates, weld beads, or rolled top flanges.
+- **Hopper Well:**
+  - The hopper well rim remains razor-sharp at the top perimeter. The interior stepped well drops into dark floor rubble without impact wear, material scuffing, or catch-lip highlights around the perimeter opening.
+- **Cab House & Visor:**
+  - Dark cab house correctly avoids yellow cab sides or a plastic square on the roof; yellow is restricted to the thin forward visor strip.
+  - The cab silhouette remains overly blocky and extruded with sharp 90-degree CG edges, and the roof feature is a primitive circular stud/cylinder.
+- **Dark Window Pane:**
+  - The dark front window pane is visible and legible behind the visor, but lacks a defined recessed mounting frame, bezel gasket, or specular depth.
+- **Boom, Steel Spine & Bit Body:**
+  - The boom body is dark with a distinct raised bright steel spine feeding into the steel cutter bit head at the far right.
+  - The junction where the steel spine enters the bit body lacks a mechanical collar, sleeve gland, or hydraulic connection housing; the boom housing facets remain sharp and blocky.
+- **Track Height / Rubber Belts:**
+  - Tracks have solid height and read properly as thick, continuous rubber belts with segmented cleats rather than wire loops. However, inner sponson cavities and sprocket interfaces lack depth and grit accumulation.
+- **Scar Plate:**
+  - The rear scar plate is an unadorned flat rectangular insert with no mounting bolt geometry, tow provisions, or edge chamfering.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **Flat/Clay Shading on Gray Plate:** The starboard deck plate uses a flat diffuse material with no roughness noise, normal relief, or dirt/grime accumulation.
+- **Razor-Sharp Polygonal Edges:** Lack of normal beveling or micro-bevels across the cab house corners, boom body, and hopper mouth creates an artificial CG look.
+- **Flat Yellow Visor Paint:** The yellow visor strip is flat and uniform without micro-roughness breakup or subtle edge scuffing.
+- **Lack of Contact Ambient Occlusion:** Missing baked contact AO / shadow depth in the crevice between the cab house, starboard gray deck plate, and track sponsons.
+- **Window Material Response:** Dark glass pane has uniform low-specular shading without subtle fresnel or frame contrast.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Detail the Starboard Gray Deck Plate:** Replace the flat gray card plate beside the cab with an embossed diamond-tread or grip pattern, perimeter bolt heads, and recessed conduit/hydraulic line runs.
+2. **Bevel Sharp Chassis Edges:** Add bevel modifiers / weighted normals to the cab house corners, boom housing, and hopper rim to break up razor-sharp 90-degree angles.
+3. **Add Hopper Rim Flanges & Weld Geometry:** Extrude an outward lip/reinforcement flange along the top edge of the hopper sidewalls and add weld seam geometry at panel junctions.
+4. **Detail Boom-to-Bit Junction:** Model a mounting collar/gland housing where the raised steel spine terminates into the cutter bit body.
+5. **Material & Texture Pass:**
+   - Apply a grime/grunge roughness map and dust gradient to the starboard deck plate and track recesses.
+   - Add subtle micro-wear and specular roughness variation to the yellow visor strip.
+   - Bake ambient occlusion into the cab-to-chassis junction, hopper well corners, and under-track recesses.
+
+---
+
+### (4) Verdict
+
+**REVISE**

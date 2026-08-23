@@ -1,0 +1,46 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 69)
+**View:** `works_edge` (Top-down operational camera)  
+**Framing Status:** VALID
+
+---
+
+### (1) Defects from Works-Edge View
+
+* **Side Walls:** The hopper side walls are razor-thin, flat sloped planes with no rolled edges, structural flanging, reinforcement gussets, or realistic wall thickness, resembling folded paper/cardboard rather than heavy industrial plating.
+* **Track Height & Assembly:** The crawler tracks read as uniform, blocky solid rubber belts with primitive round loops at the ends; the undercarriage gap between treads and chassis is blocked out with flat filler geometry lacking visible drive sprockets, idler wheels, track guides, or mechanical suspension linkages.
+* **Cab House & Visor:** The cab is an extruded toy-like brown box with a flat circular disc/nub on top. While yellow is correctly restricted to a thin front visor lip past the glass rather than the cab sides, the overall cab enclosure remains a rudimentary unchamfered primitive block.
+* **Dark Pane:** The front dark glass pane is visible as a stark, flat black rectangle slapped directly onto the cab front without framing, weather sealing, or depth recession.
+* **Hopper Well:** The interior hopper well contains simple stepped floor geometry boxed in by plain sloped walls; it lacks functional mechanical elements like intake crushers, vibratory ribs, grate liners, or depth hierarchy.
+* **Boom & Bit Body:** The darker boom assembly tapers into a central raised steel spine and front steel bit body, but the structure lacks articulated pivot brackets, hydraulic rams, hose routing, and mechanical mounting joints to the chassis.
+* **Scar Plate:** The rear bumper/tailgate features a featureless, flat, unshaded light-gray rectangular plate ("gray plate") pasted onto the transverse beam with no bevels, mounting bolts, edge wear, or functional articulation.
+* **Toy / Clay / Card / Box / Gray Plate Elements:**
+  * Prominent raw gray cards/filler plates exposed across the right deck and rear scar plate.
+  * Extruded box-primitive cab structure with a toy-like roof stud/nub.
+  * Cardboard-thin hopper chute side plates.
+  * Uniformly matte, clay-like surface finish across all primary hull components with no panel division or industrial greebling.
+
+---
+
+### (2) MTX & Play-Scale Defects
+
+* **Tonal Muddle:** At full play resolution (`works_edge.png`), the dark olive/mud-brown palette lacks value separation and contrast, causing the chassis, hopper, and cab to read as an indistinct muddy silhouette.
+* **Unshaded Gray Artifacts:** The flat gray plates on the rear and mid-deck pop out as unfinished placeholder geometry rather than functional vehicle anatomy.
+* **Focal Point Readability:** The steel bit body and yellow visor lack sufficient specular/value contrast to serve as crisp, readable gameplay focal points at true screen scale.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Hopper & Chute:** Apply a Solidify modifier to the hopper side walls, bevel all rim edges, and model external structural ribbing/welds along the hopper flanks.
+2. **Plates & Decking:** Delete flat placeholder gray filler plates; model inset structural decking, access panels, tread guards, and beveled mounting flanges with bolt hardware.
+3. **Rear Scar Plate:** Bevel the rear scar plate, recess it into the transverse frame, and add heavy tow lugs/fasteners and edge distress.
+4. **Cab & Glazing:** Recess the front black pane into an armored window frame; define the yellow visor with dedicated bracket mounts; bevel the cab roof edges and replace the flat circular roof nub with an articulated sensor/hatch housing.
+5. **Boom & Drill Assembly:** Model hydraulic cylinders and high-pressure hose lines along the boom flanks; sharpen the steel spine bevels and add machined radial grooves and cutting teeth to the bit body.
+6. **Track Gear:** Add sprocket teeth, track return rollers, and articulated grouser segments to the track loops.
+7. **PBR Materials:** Differentiate material channels with distinct metallic/roughness values (machined steel on spine/bit, painted heavy-equipment coating on hull, rubberized tread material) to eliminate the matte clay appearance.
+
+---
+
+### (4) Verdict
+
+**REVISE**

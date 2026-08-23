@@ -1,0 +1,272 @@
+{
+  "textured": {
+    "YELLOW_MINORITY": {
+      "value": 0.4222,
+      "floor": 0.45,
+      "op": "<=",
+      "pass": true
+    },
+    "TRACK_BAND": {
+      "value": 0.267,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.1019,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0243,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.2897,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.1574,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "texturedPass": true,
+  "clay": {
+    "TRACK_BAND": {
+      "value": 0.3464,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.1054,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0287,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.2897,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.1574,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "clayHolds": true,
+  "cycle3": {
+    "TRACK_CONTRAST_PORT": {
+      "value": 47.2436,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_CONTRAST_STARBOARD": {
+      "value": 33.1152,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": true
+    },
+    "LIVERY_SAT_RENDERED": {
+      "value": 0.9443,
+      "floor": 0.3,
+      "op": ">=",
+      "pass": true
+    },
+    "HAS_MASS": {
+      "value": 1.0165,
+      "floor": 0.72,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_IS_A_HOLE": {
+      "value": 0.31,
+      "floor": 0.24,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_IS_RAISED": {
+      "value": 0.3377,
+      "floor": 0.28,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_CAB_DIFFER": {
+      "value": [
+        0.31,
+        -0.3377
+      ],
+      "floor": "opposite signs",
+      "op": "signs",
+      "pass": true
+    },
+    "ONE_BODY": {
+      "value": 0.9891,
+      "floor": 0.9,
+      "op": ">=",
+      "pass": true
+    },
+    "TREAD_PADS_PORT": {
+      "value": 21.0,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TREAD_PADS_STARBOARD": {
+      "value": 21.0,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_ENDS_ROUND_PORT": {
+      "value": 0.2743,
+      "floor": 0.06,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_ENDS_ROUND_STARBOARD": {
+      "value": 0.2735,
+      "floor": 0.06,
+      "op": ">=",
+      "pass": true
+    },
+    "NORMAL_RELIEF": {
+      "value": 0.2487,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "NORMAL_RELIEF_LIVERY": {
+      "value": 0.2498,
+      "floor": 0.03,
+      "op": ">=",
+      "pass": true
+    },
+    "CLAY_SHADING": {
+      "value": 47.1577,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "LIVERY_HUE": {
+      "value": 46.2153,
+      "floor": [
+        44.0,
+        54.0
+      ],
+      "op": "range",
+      "pass": true
+    },
+    "LIVERY_SAT": {
+      "value": 0.7492,
+      "floor": 0.7,
+      "op": ">=",
+      "pass": true
+    },
+    "BIT_NOT_PINK": {
+      "value": 225.6823,
+      "floor": "outside 330-25",
+      "op": "hue",
+      "pass": true
+    },
+    "EDGE_SHOWS_WALL": {
+      "value": 1.1674,
+      "floor": 1.1,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "cycle3Pass": true,
+  "texturedRaw": {
+    "YELLOW_MINORITY": 0.4222,
+    "TRACK_BAND": 0.267,
+    "TRACK_OUTERMOST_PORT": 1.0,
+    "TRACK_OUTERMOST_STARBOARD": 1.0,
+    "WELL_HOLE": 0.1019,
+    "CAB_PANE": 0.0243,
+    "BOOM_REACH": 0.2897,
+    "BOOM_OFFSET": 0.1574,
+    "silhouettePixels": 7397,
+    "bbox": [
+      909,
+      490,
+      1016,
+      589
+    ]
+  },
+  "clayRaw": {
+    "YELLOW_MINORITY": 0.0,
+    "TRACK_BAND": 0.3464,
+    "TRACK_OUTERMOST_PORT": 1.0,
+    "TRACK_OUTERMOST_STARBOARD": 1.0,
+    "WELL_HOLE": 0.1054,
+    "CAB_PANE": 0.0287,
+    "BOOM_REACH": 0.2897,
+    "BOOM_OFFSET": 0.1574,
+    "silhouettePixels": 7397,
+    "bbox": [
+      909,
+      490,
+      1016,
+      589
+    ]
+  },
+  "objectBboxPx": [
+    909,
+    490,
+    1016,
+    589
+  ],
+  "objectSilhouettePixels": 7397,
+  "depthWu": {
+    "hasMass": 1.0164707899093628,
+    "wellMinusDeck": 0.30996209383010864,
+    "cabMinusDeck": 0.33772454410791397,
+    "p02": 0.08941177278757095,
+    "p98": 1.1058825254440308
+  },
+  "normalStdev": 0.24869383871555328,
+  "normalStdevLivery": 0.24983808398246765,
+  "pass": true
+}

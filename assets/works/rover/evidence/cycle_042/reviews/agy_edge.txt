@@ -1,0 +1,66 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down camera framing.
+- **Check**: Not inside a cabin and not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate Aesthetic**:
+   - The chassis, side decking, and front transitions consist of flat, untextured gray slab primitives and sharp planar cards. The rover reads as an assembly of cardboard cutouts and plastic toy plates rather than heavy industrial machinery.
+2. **Track Height (Solid Rubber Belts vs. Wire Loops)**:
+   - The track assemblies lack vertical body mass and thickness. The outer rims and flat tread surfaces read like thin wire loops/capsules with raised lips rather than tall, heavy-duty solid rubber belts with deep tread mass and mechanical drive depth.
+3. **Cab House & Yellow Sides**:
+   - The cab house is a generic dark box lacking structural yellow side panels framing the central cab housing.
+4. **Visor Line & Canopy Glass**:
+   - The yellow canopy detail reads as an external plastic square/strip glued directly to the front roof edge.
+   - Lacks a clearly visible dark glass pane with a thin, distinct yellow visor line set in front of / past the recessed canopy glass.
+   - Floating gray cylinder primitive remains placed on the cab roof.
+5. **Drill Boom, Steel Spine & Bit Body**:
+   - The boom is a flat, uniform light-gray bar without a darker structural housing.
+   - Missing a raised steel central spine running the length of the boom.
+   - The tool tip ends in a small yellow block rather than a defined, machined steel bit body.
+6. **Hopper Well**:
+   - The hopper well reads as a shallow punched-out card cavity with an asymmetrical stepped ramp and flat dark floor square, lacking industrial depth, sloped funnel walls, and reinforced wear-plate transitions.
+7. **Side Walls**:
+   - The side walls connecting the central hull to the track sponsons are flat, featureless gray plates with no chamfers, structural ribs, or panel breakup.
+8. **Scar Plate**:
+   - Missing a dedicated, heavy-duty reinforced scar wear plate across the leading front edge of the hull to protect against abrasive regolith.
+
+---
+
+### (2) MTX Defects (Play Size)
+
+- **Value Contrast & Readability**: The dark cab roof, dark canopy pane, and hopper well floor crush together into flat, unreadable dark patches at 1:1 scale against the light-gray chassis cards.
+- **Silhouette Flatness**: The uniform matte gray chassis washes out against the dark ground plane; edges lack bevel highlights, material differentiation, and structural shadows.
+- **Drill Boom Readability**: The pale gray boom arm has weak silhouette presence and visually blends into the hull; the yellow tip is too small and reads as visual artifacting rather than a functional mining drill head.
+- **Material Realism**: The yellow accents appear as toy-like plastic stamps rather than painted structural metal or glowing visor elements.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Reconstruct Boom & Bit**:
+   - Apply a darker structural material to the main boom arm.
+   - Model a raised steel spine extrusion along the top centerline of the boom.
+   - Replace the yellow tip block with a machined steel bit body and mechanical mounting collar.
+2. **Overhaul Cab House & Visor**:
+   - Model structural yellow side walls framing the dark cab house.
+   - Model a visible, recessed dark canopy glass pane.
+   - Place a thin, defined yellow visor line in front of / integrated into the dark glass housing so the yellow reads as a visor past glass rather than a roof-mounted plastic block.
+   - Remove or integrate the unattached gray roof cylinder.
+3. **Thicken Tracks & Undercarriage**:
+   - Increase track cross-sectional thickness and height inward to read as solid rubber mass rather than thin wire loops.
+   - Recess the track wells and define drive sprocket and idler housing geometry.
+4. **Rework Hopper Well**:
+   - Deepen the hopper cavity and replace the stepped ramp with symmetrical sloped chute walls.
+   - Add segmented interior wear-plate ridges.
+5. **Detail Side Walls & Add Scar Plate**:
+   - Add structural chamfers, panel seams, and reinforcing ribs across the flat gray side walls.
+   - Model a reinforced heavy-gauge steel scar plate on the leading edge of the front chassis.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,55 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 6) ΓÇö Site View
+
+**Image Inspected:** `assets/works/rover/evidence/cycle_006/review_1to1/works_site_1to1.png` (and context in `works_site.png`)  
+**Framing:** Valid orthographic top-down site view (~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Defects from Site View (~22 px Read)
+
+1. **Yellow Box / LEGO Block Read:**
+   - The rover is visually dominated by two flat, saturated yellow rectangular slabs bracketing the center. At this scale, it reads as a split yellow square/box rather than an articulated, heavy industrial crawler.
+2. **Disconnected Track Assemblies & Pin-Point End Caps:**
+   - The tracks do not read as continuous mechanical belts. Instead, they appear as dark muddy borders with four blown-out white dots at the corners (idlers), reading like caster wheels or corner mounting screws rather than a tracked chassis.
+3. **Well Lacks Rim / Depth Definition:**
+   - The central excavation well reads as a flat, unlit black void punch-out. Without an illuminated metallic coaming, bevel, or lip catch-light, it does not read clearly as a recessed hopper or drill well.
+4. **Muddled Central Cab / Spine:**
+   - The cab structure and center bridge between the two yellow slabs lack value contrast and height cues, collapsing into a dark grey blob that fails to anchor the vehicle's centerline.
+5. **Boom & Bit Grounding:**
+   - The boom arm extending starboard is relatively thin and dark, causing the bright circular drill bit tip to float almost disconnected from the hull.
+
+---
+
+### (2) MTX / Material Defects Readable at This Scale
+
+1. **Livery Flatness & Oversaturation:**
+   - The yellow livery tile has virtually zero micro-breakup or edge wear visible at site scale, causing the yellow surfaces to clip into flat, uniform high-vis yellow patches.
+2. **Specular Blowout on Track Caps & Drill Bit:**
+   - The track idler caps and drill bit produce harsh, single-pixel hot white specular highlights without metallic gradient, drawing disproportionate visual weight away from the vehicle body.
+3. **Cavity Shading Void:**
+   - The excavation well lacks ambient occlusion falloff or subtle floor bounce, resulting in an absolute 0-value black hole.
+4. **Soft / Muddy Ground Footprint:**
+   - The shadow under the crawler is a diffuse brown smudge rather than an occluded, directional footprint beneath the track runs.
+
+---
+
+### (3) Concrete Blender Actions for Site Silhouette & Readability
+
+1. **Break Up & Sculpt Yellow Hull Geometry:**
+   - Chamfer/bevel the outer corners of the yellow side sponsons/fenders and introduce mechanical inset cutouts or dark panel breaks to eliminate the flat rectangular "toy block" silhouette.
+2. **Expose Track Gap & Shape Track Run:**
+   - Increase the horizontal negative space / gap between the main hull and the track assemblies.
+   - Enlarge the profile/teeth of the tread pads and slightly desaturate/dim the corner idler cap highlights while adding a rim bevel.
+3. **Add Raised Light-Catching Well Rim:**
+   - Extrude a raised, chamfered metallic collar/lip around the perimeter of the well opening to catch overhead and directional light, framing the dark interior cavity.
+4. **Strengthen Center Cab Silhouette:**
+   - Elevate the cab roofline slightly and assign higher contrast glass/metal edge highlights to clearly define the crew/control compartment between the yellow sponsons.
+5. **Thicken Boom Base:**
+   - Increase the structural taper/girth of the boom arm at its mounting pivot so the silhouette forms a clear, contiguous mechanic arm leading to the bright drill bit.
+
+---
+
+### (4) Verdict
+
+**REVISE**  
+*(Visual read remains dominated by two flat yellow blocks with detached corner dots; requires hull breakup, rim definition on the well, and proper track articulation).*

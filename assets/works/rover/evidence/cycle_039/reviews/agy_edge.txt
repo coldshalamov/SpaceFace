@@ -1,0 +1,46 @@
+### 1. Obvious Defects (Works-Edge View)
+
+* **Cab House & Visor Bar:** The cab is currently a flat, black box with a solid yellow plastic strip pasted on the front edge like a roof sticker. It fails to read as a dark cab house with yellow side walls and a thin yellow visor bar set in front of/behind a readable dark glass pane. The circular gray greeble button on the roof and the flat yellow hinge tabs lack structural integration and read as toy pegs.
+* **Toy / Clay / Card / Gray Plate Aesthetic:** The central chassis and deck are constructed from flat, thin, un-beveled gray polygonal plates and stepped cardboard-like boxes. There are no realistic structural joints, chamfers, weld beads, or industrial panel breaks. The cutout triangles along the inner track sponsons look like hollow card stock.
+* **Side Walls:** The side walls flanking the hopper and bridging the tracks are flat, vertical sheets with sharp geometric cuts rather than reinforced, load-bearing rover hull armor.
+* **Hopper Well:** The hopper is an empty, untextured rectangular pit with stepped, flat ramp geometry. It lacks a defined reinforced rim, wear lining, grate, or internal hopper mechanics, reading like an injection-molded plastic bin.
+* **Boom & Bit Body:** The boom is an undetailed, uniform light-gray plank extending off the right side. It lacks a darker structural boom frame, a raised steel spine running down its length, and a distinct steel bit body/drill head at the tip. The bit tip is a tiny, muddy yellow/dark nub with no mechanical weight.
+* **Track Height & Track Pods:** The tracks are flat lozenge bands with faint tread grooves wrapped around generic silver rim loops. They lack depth, sprocket teeth, tensioners, and realistic ground clearance/height definition relative to the main belly pan.
+* **Scar Plate & Material Definition:** No scar plates, impact scuffing, edge wear, or steel material variation exist. Everything shares a flat, clay-like diffuse gray/black shading.
+
+---
+
+### 2. MTX Defects at Play Size (Full In-Game Distance)
+
+* **Silhouette & Contrast Loss:** At actual play scale (`works_edge.png`), the rover reduces to a muddy gray block flanked by two lozenge tracks. The thin boom arm completely washes out against the hull shadow.
+* **Cab Unreadability:** The cab details collapse into an ambiguous yellow dot on top of a pitch-black square. The window, visor, and cab geometry have zero readability at 1x resolution.
+* **Hopper Mush:** The hopper reads simply as a blurry dark hole with no clear rim contrast or depth cue.
+
+---
+
+### 3. Concrete Blender Actions
+
+1. **Cab & Visor Rework:**
+   * Model the cab house with dark structural geometry and distinct yellow side paneling.
+   * Inset a dark, reflective glass pane on the cab front and suspend a crisp, thin yellow visor bar across/behind it with proper standoff mounts rather than a solid top-edge cap.
+   * Remove the flat circular greeble peg from the cab roof.
+2. **Hull & Plate Detailing:**
+   * Bevel all sharp card-like edges on the side walls and chassis deck.
+   * Add panel depth, bolting flanges, and reinforced corner brackets to eliminate the flat-plate/cardboard appearance.
+   * Thicken the side walls surrounding the hopper with angled, reinforced armor coamings.
+3. **Boom & Bit Assembly:**
+   * Assign a darker base material to the main boom beam.
+   * Extrude a raised, metallic steel spine running centrally along the boom top.
+   * Model a distinct, chunky steel bit housing/body with mechanical couplers before the drill head.
+4. **Hopper Well Upgrades:**
+   * Add a reinforced, beveled hopper rim/coaming and textured interior chute plates with industrial edge trim.
+5. **Tracks & Sponsons:**
+   * Increase track tread profile depth and define the drive sprockets and guide rollers inside the track assemblies.
+6. **Scar Plate & Materials:**
+   * Add a steel scar/deflector plate on high-wear forward surfaces and assign proper roughness/metallic values to distinguish structural steel, yellow painted armor, and dark cab housing.
+
+---
+
+### 4. Verdict
+
+**REVISE** *(Chassis currently reads as a yellow-capped box on flat gray plates).*

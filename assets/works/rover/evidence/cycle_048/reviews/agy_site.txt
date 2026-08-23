@@ -1,0 +1,49 @@
+I have launched the image analysis script and will wait for it to complete.
+I have launched the script to map the pixel colors and will analyze the output.
+### SpaceFace Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 48)
+
+**Framing:** Valid works_site camera (~19 px/cell site view, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_048/review_1to1/works_site_1to1.png) with reference to [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_048/works_site.png).
+
+---
+
+### 1. Obvious Defects from this Site View
+
+* **Gray Cassette / Stamp Read:** The chassis reads primarily as a square brown-gray floor stamp with a prominent gray cassette frame on the left, failing the read of a heavy articulated mining crawler.
+* **Track Wall / Lip Failure:** Neither port nor starboard track holds as a solid dark rubber wall. The starboard track completely bleeds into the ground shadow, and both tracks lack a continuous raised steel outer lip catching 1 px highlights to define the outer track perimeters.
+* **Yellow Livery as Clumpy Stamp:** The yellow livery reads as a clumpy, vertical patch/dot on the right cab flank rather than a crisp, continuous 1 px horizontal visor line running across the leading edge of the dark windshield band.
+* **Cab Hierarchy & Windshield Obscuration:** The cab does not read clearly as a distinct dark cab volume on a mid-steel tub; the dark windshield band is crushed and disrupted by the misplaced yellow patch.
+* **Equipment Well as Floating Gray Box:** The well does not read as a deep architectural bite into the deck; instead, its bright gray frame reads like a surface-mounted rectangular box/cassette that visually overpowers the rest of the chassis.
+* **Boom Arm Indistinct / Lacks Silhouette Separation:** The boom on the right fails to read as an offset articulated finger. It lacks sufficient reach and offset, blending into the starboard track and ground shadow without a readable dark arm, raised steel spine, or bright 1 px bit tip highlight.
+
+---
+
+### 2. MTX Defects Readable at this Size
+
+* **Track Contrast & Definition Collapse:** `TRACK_CONTRAST_STARBOARD` fails severely (-2.22 vs. 18.0 target), meaning the starboard rubber tread completely lacks luminance separation against the terrain/chassis.
+* **Boom Offset Deficit:** `BOOM_OFFSET` fails (0.1417 vs. 0.15 target), collapsing the silhouette separation between the right track/hull and the boom arm.
+* **Depth & Cavity Inversion:** `WELL_IS_A_HOLE` fails (0.0694 vs. 0.24 target) and `ONE_BODY` fails (0.5845 vs. 0.9 target), reflecting that the well cavity lacks physical depth and the chassis reads as fragmented components rather than a unified heavy hull.
+* **Livery Placement / Normal Alignment:** Yellow livery is concentrated on vertical side geometry rather than being restricted to a sharp forward-facing visor edge.
+
+---
+
+### 3. Concrete Blender Actions to Help this Site Silhouette
+
+1. **Re-establish Dual Stadium Running Gear:**
+   * Lower the base albedo of the rubber tread material to create dark solid rubber track walls with strong value contrast against the terrain.
+   * Add a distinct, bevelled outer steel lip with high specular/metallic response along both track perimeters to reliably catch 1 px highlights.
+   * Deepen the geometric shadow trench between the track units and the inner chassis tub.
+2. **Refine Cab & Visor Hierarchy:**
+   * Darken the cab body volume relative to the mid-steel chassis tub to restore structural value hierarchy.
+   * Confine the yellow livery strictly to a thin 1 px horizontal visor line at the front brow of the dark windshield band; remove all yellow paint from side panels and interior bulkheads.
+3. **Deepen and Integrate Equipment Well:**
+   * Recess the well floor further into the hull to deepen the cavity shadow bite (`WELL_IS_A_HOLE`).
+   * Subdue the bright rectangular rim around the well so it reads as an integrated deck opening rather than a disconnected gray cassette.
+4. **Articulate Boom Reach & Specular Bit Tip:**
+   * Extend the boom reach and offset outward (`BOOM_OFFSET`) so the arm clearly clears the starboard track envelope in silhouette.
+   * Model a raised steel spine ridge along the boom arm and terminate with a high-metallic drill bit tip to catch a crisp 1 px specular highlight at the extremity.
+
+---
+
+### 4. Verdict
+
+**REVISE**

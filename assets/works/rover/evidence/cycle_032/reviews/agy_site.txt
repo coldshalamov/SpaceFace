@@ -1,0 +1,61 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 32) ΓÇö `works_site`
+
+---
+
+### Framing Check
+**VALID** (Orthographic top-down site view at ~19 px/cell scale; rover is ~22 px tiny footprint).
+
+---
+
+### (1) Defects From This Site View
+
+1. **Solid Yellow Stamp / Missing Cab Windshield**:
+   * The yellow livery is rendered as a flat, solid vertical yellow block attached to the front of the cab. Because there is no dark recessed windshield or glass glint beneath/behind it, the yellow reads as an applied yellow postage stamp rather than an overhanging cab visor on an industrial steel house.
+2. **Monolithic Gray Box / Flat Rear Deck Read**:
+   * The central and rear hull between the tracks remains an unbroken, square-cornered gray slab. It reads as a flat gray rectangular stamp/box rather than an articulated heavy mining chassis.
+3. **Shallow Hopper Cavity**:
+   * While the well appears as a dark square in the mid-deck, it lacks internal shadow depth and sidewall definition, reading as a flat dark square painted onto the deck plate rather than a deep, functional ore hopper.
+4. **Poor Track Belt Contrast & Boundary Definition**:
+   * The track belts (especially starboard) lack sufficient value drop/shadow separation from the chassis, softening the read of two distinct, heavy-duty crawler assemblies flanking the hull.
+5. **Boom Spine Ridge Definition**:
+   * While the offset boom finger and bright tip bit are discernible, the connecting steel spine arm lacks a crisp specular top edge, leaving the structural connection weak against low-contrast asteroid terrain.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+1. **`CAB_PANE` Failure (0.0017 vs. ΓëÑ 0.02)**:
+   * Cockpit glass area collapsed to near-zero; the dark windshield is missing, leaving only the yellow brow block.
+2. **`TRACK_CONTRAST_PORT` (12.02) & `TRACK_CONTRAST_STARBOARD` (-9.71 vs. ΓëÑ 18.0)**:
+   * Insufficient luminance contrast between track channels and surrounding chassis/ground; inner belt troughs are too bright/washed out.
+3. **`TRACK_OUTERMOST_PORT` (0.369) & `TRACK_OUTERMOST_STARBOARD` (0.365 vs. ΓëÑ 0.80)**:
+   * Tracks fail to establish full outer-edge silhouette dominance across the length of the vehicle.
+4. **`WELL_IS_A_HOLE` Failure (0.069 vs. ΓëÑ 0.24)**:
+   * Depth delta between the cargo well floor and the main deck is far too shallow in the depth pass.
+5. **`LIVERY_SAT_RENDERED` Failure (0.285 vs. ΓëÑ 0.30)**:
+   * Rendered yellow visor saturation drops below threshold under scene lighting.
+6. **`ONE_BODY` Failure (0.6056 vs. ΓëÑ 0.90)**:
+   * Discontinuous hull/chassis silhouette connectivity metric.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Re-establish Recessed Cab Windshield**:
+   * Inset a dark, reflective cockpit glass pane directly beneath the yellow visor hood so the yellow reads strictly as an overhanging sun-visor/brow over a structural cab.
+2. **Deepen Hopper Well on Z-Axis**:
+   * Drop the hopper floor geometry lower in Z and bevel/lip the rim edges to cast strong internal self-shadows and pass `WELL_IS_A_HOLE`.
+3. **Chamfer & Panelize Rear Deck**:
+   * Add 45┬░ chamfers to the rear chassis corners and cut a 1 px recessed panel groove across the rear deck to eliminate the flat gray rectangular stamp silhouette.
+4. **Deepen Track Troughs & Widen Track Stance**:
+   * Deepen the track channel geometry and lower the inner belt albedo to restore dark belt shadows (`TRACK_CONTRAST` ΓëÑ 18.0); ensure track loops clearly define the outer lateral bounds (`TRACK_OUTERMOST` ΓëÑ 0.80).
+5. **Sharpen Boom Spine Specular Ridge**:
+   * Add a sharp beveled top spine to the boom arm geometry to ensure a continuous high-value steel line connects the chassis mounting boss to the bright bit.
+6. **Boost Base Livery Saturation**:
+   * Increase base yellow albedo saturation slightly to ensure `LIVERY_SAT_RENDERED` stays ΓëÑ 0.30 after shading.
+
+---
+
+### (4) Verdict
+
+**REVISE**

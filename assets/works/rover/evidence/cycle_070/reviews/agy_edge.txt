@@ -1,0 +1,99 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 70) ΓÇö `works_edge`
+
+**Camera / Still Checked:** `works_edge` (Operational top-down / planform perspective framing the rover on the works pad)  
+**Evidence Evaluated:**
+- Full frame: [works_edge.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_070/works_edge.png)
+- 1:1 pixel inspection: [works_edge_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_070/review_1to1/works_edge_1to1.png)
+
+---
+
+### Framing Check
+- **Camera:** Valid `works_edge` planform camera on the works pad (orthographic/steep downward operational perspective; camera is not inside a cabin and is not a studio three-quarter angle).
+- **Status:** **VALID_FRAMING**
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+- **Side Walls:**
+  - Hopper side walls are flat, planar triangular card/clay wedges sloping into the cavity without structural plate thickness, rolled flanges, reinforcing gussets, or welded structural seams.
+- **Track Height & Assembly (Solid Rubber Belts vs. Wire Loops):**
+  - Continuous rubber tread belts are correctly modeled with solid vertical height and transverse traction cleats (not wire loops).
+  - Inboard track channels between tread sponsons and the main hull are bridged by unshaded, flat light-gray card/filler plates rather than modeled drive sprockets, idler wheels, track tensioners, and chassis bogie mountings.
+- **Dark Cab House & Yellow Visor:**
+  - Cab house remains an extruded, rectilinear primitive dark box with sharp, unchamfered edges.
+  - A flat circular toy-like disc/button is glued directly onto the center of the cab roof.
+  - Safety yellow is correctly restricted to a thin forward-projecting protective visor shelf extending past the glass (not yellow cab sides, not a plastic yellow square on the roof), but the dark superstructure beneath it lacks faceted armored plating, corner posts, and panel seams.
+- **Dark Glass Pane:**
+  - Front windshield is clearly visible as a dark rectangular tinted pane recessed beneath the yellow visor lip.
+  - Lacks an authored structural retaining bezel frame, rubber perimeter gasket, and dielectric Fresnel specular reflectivity.
+- **Hopper Well:**
+  - Central hopper cavity is a basic stepped interior floor flanked by featureless sloping planar side walls.
+  - Lacks interior AR wear liners with fastener patterns, corner gussets, vibratory floor ribs, and heavy rim coaming around the top opening.
+- **Darker Boom, Raised Steel Spine, & Steel Bit Body:**
+  - Starboard forward boom arm is a dark, extruded polygonal slab lacking structural pivot brackets, hydraulic actuation cylinders, and high-pressure hose lines.
+  - Central raised steel spine running down the upper face of the boom is a thin, flat strip rather than a heavy machined feed-rail.
+  - Rotary cutter bit at the forward tip is a basic tapered conical body lacking distinct machined cutting flutes, carbide insert teeth, and a defined mounting collar.
+- **Scar Plate:**
+  - Aft push/scar plate is a featureless, flat, unshaded light-gray rectangular card pasted directly onto the rear transverse bumper beam.
+  - Lacks steel plate gauge thickness, perimeter bevels, modeled hex bolt fasteners, and recovery hitch/towing lugs.
+- **Toy / Clay / Card / Box / Gray Plate Artifacts:**
+  - **Rear Scar Gray Plate:** Flat, unshaded light-gray rectangular card pasted onto the rear crossmember.
+  - **Inboard Track Filler Gray Plates:** Flat light-gray placeholder card strips bridging the hull-to-track gap on both flanks.
+  - **Hopper Flank Sloping Wedges:** Flat planar triangular clay/card ramps forming the hopper side walls.
+  - **Cab Roof Disc:** Toy-like flat cylindrical button/disc glued to the cab roof.
+  - **Box Cab Primitive:** Blocky extruded CAD box volume lacking armored facets or structural chamfers.
+  - **Slab Boom Arm:** Extruded polygonal dark slab giving a clay/cardboard mockup appearance.
+
+---
+
+### (2) MTX & Play-Scale Defects
+
+- **Material Truth & Value Balance (MTX-33/34/35/56):**
+  - Rear scar plate and inboard track filler plates render as raw, unshaded light-gray placeholder cards that disrupt material consistency and break immersion.
+  - Dark cab body, hull, and boom arm merge into uniform muddy diffuse tones, lacking value separation between structural framing, machinery, and cast armor plates.
+- **Glazing & Specular Response (MTX-07/36):**
+  - Dark cab windshield lacks dielectric clearcoat and Fresnel specular falloff, reading as a flat matte cutout without an authored bezel frame or rubber gasket seal.
+- **Surface Normal Relief & Hardware (MTX-05/10/12):**
+  - Total absence of micro-relief: missing hex bolt heads, panel lap joints, access hatch latches, and structural weld beads.
+  - Cab roof disc lacks functional housing, louver vents, or sensor lens geometry.
+- **Thermal & Wear Gradients (MTX-40/41):**
+  - Cutter bit lacks thermal heat discoloration (straw/purple/blue tempering gradients and friction soot) from rock contact.
+  - Hopper rim and track sponson edges lack curvature-driven edge wear down to bare steel/primer.
+- **Forbidden Reads (MTX-46):**
+  - Directly triggers the forbidden read due to pasted flat gray cards, planar clay wedges, a toy roof disc, and a blocky primitive box chassis.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Reconstruct Hopper Side Walls & Coaming:**
+   - Delete the flat planar triangular card/clay wedges flanking the hopper well.
+   - Model solid, heavy-gauge steel side walls with a Solidify modifier, beveled rim coaming, corner stiffener gussets, and welded structural seams.
+2. **Rebuild Rear Scar Plate:**
+   - Replace the flat light-gray card with a thick, beveled steel push/scar plate proud of the rear crossmember.
+   - Model hex bolt patterns at the corners, perimeter chamfers, and an integrated towing hitch / recovery lug.
+3. **Eliminate Gray Deck Cards & Detail Track Undercarriage:**
+   - Delete the flat light-gray filler card strips between the chassis and tracks.
+   - Model structural sponson frames, drive sprockets, idler rollers, track tensioners, and chassis bogie mountings to seat the solid rubber continuous tracks mechanically.
+4. **Refine Cab House, Visor, & Glazing:**
+   - Chamfer and facet the dark cab house into a heavy armored enclosure with defined corner pillars.
+   - Remove the flat circular roof disc; replace with a recessed maintenance access hatch or an armored sensor pod housing.
+   - Maintain safety yellow strictly on the forward-projecting protective visor brow shelf extending past the glass.
+   - Recess the dark glass pane into a bolted steel retaining frame with a rubber gasket, assigning a reflective tinted glass PBR shader with Fresnel falloff.
+5. **Deepen Hopper Cavity:**
+   - Deepen the central hopper well and model interior AR-plate wear liners with visible bolt patterns and vibratory floor ribs.
+6. **Detail Boom Arm, Steel Spine, & Rotary Bit:**
+   - Rebuild the boom arm as a heavy structural boxed girder with reinforced pivot brackets, hydraulic cylinders, and routed hose lines.
+   - Model a distinct, raised machined steel spine/feed-rail along the top surface of the boom.
+   - Model a multi-faceted steel bit body with spiral cutting flutes, carbide insert teeth, and a machined mounting collar.
+7. **PBR Material & Atlas Alignment:**
+   - Assign distinct PBR shader channels: dark textured abraded rubber for tracks (`track`), heavy industrial dark equipment coating for hull/cab/boom (`livery`/`steel`), bare machined steel for the boom spine and bit body (`steel`/`bit`), safety yellow strictly on the visor lip (`livery`), and reflective tinted dark glass for the cab pane (`glass`).
+
+---
+
+### (4) Verdict
+
+**REVISE**
+
+*Rationale:* While safety yellow is properly constrained to the visor brow and tracks are solid continuous rubber belts rather than wire loops, the model remains burdened with unshaded flat light-gray placeholder cards (scar plate and inboard track filler strips), flat clay triangular hopper side walls, a primitive CAD box cab with a glued toy roof disc, and a featureless slab boom arm.

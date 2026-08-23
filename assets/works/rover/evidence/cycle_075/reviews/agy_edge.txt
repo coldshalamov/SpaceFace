@@ -1,0 +1,52 @@
+### Visual Review: Asteroid Works Rover (`PQ-131.01`, Cycle 75)
+**Viewpoint:** `works_edge` (top-down / game-edge crop)
+
+---
+
+### (1) Obvious Defects from Works-Edge View
+
+- **Flat Gray Deck Plate / Toy/Card Appearance:**
+  - Glaring flat, untextured gray rectangular deck plate between the cab house, boom base, and the starboard track. It reads as a raw primitive card/clay slab with zero mechanical detail, fasteners, or texture breakups.
+  - Hopper side walls and chassis transitions are flat extruded planar sheets lacking industrial flanges, bevels, or structural rim thickness.
+- **Cab House & Visor Structure:**
+  - Cab house is an overly sharp, blocky extrusion (toy-box silhouette).
+  - The yellow visor rim sits directly along the front brow past the dark glass pane without mounting bracketry or weathered beveling, creating a high-contrast plastic stripe.
+- **Cab Window Pane:**
+  - The dark front glass pane is legible and distinct, but the framing surrounding the glass lacks depth/recess into the dark cab shell.
+- **Hopper Well:**
+  - Hopper rim is razor-thin at the top perimeter. The sloped sidewalls and interior stepped floor lack weld seams, structural stiffeners, or material wear in the impact zone.
+- **Boom & Steel Spine / Bit Body:**
+  - Boom structure is a stark, faceted block.
+  - The raised steel spine/cylinder running along the boom into the cutter bit body enters cleanly with no sleeve, collar, or hydraulic mounting housing at the junction.
+- **Tracks & Suspension:**
+  - Track height and treads read properly as solid segmented rubber belts rather than wire loops, but the inner track wells lack mechanical clearance detail and debris guards.
+- **Rear Scar Plate:**
+  - Rear scar plate is a simple flat rectangular cutout/insert with no bolt patterns or perimeter weld geometry.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **Uniform Diffuse / Plastic Shader:** Materials across the cab, boom, and chassis lack surface roughness breakup, edge micro-wear, and asteroid grit/dust accumulation.
+- **Flat Shading on Gray Plate:** The starboard gray deck plate has a flat clay shader with zero specularity variation or grime mapping.
+- **Over-Saturated Visor Accent:** The yellow visor brow is overly flat and saturated, reading as unshaded yellow plastic rather than coated/safety-painted industrial metal.
+- **Lack of Micro-Occlusion:** Interior corners of the hopper well, track wells, and cab-chassis junction lack baked ambient occlusion depth.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Bevel & Thicken Chassis Edges:** Add bevel modifiers or weighted normal bevels to the cab house corners, boom housing, and hopper rim to break up razor-sharp 90-degree CG edges.
+2. **Break Up / Detail the Starboard Gray Deck Plate:** Replace or detail the flat gray card deck beside the cab with embossed diamond-tread plate, structural stiffener ribs, and recessed cable/hydraulic conduit runs.
+3. **Add Flanges to Hopper Well:** Extrude an outward lip/reinforcement flange along the upper rim of the hopper side walls to give structural thickness.
+4. **Detail Boom-to-Bit Transition:** Model a collar/gland seal housing where the raised steel spine enters the cutter bit body.
+5. **Texture & Shader Pass:**
+   - Add roughness roughness noise and subtle edge scuffing to the yellow visor.
+   - Bake ambient occlusion into the hopper well corners and undercarriage track cavities.
+   - Apply grime/dust gradient map to the flat gray deck and track wells.
+
+---
+
+### (4) Verdict
+
+**REVISE**

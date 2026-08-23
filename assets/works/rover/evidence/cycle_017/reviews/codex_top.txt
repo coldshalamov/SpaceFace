@@ -1,0 +1,60 @@
+1. Obvious defects from this Works view at play size
+
+- Silhouette reads as a rectangular yellow-and-gray box with a short gray plate attached to the right. It does not yet read decisively as a heavy industrial rover.
+- The two tracks read as thin dark rails with circular end details, not two substantial stadium-shaped track assemblies. Their belt thickness, wrapped path, tread rhythm, bogies, and steel end caps are insufficiently separated.
+- The central hopper reads as a flat black rectangle. There is no clearly visible rim thickness, sloped steel walls, or descending interior volume proving it is a real hole.
+- The cab is ambiguous. The small dark area beside the hopper does not clearly read as a raised cab with a framed dark roof pane.
+- The boom is too thin and visually merges with the surrounding chassis details. It does not read as an offset, fat steel working arm with convincing pivots and load-bearing structure.
+- The attached bit is indistinct. The front terminates in a blunt gray wedge/plate rather than recognizable excavation or drilling hardware.
+- The chassis is dominated by orthogonal slabs and uniformly rounded box edges. It reads as stacked cards and boxes rather than a joined steel machine.
+- Several gray pieces read as flat plates laid over the body, especially the boom base, right-side arm, front wedge, and small central details.
+- The yellow areas are flat, bright rectangles. They read as plastic panels or stickers attached to a gray toy, not two aft safety-painted steel panels integrated into the machine.
+- Materials are compressed into nearly uniform gray, black, and yellow blocks. Steel, painted steel, track rubber/dark metal, cab glazing, joints, and working-tool metal do not have distinct responses.
+- The lighting and dark ground reduce separation around the tracks and lower chassis, weakening both track silhouettes.
+- Small circular details resemble toy wheels or decorative studs because they lack visible mechanical attachment and surrounding structure.
+
+2. MTX defects visible at this play size
+
+- MTX-01: Edge treatment reads broadly rounded and soft. Large faces do not show convincing flat planes with narrow manufactured edge highlights.
+- MTX-02 / MTX-65: The main body lacks authored cross-section changes and role-specific massing. It is principally a rectangular envelope with pieces attached.
+- MTX-03: The hopper does not prove a skin-breaking opening with wall thickness. It reads as a black inset or painted rectangle.
+- MTX-05: Layered construction is expressed as stacked rectangular plates rather than designed skins, seams, channels, and structural joints.
+- MTX-11: No clearly readable hydraulic hoses or service runs terminate at fittings on the boom.
+- MTX-12: Circular details are not convincingly restricted to mechanical interfaces; at this size they read as studs or toy-wheel marks.
+- MTX-13 / MTX-15: The oversized soft bevel language and muddy transitions suggest scale-insensitive beveling or weak post-boolean normal control.
+- MTX-31: Substance classification is not legible. Most non-yellow surfaces share the same gray response.
+- MTX-33: Roughness and metallic variation are not visibly separating paint, bare steel, track material, glass, and working edges.
+- MTX-35: Exposed steel components—boom, end caps, joints, and bit—read as gray plastic or clay rather than machined or worn metal.
+- MTX-39 / MTX-40: Cavities and working edges lack controlled cavity accumulation and contact-driven wear. The darkness is broad and flat rather than construction-led.
+- MTX-46: The forbidden toy, clay blockout, stacked-box, and gray-plate reads remain plainly visible.
+- MTX-55 / MTX-59: At the supplied 120-pixel cell scale, the vehicle’s industrial role is not carried strongly enough by its silhouette and working apparatus.
+- MTX-56: There are nominal dark, mid, and yellow values, but the hierarchy describes graphic rectangles more than mechanical depth.
+- MTX-57: The hopper opening does not show reliable shell thickness.
+- MTX-61: Plate interfaces lack readable welds, gaskets, countersinks, hinges, or purposeful seam construction.
+- MTX-62: The boom and tool do not clearly read as separated moving parts with functional gaps and pivots.
+- MTX-63: There is little visible meso-scale surface construction between the large boxes and tiny studs.
+- MTX-64: Detail placement is sparse but not convincingly clustered around access, articulation, or load paths.
+- MTX-66: Painted steel, bare steel, dark tracks, and glazing do not show manufacture-specific specular behavior.
+- MTX-67: The yellow accent reads as applied rectangles rather than designed safety-painted machine panels.
+
+UV topology, bake-source quality, cage setup, map provenance, export settings, and other non-visible MTX requirements cannot be determined from these stills.
+
+3. Concrete Blender actions
+
+- Rebuild each track as a thick stadium loop with a clearly wrapped belt, readable tread blocks, recessed bogies, and separate steel end-cap or tension-wheel housings. Increase the track assemblies’ lateral mass and separation from the chassis.
+- Boolean the hopper completely through the upper skin. Add a substantial rim and four visibly sloped steel walls descending to a darker floor so the opening reads from this exact camera.
+- Raise the cab above the adjacent deck. Cut a real roof opening or tub and install a dark pane as a thin shell inside a separate steel frame.
+- Replace the current boom plate with a thick, tapered steel arm offset from the centerline. Add a distinct shoulder mount, pivot pin, hydraulic actuator, hose runs, and fittings that physically meet their ports.
+- Model the bit as recognizable working hardware with a socket, stepped shaft, cutting head or teeth, and visibly different worn-metal treatment. Keep it attached to the boom and clear of the chassis silhouette.
+- Replace stacked slabs with a unified chassis skin and intentional stepped armor or service panels. Remove hidden overlapping faces and retain actual gaps only where parts join or move.
+- Apply scale before beveling. Use narrow, size-appropriate bevels and weighted/custom normals so broad steel faces remain flat.
+- Give the yellow panels physical borders, seams, and fasteners at their mounting interfaces. Use safety-yellow dielectric paint over steel, with restrained edge exposure and grime; do not use flat yellow cards or raised sticker slabs.
+- Separate materials for painted chassis steel, exposed machined steel, track belt, cab glass, hydraulic components, and worn tool metal. Author visibly different roughness and metallic responses.
+- Add construction-scale details around functional areas: boom pivots, hopper rim, track mounts, access hatches, and service connections. Avoid scattering decorative studs.
+- Re-light the evidence view enough to preserve the dark mechanical wells while separating both tracks and the lower chassis from the ground.
+
+4. Verdict
+
+**REVISE**
+
+This is currently a yellow-and-gray box assembled from plates, with an ambiguous black hopper rectangle and an underdeveloped working arm. It does not clear the Hitch-plus floor.

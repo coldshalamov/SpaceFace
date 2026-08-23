@@ -1,0 +1,45 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 73) ΓÇö `works_edge`
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Side Walls**: The sloped side walls flanking the hopper are completely flat, unsegmented slabs resembling cardboard or clay panels. They lack structural ribbing, weld seams, panel breaks, and mounting hardware.
+* **Track Height & Construction**: The tracks read as thick, extruded rounded pill shapes with faint surface lines rather than well-defined, heavy-duty solid rubber belts. They lack distinct cleat tread depth, drive-sprocket tooth engagement, and roller/guide horn definition along the inner track run.
+* **Cab House & Visor**: The cab is a monolithic, blocky dark box with a flat circular roof boss. The yellow highlight is applied as an unmodeled, bright flat visor strip glued to the front edge rather than an integrated structural visor cowl over glass. The cab housing lacks panel seams, chamfered corner geometry, and mechanical vents.
+* **Dark Pane Visibility**: The front viewport/cab window is rendered as a flat, opaque pitch-black rectangle with zero specular reflection, Fresnel falloff, depth, or glass material properties, reading as an empty black void.
+* **Hopper Well**: The hopper interior drops into a stepped hollow pit without internal reinforcement ribs, wear plates, bottom discharge chutes/grates, or material guide liners, giving it the appearance of an empty plastic tray.
+* **Boom & Spine / Bit Body**: The boom assembly on the right side is an oversimplified dark wedge with a single, low-fidelity raised center spine. It lacks hydraulic cylinders, articulation pivot pins, cable harnesses, and mechanical transition into a multi-toothed steel bit body.
+* **Scar Plate & Flat / Toy / Card / Gray Plates**: 
+  * The rear scar plate is a paper-thin, un-beveled gray rectangular card pasted onto the rear bumper with no mounting bolts, weld beads, or recessed housing.
+  * The stepped gray decking plate between the cab and boom mount is a flat, featureless geometric slab with sharp 90-degree edges, looking like a toy plastic mold or untextured cardboard cutout rather than industrial anti-slip deck plating.
+
+---
+
+### 2. MTX Defects Visible at Play Size
+
+* **Uniform Plastic / Clay Diffuse**: Materials across the hull, cab, and boom share an identical flat, muddy matte brown diffuse tone lacking color variation, grit, edge highlights, or micro-scratches.
+* **Missing Specular / Roughness Differentiation**: No clear roughness or metallic distinction between the chassis frame, the central spine, the flat gray decking, and the rubber track treads.
+* **Flat Emissive / Visor Shading**: The yellow visor strip lacks realistic material falloff, surface texture, or ambient occlusion around the frame.
+* **Opaque Void Glass**: The cab glass material is completely non-reflective, flat black diffuse with no specular highlight, subtle transparency, or depth refraction.
+
+---
+
+### 3. Concrete Blender Actions (No Cabin Furniture)
+
+1. **Bevel & Subdivide Decking / Plates**: Add small 2-segment chamfers/bevels to all hard corners on the gray deck slab, cab house, and rear bumper. Recess the rear scar plate into the bumper frame and add bolt/bracket geometry.
+2. **Detail Hopper Walls & Skirts**: Extrude vertical reinforcement ribs and structural gussets along the angled side walls of the hopper well; add a modeled discharge gate/slotted bottom grate inside the hopper well.
+3. **Refine Track Geometry & Tread Teeth**: Deepen the track tread profiles with distinct chevron/cleat geometry, define the outer track guide bevels, and add modeled sprocket teeth engaging the inner track belt.
+4. **Articulate Boom & Drill Assembly**: Extrude hydraulic cylinders and mounting brackets along the boom flank, model pivot hinge pins at the base, and sharpen the central steel spine with defined faceted geometry feeding into a distinct cylindrical/toothed steel drill head.
+5. **Reconstruct Cab Visor & Glass Shader**: Add a modeled visor cowl framing the front viewport. Replace the pitch-black viewport face with a tinted glass material (low roughness, high specular, subtle dark green/gray transmission with Fresnel gloss).
+6. **Assign Differentiated PBR Materials**:
+   * *Hull / Walls*: Matte painted dark industrial metal with subtle edge-wear roughness masks.
+   * *Spine / Bit / Hardware*: Metallic steel with directional brushed/machined roughness.
+   * *Tracks*: Low-reflectance textured vulcanized industrial rubber.
+   * *Deck Plates*: Dark steel diamond-tread / anti-slip textured material with ambient occlusion baking.
+
+---
+
+### 4. Verdict
+
+**REVISE**

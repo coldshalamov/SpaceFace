@@ -1,0 +1,78 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 60) ΓÇö `works_edge`
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Side Walls & Chassis Decking:** 
+  * The side walls and deck flanking the hopper well are flat, featureless planar wedges resembling folded card/clay blockouts rather than structural heavy-duty industrial bodywork.
+  * Absence of bevels, weld lines, mechanical fastening, or structural panel breaks.
+
+* **Tracks:**
+  * Track assemblies lack proper drive and idler tensioning detail; they read as segmented floating blocks over flat gray under-chassis tubs rather than a continuous, heavy-duty solid rubber belt track system with integrated roller frames.
+
+* **Cab House & Yellow Visor:**
+  * The cab is a primitive brown/dark box with a flat circular disc on top.
+  * The yellow accent is applied as a chunky front block/strip instead of being strictly confined to a crisp, thin visor projecting past the glass.
+  * The cab lacks structural framing, chamfered protective pillars, or industrial housing definition.
+
+* **Cab Glass / Dark Pane:**
+  * The front dark pane is an indistinct black rectangle recessed next to the yellow block, lacking proper optical depth, frame sealing, or clear geometric definition.
+
+* **Hopper Well:**
+  * The central hopper well is a shallow, primitive square cavity surrounded by cardboard-like angled apron plates.
+  * Lacks interior wear plating, structural corner gussets, depth, and believable mechanical integration with the chassis.
+
+* **Boom & Drill/Bit Assembly:**
+  * The boom extending to the right is a low-contrast, dark polygonal extrusion.
+  * Missing a darker boom base with a distinct raised steel spine/rail guiding into a dedicated machined steel bit body.
+
+* **Scar Plate / Rear Hitch:**
+  * The rear scar plate is a completely flat, untextured light-gray rectangular card slapped across the rear frame with zero thickness, beveling, or mechanical mounting hardware.
+
+* **Toy / Clay / Card / Box / Gray Plate Artifacts:**
+  * Pervasive primitive box-and-card aesthetic across the entire upper chassis: flat triangular gray cards flanking the well, plain flat gray rear plate, blocky clay-like cab with primitive cylinder cap.
+
+---
+
+### 2. MTX (Materials & Textures) Defects
+
+* **Flat Diffuse Shaders:** The entire rover suffers from flat, clay-like matte shaders with no surface roughness variation, specular micro-detail, or edge wear.
+* **Chassis & Plate Materials:** The gray deck and scar plate use an untextured neutral gray material that reads as default clay/cardboard plastic.
+* **Monotone Cab & Boom:** The cab house and boom share a muddy, low-contrast dark brown/olive tone with no distinction between structural casting, painted sheet metal, and machined steel components.
+* **Visor Material:** The yellow visor is a flat, unshaded solid color rather than an industrial coated safety finish or tinted polycarbonate.
+* **Lighting & Occlusion:** Crevices between the track wells, hopper flare, and cab body lack ambient occlusion contact shadows, enhancing the toy/cardboard appearance.
+
+---
+
+### 3. Concrete Blender Actions (External Only ΓÇö No Cabin Furniture)
+
+1. **Rebuild Hopper & Side Walls:**
+   * Delete flat card wedge geometry around the hopper.
+   * Extrude structural, beveled heavy-gauge steel side walls with reinforced ribs, flanges, and realistic drainage/debris angles.
+   * Deepen the internal hopper well; add internal liner plate geometry and corner gussets.
+
+2. **Refine Cab House & Visor:**
+   * Reshape the cab house into an industrial operator pod with defined structural pillars and beveled corners.
+   * Set the dark glass pane with a distinct rubber/steel bezel.
+   * Model a dedicated thin yellow protective visor shelf extending slightly forward past the glass line; strip yellow paint from the main cab body.
+   * Replace the primitive circular cap with an integrated filtered HVAC intake or sealed maintenance hatch.
+
+3. **Detail Boom & Bit:**
+   * Darken and articulate the boom arm structure.
+   * Model a raised, high-contrast machined steel spine/hydraulic guide running along the top of the boom into a machined steel tool/bit body.
+
+4. **Replace Rear Scar Plate:**
+   * Replace the flat gray card on the rear with an inset, beveled structural steel scar plate featuring bolt heads, tow/lashing points, and chamfered edges.
+
+5. **Fix Track & Undercarriage Geometry:**
+   * Ensure track envelopes read as solid, heavy rubber belts with continuous internal guide roller tracks and defined drive sprockets.
+
+6. **PBR Material Assignment:**
+   * Assign distinct PBR materials: dark rubber for treads, dark painted industrial enamel for cab/boom, machined bare steel for the spine and drill bit, and worn painted heavy steel for the chassis and hopper.
+
+---
+
+### 4. Verdict
+
+**REVISE**

@@ -1,0 +1,879 @@
+{
+  "schema": "spaceface.worksRover.cycle.v1",
+  "assetId": "rover",
+  "cycle": 15,
+  "rootNode": "rover",
+  "targetBboxWu": [
+    1.87,
+    1.76,
+    0.99
+  ],
+  "targetBboxCells": [
+    0.85,
+    0.8,
+    0.45
+  ],
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 19558,
+      "draws": 18,
+      "materials": [
+        "Material_Atlas_LOD0"
+      ],
+      "nodeNames": [
+        "LOD0_Merged_Material_Bit_Boom",
+        "LOD0_Merged_Material_Chevron",
+        "LOD0_Merged_Material_Glass",
+        "LOD0_Merged_Material_Lamp",
+        "LOD0_Merged_Material_Livery",
+        "LOD0_Merged_Material_Rubble",
+        "LOD0_Merged_Material_Steel",
+        "LOD0_Merged_Material_Steel_Boom",
+        "LOD0_Merged_Material_Track",
+        "bit_tip",
+        "boom_pivot",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "rover",
+        "scar_plate",
+        "track_L",
+        "track_R",
+        "vent_stack"
+      ],
+      "bbox": {
+        "min": [
+          -0.9236,
+          -0.902,
+          0.0
+        ],
+        "max": [
+          0.9876,
+          0.902,
+          1.03
+        ],
+        "sizeWu": [
+          1.9111,
+          1.804,
+          1.03
+        ],
+        "sizeCells": [
+          0.8687,
+          0.82,
+          0.4682
+        ],
+        "zMin": 0.0
+      },
+      "hooks": {
+        "boom_pivot": "found",
+        "bit_tip": "found",
+        "hopper_fill_0": "found",
+        "hopper_fill_1": "found",
+        "hopper_fill_2": "found",
+        "hopper_fill_3": "found",
+        "hopper_fill_4": "found",
+        "hopper_lid": "found",
+        "lamp_socket": "found",
+        "vent_stack": "found",
+        "track_L": "found",
+        "track_R": "found",
+        "scar_plate": "found"
+      },
+      "rootNode": "rover",
+      "triBudget": 18000,
+      "triOverBudget": true,
+      "path": "assets/works/rover/source/rover_lod0.glb",
+      "bytes": 14101468,
+      "sha256": "CCB173EDE833E9C5AA38E46586A07FDD49A6876D7627236DBE3BA0E6642DAFB8",
+      "byteBudget": 14680064,
+      "byteOverBudget": false
+    },
+    {
+      "lod": 1,
+      "triangles": 2710,
+      "draws": 18,
+      "materials": [
+        "Material_Atlas_LOD1"
+      ],
+      "nodeNames": [
+        "LOD1_Merged_Material_Bit_Boom",
+        "LOD1_Merged_Material_Chevron",
+        "LOD1_Merged_Material_Glass",
+        "LOD1_Merged_Material_Lamp",
+        "LOD1_Merged_Material_Livery",
+        "LOD1_Merged_Material_Rubble",
+        "LOD1_Merged_Material_Steel",
+        "LOD1_Merged_Material_Steel_Boom",
+        "LOD1_Merged_Material_Track",
+        "bit_tip",
+        "boom_pivot",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "rover",
+        "scar_plate",
+        "track_L",
+        "track_R",
+        "vent_stack"
+      ],
+      "bbox": {
+        "min": [
+          -0.9236,
+          -0.902,
+          0.0
+        ],
+        "max": [
+          0.988,
+          0.902,
+          1.03
+        ],
+        "sizeWu": [
+          1.9116,
+          1.804,
+          1.03
+        ],
+        "sizeCells": [
+          0.8689,
+          0.82,
+          0.4682
+        ],
+        "zMin": 0.0
+      },
+      "hooks": {
+        "boom_pivot": "found",
+        "bit_tip": "found",
+        "hopper_fill_0": "found",
+        "hopper_fill_1": "found",
+        "hopper_fill_2": "found",
+        "hopper_fill_3": "found",
+        "hopper_fill_4": "found",
+        "hopper_lid": "found",
+        "lamp_socket": "found",
+        "vent_stack": "found",
+        "track_L": "found",
+        "track_R": "found",
+        "scar_plate": "found"
+      },
+      "rootNode": "rover",
+      "triBudget": 4000,
+      "triOverBudget": false,
+      "path": "assets/works/rover/source/rover_lod1.glb",
+      "bytes": 3219328,
+      "sha256": "BC62AF35F975B53ED706B56D78199DDBF53191D4430F8C642777E6FB3B49E6AB",
+      "byteBudget": 5242880,
+      "byteOverBudget": false
+    },
+    {
+      "lod": 2,
+      "triangles": 1984,
+      "draws": 18,
+      "materials": [
+        "Material_Atlas_LOD2"
+      ],
+      "nodeNames": [
+        "LOD2_Merged_Material_Bit_Boom",
+        "LOD2_Merged_Material_Chevron",
+        "LOD2_Merged_Material_Glass",
+        "LOD2_Merged_Material_Lamp",
+        "LOD2_Merged_Material_Livery",
+        "LOD2_Merged_Material_Rubble",
+        "LOD2_Merged_Material_Steel",
+        "LOD2_Merged_Material_Steel_Boom",
+        "LOD2_Merged_Material_Track",
+        "bit_tip",
+        "boom_pivot",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "rover",
+        "scar_plate",
+        "track_L",
+        "track_R",
+        "vent_stack"
+      ],
+      "bbox": {
+        "min": [
+          -0.9236,
+          -0.902,
+          0.0
+        ],
+        "max": [
+          0.988,
+          0.902,
+          1.03
+        ],
+        "sizeWu": [
+          1.9116,
+          1.804,
+          1.03
+        ],
+        "sizeCells": [
+          0.8689,
+          0.82,
+          0.4682
+        ],
+        "zMin": 0.0
+      },
+      "hooks": {
+        "boom_pivot": "found",
+        "bit_tip": "found",
+        "hopper_fill_0": "found",
+        "hopper_fill_1": "found",
+        "hopper_fill_2": "found",
+        "hopper_fill_3": "found",
+        "hopper_fill_4": "found",
+        "hopper_lid": "found",
+        "lamp_socket": "found",
+        "vent_stack": "found",
+        "track_L": "found",
+        "track_R": "found",
+        "scar_plate": "found"
+      },
+      "rootNode": "rover",
+      "triBudget": 2000,
+      "triOverBudget": false,
+      "path": "assets/works/rover/source/rover_lod2.glb",
+      "bytes": 971512,
+      "sha256": "DF71C09D3A19BBC8D5F342F3FA7D6D39E4F01DA3012F09ACAA1975A08E4C8111",
+      "byteBudget": 2097152,
+      "byteOverBudget": false
+    }
+  ],
+  "textures": {
+    "atlas": "4x4",
+    "gutterAt2048": 4,
+    "tileMap": {
+      "livery": 0,
+      "chevron": 1,
+      "steel": 2,
+      "track": 3,
+      "glass": 4,
+      "bit": 5,
+      "lamp": 6,
+      "rubble": 7,
+      "scar": 8
+    },
+    "reserved": {
+      "9": {
+        "neutralRole": "livery"
+      },
+      "10": {
+        "neutralRole": "livery"
+      },
+      "11": {
+        "neutralRole": "steel"
+      },
+      "12": {
+        "neutralRole": "steel"
+      },
+      "13": {
+        "neutralRole": "track"
+      },
+      "14": {
+        "neutralRole": "chevron"
+      },
+      "15": {
+        "neutralRole": "rubble"
+      }
+    },
+    "lods": {
+      "lod0": {
+        "resolution": 2048,
+        "maps": {
+          "basecolor": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod0_basecolor.png",
+            "size": 2048,
+            "bytes": 5668261
+          },
+          "orm": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod0_orm.png",
+            "size": 2048,
+            "bytes": 5675876
+          },
+          "normal": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod0_normal.png",
+            "size": 2048,
+            "bytes": 261731
+          }
+        }
+      },
+      "lod1": {
+        "resolution": 1024,
+        "maps": {
+          "basecolor": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod1_basecolor.png",
+            "size": 1024,
+            "bytes": 1447915
+          },
+          "orm": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod1_orm.png",
+            "size": 1024,
+            "bytes": 1430181
+          },
+          "normal": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod1_normal.png",
+            "size": 1024,
+            "bytes": 69538
+          }
+        }
+      },
+      "lod2": {
+        "resolution": 512,
+        "maps": {
+          "basecolor": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod2_basecolor.png",
+            "size": 512,
+            "bytes": 369401
+          },
+          "orm": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod2_orm.png",
+            "size": 512,
+            "bytes": 359285
+          },
+          "normal": {
+            "path": "assets/works/rover/source/textures/rover_atlas_lod2_normal.png",
+            "size": 512,
+            "bytes": 18563
+          }
+        }
+      }
+    },
+    "pngCount": 9,
+    "pngBudget": 9,
+    "pngFiles": [
+      "rover_atlas_lod0_basecolor.png",
+      "rover_atlas_lod0_normal.png",
+      "rover_atlas_lod0_orm.png",
+      "rover_atlas_lod1_basecolor.png",
+      "rover_atlas_lod1_normal.png",
+      "rover_atlas_lod1_orm.png",
+      "rover_atlas_lod2_basecolor.png",
+      "rover_atlas_lod2_normal.png",
+      "rover_atlas_lod2_orm.png"
+    ],
+    "glbBytes": {
+      "lod0": 14101468,
+      "lod1": 3219328,
+      "lod2": 971512
+    },
+    "glbBudget": {
+      "lod0": 14680064,
+      "lod1": 5242880,
+      "lod2": 2097152
+    },
+    "tileMapDetail": {
+      "livery": {
+        "tile": 0,
+        "col": 0,
+        "row": 0,
+        "px": [
+          0,
+          0,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "chevron": {
+        "tile": 1,
+        "col": 1,
+        "row": 0,
+        "px": [
+          512,
+          0,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "steel": {
+        "tile": 2,
+        "col": 2,
+        "row": 0,
+        "px": [
+          1024,
+          0,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "track": {
+        "tile": 3,
+        "col": 3,
+        "row": 0,
+        "px": [
+          1536,
+          0,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "glass": {
+        "tile": 4,
+        "col": 0,
+        "row": 1,
+        "px": [
+          0,
+          512,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "bit": {
+        "tile": 5,
+        "col": 1,
+        "row": 1,
+        "px": [
+          512,
+          512,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "lamp": {
+        "tile": 6,
+        "col": 2,
+        "row": 1,
+        "px": [
+          1024,
+          512,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "rubble": {
+        "tile": 7,
+        "col": 3,
+        "row": 1,
+        "px": [
+          1536,
+          512,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "scar": {
+        "tile": 8,
+        "col": 0,
+        "row": 2,
+        "px": [
+          0,
+          1024,
+          512,
+          512
+        ],
+        "gutter": 4,
+        "inner": 504
+      },
+      "reserved_9": {
+        "tile": 9,
+        "role_neutral": "livery",
+        "col": 1,
+        "row": 2,
+        "gutter": 4
+      },
+      "reserved_10": {
+        "tile": 10,
+        "role_neutral": "livery",
+        "col": 2,
+        "row": 2,
+        "gutter": 4
+      },
+      "reserved_11": {
+        "tile": 11,
+        "role_neutral": "steel",
+        "col": 3,
+        "row": 2,
+        "gutter": 4
+      },
+      "reserved_12": {
+        "tile": 12,
+        "role_neutral": "steel",
+        "col": 0,
+        "row": 3,
+        "gutter": 4
+      },
+      "reserved_13": {
+        "tile": 13,
+        "role_neutral": "track",
+        "col": 1,
+        "row": 3,
+        "gutter": 4
+      },
+      "reserved_14": {
+        "tile": 14,
+        "role_neutral": "chevron",
+        "col": 2,
+        "row": 3,
+        "gutter": 4
+      },
+      "reserved_15": {
+        "tile": 15,
+        "role_neutral": "rubble",
+        "col": 3,
+        "row": 3,
+        "gutter": 4
+      }
+    }
+  },
+  "planform": {
+    "textured": {
+      "YELLOW_MINORITY": {
+        "value": 0.0748,
+        "floor": 0.45,
+        "op": "<=",
+        "pass": true
+      },
+      "TRACK_BAND": {
+        "value": 0.1174,
+        "floor": 0.16,
+        "op": ">=",
+        "pass": false
+      },
+      "TRACK_OUTERMOST_PORT": {
+        "value": 0.7712,
+        "floor": 0.8,
+        "op": ">=",
+        "pass": false
+      },
+      "TRACK_OUTERMOST_STARBOARD": {
+        "value": 0.7708,
+        "floor": 0.8,
+        "op": ">=",
+        "pass": false
+      },
+      "WELL_HOLE": {
+        "value": 0.0502,
+        "floor": 0.04,
+        "op": ">=",
+        "pass": true
+      },
+      "CAB_PANE": {
+        "value": 0.0221,
+        "floor": 0.02,
+        "op": ">=",
+        "pass": true
+      },
+      "BOOM_REACH": {
+        "value": 0.2925,
+        "floor": 0.1,
+        "op": ">=",
+        "pass": true
+      },
+      "BOOM_OFFSET": {
+        "value": 0.1901,
+        "floor": 0.15,
+        "op": ">=",
+        "pass": true
+      }
+    },
+    "texturedPass": false,
+    "clay": {
+      "TRACK_BAND": {
+        "value": 0.3805,
+        "floor": 0.16,
+        "op": ">=",
+        "pass": true
+      },
+      "TRACK_OUTERMOST_PORT": {
+        "value": 1.0,
+        "floor": 0.8,
+        "op": ">=",
+        "pass": true
+      },
+      "TRACK_OUTERMOST_STARBOARD": {
+        "value": 1.0,
+        "floor": 0.8,
+        "op": ">=",
+        "pass": true
+      },
+      "WELL_HOLE": {
+        "value": 0.0665,
+        "floor": 0.04,
+        "op": ">=",
+        "pass": true
+      },
+      "CAB_PANE": {
+        "value": 0.0217,
+        "floor": 0.02,
+        "op": ">=",
+        "pass": true
+      },
+      "BOOM_REACH": {
+        "value": 0.2925,
+        "floor": 0.1,
+        "op": ">=",
+        "pass": true
+      },
+      "BOOM_OFFSET": {
+        "value": 0.1901,
+        "floor": 0.15,
+        "op": ">=",
+        "pass": true
+      }
+    },
+    "clayHolds": true,
+    "cycle3": {
+      "TRACK_CONTRAST_PORT": {
+        "value": 12.8516,
+        "floor": 18.0,
+        "op": ">=",
+        "pass": false
+      },
+      "TRACK_CONTRAST_STARBOARD": {
+        "value": -4.9226,
+        "floor": 18.0,
+        "op": ">=",
+        "pass": false
+      },
+      "LIVERY_SAT_RENDERED": {
+        "value": 0.4831,
+        "floor": 0.3,
+        "op": ">=",
+        "pass": true
+      },
+      "HAS_MASS": {
+        "value": 0.9365,
+        "floor": 0.72,
+        "op": ">=",
+        "pass": true
+      },
+      "WELL_IS_A_HOLE": {
+        "value": 0.063,
+        "floor": 0.24,
+        "op": ">=",
+        "pass": false
+      },
+      "CAB_IS_RAISED": {
+        "value": 0.2601,
+        "floor": 0.28,
+        "op": ">=",
+        "pass": false
+      },
+      "WELL_CAB_DIFFER": {
+        "value": [
+          0.063,
+          -0.2601
+        ],
+        "floor": "opposite signs",
+        "op": "signs",
+        "pass": true
+      },
+      "ONE_BODY": {
+        "value": 0.3831,
+        "floor": 0.9,
+        "op": ">=",
+        "pass": false
+      },
+      "TREAD_PADS_PORT": {
+        "value": 17.0,
+        "floor": 14.0,
+        "op": ">=",
+        "pass": true
+      },
+      "TREAD_PADS_STARBOARD": {
+        "value": 17.0,
+        "floor": 14.0,
+        "op": ">=",
+        "pass": true
+      },
+      "TRACK_ENDS_ROUND_PORT": {
+        "value": 0.6373,
+        "floor": 0.06,
+        "op": ">=",
+        "pass": true
+      },
+      "TRACK_ENDS_ROUND_STARBOARD": {
+        "value": 0.6438,
+        "floor": 0.06,
+        "op": ">=",
+        "pass": true
+      },
+      "NORMAL_RELIEF": {
+        "value": 0.2477,
+        "floor": 0.04,
+        "op": ">=",
+        "pass": true
+      },
+      "NORMAL_RELIEF_LIVERY": {
+        "value": 0.2445,
+        "floor": 0.03,
+        "op": ">=",
+        "pass": true
+      },
+      "CLAY_SHADING": {
+        "value": 48.7314,
+        "floor": 14.0,
+        "op": ">=",
+        "pass": true
+      },
+      "LIVERY_HUE": {
+        "value": 46.7908,
+        "floor": [
+          44.0,
+          54.0
+        ],
+        "op": "range",
+        "pass": true
+      },
+      "LIVERY_SAT": {
+        "value": 0.7402,
+        "floor": 0.7,
+        "op": ">=",
+        "pass": true
+      },
+      "BIT_NOT_PINK": {
+        "value": 218.0392,
+        "floor": "outside 330-25",
+        "op": "hue",
+        "pass": true
+      },
+      "EDGE_SHOWS_WALL": {
+        "value": 1.1377,
+        "floor": 1.1,
+        "op": ">=",
+        "pass": true
+      }
+    },
+    "cycle3Pass": false,
+    "texturedRaw": {
+      "YELLOW_MINORITY": 0.0748,
+      "TRACK_BAND": 0.1174,
+      "TRACK_OUTERMOST_PORT": 0.7712,
+      "TRACK_OUTERMOST_STARBOARD": 0.7708,
+      "WELL_HOLE": 0.0502,
+      "CAB_PANE": 0.0221,
+      "BOOM_REACH": 0.2925,
+      "BOOM_OFFSET": 0.1901,
+      "silhouettePixels": 7885,
+      "bbox": [
+        909,
+        490,
+        1015,
+        589
+      ]
+    },
+    "clayRaw": {
+      "YELLOW_MINORITY": 0.0,
+      "TRACK_BAND": 0.3805,
+      "TRACK_OUTERMOST_PORT": 1.0,
+      "TRACK_OUTERMOST_STARBOARD": 1.0,
+      "WELL_HOLE": 0.0665,
+      "CAB_PANE": 0.0217,
+      "BOOM_REACH": 0.2925,
+      "BOOM_OFFSET": 0.1901,
+      "silhouettePixels": 7885,
+      "bbox": [
+        909,
+        490,
+        1015,
+        589
+      ]
+    },
+    "objectBboxPx": [
+      909,
+      490,
+      1015,
+      589
+    ],
+    "objectSilhouettePixels": 7885,
+    "depthWu": {
+      "hasMass": 0.9364707469940186,
+      "wellMinusDeck": 0.0629839301109314,
+      "cabMinusDeck": 0.2601482570171356,
+      "p02": 0.1694117784500122,
+      "p98": 1.1058825254440308
+    },
+    "normalStdev": 0.24769696593284607,
+    "normalStdevLivery": 0.24448703229427338,
+    "pass": false
+  },
+  "hooks": {
+    "boom_pivot": "found",
+    "bit_tip": "found",
+    "hopper_fill_0": "found",
+    "hopper_fill_1": "found",
+    "hopper_fill_2": "found",
+    "hopper_fill_3": "found",
+    "hopper_fill_4": "found",
+    "hopper_lid": "found",
+    "lamp_socket": "found",
+    "vent_stack": "found",
+    "track_L": "found",
+    "track_R": "found",
+    "scar_plate": "found"
+  },
+  "bbox": {
+    "min": [
+      -0.9236,
+      -0.902,
+      0.0
+    ],
+    "max": [
+      0.9876,
+      0.902,
+      1.03
+    ],
+    "sizeWu": [
+      1.9111,
+      1.804,
+      1.03
+    ],
+    "sizeCells": [
+      0.8687,
+      0.82,
+      0.4682
+    ],
+    "zMin": 0.0
+  },
+  "stills": {
+    "works_top": "assets/works/rover/evidence/cycle_015/works_top.png",
+    "works_edge": "assets/works/rover/evidence/cycle_015/works_edge.png",
+    "works_site": "assets/works/rover/evidence/cycle_015/works_site.png",
+    "works_top_clay": "assets/works/rover/evidence/cycle_015/works_top_clay.png",
+    "works_top_mask": "assets/works/rover/evidence/cycle_015/works_top_mask.png",
+    "works_edge_mask": "assets/works/rover/evidence/cycle_015/works_edge_mask.png",
+    "works_top_depth": "assets/works/rover/evidence/cycle_015/works_top_depth.png",
+    "works_top_1to1": "assets/works/rover/evidence/cycle_015/works_top_1to1.png",
+    "works_top_clay_1to1": "assets/works/rover/evidence/cycle_015/works_top_clay_1to1.png",
+    "works_beside_flight": "assets/works/rover/evidence/cycle_015/works_beside_flight.png"
+  },
+  "visibleFaces": {
+    "note": "cycle 15 does not run hidden-face culling with --delete"
+  },
+  "determinism": {
+    "note": "first run of this pair; sidecar written"
+  },
+  "purgedTextures": [],
+  "blender": {
+    "export": "ok",
+    "render": "ok"
+  }
+}

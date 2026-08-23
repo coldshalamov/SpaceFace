@@ -1,0 +1,70 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 32) ΓÇö `works_edge`
+
+---
+
+### Framing Check
+* **Framing:** Valid `works_edge` camera view (plan/top-down edge orientation against pad/dark background; full rover in frame, not inside cabin, not a studio 3/4).
+
+---
+
+### 1. Obvious Defects (Works-Edge View)
+
+* **Steel Cab House, Yellow Sides, Yellow Fore Visor & Small Dark Pane:**
+  * The cab house reads as a raw gray primitive box with a flat yellow square/block sitting on the roof rather than an integrated industrial steel cab house.
+  * The yellow reads as a plastic square/patch pasted on the roof rather than a functional forward visor/brow overhanging a steel cab.
+  * Cab side walls lack safety-yellow painted steel surfaces.
+  * The small dark windshield pane lacks defined bezel framing, glass depth, or specular structure, remaining overshadowed by the roof yellow block.
+* **Toy / Clay / Card / Box / Gray Plate Read:**
+  * The chassis, central deck, tub, and rear surfaces are flat, featureless matte gray plates with sharp CG edges.
+  * Completely lacks panel seams, weld lines, material breakup, or surface depth, reading like an unpainted clay block or cardboard toy assembly.
+* **Side Walls:**
+  * Flanking side walls are flat extruded gray slabs with simple 45┬░ angular chamfers.
+  * They lack structural thickness, stiffener ribs, or mounting flanges, contributing directly to the card/plate aesthetic.
+* **Track Height & Track Assemblies:**
+  * Track units appear as flat 2D oval stadium loops with minimal height/undercarriage volume.
+  * The perimeter steel lips catch light but the rubber stadium belts lack discrete tread cleats/grousers.
+* **Hopper Well:**
+  * The hopper well is a stark, black cutout hole punched into the middle deck plate.
+  * It lacks an extruded protective perimeter coaming lip, sloped interior chute plates, and internal liner ribs.
+* **Darker Boom with Bright Steel Spine:**
+  * The front boom is rendered as a stepped gray wedge without clear material contrast.
+  * It lacks a distinct, raised bright steel spine running along a darker arm body; the forward drill cone appears visually detached.
+* **Scar Plate & Mount Points:**
+  * The dual black rectangular plates with yellow bracket dots behind the cab read like paper-thin 2D stickers/cards on a gray plate rather than heavy, bolted steel wear plates.
+
+---
+
+### 2. MTX Defects Visible at Play Size
+
+* **Toy Plastic Read:** The yellow roof block resolves at small scale as a plastic toy brick/sticker rather than an overhanging safety visor.
+* **Void Ambiguity:** The black hopper cutout and dark windshield area read as flat, uninformative black holes lacking depth cues.
+* **Subpixel Aliasing:** Thin track lip highlights and tiny yellow pivot dots produce subpixel jitter/aliasing at native play resolution.
+* **Monolithic Gray Silhouette:** The flat gray chassis, deck, and side walls merge into an undifferentiated low-contrast silhouette without functional panel breakdown.
+* **Boom Readability:** Without a bright steel centerline spine, the dark boom arm loses definition against dark backgrounds.
+
+---
+
+### 3. Concrete Blender Actions (No Cabin Furniture)
+
+1. **Cab House & Visor:**
+   * Reshape the yellow geometry into an overhanging forward brow/visor extending past the cab front.
+   * Apply yellow painted steel to the cab side panels and structural gray steel to the cab roof/frame.
+   * Model a defined, beveled window frame with a dark tinted reflective glass shader for the forward pane.
+2. **Boom Assembly:**
+   * Apply a darker industrial base shader to the boom arm.
+   * Model and bevel a prominent bright polished steel centerline spine along the top ridge connecting into the nose bit.
+3. **Hull, Deck & Side Walls:**
+   * Apply `Bevel` modifiers (weighted normals) to all sharp deck, side wall, and chassis edges.
+   * Inset structural panel seams, weld lines, and stiffener flanges across the flat gray deck plates to eliminate the toy/clay/card read.
+4. **Hopper Well:**
+   * Model an extruded raised perimeter coaming lip around the mouth and add sloped interior chute liner plates inside the well.
+5. **Scar Plates:**
+   * Extrude physical plate thickness with beveled edges and add recessed hex fastener geometry to the mounting plates behind the cab.
+6. **Tracks:**
+   * Add discrete tread cleats/grousers along the stadium belt circumference and adjust track height and inner hub recess depth.
+
+---
+
+### 4. Verdict
+
+**REVISE**

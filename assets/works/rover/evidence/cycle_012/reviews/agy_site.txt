@@ -1,0 +1,42 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 12) ΓÇö Site View
+
+**Image Evaluated:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_012/review_1to1/works_site_1to1.png) (and [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_012/works_site.png))  
+**Framing:** VALID (Top-down orthographic site view; rover footprint occupies ~22 px on the ~19 px/cell site grid).
+
+---
+
+### 1. Obvious Defects from this Site View (~22 px)
+
+- **Track Invisibility & Terrain Sinking:** The tracks lack sufficient value contrast against the dark brown asteroid ground tile. The starboard track in particular sinks into shadow/terrain value, reading as a faint, muddy smudge rather than a crisp, heavy-duty crawler track band.
+- **Disconnected / Fragmented Silhouette (`ONE_BODY` Failure):** At ~22 px, the vehicle visually breaks into 4 disconnected pieces: two floating bright yellow wedges, a central dull grey bridge, an offset boom extension, and two faint floating tread bands. It does not read as a single, contiguous heavy mining machine.
+- **Toy / Highlighter Read on Yellow Sponsons:** The bright yellow cowlings flanking the well dominate the asset's luminance profile. Because they lack dark perimeter framing or mechanical breakup, they read like two glowing plastic highlighter blocks glued onto a grey bracket.
+- **Floating Track Assemblies:** The negative space gap between the outer tracks and the hull is overly hollow, making the tread units look physically detached from the chassis body.
+- **Weak Cab Vertical Separation:** The cab mid-section blends into the surrounding grey deck plating, reading with minimal depth relief despite the small dark roof aperture.
+
+*(Note: The hopper well dark bite and offset starboard boom finger are structurally readable, but their context is compromised by the weak track and chassis cohesion).*
+
+---
+
+### 2. MTX Defects Readable at Site Size
+
+- **`TRACK_CONTRAST_PORT` & `TRACK_CONTRAST_STARBOARD` (Fail - 14.71 port / -10.28 starboard vs 18.0 floor):** Tracks fail to separate from background asteroid terrain values, especially on the shaded/starboard flank.
+- **`ONE_BODY` (Fail - 0.3776 vs 0.90 floor):** Severe visual fragmentation of the vehicle body into disjointed luminance clusters.
+- **`CAB_IS_RAISED` (Fail - 0.2764 vs 0.28 floor):** Inadequate top-down height and shadow contrast for the cab structure relative to the deck.
+- **MTX-46 (Toy / Plastic Block Read):** Unframed, flat saturated yellow geometry produces an ungrounded plastic toy appearance.
+- **MTX-55 / MTX-65 (Crawler Role Silhouette):** Failure of the track running gear to establish a solid structural base under the mining equipment.
+
+---
+
+### 3. Concrete Blender Actions
+
+1. **Boost Track Luminance & End-Cap Definition:** Brighten the track rubber/steel base material and increase the specular/roughness highlight on the idler and sprocket end-caps so the outer track bands pop crisply against dark terrain.
+2. **Thicken Chassis Sponson Bridges:** Add visible connecting bulkheads and fender mounts between the central hull and track frames to eliminate the floating-track look and restore body cohesion (`ONE_BODY`).
+3. **Frame Yellow Cowlings with Dark Steel Chamfers:** Add dark metallic borders/chamfers or recessed panel lines around the yellow cowlings to tone down the highlighter glow and integrate the hazard livery into the industrial chassis.
+4. **Elevate Cab Structure & Roof Contrast:** Increase the Z-height of the cab canopy and sharpen the dark window framing to provide clear elevation relief above the mid-deck.
+5. **Anchor Boom Base:** Thicken the root mount of the starboard boom arm to reinforce its mechanical connection to the main crawler body.
+
+---
+
+### 4. Verdict
+
+**REVISE**

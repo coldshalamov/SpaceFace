@@ -1,0 +1,70 @@
+1. Obvious defects from this works view at play size
+
+- The entire rover is severely underlit. Major forms collapse into near-black and brown, so the machine does not meet the required immediate readability.
+- The silhouette is basically a rectangular tracked box with a small projection on the right. It lacks convincing industrial mass separation and does not clear the Hitch-plus floor.
+- The two stadium-shaped tracks are identifiable, but they read as flattened, segmented dark bars. The steel outer lips are too dim and too uniformly traced to register reliably as raised metal catching intermittent light.
+- The cab house does not separate clearly from the mid-steel tub. Both merge into a stack of dark rectangular plates.
+- A dark windshield band is not clearly visible as glass. The dark regions are ambiguous between glazing, openings, and painted panels.
+- The yellow visor line is not legible as a thin line extending specifically beyond visible glass. The yellow marks instead read as tiny disconnected surface accents.
+- The hopper well is not unmistakably a real hole. The large square reads closer to a dark inset pane or framed plate because visible depth, wall thickness, and a differentiated floor are missing at this scale.
+- The offset boom is too small and dark to read as a constructed mechanism.
+- The boom’s dark arm, raised steel spine, and steel bit body do not resolve as separate connected parts.
+- The bright bit tip is only a tiny pale speck. It does not give the boom a strong drill/tool termination.
+- The body reads as stacked cards and boxes: a rectangular tub, square inset, thin rectangular cab elements, and small top-mounted plates.
+- Several broad surfaces read as flat gray-brown plates rather than formed, load-bearing steel.
+- The nearly uniform brown material response creates a clay/toy appearance. Rubber, painted steel, bare steel, glass, and the tool body do not separate convincingly.
+- Small square markings on the upper body resemble stickers applied to a box rather than integrated industrial identification.
+- The lighting and material values leave no strong hierarchy between dark mechanical wells, mid-value steel, glass, and the controlled yellow accent.
+- In the uncropped `works_top.png`, these deficiencies become stronger: the rover reduces to a dim rectangular token with two track bars and an indistinct right-hand appendage.
+
+2. MTX defects visible at this play size
+
+- **MTX-01 — Mid-poly edges and weighted/custom normals:** No convincing narrow steel edge highlights establish properly beveled manufactured forms. Large plates remain visually flat.
+- **MTX-02 — Authored cross-section loft:** The main body reads as scaled rectangular primitives rather than changing structural sections.
+- **MTX-03 — Skin-breaking boolean with wall thickness:** The apparent hopper does not clearly show an open mouth, rim thickness, or an excavated volume.
+- **MTX-04 — Readable volume in the opening:** The hopper’s interior depth is not legible and can be mistaken for a dark plate.
+- **MTX-05 — Panelization with gaps:** Most visible panels look like stacked cards or outlined rectangles rather than plates with believable gaps, overlaps, and thickness.
+- **MTX-07 — Thin-shell canopy over a cut tub:** The windshield is not visibly established as framed dark glass over a cavity.
+- **MTX-11 — Cables and hoses:** No boom service routing or terminated hydraulic lines survive at this scale.
+- **MTX-12 — Fasteners at interfaces:** The boom pivots and principal body joints lack readable attachment hardware.
+- **MTX-31 — Substance classification:** Rubber, glass, painted steel, bare steel, and tool steel are insufficiently differentiated.
+- **MTX-32 — Unique albedo:** The surface treatment is largely uniform brown-gray; the small markings read like stickers.
+- **MTX-33 — Authored ORM:** Roughness and metallic response show inadequate variation between substances and exposed edges.
+- **MTX-35 — Machined metal:** The track lips, boom spine, and bit body do not produce a clear machined-steel response.
+- **MTX-36 — Thin glass:** The windshield lacks a distinct dark, coated-glass highlight and framed cavity read.
+- **MTX-39 — Cavity dirt:** Darkness blankets the asset instead of selectively describing seams, joints, and recesses.
+- **MTX-40 — Edge wear from curvature:** There is no controlled edge treatment that helps the manufactured construction read.
+- **MTX-46 — Forbidden reads:** The asset visibly retains toy, clay, card, box, gray-plate, and sticker-like reads.
+- **MTX-55 — Role silhouette:** At play size the rover reads as a generic rectangular tracked token, not a distinctive industrial drilling rover.
+- **MTX-56 — Value hierarchy:** Dark wells, mid steel, lighter bare metal, glass, and yellow accent do not form three clearly readable value groups.
+- **MTX-57 — Visible shell thickness:** The hopper and cab glazing do not show dependable thickness.
+- **MTX-59 — Reads at play distance:** Major authored features fail to remain distinct in `works_top.png`.
+- **MTX-61 — Joint language:** The boom attachment and body interfaces lack readable pivots, welds, gaskets, clamps, or countersinks.
+- **MTX-62 — Separated moving parts:** Boom segments and their articulation gaps do not resolve clearly.
+- **MTX-63 — Two-scale surfaces:** Neither meso-scale construction nor useful micro-surface response is evident.
+- **MTX-66 — Specular by manufacture:** Rubber, paint, steel, and glass share an overly similar muted response.
+- **MTX-67 — Designed accent:** The yellow treatment is too fragmented and ambiguous to function as the specified visor accent.
+
+3. Concrete Blender actions
+
+- Raise the rover’s key and fill exposure enough that the dark machine remains readable against the ground while preserving deep hopper and cab cavities.
+- Rebuild the central tub as one formed load-bearing steel volume with applied scale, restrained two-segment bevels, angle-based shading, and weighted normals.
+- Cut the hopper through the tub using an Exact boolean. Extrude a visibly thick rim inward and build separate dark sidewalls plus a lower floor so the opening cannot resemble a pane.
+- Rebuild the cab as a distinct dark house seated on the tub. Cut a real windshield cavity and place thin dark-glass panes inside a metal frame.
+- Restrict yellow to one narrow visor blade extending beyond the already visible windshield band. Remove yellow from cab sides, roof blocks, track-like bars, and unrelated plates.
+- Give each track a solid stadium-shaped rubber belt with real thickness and a slightly irregular segmented tread surface. Add a separate narrow steel outer lip above the rubber, bevel it tightly, and light it so only selected arcs catch highlights rather than forming a continuous outline.
+- Add visible track suspension/contact structure where it joins the tub so the belts do not look pasted beside a box.
+- Replace broad card-like overlays with inset or solidified steel plates that have restrained standoff, thickness, and dark seam channels. Keep large quiet areas.
+- Rebuild the boom as clearly offset machinery: a thick dark tapered arm, a separate raised steel spine, and a readable pivot housing fixed into the tub.
+- Add hydraulic hoses as beveled curves routed along the arm, with fittings touching both the chassis manifold and tool body.
+- Model the bit body as a substantial stepped steel assembly with collars, flats, and a clear mechanical connection to the spine. End it in one compact bright metal tip, not a hook or mushroom.
+- Enlarge only the boom’s role-defining masses enough to survive the works camera; do not add cabin furniture or microscopic decoration.
+- Establish separate materials for matte rubber, coated dark cab metal, mid-value painted tub steel, brighter worn steel lips/spine/bit, and dark low-roughness glass.
+- Author roughness and metallic variation so the steel lips, spine, and bit catch narrow highlights while the belts remain dark and broad.
+- Replace sticker-like squares with one restrained stencil applied directly to the paint, using slight wear and no visible thickness.
+- Rebalance the top-view value structure so the hopper remains the deepest hole, the windshield is a distinct dark glass band, the tub is mid-value steel, and the boom spine and tip provide controlled bright metal notes.
+- Recapture at the identical works camera and confirm that the rover, hopper hole, windshield band, thin visor, two solid tracks, and complete boom hierarchy are all recognizable in the uncropped play-size frame.
+
+4. Verdict
+
+**REVISE** — This is still a dim brown-gray box-and-plate rover with sticker-like details. The hopper, windshield/visor relationship, manufactured track construction, and complete boom mechanism do not read reliably at play size.

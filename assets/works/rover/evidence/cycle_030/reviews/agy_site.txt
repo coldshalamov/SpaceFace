@@ -1,0 +1,46 @@
+### Framing Check
+**VALID** (Top-down site orthographic view at ~19ΓÇô22 px scale; not a cabin interior or studio 3/4).
+
+---
+
+### (1) Defects From This Site View
+
+1. **Boxy Yellow Cab Read (Toy/Block Silhouette):**  
+   The yellow cab reads as an isolated, chunky square ring/loop with a square dark cutout rather than a sleek, integrated heavy-equipment cab brow. It gives an isolated toy-block appearance on the front-right quadrant.
+2. **"Tuning Fork" / Hollow Negative Space:**  
+   The upper and lower stadium tracks extend far forward, leaving an open, hollow dead-zone between the upper track and the yellow cab. This gives the chassis an "E" or tuning-fork silhouette rather than a unified, dense mining chassis.
+3. **Boom/Cab Tangency:**  
+   The steel boom protrudes directly beneath the yellow cab block without clear structural separation or an articulated pivot base, making the boom risk reading as a nozzle or peg stuck directly to the yellow box.
+4. **Track Trough Emptiness:**  
+   While the 1 px raised steel lips of both stadium tracks read clearly, the interior belt area reads as a hollow dark trench rather than a continuous heavy track tread.
+
+---
+
+### (2) MTX Defects Readable at This Size
+
+1. **Flat Yellow Albedo:**  
+   The yellow material lacks top-down specular falloff, edge wear, or panel division, rendering as a flat, high-saturation yellow stamp on the cab.
+2. **Stark Gray Hull Contrast:**  
+   The rear gray deck has minimal material gradient or ambient occlusion transitioning into the dark center well, creating a harsh flat-gray-to-black step.
+3. **Boom Bit Specular Definition:**  
+   The bright bit on the tool tip reads slightly soft/beige against the black ground rather than reading as a crisp, high-specular steel/carbide cutter.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Integrate Cab Brow Mesh:**  
+   Taper the rear edge of the yellow cab mesh into the central chassis and restrict yellow paint strictly to the forward brow/roof visor, eliminating the floating square-block loop.
+2. **Define Boom Mount & Anchor:**  
+   Inset a dark mounting collar/recess between the cab and the boom root to clearly articulate the boom as a chassis-mounted tool arm rather than a cab protrusion.
+3. **Infill Chassis Gap:**  
+   Add low-profile structural geometry (recessed dark machinery, hydraulics, or heat sinks) in the gap between the upper track and cab to solidify the core silhouette while maintaining the outer stadium track definition.
+4. **Enhance Track Tread Micro-Relief:**  
+   Add slight internal geometry or normal relief to the track belt centers to catch 1 px sub-highlights along the track run.
+
+---
+
+### (4) Verdict
+
+**REVISE**  
+*(The tracked crawler silhouette, stadium loops, well cutout, and boom tip are mechanically established, but the cab still reads as an unintegrated yellow block and the boom attachment needs structural separation).*

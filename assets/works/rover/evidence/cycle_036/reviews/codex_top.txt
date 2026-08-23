@@ -1,0 +1,52 @@
+1. Obvious defects from this Works view
+
+- The silhouette reads as a square beige box trapped between two capsule-shaped tracks. The tracks establish “rover,” but the central body has little purposeful taper, stepping, or machinery-driven massing.
+- Both tracks are suitably dark, but their thin steel outer lips read as bright decorative outlines rather than load-bearing raised edges. The uniform capsule loops also lack visible tread segmentation and suspension structure at this scale.
+- The cab house reads as a flat gray-beige plate/cardboard enclosure, not fabricated steel.
+- A convincing dark windshield band is not clearly readable. The small dark marks near the upper-right body read as stickers or stray glyphs rather than glass.
+- The yellow element is a thick roof-mounted postage stamp. It is not a thin visor bar positioned beyond a visible windshield band.
+- The left-hand hopper area does not convincingly read as a real hole. It looks like a gray-brown inset pane or printed rectangle. Its rim, wall thickness, and dark interior volume are insufficient.
+- The steel house separating hopper and windshield is not visually decisive, allowing the two regions to merge into one collection of flat rectangles.
+- The offset boom has the beginnings of a dark arm and bright spine, but the connection into the body is visually weak.
+- The terminal bit reads as a tan mushroom/arrowhead attached to a thin stick. It lacks a bright, mechanically attached cutting or drilling head with a visible collar, socket, or clamp.
+- The tiny black surface markings resemble stickers placed on a box rather than markings integrated into manufactured panels.
+- Overall material response is toy-like and clay/cardboard-like: beige slab body, gray plate, outlined tracks, yellow block, and tan tool head.
+
+2. Visible MTX defects at play size
+
+- MTX-01: Edge treatment and highlights do not establish scale-correct fabricated metal. The body remains flat while the track lips look uniformly outlined.
+- MTX-02: The central body lacks authored sectional changes and reads as a chamfered box.
+- MTX-03/04: The hopper does not demonstrate a skin-breaking opening with a thick rim and readable dark volume.
+- MTX-05: There is no convincing stepped steel panelization, overlap, or coherent seam language; visible details resemble applied plates and stickers.
+- MTX-11/12: The boom lacks readable end fittings and a credible body interface. Small dark marks do not resolve as functional fasteners.
+- MTX-31/35: Painted bodywork, bare steel, track rubber, glass, and tool metal are not sufficiently differentiated by substance or specular response.
+- MTX-36: The windshield fails to read as framed dark glass over a cavity.
+- MTX-42: The black markings read as perfect, disconnected stickers rather than sprayed or worn markings integrated into paint.
+- MTX-45: The yellow accent reads as a bright solid block rather than a thin designed fixture.
+- MTX-46: The supported view retains obvious plastic-toy, clay-blockout, cardboard-box, and gray-plate reads.
+- MTX-55: The tracks preserve the basic rover role, but the central silhouette has no strong industrial identity beyond “box on tracks.”
+- MTX-57: Hopper wall thickness is not readable.
+- MTX-61: Track/body, cab/hopper, and boom/body interfaces lack gasket, weld, clamp, countersink, or other coherent joint language.
+- MTX-63: There is little readable meso-scale construction; small markings cannot substitute for modeled panels and openings.
+- MTX-66: Painted steel, exposed metal, glass, rubber, and tool surfaces do not show manufacture-specific highlights.
+- MTX-67: The yellow accent is a brick rather than a controlled visor bar.
+
+3. Concrete Blender actions
+
+- Reshape the central chassis with several real cross-sections: narrower shoulders near the ends, a defined cab mass, and stepped structural zones around the hopper and boom mount.
+- Boolean the hopper fully through the upper skin. Add a visibly thick steel rim and recessed five-wall well with a much darker floor. Keep a substantial steel bridge between hopper and cab.
+- Cut a separate windshield opening into the cab house. Install a thin, dark glass shell with a metal perimeter frame and a darker cavity behind it.
+- Delete the yellow box. Build a narrow yellow visor bar positioned only beyond the windshield’s outer edge, supported by two small brackets. Do not form a U-frame or repeat it over the tracks.
+- Give the track lips real raised steel thickness, restrained bevels, and broken highlights. Add coarse tread segmentation and a few readable bogie or suspension interruptions without cluttering the silhouette.
+- Replace flat body plates with inset or solidified steel panels, narrow seam channels, and restrained overlaps around actual service boundaries.
+- Rebuild the boom as an offset dark structural arm carrying a narrow bright machined-metal spine. Add a recessed or bolted pivot housing where it joins the chassis.
+- Replace the tan mushroom end with a narrow bright cutting/drilling bit. Give it a visible shank, collar, clamp, and hard-edged working tip connected directly to the metal spine.
+- Remove or rescale the sticker-like black marks. Reapply only purposeful identification or warning stencils on coherent steel panels.
+- Separate materials explicitly: painted steel body, dark track rubber, raised bare-steel lips, dark coated glass, dark boom casing, bright machined spine and bit, and yellow painted visor. Give each a distinct roughness and highlight response.
+- Apply scale before beveling, use narrow size-appropriate bevels, repair boolean normals, mark sharp edges, and use weighted normals so broad steel faces remain flat.
+
+4. Verdict
+
+**REVISE**
+
+The rover is currently a gray-beige box with sticker-like details, a yellow roof block, and a tan mushroom-like tool head. It does not yet meet the Hitch-plus floor.

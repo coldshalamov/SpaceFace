@@ -1,0 +1,61 @@
+## 1. Obvious defects from this Works view at play size
+
+- The silhouette reads as a yellow rectangular box between two tracks. It lacks the strong industrial massing and negative space needed to clear the Hitch-plus floor.
+- The two dark stadium tracks are present, and their steel end caps are visible, but the tracks resemble simplified ladder toys. The tread links, drive structure, suspension, and contact mass do not read as convincing manufactured machinery.
+- The hopper well reads as a dark rectangular hole, but its rim is thin and weak. It looks cut into a flat yellow plate rather than built as a deep, load-bearing hopper with visible wall thickness.
+- The raised cab and framed dark roof pane are present, but the cab remains a square box. The pane reads more like a black inset card than a thin glazed shell over a cut cabin volume.
+- The steel boom is correctly offset, but it reads as a narrow, flat gray bar attached abruptly to the body. Its pivot, structural section, joints, hydraulic actuation, and load path are not legible.
+- The supposed steel bit reads as a pale gray plate or small shovel/card. It has neither the thickness nor the shaped cutting geometry of a credible mining bit.
+- Large yellow areas are flat, slab-like plates with almost no construction hierarchy. The rover strongly resembles a toy/LEGO vehicle assembled from boxes.
+- Several edges appear paper-thin or card-like, especially around the hopper, cab roof, boom, and bit.
+- The uniform yellow surfaces read as clay or molded plastic rather than painted industrial metal.
+- The gray boom and bit read as default gray plates rather than machined steel.
+- The central chassis has no convincing joints, welds, gaskets, fasteners, protected pivots, or mechanical interfaces at this size.
+- Value separation exists, but most of it comes from black rectangular voids against yellow slabs. It does not compensate for the primitive construction.
+- The surrounding square ground patch competes with the rover silhouette and further reinforces the appearance of a small toy placed on a display card.
+
+## 2. MTX defects visible at this play size
+
+- **MTX-01 / MTX-13 — controlled, scale-correct bevels:** Major yellow and gray components retain hard box edges or indiscriminate soft edges. Their edge treatment does not communicate metal gauge or manufacturing scale.
+- **MTX-03 / MTX-57 — cut cavities and visible shell thickness:** The hopper is dark, but its wall thickness and constructed rim are insufficiently readable. The cab pane has the same weakness.
+- **MTX-05 — layered panels and seam channels:** The body is dominated by broad, flat slabs. Meaningful stepped plates and dark joint channels are missing.
+- **MTX-07 / MTX-36 — thin-shell glazing over a cut volume:** The framed dark cab pane is present but still reads as a black inset rectangle rather than thin glass over a real opening.
+- **MTX-11 — cables and hoses:** No hydraulic or service routing connects the boom to the chassis at visible endpoints.
+- **MTX-12 — fasteners at interfaces:** Boom pivots, track-end assemblies, hopper rim, and cab framing lack readable interface hardware.
+- **MTX-14 / MTX-60 — designed asymmetry:** The offset boom supplies functional asymmetry, but the otherwise mirrored slab construction has no authored service repair, replaced component, or operational marking.
+- **MTX-31 / MTX-35 — substance classification and machined metal:** Yellow paint, track metal, boom steel, and bit steel do not show sufficiently different manufactured responses. The boom and bit especially read as plain gray material.
+- **MTX-39 / MTX-40 — cavity dirt and curvature-driven wear:** The top view lacks controlled wear that explains contact, loading, access, and abrasion. Any darkening is too broad to read as mesh-derived cavity treatment.
+- **MTX-46 — forbidden reads:** The supported view contains obvious plastic-toy, clay-blockout, box-stack, card, and default-gray-plate reads. This alone fails the model.
+- **MTX-47 — LOD0 construction:** The visible asset still appears to be a loft-and-boxes/blockout-level assembly rather than finished construction.
+- **MTX-55 — role silhouette:** “Tracked utility vehicle” is discernible, but “Asteroid Works mining rover” depends almost entirely on the tiny boom. The body itself lacks role-specific industrial massing.
+- **MTX-56 — value hierarchy:** Dark wells, yellow paint, and gray hardware provide three values, but the hierarchy is crude and rectangular rather than structurally descriptive.
+- **MTX-59 — reads at play distance:** Tracks and basic rover identity survive; convincing materials, hopper depth, cab construction, boom mechanics, and bit identity do not.
+- **MTX-61 — joint language:** Plate, cab, track, boom, and tool interfaces lack visible gaskets, welds, countersinks, or equivalent joint treatment.
+- **MTX-62 — separated moving parts:** The boom is separate, but its articulation is not expressed through a convincing pivot or joint gap.
+- **MTX-63 — two-scale surfaces:** Neither meso-scale construction nor micro-scale manufacturing detail is sufficiently visible.
+- **MTX-65 — role-specific massing:** The vehicle reads as a generic yellow tracked box with an attachment.
+- **MTX-66 — specular by manufacture:** Painted bodywork and exposed steel do not separate convincingly by highlight or roughness.
+- **MTX-67 — designed accent:** Yellow is a whole-body fill rather than a controlled industrial accent supported by material and construction hierarchy.
+
+## 3. Concrete Blender actions
+
+- Preserve the two-track layout, hopper location, raised cab, and offset boom, but rebuild the central chassis from interlocking structural masses rather than one yellow rectangular shell.
+- Deepen the hopper with an actual boolean cut. Add a visibly thick rim, sloped internal walls, reinforced corners, and a darker lower cavity.
+- Rebuild the cab roof as a raised metal frame around a thin, dark glass shell over a cut opening. Give the surrounding cab structure tapered or chamfered sections so it stops reading as a box. Add no cabin furniture.
+- Replace the boom’s flat rectangular bar with a tapered box-section or fabricated I-section. Add a substantial chassis-mounted pivot, pin caps, joint clearance, and one or two hydraulic cylinders with hoses terminating on fittings.
+- Rebuild the bit as a thick, shaped steel cutting tool with a wedge profile, reinforced root, distinct cutting edge, and visible attachment hardware. Remove the flat gray-card silhouette.
+- Give the track assemblies readable sidewalls, linked tread masses, recessed wheel or bogie structure, drive/idler distinction, and properly seated steel end housings. Keep the overall dark stadium-track silhouette.
+- Add scale-correct bevels after applying object scale. Use different bevel widths for chassis plate, cab frame, track hardware, boom, and cutting edge.
+- Break the large yellow surfaces into a few purposeful stepped armor or service plates with recessed seam channels. Keep quiet areas; do not cover everything in equal greeble.
+- Add fasteners only where parts meet: hopper reinforcement, cab frame, track end housings, boom pivot, cylinder brackets, and bit mount.
+- Establish separate materials for painted yellow steel, dark track rubber or tread recesses, brushed/machined boom steel, hardened bit steel, dark glass, and cavity dirt.
+- Author roughness and metallic variation so the yellow paint has a coated highlight, the boom shows directional machined-metal response, and the bit has harder polished wear along its cutting edge.
+- Add restrained abrasion where material would actually contact ore, especially the hopper lip and bit. Add grease and cavity dirt around pivots and track hardware.
+- Add one deliberate off-center service detail—such as a replacement access plate or worn Works stencil—without adding random boxes.
+- Check the exported model again from this exact Works top camera at 120 px per cell. The hopper depth, cab glazing, boom section, pivot, and cutting bit must remain identifiable without relying on a close studio render.
+
+## 4. Verdict
+
+**REVISE**
+
+The required components are present, but the visible result is still a yellow box with plates, toy-like tracks, a card-like boom, and a default-gray plate standing in for the steel bit. It does not meet the Hitch-plus floor.

@@ -1,0 +1,59 @@
+## Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 37 ΓÇö `works_edge`)
+
+**Reviewed Assets:**
+- [`works_edge_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_037/review_1to1/works_edge_1to1.png)
+- [`works_edge.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_037/works_edge.png)
+
+**Framing:** Valid `works_edge` orthographic top-down / planform projection. Full rover is contained within frame.
+
+---
+
+### (1) Obvious Defects from Works-Edge View
+
+- **Toy / Clay / Card / Box / Gray Plate Appearance:** The central hull, cab, and rear chassis read as flat, unchamfered gray slabs and stacked card/clay plates. The vehicle lacks structural thickness, integrated massing, and manufactured heavy-equipment construction.
+- **Side Walls:** The side walls connecting the central hull to the track assemblies are thin, featureless flat gray plates with crude triangular negative-space cutouts. They lack structural depth, mounting flanges, gusset ribbing, and stiffener geometry.
+- **Track Height & Paperclip Lips:** The track assemblies are outlined by continuous, bright specular lips that dominate the silhouette like thin hollow paperclips. The track assembly lacks vertical depth, realistic side-wall profile, and internal roller/bogie massing relative to the chassis height.
+- **Darker Steel Cab House with Yellow Sides:** The cab structure does not resolve as a distinct darker painted steel cab house. Its flanks are the same uniform flat gray as the deck plates rather than having dedicated industrial yellow side armor panels.
+- **Thin Yellow Visor Bar & Dark Glass Pane:** The yellow nose piece reads as a thick, solid yellow plastic block/tab mounted directly to the roof plate. It completely fails to read as a crisp, thin forward-projecting yellow visor bar suspended over an authored, visible dark glass windscreen pane. The dark cutout behind it reads as an empty black pocket rather than framed cab glazing.
+- **Hopper Well:** The hopper reads as a simple rectangular void punched through a flat gray plate with a basic ramp. It lacks wall thickness, a raised coaming lip, AR liner plates, and structural isolation from the cab house.
+- **Darker Boom with Narrow Bright Metal Spine & Steel Bit Body:** The forward boom assembly reads as a flat stick with a floating yellow line and an arrowhead-like tan pointer tip. It lacks an articulated darker structural boom arm, a distinct narrow bright metallic spine, and a faceted tool-steel bit body with a hardened cutting tip.
+- **Scar Plate:** There is no visible reinforced scar plate, chin armor, or heavy wear plating on the leading nose edge or lower chassis tub.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **MTX-01 / MTX-46 (Toy / Stacked Plate Shading):** Uniform, flat matte gray values across all hull components. Zero bevel highlights, panel breaks, or manufactured edge definition.
+- **MTX-07 (Missing Cab Glazing Read):** Glazing fails to read as an authored dark glass window band; the area behind the yellow block collapses into an ambiguous unshaded black cavity.
+- **MTX-05 / MTX-57 (Shell Thickness & Hopper Geometry):** Hopper mouth and hull cutouts lack physical wall thickness, flange lips, and readable interior depth.
+- **MTX-31 / MTX-33 / MTX-66 (Material Separation & Roughness Contrast):** Hull steel, boom metal, yellow safety paint, and rubber tracks lack distinct roughness and specular separation, yielding a muddy mid-tone read at play scale.
+- **MTX-11 / MTX-12 / MTX-61 (Mechanical Interface Detail):** The hinge brackets and boom mount read as flat surface graphics/stickers rather than heavy mechanical pivots, clamps, and hydraulic hardware.
+- **MTX-55 / MTX-59 (Play Size Value Hierarchy):** At small scale, the rover resolves only as two bright paperclip track loops and a yellow plastic roof block flanking a gray box, failing the industrial mining crawler identity.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Cab House, Glazing & Visor:**
+   - Model an authored, dark reflective glass windscreen band across the forward face of the cab.
+   - Remodel the yellow block into a thin, wide visor brow bar projecting cleanly in front of and above the dark glass.
+   - Assign a darker painted steel material to the main cab house and apply dedicated yellow livery panels to the cab house flanks.
+2. **Chassis, Side Walls & Scar Plate:**
+   - Add controlled bevels, plate thickness, and panel seam offsets to all central hull plates to eliminate the flat cardboard/clay look.
+   - Reconstruct the side walls with structural thickness, recessed pocketing, and reinforced mounting brackets connecting to the track sponsons.
+   - Extrude a heavy, faceted scar plate along the leading lower chin and chassis perimeter.
+3. **Track Assemblies:**
+   - Increase track pod vertical mass and widen the dark rubber belt surface relative to the outer lip.
+   - Reduce the continuous brightness of the outer lip to small, intermittent specular highlights so the tracks read as heavy solid rubber crawlers rather than hollow wire loops.
+4. **Hopper Well:**
+   - Boolean a true well cavity with thick perimeter coaming lips, internal liner steps, and dark cavity ambient occlusion.
+5. **Boom & Bit Assembly:**
+   - Rebuild the boom as a heavy dark structural arm.
+   - Model a separate, narrow polished bright metal spine running down the center into the tool mount.
+   - Replace the arrowhead/mushroom tip with a faceted steel bit body and a bright hardened cutter point.
+
+---
+
+### (4) Verdict
+
+**REVISE**

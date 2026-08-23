@@ -1,0 +1,76 @@
+### Visual Review: Asteroid Works Rover (`PQ-131.01`, Cycle 77) ΓÇö `works_site`
+
+---
+
+### Framing Verification
+- **Status:** Valid `works_site` camera view (~19 px/cell site scale, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_077/review_1to1/works_site_1to1.png) and cross-referenced with [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_077/works_site.png).
+- **Check:** Orthographic overhead perspective correctly captures the vehicle on the asteroid surface at native in-game scale. The camera is not inside a cabin and is not a studio three-quarter view. Framing is **VALID**.
+
+---
+
+### (1) Every Obvious Defect FROM THIS SITE VIEW
+
+1. **Gestalt Breakdown & Box / Stamp / Yellow Patch Read:**
+   - At ~22 px site scale, the vehicle fails to read as a cohesive, heavy-duty tracked industrial crawler (`ONE_BODY` = 0.5526 vs. 0.9000 min).
+   - Rather than projecting an articulated mining chassis, the silhouette resolves as a dark/gray box flanked by two dark bars, with an asymmetric yellow vertical bar/patch stuck on the starboard-forward flank.
+
+2. **Track Belt Dissolution & Missing 1 px Outer Steel Lip Highlights:**
+   - Both port and starboard tracks hold mass as solid dark stadium belts (avoiding hollow paperclips or wire loops).
+   - However, the outer steel lips fail to catch a distinct 1 px specular highlight against the terrain shadows, resulting in severe negative track contrast (`TRACK_CONTRAST_PORT` = -26.99, `TRACK_CONTRAST_STARBOARD` = -23.78 vs. +18.00 min floor) and causing the crawler edges to blend into surrounding ground darkness.
+
+3. **Yellow Visor Failure & Misplaced Livery Block:**
+   - The safety yellow does not resolve as a crisp, continuous 1 px horizontal visor shelf directly forward of the windshield (`LIVERY_SAT_RENDERED` = 0.0132 vs. 0.3000 min).
+   - Instead, the yellow color pools as a chunky vertical patch on the starboard cab flank/boom root, producing a toy-like postage-stamp defect rather than a functional vehicle hazard brow.
+
+4. **Sunken Cab House & Cramped Windshield Band:**
+   - The cab house geometry remains sunken relative to the deck (`CAB_IS_RAISED` = -0.3747 vs. +0.2800 min).
+   - The dark windshield band is cramped and lacks a defined mid-steel bezel or specular sheen, causing it to be visually swallowed by adjacent chassis shadows and the yellow flank block.
+
+5. **Intake Well Rim Legibility:**
+   - The hopper well registers as a dark opening separated from the cab, but it lacks a defined, illuminated mid-steel coaming lip and visible wall thickness. At this scale, it risks reading as a flat black cutout rather than an unmistakable deep mechanical well.
+
+6. **Boom Arm Clumping & Low-Contrast Spine / Bit:**
+   - The boom arm lacks sufficient lateral clearance (`BOOM_OFFSET` = 0.1466 vs. 0.1500 min floor), clumping against the starboard crawler track.
+   - The raised steel spine along the dark boom arm is too faint to establish a clear load-bearing line, and the cutter bit lacks a crisp 1 px specular spark at the tip.
+
+7. **Toy-Like Center Plate / Marking Read:**
+   - The center deck plates and dot markings read as flat card slabs and printed sticker details rather than an integrated industrial casting with structural joints.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **MTX-01 / MTX-13 (Mid-Poly Edge Bevels & Specular Lips):** Outer track flanges, hopper coaming, and the boom spine lack scale-correct bevels to reliably catch 1 px specular edge highlights under site lighting.
+- **MTX-02 / MTX-46 (Mass Variation & Toy / Box / Stamp Read):** The central body is dominated by flat, planar rectangular cards and boxes rather than an articulated industrial casting (`ONE_BODY` = 0.5526).
+- **MTX-03 / MTX-04 / MTX-57 (Hopper Volume & Wall Thickness):** The intake well lacks an extruded coaming rim and legible wall thickness at 22 px.
+- **MTX-07 / MTX-36 (Glazing Definition & Raised Cab Structure):** Cab roof is depressed below deck level (`CAB_IS_RAISED` = -0.3747 vs. +0.28 min) and the windshield glass lacks distinct specular gloss.
+- **MTX-31 / MTX-67 (Designed Livery & Visor Separation):** Safety yellow fails to form a thin 1 px visor line across the glass brow (`LIVERY_SAT_RENDERED` = 0.0132 vs. 0.30 min), forming an isolated yellow patch on the flank.
+- **MTX-55 (Role Silhouette at 22 px):** Silhouette relies heavily on two raw track bars and a rectangular chassis box rather than an integrated mining crawler.
+- **MTX-56 (Value Hierarchy & Track Contrast):** Severe negative track contrast (`TRACK_CONTRAST` negative on both tracks vs. +18.0 min floor); dark rubber treads dissolve into terrain shadow.
+- **MTX-61 / MTX-62 (Boom Articulation & Negative Space):** Inadequate lateral offset (`BOOM_OFFSET` = 0.1466 vs. 0.1500 min floor) merges the boom arm into the starboard track envelope.
+
+---
+
+### (3) Concrete Blender Actions that Help this Site Silhouette
+
+1. **Re-establish 1 px Outer Steel Track Lips:**
+   - Model a raised, sharp outer steel lip along the perimeter of both port and starboard stadium tracks. Assign a bright brushed-steel material to catch a continuous 1 px highlight and pull track contrast into positive values (`TRACK_CONTRAST` >= +18.0).
+2. **Confine Safety Yellow Strictly to a 1 px Horizontal Visor Shelf:**
+   - Strip yellow material assignments from the cab flank and boom root.
+   - Restrict safety yellow strictly to a thin 1 px horizontal visor brow running directly across the leading edge of the windshield glass (`LIVERY_SAT_RENDERED` >= 0.30).
+3. **Elevate Cab & Frame Windshield Band:**
+   - Raise the cab roof geometry above the tub deck (`CAB_IS_RAISED` >= +0.28).
+   - Widen the windshield glazing band slightly, frame it with a mid-steel bezel, and lower glass roughness so it reflects a distinct specular band behind the yellow visor.
+4. **Extrude Hopper Coaming Rim:**
+   - Model a raised, chamfered mid-steel coaming lip around the hopper opening to establish visible wall thickness and ensure the intake reads as an unmistakable deep cavity.
+5. **Offset Boom Arm & Accentuate Steel Spine and Bit Tip:**
+   - Increase lateral boom clearance (`BOOM_OFFSET` >= 0.1500) to create readable negative space against the starboard track.
+   - Thicken the raised bright steel spine along the dark boom arm, and give the bit head a faceted steel casing with a bright specular tip.
+6. **Unify Mid-Steel Tub & Eliminate Card Slabs:**
+   - Replace flat deck card plates and dot markings with a chamfered cast steel tub featuring recessed service seams and countersunk fasteners.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,58 @@
+### Visual Review: Asteroid Works Rover (`works_site` View, PQ-131.01 Cycle 23)
+
+**Files Reviewed:**
+- [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_023/review_1to1/works_site_1to1.png) (1:1 pixel scale crop, ~22 px rover)
+- [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_023/works_site.png) (Full site grid, ~19 px/cell scale)
+
+---
+
+### Framing Check
+- **Camera Type:** Top-down site grid view (`works_site`).
+- **Framing Status:** **VALID**. The rover resolves at ~22 px on the ~19 px/cell site terrain.
+
+---
+
+### (1) Obvious Defects FROM THIS SITE VIEW
+
+1. **Yellow Postage-Stamp / Toy Block Read on Starboard:**
+   - While the two parallel highlighter bars from cycle 22 have been reduced to one side, the starboard yellow area resolves as a solid, flat yellow rectangular block (~7├ù3 px) stuck to the lower flank. It reads as a plastic toy block or yellow stamp decal rather than an integrated structural safety plate on heavy mining machinery.
+2. **Monolithic Gray Stamp / Box Chassis:**
+   - The main hull, cab, and machinery housing read as a flat, unfilleted gray polygon/stamp. It lacks stepped deck massing, chamfered shoulders, or corner undercuts, creating a boxy slab footprint.
+3. **Missing Track Stadium Belts & Grouser Definition:**
+   - The tracks fail to resolve as heavy crawler assemblies. The port track is a washed-out, low-contrast gray margin blending into the hull, while the starboard track is obliterated by the solid yellow block. There is no continuous dark stadium loop with light-catching raised grousers wrapping the perimeter.
+4. **Hopper Well Reads as a Flat 2D Black Cutout:**
+   - The hopper excavation resolves as an unarticulated 2D black rectangular hole cut into the gray slab. Without an illuminated raised coaming rim or visible internal sloped walls, it lacks 3D physical depth.
+5. **Boom Arm Resolves as a Blunt Gray Shelf with a Pale Nub:**
+   - The forward offset boom lacks structural articulation or knuckle jointing, appearing as a blunt gray projection tipped with an indistinct pale beige/cream blob rather than an offset steel finger with a hardened, high-specular carbide bit.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **MTX-46 (Forbidden Reads ΓÇö Toy / Postage Stamp / Gray Stamp Read):** The vehicle footprint collapses into a flat gray rectangular stamp with a bright yellow plastic block and a pale nub, failing the core read of a functional heavy crawler.
+- **MTX-55 (Role Silhouette at Site Scale):** Lacks distinctive mining crawler silhouette cues at 22 px scaleΓÇöno continuous dark perimeter tread loops, no negative space separation between tracks and chassis, and no articulated boom finger.
+- **MTX-56 (Value Hierarchy & Shading Contrast):** Low internal contrast across the upper body (chassis, cab, and boom share the same flat diffuse gray), polarized against an unmodulated black well void and a high-saturation solid yellow block.
+- **MTX-03 / MTX-04 (Readable Well Volume & Rim Coaming):** The collection well lacks a raised steel lip/coaming to catch top-down key light, reading as a flat black stencil rather than a deep functional cavity.
+- **MTX-01 / MTX-02 (Authored Cross-Section & Edge Relief):** Hull perimeter remains a rigid box extrusion without chamfered plate transitions, stepped deck heights, or edge specular bevels.
+- **MTX-62 / MTX-66 (Material & Tool Definition):** The cutting tool head lacks metallic/carbide specular punch and joint definition, blurring into a soft clay nub against the asteroid ground.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Promote Continuous Dark Stadium Tracks & Raised Grousers:**
+   - Expand the dark rubber outer belt geometry on both port and starboard and elevate the grouser ridges so a continuous 1ΓÇô2 px dark tread perimeter with light-catching teeth wraps the track assembly.
+2. **Refine & Recess Starboard Yellow Safety Plate:**
+   - Thin and chamfer the starboard yellow safety plate, framing it with dark structural steel margins and subtle panel breaks so it reads as painted armor plate rather than a solid flush yellow block.
+3. **Add Raised Specular Coaming Rim to Hopper Well:**
+   - Extrude a raised, beveled steel coaming lip around the hopper mouth with worn steel material to catch top-down lighting and visually establish physical cavity depth.
+4. **Articulate Boom Arm into an Offset Steel Finger:**
+   - Taper the boom arm cross-section, notch an articulated pivot knuckle near the chassis mount, assign the arm a dark/weathered steel shader, and define the bit tip as a distinct, high-specular carbide tool head.
+5. **Chamfer & Step the Main Chassis Massing:**
+   - Introduce corner chamfers and stepped elevations between the cab roof, deck plate, and track wells to break up the monolithic rectangular footprint at 22 px.
+
+---
+
+### (4) Verdict
+
+**REVISE**

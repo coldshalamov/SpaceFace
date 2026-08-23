@@ -1,0 +1,51 @@
+### Asteroid Works Rover Visual Review (PQ-131.01 Cycle 23 ΓÇö Works Edge)
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+* **Toy / Clay / Card / Box / Gray Plate Aesthetic**: The chassis is dominated by planar, unfilleted gray sheet geometry and primitive rectangular boxes. The vehicle reads as a flat cardboard/clay mockup rather than a heavy, functional space-mining industrial rover.
+* **Side Walls**: The outer hull flanks are razor-thin, flat vertical gray slabs. They lack structural plate thickness, gussets, reinforcing ribs, stamped access panels, weld seams, or heavy mounting brackets tying into the track bogies.
+* **Track Height & Assembly**: The upper and lower track assemblies are monolithic black blocks with basic stepped tread grousers and two plain circular guide wheels each. They appear detached and floating alongside the chassis rather than structurally integrated with suspension, drive motors, and tensioning idlers.
+* **Cab House**: The forward starboard cab house is a primitive rectangular gray box with an unglazed, unchamfered square roof cutout. It lacks structural pillars, armored sunshades/visors, mounting flanges, roof grab rails, external sensor/lighting pods, and environmental seals.
+* **Hopper Well**: The hopper bay remains a deep, unarticulated square cavity with basic sloped gray walls and ribbed floor slats. It lacks industrial wear liners, grizzly sorting grates, sediment deflection baffles, load cells, or hydraulic ejector rams.
+* **Boom / Front Tool**: The forward nose implement is a low-poly faceted tan/beige wedge abruptly projecting from the cab front. It completely lacks articulated boom arms, pivot yokes, hydraulic lift/tilt cylinders, hinge pins, cutting teeth, and hydraulic supply hoses.
+* **Scar Plate & Pivot Mounts**: The intermediate linkage between the hopper bay and cab consists of two isolated black square blocks with tiny protruding yellow pegs. They read as fragile, snap-fit plastic toy connectors rather than a heavy-duty cast steel pivot/scar plate with load-bearing hinge pins.
+* **Yellow Safety Plate**: The yellow region on the starboard hull flank appears as a flat, saturated highlighter block/slab rather than an integrated, bolted, and weathered steel safety/hazard plate on an industrial chassis.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+* **Flat Diffuse Shading**: Gray hull plates and tan nose components exhibit flat diffuse reflection with zero metallic response, micro-roughness variation, or ambient occlusion in corners and seams.
+* **Toy-like Color Blocking**: High-contrast, untextured color separation (flat neutral gray body, jet-black track loops, stark saturated yellow block, beige nose cone) with no realistic industrial paint wear, regolith/dust accumulation, grease buildup, or thermal insulation.
+* **Lack of Micro-Surface Relief**: At 1:1 play scale, surfaces are devoid of normal/bump detail for structural welds, panel gaps, bolt heads, structural track pin reliefs, and tread texture, emphasizing low-polygon edges.
+
+---
+
+### (3) Concrete Blender Actions (No Cabin Furniture)
+
+1. **Hull & Side Wall Reinforcement**:
+   * Add bevel modifiers / chamfers (2ΓÇô3 mm equivalent) to all sharp 90┬░ exterior plate edges.
+   * Extrude side walls to provide structural thickness; add exterior stiffener ribs, recessed bolted inspection covers, and welded chassis-to-track structural spars.
+2. **Cab House Refinement**:
+   * Add chamfered armor plating around the cab roof cutout, an angled forward brow/visor, and external mount points for telemetry/lighting fixtures.
+   * Model structural corner posts and perimeter seal lips along the roof cutout edge.
+3. **Hopper Well Reconstruction**:
+   * Model angled wear liners and an intake grizzly sorting grate over the hopper cavity.
+   * Add hydraulic actuator mounts and a rear discharge chute / ejector plate geometry.
+4. **Boom & Implement Articulation**:
+   * Rebuild the forward tool into an articulated heavy cast bucket/cutter head with reinforced steel wear teeth.
+   * Model twin hydraulic lift cylinders, pivot yoke brackets, pins with retainers, and flexible high-pressure hose conduits connected to the hull.
+5. **Scar Plate & Pivot Beam Integration**:
+   * Unify the two disconnected black hinge blocks into a single heavy cast-steel pivot crossbeam/scar plate with reinforced hinge pin collars.
+6. **PBR Materials & Texturing**:
+   * Apply an industrial weathered steel PBR shader with roughness/metallic maps, edge wear, and crevice AO.
+   * Convert the yellow starboard safety slab into a recessed, bolted steel hazard plate with chipped industrial safety paint and grunge.
+   * Texture tracks with dark, abrasive-worn cast steel and regolith dust buildup.
+
+---
+
+### (4) Verdict
+
+**REVISE**

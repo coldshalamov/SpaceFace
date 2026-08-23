@@ -1,0 +1,40 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 14) ΓÇö Site View
+
+**Image Evaluated:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_014/review_1to1/works_site_1to1.png) (and [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_014/works_site.png))  
+**Framing:** VALID (Orthographic site top-down overhead; crawler occupies ~22 px on the ~19 px/cell site grid; full vehicle in frame).
+
+---
+
+### 1. Obvious Defects from this Site View (~22 px)
+
+- **Disconnected / Floating Track Carriages (`ONE_BODY` Defect):** Visible negative-space gaps separate the port and starboard track assemblies from the center hull. At ~22 px, the machine reads as four or five floating segments (two outer track bars, two yellow strips, center hull, offset boom peg) rather than a single unified industrial crawler chassis.
+- **Isolated "Highlighter Sticker" Livery Read:** Yellow paint is restricted entirely to two narrow rectangular strips flanking the hopper well. Without structural framing, bevels, or complementary accents elsewhere on the chassis, these read like two bright toy stickers slapped onto a dull gray box.
+- **Asymmetric / Weak Track Band Contrast:** While steel end caps are faintly discernible on the idlers/sprockets, the track belts read as medium gray structural blocks rather than dark continuous treads, with the starboard track washing out into the hull value.
+- **Flat Black Hole Hopper Well:** The central well registers as an unmodeled 2D black rectangular cutout rather than a recessed volumetric cargo hopper with sloped walls or floor depth.
+- **Blunt Boom / Weak Bit Articulation:** The offset boom arm extends out as a simple gray peg with a few faint bluish pixels at the tip; it lacks mechanical shoulder definition and crisp cutter tool articulation against the dark terrain.
+
+---
+
+### 2. MTX Defects Readable at Site Size
+
+- **`ONE_BODY` (Fail ΓÇö 0.3476 vs 0.90 floor):** Visual fragmentation caused by voids between the track carriages and the central hull.
+- **`TRACK_OUTERMOST_PORT` & `TRACK_OUTERMOST_STARBOARD` (Fail ΓÇö 0.7712 and 0.7708 vs 0.80 floor):** Running gear does not fully cover the vehicle's lateral perimeter envelope.
+- **`TRACK_CONTRAST_STARBOARD` (Fail ΓÇö 7.9238 vs 18.0 floor) & `TRACK_BAND` (Fail ΓÇö 0.159 vs 0.160 floor):** Starboard track belt lacks sufficient tonal separation between the tread rubber/steel and the brighter end caps/hull.
+- **`WELL_IS_A_HOLE` (Fail ΓÇö 0.0807 vs 0.24 floor):** Insufficient rendered depth / rim gradient across the hopper well floor.
+- **`YELLOW_MINORITY` (Pass at 0.0683, but functionally over-isolated):** Yellow coverage is so heavily concentrated into two strips that it fails machine-wide hazard livery integration.
+
+---
+
+### 3. Concrete Blender Actions
+
+1. **Bridge Tracks to Hull:** Add heavy structural cross-beams, fender brackets, and suspension mounts in the gaps between track carriages and the main hull body to close negative-space voids and unify the chassis silhouette (`ONE_BODY`).
+2. **Increase Track Band Contrast:** Darken the continuous tread belt texture (especially starboard) and enhance specular highlights on the front idlers and rear drive sprockets to ensure a crisp "dark band with steel end caps" read at ~22 px.
+3. **Bevel and Depth-Grade the Hopper Well:** Add chamfered top rim edges that catch overhead lighting and bevel the internal hopper walls so the cavity reads as a deep 3D bucket rather than a flat black hole.
+4. **Frame and Distribute Livery:** Add dark steel bevel borders around the yellow sponson plates and distribute subtle yellow accents to the cab frame or track fenders to prevent the "floating highlighter stickers" look.
+5. **Articulate Boom Shoulder & Bit:** Inset a dark mechanical pivot socket at the boom mounting base and increase value/specular contrast on the cutter bit head.
+
+---
+
+### 4. Verdict
+
+**REVISE**

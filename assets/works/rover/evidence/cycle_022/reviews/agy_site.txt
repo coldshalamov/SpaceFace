@@ -1,0 +1,59 @@
+### Visual Review: Asteroid Works Rover (`works_site` View, Cycle 022)
+
+**Files Reviewed:**
+- [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_022/review_1to1/works_site_1to1.png) (1:1 pixel scale crop)
+- [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_022/works_site.png) (Full site grid, ~19 px/cell scale)
+
+---
+
+### Framing Check
+- **Camera Type:** Top-down site view.
+- **Framing Status:** **VALID**. The rover resolves at ~22 px on the ~19 px/cell site grid.
+
+---
+
+### (1) Obvious Defects FROM THIS SITE VIEW
+
+1. **Yellow Highlighter Bars (Toy / Decal Read):**
+   - The port and starboard tracks present as two solid, uninterrupted yellow highlighter bars. They fail to read as structural inner-track guide ticks and instead dominate the perimeter like toy stickers.
+2. **Track Belts Lack Grouser Definition & Outer Loop Continuity:**
+   - The dark outer belts fail to read as distinct, continuous crawler tracks with raised grousers catching light. Instead, the assembly resolves as dark capped blobs overwhelmed by the solid yellow strips.
+3. **Chassis Reads as Flat Gray Stamp / Extruded Box:**
+   - The main hull resolves as a monolithic, unfilleted mid-gray polygon/stamp with flat shading, lacking industrial chamfers, panel breaks, or mechanical massing.
+4. **Dorsal Well Reads as 2D Black Cutout:**
+   - The collection hopper appears as a stark, flat black rectangular hole cut into the gray slab without a raised, illuminated coaming rim or visible interior hopper geometry to convey physical depth.
+5. **Boom Arm Resolves as Blunt Gray Shelf with Pale Nub:**
+   - The forward offset boom lacks articulation, appearing as a thick gray extension with a soft tan/cream dot stuck to the end, rather than an offset steel finger with a distinct, hardened mining bit.
+6. **Mid-Hull Cutout Confusion:**
+   - The dark square opening in the mid-forward chassis reads as an ambiguous void or missing geometry rather than an articulated hinge collar or mechanical mount.
+
+---
+
+### (2) MTX Defects Still Readable at This Size
+
+- **MTX-46 (Forbidden Reads ΓÇö Toy / Highlighter Bar Read):** Yellow livery is broad and continuous across the track span rather than restricted to thin, segmented inner ticks, creating a dominant toy highlighter read.
+- **MTX-55 (Role Silhouette at Site Scale):** Lacks clear crawler machinery silhouette cuesΓÇöinsufficient negative space separation between chassis and tracks, missing articulated boom silhouette, and no continuous dark tread loops.
+- **MTX-56 (Value Hierarchy & Contrast):** The mid-gray chassis and boom share nearly identical flat diffuse values, while the unoccluded black hopper void and high-saturation yellow bars polarize the contrast without mid-tone mechanical transitions or specular catch-lights.
+- **MTX-03 / MTX-04 (Volume & Depth Read):** The dorsal hopper boolean cutout lacks rim coaming and wall illumination, reading as a flat 2D black stencil rather than a functional 3D bin.
+- **Tool Head Material Definition:** The tan bit tip lacks metallic/carbide specular punch, causing it to blur into a soft clay nub against the ground.
+
+---
+
+### (3) Concrete Blender Actions That Help This Site Silhouette
+
+1. **Segment & Thin Track Yellow into Discrete Inner Ticks:**
+   - Narrow the yellow inner-track geometry and break it into discrete, spaced guide ticks separated by dark chassis/frame geometry, eliminating the continuous highlighter bar effect.
+2. **Promote Dark Outer Tread Belts & Raised Grousers:**
+   - Widen the dark outer belt geometry and elevate the grouser ridges so a continuous 1ΓÇô2 px dark tread perimeter wraps the track assembly and catches directional highlights.
+3. **Add Raised Specular Coaming Around Hopper Well:**
+   - Extrude a raised, beveled rim (coaming) around the hopper perimeter with a worn steel material to catch top-down key light and define the well as a physical recessed cavity.
+4. **Articulate Boom Arm into an Offset Steel Finger:**
+   - Taper the boom arm geometry, introduce a notched pivot knuckle, assign it a dark/specular steel shader, and scale the cutting bit into a clearly defined, high-specular carbide tool head.
+5. **Chamfer & Step the Main Chassis Hull:**
+   - Add bevels/chamfers to the outer armor plate edges and notch the corners adjacent to the track wells to break up the monolithic rectangular box footprint.
+
+---
+
+### (4) Verdict
+
+**REVISE**

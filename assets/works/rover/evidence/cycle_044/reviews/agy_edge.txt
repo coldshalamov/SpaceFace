@@ -1,0 +1,69 @@
+### Framing Verification
+- **Status**: Valid `works_edge` orthographic top-down camera framing.
+- **Check**: The camera is neither inside a cabin nor a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects (Works-Edge View)
+
+1. **Toy / Clay / Card / Box / Gray Plate Aesthetic**:
+   - The main chassis deck, rear shelf, and side deck transitions are flat, untextured, featureless gray planar cards and stepped box slabs. The rover reads as an assembly of cardboard cutouts and plastic toy plates rather than heavy-duty industrial mining machinery.
+   - The cab roof features a primitive, unintegrated flat circular stud/cylinder artifact.
+
+2. **Side Walls**:
+   - The side walls and deck flanges flanking the hopper well and connecting the chassis to the track sponsons are flat, uniform gray plates with crude polygon cutouts. They lack structural thickness, stiffener ribs, chamfers, panel seams, and welded flange relief.
+
+3. **Track Height (Solid Rubber Belts vs. Wire Loops)**:
+   - The crawler track units lack solid vertical body depth and mass. They still read as thin perimeter loops / flat tread bands wrapping around a hollow housing with edge clips, rather than heavy, thick solid rubber crawler belts with substantial cross-sectional profile and drive depth.
+
+4. **Cab House & Yellow Visor**:
+   - The yellow accent on the cab front is modeled as a thick protruding block/tab strip rather than being restricted strictly to a thin, crisp safety-painted visor brow projecting past the glass.
+   - The cab housing remains a basic boxy shell with unresolved flat top geometry.
+
+5. **Dark Canopy Pane**:
+   - The dark canopy pane is visible on the front cab face, but lacks a defined structural bezel/gasket or recessed depth, reading as a flat dark rectangular cutout directly abutting the yellow block.
+
+6. **Hopper Well**:
+   - The hopper well cavity reads as a stepped punch-hole cutout with a flat dark partitioned floor and an asymmetrical stepped ramp rather than a continuous, heavy-duty industrial sloped chute lined with wear-resistant steel coamings.
+
+7. **Drill Boom, Steel Spine & Bit Body**:
+   - While the boom housing is darkened, it lacks a distinct, raised bright steel spine running along its top centerline into the bit assembly.
+   - The drill bit terminates without a clearly articulated, machined steel bit body and mechanical collar assembly.
+
+8. **Scar Plate**:
+   - The bolted transition plate (scar plate) between the cab and hopper well is a flat, basic rectangular card with four simple circular indentations, lacking beveled wear edges, heavy-gauge plate thickness, or structural mounting brackets.
+
+---
+
+### (2) MTX Defects Visible at Play Size
+
+- **Cardboard Silhouette & Edge Flatness**: Sharp, zero-bevel gray planar plate edges create a flat cutout/papercraft aesthetic with no specular edge definition under lighting.
+- **Value Crushing & Pool Shadows**: Dark cab surfaces, the dark boom arm, and the hopper floor collapse into flat, indistinct dark pools against the uniform pale gray chassis cards at 1:1 play resolution.
+- **Material Contrast & Realism**: Flat gray cards read as matte plastic/clay rather than heavy welded steel plate; the yellow visor element reads as a toy plastic block rather than high-visibility industrial safety paint.
+- **Tool Legibility**: The boom arm and drill bit lack crisp edge contrast and metallic highlight separation, reducing the primary tool head to an ambiguous dark shape.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Boom & Bit Detailing**:
+   - Model and extrude a raised, polished steel spine along the top ridge of the dark boom arm.
+   - Replace the generic bit cone with a defined, machined steel bit body featuring distinct tool flutes and a heavy mechanical mounting collar.
+2. **Cab House & Visor Refinement**:
+   - Reshape the yellow visor into a crisp, ultra-thin overhang extending slightly past the dark canopy glass pane, eliminating the thick yellow block.
+   - Recess the dark canopy glass pane within a defined structural bezel frame.
+   - Remove the unintegrated cylinder primitive from the cab roof and bevel all cab housing corners.
+3. **Thicken Rubber Crawler Belts**:
+   - Extrude the track cross-sections inward and downward to give the crawler belts heavy, solid rubber mass and vertical height, eliminating the thin wire-loop appearance.
+   - Deepen track well recesses and add inner sponson mechanical shadow geometry.
+4. **Rework Hopper Well**:
+   - Deepen and bevel the hopper funnel well, replacing the stepped card ramp with continuous symmetrical sloped chute walls and heavy steel wear-plate coamings.
+5. **Articulate Side Walls & Chassis Plates**:
+   - Replace flat gray planar cards with beveled, stamped steel deck plates featuring structural panel seams, reinforcement ribs, and hardware fixings.
+   - Thicken the scar plate with beveled heavy-gauge plate edges and recessed bolt hardware.
+
+---
+
+### (4) Verdict
+
+**REVISE**

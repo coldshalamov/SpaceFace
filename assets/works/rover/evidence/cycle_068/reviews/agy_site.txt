@@ -1,0 +1,78 @@
+I have launched the image inspection command and will check its output.
+I will check the image pixel breakdown.
+I will wait for the task output to analyze the raster.
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 68) ΓÇö `works_site`
+
+---
+
+### Framing Verification
+- **Status:** Valid `works_site` camera view (~19 px/cell site scale, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_068/review_1to1/works_site_1to1.png) and cross-referenced with [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_068/works_site.png).
+- **Check:** Overhead orthographic perspective correctly captures the rover in-situ on the terrain. The camera is not inside a cabin and is not a studio three-quarter view. Framing is **VALID**.
+
+---
+
+### (1) Obvious Defects FROM THIS SITE VIEW
+
+1. **Gestalt & Chunky Stamp / Yellow Blob Read:**
+   - At ~22 px site scale, the rover fails to read as a cohesive, heavy industrial tracked mining crawler.
+   - The silhouette fractures into a dark/gray rectangular stamp disrupted on the starboard side by a chunky yellow block/hook rather than reading as articulated functional machinery.
+
+2. **Track Belt Dissolution & Missing 1 px Outer Steel Lips:**
+   - Neither the port nor starboard stadium belt holds cleanly as a solid dark rubber wall defined by a thin raised steel lip catching a 1 px specular highlight.
+   - The outer track edges (particularly the port track) bleed into the dark terrain without crisp boundary definition, while inner track edges form overly thick, bright bands.
+
+3. **Yellow Visor Failure & Misplaced Livery:**
+   - The 1 px forward yellow visor line is completely missing/washed out in front of the dark windshield band (`LIVERY_SAT_RENDERED` = 0.0), losing the defining forward-facing brow read.
+   - High-contrast yellow paint is instead clumped at the boom mount / starboard cab flank, reading as an asymmetrical yellow square rather than a purposeful hazard visor.
+
+4. **Cab Glazing & Mid-Steel Tub Separation:**
+   - The dark windshield band lacks a crisp mid-steel framing bezel and sufficient elevation above the deck, blending directly into adjacent dark chassis geometry.
+   - The cab structure fails to separate cleanly from the central tub deck.
+
+5. **Intake Hopper Well Lacks Defined Coaming Lip:**
+   - While the well reads as a dark bite on the rear port side, it lacks a raised mid-steel coaming lip and stepped internal cavity contrast to distinguish it as an engineered hopper rather than an ambiguous hole.
+
+6. **Boom Arm Clumping & Missing Articulated Steel Bit:**
+   - The boom arm clumps against the starboard track due to insufficient offset clearance (`BOOM_OFFSET` failure).
+   - The boom body is swallowed into ground value, its raised top steel spine is invisible, and the tip lacks a crisp 1 px specular highlight, reading as a detached yellow hook/square rather than an offset articulated finger with a carbide bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **`TRACK_CONTRAST_PORT` (-26.92 vs. 18.0 min):** Severe negative contrast; port track fails to separate from the terrain and chassis at site scale.
+- **`TRACK_CONTRAST_STARBOARD` (-22.92 vs. 18.0 min):** Starboard track swallowed by shadow and background without a defining 1 px outer highlight lip.
+- **`LIVERY_SAT_RENDERED` (0.0 vs. 0.3 min):** Yellow livery color fails completely to concentrate on a sharp 1 px horizontal visor brow line.
+- **`BOOM_OFFSET` (0.1294 vs. 0.15 min):** Fails in both textured and clay passes; insufficient clearance between the boom arm and starboard track creates silhouette clumping.
+- **`CAB_IS_RAISED` (-0.1126 vs. 0.28 min) & `WELL_CAB_DIFFER` (signs do not differ):** Cab lacks geometric elevation above the central deck relative to the well depression.
+- **`ONE_BODY` (0.3478 vs. 0.9 min):** Rover silhouette fractures into disjointed muddy patches and bright yellow clumps rather than reading as a single unified crawler chassis.
+- **Clay Geometry Failures:** `CAB_PANE` (0.0142 vs. 0.02 min) and `WELL_HOLE` (0.0282 vs. 0.04 min) confirm the cab glazing and well opening remain undersized in the underlying mesh.
+
+---
+
+### (3) Concrete Blender Actions that Help this Site Silhouette
+
+1. **Re-establish Track Separation & 1 px Outer Steel Lips:**
+   - Sharpen and elevate the outer steel flanges on both port and starboard stadium tracks so they catch a reliable 1 px specular highlight against the terrain.
+   - Deepen the longitudinal shadow reveal channels between the chassis tub and crawler belts to achieve positive track contrast (`TRACK_CONTRAST` >= 18.0 on both sides).
+
+2. **Confine Safety Yellow Strictly to a 1 px Leading Brow Visor:**
+   - Strip yellow shader assignments from the boom mount, cab flanks, and side structures.
+   - Confine safety yellow strictly to the leading 1 px horizontal visor shelf extending forward directly above the windshield band (`LIVERY_SAT_RENDERED` >= 0.3).
+
+3. **Elevate Cab & Frame Windshield Band:**
+   - Raise the cab roof geometry above the main deck (`CAB_IS_RAISED` >= 0.28) and expand the windshield glazing geometry (`CAB_PANE` >= 0.02).
+   - Add a crisp mid-steel bezel surrounding the dark windshield glass to separate the cab cleanly from the chassis.
+
+4. **Enlarge and Rim the Intake Well:**
+   - Expand the hopper opening (`WELL_HOLE` >= 0.04 in clay) and add a raised mid-steel coaming rim around the perimeter to ensure the well reads as a distinct mechanical bite.
+
+5. **Offset Boom Arm & Accentuate Machined Steel Spine / Bit Tip:**
+   - Rotate/offset the boom arm outward to ensure `BOOM_OFFSET` >= 0.15, establishing negative space against the starboard track.
+   - Assign dark structural steel to the boom arm body, add a raised machined steel spine along its top ridge, and terminate with a faceted steel bit tip that catches a 1 px specular point highlight.
+
+---
+
+### (4) Verdict
+
+**REVISE**

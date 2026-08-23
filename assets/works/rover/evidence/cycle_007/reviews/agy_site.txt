@@ -1,0 +1,60 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 7) ΓÇö Site View
+
+**Images Inspected:**
+- `assets/works/rover/evidence/cycle_007/review_1to1/works_site_1to1.png` (1:1 crop)
+- `assets/works/rover/evidence/cycle_007/works_site.png` (Full site context)
+
+**Framing:** Valid orthographic top-down site view (~19 px/cell, rover ~22 px).
+
+---
+
+### (1) Defects from Site View (~22 px Read)
+
+1. **Yellow Block / Twin-Slab Dominance (Toy / LEGO Block Read):**
+   - The vehicle silhouette is dominated by two flat, highly saturated yellow rectangular slabs flanking the center. At ~22 px, it reads as a pair of plastic toy building blocks rather than an integrated, heavy-duty industrial mining crawler.
+2. **Disconnected "Two-Body" Fragmented Silhouette:**
+   - The dark central trench splits the rover visually into two disconnected halves. The structural bridge between the port and starboard hulls lacks value contrast and silhouette mass, failing to read as a single cohesive vehicle chassis.
+3. **Weak Excavation Well Rim Definition:**
+   - The well reads as a dark rectangular bite/void, but the surrounding grey collar/rim lacks highlight punch and depth separation against the dark hole interior and surrounding terrain, making the opening look muddy and ill-defined.
+4. **Starboard Track Shadow Collapse & Contrast Loss:**
+   - While the port track is clearly readable, the starboard (bottom) track merges into its own ground contact shadow, losing mechanical edge definition and failing to read as a distinct continuous tread band.
+5. **Boom Neck Thinness & Floating Drill Bit:**
+   - The boom arm connecting to the starboard fore corner is dark and narrow, causing the bright pale-steel drill bit to visually detach and read as an isolated floating pixel dot rather than a grounded, heavy tool extension.
+6. **Muddled Center Cab & Roofline:**
+   - The crew cab and central spine are dark and low-contrast against the interior cavity, providing insufficient height or glazing cues to read as an operator compartment.
+
+---
+
+### (2) MTX / Material Defects Readable at This Scale
+
+1. **Basecolor Oversaturation & Livery Flatness:**
+   - The yellow livery material lacks micro-contrast, edge wear, or panel division at 22 px, causing the yellow sponsons to render as solid, unmodulated yellow rectangles.
+2. **Low-Value Steel on Boom & Well Lip:**
+   - The steel material on the boom structure and well coaming is overly dark and diffuse under direct top-down lighting, losing crisp silhouette separation against the dark cavity and shadow.
+3. **Drill Bit Value & Tint Disconnect:**
+   - The drill bit head has a high-value, cool blue-grey specular return that sharply contrasts with the dark boom armature, exaggerating the visual disconnection of the tool head.
+4. **Tread Shading & Ground Shadow Mud:**
+   - Tread pads lack sufficient local contrast against the track recess, causing the track runs to rely almost entirely on the end idler caps for identification.
+
+---
+
+### (3) Concrete Blender Actions for Site Silhouette & Readability
+
+1. **Bevel & Break Up Yellow Hull Envelopes:**
+   - Add chamfers/bevel cuts to the exterior corners of both yellow hull sponsons.
+   - Introduce dark panel seams, mechanical cutouts, or hazard accent strips across the yellow top surfaces to destroy the flat rectangular "toy block" read.
+2. **Strengthen Center Bulkhead / Unified Chassis:**
+   - Widen and elevate the central cross-member/deck connecting the two sponsons across the spine so the rover reads unequivocally as a single rigid body.
+3. **Extrude Raised, High-Spec Well Rim:**
+   - Enlarge and bevel the raised collar lip around the excavation well, ensuring it catches an overhead edge highlight that crisply frames the dark cavity.
+4. **Thicken Boom Arm & Brighten Pivot/Armature:**
+   - Increase the structural cross-section/taper of the boom arm at the hull mounting shoulder and adjust the steel material value/bevels so the entire arm is visually continuous from chassis to bit.
+5. **Increase Track Stand-Off & Rim Light on Starboard:**
+   - Widen the negative space gap between the lower hull and the starboard track assembly, and adjust the lower track bevels to ensure tread highlights separate cleanly from the contact shadow.
+
+---
+
+### (4) Verdict
+
+**REVISE**  
+*(The rover remains dominated by two flat yellow toy-like blocks with a fragmented multi-body silhouette, poor starboard track separation, weak well rim contrast, and a floating drill bit at 22 px).*

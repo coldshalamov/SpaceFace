@@ -1,0 +1,37 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 38 ΓÇö `works_site`)
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Floppy-Disk Read:** The main body reads as a flat, desaturated gray rectangular stamp with a square hole cut in the middle rather than a distinct industrial tracked mining crawler.
+- **Hollow "Paperclip" Tracks:** Both port and starboard tracks render as thin wire loop outlines enclosing hollow/faint centers. They fail to read as solid, heavy dark rubber crawler belts with crisp raised 1-pixel steel catch lips.
+- **Visor Reads as a Yellow Postage-Stamp Block:** The yellow visor bar on the forward cab is overly chunky, reading as an isolated yellow stamp/block stuck to the side rather than a thin, overhanging visor brow shading a dark windshield band.
+- **Cab & Windshield Collapse:** The dark cab roof and windshield band lack internal contrast and clear framing, blending into a dark amorphous notch directly behind the yellow block.
+- **Cookie-Cutter Well Cavity:** The central well reads as a raw, dark square punch-hole in the mid-steel tub, reinforcing the "square washer / cassette" look instead of reading as an engineered equipment bay.
+- **Indistinct Boom & Muddy Tip:** The boom arm is too dark and thin to read cleanly against the ground shadow. The spine fails to catch light at site scale, leaving the cutter looking like an indistinct muddy tan speck rather than an articulated finger with a bright steel tip.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Track Coverage & Outer Dominance:** Port and starboard track outer boundaries fail silhouette dominance (`TRACK_OUTERMOST_PORT` ~0.37, `TRACK_OUTERMOST_STARBOARD` ~0.36 vs 0.80 floor) and starboard contrast fails, creating the hollow floating-rim / paperclip artifact.
+- **Livery & Base Color Distribution:** Primary industrial yellow livery is missing from the main hull deck plates (`LIVERY_SAT_RENDERED` fails at ~0.14 vs 0.30 floor), causing the top silhouette to register almost entirely as unpainted gray metal with a single yellow patch.
+- **Cab Pane Definition:** Cab pane area is undersized (`CAB_PANE` fails at 0.0156 vs 0.02 floor), losing visual separation between the visor bar, glass band, and cab roof.
+- **Boom Spine Specularity & Bit Definition:** The metal spine along the boom lacks sufficient normal relief and specular intensity to register a clean 1-pixel highlight at 22 px resolution.
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Solidify Track Belt Infill:** Widen and thicken the dark rubber track geometry, and add solid internal roller/bogey backing geometry so the belts read as dense, solid dark stadium pads whose outer steel lips catch a sharp 1-pixel edge.
+2. **Refine Visor Bar to a Thin Brow:** Thin down the yellow visor mesh into a sharp, forward-projecting brow that catches a 1-pixel highlight across the top of a clearly recessed, dark windshield band.
+3. **Rebalance Hull Livery & Deck Contrast:** Add controlled industrial yellow livery accents to the upper tub deck plates while deepening contrast on chassis recesses, eliminating the flat "gray stamp" read.
+4. **Chamfer & Step the Central Well:** Add beveled lips and interior step geometry within the well cavity to ensure it reads as a functional recessed bay rather than a flat black cutout.
+5. **Reinforce Boom Spine & Cutter Tip:** Thicken the boom arm structure, assign a high-specular metallic material to the raised top spine, and enlarge/brighten the faceted cutter bit tip so the offset finger reads clearly at site scale.
+
+---
+
+### (4) Verdict
+
+**REVISE**

@@ -1,0 +1,40 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 11) ΓÇö Site View
+
+**Image Evaluated:** [works_site_1to1.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_011/review_1to1/works_site_1to1.png) (and [works_site.png](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_011/works_site.png))  
+**Framing:** VALID (Standard works_site grid camera view; rover occupies ~22 px).
+
+---
+
+### 1. Obvious Defects from this Site View (~22 px)
+
+- **Toy / Chunky Block Read on Livery:** The yellow livery consists of two blocky, saturated rectangular cubes on the aft port and starboard flanks that read like toy LEGO bricks/batteries rather than integrated industrial hazard cowling.
+- **Hopper Well Reads as a Slit, Not a Bite:** The central hopper cutout between the yellow blocks is too narrow and pinched (`WELL_HOLE` 0.0325 vs 0.04 floor). At 22 px, it registers as a dark seam/gap between two blocks rather than a distinct, functional excavation hopper well.
+- **Cab Pane Lost / Bulbous Nose:** The fore cab reads as a smooth, rounded gray dome with a faint pinprick spot (`CAB_PANE` 0.0164 vs 0.02 floor) instead of an authored, faceted cabin with a framed dark top-down roof pane.
+- **Disjointed Body Cohesion (`ONE_BODY` 0.4384 vs 0.90 floor):** The rover visually disintegrates into 4ΓÇô5 disconnected chunks (two track bands, two yellow cubes, a rounded gray nose, and an offset arm) rather than reading as a unified tracked crawler chassis.
+- **Starboard Boom / Track Clutter:** The starboard boom arm has low contrast against the terrain and sits too close to the starboard track, causing the drill bit to read almost as a floating disconnected speck rather than an articulated tool arm.
+
+---
+
+### 2. MTX Defects Readable at Site Size
+
+- **MTX-03 / MTX-04 (Skin-Breaking Hole & Readable Volume):** The hopper well lacks sufficient mouth width and volume to read as a true dark negative-space void from the site camera.
+- **MTX-07 (Thin-Shell Canopy / Cab Framing):** The cab roof glass fails to establish a distinct framed dark geometric window at play resolution.
+- **MTX-46 (Forbidden Toy Read):** Saturated, unsegmented yellow rectangular masses create a plastic toy block artifact.
+- **MTX-55 / MTX-65 (Role Silhouette & Massing):** The silhouette lacks clear negative space between the boom arm and starboard track, and lacks structural bridge mass connecting the tracks to the central hull.
+- **MTX-56 (Value Hierarchy):** The dark well value does not command enough pixel area to anchor the core value hierarchy against the bright yellow blocks and mid-gray cab.
+
+---
+
+### 3. Concrete Blender Actions
+
+1. **Widen & Deepen Hopper Well (MTX-03/04):** Enlarge the central boolean cutter X/Y footprint and deepen the hopper well so it creates an unambiguous 3ΓÇô4 pixel dark negative cavity/bite in the planform.
+2. **Facet Cab & Enlarge Roof Pane (MTX-07):** Re-shape the rounded cab nose into an industrial faceted shell and expand the dark framed roof glass area so the canopy reads clearly at 1:1 site zoom.
+3. **Open Boom Negative Space (MTX-55):** Angle the starboard boom arm further outward/forward away from the starboard track and increase the shaft's steel value/thickness so the boom and bit read as an attached, articulated tool.
+4. **Break Up & Anchor Yellow Panels:** Frame the yellow aft panels with dark steel structural framing/chamfers to eliminate the toy block read and integrate them into the chassis.
+5. **Strengthen Chassis Bridge (MTX-02 / `ONE_BODY`):** Add visible mid-deck plating and track-mount sponson mass between the track housings, cab, and well rim to unify the silhouette into a single heavy-duty machine.
+
+---
+
+### 4. Verdict
+
+**REVISE**

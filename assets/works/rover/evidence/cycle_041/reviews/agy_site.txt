@@ -1,0 +1,42 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 41 ΓÇö `works_site`)
+
+**Framing Check:** Valid `works_site` camera framing (~19 px/cell, rover at ~22 px scale). Whole rover is visible in site perspective.
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Floppy-Disk Silhouette:** The main chassis reads as a flat, desaturated grayish-brown rectangular card / floppy disk with a cutout in the middle, rather than an industrial tracked mining crawler.
+- **Hollow "Paperclip" Track Loops:** Both port and starboard tracks still read as wire loops / paperclips. The thin bright outer lips dominate the outline around dark recessed slots rather than reading as solid, heavy dark rubber crawler belts with crisp 1-pixel steel catch lips.
+- **Visor Reads as an Isolated Yellow Hook / Crescent:** Instead of a thin, forward-projecting yellow visor line shading the windshield band, the yellow livery reads as a chunky yellow hook/crescent sitting awkwardly on the forward deck.
+- **Cab & Windshield Collapse:** The dark cab lacks elevation and clear structural separation from the deck, collapsing into an ambiguous dark block adjacent to the yellow hook rather than reading as an elevated operator cabin over a mid-steel tub.
+- **Cookie-Cutter Well Cavity:** The central well reads as a flat, 2D punch-hole / washer opening in the middle of the tub rather than an engineered mechanical hopper with coaming and stepped depth.
+- **Weak Boom & Muddy Tip:** The boom reads as a flimsy dark stick/finger with a faint orange/yellow dot at the tip. It lacks the raised steel spine needed to catch a 1-pixel highlight line leading into a bright, faceted cutting bit.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Track Outer Dominance:** `TRACK_OUTERMOST_PORT` = 0.3713 and `TRACK_OUTERMOST_STARBOARD` = 0.3686 (vs. 0.80 floor) ΓÇö track perimeters fail dominance, directly producing the hollow wireframe / paperclip artifact.
+- **Starboard Track Contrast:** `TRACK_CONTRAST_STARBOARD` = 7.988 (vs. 18.0 floor) ΓÇö lower track lacks sufficient contrast and merges into hull shadow.
+- **Rendered Livery Saturation:** `LIVERY_SAT_RENDERED` = 0.1053 (vs. 0.30 floor) ΓÇö vehicle is overly desaturated, causing the monochrome "gray stamp" read.
+- **Chassis Relief & Cohesion:** `ONE_BODY` = 0.4368 (vs. 0.90 floor), `WELL_IS_A_HOLE` = 0.0694 (vs. 0.24 floor), and `CAB_IS_RAISED` = 0.1770 (vs. 0.28 floor) all fail, flattening the 3D relief into a flat cutout.
+- **Boom Lateral Offset:** `BOOM_OFFSET` = 0.1384 (vs. 0.15 floor) ΓÇö boom arm does not achieve sufficient lateral clearance.
+- **Geometry Budget:** LOD0 triangle count (20,750 tris) exceeds the 18,000 budget (`triOverBudget`: true).
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Solidify Track Units:** Build up the rubber belt wall thickness and undercarriage/bogey volume flush under the steel lips so the tracks read as dense, solid dark rubber crawler belts rather than hollow loops. Adjust bevels and normals on the starboard track to push contrast above the 18.0 floor.
+2. **Reshape Yellow Visor into a Thin Brow Line:** Replace the yellow hook/crescent geometry with a crisp, thin forward-projecting visor brow running across the front edge of the cab roof to properly shade a recessed, dark glazed windshield band.
+3. **Elevate and Define Cab Volume:** Increase vertical cab relief (`CAB_IS_RAISED` $\ge$ 0.28) and bevel roof edges so the dark cab clearly steps up above the mid-steel tub.
+4. **Step and Collar the Central Well:** Add a chamfered steel coaming rim and interior stepped ledge geometry (`WELL_IS_A_HOLE` $\ge$ 0.24) so the well reads as a recessed mechanical bay rather than a flat 2D punch-hole.
+5. **Re-articulate Boom Spine & Cutting Bit:** Thicken the arm, increase lateral clearance (`BOOM_OFFSET` $\ge$ 0.15), add a high-specular steel spine along the top ridge to catch a clean 1-pixel highlight, and brighten the faceted steel bit tip.
+6. **Decimate LOD0 Geometry:** Optimize mesh density to bring LOD0 below the 18,000 triangle budget limit.
+
+---
+
+### (4) Verdict
+
+**REVISE**

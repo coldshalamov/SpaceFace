@@ -1,0 +1,69 @@
+### Framing Verification
+- **Status:** Valid `works_site` camera framing (~19 px/cell site scale, ~22 px rover silhouette). Evaluated at 1:1 original resolution in [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_055/review_1to1/works_site_1to1.png) with reference to [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_055/works_site.png).
+- **Check:** Overhead site orthographic perspective is correct and fully captures the rover in frame. The camera is not inside a cabin and is not a studio three-quarter view.
+
+---
+
+### (1) Obvious Defects from this Site View
+
+1. **Toy Box / Yellow Stamp / Muddy Rectangle Read:**
+   - At ~22 px site scale, the silhouette fails to resolve as an industrial heavy mining crawler. It collapses into a muddy dark rectangular stamp broken by a hollow dark void on the port side and an accidental yellow block/hook stamp on the starboard side.
+
+2. **Track Disintegration & Starboard Belt Vanishing:**
+   - **Starboard Track:** Swallowed completely into the chassis and terrain shadow (`TRACK_CONTRAST_STARBOARD` = -2.29), destroying crawler dual-track balance and leaving the right flank unsupported.
+   - **Port Track:** Reads as a thin, detached grey wire rail / hollow loop enclosing dark space rather than a solid dark rubber stadium wall bounded by a crisp, raised 1 px steel highlight lip.
+
+3. **Yellow Livery Visor Failure (Yellow Stamp/Hook vs. 1 px Brow):**
+   - The safety yellow paint is smeared over the starboard cab flank and front corner as a chunky vertical patch/hook rather than holding as a clean, razor-thin 1 px horizontal visor line directly in front of the windshield band.
+   - This covers the cab structure and creates a postage-stamp artifact.
+
+4. **Windshield Band Crushed & Value Collapse:**
+   - The dark windshield band is virtually obliterated at site scale (`CAB_PANE` = 0.0043 vs. 0.02 min), blending into adjacent dark geometry and yellow paint.
+   - The cab fails to separate cleanly from the mid-steel tub.
+
+5. **Hopper Well vs. Windshield Distinction:**
+   - The intake hopper reads as a flat, unmodeled black puncture hole on the port deck rather than an engineered mechanical chute with coaming and stepped depth (`WELL_IS_A_HOLE` = 0.0694 vs. 0.24 min).
+
+6. **Boom Arm & Bit Clumped Read:**
+   - The boom lacks lateral clearance from the starboard track (`BOOM_OFFSET` = 0.1415 vs. 0.15 min), eliminating negative space.
+   - It reads as an ambiguous yellow-tipped hook or clumped knob rather than an articulated dark arm with a raised steel spine and a distinct 1 px specular bit tip.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **`CAB_PANE` (0.0043 vs. 0.02 min):** Windshield glass area collapses at site resolution due to encroaching cab geometry and livery misplacement.
+- **`BOOM_OFFSET` (0.1415 vs. 0.15 min):** Insufficient lateral negative space between the boom arm and starboard track, merging the front-right silhouette.
+- **`TRACK_CONTRAST_STARBOARD` (-2.2888 vs. 18.0 min):** Starboard track belt is engulfed by shadow and body values, failing crawler symmetry.
+- **`LIVERY_SAT_RENDERED` (0.0533 vs. 0.3 min):** Yellow accent is diffused across vertical/side surfaces rather than concentrated on a sharp 1 px horizontal visor line.
+- **`WELL_IS_A_HOLE` (0.0694 vs. 0.24 min):** Intake well lacks internal depth, occlusion, and coaming relief.
+- **`ONE_BODY` (0.5533 vs. 0.9 min):** Rover fractures into disconnected dark voids and color stamps instead of reading as a cohesive machine.
+
+---
+
+### (3) Concrete Blender Actions to Help this Site Silhouette
+
+1. **Rebuild Crawler Sponsons & Outer Steel Lips:**
+   - Materialize both track belts as solid dark rubber stadium walls against the ground plane.
+   - Model a distinct, raised outer steel lip along the upper perimeter of both tracks that catches a consistent 1 px specular highlight.
+   - Cut a crisp longitudinal separation/shadow groove between the starboard crawler and chassis to guarantee positive track contrast (`TRACK_CONTRAST_STARBOARD` >= 18.0).
+
+2. **Confine Yellow Strictly to a 1 px Horizontal Visor Brow:**
+   - Remove yellow paint/materials from all cab side facets, vertical front plates, and boom geometry.
+   - Confine safety yellow strictly to the leading 1 px horizontal brow edge directly above and forward of the dark windshield band.
+
+3. **Expand and Frame Dark Windshield Band:**
+   - Widen the dark windshield glazing band to meet `CAB_PANE` >= 0.02, framing it with clear mid-steel cab bezels so it reads distinctly against the tub.
+
+4. **Articulate Boom Offset, Steel Spine, and Bit Tip:**
+   - Angle the boom arm outward to achieve `BOOM_OFFSET` >= 0.15, establishing visible negative space against the starboard track.
+   - Structure the boom as a dark arm with a raised steel top spine terminating in a machined steel bit head with a 1 px bright specular tip.
+
+5. **Carve Stepped Mechanical Well:**
+   - Model stepped interior geometry and mid-steel coaming lip around the intake hopper to provide true mechanical cavity depth (`WELL_IS_A_HOLE` >= 0.24).
+
+---
+
+### (4) Verdict
+
+**REVISE**

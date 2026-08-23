@@ -1,0 +1,64 @@
+## Visual Review: Asteroid Works Rover (`works_site` View, Cycle 003)
+
+**Target Files Reviewed:**
+- [`works_site_1to1.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_003/review_1to1/works_site_1to1.png) (320├ù320 crop at 1:1 pixel scale)
+- [`works_site.png`](file:///C:/Users/93rob/Documents/GitHub/SpaceFace/assets/works/rover/evidence/cycle_003/works_site.png) (1920├ù1080 full frame, ~19 px/cell site scale)
+
+---
+
+### Framing Check
+- **Camera Type:** Top-down site view.
+- **Framing Status:** **VALID**. The rover resolves at ~22 px on the ~19 px/cell site grid.
+
+---
+
+### 1. Obvious Defects From Site View (~19 px/cell, ~22 px Rover)
+
+1. **Yellow Postage-Stamp / Box Read:**
+   - The primary visual read is a solid yellow rounded rectangle/square. The vehicle lacks the characteristic negative space of an industrial crawler.
+2. **Track Assemblies Fail to Separate:**
+   - The upper and lower crawler tracks collapse into low-contrast, dark brownish bands that blend directly into the ground cell without a readable standoff or gap from the main chassis. They do not read as distinct parallel tread bands.
+3. **Dorsal Well Reads as Flat Painted Decal:**
+   - The interior cargo/service recess appears as a muddy brown square patch inside the yellow hull rather than a deep, shadowed physical cavity or skin-breaking bite.
+4. **Boom Arm Resolves as a Smudge / Stub:**
+   - The front offset boom arm extends only ~2ΓÇô3 faint, low-contrast pixels to the right. It lacks sufficient length, thickness, and silhouette prominence to read as an articulated mining tool or offset finger; at map scale it looks like an anti-aliasing artifact.
+5. **Lack of Industrial Articulation:**
+   - The overall asset presents as a toy-like monolithic yellow block with an inscribed dark square rather than a heavy tracked mining machine.
+
+---
+
+### 2. MTX Contract Defects Readable at Site Scale
+
+- **MTX-46 (Forbidden reads stay forbidden):**
+  - Fails due to a dominant "plastic toy block / yellow postage stamp / DCC default box" read in a supported camera view.
+- **MTX-55 (Role silhouette at 40 px / site scale):**
+  - The crawler role cannot be identified cleanly from the silhouette alone. Without strong negative space between tracks and chassis or an extended tool silhouette, it reads as generic yellow cargo/box mass.
+- **MTX-56 (Value hierarchy):**
+  - Fails the 3-value hierarchy. Treads blend into dark floor values, the central yellow plate is a flat hot field, and the boom tip lacks distinct value contrast.
+- **MTX-03 / MTX-04 (Skin-breaking boolean & readable volume):**
+  - The dorsal opening does not read as a cut volume with wall thickness and depth shadow at this resolution; it resolves as a flat 2D color patch.
+- **MTX-65 (Role-specific massing):**
+  - Massing remains a rigid rectangular prism without the stepped industrial cutouts, chassis taper, or exposed mechanical overhangs typical of crawler equipment.
+
+---
+
+### 3. Concrete Blender Actions to Fix Site Silhouette
+
+1. **Widen Track Standoff (Negative Space):**
+   - Translate the track assemblies outward from the central chassis to leave a clear 0.15ΓÇô0.25m gap (at least 1ΓÇô2 dark empty pixels at site scale) so the treads read as distinct flanking mechanical rails.
+2. **Extend and Thicken the Boom Arm:**
+   - Lengthen the front mining boom by 0.5ΓÇô1.0m past the front bumper (extending 4ΓÇô6 px at site resolution) and thicken its profile so the offset silhouette finger is unmistakable.
+3. **Accentuate the Tool Head:**
+   - Give the boom tip/drill head a high-contrast metallic or dark mechanical finish to make the tool extremity pop against both the yellow body and the terrain.
+4. **Deepen the Dorsal Well and Rim:**
+   - Increase the boolean cutout depth and solidify the rim lip to cast stronger ambient occlusion / cavity shadow inside the well, ensuring it reads as a true dark bite into the hull.
+5. **Step / Notch the Chassis Hull:**
+   - Taper or notch the corners of the yellow armor plate where it meets the tread wells to break up the flat rectangular bounding box into an articulated industrial body.
+
+---
+
+### 4. Verdict
+
+**REVISE**
+
+*(The rover currently reads as a yellow square / postage stamp with collapsed tracks and an unreadable boom stub at site resolution).*

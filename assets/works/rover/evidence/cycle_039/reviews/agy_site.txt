@@ -1,0 +1,40 @@
+### Visual Review: Asteroid Works Rover (PQ-131.01 Cycle 39 ΓÇö `works_site`)
+
+---
+
+### (1) Obvious Defects from Site View (~22 px Scale)
+
+- **Gray Stamp / Floppy-Disk Chassis:** The main body reads as a flat, desaturated gray rectangular cassette with a square hole cut in the center rather than an industrial tracked mining crawler.
+- **Hollow "Paperclip" Tracks:** Both port and starboard tracks render as thin wire loop outlines enclosing empty/hollow interiors. They fail to read as solid, heavy dark rubber stadium belts with crisp, raised 1-pixel steel catch lips.
+- **Missing Top Livery Distribution:** Primary industrial yellow livery is absent from the main hull deck plates, causing the vehicle's top silhouette to register almost entirely as unpainted, desaturated metal with an isolated yellow patch.
+- **Visor Reads as an Isolated Yellow Hook / Block:** The yellow visor bar does not read as a crisp, thin overhanging brow shading a dark windshield band; instead, it reads as an isolated yellow hook/stamp stuck onto the forward side.
+- **Cab & Windshield Collapse:** The dark cab roof and windshield band lack clear definition and framing, merging into a dark amorphous notch behind the yellow block.
+- **Cookie-Cutter Well Cavity:** The central well reads as a raw, flat dark square punch-hole in the mid-steel tub ("square washer" read) rather than an engineered, stepped mechanical bay.
+- **Indistinct Boom & Muddy Tip:** The offset boom arm reads as a curved yellow/tan claw rather than an articulated industrial finger. The spine fails to catch a clean 1-pixel light streak, and the cutting bit terminates in a muddy, indistinct speck rather than a faceted steel tip with a bright specular catch.
+
+---
+
+### (2) MTX Defects Readable at this Size
+
+- **Track Coverage & Outer Dominance:** Port and starboard track outer boundaries fail silhouette dominance (`TRACK_OUTERMOST_PORT` = 0.3694, `TRACK_OUTERMOST_STARBOARD` = 0.3667 vs. 0.80 floor), directly causing the hollow wireframe / paperclip artifact.
+- **Starboard Track Contrast Inversion:** Starboard track contrast fails severely (`TRACK_CONTRAST_STARBOARD` = -3.6458 vs. 18.0 floor), causing the lower track to lose separation against the shadow/hull.
+- **Rendered Livery Saturation:** Hull deck lacks yellow coverage (`LIVERY_SAT_RENDERED` = 0.1294 vs. 0.30 floor), producing the monochrome "gray stamp" read.
+- **Chassis Cohesion & Depth Relief:** Body mass cohesion (`ONE_BODY` = 0.4129 vs. 0.90 floor), well depth (`WELL_IS_A_HOLE` = 0.0694 vs. 0.24 floor), and cab elevation (`CAB_IS_RAISED` = 0.1570 vs. 0.28 floor) all fail, causing the flat cutout appearance.
+- **Boom Offset:** Boom lateral clearance fails target (`BOOM_OFFSET` = 0.1446 vs. 0.15 floor).
+
+---
+
+### (3) Concrete Blender Actions
+
+1. **Solidify Track Belts & Add Backing Infill:** Widen the track belt geometry and add solid internal road wheel/bogey and dark rubber backing geometry so the crawler belts read as dense, solid dark stadium pads with raised steel lips catching a 1-pixel edge highlight.
+2. **Correct Starboard Track Shading & Contrast:** Adjust normal angles, bevels, and material tones on the starboard track to eliminate negative contrast and ensure clean separation from the chassis shadow.
+3. **Rebalance Deck Livery Plating:** Assign the industrial yellow livery material to key upper hull deck plates and the cab roof to eliminate the flat gray stamp read while keeping yellow within the minority budget.
+4. **Refine Visor to a Thin Overhanging Brow:** Thin the yellow visor geometry into a sharp forward-projecting brow that catches a clean 1-pixel highlight across the top of a recessed, dark glazed windshield band.
+5. **Chamfer & Step the Central Well:** Add chamfered outer lips and stepped interior mechanical ledges inside the well bay to ensure it reads as a functional recessed equipment bay rather than a flat black hole.
+6. **Re-articulate Boom Spine & Cutting Bit:** Thicken the structural boom arm, assign a high-specular steel spine along the top ridge to catch a continuous 1-pixel highlight line, and enlarge/brighten the faceted cutting bit tip.
+
+---
+
+### (4) Verdict
+
+**REVISE**
