@@ -18,6 +18,8 @@ import { isHostileToPlayer } from '../systems/scanner.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { solveTetherLeadSolution, orbitalConstraintState, masslineOwnsGuns } from './tetherFireControl.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { applyAutoTargetHelmProfile, applyAutoTargetPathProfile } from '../systems/flightV3.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
 const RETICLE_EDGE_MARGIN = 28;
@@ -166,7 +168,7 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
     inp.autoAim = null;
   }
 
-  const pathApplied = followAutoTargetPath(inp, player);
+  const pathApplied = followAutoTargetPath(inp, player, state, runtime);
   const vector = inp.autoTargetVector;
   if (!pathApplied && vector && vector.active) {
     const rawX = finite(vector.worldX);
@@ -192,48 +194,266 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   }
 }
 
-function followAutoTargetPath(inp, player) {
-  const route = inp && inp.autoTargetPath;
-  if (!route || !route.active || !Array.isArray(route.points) || route.points.length < 2) return false;
+// -------------------------------------------------------------------------------------------------
+// DRAW-TO-FLY PATH FOLLOWER
+//
+// The player draws a line; the hull flies THAT LINE. Not "toward points that were on it".
+//
+// The previous implementation was a waypoint chaser: pick points[i], thrust straight at it, advance
+// when close or when a projection test said "passed". Three compounding defects made the hull wobble
+// around the line instead of tracking it, and none of them were tuning:
+//
+//   1. It never measured perpendicular distance to the PATH - only distance to a POINT. Nothing in
+//      the loop pulled a displaced hull back onto the line, so an offset was never corrected, only
+//      inherited by the next point.
+//   2. It commanded a DIRECTION OF TRAVEL and thrust along it. For an inertial body already sliding
+//      sideways, thrusting at a point you are sweeping past produces an orbit around it. That is the
+//      wobble, mechanically. The fix is to command a VELOCITY ERROR (desired minus actual), which is
+//      an acceleration, which is what a thruster actually delivers.
+//   3. Thrust was pinned at magnitude 1 until the last point, so on a tight drawn curve the required
+//      centripetal acceleration exceeded thrust authority. The hull physically could not corner, ran
+//      wide, and the "have I passed it" test then fired on stale segments and scrambled the index.
+//
+// A fourth defect made any tuning irreproducible: point spacing is a mouse-sampling artefact. A slow
+// stroke clumps points 2 WU apart, a fast one leaves 60 WU gaps, so a fixed 20 WU capture radius
+// consumed dozens of points at once or never fired at all. The path is resampled to uniform arc
+// length before anything reads it.
+//
+// TWO INVARIANTS SURVIVE FROM THE LAST REBUILD. Do not "simplify" either one away:
+//
+//   * ARRIVAL IS A HOLD, NEVER A KILL. The trail begins AT the hull, so its endpoint is inside any
+//     arrival radius the instant drawing starts. Deactivating on arrival destroyed every route at
+//     birth - hundreds of stillborn 2-point stubs per stroke, the pen snapping back to the ship. Only
+//     the G toggle / mode reset clears a route.
+//   * PROGRESS IS MONOTONIC AND THE SEARCH IS WINDOWED. A drawn loop bends back toward the hull, so a
+//     global nearest-point snap latches the wrong lobe and cuts the loop out. The player draws a loop
+//     in order to fly it. Progress only ever advances, and only inside a bounded window.
+//
+// Cache lives on the runtime object, NOT on the route: route fields are serialized into the 47-A
+// golden telemetry (inputCommandSnapshot.js reads active/drawing/cursor/pointIndex/pointCount/
+// first/last), and minting new keys there would move the replay hash.
+// -------------------------------------------------------------------------------------------------
 
-  const lastIndex = route.points.length - 1;
-  let index = Number.isFinite(route.pointIndex)
-    ? Math.max(1, Math.min(lastIndex, Math.floor(route.pointIndex)))
-    : 1;
-  let target = route.points[index];
-  let dx = finite(target && target.x) - finite(player.pos && player.pos.x);
-  let dz = finite(target && target.z) - finite(player.pos && player.pos.z);
-  let distance = Math.hypot(dx, dz);
+const PATH_RESAMPLE_SPACING = 3;          // WU between resampled nodes; kills mouse-sampling artefacts
+const PATH_LOOKAHEAD_MIN = 15;            // WU - carrot distance at rest
+const PATH_LOOKAHEAD_PER_SPEED = 0.3;     // WU of extra carrot per WU/s of speed
+const PATH_LOOKAHEAD_MAX = 58;
+const PATH_CORRIDOR = 16;                 // cross-track error (WU) at which the restoring pull saturates
+const PATH_CORRECTION_GAIN = 1.35;        // how hard the corridor steers back onto the line
+const PATH_PROJECTION_WINDOW = 30;        // WU of path searched ahead of committed progress
+const PATH_PROJECTION_BACK = 6;           // WU of slack behind it, so a shoved hull is not stranded
+const PATH_CURVE_STENCIL = 2;             // nodes either side used to measure curvature (~12 WU baseline)
+const PATH_VELOCITY_ERROR_FULL = 26;      // velocity error (WU/s) that commands full thrust
+const PATH_CORNER_FLOOR_SPEED = 14;       // hairpins throttle down to this, never to a deadlock
+const PATH_BRAKE_MARGIN = 6;              // WU/s over the governed speed before the brake is asserted
 
-  // Proximity advances may chain (points genuinely under the hull are consumed together), but the
-  // passed-projection test advances at most ONE point per tick. Any segment of a drawn loop that
-  // bends back toward the hull reads as "already passed", so letting projections chain skipped the
-  // whole loop — and the player draws a loop to FLY it. One projection step per tick still clears
-  // 60 overshot points a second, far faster than the hull can outrun the trail.
-  let projectionAdvances = 1;
-  while (index < lastIndex) {
-    const near = distance <= AUTO_TARGET_PATH_POINT_RADIUS;
-    if (!near) {
-      if (projectionAdvances <= 0
-        || !hasPassedRoutePoint(player.pos, route.points[index - 1], target)) break;
-      projectionAdvances -= 1;
-    }
-    index += 1;
-    target = route.points[index];
-    dx = finite(target && target.x) - finite(player.pos && player.pos.x);
-    dz = finite(target && target.z) - finite(player.pos && player.pos.z);
-    distance = Math.hypot(dx, dz);
+function pathCurvatureAt(nodes, index) {
+  const lo = index - PATH_CURVE_STENCIL;
+  const hi = index + PATH_CURVE_STENCIL;
+  if (lo < 0 || hi >= nodes.length) return 0;
+  const a = nodes[lo];
+  const b = nodes[index];
+  const c = nodes[hi];
+  const h1 = Math.atan2(b.z - a.z, b.x - a.x);
+  const h2 = Math.atan2(c.z - b.z, c.x - b.x);
+  const arc = PATH_CURVE_STENCIL * PATH_RESAMPLE_SPACING;
+  return Math.abs(wrapAngle(h2 - h1)) / Math.max(arc, 1e-6);
+}
+
+function appendResampledPoint(cache, x, z, sourceIndex) {
+  let ax = cache.tailX;
+  let az = cache.tailZ;
+  let dx = x - ax;
+  let dz = z - az;
+  let dist = Math.hypot(dx, dz);
+  // Emit uniformly spaced nodes along the raw segment. A trailing remainder shorter than one spacing
+  // is deliberately not emitted: it is at most PATH_RESAMPLE_SPACING WU, far inside the arrival
+  // radius, and carrying it would make node spacing non-uniform.
+  while (dist >= PATH_RESAMPLE_SPACING) {
+    const step = PATH_RESAMPLE_SPACING / dist;
+    ax += dx * step;
+    az += dz * step;
+    cache.total += PATH_RESAMPLE_SPACING;
+    cache.nodes.push({ x: ax, z: az });
+    cache.cum.push(cache.total);
+    cache.src.push(sourceIndex);
+    dx = x - ax;
+    dz = z - az;
+    dist = Math.hypot(dx, dz);
   }
-  route.pointIndex = index;
+  cache.tailX = ax;
+  cache.tailZ = az;
+}
 
-  const speed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
-  const finalPoint = index >= lastIndex;
-  if (finalPoint && distance <= AUTO_TARGET_PATH_ARRIVAL_RADIUS && speed < AUTO_TARGET_PATH_SETTLE_SPEED) {
-    // Arrival is a HOLD, never a kill. The trail begins at the hull, so its endpoint is within
-    // arrival radius the instant drawing starts — deactivating here destroyed every route at
-    // birth (hundreds of stillborn 2-point stubs per stroke, pen snapping back to the ship each
-    // time, hull never following anything). While the mode is on the route stays active and the
-    // hull waits at the trail's end for more line; only the G toggle / mode reset clears it.
+// Append-only during a stroke, so the resampled prefix is reused and only new source points are
+// folded in. A changed head (or a shrunk array) means a different route and forces a rebuild.
+function ensurePathCache(runtime, route) {
+  const points = route.points;
+  const head = points[0] || { x: 0, z: 0 };
+  const headX = finite(head.x);
+  const headZ = finite(head.z);
+  let cache = runtime.path;
+  if (!cache
+    || cache.headX !== headX
+    || cache.headZ !== headZ
+    || cache.consumed > points.length) {
+    cache = runtime.path = {
+      headX,
+      headZ,
+      consumed: 1,
+      nodes: [{ x: headX, z: headZ }],
+      cum: [0],
+      src: [0],
+      total: 0,
+      progressS: 0,
+      tailX: headX,
+      tailZ: headZ,
+    };
+  }
+  for (let i = cache.consumed; i < points.length; i += 1) {
+    const p = points[i];
+    appendResampledPoint(cache, finite(p && p.x), finite(p && p.z), i);
+  }
+  cache.consumed = points.length;
+  return cache;
+}
+
+function nodeIndexAtS(cache, s) {
+  const idx = Math.floor(s / PATH_RESAMPLE_SPACING);
+  return Math.max(0, Math.min(cache.nodes.length - 1, idx));
+}
+
+function pathPointAtS(cache, s) {
+  const nodes = cache.nodes;
+  const last = nodes.length - 1;
+  if (last < 1) return { x: cache.headX, z: cache.headZ, tx: 1, tz: 0 };
+  const clamped = Math.max(0, Math.min(cache.total, s));
+  const i = Math.min(last - 1, Math.floor(clamped / PATH_RESAMPLE_SPACING));
+  const a = nodes[i];
+  const b = nodes[i + 1];
+  const t = Math.max(0, Math.min(1, (clamped - cache.cum[i]) / PATH_RESAMPLE_SPACING));
+  const sx = b.x - a.x;
+  const sz = b.z - a.z;
+  const len = Math.max(Math.hypot(sx, sz), 1e-6);
+  return { x: a.x + sx * t, z: a.z + sz * t, tx: sx / len, tz: sz / len };
+}
+
+// Windowed forward projection. Returns committed arc-length progress, the closest point on the line,
+// its tangent, and the SIGNED cross-track offset (positive = hull sits on the +perp side, where
+// perp = (-tangentZ, tangentX)).
+function projectOntoPath(cache, px, pz) {
+  const nodes = cache.nodes;
+  const last = nodes.length - 1;
+  if (last < 1) return null;
+  const fromS = Math.max(0, cache.progressS - PATH_PROJECTION_BACK);
+  const toS = Math.min(cache.total, cache.progressS + PATH_PROJECTION_WINDOW);
+  const i0 = nodeIndexAtS(cache, fromS);
+  const i1 = Math.min(last - 1, nodeIndexAtS(cache, toS));
+  let bestSq = Infinity;
+  let bestS = cache.progressS;
+  let bestX = nodes[i0].x;
+  let bestZ = nodes[i0].z;
+  let bestTx = 1;
+  let bestTz = 0;
+  for (let i = i0; i <= i1; i += 1) {
+    const a = nodes[i];
+    const b = nodes[i + 1];
+    const sx = b.x - a.x;
+    const sz = b.z - a.z;
+    const segSq = sx * sx + sz * sz;
+    if (segSq < 1e-9) continue;
+    let t = ((px - a.x) * sx + (pz - a.z) * sz) / segSq;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = a.x + sx * t;
+    const cz = a.z + sz * t;
+    const ddx = px - cx;
+    const ddz = pz - cz;
+    const dsq = ddx * ddx + ddz * ddz;
+    if (dsq < bestSq) {
+      bestSq = dsq;
+      bestS = cache.cum[i] + Math.sqrt(segSq) * t;
+      bestX = cx;
+      bestZ = cz;
+      const inv = 1 / Math.sqrt(segSq);
+      bestTx = sx * inv;
+      bestTz = sz * inv;
+    }
+  }
+  const cross = (px - bestX) * -bestTz + (pz - bestZ) * bestTx;
+  return { s: bestS, x: bestX, z: bestZ, tx: bestTx, tz: bestTz, cross, dist: Math.sqrt(bestSq) };
+}
+
+// Worst curvature between here and the carrot decides the corner speed, so the hull is already slow
+// when it ARRIVES at a hairpin rather than discovering it mid-corner.
+function worstCurvatureAhead(cache, fromS, toS) {
+  const i0 = nodeIndexAtS(cache, fromS);
+  const i1 = nodeIndexAtS(cache, toS);
+  let worst = 0;
+  for (let i = i0; i <= i1; i += 1) {
+    const k = pathCurvatureAt(cache.nodes, i);
+    if (k > worst) worst = k;
+  }
+  return worst;
+}
+
+function positiveOr(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function pathAuthority(state, player) {
+  // Ask the propulsion catalog for the SAME numbers the kernel will apply, including the auto-target
+  // overdrive, so the speed governor is bounded by real thrust rather than a guessed constant.
+  let profile = null;
+  try {
+    profile = resolvePropulsionProfile(player, state || null);
+    if (profile) {
+      profile = applyAutoTargetHelmProfile(profile);
+      profile = applyAutoTargetPathProfile(profile);
+    }
+  } catch {
+    profile = null;
+  }
+  const main = positiveOr(profile && profile.mainAccel, 80);
+  const strafe = positiveOr(profile && profile.strafeAccel, main * 0.6);
+  const reverse = positiveOr(profile && profile.reverseAccel, main * 0.7);
+  return {
+    // Cornering is bought with strafe thrust plus a rotated main; be conservative about how much of
+    // the main axis is usable while the nose is still swinging.
+    lateral: Math.max(strafe, main * 0.6),
+    brake: Math.max(reverse, positiveOr(profile && profile.maxBrakeAccel, 0), main * 0.72, 1),
+    cruise: positiveOr(profile && profile.maxSpeed, positiveOr(player && player.maxSpeed, 120)),
+  };
+}
+
+function followAutoTargetPath(inp, player, state, runtime) {
+  const route = inp && inp.autoTargetPath;
+  if (!route || !route.active || !Array.isArray(route.points) || route.points.length < 2) {
+    if (runtime) runtime.path = null;
+    return false;
+  }
+  const cache = ensurePathCache(runtime || {}, route);
+  if (!cache || cache.nodes.length < 2 || cache.total < 1e-3) return false;
+
+  const px = finite(player.pos && player.pos.x);
+  const pz = finite(player.pos && player.pos.z);
+  const vx = finite(player.vel && player.vel.x);
+  const vz = finite(player.vel && player.vel.z);
+  const speed = Math.hypot(vx, vz);
+
+  const projection = projectOntoPath(cache, px, pz);
+  if (!projection) return false;
+  // Monotonic commit - this is what keeps a drawn loop from being cut in half.
+  cache.progressS = Math.max(cache.progressS, Math.min(projection.s, cache.total));
+
+  // Keep the source-point index the golden snapshot and the trail renderer read, derived from the
+  // committed progress so it stays monotonic and meaningful.
+  const lastIndex = route.points.length - 1;
+  const srcIndex = cache.src[nodeIndexAtS(cache, cache.progressS)];
+  route.pointIndex = Math.max(1, Math.min(lastIndex, Number.isFinite(srcIndex) ? srcIndex : 1));
+
+  const remaining = Math.max(0, cache.total - cache.progressS);
+  if (remaining <= AUTO_TARGET_PATH_ARRIVAL_RADIUS && speed < AUTO_TARGET_PATH_SETTLE_SPEED) {
+    // HOLD, never kill. See the header note - deactivating here was the original stillborn-route bug.
     inp.moveX = 0;
     inp.moveZ = 0;
     inp.turnIntent = 0;
@@ -242,39 +462,55 @@ function followAutoTargetPath(inp, player) {
     return true;
   }
 
-  const directionLength = Math.max(distance, 1e-6);
-  const pathX = dx / directionLength;
-  const pathZ = dz / directionLength;
-  const stoppingWindow = Math.max(42, speed * 1.15);
-  const braking = finalPoint && speed > 4 && distance < stoppingWindow;
-  let commandX = pathX;
-  let commandZ = pathZ;
-  let magnitude = finalPoint
-    ? Math.max(0.22, Math.min(1, distance / AUTO_TARGET_PATH_FULL_THRUST_DISTANCE))
-    : 1;
-  if (braking) {
-    commandX = -finite(player.vel && player.vel.x) / Math.max(speed, 1e-6);
-    commandZ = -finite(player.vel && player.vel.z) / Math.max(speed, 1e-6);
-    magnitude = Math.max(0.35, Math.min(1, speed / 32));
-  }
+  const authority = pathAuthority(state, player);
+  const lookahead = Math.max(
+    PATH_LOOKAHEAD_MIN,
+    Math.min(PATH_LOOKAHEAD_MAX, PATH_LOOKAHEAD_MIN + speed * PATH_LOOKAHEAD_PER_SPEED),
+  );
+  const carrotS = Math.min(cache.total, cache.progressS + lookahead);
+  const carrot = pathPointAtS(cache, carrotS);
 
-  applyWorldFlightCommand(inp, player, commandX, commandZ, magnitude, pathX, pathZ);
+  // Speed governor. "Follow the line" at finite thrust means DECELERATING INTO a hairpin, not cutting
+  // it: a pure-pursuit controller with no governor still corners wide and still reads as broken.
+  const curvature = worstCurvatureAhead(cache, cache.progressS, carrotS);
+  const cornerSpeed = curvature > 1e-5
+    ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / curvature))
+    : Infinity;
+  const endSpeed = Math.sqrt(Math.max(0,
+    2 * authority.brake * Math.max(0, remaining - AUTO_TARGET_PATH_ARRIVAL_RADIUS)));
+  const governed = Math.max(0, Math.min(authority.cruise, cornerSpeed, endSpeed));
+
+  // Steer at the carrot, bent toward the line in proportion to how far off it the hull sits. Without
+  // this term nothing restores a displaced hull and the offset is simply inherited forward.
+  const correction = Math.max(-1, Math.min(1, -projection.cross / PATH_CORRIDOR)) * PATH_CORRECTION_GAIN;
+  const perpX = -carrot.tz;
+  const perpZ = carrot.tx;
+  let dirX = carrot.tx + perpX * correction;
+  let dirZ = carrot.tz + perpZ * correction;
+  const dirLen = Math.max(Math.hypot(dirX, dirZ), 1e-6);
+  dirX /= dirLen;
+  dirZ /= dirLen;
+
+  // THE COMMAND IS A VELOCITY ERROR, NOT A BEARING. desired minus actual is an acceleration request,
+  // and acceleration is the only thing a thruster can supply. Commanding a bearing is what made the
+  // hull orbit the line instead of settling onto it.
+  const errX = dirX * governed - vx;
+  const errZ = dirZ * governed - vz;
+  const errLen = Math.hypot(errX, errZ);
+  const magnitude = Math.max(0, Math.min(1, errLen / PATH_VELOCITY_ERROR_FULL));
+  const commandX = errLen > 1e-6 ? errX / errLen : dirX;
+  const commandZ = errLen > 1e-6 ? errZ / errLen : dirZ;
+
+  // The kernel's brake authority is stronger than reverse thrust, so ask for it when genuinely hot
+  // rather than trying to shed speed on reverse alone.
+  const alongPath = vx * carrot.tx + vz * carrot.tz;
+  const braking = alongPath > governed + PATH_BRAKE_MARGIN;
+
+  applyWorldFlightCommand(inp, player, commandX, commandZ, magnitude, dirX, dirZ);
   inp.brake = braking;
   if (inp.actions) inp.actions.brake = braking;
   return true;
 }
-
-function hasPassedRoutePoint(position, previous, target) {
-  if (!position || !previous || !target) return false;
-  const segmentX = finite(target.x) - finite(previous.x);
-  const segmentZ = finite(target.z) - finite(previous.z);
-  const segmentLengthSq = segmentX * segmentX + segmentZ * segmentZ;
-  if (segmentLengthSq <= 1e-6) return true;
-  const playerX = finite(position.x) - finite(previous.x);
-  const playerZ = finite(position.z) - finite(previous.z);
-  return playerX * segmentX + playerZ * segmentZ >= segmentLengthSq;
-}
-
 function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, headingX = worldX, headingZ = worldZ) {
   const rotation = finite(player.rot);
   const forwardX = Math.cos(rotation);
