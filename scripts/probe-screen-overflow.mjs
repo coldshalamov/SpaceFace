@@ -36,7 +36,12 @@ mkdirSync(OUT, { recursive: true });
 const SCREENS = process.argv.slice(2).length ? process.argv.slice(2) : [
   'mainMenu', 'newGame', 'pause', 'settings', 'saveLoad', 'help', 'codex', 'missionLog',
   'galaxyMap', 'starmap', 'localmap', 'techTree', 'automation', 'base', 'footprint',
-  'range', 'ship', 'crucible', 'crucibleDraft', 'gameOver',
+  'range', 'ship', 'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleResults', 'gameOver',
+  // The asteroid works screen keeps the id 'drill'. It matters more than its size suggests:
+  // asteroid-ops.css carries SIX local copies of the [hidden] display patch, so its authors hit
+  // the same cascade fault repeatedly and worked around it per component. It is the surface most
+  // likely to interact with the global rule.
+  'drill',
 ];
 
 function freePort() {
