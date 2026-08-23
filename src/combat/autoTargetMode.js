@@ -137,6 +137,9 @@ export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime
   if (!inp || !inp.autoFire) {
     if (inp && inp.autoAim) inp.autoAim = null;
     runtime.refreshT = 0;
+    // Drop the resampled route with the mode. Without this the cache outlived a G toggle and the
+    // next stroke could be matched against the previous one's geometry.
+    runtime.path = null;
     return;
   }
   const player = state.entities && state.entities.get(state.playerId);
@@ -246,6 +249,8 @@ const PATH_CURVE_STENCIL = 2;             // nodes either side used to measure c
 const PATH_VELOCITY_ERROR_FULL = 26;      // velocity error (WU/s) that commands full thrust
 const PATH_CORNER_FLOOR_SPEED = 14;       // hairpins throttle down to this, never to a deadlock
 const PATH_BRAKE_MARGIN = 6;              // WU/s over the governed speed before the brake is asserted
+const PATH_MAX_NODES = 8192;              // ~24 km of stroke at 3 WU spacing; bounds one cache build
+const PATH_REST_SPEED = 1;                // below this the hull is genuinely stopped, not coasting              // WU/s over the governed speed before the brake is asserted
 
 function pathCurvatureAt(nodes, index) {
   const lo = index - PATH_CURVE_STENCIL;
@@ -266,10 +271,13 @@ function appendResampledPoint(cache, x, z, sourceIndex) {
   let dx = x - ax;
   let dz = z - az;
   let dist = Math.hypot(dx, dz);
-  // Emit uniformly spaced nodes along the raw segment. A trailing remainder shorter than one spacing
-  // is deliberately not emitted: it is at most PATH_RESAMPLE_SPACING WU, far inside the arrival
-  // radius, and carrying it would make node spacing non-uniform.
-  while (dist >= PATH_RESAMPLE_SPACING) {
+  // A SEGMENT WHOSE LENGTH OVERFLOWS TO Infinity HUNG THE GAME FOREVER. With two finite but huge
+  // endpoints, Math.hypot returns Infinity, the step becomes SPACING/Infinity = 0, the cursor never
+  // advances, and `dist >= SPACING` stays true for good: the frame never returns. Reproduced, not
+  // theorised -- a single tick failed to complete in 12 seconds. Bail on any non-finite distance,
+  // and cap node count so an absurd-but-finite stroke cannot allocate its way to a stall either.
+  if (!Number.isFinite(dist)) return;
+  while (dist >= PATH_RESAMPLE_SPACING && cache.nodes.length < PATH_MAX_NODES) {
     const step = PATH_RESAMPLE_SPACING / dist;
     ax += dx * step;
     az += dz * step;
@@ -286,17 +294,32 @@ function appendResampledPoint(cache, x, z, sourceIndex) {
 }
 
 // Append-only during a stroke, so the resampled prefix is reused and only new source points are
-// folded in. A changed head (or a shrunk array) means a different route and forces a rebuild.
+// folded in.
+//
+// THE HEAD ALONE IS NOT AN IDENTITY, and trusting it flew the wrong route. Every stroke starts at
+// the hull, so two consecutive strokes drawn from a stationary ship share a head; if they also share
+// a point count the cache was reused wholesale. Reproduced: route A (0,0)->(120,0) then route B
+// (0,0)->(0,120) left the hull thrusting along +X while the player's line went +Z. The route's TAIL
+// and the last sample actually consumed are part of the key now, so a replaced, truncated, or
+// in-place-mutated route rebuilds.
 function ensurePathCache(runtime, route) {
   const points = route.points;
   const head = points[0] || { x: 0, z: 0 };
+  const tail = points[points.length - 1] || head;
   const headX = finite(head.x);
   const headZ = finite(head.z);
+  const tailX = finite(tail.x);
+  const tailZ = finite(tail.z);
   let cache = runtime.path;
+  const consumedSample = cache && cache.consumed > 0 ? points[cache.consumed - 1] : null;
+  const consumedMoved = cache && consumedSample
+    && (finite(consumedSample.x) !== cache.lastConsumedX || finite(consumedSample.z) !== cache.lastConsumedZ);
   if (!cache
     || cache.headX !== headX
     || cache.headZ !== headZ
-    || cache.consumed > points.length) {
+    || cache.consumed > points.length
+    || consumedMoved
+    || (cache.consumed === points.length && (cache.lastX !== tailX || cache.lastZ !== tailZ))) {
     cache = runtime.path = {
       headX,
       headZ,
@@ -308,13 +331,25 @@ function ensurePathCache(runtime, route) {
       progressS: 0,
       tailX: headX,
       tailZ: headZ,
+      lastX: headX,
+      lastZ: headZ,
+      lastConsumedX: headX,
+      lastConsumedZ: headZ,
     };
   }
   for (let i = cache.consumed; i < points.length; i += 1) {
     const p = points[i];
-    appendResampledPoint(cache, finite(p && p.x), finite(p && p.z), i);
+    const px = p && p.x;
+    const pz = p && p.z;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) continue;   // a junk sample is skipped, not flown
+    appendResampledPoint(cache, px, pz, i);
   }
   cache.consumed = points.length;
+  cache.lastX = tailX;
+  cache.lastZ = tailZ;
+  const consumedNow = points[cache.consumed - 1];
+  cache.lastConsumedX = finite(consumedNow && consumedNow.x);
+  cache.lastConsumedZ = finite(consumedNow && consumedNow.z);
   return cache;
 }
 
@@ -452,7 +487,32 @@ function followAutoTargetPath(inp, player, state, runtime) {
   route.pointIndex = Math.max(1, Math.min(lastIndex, Number.isFinite(srcIndex) ? srcIndex : 1));
 
   const remaining = Math.max(0, cache.total - cache.progressS);
-  if (remaining <= AUTO_TARGET_PATH_ARRIVAL_RADIUS && speed < AUTO_TARGET_PATH_SETTLE_SPEED) {
+
+  // HOLD MEANS PARKED AT THE END OF THE LINE, NOT "ARC-LENGTH SAYS I'M NEARLY THERE". Two real
+  // failures came from testing arc-length remaining and a generous speed threshold instead:
+  //
+  //   * A hull shoved 50 WU sideways at s = 110 of a 120 WU stroke still reported remaining = 10,
+  //     so HOLD zeroed every command and the ship sat half a screen off the drawn line forever.
+  //     Both reproduced before this fix; the distance to the actual endpoint is what matters.
+  //   * Releasing at 8 WU/s hands a coasting hull to neutral input. Under Newtonian flight nothing
+  //     absorbs that momentum, so the ship drifts on past the endpoint and, because progress is
+  //     already complete, HOLD keeps re-arming and never corrects.
+  //
+  // Falling through instead of holding costs nothing and fixes both: past the arrival radius the
+  // governor's endSpeed is already 0, so the velocity-error command IS full counter-thrust. The
+  // controller brakes itself to a stop. HOLD exists only to stop jitter once genuinely at rest.
+  const endPoint = pathPointAtS(cache, cache.total);
+  const distanceToEnd = Math.hypot(px - endPoint.x, pz - endPoint.z);
+  //
+  // BOTH tests are required, and dropping either one reintroduces a real bug. Distance alone is not
+  // enough: a stroke that doubles back finishes NEAR ITS OWN START, so a hull sitting at the origin
+  // is already inside the arrival radius of the endpoint and HOLD fires before the route has been
+  // flown at all -- the stillborn-route failure in a new costume, caught by the hook case the moment
+  // distance replaced arc length. Arc length alone is not enough either, for the displacement reason
+  // above. Arrived means both: the line is used up AND the hull is actually at the end of it.
+  if (remaining <= AUTO_TARGET_PATH_ARRIVAL_RADIUS
+    && distanceToEnd <= AUTO_TARGET_PATH_ARRIVAL_RADIUS
+    && speed < PATH_REST_SPEED) {
     // HOLD, never kill. See the header note - deactivating here was the original stillborn-route bug.
     inp.moveX = 0;
     inp.moveZ = 0;
@@ -476,8 +536,15 @@ function followAutoTargetPath(inp, player, state, runtime) {
   const cornerSpeed = curvature > 1e-5
     ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / curvature))
     : Infinity;
+  // How far is there still to travel? Arc-length remaining alone is wrong for a DISPLACED hull: a
+  // ship shoved 50 WU sideways at s = 110 of a 120 WU stroke has remaining = 10, which drives the
+  // stopping curve to zero desired speed, which makes the velocity error zero, which commands no
+  // thrust at all. It would turn to face the line and then sit there. Take the greater of the arc
+  // left and the straight-line distance to the endpoint, so a displaced hull still has somewhere to
+  // be and the governor still gives it speed to get there.
+  const travelLeft = Math.max(remaining, distanceToEnd);
   const endSpeed = Math.sqrt(Math.max(0,
-    2 * authority.brake * Math.max(0, remaining - AUTO_TARGET_PATH_ARRIVAL_RADIUS)));
+    2 * authority.brake * Math.max(0, travelLeft - AUTO_TARGET_PATH_ARRIVAL_RADIUS)));
   const governed = Math.max(0, Math.min(authority.cruise, cornerSpeed, endSpeed));
 
   // Steer at the carrot, bent toward the line in proportion to how far off it the hull sits. Without

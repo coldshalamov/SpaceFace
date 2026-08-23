@@ -236,6 +236,13 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
     if (!nodes.length) nodes.push({ x: points[0].x, z: points[0].z });
   }
   const covered = new Array(nodes.length).fill(false);
+  // ORDERED coverage. Plain coverage is a set, and a set does not know about time: a controller that
+  // flew the stroke BACKWARDS, or that retraced one leg of a doubled-back path, marks every sample
+  // touched and scores 100%. This pointer only advances when the hull reaches the NEXT sample, so it
+  // measures the stroke actually being flown in the order the player drew it. A bounded initial skip
+  // is allowed for a displaced start, which legitimately rejoins the line ahead of the origin.
+  let orderedIdx = 0;
+  const ORDERED_SKIP_LIMIT = Math.floor(nodes.length * 0.2);
 
   const crossSamples = [];
   const signs = [];
@@ -300,6 +307,15 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
     // the far end), and on a stroke whose return leg runs close to its outbound leg it reads
     // "arrived" before the hull has moved at all. Coverage asks the only honest question — did the
     // hull actually come near EVERY part of the line the player drew — and nothing can fake it.
+    if (orderedIdx === 0) {
+      for (let n = 0; n <= ORDERED_SKIP_LIMIT && n < nodes.length; n += 1) {
+        if (Math.hypot(player.pos.x - nodes[n].x, player.pos.z - nodes[n].z) <= COVER_RADIUS) { orderedIdx = n; break; }
+      }
+    }
+    while (orderedIdx < nodes.length
+      && Math.hypot(player.pos.x - nodes[orderedIdx].x, player.pos.z - nodes[orderedIdx].z) <= COVER_RADIUS) {
+      orderedIdx += 1;
+    }
     let touched = 0;
     for (let n = 0; n < nodes.length; n += 1) {
       if (!covered[n]
@@ -333,9 +349,16 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
   // the part it is actually obliged to fly.
   const tailFrom = Math.floor(covered.length * 0.2);
   const tail = covered.slice(tailFrom);
+  const endNode = nodes[nodes.length - 1];
   return {
     coverage: covered.filter(Boolean).length / covered.length,
+    orderedCoverage: orderedIdx / nodes.length,
     tailCoverage: tail.filter(Boolean).length / tail.length,
+    // Where the hull actually ENDED. A controller that follows the line perfectly and then never
+    // brakes keeps cross-track at zero along the terminal tangent and still scores full coverage --
+    // it can finish 1,800 WU past the destination and pass everything else in this file.
+    endDistance: Math.hypot(player.pos.x - endNode.x, player.pos.z - endNode.z),
+    finalSpeed: Math.hypot(player.vel.x, player.vel.z),
     medianCross: median(crossSamples),
     maxCross: Math.max(...crossSamples),
     flipsPer100: (flips / Math.max(flown, 1)) * 100,
@@ -575,4 +598,158 @@ test('following a long stroke stays cheap enough for a 60 Hz loop', () => {
     `the follower built ${nodeCount} nodes for a ${Math.round(drawn)} WU stroke — resampling is keyed to mouse samples, not to arc length, and the per-frame search will not stay frame-safe`);
   assert.ok(elapsed < 250,
     `900 ticks over a 3000-point stroke took ${elapsed.toFixed(1)} ms — the path follower is not frame-safe`);
+});
+
+// ---------------------------------------------------------------- adversarial-review regressions
+//
+// Every case below is a defect an independent reviewer found in the first version of this controller
+// and gate, each REPRODUCED here before it was fixed. They are recorded as tests rather than only as
+// commit prose because the first version of this file passed while all of them were live — the gate
+// agreed with the code instead of checking it.
+
+function mkRoute(points, pos = { x: 0, z: 0 }, drawing = false) {
+  const player = {
+    id: 1, type: 'ship', alive: true, pos: { ...pos }, vel: { x: 0, z: 0 },
+    rot: 0, angVel: 0, mass: 1, maxSpeed: 120, data: {},
+  };
+  const state = {
+    mode: 'flight', playerId: 1, player: { targetId: null },
+    entities: new Map([[1, player]]),
+    settings: { controls: { flightMode: 'assisted' } },
+    input: {
+      moveX: 0, moveZ: 0, turnIntent: 0, brake: false, autoFire: true,
+      aimWorld: { x: 0, z: 0 }, aimAngle: 0, autoTargetVector: { active: false },
+      autoTargetPath: { active: true, drawing, cursorX: 0, cursorY: 0, pointIndex: 1, points },
+    },
+  };
+  return { state, player };
+}
+
+test('a replaced route is not flown using the previous route geometry', () => {
+  // Every stroke starts at the hull, so two consecutive strokes drawn from a stationary ship share a
+  // head. When they also shared a point count the cache was reused wholesale and the ship flew the
+  // OLD line. Reproduced: route A (0,0)->(120,0) then route B (0,0)->(0,120) left the hull thrusting
+  // along +X while the player's line went +Z.
+  const lastNode = (rt) => rt.path && rt.path.nodes[rt.path.nodes.length - 1];
+
+  // (a) the mode STAYS ON and the player simply draws again. This is the ordinary case -- input
+  // replaces the route object mid-flight -- and it is the one that needs the cache KEY, because no
+  // toggle intervenes to clear anything. Testing only the toggle path passes for the wrong reason.
+  const live = createAutoTargetRuntime();
+  const a1 = mkRoute([{ x: 0, z: 0 }, { x: 120, z: 0 }]);
+  tickAutoTarget(a1.state, DT, null, live);
+  const b1 = mkRoute([{ x: 0, z: 0 }, { x: 0, z: 120 }]);
+  tickAutoTarget(b1.state, DT, null, live);
+  const redrawn = lastNode(live);
+  assert.ok(redrawn, 'the redrawn route must build a cache');
+  assert.ok(Math.abs(redrawn.z) > 100 && Math.abs(redrawn.x) < 10,
+    `redraw while the mode is on still uses the previous geometry (last node ${JSON.stringify(redrawn)})`);
+
+  // (b) and across a G toggle, where the cache must not outlive the mode.
+  const toggled = createAutoTargetRuntime();
+  const a2 = mkRoute([{ x: 0, z: 0 }, { x: 120, z: 0 }]);
+  tickAutoTarget(a2.state, DT, null, toggled);
+  a2.state.input.autoFire = false;
+  tickAutoTarget(a2.state, DT, null, toggled);
+  assert.equal(toggled.path, null, 'turning the mode off must drop the resampled route');
+  const b2 = mkRoute([{ x: 0, z: 0 }, { x: 0, z: 120 }]);
+  tickAutoTarget(b2.state, DT, null, toggled);
+  const afterToggle = lastNode(toggled);
+  assert.ok(afterToggle && Math.abs(afterToggle.z) > 100 && Math.abs(afterToggle.x) < 10,
+    `after a G toggle the follower still uses the previous geometry (last node ${JSON.stringify(afterToggle)})`);
+});
+
+test('a hull knocked off the line near the end flies back instead of parking', () => {
+  // Arc-length remaining said "nearly there" while the hull sat 50 WU off the drawn line, so HOLD
+  // zeroed every command and the ship stayed half a screen wide of the stroke, permanently.
+  const { state, player } = mkRoute([{ x: 0, z: 0 }, { x: 120, z: 0 }]);
+  const runtime = createAutoTargetRuntime();
+  for (let i = 0; i < 200; i += 1) {
+    player.pos.x = Math.min(110, player.pos.x + 1);
+    tickAutoTarget(state, DT, null, runtime);
+  }
+  player.pos.x = 110; player.pos.z = 50; player.vel.x = 0; player.vel.z = 0;
+  tickAutoTarget(state, DT, null, runtime);
+  const effort = Math.abs(state.input.moveX) + Math.abs(state.input.moveZ);
+  assert.ok(effort > 0.2,
+    `a hull 50 WU off the line commanded ${effort.toFixed(3)} of thrust — it is parked off the stroke`);
+});
+
+test('degenerate route points cannot hang the frame or emit a non-finite command', () => {
+  // A segment between two finite-but-huge points has an INFINITE length, which made the resampler's
+  // step SPACING/Infinity = 0. The cursor never advanced, the loop condition never went false, and
+  // the tick never returned — a permanent freeze, reproduced at over 12 seconds for a single frame.
+  const cases = [
+    ['infinite-length segment', [{ x: 0, z: 0 }, { x: Number.MAX_VALUE, z: Number.MAX_VALUE }]],
+    ['NaN sample', [{ x: 0, z: 0 }, { x: NaN, z: 10 }, { x: 0, z: 120 }]],
+    ['huge finite route', [{ x: 0, z: 0 }, { x: 1e8, z: 0 }]],
+    ['coincident points', [{ x: 5, z: 5 }, { x: 5, z: 5 }, { x: 5, z: 5 }]],
+  ];
+  for (const [label, points] of cases) {
+    const { state } = mkRoute(points);
+    const started = performance.now();
+    tickAutoTarget(state, DT, null, createAutoTargetRuntime());
+    const elapsed = performance.now() - started;
+    assert.ok(elapsed < 250, `${label}: one tick took ${elapsed.toFixed(0)} ms — the frame is hanging`);
+    for (const k of ['moveX', 'moveZ', 'turnIntent']) {
+      assert.ok(Number.isFinite(state.input[k]), `${label}: ${k} is not finite`);
+      assert.ok(state.input[k] >= -1 && state.input[k] <= 1, `${label}: ${k} escaped [-1,1]`);
+    }
+  }
+});
+
+test('a short stroke still being drawn is not treated as already arrived', () => {
+  // The arrival test elsewhere in this file uses drawing:false on a long route, so a regression that
+  // deactivates a SHORT and actively GROWING stroke would not be seen. The trail begins at the hull,
+  // so this is the exact shape of the original stillborn-route bug.
+  const points = [{ x: 0, z: 0 }, { x: 5, z: 0 }];
+  const { state } = mkRoute(points, { x: 0, z: 0 }, true);
+  const runtime = createAutoTargetRuntime();
+  tickAutoTarget(state, DT, null, runtime);
+  assert.equal(state.input.autoTargetPath.active, true, 'a five-WU growing stroke must stay active');
+
+  for (let i = 1; i <= 30; i += 1) points.push({ x: 5 + i * 6, z: 0 });
+  tickAutoTarget(state, DT, null, runtime);
+  const effort = Math.abs(state.input.moveX) + Math.abs(state.input.moveZ) + Math.abs(state.input.turnIntent);
+  assert.ok(effort > 0, 'commands must resume once the stroke extends away from the hull');
+  assert.equal(state.input.autoTargetPath.active, true, 'the growing route must remain active');
+});
+
+test('the hull settles at the end of the stroke instead of sailing past it', () => {
+  // A controller that tracks the line perfectly and never brakes keeps cross-track at zero along the
+  // terminal tangent and scores full coverage, so every other assertion in this file passes while the
+  // ship finishes hundreds of WU beyond the destination.
+  for (const [name, points] of [['straight', straight()], ['gentle-s', gentleS()], ['hairpin', hairpin()]]) {
+    const r = flyStroke(points);
+    assert.ok(r.endDistance <= 45,
+      `${name}: hull finished ${r.endDistance.toFixed(1)} WU from the end of the stroke`);
+    assert.ok(r.finalSpeed <= 12,
+      `${name}: hull finished at ${r.finalSpeed.toFixed(1)} WU/s — it never braked`);
+  }
+});
+
+test('the stroke is flown in the order it was drawn, not merely touched', () => {
+  // Coverage is a set and a set has no sense of time: flying a stroke BACKWARDS, or retracing one leg
+  // of a doubled-back path, touches every sample and scores 100%.
+  for (const [name, points] of [['gentle-s', gentleS()], ['loop', loop()], ['hairpin', hairpin()]]) {
+    const r = flyStroke(points);
+    assert.ok(r.orderedCoverage >= 0.9,
+      `${name}: only ${(r.orderedCoverage * 100).toFixed(1)}% of the stroke was flown in drawn order`);
+  }
+});
+
+test('the route point index advances across the stroke rather than sitting at 1', () => {
+  // A constant pointIndex of 1 is in range, safe and monotonic, so the earlier assertions accepted it
+  // while telemetry and any consumer would report a route that never progressed.
+  const points = gentleS();
+  const { state, player } = mkRoute(points, { x: points[0].x, z: points[0].z });
+  const runtime = createAutoTargetRuntime();
+  for (let i = 0; i < points.length; i += 1) {
+    player.pos.x = points[i].x;
+    player.pos.z = points[i].z;
+    tickAutoTarget(state, DT, null, runtime);
+  }
+  const idx = state.input.autoTargetPath.pointIndex;
+  assert.ok(idx >= (points.length - 1) * 0.7,
+    `pointIndex ended at ${idx} of ${points.length - 1} after walking the whole stroke — it is not tracking progress`);
 });
