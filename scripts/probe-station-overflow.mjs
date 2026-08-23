@@ -23,7 +23,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = Math.max(1024, Number(process.env.SF_CAPTURE_WIDTH) || 1440);
 const HEIGHT = Math.max(700, Number(process.env.SF_CAPTURE_HEIGHT) || 900);
 const OUT = join(ROOT, '.devshots', 'station-overflow');
-const TABS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar'];
+const TABS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger'];
 mkdirSync(OUT, { recursive: true });
 
 function freePort() {
