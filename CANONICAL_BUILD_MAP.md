@@ -959,6 +959,17 @@ subtree grep, and event emit ∩ subscribe:
 | **73 KB** claims — 15 sites, 6 buildable modules, raids, defenses | undifferentiated dots on a map |
 | **53 KB** surrender & custody — capture, prisoners, escape | **a mercy outcome is indistinguishable from a kill** |
 | **28 KB** ace memory — 12 named pilots who remember your fights and adapt | **nothing ever names them** |
+
+> **Spot-checked 2026-08-23, and the table has partly aged. Verify a row before acting on it.**
+> Three rows were re-tested against the current tree: traffic is now read by three UI files
+> (`commsRadial`, `dockArrival`, `worldSiteMapLayer`), so "read by 0 UI files" is stale; and a
+> mercy outcome is no longer indistinguishable from a kill — `combatOutcome` speaks four distinct
+> lines ("fled the fight", "disabled; capture window open", "surrendered", "destroyed").
+> The ace-memory row is still exactly true: nothing in `src/ui/**` names a pilot.
+>
+> This is a diagnosis from a point in time, not a live status board. Rebuilding something that
+> already exists because a row still says it does not is the failure mode to avoid here — the same
+> one that left §13 claiming the arcade structural FX had zero consumers long after it had four.
 | `player.bounty`, which decides who hunts you | appears in **zero** UI files |
 | `getDerivedStats` returns **~35** ship fields | the ship screen shows **6** |
 | Living hull already accrues kill tallies, patches, scorch, grime, graffiti | its only UI reader is **dead code** |
