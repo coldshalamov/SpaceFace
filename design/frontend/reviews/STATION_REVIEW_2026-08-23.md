@@ -211,3 +211,44 @@ whose stages are under-filled. Smallest ranked set:
 7. **Spend down the chart fill and the "NORMAL DEMAND" amber** (tab-market): chart to a calm line
    with no saturated area fill; demand labels to calm unless the state is actually hot.
 8. **Reconcile NEUTRAL 0 vs −29 on Factions** (tab-factions, gauge vs ladder).
+
+---
+
+## Controller corrections — three findings verified against the code, 2026-08-23
+
+Checked before acting, because three of the findings below would have had someone "fix" behaviour
+that is already correct. Recorded here so the next reader does not inherit them.
+
+**Finding #1, the contract carousel — FIXED, and re-verified.** Measured live in the real game:
+six titles, zero clipped, zero overlapping, `text-overflow: ellipsis` in force, and the captured
+frame agrees with the measurement. The repair holds. `scripts/probe-contract-rail-geometry.mjs`
+re-runs the measurement.
+
+**Findings #2 and #3, the clipped ACTIVE MISSIONS card and the STATION COMMS collisions — REAL, and
+one fault rather than two.** `.sx-comms` is `position: fixed`, so it occupied no space and nothing
+reserved its band; `.sx-app` clips, so anything past the fold was destroyed rather than scrollable.
+Fixed by a shell-level footer reserve. Seven tabs now measure zero cut and zero collisions at 1280,
+1440 and 1920. A second, separate cause on Factions: the standing-ladder row was a hardcoded 100px
+carrying 136.8px of content.
+
+**The tab-strip fill — REAL, but not the stated cause.** The report was that a *neighbouring* tab
+carried the active block. It is not a neighbour effect: fill was carrying two meanings at once, and
+the wrong one was louder. Selection wore neutral white, attention wore saturated amber, and on a
+dark ground the saturated hue wins at equal alpha — measured 37.1 against 31.4, a margin of 1.18x.
+It is 57.9 against 15.7 now. The measurement also found a bug no reading of the frames could: when
+the attention tab *was* the selected tab it lost its selection colour entirely.
+
+**The GETTING STARTED strip — NOT a defect.** The report was that it is permanent chrome that should
+dismiss once read. It already does. `firstDockHandoffVisible()` has four independent exit
+conditions and returns false once onboarding finishes or a job is taken. It appears in all eight
+frames because all eight were captured on a fresh save, which is precisely when it *should* show.
+
+**The amber RESUPPLY chip — NOT a defect.** The report was that it never changes and so reads as
+chrome rather than state. It is conditional: the munitions unit is pushed only when there is
+something to load, and the code says so in its own comment. Again an artifact of a fresh-save
+capture, where munitions genuinely are low.
+
+**Method note.** Every finding above that survived was confirmed by measuring the running game, not
+by reading the stylesheet — `station-workbench.css` redefines the same selectors at three depths and
+a later rule silently cancels an earlier one, which had already produced four wrong causes for the
+contract rail. Both probes were negative-tested: with their fixes reverted they still fire.
