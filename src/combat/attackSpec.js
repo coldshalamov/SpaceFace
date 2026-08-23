@@ -240,6 +240,37 @@ function scalePayload(payload, scale) {
   return out;
 }
 
+function mergePayloadEntry(payload, entry, rank) {
+  if (!entry || typeof entry !== 'object') return;
+  const n = Number.isInteger(rank) && rank > 0 ? rank : 1;
+  if (entry.kind === 'status' && typeof entry.statusId === 'string') {
+    const stacks = (Number.isInteger(entry.stacks) && entry.stacks > 0 ? entry.stacks : 1) * n;
+    const existing = payload.find((row) => row && row.kind === 'status' && row.statusId === entry.statusId);
+    if (existing) {
+      existing.stacks = (Number.isInteger(existing.stacks) ? existing.stacks : 1) + stacks;
+      return;
+    }
+    payload.push({ kind: 'status', statusId: entry.statusId, stacks });
+    return;
+  }
+  if (entry.kind === 'damage' && entry.channels && typeof entry.channels === 'object') {
+    payload.push({ kind: 'damage', channels: { ...entry.channels } });
+  }
+}
+
+function applyPropagationOverlay(draft, overlay) {
+  if (!overlay || typeof overlay !== 'object') return;
+  const chain = overlay.chain;
+  if (!chain || typeof chain !== 'object') return;
+  if (!draft.propagation.chain || typeof draft.propagation.chain !== 'object') {
+    draft.propagation.chain = {};
+  }
+  if (typeof chain.prerequisiteStatus === 'string' && chain.prerequisiteStatus) {
+    draft.propagation.chain.prerequisiteStatus = chain.prerequisiteStatus;
+  }
+  if (chain.requireBounce) draft.propagation.chain.requireBounce = true;
+}
+
 function baseDraft(weapon) {
   const kind = emitterKindOf(weapon);
   const damage = Number.isFinite(weapon.dmg) ? weapon.dmg : 0;
@@ -315,9 +346,44 @@ function finalizeSplit(draft) {
 
 function finalizeChain(draft) {
   const chain = draft.propagation.chain;
-  if (!chain || !Number.isInteger(chain.count) || chain.count <= 0) {
+  if (!chain || typeof chain !== 'object') {
     draft.propagation.chain = null;
+    return;
   }
+  const count = Number.isInteger(chain.count)
+    ? chain.count
+    : (Number.isFinite(chain.count) ? Math.round(chain.count) : 0);
+  if (!(count > 0)) {
+    draft.propagation.chain = null;
+    return;
+  }
+  const next = {
+    count: clampInt(count, 0, 8),
+    range: Number.isFinite(chain.range) && chain.range > 0 ? chain.range : 110,
+  };
+  if (typeof chain.prerequisiteStatus === 'string' && chain.prerequisiteStatus) {
+    next.prerequisiteStatus = chain.prerequisiteStatus;
+  }
+  if (chain.requireBounce === true || chain.requireBounce === 1) {
+    next.requireBounce = true;
+  }
+  draft.propagation.chain = next;
+  draft.constraints.generationMax = clampInt(
+    Math.max(draft.constraints.generationMax, next.count),
+    0,
+    4,
+  );
+}
+
+function finalizeTetherScale(draft) {
+  const scale = draft.costs && draft.costs.tetherAnchorPayloadScale;
+  if (!Number.isFinite(scale) || !(scale > 1)) {
+    if (draft.costs && 'tetherAnchorPayloadScale' in draft.costs) {
+      delete draft.costs.tetherAnchorPayloadScale;
+    }
+    return;
+  }
+  draft.costs.tetherAnchorPayloadScale = Math.min(scale, 2);
 }
 
 function finalizeAfterBounceSteer(draft) {
@@ -381,6 +447,10 @@ export function compileAttackSpec(input = {}) {
         mergeTrigger(draft.triggers, trigger, trait.inheritance || triggerInherit);
       }
     }
+    if (Array.isArray(trait.payload)) {
+      for (const entry of trait.payload) mergePayloadEntry(draft.payload, entry, rank);
+    }
+    applyPropagationOverlay(draft, trait.propagation);
   }
 
   draft.emitter.rootCount = clampInt(draft.emitter.rootCount, 1, 12);
@@ -398,6 +468,7 @@ export function compileAttackSpec(input = {}) {
   draft.payload = scalePayload(draft.payload, draft.costs.payloadScale);
   finalizeSplit(draft);
   finalizeChain(draft);
+  finalizeTetherScale(draft);
   finalizeAfterBounceSteer(draft);
   draft.presentation.family = presentationFamily(weapon.id, applied.map((row) => row.trait));
   draft.triggers.sort((a, b) => {
@@ -441,6 +512,8 @@ export function describeAttackMetrics(spec) {
     spreadDeg: volley.spreadDeg,
     pierce: volley.pierce,
     splitCount: volley.splitCount,
+    chainCount: spec && spec.propagation && spec.propagation.chain ? spec.propagation.chain.count : 0,
+    chainRange: spec && spec.propagation && spec.propagation.chain ? spec.propagation.chain.range : 0,
     bounces: spec && spec.trajectory ? spec.trajectory.bounces : 0,
     afterBounceSteer: spec && spec.trajectory ? spec.trajectory.afterBounceSteer : null,
     lineageProcBudget: spec && spec.constraints ? spec.constraints.lineageProcBudget : 0,
@@ -474,3 +547,9 @@ export {
   ATTACK_TRAIT_BY_ID,
   ATTACK_TRAIT_SCHEMA_VERSION,
 };
+
+export {
+  resolvePayload,
+  fieldCouplingForStatusIds,
+  CAUSAL_CHANNEL,
+} from './attackPayload.js';

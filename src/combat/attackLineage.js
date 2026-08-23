@@ -148,6 +148,7 @@ export function createLineage(options = {}) {
     createdTick: tick,
     budget,
     visitedTargets: visited,
+    hasBounced: !!options.hasBounced,
   };
   budget.familySize += 1;
   return runtime;
@@ -264,6 +265,7 @@ export function trySpawnDescendant(parent, options = {}) {
     sourceEntityId: parent.sourceEntityId,
     sourceWeaponSlot: parent.sourceWeaponSlot,
     createdTick: tick,
+    hasBounced: parent.hasBounced,
   });
   budget.childCount += 1;
   if (budget.world) budget.world.descendantsThisTick += 1;

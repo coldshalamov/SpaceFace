@@ -10,6 +10,7 @@ import {
   trySpawnDescendant,
 } from './attackLineage.js';
 import { selectTargets } from './attackTargeting.js';
+import { selectChainTarget, tryChain } from './attackChain.js';
 
 const DEG = Math.PI / 180;
 
@@ -179,7 +180,8 @@ export function tryBounce(runtime) {
   const paid = tryConsumeProc(runtime, PROC_COSTS.bounce, 'bounce');
   if (!paid.ok) return paid;
   runtime.remaining.bounces -= 1;
+  runtime.hasBounced = true;
   return { ok: true, remaining: runtime.remaining.bounces };
 }
 
-export { selectTargets };
+export { selectTargets, selectChainTarget, tryChain };

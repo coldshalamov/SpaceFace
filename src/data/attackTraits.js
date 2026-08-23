@@ -1,8 +1,10 @@
 // Attack trait catalog (PQ-133 / CRU-019). Appendix A.3 is the schema.
 // Pure data + validators. No bus, registry, DOM, or systems imports.
 //
-// Topology families plus ricochet traits. Bank Shot writes bounce count and the surface_contact
-// trigger; Smart Bank writes afterBounceSteer. Reflection itself lives in core/surfaceContact.js.
+// Topology families plus ricochet, chain, payload, and bridge traits. Bank Shot writes bounce
+// count and the surface_contact trigger; Smart Bank writes afterBounceSteer. Reflection itself
+// lives in core/surfaceContact.js. Chain selection lives in combat/attackChain.js. Status ids
+// name the existing combatDefs catalog; this file does not own status or field behavior.
 
 export const ATTACK_TRAIT_SCHEMA_VERSION = 1;
 
@@ -30,8 +32,10 @@ export const ATTACK_STACK_TARGETS = Object.freeze([
   'propagation.split.payloadScale',
   'propagation.chain.count',
   'propagation.chain.range',
+  'propagation.chain.requireBounce',
   'costs.payloadScale',
   'costs.heatScale',
+  'costs.tetherAnchorPayloadScale',
   'constraints.lineageProcBudget',
   'constraints.generationMax',
   'constraints.childMax',
@@ -241,6 +245,193 @@ export const ATTACK_TRAITS = freezeDeep([
       detail: 'One steering event per bounce. Target order is deterministic. Cone and turn caps are compiled, not rolled. Does not grant extra bounces.',
     },
   },
+  {
+    id: 'mod_ion_payload',
+    schemaVersion: 1,
+    name: 'Ion Payload',
+    tier: 'foundation',
+    family: 'payload',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'mul', target: 'costs.payloadScale', perRank: 1 },
+    ],
+    payload: [
+      { kind: 'status', statusId: 'status_ionized', stacks: 1 },
+    ],
+    inheritance: inheritBlock(true, true, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Compatible hits apply Ionized.',
+      detail: 'Uses the existing Ionized status. Ionized is the chain-conduction prerequisite; it does not spawn a second status system.',
+    },
+  },
+  {
+    id: 'mod_incendiary_payload',
+    schemaVersion: 1,
+    name: 'Incendiary Payload',
+    tier: 'foundation',
+    family: 'payload',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'mul', target: 'costs.payloadScale', perRank: 1 },
+    ],
+    payload: [
+      { kind: 'status', statusId: 'status_burning', stacks: 1 },
+    ],
+    inheritance: inheritBlock(true, true, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Compatible hits apply Burning.',
+      detail: 'Uses the existing Burning status and its periodic thermal packet. Combat owns the ticks; this trait only authors the payload.',
+    },
+  },
+  {
+    id: 'mod_gravity_tag',
+    schemaVersion: 1,
+    name: 'Gravity Tag',
+    tier: 'foundation',
+    family: 'payload',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'mul', target: 'costs.payloadScale', perRank: 1 },
+    ],
+    payload: [
+      { kind: 'status', statusId: 'status_gravity_marked', stacks: 1 },
+    ],
+    inheritance: inheritBlock(true, true, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Compatible hits apply Gravity Marked.',
+      detail: 'Uses the existing Gravity Marked status. Field coupling stays owned by the field kernel; this trait only marks the target.',
+    },
+  },
+  {
+    id: 'mod_relay_arc',
+    schemaVersion: 1,
+    name: 'Relay Arc',
+    tier: 'foundation',
+    family: 'chain',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'add', target: 'propagation.chain.count', perRank: 2 },
+      { mode: 'set', target: 'propagation.chain.range', perRank: 110 },
+    ],
+    inheritance: inheritBlock(true, false, true),
+    cost: { procBudgetPerChain: 2 },
+    triggers: [
+      {
+        event: 'entity_contact',
+        action: 'chain_if_eligible',
+        inherit: inheritBlock(true, false, true),
+      },
+    ],
+    text: {
+      summary: 'The first valid hit jumps to nearby targets.',
+      detail: 'Each hop spends two lineage procs, cannot revisit a target, and selects by score then distance then id. Chain children inherit payload and further hops, not split.',
+    },
+  },
+  {
+    id: 'mod_bank_relay',
+    schemaVersion: 1,
+    name: 'Bank Relay',
+    tier: 'bridge',
+    family: 'ricochet',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'add', target: 'propagation.chain.count', perRank: 1 },
+      { mode: 'set', target: 'propagation.chain.requireBounce', perRank: 1 },
+    ],
+    inheritance: inheritBlock(true, false, true),
+    cost: { procBudgetPerChain: 2 },
+    triggers: [
+      {
+        event: 'entity_contact',
+        action: 'chain_if_eligible',
+        inherit: inheritBlock(true, false, true),
+      },
+    ],
+    text: {
+      summary: 'A bounced hit may begin a chain; direct hits cannot.',
+      detail: 'Connects ricochet to chain. Once a bounce has happened, hops use the shared proc budget and visited set. Direct contacts never start the chain.',
+    },
+  },
+  {
+    id: 'mod_tether_capacitor',
+    schemaVersion: 1,
+    name: 'Tether Capacitor',
+    tier: 'bridge',
+    family: 'payload',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'set', target: 'costs.tetherAnchorPayloadScale', perRank: 1.5 },
+    ],
+    inheritance: inheritBlock(true, true, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Payloads against the active Massline anchor are amplified within a cap.',
+      detail: 'Reads the live tether target id. Other targets are unchanged. Does not rewrite Massline attachment or fire-control.',
+    },
+  },
+  {
+    id: 'mod_conductive_path',
+    schemaVersion: 1,
+    name: 'Conductive Path',
+    tier: 'bridge',
+    family: 'propagation',
+    maxRank: 1,
+    compatibility: {
+      emitters: ['bolt', 'missile', 'debris'],
+      trajectories: ['straight', 'inherited_velocity', 'gravity_curved'],
+      forbids: ['hitscan', 'continuous'],
+    },
+    stack: [
+      { mode: 'mul', target: 'costs.payloadScale', perRank: 1 },
+    ],
+    propagation: {
+      chain: { prerequisiteStatus: 'status_ionized' },
+    },
+    inheritance: inheritBlock(true, false, true),
+    cost: {},
+    triggers: [],
+    text: {
+      summary: 'Chains only hop to Ionized targets.',
+      detail: 'Connects the existing Ionized status to chain propagation. Does not grant hops; Relay Arc or Bank Relay still author the chain budget.',
+    },
+  },
 ]);
 
 export const ATTACK_TRAIT_BY_ID = freezeDeep(
@@ -352,6 +543,26 @@ function validateAttackTraitInner(trait) {
   validateInheritance(trait.inheritance, 'inheritance', issues);
   if (trait.cost != null && !isPlainObject(trait.cost)) {
     issues.push(issue('cost', 'cost must be an object'));
+  }
+  if (trait.payload != null) {
+    if (!Array.isArray(trait.payload)) {
+      issues.push(issue('payload', 'payload must be an array'));
+    } else {
+      for (let i = 0; i < trait.payload.length; i++) {
+        const entry = trait.payload[i];
+        const path = `payload[${i}]`;
+        if (!isPlainObject(entry)) {
+          issues.push(issue(path, 'payload entry must be an object'));
+          continue;
+        }
+        if (entry.kind !== 'status' && entry.kind !== 'damage') {
+          issues.push(issue(`${path}.kind`, 'payload kind must be status or damage'));
+        }
+        if (entry.kind === 'status' && (typeof entry.statusId !== 'string' || !entry.statusId.startsWith('status_'))) {
+          issues.push(issue(`${path}.statusId`, 'statusId must start with status_'));
+        }
+      }
+    }
   }
   if (trait.triggers != null) {
     if (!Array.isArray(trait.triggers)) {

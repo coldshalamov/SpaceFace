@@ -22,6 +22,12 @@ export {
   PROC_COSTS,
   DEFAULT_CONSTRAINTS,
 } from './attackLineage.js';
-export { describeVolley, emitVolley, tryPierce, trySplit, tryBounce } from './attackPropagation.js';
+export { describeVolley, emitVolley, tryPierce, trySplit, tryBounce, tryChain, selectChainTarget } from './attackPropagation.js';
 export { selectTargets } from './attackTargeting.js';
 export { resolveRicochet, steerAfterBounce } from './surfaceReflection.js';
+export {
+  resolvePayload,
+  fieldCouplingForStatusIds,
+  statusPeriodicDamageTotal,
+  CAUSAL_CHANNEL,
+} from './attackPayload.js';
