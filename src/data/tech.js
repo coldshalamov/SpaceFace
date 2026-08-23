@@ -4,7 +4,7 @@
 // prereqs[] reference other tech_ IDs. Pure data, no imports.
 
 export const TECH_NODES = [
-  // ---------------- COMBAT branch (13 nodes) ----------------
+  // ---------------- COMBAT branch ----------------
   {
     id: 'tech_combat_basics', name: 'Combat Basics', branch: 'combat', prereqs: [],
     cost: { credits: 6000, rp: 10 },
@@ -73,6 +73,26 @@ export const TECH_NODES = [
     cost: { credits: 2500000, rp: 1200 },
     unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l'] },
   },
+  {
+    id: 'tech_attack_topology', name: 'Attack Topology', branch: 'combat', prereqs: ['tech_combat_basics'],
+    cost: { credits: 28000, rp: 40 },
+    unlocks: { modules: ['mod_twin_mount', 'mod_triad_mount', 'mod_piercing_core', 'mod_forked_core'] },
+  },
+  {
+    id: 'tech_ricochet_ballistics', name: 'Ricochet Ballistics', branch: 'combat', prereqs: ['tech_attack_topology'],
+    cost: { credits: 42000, rp: 70 },
+    unlocks: { modules: ['mod_bank_shot', 'mod_smart_bank', 'mod_bank_relay'] },
+  },
+  {
+    id: 'tech_payload_conduction', name: 'Payload Conduction', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
+    cost: { credits: 110000, rp: 160 },
+    unlocks: { modules: ['mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_relay_arc', 'mod_conductive_path', 'mod_cryo_payload'] },
+  },
+  {
+    id: 'tech_orbit_cryo', name: 'Cryo Orbitals', branch: 'combat', prereqs: ['tech_payload_conduction'],
+    cost: { credits: 140000, rp: 200 },
+    unlocks: { modules: ['mod_cryo_gyros'] },
+  },
 
   // ---------------- INDUSTRY branch (5 nodes) ----------------
   {
@@ -131,7 +151,7 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'logistics', prereqs: [],
     cost: { credits: 10000, rp: 15 },
-    unlocks: { modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m'] },
+    unlocks: { modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],

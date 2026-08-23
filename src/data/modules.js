@@ -277,4 +277,67 @@ export const MODULES = [
     mods: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
     variantBonuses: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
   },
+
+  // ===================== CRUCIBLE GRAMMAR RIGS (PQ-133.11) =====================
+  // Ids match landed attack traits so a fitted slot is the same grammar the compiler already knows.
+  {
+    id: 'mod_twin_mount', name: 'Twin Mount', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 12000,
+    requiresTech: 'tech_attack_topology', energyDraw: 2,
+  },
+  {
+    id: 'mod_triad_mount', name: 'Triad Mount', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 38000,
+    requiresTech: 'tech_attack_topology', energyDraw: 6,
+  },
+  {
+    id: 'mod_piercing_core', name: 'Piercing Core', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 14000,
+    requiresTech: 'tech_attack_topology', energyDraw: 1,
+  },
+  {
+    id: 'mod_forked_core', name: 'Forked Core', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 18000,
+    requiresTech: 'tech_attack_topology', energyDraw: 2,
+  },
+  {
+    id: 'mod_bank_shot', name: 'Bank Shot', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 16000,
+    requiresTech: 'tech_ricochet_ballistics', energyDraw: 2,
+  },
+  {
+    id: 'mod_smart_bank', name: 'Smart Bank', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 44000,
+    requiresTech: 'tech_ricochet_ballistics', energyDraw: 5, legality: 'contraband',
+  },
+  {
+    id: 'mod_ion_payload', name: 'Ion Payload', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 15000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 2, legality: 'restricted',
+  },
+  {
+    id: 'mod_incendiary_payload', name: 'Incendiary Payload', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 17000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 2, legality: 'restricted',
+  },
+  {
+    id: 'mod_gravity_tag', name: 'Gravity Tag', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 16000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 2,
+  },
+  {
+    id: 'mod_relay_arc', name: 'Relay Arc', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 22000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 3, legality: 'restricted',
+  },
+  {
+    id: 'mod_bank_relay', name: 'Bank Relay', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 48000,
+    requiresTech: 'tech_ricochet_ballistics', energyDraw: 4, legality: 'restricted',
+  },
+  {
+    id: 'mod_tether_capacitor', name: 'Tether Capacitor', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 20000,
+    requiresTech: 'tech_tractor_systems', energyDraw: 3,
+  },
+  {
+    id: 'mod_conductive_path', name: 'Conductive Path', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 36000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 3, legality: 'restricted',
+  },
+  {
+    id: 'mod_cryo_payload', name: 'Cryo Payload', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 19000,
+    requiresTech: 'tech_payload_conduction', energyDraw: 2,
+  },
+  {
+    id: 'mod_cryo_gyros', name: 'Cryo Gyros', slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 62000,
+    requiresTech: 'tech_orbit_cryo', energyDraw: 8,
+  },
 ];

@@ -221,4 +221,15 @@ export const WEAPONS = [
     subsystemShare: 0.85, shieldBypass: 1.0, rcsDisruptS: 1.6,
     impulsePerHit: 10, tumbleTorque: 4, impulseProvenance: 'rcs_disruptor_spike',
   },
+  {
+    // PQ-133.11 — Foundry salvage pulse. Bank Shot + Bank Relay are baked so Hitch (one utility)
+    // can still fly volley+bank+chain when Twin Mount occupies the utility slot.
+    id: 'unique_mirrorjaw_pulse', baseId: 'wpn_pulse_laser_s', name: 'Mirrorjaw Pulse', slotType: 'weapon', size: 'S', tier: 2, mass: 2, price: 0,
+    dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
+    projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
+    heatPerShot: 5, heatMax: 100, heatDissip: 12,
+    impulsePerHit: 0.5, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
+    purchasable: false, salvageOnly: true,
+    attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
+  },
 ];

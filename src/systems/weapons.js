@@ -25,12 +25,12 @@ import {
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import {
-  attackModifiersFromRun,
   attackSpecHasLiveHit,
   attackSpecNeedsRuntime,
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
+import { collectAttackModifiers } from './adventureMigration.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
@@ -715,7 +715,7 @@ export const weapons = {
       dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
-    const spec = this._attackSpecFor(w, def, state);
+    const spec = this._attackSpecFor(w, def, state, e);
     const heatScale = spec && spec.costs && Number.isFinite(spec.costs.heatScale) ? spec.costs.heatScale : 1;
     const heatCost = heatPerShot * heatScale;
 
@@ -743,10 +743,10 @@ export const weapons = {
     return capLeft;
   },
 
-  _attackSpecFor(w, def, state) {
+  _attackSpecFor(w, def, state, entity) {
     if (!this._attackSpecCache) this._attackSpecCache = new Map();
     if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
-    const modifiers = attackModifiersFromRun(state && state.run);
+    const modifiers = collectAttackModifiers(state, entity, def || w);
     const key = `${def && def.id || w.defId}|${modifiers.map((row) => `${row[0]}:${row[1]}`).join(',')}`;
     let compiled = this._attackSpecCache.get(key);
     if (compiled) {
