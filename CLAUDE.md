@@ -78,6 +78,39 @@ Therefore:
 - Do not stop to reconcile, refresh, or audit the board unless that is the actual assigned task.
 - If you do need to claim something, add your row and keep working. Do not wait for anything.
 
+## Do not use git worktrees here, and clean up after yourself
+
+**No worktrees.** You are orchestrating one repo; isolate lanes by FILE, not by checkout. A worktree
+of this repo costs 4-16 GB because `assets/` comes with it, and every one that is not removed stays
+forever. On 2026-08-23 leftover worktrees and temp repo copies had taken **117 GB** of a 1 TB disk:
+four registered worktrees, four orphaned copies under `C:\sf-agents`, a 14.8 GB "pristine" copy
+inside a three-day-old session scratchpad, and two 15 GB copies in `%TEMP%`.
+
+If you genuinely cannot avoid one, `git worktree remove --force` it in the same turn you finish with
+it. Do not leave it for later; there is no later.
+
+**Removing a worktree never loses commits.** The branch stays in `.git`. Check for *uncommitted*
+work, commit that to its own branch, then delete. Do not merge another lane's branch into master to
+"rescue" it — the branch is the rescue.
+
+**A junction is a live grenade.** `rm -rf` and PowerShell `Remove-Item -Recurse` FOLLOW a junction
+and destroy the TARGET — that is how this repo's `node_modules` was wiped once. Before deleting any
+directory you did not create file-by-file:
+
+```bash
+# find reparse points first
+powershell -Command "Get-ChildItem <dir> -Recurse -Force -Directory | Where-Object { $_.LinkType }"
+# unlink a junction with rmdir, which removes only the link
+cmd //c rmdir "<dir>
+ode_modules"
+```
+
+Then verify the target survived (`ls node_modules | wc -l`) before continuing.
+
+**Temp copies of this repo are ~15 GB each.** Anything you create under `%TEMP%` or a scratchpad
+that copies the repo must be deleted in the same session. Check `%TEMP%` for `sf-*`, `sfbase-*`,
+`spaceface-*` leftovers.
+
 ## Before you stop: prove the game still runs
 
 ```
