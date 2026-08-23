@@ -220,3 +220,40 @@ next agent checks before either implementing what exists or trusting what does n
 
 **The general rule this session kept re-learning:** a state, a check name, or a receipt is only as
 true as the weakest assertion behind it. Run the unit's own declared checks before believing its row.
+
+---
+
+## 10. `check:all` is contention-sensitive, and that limits what its tally means
+
+A second full run after the four-lane pass returned **91 pass / 20 fail**, which looks worse than the
+88/25 it started from. It is not. Re-run **individually**, several of those "failures" pass:
+
+| Step | In the suite | Alone |
+|---|---|---|
+| `check:command-deck-ui` | FAIL | **PASS** |
+| `check:bar:mission-readiness` | FAIL | **PASS** |
+| `check:title-continue-runtime` | FAIL | **PASS** |
+| `check-ui-screen-imports.mjs` | FAIL | **PASS** |
+
+Running 111 steps back to back leaves browsers alive and disk consumed. During that second run the
+machine carried **17 live Chrome processes** and the disk sat at **100% (601 MB free of 944 GB)** —
+reclaiming `build/web` took it back to 1.3 GB and had already been the difference between
+`check:bundle` failing on `ENOSPC` and passing.
+
+**So the population tally is reliable for the non-browser steps and advisory for the browser ones.**
+That is still strictly better than a chain that reports one failure and hides eighty-six, but it is
+not a number to quote without saying which kind of step it counts.
+
+### A worked example of how easily this misleads
+
+`check:market-first-loop` failed twice at HEAD and passed once with three files reverted, which reads
+like a clean bisect and is not one — **the reverted state then failed on its own next run.** The check
+is FLAKY on this machine under this load, and two single-sample runs had nearly produced a confident
+and wrong attribution to the delegated lanes. A bisect over a flaky test measures the flakiness.
+
+The three gates that lane closed (`title-continue-runtime`, `new-game-first-run`, `first-15-runtime`)
+each pass individually, and `check:playable` is 15/15, so the work stands. The honest statement about
+`market-first-loop` is that its status here is **unknown under contention**, not regressed.
+
+**Rule for the next session:** run browser checks alone, and never attribute a browser check's result
+from a single run.
