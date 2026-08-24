@@ -26,6 +26,12 @@ test('player and forced roots stay submitted; only true off-screen roots drop', 
   assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R0_GLASS' }), true);
 });
 
+test('uncompiled ordinary roots stay off the submit list; the player still submits', () => {
+  assert.equal(shouldSubmitEntityMesh({ pipelinesPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, pipelinesPending: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, pipelinesPending: true }), true);
+});
+
 test('missing fenced poses retain protected roots but fail closed for ordinary roots', () => {
   assert.equal(shouldSubmitEntityMesh({ isPlayer: true, snapshotMissing: true }), true);
   assert.equal(shouldSubmitEntityMesh({ forceRender: true, snapshotMissing: true }), true);
@@ -85,4 +91,5 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
     'ordinary roots fail closed when the completed fence has no matching identity');
   assert.match(source, /middleBand:\s*viewBand === 'middle'/);
+  assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
 });

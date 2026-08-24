@@ -50,6 +50,40 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
   return options.firstPlayable === true && options.mode === 'flight';
 }
 
+/**
+ * Three's shadowMap.render skips object.visible === false, and InstancedMesh at count 0 is kept
+ * hidden until publication. Color compile() still visits those objects; the depth pass does not.
+ * Force a drawable pose for admission, then restore.
+ */
+export function revealSubjectForCompile(subject) {
+  if (!subject) return () => {};
+  const objectState = [];
+  const seen = new Set();
+  const visit = (object) => {
+    if (!object || seen.has(object)) return;
+    seen.add(object);
+    const entry = {
+      object,
+      visible: object.visible,
+      frustumCulled: object.frustumCulled,
+    };
+    if (object.isInstancedMesh === true) entry.count = object.count;
+    objectState.push(entry);
+    object.visible = true;
+    if ('frustumCulled' in object) object.frustumCulled = false;
+    if (object.isInstancedMesh === true && !(Number(object.count) > 0)) object.count = 1;
+  };
+  visit(subject);
+  if (typeof subject.traverse === 'function') subject.traverse(visit);
+  return () => {
+    for (const entry of objectState) {
+      entry.object.visible = entry.visible;
+      if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
+      if (entry.count !== undefined) entry.object.count = entry.count;
+    }
+  };
+}
+
 /** Wait until the current display callback has presented, then resume on a later turn. */
 export function yieldAfterPresent() {
   return new Promise((resolve) => {

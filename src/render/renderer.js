@@ -146,6 +146,14 @@ import {
   compileSubjectsAcrossPresents,
   shouldSliceCompileAcrossPresents,
 } from './compilePresentSlice.js';
+import {
+  collectInstancePoolCompileRoots,
+  collectLateAdmittedCompileRoots,
+} from './latePipelineAdmission.js';
+import {
+  armAdmissionShadows,
+  compileShadowDepthPipelines,
+} from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -544,7 +552,12 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
-  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
+  if (state && state.mode === 'loading') {
+    if (state.render && state.render.admitPostOpeningAuthoredPipelines === true) {
+      return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
+    }
+    return isInitialAuthoredCompositionEntity(entity, state);
+  }
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
 }
 
@@ -2805,6 +2818,8 @@ export const render = {
     };
     this._deferNoncriticalMeshStreaming = false;
     state.render.deferNoncriticalMeshStreaming = false;
+    this._postOpeningPipelineAdmissionReleased = false;
+    this._pendingPostOpeningSector = null;
     this._incomingSectorPrewarm = null;
     this._currentSectorPrewarm = null;
     this._authoredSectorPrewarmPendingId = null;
@@ -3039,25 +3054,66 @@ export const render = {
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
     };
+    const attachAdmissionDepth = (colorResult, subject) => {
+      const depth = compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera: cam.obj,
+        subjects: [subject],
+        forceEnable: this._shadowSettingOn === true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+      });
+      if (colorResult && typeof colorResult === 'object' && !Array.isArray(colorResult)) {
+        return { ...colorResult, depth };
+      }
+      return { color: colorResult, depth };
+    };
+    const compileSubjectColorAndDepth = (subject, route) => {
+      // Allocate the directional shadow map and depth programs first. Color keys include
+      // numDirLightShadows; compiling color before the map exists leaves a miss for first draw.
+      const depth = compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera: cam.obj,
+        subjects: [subject],
+        forceEnable: this._shadowSettingOn === true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+      });
+      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene))
+        .then((colorResult) => {
+          if (colorResult && typeof colorResult === 'object' && !Array.isArray(colorResult)) {
+            return { ...colorResult, depth };
+          }
+          return { color: colorResult, depth };
+        });
+    };
     const compileForCurrentTarget = (subjects, requestedRoute = null) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
       const route = requestedRoute || this._selectPostRoute();
+      const restoreShadows = armAdmissionShadows({
+        renderer,
+        light: this._keyLight,
+        enabled: this._shadowSettingOn === true,
+      });
+      const finish = (promise) => Promise.resolve(promise).finally(restoreShadows);
       if (shouldSliceCompileAcrossPresents({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
       })) {
         const sliced = batch.flatMap((root) => collectCompileSubjects(root));
-        return compileSubjectsAcrossPresents(
+        return finish(compileSubjectsAcrossPresents(
           sliced,
-          (subject) => this._compilePostRoute(route, subject, cam.obj, scene),
+          (subject) => compileSubjectColorAndDepth(subject, route),
           yieldToNextPresent,
-        );
+        ));
       }
       if (batch.length === 1) {
-        return Promise.resolve(this._compilePostRoute(
-          route, batch[0], cam.obj, scene,
-        ));
+        return finish(compileSubjectColorAndDepth(batch[0], route));
       }
       // Compile together so Three can dedupe programs, but put every live root back on its
       // original parent. Group.add() steals children; a later clear() used to leave ships
@@ -3066,12 +3122,10 @@ export const render = {
       staging.name = 'SF_AuthoredPipelineAdmissionBatch';
       const homes = batch.map((root) => captureObjectHome(root));
       for (const root of batch) staging.add(root);
-      return Promise.resolve(this._compilePostRoute(
-        route, staging, cam.obj, scene,
-      )).finally(() => {
+      return finish(compileSubjectColorAndDepth(staging, route).finally(() => {
         for (const home of homes) restoreObjectHome(home);
         staging.clear();
-      });
+      }));
     };
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
       const durationMs = Number(slice && slice.durationMs);
@@ -3086,7 +3140,10 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
-      deferAutoFlush: () => state.mode === 'loading',
+      deferAutoFlush: () => (
+        state.mode === 'loading'
+        || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+      ),
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
@@ -3109,22 +3166,37 @@ export const render = {
     const openingStillBlocking = () => (
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
     );
+    const markSubjectPipelinesPending = (subject, pending) => {
+      if (!subject) return;
+      const data = subject.userData || (subject.userData = {});
+      data.pipelinesPending = pending === true;
+    };
+    const admitSubjectPipelines = (subject) => {
+      markSubjectPipelinesPending(subject, true);
+      return pipelineAdmissions.compile(subject).finally(() => {
+        markSubjectPipelinesPending(subject, false);
+      });
+    };
     state.render.compileObjectPipelines = (subject) => {
-      // Loading admission is owned by the immutable first-picture plan below.  Authored roots are
-      // still allowed to finish CPU composition and publish behind the loading shell, but their
-      // broad root-level pipeline promises must not enter the startup queue: draining that queue
-      // compiled off-picture roots and then compiled the exact leaves a second time.
+      // Loading first-picture wait must not join this queue: captureOpeningPipelinePlan still
+      // ignores it, and the exact leaf plan compiles opening programs. Queue every other root
+      // without awaiting so preparePostOpeningPipelines can link them behind the loading shell.
+      // Returning success-without-compile used to leave bloomScene to link these on first draw
+      // (~460 ms each on Intel/ANGLE without KHR_parallel_shader_compile), including the depth
+      // variant Three's public compile() never prepares.
       if (state.mode === 'loading') {
+        if (subject) void admitSubjectPipelines(subject);
         return Promise.resolve({
           skipped: true,
           reason: 'opening-submission-plan-owns-first-picture',
         });
       }
       if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        if (subject) void admitSubjectPipelines(subject);
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
-      return pipelineAdmissions.compile(subject);
+      return admitSubjectPipelines(subject);
     };
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
@@ -3294,36 +3366,17 @@ export const render = {
     state.render.prepareOpeningFirstPicture = (timeoutMs) => (
       this.prepareOpeningFirstPicture(timeoutMs)
     );
-    const warmOpeningShadowPipelines = (subjects) => {
-      const shadowMap = renderer && renderer.shadowMap;
-      const light = this._keyLight;
-      const casting = (subjects || []).filter((subject) => subject && subject.castShadow === true);
-      if (!shadowMap || typeof shadowMap.render !== 'function' || shadowMap.enabled !== true
-          || !light || light.castShadow !== true || casting.length === 0) {
-        return { skipped: true, reason: 'no exact opening shadow subjects' };
-      }
-      const staging = new THREE.Group();
-      staging.name = 'SF_OpeningShadowPipelineAdmission';
-      const homes = casting.map((root) => captureObjectHome(root));
-      const previousTarget = typeof renderer.getRenderTarget === 'function'
-        ? renderer.getRenderTarget()
-        : null;
-      try {
-        for (const root of casting) staging.add(root);
-        staging.updateMatrixWorld(true);
-        // Three's public compile() prepares surface programs but not WebGLShadowMap's generated
-        // depth/distance variants. Run the exact admitted casters through the real shadow pass while
-        // the loading shell owns presentation; this is targeted pipeline admission, not a hidden
-        // scene discovery render, and no unplanned root is traversed.
-        shadowMap.render([light], staging, cam.obj);
-        return { skipped: false, subjects: casting.length };
-      } finally {
-        for (const home of homes) restoreObjectHome(home);
-        staging.clear();
-        if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
-        if (light.shadow) light.shadow.needsUpdate = true;
-      }
-    };
+    const warmOpeningShadowPipelines = (subjects) => compileShadowDepthPipelines({
+      renderer,
+      light: this._keyLight,
+      camera: cam.obj,
+      subjects,
+      forceEnable: this._shadowSettingOn === true,
+      THREE,
+      captureObjectHome,
+      restoreObjectHome,
+      stagingName: 'SF_OpeningShadowPipelineAdmission',
+    });
     const compileOpeningSubmissionPlan = async (plan) => {
       if (!plan || plan.complete !== true
         || !plan.firstPlayablePipelineSet
@@ -3431,6 +3484,62 @@ export const render = {
     state.render.resumeDeferredPipelineAdmissions = () => pipelineAdmissions.resumeAutoFlush();
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    state.render.preparePostOpeningPipelines = async () => {
+      // Exact first-picture leaves are already compiled. Predicted sector ship programs used to
+      // skip this gate, then link inside the first flight bloomScene (~460 ms each). Compile them
+      // here, still behind the loading shell, with a hard budget so this cannot strand New Game.
+      const sector = this._pendingPostOpeningSector;
+      this._pendingPostOpeningSector = null;
+      let sectorResult = null;
+      if (sector && !gpu.software) {
+        const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+        const route = this._selectPostRoute();
+        try {
+          sectorResult = await precompilePipelines(renderer, scene, cam.obj, {
+            sector,
+            incremental: true,
+            yieldToMain: yieldToBrowser,
+            preparePipelines: (subject) => {
+              const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                ? performance.now()
+                : Date.now();
+              if (now - started > 8000) {
+                return Promise.resolve({ skipped: true, reason: 'post-opening-sector-budget' });
+              }
+              // Color-only: compileForCurrentTarget also runs the shadow-map depth pass per root,
+              // which blew the startup gate (~90 s) and refused flight.
+              return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
+            },
+            video: state.settings && state.settings.video,
+          });
+        } catch (error) {
+          console.warn('[render] post-opening sector pipeline precompile failed', error);
+          sectorResult = null;
+        }
+      }
+      const pendingCount = pipelineAdmissions.pendingCount;
+      let queued = { skipped: true, pendingCount: 0 };
+      if (pendingCount > 0) {
+        try {
+          await pipelineAdmissions.waitForPending();
+          queued = { skipped: false, pendingCount };
+        } catch (error) {
+          console.warn('[render] post-opening pipeline drain failed', error);
+          queued = {
+            skipped: false,
+            pendingCount,
+            error: String(error && error.message || error),
+          };
+        }
+      }
+      return {
+        skipped: pendingCount === 0 && !sectorResult,
+        queued,
+        sector: sectorResult,
+      };
+    };
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication.
@@ -4051,6 +4160,7 @@ export const render = {
       // played game showed an empty default sky.
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
+      if (state.mode === 'loading' && sector) this._pendingPostOpeningSector = sector;
       const pipelinePrecompile = state.mode === 'loading'
         ? Promise.resolve({
           skipped: true,
@@ -4241,6 +4351,7 @@ export const render = {
         state.render.firstPlayableResourceIdentitySets = null;
         this._deferNoncriticalMeshStreaming = false;
         state.render.deferNoncriticalMeshStreaming = false;
+        this._pendingPostOpeningSector = null;
         this._openingFirstPicturePrepared = false;
         this._firstPlayablePaintScheduled = false;
       }
@@ -4798,6 +4909,9 @@ export const render = {
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
+      if (this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
+        void this.state.render.compileObjectPipelines(m);
+      }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
       }
@@ -4853,6 +4967,9 @@ export const render = {
     this._meshes.set(id, m);
     this.scene.add(m);
     this._bindPresentationMesh(e, m);
+    if (this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
+      void this.state.render.compileObjectPipelines(m);
+    }
     if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
@@ -5032,6 +5149,7 @@ export const render = {
           neverCull,
           hidden: true,
           snapshotMissing: !posed,
+          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
           activityFrame: this._activityFrame,
           entityId,
           presentationTier: entity && entity.activity && entity.activity.presentationTier,
@@ -5132,6 +5250,7 @@ export const render = {
           projectedPx,
           allowShadowCast: false,
           snapshotMissing: !posed,
+          pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
           activityFrame: this._activityFrame,
           entityId,
           presentationTier: entity.activity && entity.activity.presentationTier,

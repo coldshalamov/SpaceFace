@@ -431,6 +431,17 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     if (gpuContextIsLost(state)) return false;
   }
 
+  // The exact first picture is compiled. Remaining sector/NPC programs used to skip this
+  // gate, then link inside the first flight bloomScene pass (~460 ms each on Intel/ANGLE
+  // without KHR_parallel_shader_compile). Drain them now, still behind the loading shell.
+  if (loadingOwnsOpeningSubmission && typeof render.preparePostOpeningPipelines === 'function') {
+    const remaining = Promise.resolve().then(() => render.preparePostOpeningPipelines());
+    render.postOpeningPipelinesReady = remaining;
+    const remainingResult = await settleWithin(remaining, timeoutMs);
+    if (!remainingResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
   if (typeof captureResidency === 'function' && !loadingOwnsOpeningSubmission) {
     let residencyPlan = null;
     try {

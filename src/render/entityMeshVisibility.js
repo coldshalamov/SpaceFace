@@ -14,6 +14,9 @@ export function shouldSubmitEntityMesh(options = {}) {
   const protectedRoot = isProtectedEntityMesh(options);
   if (options.snapshotMissing === true && !protectedRoot) return false;
   if (protectedRoot) return true;
+  // First draw of an uncompiled material links the driver program inside bloomScene.
+  // Hold ordinary roots until compileObjectPipelines has actually linked them.
+  if (options.pipelinesPending === true) return false;
   if (options.hidden === true) return false;
   const frame = options.activityFrame;
   const entityId = options.entityId;
