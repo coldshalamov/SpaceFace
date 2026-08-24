@@ -626,6 +626,53 @@ export function createOutfittingPanel(ctx) {
   let selectedSlot = null;
   let hoverSlot = null;
   let previewFit = null; // { slotIndex, defId }
+  let panelOpen = false;
+  let resizeRafOuter = 0;
+  let resizeRafInner = 0;
+  let resizeTimer = 0;
+
+  function cancelPendingResize() {
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+      resizeTimer = 0;
+    }
+    if (typeof cancelAnimationFrame === 'function') {
+      if (resizeRafOuter) cancelAnimationFrame(resizeRafOuter);
+      if (resizeRafInner) cancelAnimationFrame(resizeRafInner);
+    }
+    resizeRafOuter = 0;
+    resizeRafInner = 0;
+  }
+
+  function parkStage() {
+    cancelPendingResize();
+    if (stage) {
+      try { stage.setActive(false); } catch (_) { /* best-effort */ }
+    }
+  }
+
+  function scheduleStageRefit() {
+    cancelPendingResize();
+    const refit = () => {
+      resizeRafOuter = 0;
+      resizeRafInner = 0;
+      resizeTimer = 0;
+      if (!panelOpen) return;
+      try {
+        if (stage && typeof stage.resize === 'function') stage.resize();
+        else refreshStage();
+      } catch (_) { /* best-effort */ }
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      resizeRafOuter = requestAnimationFrame(() => {
+        resizeRafOuter = 0;
+        if (!panelOpen) return;
+        resizeRafInner = requestAnimationFrame(refit);
+      });
+    } else {
+      resizeTimer = setTimeout(refit, 32);
+    }
+  }
 
   function activeOwned() {
     const p = ctx.state.player;
@@ -648,6 +695,10 @@ export function createOutfittingPanel(ctx) {
     if (!owned || !def) {
       if (stage) stage.setActive(false);
       feelWrap.innerHTML = outfittingEngineeringFeelHtml(null);
+      return;
+    }
+    if (!panelOpen) {
+      if (stage) stage.setActive(false);
       return;
     }
     ensureStage();
@@ -1064,21 +1115,21 @@ export function createOutfittingPanel(ctx) {
       if (c && c.stationId) panel.stationId = c.stationId;
       selectedSlot = null;
       previewFit = null;
+      panelOpen = true;
       refresh();
       // Stage often mounts while the tab is display:none (0×0). Re-fit after layout paint.
-      const refit = () => {
-        try {
-          if (stage && typeof stage.resize === 'function') stage.resize();
-          else refreshStage();
-        } catch (_) { /* best-effort */ }
-      };
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => requestAnimationFrame(refit));
-      } else {
-        setTimeout(refit, 32);
-      }
+      scheduleStageRefit();
+    },
+    onHide() {
+      panelOpen = false;
+      parkStage();
     },
     refresh,
-    dispose() { if (stage) { try { stage.dispose(); } catch (e) {} stage = null; } if (fitTree) fitTree.dispose(); },
+    dispose() {
+      panelOpen = false;
+      cancelPendingResize();
+      if (stage) { try { stage.dispose(); } catch (e) {} stage = null; }
+      if (fitTree) fitTree.dispose();
+    },
   };
 }
