@@ -106,6 +106,14 @@ export const SERVICE_PRICES = Object.freeze({
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
+// Bitwise |0 is a signed-32 truncate: a 2^31-credit fortune becomes -2147483648, then
+// Math.max(0, ...) wipes it. Credits are ordinary finite integers up to this named cap.
+const CREDITS_MAX = Number.MAX_SAFE_INTEGER;
+function normalizeCredits(value) {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(CREDITS_MAX, Math.round(n)));
+}
 
 // ---- static lookups (built once) ----------------------------------------------------------
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -1191,7 +1199,7 @@ export const economy = {
       // re-quote at the (possibly reduced) qty
       const qq = this.quote(stationId, commodityId, 'buy', qty);
       const total = round(qq.total);
-      if ((state.player.credits | 0) < total) return { ok: false, reason: 'credits', need: total };
+      if (normalizeCredits(state.player.credits) < total) return { ok: false, reason: 'credits', need: total };
       // cargo volume check (volume is the ONLY hard cap §0.13)
       const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
       const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
@@ -1199,7 +1207,7 @@ export const economy = {
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
       const fq = this.quote(stationId, commodityId, 'buy', qty);
       const cost = round(fq.total);
-      if ((state.player.credits | 0) < cost) return { ok: false, reason: 'credits', need: cost };
+      if (normalizeCredits(state.player.credits) < cost) return { ok: false, reason: 'credits', need: cost };
       // APPLY
       const added = this.addToCargo(cargoSys, state, commodityId, qty);
       if (added <= 0) return { ok: false, reason: 'cargo_full' };
@@ -1485,7 +1493,7 @@ export const economy = {
     amount = Math.round(amount || 0);
     if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
-    p.credits = Math.max(0, (p.credits | 0) + amount);
+    p.credits = normalizeCredits(normalizeCredits(p.credits) + amount);
     this.bus.emit('credits:changed', { delta: amount, reason: reason || 'grant', total: p.credits });
     return p.credits;
   },
@@ -1494,8 +1502,8 @@ export const economy = {
     amount = Math.round(amount || 0);
     if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
-    const before = p.credits | 0;
-    p.credits = Math.max(0, before - amount); // clamp ≥0 (§ spec)
+    const before = normalizeCredits(p.credits);
+    p.credits = normalizeCredits(before - amount); // clamp ≥0 (§ spec)
     const delta = p.credits - before;          // actual change (may be smaller if it floored at 0)
     this.bus.emit('credits:changed', { delta, reason: reason || 'charge', total: p.credits });
     return p.credits;
@@ -1505,7 +1513,7 @@ export const economy = {
     const state = this.state;
     const bounty = Math.max(0, Math.round(state.player && state.player.bounty || 0));
     if (bounty <= 0) return { ok: false, reason: 'none', amount: 0, shortfall: 0 };
-    const credits = Math.max(0, state.player && state.player.credits | 0);
+    const credits = normalizeCredits(state.player && state.player.credits);
     if (credits < bounty) {
       return { ok: false, reason: 'short', amount: bounty, shortfall: bounty - credits };
     }
@@ -1530,7 +1538,7 @@ export const economy = {
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
       const cost = round(units * FUEL_UNIT_CR);
       if (units <= 0) return;
-      const credits = state.player.credits | 0;
+      const credits = normalizeCredits(state.player.credits);
       const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_UNIT_CR))) : units;
       if (realUnits <= 0) { this.bus.emit('toast', { text: 'Insufficient credits for fuel', kind: 'error', ttl: 2 }); return; }
       const realCost = round(realUnits * FUEL_UNIT_CR);
@@ -1552,7 +1560,7 @@ export const economy = {
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
       const cost = round(totalMiss * REPAIR_HP_CR);
-      const credits = state.player.credits | 0;
+      const credits = normalizeCredits(state.player.credits);
       let actualCost = cost;
       if (credits < cost) {
         // partial repair up to what the player can afford
@@ -1593,7 +1601,7 @@ export const economy = {
         this.bus.emit('toast', { text: 'Hull finish already clean', kind: 'info', ttl: 2 });
         return;
       }
-      if ((player.credits | 0) < HULL_WASH_CR) {
+      if (normalizeCredits(player.credits) < HULL_WASH_CR) {
         this.bus.emit('toast', { text: 'Insufficient credits for hull wash', kind: 'error', ttl: 2 });
         return;
       }
@@ -1610,7 +1618,7 @@ export const economy = {
       const units = Math.max(0, Math.floor(p.amount || 0));
       if (units <= 0) return;
       const cost = round(units * AMMO_UNIT_CR);
-      if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for munitions', kind: 'error', ttl: 2 }); return; }
+      if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for munitions', kind: 'error', ttl: 2 }); return; }
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
       const added = this.addToCargo(this.registryGet && this.registryGet('cargo'), state, 'cmdty_munitions', units);
       if (added <= 0) { this.bus.emit('toast', { text: 'Cargo hold full', kind: 'error', ttl: 2 }); return; }
@@ -1623,7 +1631,7 @@ export const economy = {
       if (enable) {
         if (ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already active', kind: 'info', ttl: 2 }); return; }
         const cost = Math.max(0, Math.round(ins.deductibleCr || 0));
-        if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
+        if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
         if (cost) this.chargeCredits(cost, 'service:insurance');
         ins.insuredModules = true;
         ins.lastStationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || ins.lastStationId;
@@ -1736,7 +1744,7 @@ export const economy = {
     const cargoSys = this.registryGet && this.registryGet('cargo');
     for (const stack of illicit) this.removeFromCargo(cargoSys, state, stack.commodityId, stack.qty);
     // charge fine; unpaid remainder -> debt + bounty
-    const credits = state.player.credits | 0;
+    const credits = normalizeCredits(state.player.credits);
     if (credits >= fine) {
       this.chargeCredits(fine, 'fine:contraband');
     } else {
@@ -1766,7 +1774,7 @@ export const economy = {
   payBribe(p) {
     const fine = p.fine || 0;
     const cost = round(fine * BRIBE_FRAC);
-    if ((this.state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Cannot afford bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
+    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Cannot afford bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
     this.chargeCredits(cost, 'bribe:contraband');
     return { ok: true, cost };
   },

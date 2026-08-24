@@ -84,29 +84,48 @@ function clampRep(r) { return Math.max(-1000, Math.min(1000, r)); }
 // runtime state without a bus round-trip. Set in init(); stays null in headless unit tests.
 let _state = null;
 
-/** Ensure a runtime record exists for `id` (lazy, idempotent). */
+function defaultFactionRecord(id) {
+  const meta = META_BY_ID[id];
+  const startRep = (NEW_GAME.factionRep && NEW_GAME.factionRep[id] != null)
+    ? NEW_GAME.factionRep[id]
+    : (meta && typeof meta.startingRep === 'number' ? meta.startingRep : 0);
+  const rep = clampRep(startRep | 0);
+  return {
+    rep,
+    tier: tierOf(rep),
+    aggro: rep <= AGGRO_THRESHOLD,
+    bribesPaid: 0,
+    lastDelta: { value: 0, reason: 'init', t: 0 },
+    knownContrabandStrikes: 0,
+    discoveredHostileBy: 0,
+    // V2 §28b/§24 — faction power drives war momentum independent of the player. Derived
+    // periodically from sector ownership + visible economic/military activity. See
+    // _recomputeFactionPower. Starts at a small neutral baseline so wars can grind without us.
+    power: 10,
+    powerNonce: 0,
+  };
+}
+
+function backfillFactionRecord(rec, id) {
+  const defaults = defaultFactionRecord(id);
+  if (!Number.isFinite(rec.rep)) rec.rep = defaults.rep;
+  else rec.rep = clampRep(rec.rep);
+  rec.tier = tierOf(rec.rep);
+  rec.aggro = rec.rep <= AGGRO_THRESHOLD;
+  if (!Number.isFinite(rec.bribesPaid)) rec.bribesPaid = 0;
+  if (!rec.lastDelta || typeof rec.lastDelta !== 'object') rec.lastDelta = defaults.lastDelta;
+  if (!Number.isFinite(rec.knownContrabandStrikes)) rec.knownContrabandStrikes = 0;
+  if (!Number.isFinite(rec.discoveredHostileBy)) rec.discoveredHostileBy = 0;
+  if (!Number.isFinite(rec.power)) rec.power = defaults.power;
+  if (!Number.isFinite(rec.powerNonce)) rec.powerNonce = 0;
+  return rec;
+}
+
+/** Ensure a runtime record exists for `id` (lazy, idempotent). Continue/old saves get missing fields filled here. */
 function ensureFaction(state, id) {
   let rec = state.factions[id];
-  if (!rec) {
-    const meta = META_BY_ID[id];
-    const startRep = (NEW_GAME.factionRep && NEW_GAME.factionRep[id] != null)
-      ? NEW_GAME.factionRep[id]
-      : (meta && typeof meta.startingRep === 'number' ? meta.startingRep : 0);
-    rec = state.factions[id] = {
-      rep: clampRep(startRep | 0),
-      tier: tierOf(startRep),
-      aggro: startRep <= AGGRO_THRESHOLD,
-      bribesPaid: 0,
-      lastDelta: { value: 0, reason: 'init', t: 0 },
-      knownContrabandStrikes: 0,
-      discoveredHostileBy: 0,
-      // V2 §28b/§24 — faction power drives war momentum independent of the player. Derived
-      // periodically from sector ownership + visible economic/military activity. See
-      // _recomputeFactionPower. Starts at a small neutral baseline so wars can grind without us.
-      power: 10,
-      powerNonce: 0,
-    };
-  }
+  if (!rec) rec = state.factions[id] = defaultFactionRecord(id);
+  else backfillFactionRecord(rec, id);
   return rec;
 }
 

@@ -40,7 +40,9 @@ export const FREIGHT_MARKET_KEYS_FALLBACK = Object.freeze([
   'cmdty_scrap_metal',
 ]);
 
-/** Roles that haul tradeable cargo that settles as station stock on arrival/loss. */
+/** Roles that haul tradeable cargo that settles as station stock on arrival/loss.
+ *  Prospector, sweeper, and salvor are excluded on purpose: they seek/sweep/salvage,
+ *  they do not settle station freight lots. TRAFFIC_ROLES.trades must match this list. */
 export const FREIGHT_TRADING_ROLES = Object.freeze([
   'hauler',
   'courier',

@@ -262,7 +262,7 @@ const TRAFFIC_ROLES = {
   surveyor: { ship: 'ship_ranger',   team: 2, speed: 34, archetype: 'passive', weight: 9,
               label: 'Survey Rig', docks: true, trades: false },
   salvor:   { ship: 'ship_pelican',  team: 2, speed: 40, archetype: 'fleeing_trader', weight: 7,
-              label: 'Salvage Cutter', docks: true, trades: true },
+              label: 'Salvage Cutter', docks: true, trades: false },
   tender:   { ship: 'ship_drifter',  team: 2, speed: 66, archetype: 'passive', weight: 6,
               label: 'Repair Tender', docks: true, trades: false },
   // PQ-045: the ore barge is its own presentation role, NOT a hauler reskin — `hauler` already
@@ -284,9 +284,9 @@ const TRAFFIC_ROLES = {
   // in 8257fd9e called the tanker and tug a missing-hull kit and sent customs back to the
   // Hornet. They stay packaged candidates awaiting a fresh chase-camera still review.
   prospector: { ship: 'ship_drifter',  team: 2, speed: 32, archetype: 'fleeing_trader', weight: 5,
-              label: 'Prospector', docks: true, trades: true, seeks: 'asteroid' },
+              label: 'Prospector', docks: true, trades: false, seeks: 'asteroid' },
   sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 4,
-              label: 'Scrap Sweeper', docks: true, trades: true },
+              label: 'Scrap Sweeper', docks: true, trades: false },
   shuttle:    { ship: 'ship_mule',     team: 2, speed: 38, archetype: 'fleeing_trader', weight: 4,
               label: 'Apron Shuttle', docks: true, trades: true },
 };
