@@ -10,6 +10,7 @@ import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
+import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -3059,6 +3060,10 @@ function placeFileForEntity(entity) {
     data.archetypeGlb || data.landmarkGlb || data.placeId || data.assetId || '',
   ).replace(/^places\//, '').replace(/\.glb$/, '');
   if (!id) return null;
+  if (data.everydaySpaceKit === true) {
+    const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
+    if (kitFile) return kitFile;
+  }
   return PLACE_FILE_BY_ID[id] || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
 }
 

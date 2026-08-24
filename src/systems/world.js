@@ -62,6 +62,10 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
+import {
+  EVERYDAY_SPACE_KIT_SALT,
+  everydaySpaceKitDressingForSector,
+} from '../data/everydaySpaceKitDressing.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -1850,6 +1854,29 @@ export const world = {
     } else if (paletteClass === 'anomaly') {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass);
     }
+    this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
+  },
+
+  _spawnEverydaySpaceKitDressing(sector, active, paletteClass) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const kitRng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, EVERYDAY_SPACE_KIT_SALT),
+    );
+    const rows = everydaySpaceKitDressingForSector(sector.id, paletteClass, kitRng, {
+      stations: active.stations || [],
+      gates: active.gates || [],
+      fields: active.fields || [],
+    });
+    for (const row of rows) {
+      this._spawnPlaceProp(active, sector, row.placeId, row.pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
+        radius: row.radius,
+        everydaySpaceKit: true,
+      });
+    }
   },
 
   _spawnCoreDressing(sector, active, rng, paletteClass) {
@@ -2045,6 +2072,7 @@ export const world = {
         ...(typeof options.activityObjectSlotId === 'string' && options.activityObjectSlotId.length > 0
           ? { activityObjectSlotId: options.activityObjectSlotId }
           : {}),
+        ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
       },
     });
     this._stampHomeSector(ent, sector.id);

@@ -8980,7 +8980,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "The wreck pack reaches the player: 44 authored models, currently zero referenced. ROUTE MEASURED 2026-08-24 (first attempt stopped): incubator GLBs FAIL the fail-closed live authored loader because they lack embedded authored identity - routing rows alone produce invisible wrecks (the section 8.5 class), and in-place byte-stamping of authored source was tried by a lane and REVERTED as a write-set violation. The honest route is promotion through the canonical release pipeline (source -> candidate -> optimized release GLBs + manifest transaction, the build-hull-release-assets.mjs shape adapted for places/props), THEN routing and placement. Salvage from the stopped attempt (pack catalog module, placement test skeleton, partsLibrary patch) is preserved in the campaign scratchpad salvage-pq13600/. Wrecks stay the cheapest variety in the game; reuse before authoring."
+      "brief": "The wreck pack reaches the player: 44 authored models, currently zero referenced. ROUTE MEASURED 2026-08-24 (first attempt stopped): incubator GLBs FAIL the fail-closed live authored loader because they lack embedded authored identity - routing rows alone produce invisible wrecks (the section 8.5 class), and in-place byte-stamping of authored source was tried by a lane and REVERTED as a write-set violation. The honest route is promotion through the canonical release pipeline (source -> candidate -> optimized release GLBs + manifest transaction, the build-hull-release-assets.mjs shape adapted for places/props), THEN routing and placement. Salvage from the stopped attempt (pack catalog module, placement test skeleton, partsLibrary patch) is preserved in the campaign scratchpad salvage-pq13600/. SCOPE GREW 2026-08-24: the everyday_space_kit measurement (PQ-136.01 receipt) found 30 more source-only identities in the same class, so ONE promotion-pipeline job covers both packs: wreck 44 + kit 30. Wrecks stay the cheapest variety in the game; reuse before authoring."
     },
     {
       "id": "PQ-136.01",
@@ -8988,7 +8988,7 @@
       "priority": 390,
       "title": "Place the 30 unused everyday_space_kit infrastructure props",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-fielding"
@@ -9002,7 +9002,9 @@
         "npm run check:asset-reachability",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-136-01-space-kit-props-REPORT.md"
+      ],
       "brief": "The 30 unused everyday_space_kit props are placed where infrastructure belongs - stations, lanes, work sites. Done when sectors read as inhabited rather than decorated with the same prop repeated."
     },
     {
