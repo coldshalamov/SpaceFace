@@ -155,15 +155,31 @@ export class DriveForge {
   }
 
   /**
-   * @param {{x:number,y:number,z:number}|null} nozzle where the bell is
-   * @param {{x:number,y:number,z:number}|null} aft unit direction the live plume leaves in
+   * @param {{x:number,y:number,z:number,aftX?:number,aftY?:number,aftZ?:number}|null} nozzle where the bell is; its current aft axis is authoritative
+   * @param {{x:number,y:number,z:number}|null} aft fallback direction for legacy callers only
    * @param {object} env current drive envelope; reads drive, boost and throatRadius
    */
   update(nozzle, aft, env) {
-    if (!nozzle || !aft) {
+    if (!nozzle) {
       this.mesh.visible = false;
       return;
     }
+
+    // A forge is the live mouth of the current thruster. It must follow the current nozzle axis,
+    // never the tangent of recorded history. Pointing it at the history line recreates the false
+    // visual attachment — a horse-tail connector that bends toward wherever the ship used to be.
+    const hasNozzleAxis = Number.isFinite(nozzle.aftX)
+      && Number.isFinite(nozzle.aftZ)
+      && Math.hypot(nozzle.aftX, nozzle.aftY || 0, nozzle.aftZ) > 1e-6;
+    const aimX = hasNozzleAxis ? nozzle.aftX : aft && aft.x;
+    const aimY = hasNozzleAxis ? (nozzle.aftY || 0) : aft && aft.y;
+    const aimZ = hasNozzleAxis ? nozzle.aftZ : aft && aft.z;
+    const aimLen = Math.hypot(aimX || 0, aimY || 0, aimZ || 0);
+    if (!(aimLen > 1e-6)) {
+      this.mesh.visible = false;
+      return;
+    }
+
     const drive = Math.max(0, Math.min(1.4, (env && env.drive) || 0));
     const boost = Math.max(0, (env && env.boost) || 0);
     const u = this.material.uniforms;
@@ -175,7 +191,11 @@ export class DriveForge {
     u.uAftRadius.value = throat * FORGE_AFT_SCALE;
 
     this.mesh.position.set(nozzle.x, nozzle.y, nozzle.z);
-    this._aim.set(nozzle.x + aft.x, nozzle.y + aft.y, nozzle.z + aft.z);
+    this._aim.set(
+      nozzle.x + aimX / aimLen,
+      nozzle.y + aimY / aimLen,
+      nozzle.z + aimZ / aimLen,
+    );
     this.mesh.lookAt(this._aim);
     this.mesh.updateMatrixWorld();
     this.mesh.visible = drive > 0.004;
@@ -187,6 +207,7 @@ export class DriveForge {
       construction: 'coaxial-collar',
       billboard: false,
       temporalModulation: false,
+      aimSource: 'current-nozzle-axis',
       visible: !!this.mesh.visible,
       lengthWU: this.material.uniforms.uLength.value,
       mouthRadius: this.material.uniforms.uMouthRadius.value,
