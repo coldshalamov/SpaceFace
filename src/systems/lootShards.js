@@ -96,9 +96,13 @@ function isCivilianManifestPayload(entity) {
 
 /**
  * Bound live civilian-manifest payloads. Disposes oldest (lowest id) first — mirrors the
- * aftermath-wreck MAX_PER_SECTOR splice eviction pattern without inventing a new ledger.
+ * aftermath-wreck MAX_PER_SECTOR bounded eviction pattern without inventing a new ledger.
  */
-export function enforceCivilianManifestPayloadCap(state, bus, max = MAX_CIVILIAN_MANIFEST_PAYLOADS) {
+export function enforceCivilianManifestPayloadCap(
+  state,
+  removeEntity,
+  max = MAX_CIVILIAN_MANIFEST_PAYLOADS,
+) {
   if (!state || !Number.isFinite(max) || max < 0) return 0;
   const found = [];
   const list = state.entityList;
@@ -118,17 +122,9 @@ export function enforceCivilianManifestPayloadCap(state, bus, max = MAX_CIVILIAN
   for (let i = 0; i < drop; i++) {
     const entity = found[i];
     if (!entity) continue;
-    entity.alive = false;
-    if (state.entities && typeof state.entities.delete === 'function') {
-      state.entities.delete(entity.id);
-    }
-    if (Array.isArray(state.entityList)) {
-      const idx = state.entityList.indexOf(entity);
-      if (idx >= 0) state.entityList.splice(idx, 1);
-    }
-    if (bus && typeof bus.emit === 'function') {
-      bus.emit('entity:destroyed', { id: entity.id, type: 'payload', reason: 'manifest_payload_cap' });
-    }
+    if (typeof removeEntity === 'function') {
+      removeEntity(entity.id, { immediate: true, reason: 'manifest_payload_cap' });
+    } else entity.alive = false;
     removed += 1;
   }
   return removed;
@@ -141,6 +137,7 @@ export const lootShards = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
@@ -257,7 +254,11 @@ export const lootShards = {
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
     victim.data.manifestPayloadDropped = true;
 
-    enforceCivilianManifestPayloadCap(this.state, this.bus, MAX_CIVILIAN_MANIFEST_PAYLOADS);
+    enforceCivilianManifestPayloadCap(
+      this.state,
+      this.helpers && this.helpers.removeEntity,
+      MAX_CIVILIAN_MANIFEST_PAYLOADS,
+    );
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('loot:manifestPayload', {
         payloadId: entity.id,

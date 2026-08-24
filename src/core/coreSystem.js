@@ -61,7 +61,19 @@ export const core = {
       return e;
     };
     const getEntity = (id) => state.entities.get(id) || null;
-    const removeEntity = (id) => { const e = state.entities.get(id); if (e) e.alive = false; };
+    const removeEntity = (id, opts) => {
+      const e = state.entities.get(id);
+      if (!e) return false;
+      e.alive = false;
+      if (opts && opts.immediate === true) {
+        const hintedIndex = Number.isInteger(opts.index) ? opts.index : -1;
+        const index = state.entityList[hintedIndex] === e
+          ? hintedIndex
+          : state.entityList.indexOf(e);
+        if (index >= 0) this._removeEntityAtIndex(index, state, opts);
+      }
+      return true;
+    };
     const queryRadius = (pos, r, out = []) => {
       out.length = 0;
       const hash = state.spatialHash;
@@ -173,6 +185,30 @@ export const core = {
     }
   },
 
+  _removeEntityAtIndex(i, state, opts) {
+    const list = state.entityList;
+    const e = list[i];
+    if (!e) return false;
+    e.alive = false;
+    this._publishPresentation?.('recordDestroy', e);
+    removeEntityIndex(state.entityIndex, e);
+    const destroyed = {
+      id: e.id,
+      type: e.type,
+      pos: { x: e.pos.x, z: e.pos.z },
+      radius: e.radius,
+      factionId: e.factionId,
+    };
+    if (opts && opts.reason) destroyed.reason = opts.reason;
+    this.bus.queue('entity:destroyed', destroyed);
+    state.entities.delete(e.id);
+    state.freeIds.push(e.id);
+    const last = list.pop();
+    if (i < list.length) list[i] = last;
+    if (opts && opts.immediate === true) markEntityIndexSourceSynced(state.entityIndex, list);
+    return true;
+  },
+
   // End-of-step: TTL/despawn, sweep dead entities, recycle ids, flush deferred events.
   lifetimeSweep(dt, state) {
     const docked = !!(state.ui && state.ui.docked);
@@ -210,16 +246,7 @@ export const core = {
         continue;
       }
       if (!e.alive) {
-        this._publishPresentation?.('recordDestroy', e);
-        removeEntityIndex(state.entityIndex, e);
-        this.bus.queue('entity:destroyed', {
-          id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
-        });
-        state.entities.delete(e.id);
-        state.freeIds.push(e.id);
-        // swap-remove
-        const last = list.pop();
-        if (i < list.length) list[i] = last;
+        this._removeEntityAtIndex(i, state);
       }
     }
     if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) {

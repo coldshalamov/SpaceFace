@@ -3829,21 +3829,10 @@ export const traffic = {
 
   _despawnSalvagePayload(entity, reason) {
     if (!entity || entity.type !== 'payload') return false;
-    entity.alive = false;
-    if (this.state.entities && typeof this.state.entities.delete === 'function') {
-      this.state.entities.delete(entity.id);
-    }
-    if (Array.isArray(this.state.entityList)) {
-      const idx = this.state.entityList.indexOf(entity);
-      if (idx >= 0) this.state.entityList.splice(idx, 1);
-    }
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('entity:destroyed', {
-        id: entity.id,
-        type: 'payload',
-        reason: reason || 'salvor_absorbed',
-      });
-    }
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') {
+      removeEntity(entity.id, { immediate: true, reason: reason || 'salvor_absorbed' });
+    } else entity.alive = false;
     return true;
   },
 

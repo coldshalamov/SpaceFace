@@ -62,6 +62,10 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
+import {
+  WRECK_AFTERMATH_SALT,
+  wreckAftermathDressingForSector,
+} from '../data/wreckAftermathPack.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -1340,14 +1344,9 @@ export const world = {
     const list = state.entityList;
     const e = list[i];
     if (!e) return;
-    e.alive = false;
-    this.bus.emit('entity:destroyed', {
-      id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId,
-    });
-    state.entities.delete(e.id);
-    state.freeIds.push(e.id);
-    const last = list.pop();
-    if (i < list.length) list[i] = last;
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i });
+    else e.alive = false;
   },
 
   /**
@@ -1855,6 +1854,27 @@ export const world = {
     } else if (paletteClass === 'anomaly') {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass);
     }
+    this._spawnWreckAftermathDressing(sector, active, paletteClass);
+  },
+
+  _spawnWreckAftermathDressing(sector, active, paletteClass) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const wreckRng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, WRECK_AFTERMATH_SALT),
+    );
+    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    const rows = wreckAftermathDressingForSector(sector.id, paletteClass, wreckRng, wr);
+    for (const row of rows) {
+      const pos = this._toGlobal(row.localPos, sector.id);
+      this._spawnPlaceProp(active, sector, row.placeId, pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
+        radius: row.radius,
+        wreckAftermath: true,
+      });
+    }
   },
 
   _spawnCoreDressing(sector, active, rng, paletteClass) {
@@ -2026,7 +2046,7 @@ export const world = {
           && dist2(pos, carrier.pos) < exclusionRadius * exclusionRadius) return null;
     }
     const paletteClass = options.paletteClass || paletteClassForSector(sector);
-    const radius = DRESSING_RADIUS[placeId] || 12;
+    const radius = finitePositive(options.radius) ? Number(options.radius) : (DRESSING_RADIUS[placeId] || 12);
     const ent = this.helpers.spawnEntity({
       type: 'fx',
       factionId: sector.factionId || null,
@@ -2047,6 +2067,7 @@ export const world = {
         name: options.name || placeId,
         visualRadius: radius,
         placeRadius: radius,
+        ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
         ...(typeof options.activityObjectSlotId === 'string' && options.activityObjectSlotId.length > 0
           ? { activityObjectSlotId: options.activityObjectSlotId }
           : {}),
