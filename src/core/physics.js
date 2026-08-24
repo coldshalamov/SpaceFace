@@ -44,6 +44,11 @@ const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
 const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
+// Exact (or sub-ulp) XZ overlap: hypot is 0 so dx/dist is {0,0} and pushApart is a no-op.
+// 1e-12 world units is far below gameplay contact scale; 47-A goldens never co-locate.
+const DEGENERATE_SEP2 = 1e-24;
+const DEGENERATE_SEP_CLAMP = 0.0001;
+const _contactNormalScratch = { x: 1, z: 0 };
 
 export const physics = {
   name: 'physics',
@@ -513,11 +518,18 @@ export const physics = {
         if (!(a.collisionMask & maskOf(bEnt)) && !(bEnt.collisionMask & maskOf(a))) continue;
         if (this._pairSeen(a.id, bEnt.id, stamp)) continue;
         if (!a.alive || !bEnt.alive) continue;
-        const dx = bEnt.pos.x - a.pos.x, dz = bEnt.pos.z - a.pos.z;
+        let dx = bEnt.pos.x - a.pos.x, dz = bEnt.pos.z - a.pos.z;
         const rsum = a.radius + bEnt.radius;
         const d2 = dx * dx + dz * dz;
         if (d2 > rsum * rsum) continue;
-        this.resolvePair(a, bEnt, Math.sqrt(d2) || 0.0001, dx, dz, bus, state);
+        let dist = Math.sqrt(d2);
+        if (d2 <= DEGENERATE_SEP2) {
+          dist = dist || DEGENERATE_SEP_CLAMP;
+          const n = fallbackContactNormalInto(a, bEnt, _contactNormalScratch);
+          dx = n.x * dist;
+          dz = n.z * dist;
+        }
+        this.resolvePair(a, bEnt, dist, dx, dz, bus, state);
       }
     }
   },
@@ -672,8 +684,8 @@ export const physics = {
     if (ta === 'station' || tb === 'station') {
       // soft bounce off station hull
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
-      const nx = dx / dist;
-      const nz = dz / dist;
+      const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+      const nx = n.x, nz = n.z;
       const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
       pushApart(a, b, dist, dx, dz, material.push);
       const impulseMag = impulse(a, b, nx, nz, material);
@@ -682,8 +694,8 @@ export const physics = {
     }
     // ship/ship and ship/asteroid: separate + restitution impulse
     const material = pairMaterialInto(this._pairMaterialScratch, a, b);
-    const nx = dx / dist;
-    const nz = dz / dist;
+    const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+    const nx = n.x, nz = n.z;
     const impactOptions = directContactImpactOptions(this._impactOptionsScratch, state, a, b, nx, nz);
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, nx, nz, material);
@@ -1126,13 +1138,44 @@ function applySurfaceResponse(e, nx, nz, material) {
   }
 }
 
+function fallbackContactNormalInto(a, b, out) {
+  const aIsLo = a.id < b.id;
+  const lo = aIsLo ? a : b;
+  const hi = aIsLo ? b : a;
+  const rvx = ((hi.vel && hi.vel.x) || 0) - ((lo.vel && lo.vel.x) || 0);
+  const rvz = ((hi.vel && hi.vel.z) || 0) - ((lo.vel && lo.vel.z) || 0);
+  const rv2 = rvx * rvx + rvz * rvz;
+  let nx = 1, nz = 0;
+  if (rv2 > DEGENERATE_SEP2) {
+    const inv = 1 / Math.sqrt(rv2);
+    nx = rvx * inv;
+    nz = rvz * inv;
+  }
+  if (!aIsLo) {
+    nx = -nx;
+    nz = -nz;
+  }
+  out.x = nx;
+  out.z = nz;
+  return out;
+}
+
+function contactNormalInto(a, b, dist, dx, dz, out) {
+  const n2 = dx * dx + dz * dz;
+  if (n2 <= DEGENERATE_SEP2) return fallbackContactNormalInto(a, b, out);
+  out.x = dx / dist;
+  out.z = dz / dist;
+  return out;
+}
+
 function pushApart(a, b, dist, dx, dz, scale) {
   const pen = (a.radius + b.radius) - dist;
   if (pen <= 0) return;
   const ima = invMass(a), imb = invMass(b);
   const tot = ima + imb;
   if (tot === 0) return;
-  const nx = dx / dist, nz = dz / dist;
+  const n = contactNormalInto(a, b, dist, dx, dz, _contactNormalScratch);
+  const nx = n.x, nz = n.z;
   const push = pen * scale;
   a.pos.x -= nx * push * (ima / tot); a.pos.z -= nz * push * (ima / tot);
   b.pos.x += nx * push * (imb / tot); b.pos.z += nz * push * (imb / tot);
