@@ -9083,6 +9083,28 @@
         "design/program/roadmap/receipts/PQ-129-19-continue-residency-REPORT.md"
       ],
       "brief": "CANONICAL_BUILD_MAP section 8.4: after e7c6dffd killed the entering-flight brick, Continue/load still logs two ~730 ms bricks (programs 14->17, geometries 13->19); New Game is clean. The only worked-out geometry-admission code in the fleet is the 452-line startupGpuResidency rewrite on origin/perf/exact-opening-geometry-residency (PR 100, closed as superseded for the opening path) - port its geometry-cohort admission to the Continue route, do not re-merge the branch wholesale. Promotion law: a hitch RISE is disqualifying (the prior attempt of this shape took hitches 15->80 and was rejected); justify with a clean matched A/B on the real Continue route, not unit tests."
+    },
+    {
+      "id": "PQ-129.20",
+      "parentId": "PQ-129",
+      "priority": 394,
+      "title": "Close the opening cohort prediction gap (post-first-visible admissions)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/openingGpuAdmission.js",
+        "src/render/precompile.js",
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Measured 2026-08-24 on five clean New Game witness runs after the FIX-K donor-pass unification: the first-visible identity gate fires every run because ~7 geometries and ~8 programs are still admitted AFTER the first visible pass (opening scene delta 40->47 geometries, 46->54 programs, consistent across runs). Presented cost on the measured machine is zero (1 hitch per ~1210 frames, p95 ~3 ms) - this is contract completion for slower GPUs, not a live hitch fix. The gap is the section 8.4 prediction-miss class: enumerate WHICH roots those late admissions belong to (the witness first-visible-pass-residency log and the identity gate name them), then either add them to the opening cohort census or consciously exempt them with a reason on the gate. Promotion law applies: no hitch rise, clean matched five-start A/B."
     }
   ]
 }

@@ -3865,7 +3865,6 @@ export const render = {
           throw new Error('Opening submission plan is incomplete; refusing first-playable GPU admission');
         }
         const result = await prepareStartupGpuResidency(renderer, plan.residencySubjects, {
-          includeGeometry: false,
           yieldToMain: yieldToBrowser,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
@@ -3877,20 +3876,11 @@ export const render = {
         if (this.bloom && typeof this.bloom.prepareResources === 'function') {
           result.post = await this.bloom.prepareResources(yieldToBrowser);
         }
-        const geometryUnits = uniqueAdmissionUnits(plan.residencySubjects);
-        result.geometries = await admitOpeningUnitsAcrossSlices({
-          units: { programSubjects: [], geometrySubjects: geometryUnits.geometrySubjects, geometryCount: geometryUnits.geometryCount, materialCount: 0 },
-          touchOne: touchExactTargetSubject,
-          yieldToMain: yieldToBrowser,
-        });
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
         state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
         await yieldToBrowser();
-        // Boot admission and sliced touches may still settle on this turn. Recapture so extra
-        // already-linked programs cannot fail the first-draw identity gate closed.
-        state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
         state.render.startupGpuResidency = result;
         return result;
       } finally {
@@ -4662,6 +4652,7 @@ export const render = {
         state.render.openingSubmissionFirstDrawSubmittedAt = null;
         state.render.openingSubmissionPlan = null;
         state.render.openingSubmissionReceipt = null;
+        state.render.openingFirstVisibleGpuCounts = null;
         state.render.openingSubmissionPreSubmitValidation = null;
         state.render.openingSubmissionValidation = null;
         state.render.openingSubmissionReady = null;
@@ -6275,6 +6266,8 @@ export const render = {
     const postFrameToken = frameOrigin ? beginPostRenderTargetFrameOrigin(frameOrigin) : 0;
     let dynamicBufferEpoch = null;
     let disposeRegistrationProbe = null;
+    let openingFirstDraw = false;
+    let openingFirstDrawCountsBefore = null;
     try {
       dynamicBufferEpoch = this._dynamicBuffers.arm();
       disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(
@@ -6289,23 +6282,12 @@ export const render = {
       // the post route can submit a single draw.  A later post-submit check still records driver
       // variants that a backend lazily creates during the actual draw, but it cannot pretend to
       // have prevented those variants.
-      const openingFirstDraw = this.state.mode === 'flight'
+      openingFirstDraw = this.state.mode === 'flight'
+        && !this.state.render.openingFirstVisibleGpuCounts
         && !Number.isFinite(
           this.state.render && this.state.render.openingSubmissionFirstDrawSubmittedAt,
         );
       if (openingFirstDraw) {
-        const openingPlan = this.state.render && this.state.render.openingSubmissionPlan;
-        if (openingPlan && openingPlan.complete === true) {
-          // Loading may still link exact-target extras after the gpu-resources receipt.
-          // Fold those already-resident programs into the baseline so pre-submit cannot
-          // freeze the picture for work that is already done. Post-submit still flags
-          // programs created by this first presented draw.
-          this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
-            this.renderer,
-            openingPlan,
-            { scene: this.scene },
-          );
-        }
         const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
         const preSubmitValidation = receipt
           ? validateOpeningSubmissionReceipt(receipt, this.renderer)
@@ -6351,6 +6333,14 @@ export const render = {
       // retain the existing outer measurement only for those routes.
       const gpuQueryBegan = postRoute !== POST_PROCESS_ROUTE.BLOOM
         && !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
+      if (openingFirstDraw) {
+        const info = this.renderer && this.renderer.info || {};
+        const memory = info.memory || {};
+        openingFirstDrawCountsBefore = {
+          programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
+          geometries: Number(memory.geometries) || 0,
+        };
+      }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
         if (this._shadowRefreshScheduled === true) {
@@ -6359,6 +6349,28 @@ export const render = {
         }
       } finally {
         if (gpuQueryBegan) gpu.end();
+        if (openingFirstDraw && openingFirstDrawCountsBefore) {
+          const info = this.renderer && this.renderer.info || {};
+          const memory = info.memory || {};
+          const after = {
+            programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
+            geometries: Number(memory.geometries) || 0,
+          };
+          const delta = {
+            programs: after.programs - openingFirstDrawCountsBefore.programs,
+            geometries: after.geometries - openingFirstDrawCountsBefore.geometries,
+          };
+          const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
+          this.state.render.openingFirstVisibleGpuCounts = {
+            before: openingFirstDrawCountsBefore,
+            after,
+            delta,
+            geometryOnlyBrick,
+          };
+          console.info(
+            `[render] first-visible-pass-residency geometries=${openingFirstDrawCountsBefore.geometries}->${after.geometries} programs=${openingFirstDrawCountsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick}`,
+          );
+        }
       }
     } finally {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
@@ -6368,10 +6380,20 @@ export const render = {
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
         && this.state.render.openingSubmissionReceipt) {
-      const validation = validateOpeningSubmissionReceipt(
+      const receiptValidation = validateOpeningSubmissionReceipt(
         this.state.render.openingSubmissionReceipt,
         this.renderer,
       );
+      const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
+      const validation = firstVisibleGpuCounts
+        && firstVisibleGpuCounts.delta.geometries !== 0
+        ? {
+          ...receiptValidation,
+          ok: false,
+          reason: 'first-visible-geometry-delta',
+          firstVisibleGpuCounts,
+        }
+        : receiptValidation;
       this.state.render.openingSubmissionValidation = validation;
       if (!validation.ok) {
         // This is the post-submit diagnostic for lazy driver variants created by the backend during
