@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const MASTER = 'refs/remotes/origin/master';
@@ -10,7 +10,7 @@ const DONORS = Object.freeze([
   ['map-pr98', 'da3288c35fa48bf84c80a20e4db90786377c415b'],
   ['boot-pr97', 'e3d52826ad6db3a03b75b3dd169a903e4ed2d490'],
   ['remove-overheating', '6ee1fb083d01f98ef8d39d537d12668b088f9b0b'],
-  ['perf-exact-opening-residency', '68c948892521396bb0788a9095ad6e3040cac7eb'],
+  ['perf-exact-opening-residency', '6ab735b912f0c0a1a7c33670e4d7ab7ff490a364'],
   ['ac03-kill-rp', '8090de11862aed1d62f1bb985ec0f62e4aa7d0c7'],
   ['ac04-readable-tumble', 'a72ae911672e02d27c8210dd1d5cd205bd64f55a'],
   ['ac05-juice-discipline', '1deee482f3318692918d1ff2f8de41b50dc514d0'],
@@ -84,6 +84,28 @@ const master = git(['rev-parse', MASTER]).stdout;
 const results = [];
 for (const [id, commit] of DONORS) {
   reset();
+  const object = git(['cat-file', '-e', `${commit}^{commit}`], { allowFailure: true });
+  if (object.status !== 0) {
+    results.push({
+      id,
+      commit,
+      missingCommit: true,
+      subject: '',
+      committedAt: '',
+      cleanApply: false,
+      emptyAfterApply: false,
+      conflictFiles: [],
+      changedFileCount: 0,
+      changedFiles: [],
+      shortStat: '',
+      whitespaceClean: false,
+      whitespaceErrors: '',
+      syntaxClean: false,
+      syntaxErrors: [],
+      stderr: object.stderr.slice(0, 8000),
+    });
+    continue;
+  }
   const subject = git(['show', '-s', '--format=%s', commit]).stdout;
   const committedAt = git(['show', '-s', '--format=%cI', commit]).stdout;
   const apply = git(['cherry-pick', '--no-commit', commit], { allowFailure: true });
@@ -96,6 +118,7 @@ for (const [id, commit] of DONORS) {
   results.push({
     id,
     commit,
+    missingCommit: false,
     subject,
     committedAt,
     cleanApply: apply.status === 0,
@@ -114,16 +137,18 @@ for (const [id, commit] of DONORS) {
 reset();
 
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(`${OUT_DIR}/portability.json`, `${JSON.stringify({
-  schema: 1,
+const summary = {
+  schema: 2,
   generatedAt: new Date().toISOString(),
   master,
   donorCount: results.length,
   cleanApplyCount: results.filter((row) => row.cleanApply).length,
-  conflictCount: results.filter((row) => !row.cleanApply).length,
+  conflictCount: results.filter((row) => !row.cleanApply && !row.missingCommit).length,
   emptyCount: results.filter((row) => row.emptyAfterApply).length,
+  missingCommitCount: results.filter((row) => row.missingCommit).length,
   results,
-}, null, 2)}\n`);
+};
+writeFileSync(`${OUT_DIR}/portability.json`, `${JSON.stringify(summary, null, 2)}\n`);
 
 const esc = (value) => String(value || '').replaceAll('|', '\\|').replace(/\s+/g, ' ').trim();
 const md = [
@@ -135,7 +160,8 @@ const md = [
   '|---|---|---:|---|---|---|',
 ];
 for (const row of results) {
-  md.push(`| \`${row.id}\` | ${row.cleanApply ? (row.emptyAfterApply ? 'EMPTY' : 'CLEAN') : 'CONFLICT'} | ${row.changedFileCount} | ${row.conflictFiles.map((path) => `\`${esc(path)}\``).join(', ')} | ${row.syntaxClean ? 'OK' : 'FAIL'} | ${esc(row.subject).slice(0, 130)} |`);
+  const state = row.missingCommit ? 'MISSING' : row.cleanApply ? (row.emptyAfterApply ? 'EMPTY' : 'CLEAN') : 'CONFLICT';
+  md.push(`| \`${row.id}\` | ${state} | ${row.changedFileCount} | ${row.conflictFiles.map((path) => `\`${esc(path)}\``).join(', ')} | ${row.syntaxClean ? 'OK' : 'FAIL'} | ${esc(row.subject).slice(0, 130)} |`);
 }
 md.push('', 'The probe resets to current master after every donor. A clean apply is only a portability fact, not an approval.');
 writeFileSync(`${OUT_DIR}/PORTABILITY.md`, `${md.join('\n')}\n`);
@@ -143,7 +169,8 @@ writeFileSync(`${OUT_DIR}/PORTABILITY.md`, `${md.join('\n')}\n`);
 console.log(JSON.stringify({
   master,
   donors: results.length,
-  clean: results.filter((row) => row.cleanApply).length,
-  conflicts: results.filter((row) => !row.cleanApply).length,
-  empty: results.filter((row) => row.emptyAfterApply).length,
+  clean: summary.cleanApplyCount,
+  conflicts: summary.conflictCount,
+  empty: summary.emptyCount,
+  missing: summary.missingCommitCount,
 }, null, 2));
