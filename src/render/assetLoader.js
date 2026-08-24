@@ -1434,15 +1434,33 @@ function serializeRuntimeTags(tags) {
 function serializeRuntimeUserData(userData) {
   const out = {};
   for (const [key, value] of Object.entries(userData || {})) {
-    if (value === undefined || typeof value === 'function') continue;
     if (key === 'spacefaceTags' || key === 'spacefacePartUrl') continue;
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      out[key] = JSON.parse(JSON.stringify(value));
-      continue;
-    }
-    out[key] = value;
+    const copy = cloneRuntimePlainData(value);
+    if (copy !== undefined) out[key] = copy;
   }
   return out;
+}
+
+function cloneRuntimePlainData(value, ancestors = new Set()) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (!value || typeof value !== 'object') return undefined;
+
+  const isArray = Array.isArray(value);
+  if (!isArray) {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+  }
+  if (ancestors.has(value)) return undefined;
+
+  ancestors.add(value);
+  const copy = isArray ? [] : {};
+  for (const [key, entry] of Object.entries(value)) {
+    const cloned = cloneRuntimePlainData(entry, ancestors);
+    if (cloned !== undefined) copy[key] = cloned;
+  }
+  ancestors.delete(value);
+  return copy;
 }
 
 function validateRootTransform(scene, errors) {

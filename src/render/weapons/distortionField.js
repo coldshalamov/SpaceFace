@@ -83,12 +83,15 @@ export class DistortionField {
       this._cursor = (this._cursor + 1) % this.capacity;
       if (!this.slots[i].alive) { slot = i; break; }
     }
-    if (slot < 0) slot = this._cursor;
+    if (slot < 0) {
+      slot = this._cursor;
+      this._cursor = (this._cursor + 1) % this.capacity;
+    }
     const s = this.slots[slot];
     s.alive = 1;
     s.x = x || 0; s.y = y || 0; s.z = z || 0;
     s.radius = radius || 3;
-    s.strength = strength || 1;
+    s.strength = Number.isFinite(strength) ? strength : 1;
     s.life = Math.max(0.04, life || 0.12);
     s.age = 0;
     return slot;

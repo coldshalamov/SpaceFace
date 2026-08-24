@@ -159,7 +159,10 @@ export class FlipbookPool {
       this._cursor = (this._cursor + 1) % this.capacity;
       if (!this.slots[i].alive) { slot = i; break; }
     }
-    if (slot < 0) slot = this._cursor;
+    if (slot < 0) {
+      slot = this._cursor;
+      this._cursor = (this._cursor + 1) % this.capacity;
+    }
     const s = this.slots[slot];
     s.alive = 1;
     s.role = spec.role || FLIPBOOK_ROLE.MUZZLE;
@@ -173,13 +176,13 @@ export class FlipbookPool {
     s.az = finiteOr(spec.az, 0);
     s.width = spec.width || 1;
     s.height = spec.height || 1;
-    s.intensity = spec.intensity || 1;
+    s.intensity = finiteOr(spec.intensity, 1);
     s.life = Math.max(0.04, spec.life || 0.1);
     s.age = 0;
     s.row = spec.row || 0;
-    s.r = spec.r || 1;
-    s.g = spec.g || 1;
-    s.b = spec.b || 1;
+    s.r = finiteOr(spec.r, 1);
+    s.g = finiteOr(spec.g, 1);
+    s.b = finiteOr(spec.b, 1);
     s.followSocket = spec.followSocket ? 1 : 0;
     s.followTarget = spec.followTarget ? 1 : 0;
     return slot;

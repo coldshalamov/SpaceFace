@@ -126,7 +126,10 @@ export class HullScorchPool {
       this._cursor = (this._cursor + 1) % this.capacity;
       if (!this.slots[i].alive) { slot = i; break; }
     }
-    if (slot < 0) slot = this._cursor;
+    if (slot < 0) {
+      slot = this._cursor;
+      this._cursor = (this._cursor + 1) % this.capacity;
+    }
     const s = this.slots[slot];
     s.alive = 1;
     s.targetId = spec.targetId != null ? spec.targetId : null;
@@ -141,9 +144,9 @@ export class HullScorchPool {
     s.life = Math.max(0.6, spec.life || 4);
     s.age = 0;
     s.opacity = Math.max(0, finiteOr(spec.opacity, 1));
-    s.r = spec.r || 0.2;
-    s.g = spec.g || 0.55;
-    s.b = spec.b || 0.85;
+    s.r = finiteOr(spec.r, 0.2);
+    s.g = finiteOr(spec.g, 0.55);
+    s.b = finiteOr(spec.b, 0.85);
     return slot;
   }
 

@@ -116,7 +116,10 @@ export class WeaponRibbonPool {
         if (!this.alive[i]) { slot = i; break; }
       }
     }
-    if (slot < 0) slot = this._cursor;
+    if (slot < 0) {
+      slot = this._cursor;
+      this._cursor = (this._cursor + 1) % this.capacity;
+    }
     const prev = this.entityIds[slot];
     if (prev >= 0 && prev !== entityId) this.byEntity.delete(prev);
     this.alive[slot] = 1;
