@@ -1,0 +1,78 @@
+name: Current-master tactical map adaptation
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/adapt-tactical-map.mjs
+      - .github/workflows/branch-map-adapter.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-map-adapter
+  cancel-in-progress: true
+
+jobs:
+  adapt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Fetch donors and align with latest integration
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          for attempt in $(seq 1 24); do
+            git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+            if git cat-file -e refs/remotes/origin/integration/all-branches-20260824:design/program/branch-consolidation/priority-ports.json 2>/dev/null; then
+              break
+            fi
+            sleep 10
+          done
+          git checkout -B integration/all-branches-20260824 refs/remotes/origin/integration/all-branches-20260824
+          git rebase refs/remotes/origin/master
+
+      - name: Three-way adapt and harden tactical navigation
+        run: |
+          node scripts/adapt-tactical-map.mjs
+          node scripts/harden-priority-followup.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate map semantics, budgets, menus, and build
+        run: |
+          set -euo pipefail
+          node --check src/ui/radar.js
+          node --check src/ui/screenManager.js
+          node --check src/ui/map/tacticalMapGrammar.js
+          node --check src/ui/map/mapParityBridge.js
+          node --test \
+            test/tactical-map-second-generation.test.mjs \
+            test/tactical-map-range-control.test.mjs \
+            test/j07-hud-contract.test.mjs \
+            test/unified-map-professional.test.mjs
+          node scripts/check-radar-perf.mjs
+          node scripts/check-type-floor.mjs
+          npm run check:galaxy-map-inspector
+          npm run check:ui-a11y
+          npm run build
+
+      - name: Publish validated adaptation
+        run: |
+          git add --sparse -A
+          git commit -m "refactor(map): structurally port and harden tactical navigation [skip ci]"
+          git fetch origin integration/all-branches-20260824
+          git rebase refs/remotes/origin/integration/all-branches-20260824
+          git push --force-with-lease origin HEAD:integration/all-branches-20260824
