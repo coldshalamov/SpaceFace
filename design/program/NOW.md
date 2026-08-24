@@ -41,7 +41,9 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| _(none)_ | — | — | — | — |
+| PQ-135.00 speed governor | fable-campaign-20260824 lane FLIGHT | MUTATING | `src/combat/autoTargetMode.js`, `test/draw-to-fly-path-tracking.test.mjs` | review diff, commit, release row |
+| PQ-136.02 field npc craft | fable-campaign-20260824 lane NPC | MUTATING | `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/npcJobs.js` | review diff, commit, release row |
+| PQ-135.02 motion lab | fable-campaign-20260824 lane MOTIONLAB | MUTATING | new files only: `test/motion-lab-*.test.mjs`, `src/systems/motionTelemetry.js`, `src/systems/motionScenarios.js` | review diff, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
