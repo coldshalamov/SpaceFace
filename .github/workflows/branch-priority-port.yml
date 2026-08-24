@@ -1,0 +1,86 @@
+name: Priority branch ports
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/branch-priority-port.mjs
+      - .github/workflows/branch-priority-port.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-priority-port
+  cancel-in-progress: true
+
+jobs:
+  port:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Fetch all branches and current master
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          git rebase refs/remotes/origin/master
+
+      - name: Refresh topology if the synthesis receipt is absent
+        run: |
+          if [ ! -f design/program/branch-consolidation/topology.json ]; then
+            node scripts/branch-consolidation-audit.mjs
+            node scripts/branch-family-topology.mjs
+          fi
+
+      - name: Port priority branch-specific outcomes independently
+        run: node scripts/branch-priority-port.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate every ported priority surface
+        run: |
+          set -euo pipefail
+          node --check src/ui/radar.js
+          node --check src/ui/screenManager.js
+          node --check src/ui/map/tacticalMapGrammar.js
+          node --check src/ui/map/mapParityBridge.js
+          if [ -f test/tactical-map-second-generation.test.mjs ]; then
+            node --test test/tactical-map-second-generation.test.mjs
+          fi
+          if [ -f test/startup-loading-presentation.test.mjs ]; then
+            node --test \
+              test/startup-loading-presentation.test.mjs \
+              test/loading-boot-resilience.test.mjs \
+              test/loading-terminal-art.test.mjs
+          fi
+          if [ -f test/startup-geometry-residency.test.mjs ]; then
+            node --test test/startup-geometry-residency.test.mjs
+          fi
+          node scripts/check-radar-perf.mjs
+          node scripts/check-type-floor.mjs
+          node scripts/check-program-docs.mjs
+          npm run build
+
+      - name: Upload port receipts even when validation fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: priority-branch-port-receipts
+          path: design/program/branch-consolidation/
+          retention-days: 14
+
+      - name: Publish validated integration head
+        run: git push --force-with-lease origin HEAD:integration/all-branches-20260824
