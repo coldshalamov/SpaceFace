@@ -94,7 +94,7 @@ function proximityFrom(cue, state) {
   const explicit = explicitValue(cue, 'proximity');
   if (Number.isFinite(explicit)) return clamp01(explicit, 0.5);
   const distance = cue && cue.distance;
-  if (Number.isFinite(distance) && distance > 0) {
+  if (Number.isFinite(distance) && distance >= 0) {
     return 1 - clamp01(distance / 700, 1);
   }
   if (distance != null && (!Number.isFinite(distance) || distance < 0)) return 0.5;
