@@ -941,6 +941,34 @@ Illegal here: default quality cuts, headless hitch-budget as acceptance, replayi
 BatchedMesh candidate, starting Worker/WebGPU because Wave B is hard, shrinking hail 5200 as a
 cull.
 
+### 8.5 Open defect — a valid ship asset is rejected at load and NOTHING is drawn
+
+**2026-08-23. `check:playable` passes 15/15 while warning that a ship renders as nothing.**
+
+```
+[partsLibrary] authored composition failed; no substitute visual published
+Error: release mode requires .../wholeships/ashline_rig.glb for ship_wasp;
+       it did not pass the live authored-asset loader
+```
+
+"No substitute visual published" means an **invisible enemy**. It is player-visible and was
+untracked; no asset check flags it, and `check:playable` reports it as a WARNING and still passes —
+the exact "a green check is not proof" pattern this document warns about.
+
+Already ruled out, so nobody redoes it: the file is **not missing** (7,867,164 bytes, tracked) and
+**not corrupt** (valid GLB, version 2, declared length == actual, JSON 55696 + BIN 7811440). It is in
+`PACKAGED_LIVE_WHOLE_SHIP_FILES` and in `release_manifest.json` with the same entry count as its
+sibling `ashline_dart.glb`, which loads fine. **The rejection is a live-loader policy, not the file.**
+
+Lead: the reported defId is `ship_wasp`, but `ship_wasp` maps to `wasp_production_v1.glb`
+(`partsLibrary.js:1015`) while `ashline_rig.glb` is the mapping for ROLE ids (`reaver_pirate`,
+`mine_layer_jackal`, `corsair_raider`, `tether_control_raider`, ~1161-1164). Enemies `wasp_swarmer`
+and `lancer_sniper` carry `shipId: 'ship_wasp'`. The role mapping and the ship mapping disagree.
+
+The fix must also add a check that **FAILS** when a whole-ship required by a live entity does not
+load and no substitute is published. This class currently reports as a passing warning, which is
+precisely why it survived.
+
 ## 9. Documentation and instruction hygiene
 
 Documentation has a declared lifetime:
