@@ -41,6 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-135.01 flight feel | fable-campaign-20260824 lane FLIGHTFEEL | MUTATING | `src/systems/flightV3.js`, `src/systems/flight.js`, `src/systems/motionScenarios.js`, `src/systems/motionTelemetry.js`, `test/motion-lab-scenarios.test.mjs` | review, commit, release row |
+| FIX-C asset:deployed | fable-campaign-20260824 lane FIXC | MUTATING | `src/systems/missions.js`, `src/systems/automation.js`, `src/systems/claims.js`, new contract test | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
