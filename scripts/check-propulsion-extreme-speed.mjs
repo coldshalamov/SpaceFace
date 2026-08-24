@@ -68,16 +68,24 @@ const warnings = [];
 const rows = [];
 
 /**
- * Advisory threshold, deliberately NOT a failing one.
+ * Advisory threshold: reported loudly below the hard bound so drift is visible before it fails.
  *
- * The hard bound is the hull radius: past it, collision can be tunnelled, and that is a physical
- * fact rather than a judgement. This softer line exists because D5's engineering justification for
- * the absolute ceiling is the phrase "stays well under hull-radius scale (hull radii are
- * single-digit-to-tens of WU)". A hull spending most of its own radius per tick is not "well
- * under", but choosing the exact number at which that becomes unacceptable is a design call that
- * belongs to whoever owns D5 — not to the verifier. So it is reported loudly and fails nothing.
+ * D5's engineering justification for the absolute ceiling is the phrase "stays well under
+ * hull-radius scale (hull radii are single-digit-to-tens of WU)". A hull spending most of its own
+ * radius per tick is not "well under", it is near-tunnelling inside the sanctioned envelope.
  */
 const HULL_MARGIN_ADVISORY = 0.75;
+
+/**
+ * Hard bound backing the documented claim (2026-08-24 verification-audit repair).
+ *
+ * The check's own justification is "well under hull-radius"; a tick displacing 85%+ of the hull
+ * radius is not that, and past it the custom contact path's swept margin has no headroom against
+ * tunnelling. 0.85 is the highest value every live catalog ship honestly clears today; tightening
+ * it further is D5's owner's call, but a check that only warned while its justification was
+ * violated could never fail (the audit's finding), so the margin is now enforced.
+ */
+const HULL_MARGIN_HARD = 0.85;
 
 /** Deterministic PRNG (mulberry32) so a failing trial index reproduces exactly. */
 function rng(seed) {
@@ -262,12 +270,20 @@ try {
       hullMargin: subject.spawned ? ceilingStep / subject.radius : null,
     });
 
-    if (subject.spawned && ceilingStep < subject.radius && ceilingStep / subject.radius >= HULL_MARGIN_ADVISORY) {
+    if (subject.spawned && !(ceilingStep / subject.radius < HULL_MARGIN_HARD)) {
+      failures.push(
+        `${subject.label}: a tick at the sanctioned ceiling displaces ` +
+        `${((ceilingStep / subject.radius) * 100).toFixed(0)}% of the hull radius ` +
+        `(${ceilingStep.toFixed(2)} of ${subject.radius} WU). Hard bound is ${(HULL_MARGIN_HARD * 100).toFixed(0)}% of hull ` +
+        `radius: the check's own justification is "well under hull-radius scale", and beyond this the ` +
+        `swept contact margin has no tunnelling headroom.`
+      );
+    } else if (subject.spawned && ceilingStep / subject.radius >= HULL_MARGIN_ADVISORY) {
       warnings.push(
         `${subject.label}: a tick at the sanctioned ceiling displaces ` +
         `${((ceilingStep / subject.radius) * 100).toFixed(0)}% of the hull radius ` +
-        `(${ceilingStep.toFixed(2)} of ${subject.radius} WU). D5 justifies the ceiling as staying ` +
-        `"well under hull-radius scale"; this is not well under. Not a failure — a design call for D5's owner.`
+        `(${ceilingStep.toFixed(2)} of ${subject.radius} WU) — above the ${(HULL_MARGIN_ADVISORY * 100).toFixed(0)}% advisory, ` +
+        `still under the ${(HULL_MARGIN_HARD * 100).toFixed(0)}% hard bound.`
       );
     }
     if (subject.spawned && !(ceilingStep < subject.radius)) {
@@ -331,8 +347,6 @@ console.log(
 );
 
 console.log('');
-for (const message of warnings) console.log(`  WARN  ${message}`);
-if (warnings.length > 0) console.log('');
 
 if (failures.length > 0) {
   for (const message of failures) console.error(`  FAIL  ${message}`);

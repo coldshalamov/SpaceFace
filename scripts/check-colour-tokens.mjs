@@ -59,6 +59,14 @@ const LIVE = [
   'station-workbench.css', 'station.css', 'station-berth.css', 'commsradial.css',
 ];
 
+// A configured stylesheet may be absent only if named here. An empty allowlist means every
+// LIVE entry is required; there is no implicit optional stylesheet.
+const OPTIONAL_ALLOWLIST = Object.freeze([]);
+
+function isOptional(file) {
+  return OPTIONAL_ALLOWLIST.includes(file);
+}
+
 // `accessibility.css` is the override layer itself: its literals are the high-contrast values and
 // must stay literal, or the override would resolve to the very token it exists to replace.
 const SAFE_DISTANCE = 10;
@@ -96,9 +104,21 @@ function parseLiteral(tok) {
 export function auditColourTokens(files = LIVE, readFile = (f) => readFileSync(`styles/${f}`, 'utf8')) {
   const findings = [];
   let literals = 0;
-  for (const file of files) {
+  const configured = files || [];
+  if (configured.length === 0) {
+    findings.push({ file: '(config)', how: 'no configured live stylesheets to observe' });
+    return { literals, findings };
+  }
+  for (const file of configured) {
     let src;
-    try { src = readFile(file); } catch { continue; }
+    try {
+      src = readFile(file);
+    } catch (err) {
+      if (!isOptional(file)) {
+        findings.push({ file, how: `read failed: ${err.code || err.message}` });
+      }
+      continue;
+    }
     const lines = src.split('\n');
 
     const local = { ...ROOT_TOKENS };
@@ -142,6 +162,9 @@ export function auditColourTokens(files = LIVE, readFile = (f) => readFileSync(`
       }
     });
   }
+  if (literals === 0) {
+    findings.push({ file: '(coverage)', how: 'zero inspected colour literals' });
+  }
   return { literals, findings };
 }
 
@@ -150,13 +173,24 @@ if (IS_DIRECT) {
   const { literals, findings } = auditColourTokens();
   console.log(`colour literals inspected in live stylesheets: ${literals}`);
   if (findings.length) {
-    console.error(`\nFAIL — ${findings.length} literal(s) duplicate a colour the system already names.`);
-    console.error('A theme or high-contrast override cannot reach these; they will silently not apply.\n');
-    for (const f of findings.slice(0, 40)) {
-      console.error(`  styles/${f.file}:${f.line}  ${f.literal}  is  ${f.token}  (distance ${f.distance})`);
+    const infra = findings.filter((f) => f.how && !f.literal);
+    const dupes = findings.filter((f) => f.literal);
+    if (infra.length) {
+      console.error(`\nFAIL — ${infra.length} coverage/read problem(s); every configured live stylesheet must be observed.`);
+      for (const f of infra) {
+        const loc = f.file === '(config)' || f.file === '(coverage)' ? f.file : `styles/${f.file}`;
+        console.error(`  ${loc}  ${f.how}`);
+      }
     }
-    if (findings.length > 40) console.error(`  ... and ${findings.length - 40} more`);
-    console.error('\nWrite var(--token), or color-mix(in srgb, var(--token) N%, transparent) when it carries alpha.');
+    if (dupes.length) {
+      console.error(`\nFAIL — ${dupes.length} literal(s) duplicate a colour the system already names.`);
+      console.error('A theme or high-contrast override cannot reach these; they will silently not apply.\n');
+      for (const f of dupes.slice(0, 40)) {
+        console.error(`  styles/${f.file}:${f.line}  ${f.literal}  is  ${f.token}  (distance ${f.distance})`);
+      }
+      if (dupes.length > 40) console.error(`  ... and ${dupes.length - 40} more`);
+      console.error('\nWrite var(--token), or color-mix(in srgb, var(--token) N%, transparent) when it carries alpha.');
+    }
     process.exit(1);
   }
   console.log('Colour tokens OK — no live stylesheet re-types a colour the design system already names.');

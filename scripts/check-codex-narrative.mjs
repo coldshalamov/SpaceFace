@@ -35,9 +35,21 @@ for (const k of ['name', 'registration', 'incident', 'incidentRef', 'previousOpe
 }
 assert.ok(SHIP.friend && 'callsign' in SHIP.friend && 'debt' in SHIP.friend, 'SHIP.friend missing callsign/debt');
 
-// COLD_START — the 3 opening comms (Comms tab, always-visible section).
-assert.ok(Array.isArray(COLD_START) && COLD_START.length >= 1, 'COLD_START must be a non-empty array');
+// COLD_START — the 3 opening comms (Comms tab, always-visible section). Contracted IDs are
+// cold_friend, cold_registry, cold_dockmaster in that order (src/data/narrative.js).
+const COLD_START_IDS = Object.freeze(['cold_friend', 'cold_registry', 'cold_dockmaster']);
+assert.ok(Array.isArray(COLD_START), 'COLD_START must be an array');
+assert.equal(
+  COLD_START.length,
+  COLD_START_IDS.length,
+  `COLD_START must have exactly ${COLD_START_IDS.length} opening beats [${COLD_START_IDS.join(', ')}] (got ${COLD_START.length})`
+);
 COLD_START.forEach((c, i) => {
+  assert.equal(
+    c && c.id,
+    COLD_START_IDS[i],
+    `COLD_START[${i}].id must be "${COLD_START_IDS[i]}" (got ${c && c.id})`
+  );
   for (const k of ['id', 'sender', 'text', 'category']) {
     assert.ok(k in c, `COLD_START[${i}] missing "${k}"`);
   }

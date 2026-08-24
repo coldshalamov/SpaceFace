@@ -31,27 +31,76 @@ const LIVE = [
 ];
 const FLOOR = 12;
 
-function walkJs(dir, out = []) {
+// A configured path may be absent only if named here. An empty allowlist means every LIVE
+// stylesheet and every JS_ROOTS entry is required; there is no implicit optional file.
+const OPTIONAL_ALLOWLIST = Object.freeze([]);
+
+function isOptional(rel) {
+  const norm = String(rel).split('\\').join('/');
+  return OPTIONAL_ALLOWLIST.some((p) => p === norm || p === path.posix.basename(norm));
+}
+
+function infra(file, how) {
+  return { file, line: 0, size: 0, how, kind: 'infra' };
+}
+
+function walkJs(dir, out, findings) {
+  const rel = dir.split(path.sep).join('/');
   let entries;
-  try { entries = readdirSync(dir); } catch { return out; }
+  try {
+    entries = readdirSync(dir);
+  } catch (err) {
+    if (!isOptional(rel)) findings.push(infra(rel, `enumeration failed: ${err.code || err.message}`));
+    return out;
+  }
   for (const name of entries) {
     const full = path.join(dir, name);
+    const fullRel = full.split(path.sep).join('/');
     let st;
-    try { st = statSync(full); } catch { continue; }
-    if (st.isDirectory()) walkJs(full, out);
-    else if (name.endsWith('.js')) out.push(full.split(path.sep).join('/'));
+    try {
+      st = statSync(full);
+    } catch (err) {
+      if (!isOptional(fullRel)) findings.push(infra(fullRel, `stat failed: ${err.code || err.message}`));
+      continue;
+    }
+    if (st.isDirectory()) walkJs(full, out, findings);
+    else if (name.endsWith('.js')) out.push(fullRel);
   }
   return out;
 }
 
 export function auditTypeFloor(files = null, readFile = null) {
-  const styleFiles = (files || LIVE).map((f) => (f.includes('/') ? f : `styles/${f}`));
-  const jsFiles = files ? [] : JS_ROOTS.flatMap((d) => walkJs(d));
   const findings = [];
+  const usingDefaults = files == null;
+  const configured = files || LIVE;
+  if (configured.length === 0 && (usingDefaults ? JS_ROOTS.length === 0 : true)) {
+    findings.push(infra('(config)', 'no configured roots/files to observe'));
+  }
+  const styleFiles = configured.map((f) => (f.includes('/') ? f : `styles/${f}`));
+  const jsFiles = usingDefaults
+    ? JS_ROOTS.flatMap((d) => {
+        const found = [];
+        const before = findings.length;
+        walkJs(d, found, findings);
+        const rootRel = d.split(path.sep).join('/');
+        const rootFailed = findings.slice(before).some((f) => f.file === rootRel);
+        if (found.length === 0 && !rootFailed && !isOptional(d)) {
+          findings.push(infra(d, 'configured root observed no .js files'));
+        }
+        return found;
+      })
+    : [];
   let inspected = 0;
   for (const file of [...styleFiles, ...jsFiles]) {
     let src;
-    try { src = readFile ? readFile(file) : readFileSync(file, 'utf8'); } catch { continue; }
+    try {
+      src = readFile ? readFile(file) : readFileSync(file, 'utf8');
+    } catch (err) {
+      if (!isOptional(file) && !isOptional(path.posix.basename(file))) {
+        findings.push(infra(file, `read failed: ${err.code || err.message}`));
+      }
+      continue;
+    }
     src.split('\n').forEach((line, i) => {
       // Strip comments so a size quoted in PROSE is not reported. Both forms matter: the modules
       // that document this very bug quote `var(--mono)` in a `//` comment, and reporting those was
@@ -87,6 +136,9 @@ export function auditTypeFloor(files = null, readFile = null) {
       }
     });
   }
+  if (inspected === 0) {
+    findings.push(infra('(coverage)', 'zero inspected declarations'));
+  }
   return { inspected, findings };
 }
 
@@ -95,13 +147,24 @@ if (IS_DIRECT) {
   const { inspected, findings } = auditTypeFloor();
   console.log(`type sizes inspected in live stylesheets: ${inspected}`);
   if (findings.length) {
-    console.error(`\nFAIL — ${findings.length} declaration(s) render below the ${FLOOR}px floor.`);
-    console.error('INSTRUMENT_GRAMMAR §3 is binding: nothing renders below 12px, ever.\n');
-    for (const f of findings.slice(0, 40)) {
-      const size = f.size === 'var()' ? 'var()' : `${f.size}px`;
-      console.error(`  ${f.file}:${f.line}  ${size}  (${f.how})`);
+    const infraHits = findings.filter((f) => f.kind === 'infra');
+    const typeHits = findings.filter((f) => f.kind !== 'infra');
+    if (infraHits.length) {
+      console.error(`\nFAIL — ${infraHits.length} coverage/read problem(s); every configured live file must be observed.`);
+      for (const f of infraHits.slice(0, 40)) {
+        console.error(`  ${f.file}  (${f.how})`);
+      }
+      if (infraHits.length > 40) console.error(`  ... and ${infraHits.length - 40} more`);
     }
-    if (findings.length > 40) console.error(`  ... and ${findings.length - 40} more`);
+    if (typeHits.length) {
+      console.error(`\nFAIL — ${typeHits.length} declaration(s) render below the ${FLOOR}px floor.`);
+      console.error('INSTRUMENT_GRAMMAR §3 is binding: nothing renders below 12px, ever.\n');
+      for (const f of typeHits.slice(0, 40)) {
+        const size = f.size === 'var()' ? 'var()' : `${f.size}px`;
+        console.error(`  ${f.file}:${f.line}  ${size}  (${f.how})`);
+      }
+      if (typeHits.length > 40) console.error(`  ... and ${typeHits.length - 40} more`);
+    }
     process.exit(1);
   }
   console.log(`Type floor OK — nothing in a live stylesheet renders below ${FLOOR}px.`);
