@@ -116,6 +116,9 @@ export function sampleBody(entity, extras = {}) {
     slotZ: jsonNumber(extras.slotZ),
     slotVx: jsonNumber(extras.slotVx),
     slotVz: jsonNumber(extras.slotVz),
+    speedBudget: jsonNumber(extras.speedBudget),
+    headingError: jsonNumber(extras.headingError),
+    closingSpeed: jsonNumber(extras.closingSpeed),
   };
 }
 
@@ -348,6 +351,62 @@ export function percentile(sorted, p) {
   if (!sorted || !sorted.length) return 0;
   const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p)));
   return jsonNumber(sorted[idx], 0);
+}
+
+export function envelopeTrackingMetrics(samples, dt) {
+  const errors = slotErrors(samples);
+  let peakSpeed = 0;
+  let peakClosing = 0;
+  let headingAbsSum = 0;
+  let headingN = 0;
+  let yawAbsSum = 0;
+  let yawN = 0;
+  let offAxisBurn = 0;
+  let burnN = 0;
+  for (const sample of samples || []) {
+    const spd = speedOf(sample);
+    if (spd > peakSpeed) peakSpeed = spd;
+    const closing = Number.isFinite(sample.closingSpeed) ? sample.closingSpeed : closingTowardSlot(sample);
+    if (closing > peakClosing) peakClosing = closing;
+    const headingErr = Number.isFinite(sample.headingError) ? Math.abs(sample.headingError) : headingErrorToSlot(sample);
+    if (Number.isFinite(headingErr)) {
+      headingAbsSum += headingErr;
+      headingN++;
+      const throttling = (sample.mz || 0) > 0.2;
+      if (throttling) {
+        burnN++;
+        if (headingErr > 0.55) offAxisBurn++;
+      }
+    }
+    yawAbsSum += Math.abs(sample.angVel || 0);
+    yawN++;
+  }
+  return compactMetrics({
+    rmsPositionError: errors.rmsPositionError,
+    rmsVelocityError: errors.rmsVelocityError,
+    peakOvershoot: errors.peakOvershoot,
+    peakSpeed: jsonNumber(peakSpeed, 0),
+    peakClosingSpeed: jsonNumber(peakClosing, 0),
+    meanHeadingError: headingN ? jsonNumber(headingAbsSum / headingN, 0) : 0,
+    meanAbsYawRate: yawN ? jsonNumber(yawAbsSum / yawN, 0) : 0,
+    offAxisBurnFraction: burnN ? jsonNumber(offAxisBurn / burnN, 0) : 0,
+    settleTimeS: settleTimeToSlot(samples, dt, 28),
+  });
+}
+
+function closingTowardSlot(sample) {
+  if (!Number.isFinite(sample.slotX) || !Number.isFinite(sample.slotZ)) return 0;
+  const dx = sample.slotX - (sample.x || 0);
+  const dz = sample.slotZ - (sample.z || 0);
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > EPS)) return 0;
+  return ((sample.vx || 0) * dx + (sample.vz || 0) * dz) / dist;
+}
+
+function headingErrorToSlot(sample) {
+  if (!Number.isFinite(sample.slotX) || !Number.isFinite(sample.slotZ)) return null;
+  const desired = Math.atan2(sample.slotZ - (sample.z || 0), sample.slotX - (sample.x || 0));
+  return wrapAngle(desired - (sample.rot || 0));
 }
 
 export function slotErrors(samples) {

@@ -5,7 +5,11 @@
 import { SIM_DT } from '../core/sim.js';
 import { wrapAngle } from '../core/rng.js';
 import { queuePhysicsImpulse, readPhysicsTelemetry } from '../core/physicsAuthority.js';
+import { ManeuverPlanner } from '../ai/maneuver.js';
 import { AI_CONTRACT_VERSION, ManeuverKind, makeThrusterRequest } from '../ai/contracts.js';
+import {
+  forceSharedEnemyMotionEnvelope,
+} from '../data/flightFeelEnvelopes.js';
 import { createAuthoritativeRuntime } from '../runtime/createAuthoritativeRuntime.js';
 import { actions } from './actions.js';
 import { aiPorts } from './aiPorts.js';
@@ -20,6 +24,7 @@ import {
   compactMetrics,
   controlSignChangesPerSecond,
   createMotionTrace,
+  envelopeTrackingMetrics,
   flowAlignment,
   headingOscillationRms,
   jsonNumber,
@@ -44,6 +49,11 @@ export const M1_HULLS = Object.freeze([
   Object.freeze({ id: 'ship_kestrel', name: 'Hitch' }),
   Object.freeze({ id: 'ship_wasp', name: 'Wasp' }),
   Object.freeze({ id: 'ship_drifter', name: 'Drifter' }),
+  Object.freeze({ id: 'ship_atlas', name: 'Atlas' }),
+]);
+
+export const M4_INTENT_HULLS = Object.freeze([
+  Object.freeze({ id: 'ship_wasp', name: 'Wasp' }),
   Object.freeze({ id: 'ship_atlas', name: 'Atlas' }),
 ]);
 
@@ -177,6 +187,28 @@ export async function runM4({ seed = MOTION_LAB_SEED } = {}) {
     return { metrics, trace };
   } finally {
     host.dispose();
+  }
+}
+
+export async function runM4Hulls({ seed = MOTION_LAB_SEED, sharedEnvelope = false } = {}) {
+  forceSharedEnemyMotionEnvelope(sharedEnvelope ? true : null);
+  try {
+    const byHull = {};
+    const traces = {};
+    for (const hull of M4_INTENT_HULLS) {
+      const result = await runM4HullIntent(seed, hull);
+      byHull[hull.id] = result.metrics;
+      traces[hull.id] = result.trace;
+    }
+    return {
+      metrics: namedScenarioMetrics('M4-hulls', seed, {
+        sharedEnvelope: !!sharedEnvelope,
+        hulls: byHull,
+      }),
+      traces,
+    };
+  } finally {
+    forceSharedEnemyMotionEnvelope(null);
   }
 }
 
@@ -508,6 +540,32 @@ export function formatM3Table(metrics) {
     'reversalCarryDistance',
     'postBurnSpeed',
   ]);
+}
+
+export function formatM4HullTable(metrics) {
+  const hulls = (metrics && metrics.hulls) || {};
+  const ids = M4_INTENT_HULLS.map((h) => h.id);
+  const header = ['metric', ...M4_INTENT_HULLS.map((h) => h.name)];
+  const keys = [
+    'peakSpeed',
+    'peakClosingSpeed',
+    'peakOvershoot',
+    'meanHeadingError',
+    'meanAbsYawRate',
+    'offAxisBurnFraction',
+    'rmsPositionError',
+    'rmsVelocityError',
+    'settleTimeS',
+  ];
+  const rows = [header];
+  for (const key of keys) {
+    rows.push([key, ...ids.map((id) => num(hulls[id] && hulls[id][key]))]);
+  }
+  const widths = header.map(() => 0);
+  for (const row of rows) {
+    for (let i = 0; i < row.length; i++) widths[i] = Math.max(widths[i], String(row[i]).length);
+  }
+  return rows.map((row) => row.map((cell, i) => String(cell).padEnd(widths[i])).join('  ')).join('\n');
 }
 
 function formatHullTable(metrics, keys) {
@@ -1010,6 +1068,161 @@ function writeNpcIntent(entity, input = {}) {
 
 function emptyIntent() {
   return { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false };
+}
+
+async function runM4HullIntent(seed, hull) {
+  const host = await bootMotionLab({ seed, kind: 'actuator' });
+  try {
+    const follower = spawnNpcShip(host, {
+      defId: hull.id,
+      pos: { x: -90, z: 140 },
+      rot: 0,
+      team: 1,
+    });
+    await host.ready();
+    const planner = new ManeuverPlanner({
+      seed,
+      config: {
+        freezeResults: false,
+        includeTrajectory: false,
+        resolveHull: () => ({ hullId: hull.id, flightClass: follower.flightClass || null }),
+      },
+    });
+    const dense = [];
+    const trace = createMotionTrace({
+      scenarioId: 'M4-hulls',
+      seed,
+      hullId: hull.id,
+      extra: { role: 'follower', intent: 'formation_slot' },
+    });
+    const contacts = bindContacts(host, trace, [follower.id]);
+    let lastPhase = null;
+    const ticks = 510;
+    const formationBound = 80;
+    for (let i = 0; i < ticks; i++) {
+      const t = i * MOTION_LAB_DT;
+      const frame = virtualSlotFrame(t);
+      const slot = slotFromFrame(frame, SLOT_OFFSET);
+      const command = planSlotFollow(planner, follower, slot, host.state.tick | 0, formationBound);
+      writeNpcIntent(follower, command.intent);
+      requestActuator(host, follower, command.request);
+      const phase = frame.segment;
+      if (phase !== lastPhase) {
+        pushPhase(trace, phase, host.state.tick | 0);
+        lastPhase = phase;
+      }
+      host.runtime.step(MOTION_LAB_DT);
+      const sample = sampleBody(follower, {
+        tick: host.state.tick | 0,
+        t: host.state.simTime,
+        control: command.intent,
+        phase,
+        slotX: slot.x,
+        slotZ: slot.z,
+        slotVx: slot.vx,
+        slotVz: slot.vz,
+        achievedAccel: telemetryAccel(follower),
+        speedBudget: command.speedBudget,
+        headingError: command.headingError,
+        closingSpeed: command.closingSpeed,
+      });
+      dense.push(sample);
+      maybePushSample(trace, sample, TRACE_STRIDE);
+    }
+    contacts.unbind();
+    const tracked = envelopeTrackingMetrics(dense, MOTION_LAB_DT);
+    return {
+      metrics: compactMetrics({
+        ...tracked,
+        controlSignChangesPerS: controlSignChangesPerSecond(dense, MOTION_LAB_DT),
+        angularSignChangesPerS: angularSignChangesPerSecond(dense, MOTION_LAB_DT),
+        collisions: trace.contacts.length,
+        finalSlotError: lastSlotError(dense),
+      }),
+      trace,
+    };
+  } finally {
+    host.dispose();
+  }
+}
+
+function planSlotFollow(planner, entity, slot, tick, formationBound) {
+  const pos = entity.pos || { x: 0, z: 0 };
+  const vel = entity.vel || { x: 0, z: 0 };
+  const dx = slot.x - (pos.x || 0);
+  const dz = slot.z - (pos.z || 0);
+  const dist = Math.hypot(dx, dz);
+  const desired = Math.atan2(dz, dx);
+  const headingError = wrapAngle(desired - (entity.rot || 0));
+  const closing = dist > 1e-9
+    ? (((vel.x || 0) * dx) + ((vel.z || 0) * dz)) / dist
+    : 0;
+  const perception = {
+    tick,
+    revision: tick,
+    self: {
+      id: entity.id,
+      team: entity.team,
+      pos: { x: pos.x || 0, z: pos.z || 0 },
+      vel: { x: vel.x || 0, z: vel.z || 0 },
+      rot: entity.rot || 0,
+      radius: entity.radius || 8,
+      hullId: entity.data && entity.data.defId,
+      flightClass: entity.flightClass || null,
+      energyFraction: 1,
+      heatFraction: 0,
+      hullFraction: 1,
+    },
+    contacts: [],
+    events: [],
+  };
+  const slotPos = { x: slot.x, z: slot.z };
+  const slotVel = { x: slot.vx || 0, z: slot.vz || 0 };
+  const request = planner.plan({
+    tick,
+    entityId: entity.id,
+    perception,
+    behavior: {
+      maneuver: {
+        kind: ManeuverKind.FORMATION,
+        targetId: null,
+        formationSlot: slotPos,
+        formationVelocity: slotVel,
+        formationBound,
+        breakFormation: false,
+        reason: 'motion_lab_hull_intent',
+      },
+    },
+    directive: {
+      squadId: 'm4_hull',
+      formation: {
+        slot: slotPos,
+        velocity: slotVel,
+        bound: formationBound,
+        breakFormation: false,
+      },
+    },
+  });
+  return {
+    intent: {
+      moveX: request.forceLocal.right,
+      moveZ: request.forceLocal.forward,
+      turnIntent: request.torqueYaw,
+      boost: !!request.boost,
+      brake: !!request.brake,
+    },
+    request: {
+      forceLocal: request.forceLocal,
+      torqueYaw: request.torqueYaw,
+      boost: !!request.boost,
+      brake: !!request.brake,
+      targetHeading: request.targetHeading,
+      kind: request.kind || ManeuverKind.FORMATION,
+      reason: request.reason || 'motion_lab_hull_intent',
+    },
+    headingError,
+    closingSpeed: closing,
+  };
 }
 
 function seekSlotCommand(entity, slot) {

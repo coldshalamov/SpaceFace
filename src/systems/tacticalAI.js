@@ -8,6 +8,7 @@ import {
   refreshFirstSessionAttackerOwnership,
   resetFirstSessionAttackerOwnership,
 } from '../ai/engagementAuthority.js';
+import { hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
@@ -74,8 +75,24 @@ export function createTacticalAISystem({
       ports,
       config: runtimeConfig,
     });
+    bindHullResolver(stack);
     inspection = new AIInspectionEndpoint(stack);
     return stack;
+  }
+
+  const hullHint = { hullId: null, flightClass: null };
+  function bindHullResolver(liveStack) {
+    if (!liveStack || !liveStack.maneuver) return;
+    liveStack.maneuver.resolveHull = (entityId) => {
+      const state = ctxRef && ctxRef.state;
+      const entities = state && state.entities;
+      const entity = entities && typeof entities.get === 'function' ? entities.get(entityId) : null;
+      hullHint.hullId = hullIdFromEntity(entity);
+      hullHint.flightClass = (entity && entity.flightClass)
+        || (entity && entity.data && entity.data.shipClass)
+        || null;
+      return hullHint;
+    };
   }
 
   function handleInspection(request = {}) {

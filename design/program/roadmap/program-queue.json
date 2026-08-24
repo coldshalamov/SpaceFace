@@ -8893,7 +8893,7 @@
       "priority": 386,
       "title": "Hull-relative enemy capability envelopes and desired-state control",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-135.01"
       ],
@@ -8907,7 +8907,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-03-enemy-envelopes-REPORT.md"
+      ],
       "brief": "Hull-relative enemy capability envelopes and desired-state trajectory control (21A.6-.7). Done when enemy motion derives from the hull it is flying, not a shared constant. No campaign AI fork."
     },
     {

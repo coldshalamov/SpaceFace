@@ -6,14 +6,20 @@ import {
   jsonRoundTrip,
 } from '../src/systems/motionTelemetry.js';
 import {
+  deriveEnemyMotionScale,
+  ENEMY_MOTION_IDENTITY_SCALE,
+} from '../src/data/flightFeelEnvelopes.js';
+import {
   MOTION_LAB_SEED,
   formatM1Table,
   formatM2Table,
   formatM3Table,
+  formatM4HullTable,
   runM1,
   runM2,
   runM3,
   runM4,
+  runM4Hulls,
   runM6,
   runM8,
   runM11,
@@ -159,6 +165,49 @@ test('M4 moving slot convergence is deterministic', LONG, async () => {
   assert.ok('settleTimeS' in result.metrics);
   assert.ok('controlSignChangesPerS' in result.metrics);
   assert.ok('collisions' in result.metrics);
+});
+
+test('same AI formation intent on Wasp vs Atlas produces hull-relative envelopes', LONG, async () => {
+  const waspScale = deriveEnemyMotionScale('ship_wasp');
+  const atlasScale = deriveEnemyMotionScale('ship_atlas');
+  const muleScale = deriveEnemyMotionScale('ship_mule');
+  assert.equal(waspScale.speed, 1, 'Wasp is the identity reference for enemy caps');
+  assert.ok(atlasScale.speed < 0.8, 'Atlas commits at a lower fraction of the same intercept cap');
+  assert.ok(atlasScale.slew < waspScale.slew);
+  assert.ok(atlasScale.turnBeforeBurn < waspScale.turnBeforeBurn);
+  assert.equal(muleScale.speed, ENEMY_MOTION_IDENTITY_SCALE.speed, 'unmapped hulls keep the historical cap');
+
+  const result = await runTwice(() => runM4Hulls({ seed: SEED }));
+  assert.equal(result.metrics.scenarioId, 'M4-hulls');
+  assert.equal(result.metrics.sharedEnvelope, false);
+  const wasp = result.metrics.hulls.ship_wasp;
+  const atlas = result.metrics.hulls.ship_atlas;
+  assert.ok(wasp && atlas);
+  assert.ok(wasp.peakSpeed > 5 && atlas.peakSpeed > 1);
+  assert.ok(wasp.peakClosingSpeed > atlas.peakClosingSpeed, 'Wasp closes faster than Atlas on the same slot');
+  assert.ok(wasp.peakSpeed > atlas.peakSpeed, 'Wasp peak speed exceeds Atlas on the same intent');
+  assert.ok(atlas.meanAbsYawRate < wasp.meanAbsYawRate || atlas.offAxisBurnFraction < wasp.offAxisBurnFraction,
+    'Atlas turn commitment is heavier: slower yaw or less off-axis burn');
+
+  const spreadKeys = ['peakSpeed', 'peakClosingSpeed', 'peakOvershoot', 'meanHeadingError', 'offAxisBurnFraction'];
+  const spreadCount = spreadKeys.filter((key) => relativeSpread(wasp[key], atlas[key]) >= 0.18).length;
+  assert.ok(spreadCount >= 2, 'same intent must separate Wasp and Atlas on at least two envelope metrics');
+  console.log('\nM4 hull envelopes\n' + formatM4HullTable(result.metrics) + '\n');
+});
+
+test('mutation: shared enemy envelope collapses Wasp vs Atlas differentiation', LONG, async () => {
+  const live = await runM4Hulls({ seed: SEED, sharedEnvelope: false });
+  const forced = await runM4Hulls({ seed: SEED, sharedEnvelope: true });
+  const liveWasp = live.metrics.hulls.ship_wasp;
+  const liveAtlas = live.metrics.hulls.ship_atlas;
+  const forcedWasp = forced.metrics.hulls.ship_wasp;
+  const forcedAtlas = forced.metrics.hulls.ship_atlas;
+  const spreadKeys = ['peakSpeed', 'peakClosingSpeed', 'peakOvershoot', 'meanHeadingError', 'offAxisBurnFraction'];
+  const liveSpread = spreadKeys.filter((key) => relativeSpread(liveWasp[key], liveAtlas[key]) >= 0.18).length;
+  const forcedSpread = spreadKeys.filter((key) => relativeSpread(forcedWasp[key], forcedAtlas[key]) >= 0.18).length;
+  assert.ok(liveSpread >= 2, 'live hull envelopes must differentiate before the mutation is meaningful');
+  assert.ok(forcedSpread < 2, 'forcing one shared envelope must turn the differentiation assertion red');
+  assert.equal(forced.metrics.sharedEnvelope, true);
 });
 
 test('M6 interceptor scissors is deterministic (bad numbers are the baseline)', LONG, async () => {

@@ -1,4 +1,8 @@
 import {
+  deriveEnemyMotionScale,
+  ENEMY_MOTION_IDENTITY_SCALE,
+} from '../data/flightFeelEnvelopes.js';
+import {
   ContactKind,
   ManeuverKind,
   TraceLayer,
@@ -72,7 +76,16 @@ const DEFAULTS = Object.freeze({
   heavyTargetClosingSpeed: 22,
   capitalTargetClosingSpeed: 16,
   massApproachRangeMult: 2.8,
+
+  // Desired-state tracking (§21A.7). Gains are identity-hull seeds; hull scale then
+  // makes a Wasp snap onto a slot and an Atlas commit without twitching.
+  desiredKp: 0.085,
+  desiredKv: 0.55,
+  desiredMaxForwardAccel: 96,
+  desiredMaxLateralAccel: 52,
 });
+
+const ZERO_VEL = Object.freeze({ x: 0, z: 0 });
 const EMPTY_TRAJECTORY = Object.freeze([]);
 
 export class ManeuverPlanner {
@@ -92,6 +105,7 @@ export class ManeuverPlanner {
     this.workCounters = config.workCounters === true
       ? { contactIndexBuilds: 0, indexedContactVisits: 0, legacyContactVisits: 0 }
       : null;
+    this.resolveHull = typeof config.resolveHull === 'function' ? config.resolveHull : null;
   }
 
   plan({ tick, entityId, perception, behavior, directive }) {
@@ -135,9 +149,10 @@ export class ManeuverPlanner {
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
     const mustRejoin = !intent.breakFormation && formationDistance > rejoinDistance;
     const predictedFormationSlot = predictFormationSlot(intent, this.config.formationPredictionTicks);
+    const hullScale = hullScaleFor(self, entityId, this.resolveHull);
     let desired = mustRejoin
-      ? seekPoint(self, predictedFormationSlot, 1)
-      : desiredForIntent(intent, self, target, contactSource, this.seed, entityId, this.config, this.workCounters);
+      ? trackPoint(self, predictedFormationSlot, intent.formationVelocity, 1)
+      : desiredForIntent(intent, self, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
 
     desired = applyFriendlySeparation(desired, self, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
     desired = applyShipCollisionAvoidance(desired, self, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -172,7 +187,7 @@ export class ManeuverPlanner {
     const rightDot = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
     const slowRadius = approachSlowRadius(kind, formationBound, this.config);
-    const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config);
+    const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config, hullScale);
     const closing = target ? closingSpeed(self, target) : 0;
     const localClosingLimit = target
       ? closeApproachLimit(kind, intent, self, target, this.config, envelope.maxClosingSpeed)
@@ -186,12 +201,24 @@ export class ManeuverPlanner {
       const over = speed - envelope.maxSpeed;
       throttle *= clamp(1 - over / Math.max(envelope.maxSpeed, 1), 0, 1);
     }
-    if (Math.abs(angleError) > this.config.turnBeforeBurnAngle) throttle *= 0.35;
+    const turnGate = this.config.turnBeforeBurnAngle * hullScale.turnBeforeBurn;
+    if (Math.abs(angleError) > turnGate) throttle *= 0.35;
     if (velocityAlongDesired > envelope.maxSpeed) throttle *= 0.25;
 
     const allowReverse = kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
-    let rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
-    let rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+    const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
+    let rawForward;
+    let rawRight;
+    if (tracked) {
+      const axes = desiredAxes(self, desired, desiredUnit, hullScale, this.config);
+      rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
+      rawRight = axes.right * strafeAuthorityForKind(kind);
+      if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
+      if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) rawForward *= throttle;
+    } else {
+      rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
+      rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+    }
     if (speedLimited || closingLimited) {
       rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
       rawRight *= 0.35;
@@ -201,13 +228,13 @@ export class ManeuverPlanner {
       rawRight = 0;
     }
 
-    const rawTorqueYaw = yawRequestFor(angleError, kind, this.config);
+    const rawTorqueYaw = yawRequestFor(angleError, kind, this.config, hullScale);
     const emergencyManeuver = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver });
+    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew });
 
     const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
@@ -348,31 +375,33 @@ function predictFormationSlot(intent, predictionTicks) {
   };
 }
 
-function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters) {
+function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters, hullScale) {
   if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
-    return seekPoint(self, intent.flightPoint, 1);
+    return commitPoint(self, intent.flightPoint, config.interceptSpeed * (hullScale && hullScale.speed || 1));
   }
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
-      return target ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign) : seekPoint(self, intent.formationSlot, 0.7);
+      return target
+        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign, config.interceptSpeed * (hullScale && hullScale.speed || 1))
+        : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
-      return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : seekPoint(self, intent.formationSlot, 0.7);
+      return target ? orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     }
     case ManeuverKind.SCREEN:
-      return screen(self, target, intent.formationSlot);
+      return screen(self, target, intent.formationSlot, intent.formationVelocity);
     case ManeuverKind.APPROACH_SOCKET:
     case ManeuverKind.CUT_TETHER:
-      return target ? seekPoint(self, target.pos, 1) : seekPoint(self, intent.formationSlot, 0.8);
+      return target ? seekPoint(self, target.pos, 1) : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.8);
     case ManeuverKind.ESCAPE_TETHER:
       return escapeTether(self, target || nearestTether(contactIndex.tethers, self, counters, contactIndex.tethers === contactIndex.ships ? 'legacy' : 'indexed'), seed, entityId);
     case ManeuverKind.RETREAT:
       return retreat(self, contactIndex.ships, intent.formationSlot, counters, contactIndex.ships === contactIndex.tethers ? 'legacy' : 'indexed');
     case ManeuverKind.FORMATION:
-      return seekPoint(self, intent.formationSlot, 0.8);
+      return trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.8);
     case ManeuverKind.HOLD:
     default:
-      return seekPoint(self, intent.formationSlot || self.pos, 0.4);
+      return trackPoint(self, intent.formationSlot || self.pos, intent.formationVelocity, 0.4);
   }
 }
 
@@ -384,7 +413,7 @@ function findContactById(contacts, targetId, counters) {
   return null;
 }
 
-function intercept(self, target, horizonTicks, lateralSign = 0) {
+function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72) {
   const distance = distance2(self.pos, target.pos);
   const horizon = clamp(distance / 12, 6, horizonTicks);
   const point = { x: target.pos.x + target.vel.x * horizon / 60, z: target.pos.z + target.vel.z * horizon / 60 };
@@ -395,7 +424,7 @@ function intercept(self, target, horizonTicks, lateralSign = 0) {
     point.x += -dz / length * offset;
     point.z += dx / length * offset;
   }
-  return seekPoint(self, point, 1);
+  return commitPoint(self, point, commitSpeed, target.vel);
 }
 
 function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
@@ -408,13 +437,18 @@ function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
   return { x: tangentX + radialX * 1.15, z: tangentZ + radialZ * 1.15, arrivalDistance: Math.abs(dist - radius) };
 }
 
-function screen(self, target, formationSlot) {
-  if (!target) return seekPoint(self, formationSlot, 0.8);
+function screen(self, target, formationSlot, formationVelocity) {
+  if (!target) return trackPoint(self, formationSlot, formationVelocity, 0.8);
   const point = {
     x: formationSlot.x * 0.65 + target.pos.x * 0.35,
     z: formationSlot.z * 0.65 + target.pos.z * 0.35,
   };
-  return seekPoint(self, point, 0.85);
+  const vel = formationVelocity || ZERO_VEL;
+  const blended = {
+    x: (vel.x || 0) * 0.65 + (target.vel && target.vel.x || 0) * 0.35,
+    z: (vel.z || 0) * 0.65 + (target.vel && target.vel.z || 0) * 0.35,
+  };
+  return trackPoint(self, point, blended, 0.85);
 }
 
 function escapeTether(self, tether, _seed, _entityId) {
@@ -446,6 +480,41 @@ function seekPoint(self, point, throttle) {
   return { x: dx * throttle, z: dz * throttle, arrivalDistance: distance };
 }
 
+function trackPoint(self, point, velocity, throttle) {
+  const target = point || self.pos;
+  const dx = target.x - self.pos.x, dz = target.z - self.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const vel = velocity || ZERO_VEL;
+  return {
+    x: dx * throttle,
+    z: dz * throttle,
+    arrivalDistance: distance,
+    desiredPos: target,
+    desiredVel: vel,
+    control: 'track',
+  };
+}
+
+function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL) {
+  const target = point || self.pos;
+  const dx = target.x - self.pos.x, dz = target.z - self.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const inv = distance > 1e-9 ? 1 / distance : 0;
+  const speed = Math.max(8, commitSpeed || 0);
+  const feed = feedVel || ZERO_VEL;
+  return {
+    x: dx,
+    z: dz,
+    arrivalDistance: distance,
+    desiredPos: target,
+    desiredVel: {
+      x: (feed.x || 0) * 0.35 + dx * inv * speed,
+      z: (feed.z || 0) * 0.35 + dz * inv * speed,
+    },
+    control: 'track',
+  };
+}
+
 function nearestTether(contacts, self, counters, counterMode = 'legacy') {
   let best = null, bestDistance = Infinity;
   for (const contact of contacts) {
@@ -471,7 +540,7 @@ function applyFriendlySeparation(desired, self, contacts, config, counters, coun
     x += dx / dist * strength;
     z += dz / dist * strength;
   }
-  return { x, z, arrivalDistance: desired.arrivalDistance };
+  return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
 function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy') {
@@ -517,7 +586,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     x = x * (1 - blend) + passDirection.x * blend;
     z = z * (1 - blend) + passDirection.z * blend;
   }
-  return { x, z, arrivalDistance: desired.arrivalDistance };
+  return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
 function closeApproachLimit(kind, intent, self, target, config, fallback) {
@@ -565,33 +634,60 @@ function applyObstacleAvoidance(desired, self, contacts, config, counters, count
     x += away.x * strength;
     z += away.z * strength;
   }
-  return { x, z, arrivalDistance: desired.arrivalDistance };
+  return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
-function motionEnvelope(kind, intent, arrival, formationDistance, formationBound, config) {
+function motionEnvelope(kind, intent, arrival, formationDistance, formationBound, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
+  const speed = hullScale && hullScale.speed > 0 ? hullScale.speed : 1;
+  const closing = hullScale && hullScale.closing > 0 ? hullScale.closing : 1;
+  let maxSpeed;
+  let maxClosingSpeed;
   switch (kind) {
     case ManeuverKind.HOLD:
-      return { maxSpeed: arrival <= config.arrivalRadius ? 0 : config.holdSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+      maxSpeed = arrival <= config.arrivalRadius ? 0 : config.holdSpeed;
+      maxClosingSpeed = config.maxApproachClosingSpeed;
+      break;
     case ManeuverKind.FORMATION:
-      return { maxSpeed: clamp(Math.max(config.patrolSpeed, formationDistance * 0.42), config.patrolSpeed, config.formationSpeed), maxClosingSpeed: config.maxApproachClosingSpeed };
+      maxSpeed = clamp(Math.max(config.patrolSpeed, formationDistance * 0.42), config.patrolSpeed, config.formationSpeed);
+      maxClosingSpeed = config.maxApproachClosingSpeed;
+      break;
     case ManeuverKind.SCREEN:
-      return { maxSpeed: config.screenSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+      maxSpeed = config.screenSpeed;
+      maxClosingSpeed = config.maxApproachClosingSpeed;
+      break;
     case ManeuverKind.ORBIT:
-      return { maxSpeed: config.orbitSpeed, maxClosingSpeed: config.maxOrbitClosingSpeed };
+      maxSpeed = config.orbitSpeed;
+      maxClosingSpeed = config.maxOrbitClosingSpeed;
+      break;
     case ManeuverKind.APPROACH_SOCKET:
     case ManeuverKind.CUT_TETHER:
-      return { maxSpeed: Math.min(config.approachSpeed, Math.max(config.patrolSpeed, arrival * 0.45)), maxClosingSpeed: config.maxApproachClosingSpeed };
+      maxSpeed = Math.min(config.approachSpeed, Math.max(config.patrolSpeed, arrival * 0.45));
+      maxClosingSpeed = config.maxApproachClosingSpeed;
+      break;
     case ManeuverKind.INTERCEPT:
-      return { maxSpeed: config.interceptSpeed, maxClosingSpeed: Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12) };
+      maxSpeed = config.interceptSpeed;
+      maxClosingSpeed = Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12);
+      break;
     case ManeuverKind.RETREAT:
-      return { maxSpeed: config.retreatSpeed, maxClosingSpeed: Infinity };
+      maxSpeed = config.retreatSpeed;
+      maxClosingSpeed = Infinity;
+      break;
     case ManeuverKind.ESCAPE_TETHER:
-      return { maxSpeed: config.escapeSpeed, maxClosingSpeed: Infinity };
+      maxSpeed = config.escapeSpeed;
+      maxClosingSpeed = Infinity;
+      break;
     case ManeuverKind.CLEAR_DEADLOCK:
-      return { maxSpeed: config.clearDeadlockSpeed, maxClosingSpeed: Infinity };
+      maxSpeed = config.clearDeadlockSpeed;
+      maxClosingSpeed = Infinity;
+      break;
     default:
-      return { maxSpeed: config.patrolSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
+      maxSpeed = config.patrolSpeed;
+      maxClosingSpeed = config.maxApproachClosingSpeed;
   }
+  return {
+    maxSpeed: maxSpeed * speed,
+    maxClosingSpeed: Number.isFinite(maxClosingSpeed) ? maxClosingSpeed * closing : maxClosingSpeed,
+  };
 }
 
 function strafeAuthorityForKind(kind) {
@@ -610,9 +706,11 @@ function strafeAuthorityForKind(kind) {
   }
 }
 
-function yawRequestFor(angleError, kind, config) {
+function yawRequestFor(angleError, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
   if (Math.abs(angleError) < config.yawDeadband) return 0;
-  return clamp(angleError / config.yawSoftAngle, -yawLimitForKind(kind), yawLimitForKind(kind));
+  const yaw = hullScale && hullScale.yaw > 0 ? hullScale.yaw : 1;
+  const limit = yawLimitForKind(kind) * yaw;
+  return clamp(angleError / config.yawSoftAngle, -limit, limit);
 }
 
 function yawLimitForKind(kind) {
@@ -633,8 +731,9 @@ function yawLimitForKind(kind) {
 
 function smoothControls(runtime, tick, raw, config, options = {}) {
   const ticks = Math.max(1, Number.isInteger(runtime.lastTick) ? tick - runtime.lastTick : 1);
-  const inputStep = (options.emergency ? config.emergencyInputSlewPerTick : config.inputSlewPerTick) * ticks;
-  const torqueStep = (options.emergency ? config.emergencyTorqueSlewPerTick : config.torqueSlewPerTick) * ticks;
+  const slew = options.slew > 0 ? options.slew : 1;
+  const inputStep = (options.emergency ? config.emergencyInputSlewPerTick : config.inputSlewPerTick) * ticks * slew;
+  const torqueStep = (options.emergency ? config.emergencyTorqueSlewPerTick : config.torqueSlewPerTick) * ticks * slew;
   const forward = approach(runtime.smoothedForward || 0, raw.forward, inputStep);
   const right = approach(runtime.smoothedRight || 0, raw.right, inputStep);
   const torqueYaw = approach(runtime.smoothedTorqueYaw || 0, raw.torqueYaw, torqueStep);
@@ -685,4 +784,48 @@ function countContactVisit(counters, mode) {
 
 function identity(value) {
   return value;
+}
+
+function hullScaleFor(self, entityId, resolveHull) {
+  const hint = typeof resolveHull === 'function' ? resolveHull(entityId) : null;
+  const hullId = (self && (self.hullId || self.defId))
+    || (hint && hint.hullId)
+    || null;
+  const flightClass = (self && self.flightClass)
+    || (hint && hint.flightClass)
+    || null;
+  return deriveEnemyMotionScale(hullId, flightClass);
+}
+
+function desiredAxes(self, desired, desiredUnit, hullScale, config) {
+  const pos = desired.desiredPos;
+  const vel = desired.desiredVel || ZERO_VEL;
+  const kp = config.desiredKp * (hullScale && hullScale.track > 0 ? hullScale.track : 1);
+  const kv = config.desiredKv * (hullScale && hullScale.damp > 0 ? hullScale.damp : 1);
+  const rightX = -desiredUnit.z;
+  const rightZ = desiredUnit.x;
+  const epx = pos.x - self.pos.x;
+  const epz = pos.z - self.pos.z;
+  const evx = (vel.x || 0) - (self.vel.x || 0);
+  const evz = (vel.z || 0) - (self.vel.z || 0);
+  const alongA = kp * (epx * desiredUnit.x + epz * desiredUnit.z) + kv * (evx * desiredUnit.x + evz * desiredUnit.z);
+  const latA = kp * (epx * rightX + epz * rightZ) + kv * (evx * rightX + evz * rightZ);
+  const wx = desiredUnit.x * alongA + rightX * latA;
+  const wz = desiredUnit.z * alongA + rightZ * latA;
+  const c = Math.cos(self.rot || 0);
+  const s = Math.sin(self.rot || 0);
+  const maxFwd = Math.max(1, config.desiredMaxForwardAccel * (hullScale && hullScale.accel > 0 ? hullScale.accel : 1));
+  const maxLat = Math.max(1, config.desiredMaxLateralAccel * (hullScale && hullScale.strafe > 0 ? hullScale.strafe : 1));
+  return {
+    forward: clamp((wx * c + wz * s) / maxFwd, -1, 1),
+    right: clamp((-wx * s + wz * c) / maxLat, -1, 1),
+  };
+}
+
+function stampDesired(source, next) {
+  if (!source || source.control !== 'track') return next;
+  next.control = 'track';
+  next.desiredPos = source.desiredPos;
+  next.desiredVel = source.desiredVel;
+  return next;
 }

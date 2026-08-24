@@ -3,7 +3,9 @@
 // Hitch and Drifter share drive_reaction_m. The propulsion kernel commands acceleration
 // (force = a * mass), so hull mass cancels and an empty-fit Hitch is identical to an empty-fit
 // Drifter. These envelopes are the player-only shaping seam (§21A.5): they do not change
-// combatSpeed / maxSpeed, and they are not applied to NPCs or to an active drawn-route follow.
+// combatSpeed / maxSpeed, and they are not applied to NPC propulsion. Enemy maneuver
+// *planning* derives hull-relative scales from the same rows via deriveEnemyMotionScale
+// (one truth per hull; do not author a second number table).
 
 const IDENTITY = Object.freeze({
   id: 'identity',
@@ -142,6 +144,40 @@ const CLASS_FALLBACK = Object.freeze({
   }),
 });
 
+// Sibling player hulls that have no own feel row still share one of the authored rows.
+// Do not map ship_mule: 47-A recovery/thief actors fly that hull and must keep identity scale.
+const ENEMY_HULL_FEEL_ALIASES = Object.freeze({
+  ship_hornet: 'ship_wasp',
+  ship_ranger: 'ship_kestrel',
+  ship_bastion: 'capital',
+  ship_warden: 'capital',
+  ship_colossus: 'capital',
+  ship_leviathan: 'capital',
+  ship_ironback: 'miner',
+  ship_pelican: 'miner',
+});
+
+const ENEMY_MOTION_REFERENCE_HULL = 'ship_wasp';
+
+export const ENEMY_MOTION_IDENTITY_SCALE = Object.freeze({
+  id: 'identity',
+  identity: true,
+  speed: 1,
+  closing: 1,
+  yaw: 1,
+  yawAccel: 1,
+  yawBrake: 1,
+  strafe: 1,
+  slew: 1,
+  turnBeforeBurn: 1,
+  track: 1,
+  damp: 1,
+  accel: 1,
+});
+
+const ENEMY_MOTION_SCALE_CACHE = new Map();
+let forcedSharedEnemyMotionScale = null;
+
 export function hullIdFromEntity(entity) {
   if (!entity || typeof entity !== 'object') return null;
   const data = entity.data;
@@ -182,6 +218,97 @@ export function applyFeelEnvelope(profile, hullId, flightClass = null) {
 
 export function pathFollowBlocksFeel(input) {
   return !!(input && input.autoTargetPath && input.autoTargetPath.active);
+}
+
+/**
+ * Enemy maneuver scales, derived from the player feel rows. Wasp is the reference so a Wasp
+ * raider keeps the historical global caps (identity) and a heavier hull commits slower.
+ * Unknown hulls stay identity — they do not borrow hauler/capital class fallbacks.
+ */
+export function deriveEnemyMotionScale(hullId, flightClass = null) {
+  if (forcedSharedEnemyMotionScale) return forcedSharedEnemyMotionScale;
+  const id = hullId == null ? '' : String(hullId);
+  const cls = flightClass == null ? '' : String(flightClass);
+  const cacheKey = id + '|' + cls;
+  const cached = ENEMY_MOTION_SCALE_CACHE.get(cacheKey);
+  if (cached) return cached;
+  const feel = feelForEnemyHull(id);
+  const scale = scaleFromFeel(feel);
+  ENEMY_MOTION_SCALE_CACHE.set(cacheKey, scale);
+  return scale;
+}
+
+/**
+ * Test/mutation hook. Pass true (or the identity scale) to force every hull onto one envelope.
+ * Pass null/false to restore live derivation. Never call from gameplay.
+ */
+export function forceSharedEnemyMotionEnvelope(scale = true) {
+  if (scale == null || scale === false) {
+    forcedSharedEnemyMotionScale = null;
+    return null;
+  }
+  forcedSharedEnemyMotionScale = scale === true ? ENEMY_MOTION_IDENTITY_SCALE : freezeMotionScale(scale);
+  return forcedSharedEnemyMotionScale;
+}
+
+export function isSharedEnemyMotionEnvelopeForced() {
+  return forcedSharedEnemyMotionScale != null;
+}
+
+function feelForEnemyHull(hullId) {
+  if (hullId && PLAYER_FEEL_ENVELOPES[hullId]) return PLAYER_FEEL_ENVELOPES[hullId];
+  const alias = hullId ? ENEMY_HULL_FEEL_ALIASES[hullId] : null;
+  if (alias && PLAYER_FEEL_ENVELOPES[alias]) return PLAYER_FEEL_ENVELOPES[alias];
+  if (alias && CLASS_FALLBACK[alias]) return CLASS_FALLBACK[alias];
+  return IDENTITY;
+}
+
+function scaleFromFeel(feel) {
+  if (!feel || feel.identity) return ENEMY_MOTION_IDENTITY_SCALE;
+  const ref = PLAYER_FEEL_ENVELOPES[ENEMY_MOTION_REFERENCE_HULL];
+  const speed = ratio(feel.translation, ref.translation);
+  const yawAccel = ratio(feel.yawAccel, ref.yawAccel);
+  return freezeMotionScale({
+    id: feel.id,
+    identity: false,
+    speed,
+    closing: clamp(speed * 0.55 + ratio(feel.governor, ref.governor) * 0.45, 0.42, 1.2),
+    yaw: ratio(feel.yawRate, ref.yawRate),
+    yawAccel,
+    yawBrake: ratio(feel.yawBrake, ref.yawBrake),
+    strafe: ratio(feel.strafe, ref.strafe),
+    slew: yawAccel,
+    turnBeforeBurn: yawAccel,
+    track: ratio(ref.stopHorizon, feel.stopHorizon),
+    damp: ratio(feel.governor, ref.governor),
+    accel: speed,
+  });
+}
+
+function freezeMotionScale(scale) {
+  return Object.freeze({
+    id: 'identity',
+    identity: false,
+    speed: 1,
+    closing: 1,
+    yaw: 1,
+    yawAccel: 1,
+    yawBrake: 1,
+    strafe: 1,
+    slew: 1,
+    turnBeforeBurn: 1,
+    track: 1,
+    damp: 1,
+    accel: 1,
+    ...scale,
+  });
+}
+
+function ratio(value, reference) {
+  const num = Number(value);
+  const den = Number(reference);
+  if (!(num > 0) || !(den > 0)) return 1;
+  return num / den;
 }
 
 function scaleProfile(profile, env) {
