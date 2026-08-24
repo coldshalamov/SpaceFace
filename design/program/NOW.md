@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| FIX-K opening buffer gaps | fable-campaign-20260824 lane FIXK | MUTATING | `src/render/openingGpuAdmission.js`, `src/render/startupGpuResidency.js`, `src/render/renderer.js`, new donor contract test | review, 5-start GPU measurement, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
