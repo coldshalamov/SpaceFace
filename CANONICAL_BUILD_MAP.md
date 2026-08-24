@@ -1037,6 +1037,36 @@ spawn, and the opening budget is already spoken for.
 | **B · kill bricks** | `.04`–`.10` | `PQ-073` compose slice, `PQ-075` next-contact, `PQ-064`/`PQ-072` shader keys, `PQ-074` upload, `PQ-054` leftover admission, `PQ-101` catch-up | First hostile and Continue no longer drop 40–250+ ms bricks |
 | **C · crowded 60 fps** | `.11`–`.18` planned | `PQ-068` submit, `PQ-052` batching, `PQ-076` lanes, `PQ-108` tiny LOD, `PQ-080` cadence, `PQ-097` bloom-if-pole, `PQ-087` autosave, `PQ-094` sweep | Promote only after hitch count is halved or the classifier names that owner |
 
+**2026-08-24 — WAVE C IS MEASURED AND SEVEN OF EIGHT LEAVES ARE CLOSED AS NO-OPS.** A crowded scene
+was built deliberately (218 draw calls, 12 nearby contacts) rather than an idle fly, and every phase
+came in under the 16.7 ms budget: **render p95 7.4 ms, presentation p95 9.4 ms, sim p95 7.7 ms.**
+The poles these leaves assume do not exist on this machine.
+
+| Leaf | Disposition | The number that decided it |
+|---|---|---|
+| `.11` glass/runway submit | **CLOSE — NO-OP** | 39-43 submitted objects; render p95 7.4 ms. Submission was not the pole. |
+| `.12` rigid opaque batching | **CLOSE — NO-OP** | 218 draw calls and render still 7.4 ms. No evidence to replay the rejected candidate. |
+| `.13` canopy/plume lanes | **CLOSE — NO-OP** | No canopy or plume lane was ever named as an owner. |
+| `.14` tiny-fighter LOD | **CLOSE — NO-OP** | Crowded contacts were CLOSE, not 30-pixel fighters. |
+| `.15` off-table AI sleep | **CLOSE — NO-OP** | tacticalAI 3.0 ms p95, physics 1.2 ms; off-table sleep is already wired. |
+| `.16` cheaper bloom/HDR | **CLOSE — NO-OP** | bloom scene/downsample/composite p95 5.8 / 0.2 / 0.1 ms. Post was not the pole. |
+| `.17` autosave off the callback | **CLOSE — NO-OP** | Autosave owned **0** of 122 hitches. |
+| `.18` pole sweep | **JUSTIFIED — and this review IS it** | Only 71.3 % of hitches got a named owner. |
+
+**What the sweep found instead.** 122 hitch frames (11.7 %) remain, and the largest bucket is
+**external scheduling (55) plus unknown (35)** — outside the measured game phases. The strongest
+in-game lead points back at Wave B territory, not Wave C: four more `bloomScene` bricks of
+**219-496 ms**, each accompanied by new shader-program or geometry activity, while an authored
+background job was still running. **Compile / upload / admission again, in the crowded and
+Continue paths this time.**
+
+**Instrument limits, stated so the next reader does not over-trust this:** no GPU timestamp queries,
+so compilation, upload and driver stalls cannot be separated precisely; 35 hitches remain unowned;
+the crowd was synthetic, not an organic playthrough; the 30-pixel fighter case was never exercised;
+and the authored-settlement gate would not complete, so this reflects the live fallback/admission
+state rather than a fully settled fleet.
+
+
 Illegal here: default quality cuts, headless hitch-budget as acceptance, replaying the rejected
 BatchedMesh candidate, starting Worker/WebGPU because Wave B is hard, shrinking hail 5200 as a
 cull.

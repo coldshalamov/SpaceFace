@@ -7734,7 +7734,7 @@
       "priority": 337,
       "title": "Tighten glass-runway submit after hitch count halves",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.01",
         "PQ-129.10"
@@ -7750,7 +7750,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-068. Promote to ready only when hitch count is halved or the classifier names runway submit. Off-glass roots already hide. Do not pop on-glass ships. Do not shrink hail 5200."
+      "brief": "Reserved PQ-068. Promote to ready only when hitch count is halved or the classifier names runway submit. Off-glass roots already hide. Do not pop on-glass ships. Do not shrink hail 5200.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.12",
@@ -7758,7 +7759,7 @@
       "priority": 338,
       "title": "Finish rigid opaque batching for unique hulls",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.11"
       ],
@@ -7773,7 +7774,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-052. Instance+BatchedMesh is partial. Unique on-glass hulls still pay many opaque draws. Replaying the rejected heterogeneous candidate that lost 250-616 ms p95 is forbidden. Same-picture A/B required."
+      "brief": "Reserved PQ-052. Instance+BatchedMesh is partial. Unique on-glass hulls still pay many opaque draws. Replaying the rejected heterogeneous candidate that lost 250-616 ms p95 is forbidden. Same-picture A/B required.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.13",
@@ -7781,7 +7783,7 @@
       "priority": 339,
       "title": "Collapse on-glass canopy and plume lanes",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.12"
       ],
@@ -7796,7 +7798,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-076. Keep canopies and plumes out of the rigid opaque batch. Collapse shared programs only if pixels match."
+      "brief": "Reserved PQ-076. Keep canopies and plumes out of the rigid opaque batch. Collapse shared programs only if pixels match.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.14",
@@ -7804,7 +7807,7 @@
       "priority": 340,
       "title": "Cheap LOD for tiny on-glass fighters",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.11"
       ],
@@ -7819,7 +7822,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-108. A 30-pixel on-glass fighter is cheap; close ships stay full. Selector exists; prove crowded flight with a pixel histogram. Not a far-world impostor."
+      "brief": "Reserved PQ-108. A 30-pixel on-glass fighter is cheap; close ships stay full. Selector exists; prove crowded flight with a pixel histogram. Not a far-world impostor.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.15",
@@ -7827,7 +7831,7 @@
       "priority": 341,
       "title": "Sleep off-table AI and traffic; keep the fight at 60 Hz",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.10"
       ],
@@ -7844,7 +7848,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-080 after PQ-066 when required. Only when sim is the pole and GPU present is already cheap. Input/flight/weapons/collisions stay 60 Hz. Hostiles stay awake. Do not start a sim Worker."
+      "brief": "Reserved PQ-080 after PQ-066 when required. Only when sim is the pole and GPU present is already cheap. Input/flight/weapons/collisions stay 60 Hz. Hostiles stay awake. Do not start a sim Worker.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.16",
@@ -7852,7 +7857,7 @@
       "priority": 342,
       "title": "Cheaper bloom/HDR only if present is the remaining pole",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.12"
       ],
@@ -7867,7 +7872,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-097 / PQ-078. July 2026 bloom-off did not save crowded p95. Close no-mutation if submit is still the pole. Stills must keep the default halo. Never disable bloom to pass a gate."
+      "brief": "Reserved PQ-097 / PQ-078. July 2026 bloom-off did not save crowded p95. Close no-mutation if submit is still the pole. Stills must keep the default halo. Never disable bloom to pass a gate.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.17",
@@ -7875,7 +7881,7 @@
       "priority": 343,
       "title": "Keep autosave off the display callback",
       "kind": "implementation",
-      "state": "planned",
+      "state": "deferred",
       "dependsOn": [
         "PQ-129.02"
       ],
@@ -7890,7 +7896,8 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-087. Capture is already sliced to 8/12 ms between rAFs. Wire autosave into the hitch classifier and yield after capture before Worker construction if .02 names it. Do not weaken transactional save."
+      "brief": "Reserved PQ-087. Capture is already sliced to 8/12 ms between rAFs. Wire autosave into the hitch classifier and yield after capture before Worker construction if .02 names it. Do not weaken transactional save.",
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
     },
     {
       "id": "PQ-129.18",
@@ -7898,7 +7905,7 @@
       "priority": 344,
       "title": "Pole sweep; mint missing reserved leaves",
       "kind": "program_control",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-129.03"
       ],
@@ -7914,7 +7921,8 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Reserved PQ-094. Recurring: if a live pole has no leaf, mint one in PERF_OPTION_SPACE and admit a PQ-129 leaf. If a leaf is disproved, keep the reject receipt. Never done forever."
+      "brief": "Reserved PQ-094. Recurring: if a live pole has no leaf, mint one in PERF_OPTION_SPACE and admit a PQ-129 leaf. If a leaf is disproved, keep the reject receipt. Never done forever.",
+      "note": "The 2026-08-24 crowded-scene review IS the pole sweep."
     },
     {
       "id": "PQ-130.01",
