@@ -8976,7 +8976,7 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "The wreck pack reaches the player: 44 authored models (hero wreck hulls plus component/fragment kits, authored-fracture grammar truss vs plated), currently zero referenced by src/. Wrecks are the cheapest variety in the game - no AI, no balance pass, no new systems; they need routing and placement. Done when a player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. Reuse before authoring."
+      "brief": "The wreck pack reaches the player: 44 authored models, currently zero referenced. ROUTE MEASURED 2026-08-24 (first attempt stopped): incubator GLBs FAIL the fail-closed live authored loader because they lack embedded authored identity - routing rows alone produce invisible wrecks (the section 8.5 class), and in-place byte-stamping of authored source was tried by a lane and REVERTED as a write-set violation. The honest route is promotion through the canonical release pipeline (source -> candidate -> optimized release GLBs + manifest transaction, the build-hull-release-assets.mjs shape adapted for places/props), THEN routing and placement. Salvage from the stopped attempt (pack catalog module, placement test skeleton, partsLibrary patch) is preserved in the campaign scratchpad salvage-pq13600/. Wrecks stay the cheapest variety in the game; reuse before authoring."
     },
     {
       "id": "PQ-136.01",
