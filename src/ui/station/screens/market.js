@@ -10,7 +10,7 @@ import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
 import { renderAdBoardNotice } from '../adBoard.js';
-import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { marketCardDrivers, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation } from '../../screens/market.js';
@@ -268,6 +268,7 @@ export function createMarketScreen(ctx) {
       const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
       const demand = demandLevel(r.entry);
       const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
+      const cardDrivers = marketCardDrivers(drivers.primary);
       const active = r.id === selectedId ? ' is-active' : '';
       const tracked = r.id === tracked_ ? ' is-tracked' : '';
       const held = heldQty(state, r.id);
@@ -283,7 +284,7 @@ export function createMarketScreen(ctx) {
           `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price">${fmt(buy)}<i> cr</i></span>` +
             `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span></span>` +
           `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'NORMAL DEMAND')}</span>` +
-          `<span class="sx-mkt-row__drivers" aria-hidden="true">${drivers.primary.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` +
+          (cardDrivers.length ? `<span class="sx-mkt-row__drivers" aria-hidden="true">${cardDrivers.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` : '') +
         `</button>`
       );
     }).join('');
@@ -495,7 +496,6 @@ export function createMarketScreen(ctx) {
           `<button type="button" class="sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy">Buy</button>` +
           `<button type="button" class="sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell">Sell</button>` +
         `</div>` +
-        `<div class="sx-trade__unit"><span>${mode === 'buy' ? 'Buy price' : 'Sell price'}</span><b>${fmt(unit)} cr</b><i>/ unit</i></div>` +
         `<div class="sx-qty">` +
           `<button type="button" class="sx-qty__b" data-q="-1" aria-label="Less">–</button>` +
           `<input class="sx-qty__in" type="text" inputmode="numeric" value="${qty}" aria-label="Quantity"/>` +

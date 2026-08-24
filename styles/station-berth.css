@@ -565,3 +565,62 @@
   .sx-app .sx-mkt__console { grid-column: 1; grid-row: 2; }
   .sx-app .sx-mkt__stage { grid-row: 3; }
 }
+
+/* REVIEW-UI: final fit and hierarchy contracts for the static station grids.
+   This file loads last; these rules deliberately defeat earlier single-line ellipsis declarations. */
+.sx-app .sx-ind-process__items { grid-auto-rows: minmax(68px, auto); }
+.sx-app .sx-ind-row__name {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+.sx-app .sx-ind-row__tier {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+.sx-app .sx-fac-row { height: auto; min-height: 72px; }
+.sx-app .sx-fac-row__name {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+.sx-app .sx-fac-node { width: 172px; min-height: 54px; }
+.sx-app .sx-fac-node__copy b {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.sx-app .sx-fac-node__copy em {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+/* Whole hulls carry more visual weight than recipes for intermediate goods. */
+.sx-app .sx-ind-process[data-process="ship"] .sx-ind-process__items { grid-template-columns: 1fr; }
+.sx-app .sx-ind-process[data-process="ship"] .sx-ind-row {
+  border-left: 3px solid var(--signal);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--signal) 12%, var(--sxb-panel-up)), var(--sxb-panel));
+}
+.sx-app .sx-ind-process[data-process="ship"] .sx-ind-row__name {
+  font-size: var(--sxb-t-body);
+  font-weight: 700;
+}
+
+/* Disabled fabrication is neutral hardware, not a second actionable hue. */
+.sx-app .sx-ind__console .sx-btn-primary:disabled {
+  background: var(--sxb-panel-hi);
+  color: var(--sxb-ink-3);
+  border: 1px solid var(--sxb-line-2);
+  opacity: 1;
+  cursor: not-allowed;
+}

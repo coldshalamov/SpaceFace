@@ -35,9 +35,19 @@ function stationType(ctx) {
 }
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
 
-function readiness(bp, state, stnType) {
+function ownsModule(state, defId) {
+  const player = state && state.player;
+  if (!player || !defId) return false;
+  if ((player.moduleInventory || []).some((module) => module && module.defId === defId)) return true;
+  return (player.ownedShips || []).some((ship) => (ship && ship.fittings || []).includes(defId));
+}
+
+export function industryReadiness(bp, state, stnType) {
   if (bp.requiresTech && !researched(state).has(bp.requiresTech)) return { state: 'tech', label: 'Tech locked' };
   if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: `Requires ${facilityName(bp.stationType)}` };
+  if (bp.category === 'augment' && bp.fromModule && !ownsModule(state, bp.fromModule)) {
+    return { state: 'source', label: `Needs ${niceName(bp.fromModule, 'module')}` };
+  }
   const it = items(state);
   for (const id in (bp.inputs || {})) if ((it[id] || 0) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
   return { state: 'ready', label: 'Ready to build' };
@@ -66,7 +76,7 @@ export function createIndustryScreen(ctx) {
           return `<section class="sx-ind-process" data-process="${category}">` +
             `<header class="sx-ind-process__head"><span>${icon(CAT_ICON[category], 15)}</span><b>${CAT_LABEL[category]}</b><i>${String(processIndex + 1).padStart(2, '0')}</i></header>` +
             `<div class="sx-ind-process__items">` + blueprints.map((bp) => {
-              const r = readiness(bp, state, stn);
+              const r = industryReadiness(bp, state, stn);
               const on = bp.id === selectedId ? ' is-active' : '';
               const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
               const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
@@ -119,7 +129,7 @@ export function createIndustryScreen(ctx) {
     const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
     if (!bp) { consoleEl.innerHTML = ''; return; }
     const stn = stationType(ctx);
-    const r = readiness(bp, state, stn);
+    const r = industryReadiness(bp, state, stn);
     const tone = r.state === 'ready' ? 'gain' : r.state === 'materials' ? 'warn' : 'loss';
     const sid = state && state.ui && state.ui.dockedStationId;
     const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
@@ -130,6 +140,11 @@ export function createIndustryScreen(ctx) {
     if (bp.stationType) {
       const matches = !stn || bp.stationType === stn;
       notes.push({ ok: matches, text: matches ? `${facilityName(bp.stationType)} online` : `Required: ${facilityName(bp.stationType)}` });
+    }
+    if (bp.category === 'augment' && bp.fromModule) {
+      const sourceName = niceName(bp.fromModule, 'module');
+      const sourceOwned = ownsModule(state, bp.fromModule);
+      notes.push({ ok: sourceOwned, text: sourceOwned ? `${sourceName} ready to augment` : `Required source: ${sourceName}` });
     }
     consoleEl.innerHTML =
       `<div class="sx-panel">` +
@@ -163,8 +178,7 @@ export function createIndustryScreen(ctx) {
     const bpId = b.getAttribute('data-build');
     const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
-    if (crafting && typeof crafting.build === 'function') { try { crafting.build(bpId, sid); } catch (_) {} }
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    attemptIndustryBuild({ crafting, bpId, stationId: sid });
     setTimeout(() => renderAll(ctx.state || {}), 80);
   });
   const onCraftChanged = () => renderAll(ctx.state || {});
@@ -176,7 +190,7 @@ export function createIndustryScreen(ctx) {
       const st = (c || ctx).state || {};
       if (!picked) {
         const stn = stationType(ctx);
-        const b = BLUEPRINTS.find((bp) => { const s = readiness(bp, st, stn).state; return s === 'ready' || s === 'materials'; });
+        const b = BLUEPRINTS.find((bp) => { const s = industryReadiness(bp, st, stn).state; return s === 'ready' || s === 'materials'; });
         if (b) selectedId = b.id;
         picked = true;
       }
@@ -190,4 +204,9 @@ export function createIndustryScreen(ctx) {
       }
     },
   };
+}
+
+export function attemptIndustryBuild({ crafting, bpId, stationId }) {
+  if (!crafting || typeof crafting.build !== 'function') return false;
+  try { return crafting.build(bpId, stationId) === true; } catch (_) { return false; }
 }

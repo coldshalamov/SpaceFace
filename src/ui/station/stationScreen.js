@@ -19,4 +19,8 @@ export const stationScreen = {
   onShow(ctx) { if (app && app.onShow) app.onShow(ctx); },
   onHide() { if (app && app.onHide) app.onHide(); },
   refresh(ctx, options) { if (app && app.refresh) app.refresh(ctx, options); },
+  dispose() {
+    if (app && app.dispose) app.dispose();
+    app = null;
+  },
 };

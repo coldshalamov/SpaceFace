@@ -42,6 +42,19 @@ export function marketQuoteValue(entry, commodity, side = 'buy') {
   return Math.max(0, Math.round(Number(live != null ? live : commodity && commodity.basePrice) || 0));
 }
 
+export function marketCardDrivers(primary = []) {
+  if (!Array.isArray(primary)) return [];
+  // Cards carry only commodity-specific or changing signals. The selected instrument retains the
+  // complete explanation, including station-wide geography and neutral baselines.
+  return primary.filter((item) => {
+    if (!item || item.id === 'geography') return false;
+    if (item.id === 'role') return item.direction !== 'flat';
+    if (item.id === 'conflict') return item.direction !== 'flat';
+    if (item.id === 'cycle') return item.value !== 'stable';
+    return true;
+  });
+}
+
 export function presentMarketDrivers({ state, stationId, commodity, entry, cycle } = {}) {
   const context = stationContext(state, stationId);
   const station = context.station || {};

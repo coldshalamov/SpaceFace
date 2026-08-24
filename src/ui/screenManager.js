@@ -508,6 +508,9 @@ export function createScreenManager(ctx) {
       if (rec && rec.mounted && rec.def && rec.def.onHide) {
         try { rec.def.onHide(); } catch (_) {}
       }
+      if (rec && rec.mounted && rec.def && rec.def.dispose) {
+        try { rec.def.dispose(); } catch (_) {}
+      }
       if (rec && rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     }
     registry.clear();
