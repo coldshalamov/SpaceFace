@@ -336,7 +336,7 @@ export function createContractsScreen(ctx) {
         ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
         : `${firstHourPrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
       return (
-        `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}" title="${escapeHtml(m.title || typeLabel(m.type))}"` +
+        `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}"` +
           ` style="--signal:${facTint(m)}"` +
           ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
           `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
@@ -492,7 +492,7 @@ export function createContractsScreen(ctx) {
                 `<span class="sx-job__body"><span class="sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
                   `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}</span></span>` +
                 (needs ? `<span class="sx-job__flag">${actionFlag}</span>` : '') +
-                `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}" title="${tracked ? 'Tracked mission' : 'Track this mission'}">` +
+                `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">` +
                   `<span aria-hidden="true">${tracked ? '◆' : '◇'}</span><b>${tracked ? 'Tracked' : 'Track'}</b>` +
                 `</button>` +
               `</div>`

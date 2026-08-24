@@ -3642,9 +3642,10 @@ html.sf-dyslexia #sf-galaxymap {
   cursor: pointer;
   transition: border-color .12s ease, color .12s ease;
 }
-#sf-galaxymap .gm-place-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+#sf-galaxymap .gm-place-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); color: var(--ink); }
 #sf-galaxymap .gm-place-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-place-btn:disabled {
+#sf-galaxymap .gm-place-btn:disabled,
+#sf-galaxymap .gm-place-btn[aria-disabled="true"] {
   opacity: .45;
   cursor: not-allowed;
   border-style: dashed; /* shape, not just opacity */
@@ -3779,9 +3780,10 @@ html.sf-dyslexia #sf-galaxymap {
   cursor: pointer;
   transition: border-color .12s ease, color .12s ease;
 }
-#sf-galaxymap .gm-ribbon-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
+#sf-galaxymap .gm-ribbon-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); color: var(--ink); }
 #sf-galaxymap .gm-ribbon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-ribbon-btn:disabled {
+#sf-galaxymap .gm-ribbon-btn:disabled,
+#sf-galaxymap .gm-ribbon-btn[aria-disabled="true"] {
   opacity: .42;
   cursor: not-allowed;
   border-style: dashed;
@@ -3954,7 +3956,9 @@ html.sf-dyslexia #sf-galaxymap {
   #sf-galaxymap .gm-tab[aria-selected="true"] { border: 2px solid Highlight; }
   /* Disabled state must survive the palette flattening, so keep it a SHAPE. */
   #sf-galaxymap .gm-ribbon-btn:disabled,
-  #sf-galaxymap .gm-place-btn:disabled { border-style: dashed; opacity: 1; }
+  #sf-galaxymap .gm-ribbon-btn[aria-disabled="true"],
+  #sf-galaxymap .gm-place-btn:disabled,
+  #sf-galaxymap .gm-place-btn[aria-disabled="true"] { border-style: dashed; opacity: 1; }
   #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] { border-left-width: 4px; }
 }
 `;
@@ -7247,7 +7251,7 @@ export const galaxyMapScreen = {
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
     const html = acts.map((a) => `<button class="gm-place-btn" type="button" data-place-action="${a.id}"
-      ${a.available ? '' : 'disabled'} aria-disabled="${!a.available}" title="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
+      ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
       host.innerHTML = html;
       this._lastPlaceActionsHtml = html;
@@ -7681,8 +7685,8 @@ export const galaxyMapScreen = {
           const a = ribbon.actions[id];
           if (!a) return '';
           return `<button class="gm-ribbon-btn" type="button" data-ribbon-action="${a.id}"
-            ${a.available ? '' : 'disabled'} aria-disabled="${!a.available}"
-            title="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
+            ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}"
+            data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
         }).join('');
       }
     }

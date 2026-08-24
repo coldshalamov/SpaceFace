@@ -187,7 +187,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       `</div>` +
       `<div class="sxb-ops">` +
         `<div class="sxb-ops__dock"></div>` +
-        `<button type="button" class="sxb-help" aria-expanded="false" aria-label="Explain the active station operation" title="Context help">?</button>` +
+        `<button type="button" class="sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">?</button>` +
       `</div>` +
       `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
@@ -422,7 +422,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const def = CMDTY_REC.get(id) || {};
       const volume = qty * Math.max(0, Number(def.volPerU) || 1);
       const pct = cap > 0 ? Math.max(2, volume / cap * 100) : 0;
-      return `<span title="${escapeHtml(CMDTY_NAME.get(id) || id)}: ${fmtCr(volume)}u" style="--bay-share:${pct.toFixed(2)}%"></span>`;
+      // No per-segment reveal: the bay is a role="img" summary whose children are presentational,
+      // so a hover-only tooltip would have no keyboard seat. The manifest rows directly below name
+      // every commodity with quantity and quote — the same facts, visibly.
+      return `<span style="--bay-share:${pct.toFixed(2)}%"></span>`;
     }).join('');
     openPop(
       `<div class="sx-pop__head">Cargo Hold <em>${fmtCr(used)} / ${fmtCr(cap)} u · ${usedPct.toFixed(0)}%</em></div>` +
@@ -493,7 +496,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!attr) return '';
         return `<button type="button" class="sxb-hstep ${cls}"${attr}` +
           (mode ? ` data-handoff-mode="${mode}"` : '') +
-          ` title="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
+          ` data-why="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
           `<span class="sxb-hstep__n">${i + 1}</span>` +
           `<span class="sxb-hstep__t">${escapeHtml(st.title)}</span></button>`;
       }).join('');
@@ -771,9 +774,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       return ghost ? '' : `<span class="sxb-vital__ok">${escapeHtml(text)}</span>`;
     }
     const cls = 'sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
-    const title = cost.title ? ` title="${escapeHtml(cost.title)}"` : '';
+    const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
     const copy = ghost ? label : `${label} · ${text}`;
-    return `<button type="button" class="${cls}" data-vital-act="${id}"${title}` +
+    return `<button type="button" class="${cls}" data-vital-act="${id}"${why}` +
       ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
   }
 

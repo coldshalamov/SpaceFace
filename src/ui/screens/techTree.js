@@ -59,6 +59,7 @@ const CSS = `
 #sf-techtree .tt-prereq .ok { color: var(--good); } #sf-techtree .tt-prereq .no { color: var(--danger); }
 #sf-techtree .tt-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 #sf-techtree .tt-actions button { width: 100%; padding: 9px; }
+#sf-techtree .tt-actions button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 #sf-techtree .tt-unlock { background: rgba(57,208,255,.12); border-color: var(--accent); color: #fff;
   text-shadow: 0 0 8px rgba(57,208,255,.6); }
 #sf-techtree .tt-foot { display: flex; gap: 16px; padding: 8px 18px; border-top: 1px solid var(--panel-edge);
@@ -589,7 +590,7 @@ export const techTreeScreen = {
     } else if (!canAfford) {
       actions.innerHTML = disabledActionHtml(readiness);
     } else {
-      actions.innerHTML = `<button class="tt-unlock" data-act="unlock" title="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
+      actions.innerHTML = `<button class="tt-unlock" data-act="unlock" data-why="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
     }
   },
 
@@ -633,7 +634,10 @@ function stateColor(s) { return s === 'researched' ? '#62e08a' : s === 'availabl
 function disabledActionHtml(readiness) {
   const label = readiness && readiness.actionLabel || 'Unavailable';
   const title = readiness && readiness.actionTitle || label;
-  return `<button disabled title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+  // aria-disabled, not disabled: a disabled control cannot take focus, so the reason a locked node
+  // is locked would be hover-only — the exact defect this sweep removes. The button carries no
+  // data-act, so it stays inert; focus only reveals the why.
+  return `<button aria-disabled="true" tabindex="0" data-why="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
 }
 
 function formatUnlocks(u) {

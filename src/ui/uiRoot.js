@@ -1568,6 +1568,9 @@ function injectHudCss() {
   .sf-target__tri-label { font-size:12px; letter-spacing:.08em; color:var(--text-secondary); opacity:.7; }
   .sf-target__tri-layer { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:.6; margin-left:auto; }
   .sf-tri { display:flex; align-items:center; gap:3px; }
+  /* Focusable so the tier-2 why (data-why: Energy/Kinetic/Explosive) answers keyboard focus, not
+     just hover. A thin bar glyph needs a generous focus target or it is unreachable. */
+  .sf-tri:focus-visible { outline:2px solid var(--text-primary); outline-offset:3px; border-radius:2px; }
   .sf-tri__k { font-size:12px; color:var(--text-secondary); opacity:.75; width:8px; text-align:center; }
   .sf-tri__bar { display:inline-block; width:26px; height:3px; background:rgba(255,255,255,.12); overflow:hidden; }
   .sf-tri__fill { display:block; width:100%; height:100%; transform-origin:left center; transform:scaleX(0);

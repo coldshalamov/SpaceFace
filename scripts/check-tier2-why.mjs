@@ -117,10 +117,10 @@ for (const site of SITES) {
     ["document.addEventListener('pointerout', onPointerOut, true)", 'pointer-out hides'],
     ['function whyTextFor(el)', 'the literal-attribute reader exists (enumerated text only)'],
     ['font:12px/1.45 system-ui', 'tip type sits on the 12px floor (grammar §3)'],
-    ['mountWhyReveal()', 'uiRoot mounts the one reveal'],
-    ["showWhyTip(text, x, y, 'causeLedger')", 'causeLedger delegates display to the shared mechanism with an owner token (not a second tooltip)'],
+    ['mountWhyReveal()', 'uiRoot mounts the one reveal', 'uiRoot'],
+    ["showWhyTip(text, x, y, 'causeLedger')", 'causeLedger delegates display to the shared mechanism with an owner token (not a second tooltip)', 'ledger'],
     ["hideWhyTip('data-why')", 'the reveal retracts only its own tip (ownership guard against sibling sweeps)'],
-    ["closest('.st-market, .sx-mkt')", 'the market price-why covers the LIVE station market host (.sx-mkt), not only the legacy one'],
+    ["closest('.st-market, .sx-mkt')", 'the market price-why covers the LIVE station market host (.sx-mkt), not only the legacy one', 'ledger'],
   ];
   const forbids = [
     [/addEventListener\(\s*['"]click/, 'the reveal must never listen to click (tier 2 must not become tier 3)'],
@@ -128,9 +128,12 @@ for (const site of SITES) {
     [/class\s*=\s*['"][^'"]*(pulse|blink|flash|panel|card|menu|modal)/, 'forbidden vocabulary in a class attribute'],
     [/classList/, 'the reveal adds no classes (naming is load-bearing; it adds none)'],
   ];
-  for (const [needle, label] of rules) {
-    const holder = needle === 'mountWhyReveal()' ? uiRoot
-      : (needle.includes('causeLedger') ? ledger : reveal);
+  for (const [needle, label, holderName] of rules) {
+    // The file a rule checks is DECLARED, never inferred from the needle's text. Inferring it via
+    // `needle.includes('causeLedger')` silently sent a rule whose needle lives in causeLedger.js to
+    // whyReveal.js and failed a correct tree — the needle happened not to spell its own filename.
+    const sources = { reveal, uiRoot, ledger };
+    const holder = sources[holderName || 'reveal'];
     if (!holder.includes(needle)) { console.error(`FAIL mechanism — ${label} [missing: ${needle}]`); failed += 1; }
     else console.log(`ok   mechanism — ${label}`);
   }

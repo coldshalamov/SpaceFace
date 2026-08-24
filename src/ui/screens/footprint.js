@@ -789,7 +789,7 @@ export const footprintScreen = {
       const reason = entry.state.reason || '';
       const aria = `${entry.label}. ${reason}`;
       return `
-        <button type="button" class="fp-verb" data-fp-verb="${entry.id}"${disabled} aria-label="${escapeAttr(aria)}" title="${escapeAttr(reason)}">
+        <button type="button" class="fp-verb" data-fp-verb="${entry.id}"${disabled} aria-label="${escapeAttr(aria)}">
           <span class="fp-verb-label">${entry.label}</span>
           <span class="fp-verb-reason">${escapeHtml(reason)}</span>
         </button>`;

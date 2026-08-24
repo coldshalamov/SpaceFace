@@ -12,7 +12,7 @@ function tileHtml(item, kind) {
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
   return (
-    `<button type="button" class="sx-tile${extra}" ${dataAttr} title="${item.title || item.label}" aria-label="${item.aria || item.label}">` +
+    `<button type="button" class="sx-tile${extra}" ${dataAttr} aria-label="${item.aria || item.label}">` +
       `<span class="sx-tile__seat" aria-hidden="true"></span>` +
       `<span class="sx-tile__badge" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__icon">${icon(item.icon, 26)}</span>` +

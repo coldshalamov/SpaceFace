@@ -335,7 +335,7 @@ export const localmapScreen = {
           reliability,
         });
         html += '<button class="lm-route" type="button" data-act="route-nav" data-destination="' + escapeAttr(r.destinationId) + '" data-commodity="' + escapeAttr(r.commodityId) + '"' +
-          ' title="' + escapeAttr(routeActionLabel) + '" aria-label="' + escapeAttr(routeActionLabel) + '">' +
+          ' aria-label="' + escapeAttr(routeActionLabel) + '">' +
           '<div class="lm-route-hdr">' +
             '<span class="lm-route-comm">' + escapeHtml(commodityName) + '</span>' +
             '<span class="lm-route-profit">' + Math.round(r.profitPerMinute) + '/m</span>' +

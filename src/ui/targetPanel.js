@@ -368,9 +368,9 @@ export function createTargetPanel(ctx) {
     </div>
     <div class="sf-target__triangle" style="display:none">
       <span class="sf-target__tri-label mono">VULN</span>
-      <span class="sf-tri sf-tri--e" title="Energy"><span class="sf-tri__k">E</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
-      <span class="sf-tri sf-tri--k" title="Kinetic"><span class="sf-tri__k">K</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
-      <span class="sf-tri sf-tri--x" title="Explosive"><span class="sf-tri__k">X</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+      <span class="sf-tri sf-tri--e" tabindex="0" role="img" aria-label="Vulnerability to energy weapons" data-why="Energy"><span class="sf-tri__k">E</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+      <span class="sf-tri sf-tri--k" tabindex="0" role="img" aria-label="Vulnerability to kinetic weapons" data-why="Kinetic"><span class="sf-tri__k">K</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+      <span class="sf-tri sf-tri--x" tabindex="0" role="img" aria-label="Vulnerability to explosives" data-why="Explosive"><span class="sf-tri__k">X</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
       <span class="sf-target__tri-layer mono"></span>
     </div>
     <div class="sf-target__weak mono" style="display:none"></div>

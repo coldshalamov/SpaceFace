@@ -276,8 +276,12 @@ export function createMarketScreen(ctx) {
       return (
         `<button type="button" id="sx-market-tab-${escapeHtml(r.id)}" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}" tabindex="${r.id === selectedId ? '0' : '-1'}" aria-controls="sx-market-instrument"` +
           ` data-family="${family}"` +
-          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'normal' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
-          (tracked ? `<span class="sx-mkt-row__flag" title="Tracked contract cargo">◆</span>` : '') +
+          // No tooltip on the tracked flag: the row already carries the price-why (causeLedger), so
+          // a second reveal here would fight it for the one shared tip. The tracked fact reaches
+          // keyboard and screen readers through the aria-label below, and sighted players through
+          // the ◆ flag, the row treatment, and the instrument callout.
+          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'normal' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
+          (tracked ? `<span class="sx-mkt-row__flag" aria-hidden="true">◆</span>` : '') +
           `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
           `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
             `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
