@@ -9030,7 +9030,7 @@
       "priority": 392,
       "title": "Triage every half-finished hull: field, convert to variant, or record why not",
       "kind": "program_control",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-fielding"
@@ -9042,7 +9042,9 @@
       "checks": [
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-136-03-hull-triage-REPORT.md"
+      ],
       "brief": "Half-finished or superseded hulls are triaged, not abandoned. For each: field it, alter it into a variant (different faction, damaged version, wreck), or record why it genuinely cannot be used. Deleting is the last option. Done when every authored hull has a disposition on the record. Preserve valuable future work: mark FUTURE or PARTIAL rather than deleting."
     },
     {
