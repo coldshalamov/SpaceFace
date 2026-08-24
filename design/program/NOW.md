@@ -42,7 +42,6 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | PQ-136.00 wreck pack | fable-campaign-20260824 lane WRECK | MUTATING | `src/render/partsLibrary.js`, placement owners TBD, wreck pack manifests, new test | review, commit, release row |
-| FIX-A entity lifecycle | fable-campaign-20260824 lane FIXA | MUTATING | `src/systems/world.js`, `src/systems/lootShards.js`, `src/core/coreSystem.js`, `src/systems/traffic.js`, new lifecycle tests | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
