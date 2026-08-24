@@ -70,7 +70,24 @@ export function isUnsellableCargo(state, commodityId) {
 // Module-level bus reference so the exported helpers can emit cargo:changed when called
 // from outside the system instance (economy/mining/salvage). Stays null in unit tests → silent.
 let busRef = null;
-let _moduleSeq = 0;
+let _moduleSeq = 0n;
+
+function nextLooseModuleInstanceId(state) {
+  // Continue may restore legacy mi_N inventory into a fresh process. Rebase before every allocation
+  // so the process-local fast path can never mint an ID already present in restored save data.
+  let rebased = _moduleSeq;
+  const inventory = state && state.player && state.player.moduleInventory;
+  if (Array.isArray(inventory)) {
+    for (const item of inventory) {
+      const match = /^mi_(\d+)$/.exec(item && item.instanceId);
+      if (!match) continue;
+      const sequence = BigInt(match[1]);
+      if (sequence > rebased) rebased = sequence;
+    }
+  }
+  _moduleSeq = rebased + 1n;
+  return `mi_${_moduleSeq}`;
+}
 
 function emitChanged(cargo) {
   if (busRef) busRef.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
@@ -242,7 +259,7 @@ export const cargo = {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
         const count = typeof commodityId === 'string' && commodityId.length > 0 ? qty : 0;
         for (let i = 0; i < count; i++) {
-          state.player.moduleInventory.push({ instanceId: `mi_${++_moduleSeq}`, defId: commodityId });
+          state.player.moduleInventory.push({ instanceId: nextLooseModuleInstanceId(state), defId: commodityId });
         }
         payload.acceptedAmount = count;
         payload.rejectedAmount = Math.max(0, qty - count);

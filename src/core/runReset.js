@@ -14,6 +14,12 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'survivalResults',
   // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
   'spawnBudget',
+  // Release old lawful response claims and attacker identities before their NPC jobs are discarded.
+  'lawSecurity',
+  // Clear virtual jobs before world or traffic can rematerialize a same-worldRecordId actor.
+  'npcJobsRuntime',
+  // Clear durable extraction records before world entry replans authored salvage sources.
+  'salvage',
   'world',
   'regionalEcology',
   'factions',
