@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-136.00 pack promotion | fable-campaign-20260824 lane PROMOTION | MUTATING | new scripts/ builder, release tree + generated manifests, one loader test | review, commit, release row |
+| PQ-135.05 fodder cohort | fable-campaign-20260824 lane FODDER | MUTATING | new `src/ai/fodderCohort.js`, `src/systems/tacticalAI.js`, `src/ai/squadFrame.js`, `src/data/squadChoreography.js`, motion lab files | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
