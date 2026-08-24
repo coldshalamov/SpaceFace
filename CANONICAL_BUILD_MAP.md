@@ -953,6 +953,28 @@ admission path the opening uses, spread across frames because parallel compile i
 in a single line what two rounds of reasoning had guessed wrong twice.
 **Reading:** the classifier DOES name an owner, so the gate's second clause is satisfied — but the honest conclusion is that Wave C's crowded-60-fps work is not what this machine needs next. Steady state already holds 60 fps; the remaining owner-visible cost is one ~3.6 s freeze entering flight, which is Wave B's *kill bricks* business, not Wave C's. Chase the brick before promoting `.11`-`.18`.
 
+**The instrumentation was then extended to name the programs, and that narrowed it again.** Counts
+said a brick happened; identities say which spawn caused it. The seven are one `depth,…` program plus
+six `physical,STANDARD,…` variants differing only in which UV/map channels are bound — i.e. authored
+SHIP materials. The smaller 843 ms brick adds two more map-less `physical` variants alongside
++5 geometries.
+
+Two consequences:
+
+1. **It is a PREDICTION MISS, not a missing mechanism.** `shipSpecsForSector` in
+   `src/render/precompile.js` compiles a predicted population — traffic roles, ONE enemy pool chosen
+   by `security`/`tier` via `enemyPoolForSector`, plus a boss if a `poi_boss` exists. Anything that
+   spawns outside that prediction (another pool, a faction squad, a mission or story spawn) reaches
+   its first draw uncompiled.
+2. **One of the seven is a DEPTH program** — the shadow-map variant, a separate program from its
+   colour twin. `SF_Precompile_ShadowDepth_KeepAlive` already exists for exactly this class, so that
+   variant is escaping it.
+
+So the fix is either to compile on ADMISSION (the ship is admitted before it is drawn; the seam is
+`createPipelineAdmissionTracker` in `pipelineReadiness.js`) or to stop the prediction from missing.
+Compiling on admission is preferred: broadening the prediction pays the cost for ships that may never
+spawn, and the opening budget is already spoken for.
+
 
 | Wave | Leaves | Reserved work | Player outcome |
 |---|---|---|---|
