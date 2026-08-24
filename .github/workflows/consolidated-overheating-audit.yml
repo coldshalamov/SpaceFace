@@ -1,0 +1,56 @@
+name: Consolidated overheating audit
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/audit-overheating-removal.mjs
+      - .github/workflows/consolidated-overheating-audit.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-overheating-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Align with current master and latest integration
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+          git checkout -B integration/all-branches-20260824 refs/remotes/origin/integration/all-branches-20260824
+          git rebase refs/remotes/origin/master
+
+      - name: Build precise reference graph
+        run: node scripts/audit-overheating-removal.mjs
+
+      - name: Upload audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: overheating-reference-audit
+          path: design/program/branch-consolidation/*OVERHEATING*
+          retention-days: 30
+
+      - name: Publish audit receipt
+        run: |
+          git add --sparse -A design/program/branch-consolidation
+          git commit -m "docs(integration): map active overheating ownership [skip ci]"
+          git fetch origin integration/all-branches-20260824
+          git rebase refs/remotes/origin/integration/all-branches-20260824
+          git push --force-with-lease origin HEAD:integration/all-branches-20260824
