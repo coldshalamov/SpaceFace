@@ -1,6 +1,13 @@
 name: Consolidation wave 1 build
 
 on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - .consolidation-wave1-request
+      - scripts/build-consolidation-wave1.sh
+      - .github/workflows/consolidation-wave1-build.yml
   pull_request:
     branches:
       - master
@@ -24,7 +31,7 @@ jobs:
       - name: Checkout integration control surface
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
@@ -47,7 +54,7 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Wave 1 request marker is absent; this synchronize event is the post-build no-op."
+            echo "Wave 1 request marker is absent; this event is the post-build no-op."
           fi
 
       - name: Assemble, validate, and publish one current-master integration branch
