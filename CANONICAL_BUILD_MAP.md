@@ -928,6 +928,29 @@ attempt deleted it, and it is now restored on `scheduleUpgradeFrame` with these 
 display callback is right for the queue and wrong for that single job — and must gate on something
 that cannot race flight handover. Do not promote `.11`-`.18` on the strength of this brick.
 
+**2026-08-23, LATER THE SAME DAY — THE CAUSE IS NAMED, AND BOTH EARLIER GUESSES WERE WRONG.** The
+instrumentation committed with the rejection immediately paid for itself. It logs what changes
+whenever the bloom scene pass exceeds 80 ms:
+
+```
+[GPU brick] bloomScene 3229.3ms  programs 63 -> 70   geometries 116 -> 116   textures 127 -> 127
+[GPU brick] bloomScene  806.6ms  programs 45 -> 47   geometries  55 ->  60   textures  60 ->  60
+```
+
+**Seven shader programs link inside a single scene render, ~460 ms each.** Geometry count does not
+move; texture count does not move. **It is not upload, and it is not compose** — it is the first
+DRAW of materials whose program has never been linked. `KHR_parallel_shader_compile` is absent on
+this Intel/ANGLE part, so every link is a blocking wait.
+
+That retires the "defer the first compose" hypothesis above: compose was never the cost. The opening
+path already works (`exact opening plan: complete; admitted programs 3`); **the gap is everything
+admitted AFTER the opening** — an NPC entering the glass mid-flight brings materials no opening plan
+ever saw, and they link on first draw. The fix is to route those through the same precompile /
+admission path the opening uses, spread across frames because parallel compile is unavailable here.
+`precompile.js`, `pipelineReadiness.js` and `admissionSliceBudget.js` already exist for this shape.
+
+**This is why the instrumentation was kept when the fix was reverted.** One 20-second run then named
+in a single line what two rounds of reasoning had guessed wrong twice.
 **Reading:** the classifier DOES name an owner, so the gate's second clause is satisfied — but the honest conclusion is that Wave C's crowded-60-fps work is not what this machine needs next. Steady state already holds 60 fps; the remaining owner-visible cost is one ~3.6 s freeze entering flight, which is Wave B's *kill bricks* business, not Wave C's. Chase the brick before promoting `.11`-`.18`.
 
 
