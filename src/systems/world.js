@@ -62,10 +62,6 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
-import {
-  WRECK_AFTERMATH_SALT,
-  wreckAftermathDressingForSector,
-} from '../data/wreckAftermathPack.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -1854,27 +1850,6 @@ export const world = {
     } else if (paletteClass === 'anomaly') {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass);
     }
-    this._spawnWreckAftermathDressing(sector, active, paletteClass);
-  },
-
-  _spawnWreckAftermathDressing(sector, active, paletteClass) {
-    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
-    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
-    const wreckRng = this.helpers.mulberry32(
-      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, WRECK_AFTERMATH_SALT),
-    );
-    const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
-    const rows = wreckAftermathDressingForSector(sector.id, paletteClass, wreckRng, wr);
-    for (const row of rows) {
-      const pos = this._toGlobal(row.localPos, sector.id);
-      this._spawnPlaceProp(active, sector, row.placeId, pos, {
-        paletteClass,
-        rot: row.rot,
-        name: row.name,
-        radius: row.radius,
-        wreckAftermath: true,
-      });
-    }
   },
 
   _spawnCoreDressing(sector, active, rng, paletteClass) {
@@ -2067,7 +2042,6 @@ export const world = {
         name: options.name || placeId,
         visualRadius: radius,
         placeRadius: radius,
-        ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
         ...(typeof options.activityObjectSlotId === 'string' && options.activityObjectSlotId.length > 0
           ? { activityObjectSlotId: options.activityObjectSlotId }
           : {}),
