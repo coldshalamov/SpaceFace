@@ -170,7 +170,11 @@ export function resolvePlumeShape(state, base, out) {
   out.spool = spool;
   out.boost = boost;
   out.dash = dash;
-  // Above idle, so a glowing but unfired drive lays down no contrail.
-  out.emitFloor = EMIT_FLOOR;
+
+  // One canonical firing decision, carried explicitly into the history recorder. The compatibility
+  // threshold is expressed in the same normalized coordinate as `out.drive`; comparing that value
+  // directly to raw-spool EMIT_FLOOR was a second, contradictory firing rule.
+  out.emitting = spool >= EMIT_FLOOR;
+  out.emitFloor = (EMIT_FLOOR - IDLE_FLOOR) / (1 - IDLE_FLOOR);
   return out;
 }
