@@ -68,8 +68,17 @@ const AUTOSAVE_DEFER_HARD_CAP_S = 60; // max sim seconds a deferred save waits b
 const DEFERRABLE_AUTOSAVE_REASONS = new Set(['interval', 'trade', 'hud_layout']);
 const AUTOSAVE_TARGET_SLICE_MS = 8;
 const AUTOSAVE_HARD_SLICE_MS = 12;
+// Player ownership is intentionally not capped: crafted hulls, purchased modules, fabrication, and
+// loose-module pickups are all durable possessions. Autosave therefore captures and transfers the
+// two growing arrays in bounded batches instead of making one clone/postMessage unit grow forever.
+const PLAYER_CAPTURE_MAX_ITEMS_PER_SLICE = 256;
+const PLAYER_OWNED_SHIPS_ENCODE_CHUNK = 64;
+const PLAYER_MODULE_INVENTORY_ENCODE_CHUNK = 512;
+const PLAYER_INCREMENTAL_CAPTURE_THRESHOLD = 256;
+const PLAYER_CAPTURE_MAX_RESTARTS = 3;
 const SAVE_VALIDATION_CHUNK_CHARS = 8_192;
 const SAVE_WORKER_TIMEOUT_MS = 4000;
+const PLAYER_CHUNKED_SAVE_WORKER_SOURCE = buildPlayerChunkedSaveWorkerSource(SAVE_WORKER_SOURCE);
 const DEFAULT_FLIGHT_MODE = 'assisted';
 const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
@@ -129,6 +138,7 @@ export const save = {
     this._sharedStoreFlushTimer = null;
     this._dirtyJournal = createSaveDirtyJournal();
     this._lastSaveSnapshotBoundary = null;
+    this._playerCollectionRevision = 0;
 
     const bus = this.bus;
     this._loadProfileSettings();
@@ -173,6 +183,23 @@ export const save = {
     bus.on('save:dirty', (payload) => {
       if (!payload || payload.kind == null) return;
       this.recordDirty(payload.kind, payload.payload);
+    });
+    // These are the public commit receipts for every live mutation of ownedShips/moduleInventory
+    // and owned-ship nested records. Incremental capture restarts if one lands between batches, so
+    // a bounded autosave never combines pre- and post-purchase inventory states.
+    const markPlayerCollectionChanged = () => {
+      this._playerCollectionRevision = (Number.isSafeInteger(this._playerCollectionRevision)
+        ? this._playerCollectionRevision : 0) + 1;
+    };
+    for (const eventName of [
+      'ship:purchased', 'ship:sold', 'ship:livingHullChanged', 'ship:appearanceSaved',
+      'ship:loadoutPresetApplied', 'module:purchased', 'module:granted', 'module:equipped',
+      'module:unequipped', 'craft:complete',
+    ]) bus.on(eventName, markPlayerCollectionChanged);
+    bus.on('pickup:collected', (payload) => {
+      if (payload && payload.kind === 'module' && payload.collectorId === this.state.playerId) {
+        markPlayerCollectionChanged();
+      }
     });
 
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
@@ -526,16 +553,7 @@ export const save = {
   // player meta record (core/ships/economy fields) — credits/cargo/combat config live here (§3.5).
   // Cargo gets its own key (§4.5), so it is dropped from the player blob to avoid duplication.
   _serializePlayer() {
-    const p = this.state.player;
-    const out = clonePlain(p);
-    if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) {
-      out.loadoutPresets = [];
-    } else if (!Object.prototype.hasOwnProperty.call(out, 'loadoutPresets')
-      && this.state && this.state.meta && this.state.meta.createdAt === 'schema-fixture') {
-      out.loadoutPresets = [];
-    }
-    delete out.cargo;
-    return out;
+    return serializePlayerRecord(this.state);
   },
 
   _serializeCargo() {
@@ -1290,7 +1308,12 @@ export const save = {
   primeAutosaveCapture() {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
     try {
-      for (const [, read] of this._saveCapturePlan()) read();
+      for (const [key, read] of this._saveCapturePlan()) {
+        // The large-player path is deliberately warmed by its bounded production batches. Running
+        // the synchronous compatibility serializer here would reintroduce the same loading brick.
+        if (key === 'player' && this._shouldCapturePlayerIncrementally()) continue;
+        read();
+      }
       return true;
     } catch (error) {
       // Save reliability does not depend on preparation. A later real save still owns its normal
@@ -1302,14 +1325,28 @@ export const save = {
 
   _captureAutosaveSlice(job, capture) {
     if (!this._autosaveJobCurrent(job) || capture.runEpoch !== this._runEpoch) return false;
+    const next = capture.plan[capture.index];
+    if (next && next[0] === 'player' && this._shouldCapturePlayerIncrementally()) {
+      const playerStatus = this._capturePlayerAutosaveSlice(job, capture);
+      if (playerStatus !== 'complete') return playerStatus;
+    }
     const started = workNowMs();
-    capture.captureStartedAtMs = started;
+    if (!Number.isFinite(capture.captureStartedAtMs)) capture.captureStartedAtMs = started;
     try {
       // Capture every subsystem exactly once in one coherent JS task. Splitting live-state readers
-      // across future ticks cannot produce an authoritative snapshot, and restarting on every tick
-      // starves forever during normal 60 Hz play. Encoding, validation, and storage remain chunked.
+      // across future ticks cannot produce an authoritative snapshot. The sole exception is the two
+      // growing player collections above: their public mutation receipts guard a bounded capture,
+      // and the scalar player record plus every other subsystem are still read together here.
       while (capture.index < capture.plan.length) {
-        const [key, read] = capture.plan[capture.index++];
+        const [key, read] = capture.plan[capture.index];
+        if (key === 'player' && this._shouldCapturePlayerIncrementally()) {
+          const partialSliceMs = workNowMs() - started;
+          capture.serializeMs += partialSliceMs;
+          this._pushAutosaveSlice(capture, 'capture', partialSliceMs);
+          this._scheduleAutosaveWork(() => this._captureAutosaveSlice(job, capture));
+          return true;
+        }
+        capture.index++;
         const serializerStarted = workNowMs();
         capture.data[key] = read();
         const serializerMs = workNowMs() - serializerStarted;
@@ -1330,6 +1367,107 @@ export const save = {
     return this._startAutosaveEncoding(job, capture);
   },
 
+  _shouldCapturePlayerIncrementally(player = this.state && this.state.player) {
+    const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+    const moduleInventory = player && Array.isArray(player.moduleInventory) ? player.moduleInventory : [];
+    return ownedShips.length + moduleInventory.length > PLAYER_INCREMENTAL_CAPTURE_THRESHOLD;
+  },
+
+  _beginPlayerAutosaveCapture(capture) {
+    const player = this.state.player;
+    const ownedShips = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+    const moduleInventory = Array.isArray(player.moduleInventory) ? player.moduleInventory : [];
+    capture.playerCapture = {
+      revision: Number.isSafeInteger(this._playerCollectionRevision) ? this._playerCollectionRevision : 0,
+      ownedShipsSource: ownedShips,
+      moduleInventorySource: moduleInventory,
+      ownedShips: new Array(ownedShips.length),
+      moduleInventory: new Array(moduleInventory.length),
+      collection: 'ownedShips',
+      index: 0,
+      maxSliceMs: 0,
+    };
+    return capture.playerCapture;
+  },
+
+  _playerAutosaveCaptureCurrent(playerCapture) {
+    const player = this.state && this.state.player;
+    return !!(player && playerCapture
+      && playerCapture.revision === this._playerCollectionRevision
+      && player.ownedShips === playerCapture.ownedShipsSource
+      && player.moduleInventory === playerCapture.moduleInventorySource
+      && playerCapture.ownedShipsSource.length === playerCapture.ownedShips.length
+      && playerCapture.moduleInventorySource.length === playerCapture.moduleInventory.length);
+  },
+
+  _restartPlayerAutosaveCapture(job, capture) {
+    capture.restarts = (capture.restarts || 0) + 1;
+    if (capture.restarts > PLAYER_CAPTURE_MAX_RESTARTS) {
+      return this._failAutosave(job, 'player_capture_churn', capture);
+    }
+    this._beginPlayerAutosaveCapture(capture);
+    this._scheduleAutosaveWork(() => this._captureAutosaveSlice(job, capture));
+    return true;
+  },
+
+  _capturePlayerAutosaveSlice(job, capture) {
+    if (!this._autosaveJobCurrent(job) || capture.runEpoch !== this._runEpoch) return false;
+    let playerCapture = capture.playerCapture || this._beginPlayerAutosaveCapture(capture);
+    if (!this._playerAutosaveCaptureCurrent(playerCapture)) {
+      return this._restartPlayerAutosaveCapture(job, capture);
+    }
+    const started = workNowMs();
+    if (!Number.isFinite(capture.captureStartedAtMs)) capture.captureStartedAtMs = started;
+    let copied = 0;
+    try {
+      while (copied < PLAYER_CAPTURE_MAX_ITEMS_PER_SLICE) {
+        const source = playerCapture.collection === 'ownedShips'
+          ? playerCapture.ownedShipsSource : playerCapture.moduleInventorySource;
+        const target = playerCapture.collection === 'ownedShips'
+          ? playerCapture.ownedShips : playerCapture.moduleInventory;
+        if (playerCapture.index >= source.length) {
+          if (playerCapture.collection === 'ownedShips') {
+            playerCapture.collection = 'moduleInventory';
+            playerCapture.index = 0;
+            continue;
+          }
+          break;
+        }
+        target[playerCapture.index] = clonePlain(source[playerCapture.index]);
+        playerCapture.index++;
+        copied++;
+        if (workNowMs() - started >= AUTOSAVE_TARGET_SLICE_MS) break;
+      }
+    } catch (error) {
+      console.error('[save] incremental player capture failed', error);
+      return this._failAutosave(job, 'serialize_failed', capture, workNowMs() - started);
+    }
+    const sliceMs = workNowMs() - started;
+    capture.serializeMs += sliceMs;
+    playerCapture.maxSliceMs = Math.max(playerCapture.maxSliceMs, sliceMs);
+    this._pushAutosaveSlice(capture, 'capture_player', sliceMs);
+    if (sliceMs > AUTOSAVE_HARD_SLICE_MS && !capture.slowSerializer) capture.slowSerializer = 'player';
+    if (!this._playerAutosaveCaptureCurrent(playerCapture)) {
+      return this._restartPlayerAutosaveCapture(job, capture);
+    }
+    if (playerCapture.collection !== 'moduleInventory'
+      || playerCapture.index < playerCapture.moduleInventorySource.length) {
+      this._scheduleAutosaveWork(() => this._captureAutosaveSlice(job, capture));
+      return true;
+    }
+
+    // Re-read every bounded scalar/nested player field in this final task. The collection revision
+    // cannot change between this check and the remaining synchronous subsystem capture.
+    capture.data.player = serializePlayerRecord(this.state, {
+      ownedShips: playerCapture.ownedShips,
+      moduleInventory: playerCapture.moduleInventory,
+    });
+    capture.serializerTimings.push({ key: 'player', ms: playerCapture.maxSliceMs });
+    capture.playerCapture = null;
+    capture.index++;
+    return 'complete';
+  },
+
   _startAutosaveEncoding(job, capture) {
     const setupStarted = workNowMs();
     const worker = this._trackSaveWorker(this._createSaveWorker());
@@ -1347,7 +1485,7 @@ export const save = {
     const encoder = {
       worker,
       id: ++this._saveWorkerRequestId,
-      entries: Object.entries(capture.data),
+      entries: this._autosaveEncoderEntries(capture.data),
       index: 0,
       settled: false,
       timeout: null,
@@ -1409,6 +1547,44 @@ export const save = {
     this._pushAutosaveSlice(capture, 'encode_begin_dispatch', beginDispatchMs);
     this._scheduleAutosaveWork(() => this._postAutosaveEncodeParts(job, capture, encoder, fail));
     return true;
+  },
+
+  _autosaveEncoderEntries(data) {
+    const entries = [];
+    for (const [key, value] of Object.entries(data || {})) {
+      if (key !== 'player' || !this._shouldCapturePlayerIncrementally(value)) {
+        entries.push([key, value]);
+        continue;
+      }
+      const base = {};
+      for (const playerKey in value) {
+        if (playerKey === 'ownedShips' || playerKey === 'moduleInventory') continue;
+        base[playerKey] = value[playerKey];
+      }
+      const ownedShips = Array.isArray(value.ownedShips) ? value.ownedShips : [];
+      const moduleInventory = Array.isArray(value.moduleInventory) ? value.moduleInventory : [];
+      entries.push({
+        type: 'encode_player_begin',
+        payload: {
+          base,
+          ownedShipsLength: ownedShips.length,
+          moduleInventoryLength: moduleInventory.length,
+        },
+      });
+      for (let start = 0; start < ownedShips.length; start += PLAYER_OWNED_SHIPS_ENCODE_CHUNK) {
+        entries.push({
+          type: 'encode_player_part', collection: 'ownedShips', source: ownedShips,
+          start, end: Math.min(ownedShips.length, start + PLAYER_OWNED_SHIPS_ENCODE_CHUNK),
+        });
+      }
+      for (let start = 0; start < moduleInventory.length; start += PLAYER_MODULE_INVENTORY_ENCODE_CHUNK) {
+        entries.push({
+          type: 'encode_player_part', collection: 'moduleInventory', source: moduleInventory,
+          start, end: Math.min(moduleInventory.length, start + PLAYER_MODULE_INVENTORY_ENCODE_CHUNK),
+        });
+      }
+    }
+    return entries;
   },
 
   _beginRunEpoch(_reason = 'run') {
@@ -1493,15 +1669,37 @@ export const save = {
     const started = workNowMs();
     let posted = 0;
     let lastPostMs = 0;
+    let postedPlayerPart = false;
     try {
       while (encoder.index < encoder.entries.length) {
         const elapsed = workNowMs() - started;
         // Reserve the last observed structured-clone cost before starting another post. Checking
         // elapsed alone can admit two stable 6ms posts and turn an 8ms-target task into a >12ms one.
         if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
-        const [key, value] = encoder.entries[encoder.index++];
+        const entry = encoder.entries[encoder.index++];
         const postStarted = workNowMs();
-        encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
+        if (Array.isArray(entry)) {
+          const [key, value] = entry;
+          encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
+        } else if (entry.type === 'encode_player_begin') {
+          postedPlayerPart = true;
+          encoder.worker.postMessage({
+            id: encoder.id,
+            type: entry.type,
+            payload: entry.payload,
+          });
+        } else {
+          postedPlayerPart = true;
+          encoder.worker.postMessage({
+            id: encoder.id,
+            type: 'encode_player_part',
+            payload: {
+              collection: entry.collection,
+              start: entry.start,
+              items: entry.source.slice(entry.start, entry.end),
+            },
+          });
+        }
         lastPostMs = workNowMs() - postStarted;
         posted++;
       }
@@ -1525,7 +1723,8 @@ export const save = {
     const sliceMs = workNowMs() - started;
     capture.workerDispatchMs += sliceMs;
     this._pushAutosaveSlice(capture,
-      posted > 0 ? 'encode_part_dispatch' : 'encode_finish_dispatch', sliceMs);
+      postedPlayerPart ? 'encode_player_dispatch'
+        : (posted > 0 ? 'encode_part_dispatch' : 'encode_finish_dispatch'), sliceMs);
     if (encoder.index < encoder.entries.length || encoder.finishPending) {
       this._scheduleAutosaveWork(() => this._postAutosaveEncodeParts(job, capture, encoder, fail));
     }
@@ -1700,7 +1899,7 @@ export const save = {
       || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null;
     let objectUrl = null;
     try {
-      objectUrl = URL.createObjectURL(new Blob([SAVE_WORKER_SOURCE], { type: 'text/javascript' }));
+      objectUrl = URL.createObjectURL(new Blob([PLAYER_CHUNKED_SAVE_WORKER_SOURCE], { type: 'text/javascript' }));
       const worker = new Worker(objectUrl, { name: 'spaceface-save' });
       worker.__spacefaceSaveObjectUrl = objectUrl;
       return this._trackSaveWorker(worker);
@@ -3241,6 +3440,77 @@ function sanitizeBoostForSave(boost) {
     if (cv !== undefined) out[k] = cv;
   }
   return out;
+}
+
+function serializePlayerRecord(state, capturedCollections = null) {
+  const player = state && state.player || {};
+  let out;
+  if (!capturedCollections) {
+    out = clonePlain(player);
+  } else {
+    out = {};
+    for (const key in player) {
+      if (isUnsafePlainKey(key) || key === 'cargo') continue;
+      if (key === 'ownedShips') out.ownedShips = capturedCollections.ownedShips;
+      else if (key === 'moduleInventory') out.moduleInventory = capturedCollections.moduleInventory;
+      else {
+        const value = clonePlain(player[key]);
+        if (value !== undefined) out[key] = value;
+      }
+    }
+    if (Array.isArray(player.ownedShips) && !Object.hasOwn(out, 'ownedShips')) {
+      out.ownedShips = capturedCollections.ownedShips;
+    }
+    if (Array.isArray(player.moduleInventory) && !Object.hasOwn(out, 'moduleInventory')) {
+      out.moduleInventory = capturedCollections.moduleInventory;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) {
+    out.loadoutPresets = [];
+  } else if (!Object.prototype.hasOwnProperty.call(out, 'loadoutPresets')
+    && state && state.meta && state.meta.createdAt === 'schema-fixture') {
+    out.loadoutPresets = [];
+  }
+  delete out.cargo;
+  return out;
+}
+
+function buildPlayerChunkedSaveWorkerSource(source) {
+  const encodePartNeedle = "    if (request.type === 'encode_part') {";
+  const playerProtocol = String.raw`    if (request.type === 'encode_player_begin') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      if (!session) throw new Error('missing_encode_session');
+      const payload = request.payload || {};
+      const ownedShipsLength = Number.isSafeInteger(payload.ownedShipsLength)
+        ? Math.max(0, payload.ownedShipsLength) : 0;
+      const moduleInventoryLength = Number.isSafeInteger(payload.moduleInventoryLength)
+        ? Math.max(0, payload.moduleInventoryLength) : 0;
+      session.data.player = Object.assign({}, payload.base || {}, {
+        ownedShips: new Array(ownedShipsLength),
+        moduleInventory: new Array(moduleInventoryLength),
+      });
+      return;
+    }
+    if (request.type === 'encode_player_part') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      if (!session || !session.data.player) throw new Error('missing_player_encode_session');
+      const payload = request.payload || {};
+      if (payload.collection !== 'ownedShips' && payload.collection !== 'moduleInventory') {
+        throw new Error('invalid_player_collection');
+      }
+      const target = session.data.player[payload.collection];
+      const start = Number.isSafeInteger(payload.start) ? Math.max(0, payload.start) : 0;
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      for (let index = 0; index < items.length && start + index < target.length; index++) {
+        target[start + index] = items[index];
+      }
+      return;
+    }
+`;
+  if (!String(source).includes(encodePartNeedle)) {
+    throw new Error('save worker encode protocol insertion point is missing');
+  }
+  return String(source).replace(encodePartNeedle, playerProtocol + encodePartNeedle);
 }
 
 // Deep-clone to plain JSON, stripping functions / Maps / Sets / THREE objects and sanitizing
