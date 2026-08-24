@@ -8967,7 +8967,7 @@
       "priority": 389,
       "title": "Wreck & aftermath pack reaches the player (44 models, 0 used)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-fielding"
@@ -8981,7 +8981,9 @@
         "npm run check:asset-reachability",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-136-00-wreck-pack-REPORT.md"
+      ],
       "brief": "The wreck pack reaches the player. PROMOTION HALF DONE 2026-08-24: scripts/build-pack-release-assets.mjs (canonical ETC1S/UASTC/meshopt, atomic transaction) released all 74 incubator bodies (wreck 44 + kit 30) to assets/ships/release/parts/places/ at 60% size reduction, identity extras included, sources untouched, loader test green for all 74 (test/pq136-pack-release-loader.test.mjs). REMAINING: placement + routing so a player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. Use the everyday-kit dressing pattern (src/data/everydaySpaceKitDressing.js + world dressing spawns) and respect the dock/hulk handoff meaning rules."
     },
     {

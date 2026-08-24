@@ -11,6 +11,7 @@ import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/ship
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
+import { WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
@@ -3063,6 +3064,10 @@ function placeFileForEntity(entity) {
   if (data.everydaySpaceKit === true) {
     const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
     if (kitFile) return kitFile;
+  }
+  if (data.wreckAftermath === true) {
+    const wreckFile = WRECK_AFTERMATH_PLACE_FILE_BY_ID[id];
+    if (wreckFile) return wreckFile;
   }
   return PLACE_FILE_BY_ID[id] || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
 }

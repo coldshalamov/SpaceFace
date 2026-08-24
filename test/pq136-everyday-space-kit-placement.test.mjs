@@ -1,7 +1,6 @@
-// PQ-136.01 — ordinary sectors place loader-legal everyday-space kit props
-// with variety at stations, lanes, and work sites. The thirty unpromoted
-// source identities are recorded as loader-refused; their GLB bytes are
-// never rewritten.
+// PQ-136.01 / PQ-136.00 — ordinary sectors place loader-legal everyday-space kit props
+// with variety at stations, lanes, work sites, and wreck fields. All forty-six
+// identities now have release bodies.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -14,7 +13,11 @@ import {
   EVERYDAY_SPACE_KIT_LEGAL_MODELS,
   EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR,
   EVERYDAY_SPACE_KIT_MAX_PER_SECTOR,
+  EVERYDAY_SPACE_KIT_ORIGINAL_IDS,
   EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID,
+  EVERYDAY_SPACE_KIT_PROMOTED_IDS,
+  EVERYDAY_SPACE_KIT_PROMOTED_MODELS,
+  EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID,
   EVERYDAY_SPACE_KIT_UNUSED_IDS,
   EVERYDAY_SPACE_KIT_UNUSED_MODELS,
   everydaySpaceKitFileForPlaceId,
@@ -33,11 +36,11 @@ const ORDINARY_SECTORS = Object.freeze([
   'sector_vesta_forge',
   'sector_pallas_drift',
 ]);
-// Eight seeds across five ordinary sectors, cap 4–6 per sector. A working
-// without-replacement picker should surface at least 10 of the 16 legal
-// identities. Ten is below saturation so a collapsed picker (the old three
-// beacon/buoy/drone shapes) still fails.
-const MIN_DISTINCT_ACROSS_SEEDS = 10;
+// Eight seeds across five ordinary sectors, cap 4–6 per sector, forty-six
+// identities. A collapsed picker still fails below this floor; saturation of
+// all 46 is not required.
+const MIN_DISTINCT_ACROSS_SEEDS = 16;
+const MIN_PROMOTED_ACROSS_SEEDS = 6;
 
 function parseGlbJson(abs) {
   const buf = readFileSync(abs);
@@ -71,6 +74,10 @@ function collectKit(seed, sectorId) {
   const stations = (active.stations || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const gates = (active.gates || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const fields = (active.fields || []).map((row) => ({ x: Number(row.center.x), z: Number(row.center.z) }));
+  const wrecks = (active.pois || [])
+    .filter((row) => row.type === 'wreck' || row.type === 'derelict')
+    .filter((row) => !/lane_pin|tally|claim_mark|locker|ash_pin|whistle/.test(String(row.poiId || '')))
+    .map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const placed = [];
   for (const ent of sim.state.entityList || []) {
     if (!ent || !ent.data || ent.data.everydaySpaceKit !== true) continue;
@@ -83,36 +90,38 @@ function collectKit(seed, sectorId) {
     });
   }
   sim.dispose();
-  return { placed, stations, gates, fields };
+  return { placed, stations, gates, fields, wrecks };
 }
 
-test('unused thirty source identities fail the authored loader and stay unstamped', () => {
-  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_MODELS.length, 30);
-  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_IDS.length, 30);
-  for (const model of EVERYDAY_SPACE_KIT_UNUSED_MODELS) {
-    assert.equal(model.live, false, `${model.stem} must not be marked live`);
-    assert.equal(model.file, null);
-    assert.ok(existsSync(resolve(ROOT, model.sourceFile)), model.sourceFile);
-    assert.equal(glbHasPlaceExtras(resolve(ROOT, model.sourceFile)), false,
-      `${model.stem} unexpectedly gained spacefaceAsset extras`);
+test('thirty newly-legal kit identities route through the release place family', () => {
+  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_MODELS.length, 0);
+  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_IDS.length, 0);
+  assert.equal(EVERYDAY_SPACE_KIT_PROMOTED_MODELS.length, 30);
+  assert.equal(EVERYDAY_SPACE_KIT_PROMOTED_IDS.length, 30);
+  assert.equal(Object.keys(EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID).length, 30);
+  for (const model of EVERYDAY_SPACE_KIT_PROMOTED_MODELS) {
+    assert.equal(model.live, true, `${model.stem} must be marked live`);
+    assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);
+    assert.equal(model.releaseUrl, EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID[model.id]);
+    assert.ok(existsSync(resolve(ROOT, model.releaseUrl)), model.releaseUrl);
+    assert.ok(glbHasPlaceExtras(resolve(ROOT, model.releaseUrl)), `${model.id} release missing extras`);
     assert.equal(
-      existsSync(resolve(ROOT, 'assets/ships/release/parts/places', `${model.id}.glb`)),
-      false,
-      `${model.id} must not have a silent release body`,
+      resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id } }),
+      null,
+      `${model.id} stays out of PLACE_FILES without the kit dressing flag`,
     );
-    assert.equal(everydaySpaceKitFileForPlaceId(model.id), null);
     assert.equal(
       resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id, everydaySpaceKit: true } }),
-      null,
-      `${model.id} must not resolve through the place selector`,
+      model.file,
+      `mutation: routing row missing for ${model.id}`,
     );
   }
 });
 
-test('sixteen legal kit identities route through the release place family', () => {
-  assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 16);
-  assert.deepEqual([...EVERYDAY_SPACE_KIT_LEGAL_IDS].sort(), [...OCCUPATIONAL_YARD_PLACE_IDS].sort());
-  assert.equal(Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID).length, 16);
+test('forty-six legal kit identities route through the release place family', () => {
+  assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 46);
+  assert.deepEqual([...EVERYDAY_SPACE_KIT_ORIGINAL_IDS].sort(), [...OCCUPATIONAL_YARD_PLACE_IDS].sort());
+  assert.equal(Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID).length, 46);
   for (const model of EVERYDAY_SPACE_KIT_LEGAL_MODELS) {
     assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);
     assert.ok(existsSync(resolve(ROOT, model.releaseUrl)), model.releaseUrl);
@@ -125,7 +134,7 @@ test('sixteen legal kit identities route through the release place family', () =
     assert.equal(
       resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id, everydaySpaceKit: true } }),
       model.file,
-      `routing row missing for ${model.id}`,
+      `mutation: routing row missing for ${model.id}`,
     );
   }
 });
@@ -143,12 +152,13 @@ test('ordinary sectors place kit props deterministically within the sector bound
   }
 });
 
-test('a handful of seeds yields distinct kit models, not the same prop repeated', () => {
+test('a handful of seeds yields distinct kit models, including the extended set', () => {
   const distinct = new Set();
-  const byAnchor = { station: 0, lane: 0, work: 0 };
+  const promoted = new Set();
+  const byAnchor = { station: 0, lane: 0, work: 0, wreck: 0 };
   for (const seed of SEEDS) {
     for (const sectorId of ORDINARY_SECTORS) {
-      const { placed, stations, gates, fields } = collectKit(seed, sectorId);
+      const { placed, stations, gates, fields, wrecks } = collectKit(seed, sectorId);
       const cap = sectorId === 'sector_helios_prime' || sectorId === 'sector_tethys_junction'
         ? EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR
         : EVERYDAY_SPACE_KIT_MAX_PER_SECTOR;
@@ -167,9 +177,12 @@ test('a handful of seeds yields distinct kit models, not the same prop repeated'
         assert.equal(row.file, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[row.placeId],
           `mutation: routing row missing for ${row.placeId}`);
         distinct.add(row.placeId);
+        if (EVERYDAY_SPACE_KIT_PROMOTED_IDS.includes(row.placeId)) promoted.add(row.placeId);
         const model = EVERYDAY_SPACE_KIT_LEGAL_MODELS.find((item) => item.id === row.placeId);
         assert.ok(model);
-        const sites = model.anchor === 'lane' ? gates : (model.anchor === 'work' ? fields : stations);
+        const sites = model.anchor === 'lane' ? gates
+          : (model.anchor === 'work' ? fields
+            : (model.anchor === 'wreck' ? wrecks : stations));
         if (!sites.length) continue;
         const nearest = Math.min(...sites.map((site) => dist2(row, site)));
         const limit = model.anchor === 'work' ? 420 : 240;
@@ -183,7 +196,12 @@ test('a handful of seeds yields distinct kit models, not the same prop repeated'
     distinct.size >= MIN_DISTINCT_ACROSS_SEEDS,
     `expected at least ${MIN_DISTINCT_ACROSS_SEEDS} distinct kit models across ${SEEDS.length} seeds, got ${distinct.size}`,
   );
+  assert.ok(
+    promoted.size >= MIN_PROMOTED_ACROSS_SEEDS,
+    `expected at least ${MIN_PROMOTED_ACROSS_SEEDS} newly-legal kit models across ${SEEDS.length} seeds, got ${promoted.size}`,
+  );
   assert.ok(byAnchor.station >= 1, 'station-adjacent kit props never appeared');
   assert.ok(byAnchor.lane >= 1, 'lane kit props never appeared');
   assert.ok(byAnchor.work >= 1, 'work-site kit props never appeared');
+  assert.ok(byAnchor.wreck >= 1, 'wreck-field salvage props never appeared');
 });

@@ -66,6 +66,10 @@ import {
   EVERYDAY_SPACE_KIT_SALT,
   everydaySpaceKitDressingForSector,
 } from '../data/everydaySpaceKitDressing.js';
+import {
+  WRECK_AFTERMATH_SALT,
+  wreckAftermathDressingForSector,
+} from '../data/wreckAftermathDressing.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -1855,6 +1859,7 @@ export const world = {
       this._spawnAnomalyDressing(sector, active, rng, paletteClass);
     }
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
+    this._spawnWreckAftermathDressing(sector, active, paletteClass);
   },
 
   _spawnEverydaySpaceKitDressing(sector, active, paletteClass) {
@@ -1867,6 +1872,7 @@ export const world = {
       stations: active.stations || [],
       gates: active.gates || [],
       fields: active.fields || [],
+      wrecks: (active.pois || []).filter((row) => row.type === 'wreck' || row.type === 'derelict'),
     });
     for (const row of rows) {
       this._spawnPlaceProp(active, sector, row.placeId, row.pos, {
@@ -1875,6 +1881,31 @@ export const world = {
         name: row.name,
         radius: row.radius,
         everydaySpaceKit: true,
+      });
+    }
+  },
+
+  _spawnWreckAftermathDressing(sector, active, paletteClass) {
+    const rec = this.state.world.residentSectors && this.state.world.residentSectors[sector.id];
+    const epoch = rec && Number.isFinite(rec.epoch) ? rec.epoch : 0;
+    const wreckRng = this.helpers.mulberry32(
+      this.helpers.hash32(this.state.meta.seed, sector.id, epoch, WRECK_AFTERMATH_SALT),
+    );
+    const rows = wreckAftermathDressingForSector(sector.id, paletteClass, wreckRng, {
+      stations: active.stations || [],
+      wrecks: (active.pois || []).filter((row) => row.type === 'wreck' || row.type === 'derelict'),
+      fields: active.fields || [],
+      origin: this._sectorOrigin(sector.id),
+      worldRadius: sector.worldRadius || DEFAULT_WORLD_RADIUS,
+      enemyDensity: sector.enemyDensity,
+    });
+    for (const row of rows) {
+      this._spawnPlaceProp(active, sector, row.placeId, row.pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
+        radius: row.radius,
+        wreckAftermath: true,
       });
     }
   },
@@ -2073,6 +2104,7 @@ export const world = {
           ? { activityObjectSlotId: options.activityObjectSlotId }
           : {}),
         ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
+        ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
       },
     });
     this._stampHomeSector(ent, sector.id);
