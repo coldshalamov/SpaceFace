@@ -178,7 +178,12 @@ export function firstTickWhere(samples, predicate) {
   return null;
 }
 
-export function responseTime10to90(samples, valueFn, dt) {
+/** Useful-speed band for 10–90% translation response. Peak-in-window of a constant-accel
+ *  tape that never reaches cruise is always ~80% of the window (the 2.0 s "underwater"
+ *  artifact). This is the speed a stick tap must produce before the ship feels like it answered. */
+export const LOW_SPEED_RESPONSE_REF = 36;
+
+export function responseTime10to90(samples, valueFn, dt, ref = null) {
   if (!samples || !samples.length) return null;
   let peak = 0;
   for (const sample of samples) {
@@ -186,8 +191,9 @@ export function responseTime10to90(samples, valueFn, dt) {
     if (value > peak) peak = value;
   }
   if (!(peak > EPS)) return null;
-  const t10 = firstTickWhere(samples, (s) => Math.abs(valueFn(s)) >= peak * 0.1);
-  const t90 = firstTickWhere(samples, (s) => Math.abs(valueFn(s)) >= peak * 0.9);
+  const target = Number.isFinite(ref) && ref > EPS ? Math.min(ref, peak) : peak;
+  const t10 = firstTickWhere(samples, (s) => Math.abs(valueFn(s)) >= target * 0.1);
+  const t90 = firstTickWhere(samples, (s) => Math.abs(valueFn(s)) >= target * 0.9);
   if (t10 == null || t90 == null) return null;
   return jsonNumber((t90 - t10) * dt);
 }
@@ -453,7 +459,13 @@ export function playerMotionMetrics(denseSamples, phases, dt, extras = {}) {
   const qualitySamples = denseSamples;
   return compactMetrics({
     onsetS: onsetTicks(accel, extras.accelEdgeTick, dt),
-    responseTime10to90S: responseTime10to90(accel, forwardSpeedOf, dt),
+    responseTime10to90S: responseTime10to90(
+      accel,
+      forwardSpeedOf,
+      dt,
+      extras.lowSpeedResponseRef ?? LOW_SPEED_RESPONSE_REF,
+    ),
+    peakWindowResponse10to90S: responseTime10to90(accel, forwardSpeedOf, dt),
     yawOvershootRad: yawOvershoot(yawAll, extras.yawReleaseTick),
     yawSettleS: yawSettleTime(yawRelease, extras.yawReleaseTick, dt),
     stopDistance: stop.stopDistance,
@@ -492,6 +504,177 @@ export function namedScenarioMetrics(scenarioId, seed, payload) {
     seed: seed | 0,
     ...compactMetrics(payload),
   };
+}
+
+export function headingChangeTime(samples, startTick, dt, targetAbs = Math.PI * 0.90) {
+  let start = null;
+  for (const sample of samples || []) {
+    if ((sample.tick | 0) < (startTick | 0)) continue;
+    if (start == null) start = sample.rot || 0;
+    if (Math.abs(wrapAngle((sample.rot || 0) - start)) >= targetAbs) {
+      return jsonNumber(((sample.tick | 0) - (startTick | 0)) * dt);
+    }
+  }
+  return null;
+}
+
+export function velocityHeadingChangeTime(samples, startTick, dt, targetAbs = Math.PI * 0.88, minSpeed = 2.2) {
+  let start = null;
+  for (const sample of samples || []) {
+    if ((sample.tick | 0) < (startTick | 0)) continue;
+    const spd = speedOf(sample);
+    if (spd < minSpeed) continue;
+    const heading = Math.atan2(sample.vz || 0, sample.vx || 0);
+    if (start == null) {
+      start = heading;
+      continue;
+    }
+    if (Math.abs(wrapAngle(heading - start)) >= targetAbs) {
+      return jsonNumber(((sample.tick | 0) - (startTick | 0)) * dt);
+    }
+  }
+  return null;
+}
+
+export function signedAxisReversalTime(samples, startTick, dt, valueFn, speedFloor = 1.5) {
+  let startSign = 0;
+  for (const sample of samples || []) {
+    if ((sample.tick | 0) < (startTick | 0)) continue;
+    const value = valueFn(sample);
+    if (!startSign && Math.abs(value) >= speedFloor) startSign = Math.sign(value);
+    if (startSign && Math.sign(value) === -startSign && Math.abs(value) >= speedFloor * 0.45) {
+      return jsonNumber(((sample.tick | 0) - (startTick | 0)) * dt);
+    }
+  }
+  return null;
+}
+
+export function slalomCourseMetrics(samples, gates, dt) {
+  const list = Array.isArray(gates) ? gates : [];
+  const passed = new Array(list.length).fill(false);
+  let pathLength = 0;
+  let maxLateralError = 0;
+  let peakAbsZ = 0;
+  let prev = null;
+  let gateSpeedSum = 0;
+  let gateSpeedN = 0;
+  let peakSpeed = 0;
+  let finishTick = null;
+  const lastGateX = list.length ? list[list.length - 1].x : Infinity;
+  for (const sample of samples || []) {
+    const spd = speedOf(sample);
+    if (spd > peakSpeed) peakSpeed = spd;
+    if (prev) pathLength += Math.hypot((sample.x || 0) - prev.x, (sample.z || 0) - prev.z);
+    prev = { x: sample.x || 0, z: sample.z || 0 };
+    const absZ = Math.abs(sample.z || 0);
+    if (absZ > peakAbsZ) peakAbsZ = absZ;
+    if (finishTick == null && (sample.x || 0) >= lastGateX) finishTick = sample.tick | 0;
+    if (finishTick == null || (sample.tick | 0) <= finishTick + 12) {
+      const latErr = distanceToGatePolyline(sample.x || 0, sample.z || 0, list);
+      if (latErr > maxLateralError) maxLateralError = latErr;
+    }
+    for (let i = 0; i < list.length; i++) {
+      if (passed[i]) continue;
+      const d = Math.hypot((sample.x || 0) - list[i].x, (sample.z || 0) - list[i].z);
+      if (d <= list[i].r) {
+        passed[i] = true;
+        gateSpeedSum += spd;
+        gateSpeedN++;
+      }
+    }
+  }
+  const gateAmp = list.reduce((acc, gate) => Math.max(acc, Math.abs(gate.z || 0)), 0);
+  return compactMetrics({
+    completionTimeS: finishTick == null ? null : jsonNumber(finishTick * dt),
+    gatesPassed: passed.reduce((n, ok) => n + (ok ? 1 : 0), 0),
+    gateCount: list.length,
+    gateMisses: passed.reduce((n, ok) => n + (ok ? 0 : 1), 0),
+    pathLength: jsonNumber(pathLength, 0),
+    maxLateralError: jsonNumber(maxLateralError, 0),
+    peakOvershoot: jsonNumber(Math.max(0, peakAbsZ - gateAmp), 0),
+    usefulSpeedRetained: peakSpeed > EPS && gateSpeedN
+      ? jsonNumber((gateSpeedSum / gateSpeedN) / peakSpeed)
+      : (peakSpeed > EPS ? jsonNumber(0) : null),
+    peakSpeed: jsonNumber(peakSpeed, 0),
+  });
+}
+
+export function reversalBoxMetrics(denseSamples, dt, marks = {}) {
+  const byPhase = groupByPhase(denseSamples);
+  const forward = byPhase.forward || [];
+  const reverse = byPhase.reverse || [];
+  const lateral = (byPhase.lateral || []).concat(byPhase.lateralRev || []);
+  const turnBurn = byPhase.turnBurn || [];
+  const burn = byPhase.burn || [];
+  const stop = stopDistanceAndTime(reverse, marks.reverseTick, dt, 1.2);
+  const nose180 = headingChangeTime(turnBurn.concat(burn), marks.turnBurnTick, dt);
+  const vel180 = velocityHeadingChangeTime(turnBurn.concat(burn), marks.turnBurnTick, dt);
+  const latRev = signedAxisReversalTime(lateral, marks.lateralRevTick, dt, lateralSpeedOf, 1.5);
+  const fwdRev = signedAxisReversalTime(reverse, marks.reverseTick, dt, forwardSpeedOf, 1.2);
+  let lag = null;
+  if (nose180 != null && vel180 != null) lag = jsonNumber(vel180 - nose180);
+  return compactMetrics({
+    peakForwardSpeed: jsonNumber(maxMap(forward, forwardSpeedOf), 0),
+    brakeStopDistance: stop.stopDistance,
+    brakeStopTimeS: stop.stopTimeS,
+    forwardReversalTimeS: fwdRev,
+    lateralReversalTimeS: latRev,
+    nose180TimeS: nose180,
+    velocity180TimeS: vel180,
+    headingVelocityLagS: lag,
+    reversalCarryDistance: reversalCarryDistance(turnBurn, marks.turnBurnTick),
+    postBurnSpeed: jsonNumber(maxMap(burn, speedOf), 0),
+    controlSignChangesPerS: controlSignChangesPerSecond(denseSamples, dt),
+    angularSignChangesPerS: angularSignChangesPerSecond(denseSamples, dt),
+  });
+}
+
+function distanceToGatePolyline(x, z, gates) {
+  if (!gates || gates.length === 0) return 0;
+  if (gates.length === 1) return Math.hypot(x - gates[0].x, z - gates[0].z);
+  let min = Infinity;
+  for (let i = 1; i < gates.length; i++) {
+    const d = pointToSegment(x, z, gates[i - 1].x, gates[i - 1].z, gates[i].x, gates[i].z);
+    if (d < min) min = d;
+  }
+  return Number.isFinite(min) ? min : 0;
+}
+
+function pointToSegment(px, pz, ax, az, bx, bz) {
+  const abx = bx - ax;
+  const abz = bz - az;
+  const len2 = abx * abx + abz * abz;
+  if (!(len2 > EPS)) return Math.hypot(px - ax, pz - az);
+  let t = ((px - ax) * abx + (pz - az) * abz) / len2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  return Math.hypot(px - (ax + abx * t), pz - (az + abz * t));
+}
+
+function reversalCarryDistance(samples, startTick) {
+  let start = null;
+  let dist = 0;
+  let prev = null;
+  let nose90 = false;
+  for (const sample of samples || []) {
+    if ((sample.tick | 0) < (startTick | 0)) continue;
+    if (!start) {
+      start = sample;
+      prev = sample;
+      continue;
+    }
+    dist += Math.hypot((sample.x || 0) - (prev.x || 0), (sample.z || 0) - (prev.z || 0));
+    prev = sample;
+    if (!nose90 && Math.abs(wrapAngle((sample.rot || 0) - (start.rot || 0))) >= Math.PI * 0.5) {
+      nose90 = true;
+    }
+    if (nose90) {
+      const velH = Math.atan2(sample.vz || 0, sample.vx || 0);
+      const startH = Math.atan2(start.vz || 0, start.vx || 0);
+      if (Math.abs(wrapAngle(velH - startH)) >= Math.PI * 0.5) return jsonNumber(dist);
+    }
+  }
+  return nose90 ? jsonNumber(dist) : null;
 }
 
 function groupByPhase(samples) {

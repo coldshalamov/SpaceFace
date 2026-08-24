@@ -30,8 +30,10 @@ import {
   playerMotionMetrics,
   pushContact,
   pushPhase,
+  reversalBoxMetrics,
   sampleBody,
   settleTimeToSlot,
+  slalomCourseMetrics,
   slotErrors,
 } from './motionTelemetry.js';
 
@@ -43,6 +45,15 @@ export const M1_HULLS = Object.freeze([
   Object.freeze({ id: 'ship_wasp', name: 'Wasp' }),
   Object.freeze({ id: 'ship_drifter', name: 'Drifter' }),
   Object.freeze({ id: 'ship_atlas', name: 'Atlas' }),
+]);
+
+export const M2_GATES = Object.freeze([
+  Object.freeze({ x: 50, z: 0, r: 38 }),
+  Object.freeze({ x: 160, z: 18, r: 40 }),
+  Object.freeze({ x: 330, z: 46, r: 42 }),
+  Object.freeze({ x: 520, z: 84, r: 44 }),
+  Object.freeze({ x: 710, z: 124, r: 44 }),
+  Object.freeze({ x: 900, z: 163, r: 46 }),
 ]);
 
 const TRACE_STRIDE = 5;
@@ -64,6 +75,42 @@ export async function runM1({ seed = MOTION_LAB_SEED, hullId } = {}) {
   }
   return {
     metrics: namedScenarioMetrics('M1', seed, { hulls: byHull }),
+    traces,
+  };
+}
+
+export async function runM2({ seed = MOTION_LAB_SEED, hullId } = {}) {
+  const hulls = hullId
+    ? M1_HULLS.filter((h) => h.id === hullId)
+    : M1_HULLS.slice();
+  if (!hulls.length) throw new Error(`unknown M2 hull: ${hullId}`);
+  const byHull = {};
+  const traces = {};
+  for (const hull of hulls) {
+    const result = await runM2Hull(seed, hull);
+    byHull[hull.id] = result.metrics;
+    traces[hull.id] = result.trace;
+  }
+  return {
+    metrics: namedScenarioMetrics('M2', seed, { hulls: byHull }),
+    traces,
+  };
+}
+
+export async function runM3({ seed = MOTION_LAB_SEED, hullId } = {}) {
+  const hulls = hullId
+    ? M1_HULLS.filter((h) => h.id === hullId)
+    : M1_HULLS.slice();
+  if (!hulls.length) throw new Error(`unknown M3 hull: ${hullId}`);
+  const byHull = {};
+  const traces = {};
+  for (const hull of hulls) {
+    const result = await runM3Hull(seed, hull);
+    byHull[hull.id] = result.metrics;
+    traces[hull.id] = result.trace;
+  }
+  return {
+    metrics: namedScenarioMetrics('M3', seed, { hulls: byHull }),
     traces,
   };
 }
@@ -417,27 +464,63 @@ export function slotFromFrame(frame, offset = SLOT_OFFSET) {
 }
 
 export function formatM1Table(metrics) {
+  return formatHullTable(metrics, [
+    'onsetS',
+    'responseTime10to90S',
+    'peakWindowResponse10to90S',
+    'yawOvershootRad',
+    'yawSettleS',
+    'stopDistance',
+    'stopTimeS',
+    'lateralVelocityKillTimeS',
+    'speedRetainedThroughTurn',
+    'controlSignChangesPerS',
+    'accelerationJerkRms',
+    'peakForwardSpeed',
+    'peakYawRate',
+  ]);
+}
+
+export function formatM2Table(metrics) {
+  return formatHullTable(metrics, [
+    'completionTimeS',
+    'gatesPassed',
+    'gateMisses',
+    'pathLength',
+    'maxLateralError',
+    'peakOvershoot',
+    'usefulSpeedRetained',
+    'peakSpeed',
+    'collisions',
+  ]);
+}
+
+export function formatM3Table(metrics) {
+  return formatHullTable(metrics, [
+    'peakForwardSpeed',
+    'brakeStopDistance',
+    'brakeStopTimeS',
+    'forwardReversalTimeS',
+    'lateralReversalTimeS',
+    'nose180TimeS',
+    'velocity180TimeS',
+    'headingVelocityLagS',
+    'reversalCarryDistance',
+    'postBurnSpeed',
+  ]);
+}
+
+function formatHullTable(metrics, keys) {
   const hulls = (metrics && metrics.hulls) || {};
-  const hitch = hulls.ship_kestrel || {};
-  const wasp = hulls.ship_wasp || {};
-  const rows = [
-    ['metric', 'Hitch', 'Wasp'],
-    ['onsetS', num(hitch.onsetS), num(wasp.onsetS)],
-    ['responseTime10to90S', num(hitch.responseTime10to90S), num(wasp.responseTime10to90S)],
-    ['yawOvershootRad', num(hitch.yawOvershootRad), num(wasp.yawOvershootRad)],
-    ['yawSettleS', num(hitch.yawSettleS), num(wasp.yawSettleS)],
-    ['stopDistance', num(hitch.stopDistance), num(wasp.stopDistance)],
-    ['stopTimeS', num(hitch.stopTimeS), num(wasp.stopTimeS)],
-    ['lateralVelocityKillTimeS', num(hitch.lateralVelocityKillTimeS), num(wasp.lateralVelocityKillTimeS)],
-    ['speedRetainedThroughTurn', num(hitch.speedRetainedThroughTurn), num(wasp.speedRetainedThroughTurn)],
-    ['controlSignChangesPerS', num(hitch.controlSignChangesPerS), num(wasp.controlSignChangesPerS)],
-    ['accelerationJerkRms', num(hitch.accelerationJerkRms), num(wasp.accelerationJerkRms)],
-    ['peakForwardSpeed', num(hitch.peakForwardSpeed), num(wasp.peakForwardSpeed)],
-    ['peakYawRate', num(hitch.peakYawRate), num(wasp.peakYawRate)],
-  ];
-  const widths = [0, 0, 0];
+  const ids = M1_HULLS.map((h) => h.id);
+  const header = ['metric', ...M1_HULLS.map((h) => h.name)];
+  const rows = [header];
+  for (const key of keys) {
+    rows.push([key, ...ids.map((id) => num(hulls[id] && hulls[id][key]))]);
+  }
+  const widths = header.map(() => 0);
   for (const row of rows) {
-    for (let i = 0; i < 3; i++) widths[i] = Math.max(widths[i], String(row[i]).length);
+    for (let i = 0; i < row.length; i++) widths[i] = Math.max(widths[i], String(row[i]).length);
   }
   return rows.map((row) => row.map((cell, i) => String(cell).padEnd(widths[i])).join('  ')).join('\n');
 }
@@ -503,6 +586,107 @@ async function runM1Hull(seed, hull) {
       propulsionEnergySpent: ledger.energySpent,
       propulsionHeat: ledger.heat,
     });
+    return { metrics: hullMetrics, trace };
+  } finally {
+    host.dispose();
+  }
+}
+
+async function runM2Hull(seed, hull) {
+  const host = await bootMotionLab({ seed, kind: 'player' });
+  try {
+    const player = spawnPlayer(host, hull.id, { x: 0, z: 0 }, 0);
+    await host.ready();
+    const dense = [];
+    const trace = createMotionTrace({ scenarioId: 'M2', seed, hullId: hull.id, extra: { gates: M2_GATES } });
+    const plan = m2InputPlan();
+    const contacts = bindContacts(host, trace, [player.id]);
+    let lastPhase = null;
+    for (let i = 0; i < plan.ticks; i++) {
+      const step = plan.at(i);
+      writePlayerInput(host.state, step.input);
+      if (step.phase !== lastPhase) {
+        pushPhase(trace, step.phase, host.state.tick | 0);
+        lastPhase = step.phase;
+      }
+      host.runtime.step(MOTION_LAB_DT);
+      const sample = sampleBody(player, {
+        tick: host.state.tick | 0,
+        t: host.state.simTime,
+        control: host.state.input,
+        phase: step.phase,
+        achievedAccel: telemetryAccel(player),
+      });
+      dense.push(sample);
+      maybePushSample(trace, sample, TRACE_STRIDE);
+    }
+    contacts.unbind();
+    const course = slalomCourseMetrics(dense, M2_GATES, MOTION_LAB_DT);
+    return {
+      metrics: compactMetrics({
+        ...course,
+        collisions: trace.contacts.length,
+        controlSignChangesPerS: controlSignChangesPerSecond(dense, MOTION_LAB_DT),
+      }),
+      trace,
+    };
+  } finally {
+    host.dispose();
+  }
+}
+
+async function runM3Hull(seed, hull) {
+  const host = await bootMotionLab({ seed, kind: 'player' });
+  try {
+    const player = spawnPlayer(host, hull.id, { x: 0, z: 0 }, 0);
+    await host.ready();
+    const dense = [];
+    const trace = createMotionTrace({ scenarioId: 'M3', seed, hullId: hull.id });
+    const plan = m3InputPlan();
+    const contacts = bindContacts(host, trace, [player.id]);
+    let lastPhase = null;
+    const marks = {
+      reverseTick: null,
+      lateralRevTick: null,
+      turnBurnTick: null,
+    };
+    let turnBurnHeading0 = null;
+    for (let i = 0; i < plan.ticks; i++) {
+      const step = plan.at(i);
+      const input = { ...step.input };
+      if (step.phase === 'turnBurn') {
+        if (turnBurnHeading0 == null) turnBurnHeading0 = player.rot || 0;
+        const err = wrapAngle((turnBurnHeading0 + Math.PI) - (player.rot || 0));
+        input.turnIntent = Math.abs(err) < 0.06 ? 0 : clamp(err / 0.32, -1, 1);
+        input.moveZ = 0;
+      } else if (step.phase === 'burn' && turnBurnHeading0 != null) {
+        const err = wrapAngle((turnBurnHeading0 + Math.PI) - (player.rot || 0));
+        input.turnIntent = clamp(err / 0.40, -1, 1);
+        input.moveZ = 1;
+      }
+      writePlayerInput(host.state, input);
+      if (step.phase !== lastPhase) {
+        const tickNow = host.state.tick | 0;
+        pushPhase(trace, step.phase, tickNow);
+        if (step.phase === 'reverse' && marks.reverseTick == null) marks.reverseTick = tickNow;
+        if (step.phase === 'lateralRev' && marks.lateralRevTick == null) marks.lateralRevTick = tickNow;
+        if (step.phase === 'turnBurn' && marks.turnBurnTick == null) marks.turnBurnTick = tickNow;
+        lastPhase = step.phase;
+      }
+      host.runtime.step(MOTION_LAB_DT);
+      const sample = sampleBody(player, {
+        tick: host.state.tick | 0,
+        t: host.state.simTime,
+        control: host.state.input,
+        phase: step.phase,
+        achievedAccel: telemetryAccel(player),
+      });
+      dense.push(sample);
+      maybePushSample(trace, sample, TRACE_STRIDE);
+    }
+    contacts.unbind();
+    const hullMetrics = reversalBoxMetrics(dense, MOTION_LAB_DT, marks);
+    hullMetrics.collisions = trace.contacts.length;
     return { metrics: hullMetrics, trace };
   } finally {
     host.dispose();
@@ -627,6 +811,57 @@ function m1InputPlan() {
       if (i < turnStart) return { phase: 'accel3', input: { moveZ: 1 } };
       if (i < turnEnd) return { phase: 'turn', input: { moveZ: 1, turnIntent: 1 } };
       return { phase: 'lateralKill', input: { moveX: -1 } };
+    },
+  };
+}
+
+function m2InputPlan() {
+  const settle = 18;
+  const entry = 48;
+  const weave = 560;
+  const ticks = settle + entry + weave;
+  return {
+    ticks,
+    at(i) {
+      if (i < settle) return { phase: 'settle', input: {} };
+      if (i < settle + entry) return { phase: 'entry', input: { moveZ: 1 } };
+      const u = i - settle - entry;
+      const period = 90;
+      const turnIntent = 0.36 * Math.sin((Math.PI * 2 * u) / period);
+      return { phase: 'weave', input: { moveZ: 1, turnIntent } };
+    },
+  };
+}
+
+function m3InputPlan() {
+  const settle = 18;
+  const forward = 100;
+  const reverse = 250;
+  const reaccel = 84;
+  const lateral = 66;
+  const lateralRev = 110;
+  const prep = 80;
+  const turnBurn = 210;
+  const burn = 180;
+  const ticks = settle + forward + reverse + reaccel + lateral + lateralRev + prep + turnBurn + burn;
+  const reverseStart = settle + forward;
+  const lateralRevStart = reverseStart + reverse + reaccel + lateral;
+  const turnBurnStart = lateralRevStart + lateralRev + prep;
+  return {
+    ticks,
+    reverseStart,
+    lateralRevStart,
+    turnBurnStart,
+    at(i) {
+      if (i < settle) return { phase: 'settle', input: {} };
+      if (i < settle + forward) return { phase: 'forward', input: { moveZ: 1 } };
+      if (i < reverseStart + reverse) return { phase: 'reverse', input: { brake: true } };
+      if (i < reverseStart + reverse + reaccel) return { phase: 'reaccel', input: { moveZ: 1 } };
+      if (i < reverseStart + reverse + reaccel + lateral) return { phase: 'lateral', input: { moveX: 1 } };
+      if (i < lateralRevStart + lateralRev) return { phase: 'lateralRev', input: { moveX: -1 } };
+      if (i < turnBurnStart) return { phase: 'prep', input: { moveZ: 1 } };
+      if (i < turnBurnStart + turnBurn) return { phase: 'turnBurn', input: { turnIntent: 1 } };
+      return { phase: 'burn', input: { moveZ: 1 } };
     },
   };
 }

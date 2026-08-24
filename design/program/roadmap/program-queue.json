@@ -8844,7 +8844,7 @@
       "priority": 384,
       "title": "Player flight feel: crisp response, honest momentum, hulls that differ",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-135.00"
       ],
@@ -8859,7 +8859,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-01-flight-feel-REPORT.md"
+      ],
       "brief": "Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and hulls you can FEEL the difference between (21A.5). Done when a repeatable slalom and reversal course shows Hitch vs Wasp visibly different with no loss of honest momentum. No new direct position/velocity writes - motion goes through the canonical physical control path."
     },
     {

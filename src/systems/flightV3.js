@@ -17,6 +17,7 @@ import {
   scaleHelmCommandForCryoLock,
 } from '../combat/cryoLock.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
@@ -207,14 +208,18 @@ export const flightV3 = {
   },
 
   _stepCraft(entity, rawInput, dt, state, isPlayer) {
-    const baseProfile = resolvePropulsionProfile(entity, state);
+    const resolvedProfile = resolvePropulsionProfile(entity, state);
+    const pathActive = isPlayer && pathFollowBlocksFeel(state && state.input);
+    const baseProfile = (isPlayer && !pathActive)
+      ? applyFeelEnvelope(resolvedProfile, hullIdFromEntity(entity), entity.flightClass)
+      : resolvedProfile;
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt);
     const tether = isPlayer && state.player && state.player.tether;
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
       : baseProfile;
-    if (isPlayer && state.input?.autoFire && state.input.autoTargetPath?.active) {
+    if (isPlayer && state.input?.autoFire && pathActive) {
       profile = applyAutoTargetPathProfile(profile);
     }
     let autopilot = null;

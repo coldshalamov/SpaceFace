@@ -8,7 +8,11 @@ import {
 import {
   MOTION_LAB_SEED,
   formatM1Table,
+  formatM2Table,
+  formatM3Table,
   runM1,
+  runM2,
+  runM3,
   runM4,
   runM6,
   runM8,
@@ -42,9 +46,109 @@ test('M1 player impulse response is deterministic across Hitch, Wasp, Drifter, A
   assert.ok(hulls.ship_wasp.peakForwardSpeed > 5, 'Wasp must accelerate under a throttle step');
   assert.ok(hulls.ship_atlas.peakForwardSpeed > 1, 'Atlas must accelerate under a throttle step');
   assert.equal(hulls.ship_kestrel.energyHeatSeam, 'skipped-canonical-cap-and-weapon-heat');
+  const hitch = hulls.ship_kestrel;
+  const wasp = hulls.ship_wasp;
+  const drifter = hulls.ship_drifter;
+  const atlas = hulls.ship_atlas;
+
+  // Low-speed 10–90 of a 36 WU/s useful-speed band. The old 2.0 s figure was 80% of a
+  // 2.5 s constant-accel window that never reached cruise — not a throttle ramp.
+  // Onset is already one tick; this bar is time to useful motion.
+  assert.ok(hitch.onsetS <= 0.04 && wasp.onsetS <= 0.04 && drifter.onsetS <= 0.04 && atlas.onsetS <= 0.04);
+  assert.ok(hitch.responseTime10to90S <= 0.50, 'Hitch low-speed 10-90 must be well under 2 s');
+  assert.ok(wasp.responseTime10to90S <= 0.35, 'Wasp must be the crispest low-speed answer');
+  assert.ok(drifter.responseTime10to90S <= 0.75, 'Drifter stays capable');
+  assert.ok(atlas.responseTime10to90S <= 1.10, 'Atlas answers, then the mass shows');
+
+  assert.notDeepEqual(hitch, drifter, 'Drifter must not match Hitch on an empty fit');
+  assert.ok(wasp.responseTime10to90S < hitch.responseTime10to90S);
+  assert.ok(hitch.responseTime10to90S < drifter.responseTime10to90S);
+  assert.ok(drifter.responseTime10to90S < atlas.responseTime10to90S);
+  assert.ok(wasp.peakYawRate > hitch.peakYawRate);
+  assert.ok(hitch.peakYawRate > drifter.peakYawRate);
+  assert.ok(drifter.peakYawRate > atlas.peakYawRate);
+  assert.ok(wasp.peakForwardSpeed > hitch.peakForwardSpeed);
+  assert.ok(hitch.peakForwardSpeed > drifter.peakForwardSpeed);
+  assert.ok(drifter.peakForwardSpeed > atlas.peakForwardSpeed);
+  assert.ok(hitch.stopTimeS < drifter.stopTimeS);
+  assert.ok(drifter.stopTimeS < atlas.stopTimeS);
+
+  const spreadKeys = ['responseTime10to90S', 'peakYawRate', 'peakForwardSpeed', 'stopTimeS'];
+  const spreadCount = spreadKeys.filter((key) => relativeSpread(hitch[key], wasp[key], drifter[key], atlas[key]) >= 0.18).length;
+  assert.ok(spreadCount >= 3, 'at least three M1 metrics must show a clear four-hull spread');
+
   const table = formatM1Table(result.metrics);
-  console.log('\nM1 Hitch vs Wasp baseline\n' + table + '\n');
+  console.log('\nM1 four-hull feel\n' + table + '\n');
 });
+
+test('M2 player slalom is deterministic and hulls take different lines', LONG, async () => {
+  const result = await runTwice(() => runM2({ seed: SEED }));
+  assert.equal(result.metrics.scenarioId, 'M2');
+  const hulls = result.metrics.hulls;
+  const hitch = hulls.ship_kestrel;
+  const wasp = hulls.ship_wasp;
+  const drifter = hulls.ship_drifter;
+  const atlas = hulls.ship_atlas;
+  assert.ok(hitch && wasp && drifter && atlas);
+  assert.equal(hitch.collisions, 0);
+  assert.equal(wasp.collisions, 0);
+  assert.equal(atlas.collisions, 0);
+  assert.ok(hitch.gatesPassed >= 5, 'Hitch must thread the slalom');
+  assert.ok(wasp.gateMisses >= 1, 'Wasp must fly a wider line than the Hitch gates');
+  assert.ok(atlas.gateMisses >= 1, 'Atlas must not match a fighter gate line');
+  assert.ok(wasp.completionTimeS < hitch.completionTimeS, 'Wasp covers the course sooner');
+  assert.ok(atlas.completionTimeS > drifter.completionTimeS, 'Atlas is last through the course');
+  assert.ok(wasp.peakOvershoot > hitch.peakOvershoot);
+  assert.ok(hitch.peakOvershoot > atlas.peakOvershoot);
+  assert.ok(wasp.pathLength > hitch.pathLength);
+  assert.ok(hitch.pathLength > drifter.pathLength);
+  console.log('\nM2 slalom\n' + formatM2Table(result.metrics) + '\n');
+});
+
+test('M3 reversal box distinguishes nose from velocity and keeps Atlas heavy', LONG, async () => {
+  const result = await runTwice(() => runM3({ seed: SEED }));
+  assert.equal(result.metrics.scenarioId, 'M3');
+  const hulls = result.metrics.hulls;
+  const hitch = hulls.ship_kestrel;
+  const wasp = hulls.ship_wasp;
+  const drifter = hulls.ship_drifter;
+  const atlas = hulls.ship_atlas;
+  assert.ok(hitch && wasp && drifter && atlas);
+
+  for (const hull of [hitch, wasp, drifter, atlas]) {
+    assert.equal(typeof hull.nose180TimeS, 'number');
+    assert.equal(typeof hull.velocity180TimeS, 'number');
+    assert.ok(hull.nose180TimeS >= 0.45, 'nose 180 is a turn, not a snap');
+    assert.ok(hull.velocity180TimeS > hull.nose180TimeS + 1.5, 'velocity must lag the nose');
+    assert.ok(hull.headingVelocityLagS >= 1.5, 'momentum carries through the 180');
+    assert.equal(hull.collisions, 0);
+  }
+
+  assert.ok(wasp.nose180TimeS < hitch.nose180TimeS);
+  assert.ok(hitch.nose180TimeS < drifter.nose180TimeS);
+  assert.ok(drifter.nose180TimeS < atlas.nose180TimeS);
+  assert.ok(wasp.velocity180TimeS < hitch.velocity180TimeS);
+  assert.ok(hitch.velocity180TimeS < drifter.velocity180TimeS);
+  assert.ok(atlas.velocity180TimeS >= 5.0, 'Atlas reversal cost cannot be bought away');
+  assert.ok(atlas.velocity180TimeS > hitch.velocity180TimeS);
+  assert.ok(atlas.lateralReversalTimeS > hitch.lateralReversalTimeS);
+  assert.ok(hitch.lateralReversalTimeS > wasp.lateralReversalTimeS);
+  assert.notEqual(hitch.nose180TimeS, drifter.nose180TimeS);
+
+  const spreadKeys = ['nose180TimeS', 'velocity180TimeS', 'lateralReversalTimeS', 'peakForwardSpeed'];
+  const spreadCount = spreadKeys.filter((key) => relativeSpread(hitch[key], wasp[key], drifter[key], atlas[key]) >= 0.12).length;
+  assert.ok(spreadCount >= 3, 'at least three M3 metrics must show a clear four-hull spread');
+  console.log('\nM3 reversal\n' + formatM3Table(result.metrics) + '\n');
+});
+
+function relativeSpread(...values) {
+  const nums = values.filter((v) => Number.isFinite(v));
+  if (nums.length < 2) return 0;
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const mid = (Math.abs(min) + Math.abs(max)) / 2;
+  return mid > 1e-9 ? (max - min) / mid : 0;
+}
 
 test('M4 moving slot convergence is deterministic', LONG, async () => {
   const result = await runTwice(() => runM4({ seed: SEED }));
