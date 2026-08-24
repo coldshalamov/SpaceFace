@@ -30,7 +30,8 @@ import {
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
-import { collectAttackModifiers } from './adventureMigration.js';
+import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
+import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigration.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
@@ -109,6 +110,59 @@ function masslineGunTarget(helpers, player, state) {
   return masslineOwnsGuns(tether, target, isHostileToPlayer(target, player.team, state))
     ? target
     : null;
+}
+
+const CAUSAL_META_BY_SPEC = new WeakMap();
+const FAMILY_FIELD = 'field';
+const FAMILY_REACTION = 'reaction';
+
+function causalMetaForSpec(spec) {
+  if (!spec || typeof spec !== 'object') return null;
+  let meta = CAUSAL_META_BY_SPEC.get(spec);
+  if (meta) return meta;
+  const tags = Object.freeze(causalKindsFromSpec(spec));
+  let hasField = false;
+  for (let i = 0; i < tags.length; i++) {
+    if (tags[i] === 'ORBIT') {
+      hasField = true;
+      break;
+    }
+  }
+  const payload = spec.payload;
+  if (!hasField && Array.isArray(payload)) {
+    for (let i = 0; i < payload.length; i++) {
+      const entry = payload[i];
+      if (entry && entry.kind === 'status' && entry.statusId === GRAVITY_MARK_STATUS_ID) {
+        hasField = true;
+        break;
+      }
+    }
+  }
+  meta = { causalTags: tags, hasField };
+  CAUSAL_META_BY_SPEC.set(spec, meta);
+  return meta;
+}
+
+function stampHitCausal(payload, live, result) {
+  if (!payload || !live) return;
+  const meta = live.causalMeta || causalMetaForSpec(live.spec);
+  if (meta && meta.causalTags) payload.causalTags = meta.causalTags;
+  const hops = result && Array.isArray(result.hops) ? result.hops.length : 0;
+  const runtime = (result && result.runtime) || live.runtime;
+  const generation = runtime && Number.isInteger(runtime.generation) ? runtime.generation : 0;
+  const bounced = !!(runtime && runtime.hasBounced)
+    || !!(result && result.bounce && result.bounce.ok);
+  if (hops > 0) {
+    payload.hops = hops;
+    payload.chain = true;
+  }
+  if (generation > 0) payload.generation = generation;
+  if (bounced) payload.hasBounced = true;
+  if (hops > 0 || generation > 0 || bounced) return;
+  if (meta && meta.hasField) payload.family = FAMILY_FIELD;
+  else if (meta && meta.causalTags && meta.causalTags.indexOf('STATUS') >= 0) {
+    payload.family = FAMILY_REACTION;
+  }
 }
 
 export const weapons = {
@@ -872,12 +926,25 @@ export const weapons = {
       collides: true,
       data,
     });
-    if (spawned && opts && opts.liveRuntime) {
+    if (spawned && opts && opts.spec) {
       if (!this._attackLive) this._attackLive = new Map();
-      this._attackLive.set(spawned.id, { spec: opts.spec, runtime: opts.liveRuntime });
-      if ((opts.spec && opts.spec.trajectory && opts.spec.trajectory.bounces > 0)
-        || (opts.spec && opts.spec.propagation && opts.spec.propagation.pierce > 0)) {
-        armAttackContinue(spawned);
+      const meta = causalMetaForSpec(opts.spec);
+      if (opts.liveRuntime) {
+        this._attackLive.set(spawned.id, {
+          spec: opts.spec,
+          runtime: opts.liveRuntime,
+          causalMeta: meta,
+        });
+        if ((opts.spec.trajectory && opts.spec.trajectory.bounces > 0)
+          || (opts.spec.propagation && opts.spec.propagation.pierce > 0)) {
+          armAttackContinue(spawned);
+        }
+      } else if (attackSpecHasLiveHit(opts.spec)) {
+        this._attackLive.set(spawned.id, {
+          spec: opts.spec,
+          runtime: null,
+          causalMeta: meta,
+        });
       }
     }
   },
@@ -890,6 +957,11 @@ export const weapons = {
     if (!projectile) return;
     const live = this._attackLive.get(projectile.id);
     if (!live) return;
+    if (!live.runtime) {
+      stampHitCausal(payload, live, null);
+      this._attackLive.delete(projectile.id);
+      return;
+    }
     const target = payload.targetId != null && this.helpers && this.helpers.getEntity
       ? this.helpers.getEntity(payload.targetId)
       : (state.entities && state.entities.get && state.entities.get(payload.targetId));
@@ -927,6 +999,7 @@ export const weapons = {
       scaleHitPayload(payload, result.payload.scale);
     }
     if (result.consume) this._attackLive.delete(projectile.id);
+    stampHitCausal(payload, live, result);
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------
@@ -1442,7 +1515,11 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
     });
     if (!spawned) continue;
     nudgeSpawnedAlongVelocity(spawned);
-    host._attackLive.set(spawned.id, { spec, runtime: child.runtime });
+    host._attackLive.set(spawned.id, {
+      spec,
+      runtime: child.runtime,
+      causalMeta: causalMetaForSpec(spec),
+    });
     const remaining = child.runtime && child.runtime.remaining;
     if (remaining && (remaining.bounces > 0 || remaining.pierces > 0)) {
       armAttackContinue(spawned);
