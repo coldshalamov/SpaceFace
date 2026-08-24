@@ -871,6 +871,8 @@ sync `buildComposedShip` still runs in flight via the empty-slot exception; hitc
 default-off; off-glass 3D horizons are mostly retired; crowded p95 is still GPU submit once
 bricks die; sim is not the hitch owner.
 
+**CAVEAT ON THE FIGURE BELOW, ADDED THE SAME DAY: this run was taken while a delegated lane was still live on the machine, and the report carries the contention signature** — frame interval vs measured callback interval disagree by a mean of **-220.4 ms** (and -1253.9 ms on the three frames at the dt clamp), with two hitches already attributed to `externalScheduling`. A large NEGATIVE disagreement means the callback was never SCHEDULED — the process was descheduled — which a `performance.now()` bracket around the render pass cannot tell apart from a GPU stall. This repo already knows concurrent lanes produce phantom numbers. **Treat the 3.6 s below as unconfirmed until re-measured on a quiet machine.** The steady-state figures (p95) are far less sensitive to this than the max.
+
 **2026-08-23 gate reading (same instrument, same machine, real Intel GPU — `npm run probe:runtime-witness`, New Game seed 47, 20 s).** Wave C says *promote only after hitch count is halved or the classifier names that owner*, so this is the measurement that decides whether `.11`-`.18` dispatch at all. **Waves A and B are all ten DONE.** What the witness now sees:
 
 - **Steady state is no longer the problem.** `presentation` p95 **5.8 ms**, `render` p95 4.4 ms, `sim` p95 4.5 ms, 182 draw calls. That is comfortably 60 fps with headroom.
