@@ -7,12 +7,18 @@ on:
     paths:
       - scripts/branch-consolidation-audit.mjs
       - .github/workflows/branch-consolidation-audit.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - scripts/branch-consolidation-audit.mjs
+      - .github/workflows/branch-consolidation-audit.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: branch-consolidation-audit
+  group: branch-consolidation-audit-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -20,10 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Checkout integration branch with complete history
+      - name: Checkout with complete filtered history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          filter: blob:none
           persist-credentials: true
 
       - name: Fetch every remote branch
@@ -32,7 +39,15 @@ jobs:
       - name: Compute patch-equivalent branch inventory
         run: node scripts/branch-consolidation-audit.mjs
 
-      - name: Commit durable audit ledger
+      - name: Upload complete branch ledger
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-consolidation-inventory
+          path: design/program/branch-consolidation/
+          retention-days: 14
+
+      - name: Commit durable audit ledger on direct branch pushes
+        if: github.event_name == 'push'
         run: |
           git config user.name "spaceface-integration-bot"
           git config user.email "spaceface-integration-bot@users.noreply.github.com"
