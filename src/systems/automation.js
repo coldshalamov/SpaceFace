@@ -1196,7 +1196,9 @@ export const automation = {
       // self-limit: each cycle pushes prices so the next spread shrinks (§ spec).
       this._applyTradePressure(t);
     }
-    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id }); // mission B6 watcher (cycle pulse)
+    this.bus.emit('automation:traderCycleCompleted', {
+      kind: 'trader', id: t.id, defId: t.defId,
+    });
 
     // danger-scaled loss roll
     const pLoss = this._traderLossProb(t, def, a);
@@ -1761,7 +1763,7 @@ export const automation = {
     };
     if (t.route) t.route.good = good;
     this.state.automation.traders.push(t);
-    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id });
+    this.bus.emit('asset:deployed', { kind: 'trader', id: t.id, defId: t.defId });
     this.toast(`Trader hired — route ${routeLabel(t.route)}`, 'success');
     return true;
   },

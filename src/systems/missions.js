@@ -505,6 +505,17 @@ function missionNavReason(m, station, sector) {
   }
 }
 
+const B6_DEPLOYMENT_KINDS = new Set(['drone', 'trader', 'outpost']);
+
+function b6DeploymentPayload(payload) {
+  // `asset:deployed` is an admission receipt: kind + identity + stable definition identity.
+  // Automation supplies defId; commissioned claim outposts supply claimSpecId.
+  if (!payload || !B6_DEPLOYMENT_KINDS.has(payload.kind) || payload.id == null) return null;
+  const definitionId = payload.defId || payload.claimSpecId;
+  if (typeof definitionId !== 'string' || !definitionId.trim()) return null;
+  return payload;
+}
+
 export const missions = {
   name: 'missions',
 
@@ -3403,14 +3414,30 @@ export const missions = {
       return false;
     }
     story.flags = story.flags || {};
+    const deployment = b6DeploymentPayload(p);
+    if (!deployment) return false;
     const legacy = !!story.flags.elroy_outcome_legacy || !story.flags.elroy_outcome;
     if (legacy) {
-      this._storyTrigger('asset_deployed', p || {});
+      this._storyTrigger('asset_deployed', deployment);
       return story.beatIndex !== 6;
     }
-    if (!p || p.kind !== 'drone' || p.id == null) return false;
-    story.flags.empire_seed_pending_id = p.id;
-    story.flags.empire_seed_pending_def = p.defId || null;
+    if (deployment.kind !== 'drone') {
+      story.flags.empire_seed_complete = true;
+      story.flags.empire_seed_variant = deployment.kind;
+      story.flags.empire_seed_asset_id = deployment.id;
+      delete story.flags.empire_seed_pending_id;
+      delete story.flags.empire_seed_pending_def;
+      this._storyTrigger('asset_deployed', deployment);
+      if (story.beatIndex === 6) {
+        delete story.flags.empire_seed_complete;
+        delete story.flags.empire_seed_variant;
+        delete story.flags.empire_seed_asset_id;
+        return false;
+      }
+      return true;
+    }
+    story.flags.empire_seed_pending_id = deployment.id;
+    story.flags.empire_seed_pending_def = deployment.defId || null;
     this._refreshNavigation({ forceStory: true, silent: true });
     this._sayStoryLine('Drone deployed. Assign the marked program.', 5);
     return true;
