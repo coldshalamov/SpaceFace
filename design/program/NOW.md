@@ -42,7 +42,6 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | PQ-135.00 speed governor | fable-campaign-20260824 lane FLIGHT | MUTATING | `src/combat/autoTargetMode.js`, `test/draw-to-fly-path-tracking.test.mjs` | review diff, commit, release row |
-| FIX-B reset+module-ids | fable-campaign-20260824 lane FIXB | MUTATING | `src/core/runReset.js`, `src/systems/cargo.js`, `src/systems/ships.js`, new reset/id tests | review, commit, release row |
 | PQ-136.00 wreck pack | fable-campaign-20260824 lane WRECK | MUTATING | `src/render/partsLibrary.js`, placement owners TBD, wreck pack manifests, new test | review, commit, release row |
 | FIX-A entity lifecycle | fable-campaign-20260824 lane FIXA | MUTATING | `src/systems/world.js`, `src/systems/lootShards.js`, `src/core/coreSystem.js`, `src/systems/traffic.js`, new lifecycle tests | review, commit, release row |
 
