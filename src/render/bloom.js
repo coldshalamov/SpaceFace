@@ -749,6 +749,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const traceBrick = !!(perf && perf.renderWorkEnabled === true);
     const info = traceBrick ? renderer.info : null;
     const programsBefore = traceBrick && Array.isArray(info?.programs) ? info.programs.length : null;
+    // Snapshot the program IDENTITIES too, not just the count. "7 programs linked" says a brick
+    // happened; it does not say WHICH materials caused it, and without that the fix is a guess about
+    // which spawn the sector precompile failed to predict. Probe-gated, so it costs nothing in play.
+    const keysBefore = traceBrick && Array.isArray(info?.programs)
+      ? new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')))
+      : null;
     const geometriesBefore = traceBrick && Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
     const texturesBefore = traceBrick && Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
     const startedAt = traceBrick && typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -773,6 +779,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             geometriesAfter: Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null,
             texturesBefore,
             texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+            newPrograms: keysBefore && Array.isArray(info?.programs)
+              ? info.programs
+                .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
+                .filter((key) => !keysBefore.has(key))
+                .map((key) => key.slice(0, 120))
+              : null,
           })}`);
         }
       }
