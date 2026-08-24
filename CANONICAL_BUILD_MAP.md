@@ -979,7 +979,12 @@ own rule applies: these are reserved identities, and a plan is legal only if the
 is unchanged.
 
 Still open, deliberately out of scope for that job: Continue/load logs two ~730 ms bricks
-(programs 14 -> 17, geometries 13 -> 19). New Game is clean.
+(programs 14 -> 17, geometries 13 -> 19). New Game is clean. **Admitted 2026-08-24 as
+`PQ-129.19`** (Continue/load geometry residency). The donor is the 452-line
+`startupGpuResidency.js` rewrite on `origin/perf/exact-opening-geometry-residency` (PR #100,
+closed as superseded for the opening path by `e7c6dffd`) — port its geometry-cohort admission to
+the Continue route rather than re-merging the branch. The promotion law applies: a hitch rise is
+disqualifying, and only a clean matched A/B on the real Continue route justifies keeping it.
 
 **2026-08-24 — THE COMPILE-ON-ADMISSION FIX DID NOT REMOVE THE BRICK. Measured, not assumed.**
 Two runs on a quiet-ish machine (one UI lane, no GPU work):
@@ -2012,6 +2017,11 @@ were LODs, source files, and third-party kits. `check:asset-reachability` is the
 
 - **Reuse before authoring.** No new model is commissioned for a slot an existing unused asset can
   fill; that is the whole point of this plan.
+- Runtime visual-continuity defects (ships publishing partially, sky/debris jumping across
+  floating-origin rebases) are NOT this plan: they belong to
+  [`design/program/FLEET_VISUAL_INTEGRITY.md`](./design/program/FLEET_VISUAL_INTEGRITY.md)
+  (landed with PR #102, 2026-08-24), which defers model production to `PQ-050` and
+  orphan/variant fielding back here.
 - A variant (repaint, damage pass, faction kit, wreck conversion) counts as fielding.
 - The asset pipeline contract and reachability checks stay green — this adds routing, not exceptions.
 - **Preserve valuable future work** (`PLAN_REGISTRY.md` rule 6): mark `FUTURE` or `PARTIAL` rather

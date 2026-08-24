@@ -9040,6 +9040,27 @@
       ],
       "receiptRefs": [],
       "brief": "Half-finished or superseded hulls are triaged, not abandoned. For each: field it, alter it into a variant (different faction, damaged version, wreck), or record why it genuinely cannot be used. Deleting is the last option. Done when every authored hull has a disposition on the record. Preserve valuable future work: mark FUTURE or PARTIAL rather than deleting."
+    },
+    {
+      "id": "PQ-129.19",
+      "parentId": "PQ-129",
+      "priority": 393,
+      "title": "Continue/load geometry residency: kill the two ~730 ms Continue bricks",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/openingGpuAdmission.js",
+        "src/render/startupGpuResidency.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "CANONICAL_BUILD_MAP section 8.4: after e7c6dffd killed the entering-flight brick, Continue/load still logs two ~730 ms bricks (programs 14->17, geometries 13->19); New Game is clean. The only worked-out geometry-admission code in the fleet is the 452-line startupGpuResidency rewrite on origin/perf/exact-opening-geometry-residency (PR 100, closed as superseded for the opening path) - port its geometry-cohort admission to the Continue route, do not re-merge the branch wholesale. Promotion law: a hitch RISE is disqualifying (the prior attempt of this shape took hitches 15->80 and was rejected); justify with a clean matched A/B on the real Continue route, not unit tests."
     }
   ]
 }
