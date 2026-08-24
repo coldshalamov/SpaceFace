@@ -1,0 +1,72 @@
+name: Current-master boot adaptation
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/adapt-boot-redesign.mjs
+      - .github/workflows/branch-boot-adapter.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-boot-adapter
+  cancel-in-progress: true
+
+jobs:
+  adapt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Fetch donors and align with the latest published integration state
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          for attempt in $(seq 1 18); do
+            git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+            if git cat-file -e refs/remotes/origin/integration/all-branches-20260824:design/program/branch-consolidation/priority-ports.json 2>/dev/null; then
+              break
+            fi
+            sleep 10
+          done
+          git checkout -B integration/all-branches-20260824 refs/remotes/origin/integration/all-branches-20260824
+          git rebase refs/remotes/origin/master
+
+      - name: Structurally transplant and harden the loading surface
+        run: |
+          node scripts/adapt-boot-redesign.mjs
+          node scripts/harden-priority-followup.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate the actual loading route
+        run: |
+          set -euo pipefail
+          node --check src/ui/loadingTerminalArt.js
+          node --test \
+            test/consolidated-boot-honesty.test.mjs \
+            test/startup-loading-presentation.test.mjs \
+            test/loading-boot-resilience.test.mjs \
+            test/loading-terminal-art.test.mjs
+          node scripts/check-type-floor.mjs
+          npm run build
+
+      - name: Publish validated adaptation
+        run: |
+          git add --sparse -A
+          git commit -m "refactor(boot): structurally port and harden full-bleed loading presentation [skip ci]"
+          git fetch origin integration/all-branches-20260824
+          git rebase refs/remotes/origin/integration/all-branches-20260824
+          git push --force-with-lease origin HEAD:integration/all-branches-20260824
