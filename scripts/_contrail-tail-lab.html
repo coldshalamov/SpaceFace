@@ -2,22 +2,35 @@
 <!--
   Look-dev rig for the drive worldline.
 
-  Two things the shipped gates cannot answer. (1) The thruster lookdev gate frames a blown-out
-  close-up of the nozzle, so the far end of the line is off screen and it stays green with a blunt
-  tail. (2) Retraction is TEMPORAL - whether the line reels into the engine or is shed behind it
-  cannot be read off a single frame at all, which is how a 61 WU detachment survived review.
+  CONTRACT
+  --------
+  This trail is a recorder, not a rope. Every emitted center sample is the exact world-space position
+  occupied by the thruster base at a prior time. Once written, that position cannot move. It may only
+  cool and disappear as its own age advances.
 
-  So this drives ContrailTrail directly with a known path at a known speed and renders a FILMSTRIP:
-  the camera is locked to the nozzle, the way the chase cam holds the ship, so across panels the
-  ship stays put and the only thing that changes is the line.
+  The previous version of this lab encoded the inverse requirement: it treated head detachment as a
+  failure, demanded that a cold line stay welded to the current nozzle, and described success as the
+  line "reeling into the engine." That false visual oracle repeatedly pushed implementations back
+  toward suction, tail cursors, live-head overrides and pulse bands.
 
-    ?strip=reel     thrust -> release -> coast -> stop -> thrust again
-    ?strip=cruise   one panel, steady cruise, for judging the tail
+  This replacement renders a filmstrip and continuously audits the actual invariant. At cutoff it
+  snapshots every recorded sample. During coast/stop it verifies that each still-young snapshot is
+  present at the identical (x,y,z), even while the ship moves away. Expiry is accepted only when the
+  sample's own age reaches TRAIL_SECONDS.
+
+    ?strip=history   thrust -> release -> coast -> stop -> thrust again (default)
+    ?strip=cruise    steady curved cruise
+    ?strip=forge     close view of the steady nozzle collar
+    ?view=chase      gameplay-like camera riding the nozzle (default)
+    ?view=world      fixed world camera, useful for proving the burn stays put
 -->
 <html>
 <head>
   <meta charset="utf-8" />
-  <style>html,body{margin:0;background:#05070d;overflow:hidden}canvas{display:block}</style>
+  <style>
+    html,body{margin:0;background:#05070d;overflow:auto;color:#d8efff;font-family:monospace}
+    canvas{display:block;max-width:100%;height:auto}
+  </style>
   <script type="importmap">
     { "imports": { "three": "/vendor/three.module.js", "three/addons/": "/vendor/addons/" } }
   </script>
@@ -27,17 +40,18 @@
 import * as THREE from 'three';
 
 const params = new URLSearchParams(location.search);
-// The WHOLE system, not the trail alone. Plume, line, forge and throat have to be judged composited
-// or you tune one element against a background the player never sees.
 const { PlasmaStreamSystem } = await import('/src/render/thruster/systems/plasmaStream.js');
 const { PLAYER_PLASMA_STREAM_RECIPE } = await import('/src/render/thruster/recipes/plasmaStreamRecipe.js');
+const { TRAIL_SECONDS } = await import('/src/render/thruster/ribbon/contrailTrail.js');
 
 const SPEED = Number(params.get('speed') || 150);
 const TURN = Number(params.get('turn') || 0.5);
-const STRIP = params.get('strip') || 'reel';
-const PW = 640, PH = 360;          // panel size
+const STRIP = params.get('strip') || 'history';
+const VIEW = params.get('view') || (STRIP === 'forge' ? 'close' : 'chase');
+const PW = 640;
+const PH = 360;
 const REACH = Number(params.get('reach') || 132);
-const VIEW = params.get('view') || (params.get('strip') === 'forge' ? 'close' : 'top');
+const EPS_WU = 1e-3;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1);
@@ -48,134 +62,234 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, PW / PH, 0.1, 5000);
 const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
 stream.attach(scene);
-const owner = { id: 'lab' };
+const owner = { id: 'immutable-history-lab' };
 const sockets = [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
-const trail = { inspect: () => stream.inspect().contrail, samplePositions: () => stream._contrail.samplePositions() };
+const trail = {
+  inspect: () => stream.inspect().contrail,
+  samplePositions: () => stream._contrail.samplePositions(),
+};
 
-// Stand-in for the ship, so "is the line still attached to the engine?" is answerable by eye. Two
-// crossed rings at the nozzle - deliberately NOT a glow, so it cannot be mistaken for the effect.
+// A non-glowing nozzle marker. It makes current ship position unambiguous without visually merging
+// with the burn under test.
 const ship = new THREE.Group();
-const ringMat = new THREE.MeshBasicMaterial({ color: 0xff7043, wireframe: true, transparent: true, opacity: 0.85 });
+const ringMat = new THREE.MeshBasicMaterial({
+  color: 0xff7043,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.85,
+});
 const r1 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.22, 6, 20), ringMat);
 const r2 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.22, 6, 20), ringMat);
 r2.rotation.y = Math.PI / 2;
-ship.add(r1); ship.add(r2);
+ship.add(r1);
+ship.add(r2);
 scene.add(ship);
 
 const dt = 1 / 60;
 let heading = 0;
+let elapsed = 0;
 let lastDrive = 1;
 const nozzle = { x: 0, y: 0, z: 0 };
+const panels = [];
+const frozen = [];
+let cutoffAt = -1;
+let maxSurvivorDriftWU = 0;
+let unexpectedEarlyRetirements = 0;
+let checkedSurvivors = 0;
 
 function step(speed, drive) {
   heading += TURN * dt;
   nozzle.x += Math.cos(heading) * speed * dt;
   nozzle.z += Math.sin(heading) * speed * dt;
+  elapsed += dt;
   lastDrive = drive;
+
   sockets[0].x = nozzle.x;
   sockets[0].y = nozzle.y;
   sockets[0].z = nozzle.z;
-  // ax/az is the hull's FORWARD axis; the system derives the bell direction from it. Held to the
-  // flight heading here, which is what a ship flying its own velocity vector looks like.
   sockets[0].ax = Math.cos(heading);
   sockets[0].az = Math.sin(heading);
-  if (stream.setCamera) stream.setCamera(camera);
+
+  stream.setCamera(camera);
   stream.update(dt, sockets, {
-    drive, throttle: drive, boost: 0, speed, speedDrive: Math.min(1, speed / 180),
+    drive,
+    throttle: drive,
+    boost: 0,
+    speed,
+    speedDrive: Math.min(1, speed / 180),
   }, { reducedMotion: false }, owner);
+
+  auditFrozenHistory();
 }
 
-// Camera rides the nozzle on a FIXED world-axis offset. Not look-at-the-path: if the framing chased
-// the line's bounds it would rescale per panel and the length change - the whole point - would be
-// hidden by the zoom.
+function snapshotAtCutoff() {
+  cutoffAt = elapsed;
+  frozen.length = 0;
+  for (const s of trail.samplePositions()) {
+    frozen.push({ x: s.x, y: s.y, z: s.z, age: s.age });
+  }
+}
+
+function nearestDistance(target, current) {
+  let best = Infinity;
+  for (const s of current) {
+    best = Math.min(best, Math.hypot(target.x - s.x, target.y - s.y, target.z - s.z));
+  }
+  return best;
+}
+
+function auditFrozenHistory() {
+  if (cutoffAt < 0 || frozen.length === 0) return;
+  const sinceCutoff = elapsed - cutoffAt;
+  const current = trail.samplePositions();
+
+  for (const s of frozen) {
+    // Permit the normal Float32/JS timing sliver around exact expiry. Before that instant the sample
+    // must still exist at the identical world-space coordinate.
+    const shouldStillLive = s.age + sinceCutoff < TRAIL_SECONDS - dt * 1.5;
+    if (!shouldStillLive) continue;
+    const drift = nearestDistance(s, current);
+    checkedSurvivors++;
+    if (!Number.isFinite(drift)) {
+      unexpectedEarlyRetirements++;
+      continue;
+    }
+    maxSurvivorDriftWU = Math.max(maxSurvivorDriftWU, drift);
+    if (drift > EPS_WU) unexpectedEarlyRetirements++;
+  }
+}
+
 function renderPanel() {
   ship.position.set(nozzle.x, nozzle.y, nozzle.z);
+
   if (VIEW === 'close') {
-    // Over-the-shoulder on the bell, so the mouth and the first few WU of line fill the frame. The
-    // top-down strip proves the line's LENGTH behaves; only this can show what its start looks like.
-    const fx = Math.cos(heading), fz = Math.sin(heading);
+    const fx = Math.cos(heading);
+    const fz = Math.sin(heading);
     camera.up.set(0, 1, 0);
     camera.position.set(nozzle.x + fx * 15 - fz * 13, nozzle.y + 7.5, nozzle.z + fz * 15 + fx * 13);
     camera.lookAt(nozzle.x - fx * 7, nozzle.y, nozzle.z - fz * 7);
-  } else {
-    camera.position.set(nozzle.x - 34, nozzle.y + REACH, nozzle.z - 16);
+  } else if (VIEW === 'world') {
+    // Fixed camera: stationary history must remain stationary on screen while the ship crosses it.
     camera.up.set(0, 0, -1);
+    camera.position.set(55, REACH, 20);
+    camera.lookAt(55, 0, 20);
+  } else {
+    // Chase camera: the ship stays framed while stationary world-space history correctly falls away
+    // behind it. Relative screen motion here is camera motion, not sample advection.
+    camera.up.set(0, 0, -1);
+    camera.position.set(nozzle.x - 34, nozzle.y + REACH, nozzle.z - 16);
     camera.lookAt(nozzle.x - 34, nozzle.y, nozzle.z - 16);
   }
+
   camera.updateMatrixWorld();
   renderer.render(scene, camera);
 }
 
-const panels = [];
 function capture(label) {
   renderPanel();
-  const c = document.createElement('canvas');
-  c.width = PW; c.height = PH;
-  c.getContext('2d').drawImage(renderer.domElement, 0, 0);
-  const i = trail.inspect();
-  const f = stream.inspect().forge;
-  panels.push({ label, img: c, span: i.visibleSpanWU, live: i.liveSamples, drive: lastDrive, forge: !!(f && f.visible) });
+  const canvas = document.createElement('canvas');
+  canvas.width = PW;
+  canvas.height = PH;
+  canvas.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  const info = trail.inspect();
+  const samples = trail.samplePositions();
+  const headGap = samples.length
+    ? Math.hypot(nozzle.x - samples[0].x, nozzle.y - samples[0].y, nozzle.z - samples[0].z)
+    : 0;
+  panels.push({
+    label,
+    img: canvas,
+    span: info.visibleSpanWU,
+    live: info.liveSamples,
+    drive: lastDrive,
+    headGap,
+    temporalModulation: info.temporalModulation,
+  });
 }
 
-function gap() {
-  const s = trail.samplePositions();
-  return s.length ? Math.hypot(nozzle.x - s[0].x, nozzle.y - s[0].y, nozzle.z - s[0].z) : 0;
-}
-
-const gaps = [];
-// speedFn returns a FRACTION of cruise speed, not an absolute — passing it straight to step() left
-// the ship crawling at 1 WU/s, under the movement threshold, so the path never recorded.
 function run(seconds, speedFn, drive, capturesAt = []) {
   const n = Math.round(seconds / dt);
   const marks = new Set(capturesAt.map((s) => Math.round(s / dt)));
   for (let i = 0; i < n; i++) {
     step(SPEED * speedFn(i / n), drive);
-    gaps.push(gap());
-    if (marks.has(i)) capture(`${drive > 0.5 ? 'THRUST' : 'COLD'}  t+${((i + 1) * dt).toFixed(2)}s`);
+    if (marks.has(i)) capture(`${drive > 0.5 ? 'THRUST' : 'COAST'}  t+${((i + 1) * dt).toFixed(2)}s`);
   }
 }
 
 if (STRIP === 'cruise') {
   run(6, () => 1, 1, [5.98]);
 } else if (STRIP === 'forge') {
-  // Straight, then hard into a turn: the turn is where the line and the hull's aft axis diverge,
-  // which is the attitude the mouth exists to hold together.
   run(2.2, () => 1, 1, [1.0, 2.18]);
   run(1.6, () => 1, 1, [0.5, 1.55]);
 } else {
-  // Open the throttle and fly a turn until the line is at full length.
   run(3, () => 1, 1, [2.98]);
-  // Let off. Ship coasts down under its own momentum - the exact case that used to shed the line.
+  snapshotAtCutoff();
+
+  // Release and decelerate. Old samples are facts in world space: they may fade with age, but none
+  // may chase the nozzle, reel toward it, or be deleted because the current ship slowed down.
   run(1.2, (u) => Math.max(0, 1 - u), 0, [0.2, 0.45, 0.7, 1.15]);
-  // Back on the throttle: the line is spun out of the same place it went in.
+
+  // Re-ignition creates fresh history at the new positions. It never pulls the surviving old segment
+  // into the bell or bridges a period in which the engine was not recording.
   run(1.2, (u) => u, 1, [0.35, 1.18]);
 }
 
-// Compose the contact sheet.
 const cols = Math.min(4, panels.length);
 const rows = Math.ceil(panels.length / cols);
 const sheet = document.createElement('canvas');
-sheet.width = cols * PW; sheet.height = rows * PH;
+sheet.width = cols * PW;
+sheet.height = rows * PH;
 const g = sheet.getContext('2d');
-g.fillStyle = '#05070d'; g.fillRect(0, 0, sheet.width, sheet.height);
+g.fillStyle = '#05070d';
+g.fillRect(0, 0, sheet.width, sheet.height);
+
 panels.forEach((p, i) => {
-  const x = (i % cols) * PW, y = Math.floor(i / cols) * PH;
+  const x = (i % cols) * PW;
+  const y = Math.floor(i / cols) * PH;
   g.drawImage(p.img, x, y);
-  g.strokeStyle = 'rgba(255,255,255,0.16)'; g.strokeRect(x + 0.5, y + 0.5, PW - 1, PH - 1);
-  g.font = 'bold 19px monospace'; g.fillStyle = '#fff';
+  g.strokeStyle = 'rgba(255,255,255,0.16)';
+  g.strokeRect(x + 0.5, y + 0.5, PW - 1, PH - 1);
+  g.font = 'bold 19px monospace';
+  g.fillStyle = '#fff';
   g.fillText(p.label, x + 14, y + 30);
-  g.font = '16px monospace'; g.fillStyle = '#7fd4ff';
-  g.fillText(`line ${p.span.toFixed(1)} WU`, x + 14, y + 54);
+  g.font = '16px monospace';
+  g.fillStyle = '#7fd4ff';
+  g.fillText(`history ${p.span.toFixed(1)} WU  samples ${p.live}`, x + 14, y + 54);
+  g.fillText(`head gap ${p.headGap.toFixed(1)} WU`, x + 14, y + 76);
 });
+
 document.body.appendChild(sheet);
 sheet.style.width = '100%';
 
+const inspection = trail.inspect();
 window.__LAB__ = {
+  contract: 'immutable-world-space-time-only',
   strip: STRIP,
+  view: VIEW,
   speed: SPEED,
-  panels: panels.map((p) => ({ label: p.label, spanWU: +p.span.toFixed(1), live: p.live, forgeVisible: p.forge })),
-  // The headline number: how far the line's start ever drifted from the engine, across every frame.
-  worstHeadGapWU: +Math.max(...gaps).toFixed(3),
+  trailSeconds: TRAIL_SECONDS,
+  panels: panels.map((p) => ({
+    label: p.label,
+    spanWU: +p.span.toFixed(1),
+    live: p.live,
+    headGapWU: +p.headGap.toFixed(3),
+    temporalModulation: p.temporalModulation,
+  })),
+  maxSurvivorDriftWU: +maxSurvivorDriftWU.toFixed(6),
+  unexpectedEarlyRetirements,
+  checkedSurvivors,
+  retention: inspection.retention,
+  sampleCenters: inspection.sampleCenters,
+  temporalModulation: inspection.temporalModulation,
+  distanceTrim: inspection.distanceTrim,
+  liveHeadOverride: inspection.liveHeadOverride,
+  pass: maxSurvivorDriftWU <= EPS_WU
+    && unexpectedEarlyRetirements === 0
+    && inspection.retention === 'time-only'
+    && inspection.sampleCenters === 'immutable-world-space'
+    && inspection.temporalModulation === false
+    && inspection.distanceTrim === false
+    && inspection.liveHeadOverride === false,
   sheet: { w: sheet.width, h: sheet.height },
   ready: true,
 };
