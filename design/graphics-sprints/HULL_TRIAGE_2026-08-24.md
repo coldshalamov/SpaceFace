@@ -345,3 +345,15 @@ source-only. Re-author, do not copy. Wreck/prop packs are other leaves.
 - [x] Blocked Pelican/Wasp accessory shells are CANNOT-USE with loader evidence.
 - [x] Factory clones of Wasp/Pelican/Mule dedicated packages are CANNOT-USE as duplicates.
 - [x] Nothing was deleted, moved, or rewired.
+
+## Still-review attempt, 2026-08-24 (controller GPU lane) — INSTRUMENT REJECTED, review deferred
+
+Chase-camera Blender renders of the three held hulls (volatiles_tanker, yard_tug,
+inspection_cutter) beside the accepted prospector_skiff were produced at
+`.devshots/stillreview-20260824[-src]/`. The rig was rejected as an art instrument by its own
+control: the ACCEPTED skiff renders as a bare slab because its authored value (rail cage, radiator
+stack, boom) is thin dark geometry plus textures the Blender import does not carry, while the
+pack's own hero-lit evidence stills show real structure. A fair play-size verdict therefore needs
+an IN-GAME capture (the game's renderer, KTX2 pipeline, lighting), which requires temporarily
+routing the held hulls through a dev scenario. Deferred until the GPU capture batch runs; the
+8257fd9e rejection stands meanwhile, and the three hulls stay unrouted.
