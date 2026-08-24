@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| FIX-F4 outfitting leak | fable-campaign-20260824 lane FIXF4 | MUTATING | `src/ui/screens/outfitting.js`, `src/ui/shipPreviewMount.js`, one test | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
