@@ -1,16 +1,21 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Crucible
-## Survival Mode, Combat Lab, and Arcade-Physics Convergence Master Plan
+## Survival Mode, Combat Lab, Flight Feel, Enemy Choreography, and Arcade-Physics Convergence Master Plan
 
-**Repository path:** `design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md` (admitted as `PQ-133`, see `CANONICAL_BUILD_MAP.md` §12)  
-**Source audit date:** 2026-08-21  
-**Status:** **DURABLE DESIGN SOURCE — ADMITTED 2026-08-21 AS `PQ-133` (phases 0–13 are its dispatch leaves; `design/program/` owns live status)**  
-**Primary purpose:** Give future agents one coherent, long-horizon source from which to shape bounded roadmap packets that move SpaceFace toward fast, combinatorial, swarm-scale arcade combat without severing that combat from the living Adventure universe.
+**Intended repository path:** `design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`  
+**Source audit date:** 2026-08-23  
+**Revision:** 2 — movement-convergence expansion  
+**Status:** **DURABLE DESIGN PROPOSAL + EXPERIMENT QUARRY — NOT ADMITTED WORK**  
+**Primary purpose:** Give future agents one coherent, long-horizon source from which to shape bounded roadmap packets that make SpaceFace flight, enemy motion, formations, swarm pressure, attack composition, and environmental physics converge on one nimble arcade core without severing that core from the living Adventure universe.
+
+**Scope correction — 2026-08-23:** Survival is not treated as the solution to weak moment-to-moment motion. Player handling and enemy choreography are now explicit prerequisites. More enemies only improve the game after those enemies move with readable intent and the player ship feels eager, precise, and physically honest.
 
 This document is intentionally much larger than a near-term implementation packet. It contains:
 
 - durable product direction;
 - near-term executable sequences;
+- a full player-flight and enemy-motion convergence program;
+- virtual formations, attack lanes, squad choreography, and swarm-flow plans;
 - provisional mechanics;
 - experiment designs;
 - candidate weapons, modifiers, enemies, arenas, and bosses;
@@ -89,6 +94,7 @@ Never turn this file into a giant checklist whose unchecked boxes imply a blocke
 19. [Arena 5: Storm Lattice](#19-arena-5-storm-lattice)
 20. [Future arena bank](#20-future-arena-bank)
 21. [Wave director and encounter composition](#21-wave-director-and-encounter-composition)
+21A. [Flight, formation, and enemy-motion convergence](#21a-flight-formation-and-enemy-motion-convergence)
 22. [Enemy ecology](#22-enemy-ecology)
 23. [Boss design](#23-boss-design)
 24. [Scoring, style, rewards, and causal truth](#24-scoring-style-rewards-and-causal-truth)
@@ -116,6 +122,8 @@ Never turn this file into a giant checklist whose unchecked boxes imply a blocke
 # 1. Executive thesis
 
 **CORE:** SpaceFace needs a concentrated combat proving ground in which its signature physical verbs can be learned, combined, stressed, measured, and made spectacular within minutes rather than hidden behind hours of Adventure progression.
+
+**CORE:** The proving ground is downstream of motion quality. Crucible must not become a fast way to reproduce sluggish player control, wonky enemy corrections, decorative formations, or orbiting AI soup. The shared player-flight and enemy-choreography program in §21A is an entry gate for representative Survival combat, not optional polish.
 
 The working umbrella name is **Crucible**.
 
@@ -2904,6 +2912,8 @@ A procedural or semi-procedural arena generator may then compose only validated 
 
 Crucible should not overload the living-universe encounter director. The campaign director is designed to make the world breathe: rare majors, paced minors, quiet after spending, and no overlapping combat shapes. Survival needs continuous authored pressure.
 
+The wave director chooses **coordinated motion packages**, not merely enemy counts. Every representative wave recipe therefore depends on the movement contracts in §21A: virtual formation frames, hull-relative capability, attack tokens, lanes, cohort flow, and readable disruption.
+
 ## 21.1 Ownership split
 
 | Owner | Responsibility |
@@ -3113,7 +3123,2104 @@ Objective waves are essential because they reveal whether the build can do more 
 
 ---
 
+# 21A. Flight, formation, and enemy-motion convergence
+
+**CORE CORRECTION — 2026-08-23:** Crucible cannot deliver the intended experience if the ships themselves remain mushy, indecisive, or visually incoherent. Survival is a forcing function for combat density, but density magnifies every flaw in flight control and enemy movement. The movement layer therefore becomes a prerequisite shared program, not post-launch Survival polish.
+
+The goal is not merely to make everything faster. Speed without intention produces pinball noise. The goal is:
+
+> **Every ship should look like it meant to do what it just did.**
+
+For the player, that means immediate response, trustworthy momentum, fast correction, and strong differences between light and heavy hulls. For enemies, it means readable commitment: enter in a shape, take an attack lane, execute a recognizable maneuver, leave through a coherent exit, and reform or break for a visible reason. For swarms, it means coordinated flow rather than dozens of independent agents jittering around the same target.
+
+This section owns a long-horizon design and experiment quarry for:
+
+- player flight feel;
+- shared physical actuator behavior;
+- hull-relative AI capability;
+- desired-position **and desired-velocity** control;
+- virtual formation frames;
+- formation morphing;
+- attack-lane and attacker-token allocation;
+- squad choreography;
+- cheap swarm-flow behavior;
+- environment-aware movement;
+- formation break and recovery;
+- motion telemetry and deterministic scenarios;
+- migration into Adventure traffic, patrols, convoys, and combat.
+
+It does not prescribe exact tuning values as permanent law. Every number in this section is a candidate experiment band unless a later admitted packet promotes it.
+
+---
+
+## 21A.1 Why this precedes the wave mode
+
+A wave mode does not create good combat. It creates more combat per minute. If movement is weak, Survival will produce:
+
+- more enemies oscillating around arbitrary seek points;
+- more formation members colliding or over-correcting;
+- more ships slowly orbiting instead of attacking;
+- more local avoidance overriding authored intent;
+- more visual clutter with less tactical meaning;
+- more player frustration from a ship that feels heavy in the hands but not meaningfully massive in the world;
+- more false balance work, because movement defects will be misdiagnosed as weapon or enemy-stat defects.
+
+The correct dependency is:
+
+```text
+Motion Lab
+→ player handling convergence
+→ hull-relative enemy actuator
+→ virtual formation + attack choreography
+→ cheap coherent swarm motion
+→ ten-wave Survival shell
+→ attack/modifier expansion
+→ arena and boss breadth
+```
+
+A minimal run-state shell may be developed in parallel where paths do not collide, but no Survival vertical slice should be called representative until the motion-convergence gate passes.
+
+## 21A.2 Current diagnosis from the live seams
+
+The repository already contains a sophisticated layered AI stack: perception, encounter direction, squad tactics, utility selection, behavior execution, combat doctrine, maneuver planning, and canonical physical control. The problem is not “there is no AI.” The problem is that several individually sensible layers collapse into conservative, locally reactive motion.
+
+### The authored hull and the AI speed envelope disagree
+
+Enemy hulls and propulsion profiles are authored with substantial acceleration and combat speed, but the generic maneuver planner uses global caps around the low seventies for intercept, approach, and orbit. A fast interceptor therefore owns a capable body but receives instructions shaped like a cautious escort tug.
+
+This produces a characteristic feel:
+
+- the ship accelerates, brakes, and turns below its identity;
+- attack runs take too long to develop;
+- the player sees drift and correction rather than decisive entry;
+- several enemies occupy the same engagement ring because their phase differences are smaller than their slow convergence time;
+- raising enemy data speeds does little if the planner continues to command a lower envelope.
+
+The fix is not “set every cap to 150.” The fix is to derive a maneuver envelope from the **actual live hull authority**, then assign phase-relative fractions of that envelope.
+
+### Formation is a moving set of points attached to the leader body
+
+The current formation vocabulary is useful but thin: wedge, line, and ring slots are generated around the current leader position and a smoothed leader heading. This is enough to demonstrate convergence. It is not enough to choreograph combat.
+
+Consequences:
+
+- leader jitter becomes slot jitter;
+- leader collision avoidance moves the whole desired geometry indirectly;
+- followers chase a frame that may be physically disturbed by the same hazards they are avoiding;
+- leader death or disablement destabilizes the formation concept;
+- the formation has no authored velocity, angular velocity, curvature, attack corridor, or future path beyond a simple linear prediction;
+- the formation exists primarily before and after attacks, not as the logic of the attack itself.
+
+A formation should be a **virtual moving reference frame** that ships inhabit, not merely a collection of offsets from whichever ship happens to be index zero.
+
+### Followers chase position but do not truly match slot velocity
+
+Predicting a slot forward by a fraction of a second helps, but pure point-seeking still leaves the follower solving only half the problem. The correct terminal state is:
+
+```text
+position = slot position
+velocity = slot velocity
+heading = slot or attack heading
+```
+
+A follower that reaches the right point with the wrong velocity overshoots, brakes, reverses, and returns. Under a moving leader this becomes permanent wobble.
+
+### Combat doctrine mostly releases formation during the interesting phase
+
+The existing doctrine phase machines are valuable. Interceptors ingress, telegraph, strike, extend, and reform; brawlers commit and break away; snipers reposition, charge, fire, and reset. But the formation lock is commonly released once the attack begins. Each member then executes a personal maneuver around the target.
+
+That prevents the squad from answering higher-order questions:
+
+- Which pair attacks first?
+- Which angular corridor belongs to each attacker?
+- Where does an attacker exit so it does not collide with the second pair?
+- Which unit screens the sniper while others cross?
+- When does a reserve unit replace a destroyed attacker?
+- How does a wedge become two pincers and then become a wedge again?
+- How many ships may pressure the player simultaneously?
+
+The missing layer is not more per-ship intelligence. It is **shared choreography**.
+
+### Avoidance can become the strongest voice
+
+Friendly separation, ship-collision passes, and obstacle avoidance are applied after the desired maneuver. Under density, several local corrections can dominate the original plan. The resulting path is technically safe but visually unmotivated: an enemy appears to change its mind because an invisible weighted sum changed sign.
+
+Avoidance should constrain a coherent trajectory, not continuously author a new one.
+
+### Existing tests prove plumbing and determinism more than grace
+
+Current checks establish valuable truths: formations converge, flybys reach their phases, collision avoidance picks a stable side, and physical maneuver requests reach the authoritative body owner. Those checks should remain.
+
+They do not establish:
+
+- low steady-state slot error;
+- velocity matching;
+- bounded overshoot;
+- low control oscillation;
+- readable formation morphs;
+- attack-lane separation;
+- coordinated attacker timing;
+- attractive curvature;
+- role distinction visible from motion alone;
+- whether a player describes the result as nimble, intentional, or fun.
+
+The movement program must add these claims rather than reinterpret basic convergence as finished feel.
+
+## 21A.3 The motion North Star: arcade-physical
+
+SpaceFace should reject both extremes.
+
+### Reject inertial sludge
+
+A physically simulated ship does not need to feel delayed, vague, or weak. Real forces can be strong. Reaction control can be immediate. A light combat hull can reverse lateral acceleration aggressively while retaining whatever translational momentum it has not physically cancelled.
+
+### Reject frictionless cursor puppets
+
+A ship should not instantly rotate its velocity vector, teleport onto a path, or ignore mass because responsiveness is desirable. Momentum is the toy. The player must be able to feel the difference between rotating the hull, changing acceleration, and actually changing velocity.
+
+### The target
+
+**Arcade-physical** means:
+
+- input response is immediate;
+- force response is strong;
+- momentum is visible and exploitable;
+- stopping and changing direction spend real authority;
+- light ships change acceleration rapidly;
+- heavy ships commit visibly;
+- every maneuver has a clean silhouette in time;
+- AI plans ahead enough that physical motion looks intentional;
+- the environment can disrupt a plan, and that disruption remains honest;
+- recovery from disruption is readable rather than instantaneous.
+
+The player should feel as though the ship is a high-performance machine with mass, not as though the controls are arguing with a numerical simulation.
+
+## 21A.4 The five-layer movement architecture
+
+The shared movement stack should separate **why**, **where**, and **how**.
+
+```text
+1. Encounter choreography
+   What shape of pressure should occur over the next several seconds?
+
+2. Squad motion plan
+   What virtual frame, formation, phase, slots, attack lanes, and timing realize it?
+
+3. Member trajectory
+   What desired position, velocity, heading, and arrival state should this ship pursue?
+
+4. Local constraints
+   What bounded changes are required for terrain, bodies, fields, and safety?
+
+5. Physical actuator
+   What force, strafe, torque, brake, boost, and Rig requests can the live hull actually execute?
+```
+
+Each layer must have one job.
+
+### Encounter choreography
+
+Owns:
+
+- package entry gate;
+- squad-level phase schedule;
+- pressure windows;
+- reserve release;
+- objective relationship;
+- formation family;
+- whether the package is a pincer, flood, screen, convoy, or siege.
+
+It does not steer ships.
+
+### Squad motion plan
+
+Owns:
+
+- virtual anchor state;
+- shape and shape transition;
+- slot assignment;
+- role geometry;
+- attack tokens;
+- lane reservations;
+- phase synchronization;
+- formation integrity;
+- successor logic after leader loss.
+
+It does not write physics.
+
+### Member trajectory
+
+Owns:
+
+- desired position;
+- desired velocity;
+- desired facing;
+- desired angular rate where useful;
+- arrival tolerance;
+- phase-relative speed and acceleration envelope;
+- committed route points or corridor.
+
+It does not know Rapier internals.
+
+### Local constraints
+
+Owns:
+
+- collision prediction;
+- terrain clearance;
+- stable passing side;
+- no-go volumes;
+- field/current compensation where the actor is capable of it;
+- bounded path deformation;
+- emergency break from an invalid corridor.
+
+It must preserve as much of the authored trajectory as possible.
+
+### Physical actuator
+
+Owns:
+
+- conversion into canonical force/torque controls;
+- live authority limits;
+- heat/capacitor/drive capability;
+- physical acceleration and angular acceleration;
+- boost/brake decisions;
+- no direct position or velocity writes.
+
+The existing physics authority remains the only body-motion writer.
+
+## 21A.5 Player flight-feel program
+
+The player tune should be treated separately from enemy choreography even though both use the same physical substrate. The player needs tactile control. Enemies need authored readability.
+
+### Do not begin with top speed
+
+The first tuning variables should be:
+
+1. input-to-force latency;
+2. acceleration onset;
+3. yaw acceleration;
+4. yaw braking;
+5. lateral authority;
+6. reverse authority;
+7. assisted-mode velocity cancellation;
+8. boost onset and release;
+9. response after a tether or collision impulse;
+10. camera/VFX confirmation of thrust.
+
+Top speed can remain unchanged during the first pass. A ship can feel much faster because it reaches useful motion sooner, turns with conviction, and stops oscillating.
+
+### Separate the three things players call “turning”
+
+1. **Nose turn:** angular acceleration and max yaw rate.
+2. **Velocity turn:** lateral/reverse thrust changing the motion vector.
+3. **Path turn:** the combined visible curve through space.
+
+A tune that raises nose turn but leaves lateral authority weak creates a ship that points correctly while sliding helplessly. A tune that rotates velocity invisibly destroys physicality. The intended result is a fast nose plus enough real lateral authority to bend the path clearly.
+
+### Candidate response bands
+
+These are experiment targets, not final law.
+
+| Metric | Light combat hull | Medium/multirole | Heavy/capital |
+|---|---:|---:|---:|
+| Visible thrust response after input | ≤ 1 sim tick | ≤ 1 sim tick | ≤ 1 sim tick |
+| 10–90% commanded translation response | 0.08–0.18 s | 0.14–0.30 s | 0.35–0.80 s |
+| 90° nose rotation from ordinary combat state | 0.30–0.50 s | 0.50–0.85 s | 1.10–2.20 s |
+| Yaw settle after release | 0.15–0.28 s | 0.22–0.45 s | 0.60–1.20 s |
+| Strong lateral correction becomes visible | < 0.12 s | < 0.20 s | < 0.45 s |
+| Full brake from ordinary cruise | 0.8–1.5 s | 1.3–2.3 s | 2.5–5.0 s |
+
+Test these under representative fitted mass, not empty catalog hulls.
+
+### Player-only responsiveness must remain legible
+
+A player craft may receive better control ergonomics than an NPC using the same base drive, but it should not receive hidden impossible physics. Legitimate player-side shaping includes:
+
+- stronger installed RCS authority;
+- faster actuator response;
+- class-specific control computer assistance;
+- better yaw braking;
+- better lateral cancellation in Assisted mode;
+- immediate command sampling;
+- no stale decision cadence;
+- explicit flight-computer modules later in Adventure.
+
+The existing player translation responsiveness multiplier is a useful seam. It should be evaluated as a class-aware curve rather than assumed sufficient because the value is above one.
+
+### Candidate tuning experiments
+
+**Experiment P1 — player translation response**
+
+Compare the current profile against class-aware multipliers:
+
+```text
+light: 1.20 / 1.28 / 1.35
+medium: 1.12 / 1.18 / 1.24
+heavy: 1.00 / 1.06 / 1.12
+```
+
+Keep speed ceilings unchanged. Measure stop distance, slalom time, overshoot, and subjective control.
+
+**Experiment P2 — yaw brake before yaw rate**
+
+Raise yaw braking independently while holding maximum yaw rate constant. This often makes a ship feel more precise without making continuous spins faster.
+
+**Experiment P3 — coast-flip authority**
+
+The existing coast-helm bonus is conceptually right: release thrust, rotate, then burn. Test class-aware coast multipliers and make the state visually obvious through RCS. Do not let it become free instant turning while the main drive is still committed.
+
+**Experiment P4 — assisted lateral kill**
+
+Increase physically applied lateral counter-thrust only when the player releases or reverses an axis. Compare with a constant hidden damping increase. Keep the version whose telemetry and replay show real thrust and whose feel is clearer.
+
+**Experiment P5 — reversal impulse reserve**
+
+A light fighter may reserve a short burst of RCS authority for a commanded lateral reversal. This is not a velocity impulse. It is a temporary actuator ceiling backed by capacitor/heat and visible thrusters. Reject it if it becomes a hidden dash.
+
+**Experiment P6 — input curve**
+
+Compare linear, mild cubic, and two-stage curves. Keyboard input is digital, but ramp and combination behavior still matter. Full command should arrive quickly; precision should come from Assisted control and braking, not a half-second ramp.
+
+### Preserve hull identity
+
+The Hitch should become responsive enough to teach the game, not become a Wasp. The Wasp should feel nervous and eager. The Drifter should feel planted but capable. The Hornet should feel like its vector drive snaps into a chosen envelope. A freighter should answer immediately yet take time to change its actual trajectory.
+
+The invariant is:
+
+> **Immediate command acknowledgement; mass-scaled physical consequence.**
+
+The player should never wonder whether input registered. They may still correctly discover that a loaded hauler cannot perform a fighter’s correction.
+
+## 21A.6 Hull-relative enemy capability envelopes
+
+The generic maneuver planner should stop treating “intercept speed” as one global truth.
+
+For each live actor derive a compact capability envelope from the current propulsion/flight authority:
+
+```js
+{
+  maxForwardAccel,
+  maxReverseAccel,
+  maxLateralAccel,
+  maxAngularAccel,
+  maxAngularBrake,
+  maxYawRate,
+  governedCombatSpeed,
+  boostSpeed,
+  boostAvailable,
+  brakingDistanceAtSpeed,
+  massBand,
+  driveFamily,
+  damagedCapabilityScale
+}
+```
+
+The AI then requests a phase-relative fraction.
+
+Candidate initial fractions:
+
+| Phase | Speed fraction of live combat envelope | Accel use | Character |
+|---|---:|---:|---|
+| Transit/formation cruise | 0.35–0.60 | moderate | coherent and readable |
+| Ingress | 0.70–0.95 | high | decisive arrival |
+| Telegraph | 0.55–0.80 | controlled | player gets a readable beat |
+| Strike/commit | 0.80–1.05 | high/boost-capable | dangerous and intentional |
+| Orbit/standoff | 0.45–0.75 | lateral-heavy | stable weapon geometry |
+| Extend/breakaway | 0.80–1.10 | high | clean exit, no instant turn-back |
+| Reform | 0.55–0.80 | controlled | return to shape without crawling |
+| Retreat | 0.85–1.15 | maximum sustainable | survival |
+| Disabled/tumbling recovery | capability-derived | low/irregular | honest damage response |
+
+A phase may temporarily exceed governed combat speed through real boost or existing earned momentum. It may not write a higher velocity.
+
+### Why hull-relative envelopes matter
+
+- a Wasp and a bruiser can share the word “intercept” while moving differently;
+- a damaged drive naturally changes the maneuver without a bespoke AI rule;
+- fitted mass and modules matter;
+- Adventure and Survival share the same truth;
+- tuning an enemy no longer requires guessing which global cap secretly dominates it;
+- faction identity can later shape fractions without replacing physics.
+
+## 21A.7 Desired-state trajectory control
+
+Replace pure direction-seeking as the default formation and committed-path controller with desired-state tracking.
+
+A simple physically meaningful controller is:
+
+```text
+position error: ep = p_desired - p
+velocity error: ev = v_desired - v
+requested acceleration: a = Kp * ep + Kv * ev + a_feedforward
+```
+
+Then project the requested world acceleration into the ship’s available forward/lateral axes and clamp it to live authority.
+
+This is not a direct velocity servo. It requests physical acceleration.
+
+### Desired position
+
+Comes from:
+
+- formation slot;
+- attack corridor sample;
+- orbit point;
+- exit point;
+- screen relationship;
+- objective socket;
+- environment-aware route.
+
+### Desired velocity
+
+Comes from:
+
+- virtual formation anchor velocity;
+- path tangent × authored phase speed;
+- target-relative orbit velocity;
+- exit velocity;
+- current/field compensation;
+- arrival state.
+
+### Feed-forward acceleration
+
+Comes from:
+
+- virtual anchor acceleration;
+- path curvature;
+- known arena current;
+- formation rotation;
+- authored attack beat.
+
+Feed-forward prevents followers from waiting for an error before responding.
+
+### Critical damping as an experiment, not dogma
+
+For a simple axis, a critically damped relationship suggests:
+
+```text
+Kv ≈ 2 * sqrt(Kp)
+```
+
+Real hull limits, rotating local axes, and discrete ticks complicate that. Use it to seed experiments, then tune by class and phase. The important property is low overshoot and fast convergence—not mathematical purity.
+
+### Arrival contracts
+
+Every trajectory primitive declares what “arrive” means:
+
+```js
+arrival: {
+  positionTolerance,
+  velocityTolerance,
+  headingTolerance,
+  minimumDwellTicks,
+  onMiss: 'extend' | 'replan' | 'abort' | 'recover'
+}
+```
+
+This prevents a phase from switching merely because a ship crossed a radius at the wrong speed.
+
+## 21A.8 A trajectory-primitive library
+
+Do not author every enemy path as a one-off function. Build a compact library of physically tracked primitives.
+
+### `FOLLOW_FRAME_SLOT`
+
+Track a slot in a moving/rotating virtual frame with position, velocity, and heading targets.
+
+### `TRANSIT_CORRIDOR`
+
+Move through a wide corridor using a centerline, speed profile, and exit state. Used for patrols, convoys, and wave entry.
+
+### `INTERCEPT_PASS`
+
+Predict target motion, choose an offset crossing point, commit through it, and continue to an exit point. It is not an orbit.
+
+### `BRAKE_TURN_BURN`
+
+Approach a turn gate, reduce forward speed with real reverse thrust, rotate, then accelerate along the next leg. Useful for heavy ships and sharp arena geometry.
+
+### `TARGET_RELATIVE_ORBIT`
+
+Track a target-relative ring with desired tangential velocity, radial error correction, facing mode, and reserved angular sector.
+
+### `STRAFE_WINDOW`
+
+Maintain a firing line for a bounded duration while sliding laterally. Then leave.
+
+### `STANDOFF_NODE`
+
+Occupy one of several target-relative or arena-authored nodes, fire, then relocate to another node.
+
+### `PINCH_LANE`
+
+Approach from one pincer horn, cross a pressure region, and exit through a paired corridor.
+
+### `SCREEN_SEGMENT`
+
+Maintain a moving line or arc between a protected actor and a threat direction.
+
+### `RAM_CORRIDOR`
+
+Explicitly authorized heavy-body commitment with a long telegraph, no last-moment avoidance of the intended target, and a recoverable miss path.
+
+### `RETREAT_VECTOR`
+
+Choose a stable escape direction from threat geometry and commit long enough to read as retreat rather than indecision.
+
+### `FIELD_RIDE`
+
+Use a known current, well, repulsor, or flow lane as part of the desired path. The field supplies real motion; the AI plans around it.
+
+### `REFORM`
+
+Acquire a formation slot using desired-state tracking and an assigned merge corridor. It must not cut directly across active attackers.
+
+### `DISRUPTED_RECOVERY`
+
+After an external impulse, tether, spin, or collision, allow a bounded period in which physics wins. Then choose a recovery trajectory based on the new state. Do not instantly snap back to the previous path.
+
+Each primitive should expose:
+
+- parameters;
+- phase;
+- desired state;
+- progress;
+- miss/recovery result;
+- debug geometry;
+- deterministic digest.
+
+
+## 21A.9 Virtual formation frames
+
+A formation should have a state independent of any one member:
+
+```js
+squadMotionFrame = {
+  id,
+  position: { x, z },
+  velocity: { x, z },
+  acceleration: { x, z },
+  heading,
+  angularVelocity,
+  pathId,
+  pathProgress,
+  phase,
+  shapeId,
+  spacingScale,
+  integrity,
+  successorPolicy
+};
+```
+
+The frame may initially be seeded from the leader, but it then follows the squad plan. The leader is a member assigned to a leader slot, not the body that defines mathematical reality.
+
+### Benefits
+
+- physical disturbance of one ship does not drag every desired slot;
+- followers receive a stable velocity target;
+- leader death can trigger succession without teleporting geometry;
+- formations can bank, rotate, widen, compress, or split intentionally;
+- the formation can follow a path through the arena;
+- attack lanes can be defined in the same frame;
+- debug visualization becomes understandable;
+- Adventure patrols and convoys inherit the same system.
+
+### Frame motion
+
+The frame itself should use a bounded controller or authored path, not teleport.
+
+Possible sources:
+
+- spline/corridor authored by an encounter;
+- target-relative motion;
+- objective-relative orbit;
+- convoy route;
+- arena flow lane;
+- director-selected pincer path;
+- free-flight transit prediction.
+
+### Successor and fracture policy
+
+When the leader is disabled or destroyed:
+
+- the virtual frame persists for a short grace period;
+- the highest-priority eligible member becomes command reference;
+- roles may be reassigned;
+- integrity drops visibly;
+- some doctrines reform; others scatter or become more aggressive;
+- no slot instantly jumps across the battlefield.
+
+A formation may also fracture into subframes:
+
+```text
+one wedge
+→ left attack pair + right attack pair + support reserve
+→ three temporary frames
+→ shared reform frame
+```
+
+That is the correct representation of a pincer. It is not “break formation and let everyone orbit.”
+
+## 21A.10 Formation-shape grammar
+
+Shapes should be data with role sockets, not scattered index arithmetic.
+
+Proposed shape record:
+
+```js
+{
+  id: 'formation_attack_wedge_4',
+  family: 'wedge',
+  slots: [
+    { key: 'lead', roleTags: ['leader'], local: [0, 0], facing: 'frame' },
+    { key: 'left', roleTags: ['striker'], local: [-0.72, -1], facing: 'frame' },
+    { key: 'right', roleTags: ['striker'], local: [0.72, -1], facing: 'frame' },
+    { key: 'rear', roleTags: ['support', 'screen'], local: [0, -1.85], facing: 'threat' }
+  ],
+  spacingRule: 'dynamic_hull_clearance',
+  morphTargets: ['formation_attack_fan_4', 'formation_pincer_pairs_4']
+}
+```
+
+### Launch shape families
+
+**Wedge** — fast approach, leader clear, attack vectors visible.
+
+**Echelon left/right** — diagonal attack run with one protected flank.
+
+**Line abreast** — broad area pressure, telegraphs simultaneous reach.
+
+**Column** — narrow gate transit and pursuit.
+
+**Fan** — telegraph phase before distributed attack lanes.
+
+**Ring/arc** — defense, screening, or area containment; not a default perpetual orbit.
+
+**Pincer horns** — two subgroups with reserved crossing lanes.
+
+**Screen wall** — defenders between support/anchor and player.
+
+**Escort box** — protected objective with front/rear/flank roles.
+
+**Relay lattice** — field or electrical nodes at meaningful graph positions.
+
+**Capstan/web** — tether specialists around a hub.
+
+**Comet** — dense leading body with trailing swarm wake.
+
+**Crescent** — cheap fodder surrounding a target-facing concavity.
+
+**Spiral ingress** — arena-specific current or gravity use, never generic decorative circling.
+
+### Dynamic spacing
+
+Spacing should depend on:
+
+- member collision radii;
+- mass bands;
+- relative speed;
+- arena corridor width;
+- weapon danger radius;
+- field radius;
+- formation phase;
+- expected incoming area attacks;
+- current integrity.
+
+A formation should compress in a corridor and expand before combat. It should not use one universal 72-unit spacing everywhere.
+
+### Morphing
+
+A shape transition interpolates a **frame-local desired state**, not member positions directly.
+
+```text
+wedge ingress
+→ fan telegraph over 0.6 s
+→ paired pincer lanes over 0.8 s
+→ independent committed passes
+→ split egress
+→ wedge reform over 1.2 s
+```
+
+Members physically track the moving slots. If disruption prevents the morph, integrity falls and recovery logic takes over.
+
+## 21A.11 Formations must perform a tactical function
+
+A visible geometric shape is not enough. Every formation should answer at least one question.
+
+### Weapon geometry
+
+- fixed guns need approach alignment;
+- broadsides need lateral lanes;
+- missiles need spacing and clear launch arcs;
+- chain weapons may want conductive spacing;
+- mines need trailing or side lanes;
+- fields need overlap without total stacking.
+
+### Protection
+
+- screens occupy threat-facing slots;
+- repair/support stays behind mass;
+- a tug or thief receives an approach corridor;
+- a capital ship’s escorts protect vulnerable quadrants;
+- relay nodes preserve a graph.
+
+### Pressure timing
+
+- only token holders enter lethal range;
+- reserves maintain silhouette and threat without becoming a firing blob;
+- a damaged attacker yields its token;
+- the next pair begins only after the first pair reaches its extension gate or is destroyed.
+
+### Environmental use
+
+- current-riding formations enter through a favorable lane;
+- gravity-aware wings widen before a central pull;
+- reflective arenas create bank-safe spacing;
+- volatile props cause formations to avoid dangerous cluster states unless intentionally weaponizing them.
+
+### Player disruption
+
+The player should be able to understand and attack the formation’s function:
+
+- knock the screen away;
+- tether the leader or frame-reference actor;
+- break one pincer horn;
+- destroy a relay node;
+- force attackers into the same exit lane;
+- use a Well to collapse spacing;
+- use a Repulsor to fracture the group;
+- disable the support unit and watch the formation change.
+
+The shape becomes gameplay when breaking it matters.
+
+## 21A.12 Attack tokens and lane reservations
+
+One of the largest differences between readable arcade combat and AI soup is the number of enemies allowed to occupy the same tactical role at once.
+
+### Attack tokens
+
+A squad or encounter grants bounded tokens:
+
+- `close_attack`;
+- `ranged_fire`;
+- `control_deploy`;
+- `ram_commit`;
+- `objective_interact`;
+- `screen_front`.
+
+Token count depends on wave, difficulty, arena, and enemy role.
+
+Example four-ship interceptor wing:
+
+```text
+2 close_attack tokens
+1 ranged_fire token
+1 reserve/reform slot
+```
+
+The two active attackers execute paired lanes. The others remain dangerous through positioning, telegraphy, or ranged pressure without all four collapsing into the player.
+
+### Lane reservations
+
+An attack lane is a time-bounded corridor or target-relative angular sector:
+
+```js
+{
+  id,
+  holderId,
+  kind: 'ingress' | 'strike' | 'exit' | 'orbit_sector',
+  corridor,
+  startsTick,
+  expiresTick,
+  targetId,
+  conflictGroup,
+  fallbackIds
+}
+```
+
+Reservations prevent:
+
+- two attackers choosing the same side;
+- an exiting ship crossing an incoming ship;
+- all orbiters collapsing onto one tangent;
+- reform paths slicing through a ram lane;
+- a support ship blocking the sniper’s shot.
+
+Reservations are not rigid rails. Local constraints may deform a path. If deformation exceeds a threshold, the lane is invalidated and the squad replans.
+
+### Target-relative sectors
+
+For a moving player, define sectors around predicted target motion:
+
+```text
+front-left ingress
+front-right ingress
+rear-left exit
+rear-right exit
+outer standoff north
+outer standoff south
+```
+
+Deterministic assignment plus hysteresis prevents side-flipping.
+
+### Threat budget and token budget are different
+
+A wave may contain twenty enemies but expose only a designed number of immediate attack commitments. Others can:
+
+- stream into future positions;
+- screen;
+- deploy hazards;
+- carry fields;
+- approach from visible distance;
+- become physical ammunition;
+- wait in reserve gates.
+
+This lets body count rise without turning the screen into simultaneous unavoidable damage.
+
+## 21A.13 Squad choreography recipes
+
+A choreography recipe describes a several-second collective event.
+
+### Interceptor scissors
+
+```text
+1. Wedge enters at 75–85% capability.
+2. At telegraph range, wedge widens into a fan.
+3. Left/right strikers receive crossing attack lanes.
+4. Leader and support remain outside the collision center.
+5. Pair fires during a bounded strike window.
+6. Pair extends through opposite exits without turning back.
+7. Reserve pair attacks or the whole wing reforms.
+8. Destroyed/disrupted members cause an asymmetric recovery, not a reset.
+```
+
+### Brawler press
+
+```text
+1. Heavy center advances through a stable corridor.
+2. Two lights screen its flanks.
+3. Brawler telegraphs commitment and occupies a pressure lane.
+4. Screens peel away before impact or close-range orbit.
+5. Brawler holds a target-facing strafe window.
+6. At commit end it performs a brake-turn-breakaway or continues if ram-authorized.
+```
+
+### Sniper relay
+
+```text
+1. Sniper takes one standoff node.
+2. Screen pair forms between sniper and player.
+3. Charge cue begins only after the lane is clear.
+4. Sniper fires.
+5. Entire package relocates to a different node while a second pressure group attacks.
+```
+
+### Mine braid
+
+```text
+1. Two mine-layers enter on parallel offset paths.
+2. Their wakes form a deliberately braided hazard pattern.
+3. Light attackers pressure the player across the braid.
+4. The mine-layers exchange sides at a visible gate.
+5. Destroying one opens a safe asymmetry.
+```
+
+### Field anchor wheel
+
+```text
+1. Anchor occupies a stable central or arena-relative point.
+2. Escorts form an arc whose spacing corresponds to field radius.
+3. Anchor spools a field.
+4. Strikers attack through field-favored corridors.
+5. Moving or disabling the anchor rotates or collapses the plan.
+```
+
+### Convoy shell
+
+```text
+1. Objective follows a corridor.
+2. Front screen handles direct threats.
+3. Flank escorts occupy predictive offset slots.
+4. Rear defender responds to pursuit.
+5. Damage to the objective changes speed, compressing or stretching the shell.
+6. Escorts choose whether to hold shape, detach, or rescue.
+```
+
+Recipes should be authored from shared primitives, not scripted per-entity animation.
+
+## 21A.14 Fodder and swarm movement
+
+Disposable enemies should not run the full tactical stack at the same fidelity as a named specialist. Cheap does not mean random.
+
+The swarm should be controlled as **cohorts**.
+
+### Cohort state
+
+```js
+{
+  id,
+  memberIds,
+  shape,
+  originGate,
+  targetId,
+  flowPath,
+  phase,
+  densityTarget,
+  speedBand,
+  orbitBias,
+  disruption,
+  reformPolicy
+}
+```
+
+### Steering components
+
+A light member’s desired velocity may combine:
+
+```text
+cohort flow direction
++ slot/shape correction
++ local separation
++ mild alignment
++ hazard avoidance
++ target pressure bias
++ arena field response
+```
+
+The weights are phase-specific and normalized so the result does not grow with neighbor count.
+
+### Swarm shapes
+
+**River** — continuous stream through one or more gates.
+
+**Crescent** — approaches in a broad concave front.
+
+**Comet** — dense head with trailing bodies; good for impulse and piercing.
+
+**Braid** — two streams crossing at controlled intervals.
+
+**Spiral** — target-relative or field-driven curved ingress.
+
+**Pulse ring** — a ring contracts, attacks, then expands; do not leave it as an infinite orbit.
+
+**Scissor** — two diagonal fronts cross.
+
+**Screen flood** — mass bodies pass in front of specialists.
+
+**Debris shepherd** — swarm flows around and gradually pushes loose props.
+
+**Orbit cage** — bounded arcs occupy sectors while gaps rotate; used sparingly because static encirclement can become passive.
+
+### Physics must be allowed to break the pattern
+
+When the player hits a cohort with an impulse, field, collision, or tether:
+
+- affected bodies leave the desired shape;
+- their disruption timer/integrity increases;
+- they spend a visible interval as physical objects;
+- survivors may reacquire a flow path later;
+- the cohort does not immediately cancel the player’s force with steering.
+
+This is essential. A perfect boids formation that erases external impulses would betray the game.
+
+### Shared perception
+
+Fodder can share:
+
+- one target prediction;
+- one hazard map;
+- one arena flow sample;
+- one attack-token budget;
+- one formation frame;
+- one route plan.
+
+Each member still owns physical state and local separation.
+
+## 21A.15 Environment-aware movement
+
+Enemies should understand the arena’s physical law at the level of authored competence, not omniscience.
+
+### Known environment state
+
+A movement plan may consume:
+
+- static solids;
+- moving machinery prediction;
+- field/current vector samples;
+- reflective/absorbent surfaces where relevant to the actor;
+- volatile or dangerous prop zones;
+- objective sockets;
+- spawn and exit gates;
+- player-deployed fields only after perception/telegraph rules permit.
+
+### Candidate path selection
+
+For compact arenas, avoid a giant general-purpose planner first. Sample a bounded set of candidate corridors or trajectory primitives:
+
+```text
+left lane
+right lane
+central current
+outer arc
+behind anchor
+through field
+against current
+```
+
+Score them by:
+
+- arrival time;
+- collision risk;
+- role fit;
+- formation compatibility;
+- field cost/benefit;
+- exposure;
+- lane conflicts;
+- player readability;
+- authored preference.
+
+Choose deterministically with hysteresis.
+
+### Use the environment as a weapon
+
+Advanced enemy packages should eventually:
+
+- ride a current into an attack;
+- use a gravity well to bend a pass;
+- push loose debris before them;
+- position a screen behind reflective geometry;
+- drag mines through a field;
+- move relay pylons;
+- tether an environmental object;
+- bait the player into a hazardous quadrant.
+
+The first implementation should prove one case, not all.
+
+### No impossible foresight
+
+An enemy may know authored arena machinery and its own team’s plan. It should not know an unseen player mine, future random debris contact, or a newly deployed field before perception allows it.
+
+## 21A.16 Predictive avoidance without wonky path rewriting
+
+Avoidance should operate in velocity/trajectory space.
+
+### Current-position repulsion is insufficient
+
+Repelling from nearby bodies produces late reactions and oscillation. Use predicted closest approach over a bounded horizon.
+
+For two bodies with relative position `r` and relative velocity `v`:
+
+```text
+t_closest = clamp(-dot(r, v) / dot(v, v), 0, horizon)
+d_closest = length(r + v * t_closest)
+```
+
+If `d_closest` violates clearance, choose a deterministic passing constraint.
+
+### Stable passing side
+
+Once a side is selected, reserve it until:
+
+- closest approach has passed;
+- the conflict expires;
+- the path becomes invalid;
+- a higher-priority emergency occurs.
+
+Do not recalculate left/right every tick.
+
+### Priority stack
+
+A useful order:
+
+1. prevent immediate catastrophic terrain collision;
+2. honor explicit no-collision constraints with friendlies and non-target ships;
+3. preserve committed target contact if ram-authorized;
+4. preserve attack/exit corridor;
+5. preserve formation/slot;
+6. optimize local clearance.
+
+### Constraint projection
+
+Instead of sequentially adding arbitrary vectors, treat avoidance results as constraints on desired velocity:
+
+- forbidden velocity cone;
+- minimum lateral component;
+- maximum closing speed;
+- required passing side;
+- temporary no-go angular interval.
+
+Choose the closest legal desired velocity to the authored trajectory.
+
+A full ORCA implementation may be unnecessary. The design principle is what matters: **modify the plan minimally and consistently**.
+
+### Collision is sometimes content
+
+Do not over-correct until enemies never touch anything. SpaceFace wants physical consequence.
+
+Allow:
+
+- intentional ramming;
+- light-body glancing contacts;
+- collision after player disruption;
+- formation accidents under low integrity;
+- debris impacts;
+- boss machinery contact.
+
+Prevent:
+
+- routine friendly pileups;
+- every attacker hitting the player’s hull because it cannot brake;
+- heavy bodies clipping terrain during ordinary navigation;
+- collision avoidance oscillating until a ship stalls.
+
+## 21A.17 Attitude modes and weapon alignment
+
+Translation and facing should be planned separately.
+
+Candidate facing modes:
+
+- `PATH_TANGENT` — nose follows movement; good for ingress and heavy transit.
+- `TARGET_LOCK` — nose follows target while RCS handles translation; good for firing windows.
+- `FORMATION_HEADING` — nose aligns with squad frame.
+- `BROADSIDE_LEFT` / `BROADSIDE_RIGHT` — side weapon alignment.
+- `EXIT_HEADING` — commit nose to the egress vector.
+- `FREE_TUMBLE` — no commanded attitude during disruption.
+- `RECOVERY` — damp angular velocity, then acquire a new heading.
+
+A light fighter may target-face while strafing. A heavy reaction-drive ship should often perform a visible turn before burn. The choice must reflect drive and hull capability.
+
+Weapon fire authorization should consume alignment truth:
+
+- fixed gun within gimbal cone;
+- turret has target and traverse solution;
+- friendly lane clear;
+- phase permits fire;
+- attack token held;
+- telegraph floor elapsed.
+
+This turns formations into firing geometry rather than decorative proximity.
+
+## 21A.18 Formation integrity, breakup, and recovery
+
+Formation integrity should be a derived tactical fact, not an arbitrary health bar.
+
+Candidate inputs:
+
+- normalized slot error;
+- velocity mismatch;
+- member count loss;
+- leader/support loss;
+- external impulse severity;
+- tether/snarl state;
+- collisions;
+- disabled drives;
+- route obstruction;
+- communication/sensor disruption;
+- time since last coherent phase.
+
+Example:
+
+```text
+integrity = weighted combination in [0,1]
+```
+
+### Integrity bands
+
+**Tight** — full choreography and shared firing plan.
+
+**Loose** — wider slots, slower morphs, fewer simultaneous attack tokens.
+
+**Broken** — individual recovery or sub-squad behavior; formation bonuses and screens fail.
+
+**Rallying** — virtual frame slows or moves to a safe merge region; members return through reserved corridors.
+
+### Player-visible consequence
+
+Breaking formation should produce:
+
+- obvious spacing loss;
+- mistimed or cancelled attack;
+- exposed specialist;
+- radio/engine cue;
+- score or reward opportunity;
+- temporary change in enemy aggression;
+- different recovery behavior by faction/doctrine.
+
+### Doctrine differences
+
+- disciplined military wings rally quickly around a successor;
+- pirates scatter, then opportunistically re-enter;
+- drones preserve geometric flow until the controller dies;
+- zealots become more aggressive when broken;
+- industrial escorts prioritize the protected asset over reform;
+- swarmers may simply become physical chaos for a short interval.
+
+## 21A.19 Archetype motion identities
+
+An enemy should be identifiable from ten seconds of motion with its weapons hidden.
+
+### Wasp Swarmer
+
+- cohort-driven flow;
+- broad curved ingress;
+- short attack pulse;
+- easily displaced;
+- delayed reacquisition after impact;
+- dangerous through mass and numbers, not perfect aim.
+
+### Interceptor
+
+- fast wedge approach;
+- visible fan telegraph;
+- one committed crossing pass;
+- long clean extension;
+- decisive reform;
+- high use of live hull authority.
+
+### Brawler
+
+- slower direct pressure corridor;
+- strong facing commitment;
+- target-facing close strafe or ram threat;
+- high resistance to minor avoidance perturbation;
+- explicit breakaway rather than infinite orbit.
+
+### Sniper
+
+- deliberate standoff node;
+- lateral relocation after shot;
+- screen relationship;
+- weak under close pressure;
+- no nervous back-and-forth at one distance threshold.
+
+### Mine-layer
+
+- lays authored wake geometry;
+- prefers route intersection over direct pursuit;
+- moves between deploy nodes;
+- escapes along a path that invites chase through its hazard pattern.
+
+### Tether raider
+
+- flanking approach;
+- visible spool cue;
+- attach corridor;
+- control arc using line geometry;
+- committed escape after failure or release;
+- does not become an orbiting top.
+
+### Field anchor
+
+- seeks a meaningful arena node;
+- stabilizes before spool;
+- escorts shape around field radius;
+- retreats or relocates when displaced;
+- motion communicates that it is changing the room.
+
+### Support/repair ship
+
+- occupies protected slot;
+- mirrors anchor velocity;
+- switches between support nodes;
+- attempts rescue/recovery, not generic firing orbit;
+- becomes exposed when screens break.
+
+### Rammer
+
+- long line-up;
+- unmistakable acceleration cue;
+- corridor committed early;
+- collision is avoidable but consequential;
+- miss has a long recovery arc.
+
+### Capital ship
+
+- path is an arena event;
+- turns are scheduled and telegraphed;
+- escorts and systems move relative to it;
+- no jitter, micro-corrections, or tiny circular orbit;
+- terrain and current shape its maneuver.
+
+## 21A.20 Difficulty through coordination rather than cheating
+
+Difficulty levels should alter:
+
+- number of simultaneous attack tokens;
+- quality of lane allocation;
+- reserve timing;
+- formation recovery speed;
+- target prediction horizon;
+- willingness to use environment;
+- specialist composition;
+- reaction delay;
+- retreat discipline;
+- tolerance for collateral.
+
+Difficulty should not primarily alter:
+
+- impossible acceleration;
+- hidden turn rate;
+- aim beyond weapon rules;
+- immunity to fields or collision;
+- instant knowledge;
+- untelegraphed attack count;
+- arbitrary HP multiplication.
+
+Candidate coordination bands:
+
+| Band | Coordination behavior |
+|---|---|
+| **Loose** | large attack gaps, simple lanes, slow reform, obvious reserves. |
+| **Trained** | paired lanes, screens, role support, moderate environment use. |
+| **Veteran** | multi-stage choreography, faster replacement, better lane conflict resolution. |
+| **Elite** | synchronized role combinations and environment exploitation, still fully telegraphed. |
+
+Survival wave escalation can increase coordination within a run. Early waves teach the pattern. Later waves combine patterns.
+
+
+## 21A.21 Survival wave choreography
+
+Survival should spawn **plans**, not only enemy lists.
+
+A wave recipe should include:
+
+```js
+{
+  packages: [
+    {
+      packageId,
+      roster,
+      entryGate,
+      entryFormation,
+      choreographyId,
+      pressureWindow,
+      reservePolicy,
+      tokenBudget,
+      environmentPreference,
+      disruptionPolicy,
+      completionContribution
+    }
+  ]
+}
+```
+
+### Entry matters
+
+Enemies should enter from authored gates with enough distance and time for their shape to read. A package may enter:
+
+- as a wedge through one gate;
+- as two pincer horns;
+- as a river along a current;
+- behind a heavy anchor;
+- in an escort shell around an objective;
+- through a burst of scattered pods that assemble into a cohort;
+- from behind machinery after a clear warning.
+
+Do not materialize a formation as overlapping ships and let separation sort it out.
+
+### Pressure windows
+
+A wave can feel dense without every package being fully committed simultaneously.
+
+```text
+0–4 s: swarm river enters
+3–8 s: interceptor wing fans and attacks
+7–13 s: sniper charge while wing extends
+10–16 s: mine braid enters
+14–20 s: reserves replace destroyed attackers
+```
+
+The player experiences continuous pressure, but each threat has a readable temporal silhouette.
+
+### Breathing is active, not empty
+
+A short reduction in immediate attack tokens can still contain:
+
+- enemies reforming visibly;
+- pickups converging;
+- machinery changing phase;
+- distant reserves entering;
+- player repositioning;
+- a telegraphed boss system;
+- environmental props becoming available.
+
+This is better than either dead air or permanent maximum aggression.
+
+### Adaptive pressure without hidden counters
+
+If the player’s build clears a swarm instantly, the planner may choose a later package with:
+
+- wider spacing;
+- more ranged pressure;
+- staggered entry;
+- a screen relationship;
+- a different approach lane.
+
+It should not secretly grant immunity or impossible motion.
+
+## 21A.22 Adventure-mode movement transfer
+
+The movement program is not Survival-specific.
+
+### Patrols
+
+Patrols should:
+
+- travel in a recognizable formation;
+- widen for scans;
+- split into intercept and reserve roles;
+- reform after an interaction;
+- preserve lawful no-fire windows;
+- look competent even when no combat occurs.
+
+### Convoys
+
+Convoys should:
+
+- use a virtual route frame;
+- match velocity around the hauler;
+- compress through gates;
+- expand in open space;
+- assign front/flank/rear screens;
+- react coherently to objective damage;
+- make escorting and attacking physically legible.
+
+### Pirates
+
+Pirates should:
+
+- stage outside the route;
+- enter through planned ambush corridors;
+- use one group to pressure and one to steal or tug;
+- scatter opportunistically if formation breaks;
+- flee along paths that preserve cargo or lure pursuit.
+
+### Civilian traffic
+
+Civilian ships need lower-cost versions of the same motion grammar:
+
+- lane following with desired velocity;
+- stable passing sides;
+- docking queues;
+- convoy shells;
+- panic/avoidance that does not become random spinning;
+- recovery after physical interference.
+
+### Faction identity
+
+Later, factions can differ through motion parameters and recipe choice:
+
+- disciplined authority: clean wedges, strict reserves, quick rally;
+- pirates: asymmetric pincers, feints, opportunistic re-entry;
+- industrial fleets: convoy shells, tug relationships, heavy momentum;
+- research factions: field-relative lattices and standoff nodes;
+- drone swarms: geometric cohorts, controller dependence;
+- cult/zealot formations: aggressive collapse and low retreat discipline.
+
+The same primitives produce culture through movement.
+
+## 21A.23 Motion Lab inside Combat Lab
+
+Combat Lab should gain a dedicated **Motion Lab** surface. It uses the real flight, AI, physics, and ship setup paths.
+
+### Player controls
+
+- hull and exact fittings;
+- mass/cargo presets;
+- drive family;
+- flight-assist mode;
+- fixed camera candidate;
+- input recording and replay;
+- slalom/gate course;
+- target speed and path;
+- field/current toggles;
+- Massline anchor configuration;
+- collision prop arrangement.
+
+### AI controls
+
+- enemy archetype;
+- hull and drive;
+- squad size;
+- formation shape;
+- formation spacing;
+- choreography recipe;
+- attack-token count;
+- difficulty/coordination band;
+- target path;
+- arena corridor;
+- obstacle density;
+- field/current profile;
+- disruption impulse;
+- sensor/decision cadence.
+
+### Debug visualization
+
+Toggleable world overlays:
+
+- virtual formation frame;
+- slot position and desired velocity;
+- member position/velocity error;
+- planned path and progress;
+- attack corridor;
+- lane reservation;
+- token holder;
+- facing mode;
+- predicted closest approach;
+- forbidden velocity cones or avoidance constraints;
+- live capability envelope;
+- requested versus achieved acceleration;
+- formation integrity;
+- phase timers;
+- field/current vector samples.
+
+The shipping game does not expose these overlays. The Lab must.
+
+### Motion capture
+
+A run should export a compact movement trace:
+
+```text
+seed
+content digest
+hull/loadout
+input or AI plan
+position/velocity/rotation samples
+requested control
+achieved acceleration
+phase/slot/lane changes
+contacts and external impulses
+performance counters
+```
+
+A same-seed trace allows an agent to compare two controllers without relying on memory.
+
+## 21A.24 Deterministic movement scenarios
+
+### M1 — Player impulse response
+
+Apply standard input steps to Hitch, Wasp, Drifter, and one heavy hull.
+
+Measure:
+
+- onset;
+- acceleration curve;
+- yaw curve;
+- settle;
+- brake distance;
+- lateral correction;
+- energy/heat;
+- determinism.
+
+### M2 — Player slalom
+
+A fixed input trace passes alternating gates at several speeds.
+
+Measure:
+
+- completion time;
+- gate misses;
+- path length;
+- maximum lateral error;
+- overshoot;
+- useful speed retained;
+- collisions.
+
+### M3 — Reversal box
+
+Command forward, reverse, lateral reversal, and 180° turn-and-burn.
+
+Distinguish nose rotation from velocity reversal.
+
+### M4 — Moving slot convergence
+
+A follower starts outside formation and tracks a virtual slot through straight, curved, accelerating, and rotating frame segments.
+
+Measure:
+
+- RMS position error;
+- RMS velocity error;
+- peak overshoot;
+- settle time;
+- control sign changes;
+- collisions.
+
+### M5 — Formation parade
+
+Four and eight ships morph through wedge, line, fan, pincer, and reform while following a curved corridor.
+
+The formation should be visually recognizable at normal camera without debug overlays.
+
+### M6 — Interceptor scissors
+
+A four-ship wing executes paired attack lanes against a moving target.
+
+Measure:
+
+- entry timing spread;
+- minimum friendly separation;
+- target exposure before first shot;
+- lane conflicts;
+- clean extensions;
+- reform time;
+- attack-token compliance.
+
+### M7 — Sniper screen
+
+A sniper relocates between nodes while a screen pair protects it. Disrupt one screen and verify the choreography changes.
+
+### M8 — Formation break/recovery
+
+Apply a standardized repulsor, collision, tether, and leader disable. Verify physics is preserved, integrity falls, attacks cancel or deform correctly, and recovery is bounded.
+
+### M9 — Hazard weave
+
+A wing transits moving/static obstacles. Verify stable passing sides, no oscillation, and no loss of the formation’s visible purpose.
+
+### M10 — Current and gravity use
+
+A package rides or resists a known field/current using real physics. Compare aware and unaware controllers.
+
+### M11 — Swarm river
+
+Twelve, twenty-four, and forty cheap bodies enter as one or more cohorts. Measure flow coherence, local density, disruption response, query cost, collisions, and player readability.
+
+### M12 — Saturated mixed wave
+
+Combine one interceptor wing, one sniper package, one heavy, and one fodder cohort. Verify that package plans remain readable and performance stays inside budget.
+
+### M13 — Adventure convoy
+
+A hauler plus escorts follows a route, compresses through a gate, receives an attack, loses one escort, and continues or retreats.
+
+### M14 — Save/continue movement state
+
+Only after movement state is persistent where required: compare formation frame, phase, lane, and actuator continuity across save/load. Survival may initially avoid mid-run save, but Adventure formations may cross save boundaries.
+
+## 21A.25 Motion telemetry
+
+### Player metrics
+
+- input edge tick;
+- first nonzero requested force tick;
+- first nonzero achieved acceleration tick;
+- 10–90% response time;
+- yaw acceleration and braking;
+- yaw overshoot;
+- stop distance/time;
+- lateral velocity kill time;
+- turn radius at speed;
+- speed retained through a turn;
+- time at speed ceiling;
+- time control-saturated;
+- boost use and recovery;
+- collision/tether recovery time;
+- path efficiency in courses.
+
+### Formation metrics
+
+- RMS and 95th-percentile slot-position error normalized by spacing;
+- RMS slot-velocity error;
+- phase coherence;
+- shape-recognition score from slot relationships;
+- time in Tight/Loose/Broken/Rallying integrity bands;
+- rejoin time;
+- morph completion time;
+- leader-loss discontinuity;
+- member assignment churn;
+- slot crossing count.
+
+### Choreography metrics
+
+- attack-token utilization;
+- simultaneous committed attackers;
+- lane conflict count;
+- ingress/exit crossing count;
+- telegraph-to-fire duration;
+- attack timing spread;
+- reserve idle time;
+- clean pass completion rate;
+- missed-pass recovery;
+- friendly-fire lane obstruction;
+- time enemies spend in a tactically meaningless orbit.
+
+### Motion-quality metrics
+
+- control command sign changes per second;
+- angular command sign changes per second;
+- acceleration jerk;
+- heading oscillation;
+- unplanned near-collisions;
+- wall contacts;
+- deadlock watchdog triggers;
+- emergency avoidance frequency;
+- distance traveled with no phase progress;
+- desired-versus-achieved acceleration error.
+
+### Swarm metrics
+
+- density distribution;
+- nearest-neighbor distribution;
+- cohort flow alignment;
+- time disrupted before reacquisition;
+- number of full-AI versus cohort members;
+- spatial queries and contacts;
+- per-member CPU cost;
+- pileup rate;
+- screen occlusion/readability proxy;
+- player-caused displacement retained over time.
+
+Metrics should diagnose. They do not replace play.
+
+## 21A.26 Qualitative review questions
+
+Every movement candidate should be reviewed at normal camera and normal game speed.
+
+### Player flight
+
+- Does the ship answer immediately?
+- Can the player tell the difference between pointing and moving?
+- Is drift useful rather than accidental?
+- Does braking feel commanded rather than viscous?
+- Can the player make a small correction without starting an oscillation?
+- Does the Wasp feel meaningfully more agile than the Hitch?
+- Does a heavy ship feel powerful rather than merely unresponsive?
+- Do thrusters, trails, bank, and sound explain the motion?
+
+### Enemy movement
+
+- Can the reviewer identify the role from movement alone?
+- Does the ship enter with a plan?
+- Does it commit long enough for the player to exploit that commitment?
+- Does it leave cleanly instead of orbiting forever?
+- Does disruption visibly change the plan?
+- Does avoidance preserve intent?
+- Does the enemy ever look as though it changed its mind for no reason?
+
+### Formation
+
+- Is the shape readable without debug overlays?
+- Does the shape perform a function?
+- Do attacks emerge from the shape?
+- Are reserves and screens obvious?
+- Can the player break it?
+- Does recovery look coordinated rather than magnetized?
+
+### Swarm
+
+- Does the swarm read as one or several moving shapes?
+- Are there useful gaps and fronts?
+- Does it become satisfying physical material under impulse/fields?
+- Does it avoid Brownian soup?
+- Does the player understand where immediate damage is coming from?
+
+## 21A.27 Experiment matrix
+
+Run focused A/B candidates rather than changing every variable at once.
+
+| Experiment | A | B | Primary observation |
+|---|---|---|---|
+| Player response | universal 1.15 translation shaping | class-aware translation/yaw response | tactile control without identity collapse |
+| Slot control | predicted point seek | desired position + velocity controller | overshoot and formation grace |
+| Formation frame | leader body | virtual frame | jitter and leader-disruption continuity |
+| AI speed | global maneuver caps | hull-relative phase envelope | role identity and attack decisiveness |
+| Actuator smoothing | fixed low slew | class/phase-aware jerk-limited request | wonkiness versus snap |
+| Avoidance | sequential vector additions | closest legal velocity under constraints | path intention and oscillation |
+| Attacker control | every eligible ship commits | token/lane allocation | readability and fairness |
+| Formation attack | break into individual maneuvers | subframe choreography | visible squad logic |
+| Fodder | full tactical AI | cohort flow + local physics | scale, coherence, and disruption |
+| Orbit | unconstrained shared ring | reserved sectors and exit windows | clumping and perpetual circles |
+| Reform | nearest slot seek | merge corridors + velocity match | crossing and pileup |
+| Difficulty | stat scaling | coordination/token scaling | challenge without cheating |
+
+Record rejection reasons. An experiment can fail because of implementation rather than premise.
+
+## 21A.28 First movement vertical slice
+
+Do not begin with every formation and every enemy.
+
+### Cast
+
+- player Hitch and Wasp selectable;
+- one four-ship Wasp/interceptor wing;
+- one twelve-body fodder cohort;
+- one heavy brawler;
+- Ricochet Foundry greybox or a simpler Motion Range;
+- no new weapons required.
+
+### Required player outcomes
+
+- immediate, crisp low-speed response;
+- clear difference between Hitch and Wasp;
+- no loss of honest momentum;
+- strong brake/yaw settle;
+- repeatable slalom and reversal course.
+
+### Required enemy outcomes
+
+- four-ship wing enters in wedge;
+- widens into fan;
+- two ships execute distinct crossing lanes;
+- two remain reserve/screen;
+- attackers extend without instant turn-back;
+- wing reforms through merge corridors;
+- player impulse can break the sequence;
+- disrupted members do not instantly regain formation;
+- fodder enters as a visible river/crescent and remains physically throwable;
+- brawler owns a direct pressure corridor and clean breakaway.
+
+### Required proof
+
+- deterministic scenarios M1, M4, M6, M8, and M11;
+- normal-speed video/capture at shipping camera;
+- telemetry comparison against current controller;
+- no new direct position/velocity writes;
+- no campaign AI fork;
+- no performance regression hidden by reducing entity count or quality.
+
+### Exit statement
+
+The slice passes only when a reviewer can say:
+
+> “The player ship feels eager. The wing looks coordinated. I can see who is attacking, who is waiting, how the attack will cross, and what I did when I broke it.”
+
+“Formation converged inside a radius” is not enough.
+
+## 21A.29 Beginning-to-end movement implementation sequence
+
+### Movement Phase M0 — current-motion witness
+
+- capture representative player and enemy motion;
+- record exact build, seed, hulls, camera, and settings;
+- expose current maneuver caps and live propulsion authority;
+- measure current slot/velocity error and oscillation;
+- identify whether wonkiness comes from planner, actuator, physics, perception cadence, or presentation;
+- preserve the candidate and failure fingerprints.
+
+### Movement Phase M1 — Motion Lab and instrumentation
+
+- add player response course;
+- add virtual targets and gates;
+- add AI formation/choreography setup controls;
+- add motion overlays and trace export;
+- add scenarios M1–M4;
+- do not change production feel until baseline evidence exists.
+
+### Movement Phase M2 — player handling pass
+
+- tune Hitch first;
+- tune Wasp/Hornet family second;
+- tune Drifter/medium third;
+- verify heavy/freighter command acknowledgement without identity collapse;
+- tune VFX/audio/bank feedback with force truth;
+- retain current speed ceilings initially;
+- promote only values supported by play and metrics.
+
+### Movement Phase M3 — live capability envelope
+
+- expose measured forward/lateral/yaw/brake authority to AI planning;
+- remove or demote global caps that under-drive hulls;
+- define phase-relative envelope data;
+- ensure subsystem damage and fitted mass affect the envelope;
+- keep physics as sole motion owner.
+
+### Movement Phase M4 — desired-state controller
+
+- implement position + velocity tracking for formation and committed points;
+- add feed-forward from virtual frame/path;
+- add class/phase response parameters;
+- compare against point-seek in M4;
+- retain simple fallback for invalid data.
+
+### Movement Phase M5 — predictive local constraints
+
+- add closest-approach prediction;
+- stabilize passing-side reservations;
+- preserve explicit ram/tether contact semantics;
+- minimize deformation from authored path;
+- add hazard-weave scenario;
+- remove oscillatory or redundant local rules only after equivalence is understood.
+
+### Movement Phase M6 — virtual formation frame
+
+- decouple frame from leader body;
+- add desired frame position/velocity/heading;
+- add wedge, line, fan, and pincer shapes;
+- add dynamic spacing;
+- add leader-loss succession;
+- add shape morphs and integrity.
+
+### Movement Phase M7 — attack tokens and lanes
+
+- add token budget;
+- add target-relative lane reservations;
+- add merge/exit corridors;
+- connect fire authorization to phase/token/lane truth;
+- implement interceptor scissors recipe;
+- verify no deadlocks or permanent reserve starvation.
+
+### Movement Phase M8 — archetype choreography
+
+- brawler press;
+- sniper screen/relocation;
+- mine braid;
+- tether raider attach/escape;
+- field anchor wheel;
+- capital turn/broadside events;
+- one recipe at a time, with motion identity review.
+
+### Movement Phase M9 — cohort swarm
+
+- cohort frame and flow path;
+- cheap member steering;
+- disruption/reacquisition policy;
+- shared perception;
+- density/performance gates at 12/24/40;
+- integrate with wave packages.
+
+### Movement Phase M10 — environment-aware movement
+
+- one current-aware recipe;
+- one gravity-aware recipe;
+- one moving-machinery path;
+- bounded candidate corridor selection;
+- perception limitations;
+- Adventure transfer to one patrol or convoy route.
+
+### Movement Phase M11 — cross-mode convergence
+
+- Survival wave choreography uses the shared system;
+- Adventure patrol/convoy/pirate packages use it;
+- Combat Lab reproduces both;
+- faction profiles shape recipes and parameters;
+- legacy/compatibility paths remain only where required and do not own default feel.
+
+## 21A.30 Movement non-goals
+
+The first program does not require:
+
+- machine-learned policies;
+- neural navigation;
+- a general 3D path planner;
+- perfect optimal tactics;
+- enemies reacting every simulation tick at full strategic depth;
+- direct velocity steering;
+- universal spline scripting;
+- every faction’s final movement identity;
+- physical rope simulation for formation links;
+- networked co-op prediction;
+- a complete behavior-tree rewrite;
+- deletion of the layered tactical stack;
+- making every enemy individually brilliant.
+
+The objective is not maximum intelligence. It is maximum **legible intentionality per unit of complexity**.
+
+## 21A.31 Far-future movement possibilities
+
+### Formation authoring tool
+
+A visual editor could define:
+
+- virtual-frame path;
+- shape timeline;
+- role sockets;
+- lane corridors;
+- token handoffs;
+- telegraph beats;
+- environment samples;
+- failure transitions;
+- performance estimate;
+- deterministic preview.
+
+### Motion grammar assets
+
+Reusable authored curves could become content assets:
+
+- flyby S-curve;
+- brake-turn-burn;
+- pincer horns;
+- current ride;
+- convoy gate compression;
+- broadside turn;
+- ram line;
+- spiral field entry.
+
+They specify desired states, not animation or body teleport.
+
+### Automated choreography search
+
+A deterministic batch system could vary:
+
+- slot spacing;
+- phase timing;
+- attack-token count;
+- lane angles;
+- controller gains;
+- entry speed;
+- reform policy.
+
+It can reject candidates with collisions, oscillation, poor formation error, or excessive dead time. Human review still decides whether the motion is exciting.
+
+### Player ghost against AI motion
+
+Motion Lab could compare the player’s trajectory to:
+
+- a reference run;
+- an AI-controlled same-hull path;
+- a previous tuning candidate;
+- a deterministic ghost.
+
+This is diagnostic, not a demand that optimal AI become the player assist.
+
+### Contextual pilot personalities
+
+Named pilots may later vary:
+
+- commitment;
+- preferred side;
+- braking margin;
+- risk tolerance;
+- formation discipline;
+- retreat threshold;
+- use of environment;
+- recovery after disruption.
+
+Variation must sit inside doctrine and physical capability, not inject random steering noise.
+
+### Damage-shaped motion signatures
+
+Persistent subsystem and hull damage could alter:
+
+- turn asymmetry;
+- thrust plume balance;
+- formation slot suitability;
+- role reassignment;
+- retreat corridor;
+- support behavior.
+
+A limping ship should remain intelligible and physically honest.
+
+### Large-scale fleet motion
+
+Far later, multiple squad frames could compose into a fleet frame:
+
+```text
+fleet objective
+→ squad corridors
+→ formation frames
+→ member trajectories
+→ physical actuators
+```
+
+This preserves scalability without placing every ship in one giant formation.
+
+---
+
+
 # 22. Enemy ecology
+
+Enemy ecology describes what roles exist. Section 21A describes how those roles move together. No enemy role is considered complete when its stats and attacks exist but its motion still collapses into a generic seek/orbit controller.
 
 ## 22.1 Reuse before expansion
 
@@ -3612,7 +5719,7 @@ Combat Lab is the shortest path to understanding the deeper game and the highest
 
 ## 25.0 Audited foothold
 
-At the 2026-08-21 source audit, the existing Sandbox already provides:
+At the 2026-08-23 source audit, the existing Sandbox already provides:
 
 - a real-New-Game setup path;
 - canonical economy, ship, faction, world, and spawn writers;
@@ -3669,6 +5776,33 @@ Combat Lab should expose:
 - seed;
 - camera candidate;
 - difficulty mutators.
+
+## 25.2A Motion Lab
+
+Combat Lab contains a dedicated Motion Lab rather than leaving flight and AI feel to ad hoc free-play observation.
+
+It should configure:
+
+- player hull, fittings, mass/cargo, drive, and assist mode;
+- slalom, reversal, stop, tether-exit, and collision-recovery courses;
+- AI hull, archetype, squad size, formation, choreography, token count, and coordination band;
+- moving target paths;
+- virtual formation frame and shape morph;
+- arena current/field and obstacle profile;
+- standardized disruption impulses, tethers, and subsystem failures.
+
+It should visualize:
+
+- requested and achieved acceleration/torque;
+- live capability envelope;
+- desired position, velocity, heading, and arrival state;
+- virtual frame and slots;
+- attack lanes and token holders;
+- predicted closest approach and passing side;
+- formation integrity and phase;
+- movement trace export.
+
+Motion Lab and Survival use the same flight, AI, physics, and choreography code. A debug overlay is not a second controller.
 
 ## 25.3 Runtime toggles
 
@@ -4753,7 +6887,13 @@ The proposal is registered as durable direction, current overlapping work is map
   - fitting APIs;
   - UI navigation;
   - save boundaries;
-  - performance probes.
+  - performance probes;
+  - player propulsion and handling;
+  - tactical AI cadence;
+  - squad/formation ownership;
+  - combat doctrine phases;
+  - maneuver planning and physical control ports;
+  - existing formation and enemy-movement checks.
 - Deduplicate against:
   - Physical Play Grammar;
   - Physical Play Build Plan;
@@ -4783,6 +6923,9 @@ A short current seam map names:
 - missing seams;
 - current tests;
 - current performance limits;
+- current player flight response;
+- current AI maneuver envelopes versus live hull authority;
+- current formation/velocity error and attack choreography;
 - first packet outcome and non-goals.
 
 ## Phase 1 — Combat Lab extension
@@ -4817,7 +6960,117 @@ A player/developer can instantly launch a real-path combat setup with selected h
 
 The same build and seed can be launched repeatedly in Browser and Electron, and the deterministic scenario agrees on the supported claim.
 
+## Phase 1A — Motion Lab and current-feel witness
+
+### Outcome
+
+The project can reproduce and measure the player-flight and enemy-motion defects on the real physics path before tuning them.
+
+### Work
+
+- Add Motion Lab presets to Combat Lab/Sandbox rather than a second harness.
+- Capture current Hitch, Wasp, Drifter, interceptor wing, and fodder motion at fixed seeds.
+- Expose live hull capability beside maneuver-request envelopes.
+- Add desired-versus-achieved force/torque telemetry.
+- Add virtual gates, moving target paths, and formation-debug overlays.
+- Add deterministic scenarios M1–M4.
+- Record normal-camera qualitative baselines.
+
+### Non-goals
+
+- No wave economy.
+- No new enemies or weapons.
+- No broad AI rewrite.
+- No tuning before the failure is witnessed.
+
+### Exit gate
+
+Current player response, formation error, velocity error, overshoot, oscillation, and live authority mismatch are reproducible and attributed to current owners.
+
+## Phase 1B — Player handling convergence
+
+### Outcome
+
+Hitch, Wasp/Hornet, Drifter, and one heavy hull acknowledge input immediately, preserve honest momentum, and express clear class identity.
+
+### Work
+
+- Tune translation response, yaw acceleration, yaw braking, lateral authority, reverse authority, and Assisted-mode cancellation.
+- Hold ordinary speed ceilings fixed during the first comparison.
+- Tune coast-flip behavior by class.
+- Align RCS, trail, bank, camera, and audio feedback with actual forces.
+- Run slalom, reversal, stop, tether-exit, and collision-recovery comparisons.
+- Preserve fit mass and subsystem effects.
+
+### Non-goals
+
+- No universal “make every ship 30% faster” patch.
+- No velocity-vector rotation or hidden teleport.
+- No collapse of heavy/light identity.
+
+### Exit gate
+
+The starter ship feels eager rather than sluggish, the fighter feels substantially more agile, the heavy hull remains massful but never input-deaf, and deterministic/physics contracts remain intact.
+
+## Phase 1C — Hull-relative AI actuator and desired-state controller
+
+### Outcome
+
+Enemies use the authority of their actual hulls and track desired position, velocity, and heading without point-seek wobble.
+
+### Work
+
+- Derive live maneuver capability envelopes from propulsion/physics authority.
+- Replace or demote global low maneuver caps with phase-relative hull fractions.
+- Add desired-position plus desired-velocity tracking through physical controls.
+- Add class/phase-aware response and bounded feed-forward.
+- Add predictive closest-approach constraints and stable passing-side reservations.
+- Preserve explicit ram, tether, and environment-contact rules.
+- Add scenarios M4, M6, and M9.
+
+### Non-goals
+
+- No direct position/velocity writes.
+- No machine-learned policy.
+- No every-archetype choreography yet.
+
+### Exit gate
+
+A light interceptor executes a decisive pass, a heavy brawler commits without jitter, a follower matches a moving slot with low overshoot, and avoidance no longer routinely erases maneuver intent.
+
+## Phase 1D — Virtual formations, attack lanes, and swarm cohorts
+
+### Outcome
+
+Enemy groups move as recognizable tactical shapes before, during, and after combat.
+
+### Work
+
+- Add virtual squad frame and successor policy.
+- Add data-driven wedge, line, fan, pincer, and screen shapes.
+- Add shape morphs, dynamic spacing, and formation integrity.
+- Add attack tokens, target-relative lane reservations, and reform corridors.
+- Implement interceptor-scissors and brawler-press recipes.
+- Add one cheap cohort-driven fodder flow.
+- Connect wave package data to choreography IDs.
+- Add scenarios M5, M6, M8, M11, and M12.
+
+### Non-goals
+
+- No final faction movement library.
+- No every-enemy full tactical stack.
+- No five-arena environment awareness.
+
+### Exit gate
+
+At shipping camera, the player can see the formation, identify active attackers and reserves, exploit committed lanes, break the formation physically, and observe a coherent recovery. A twelve-body swarm reads as a moving front rather than Brownian soup.
+
+
 ## Phase 2 — Ten-wave shell using existing combat
+
+### Entry condition
+
+Movement Phases 1A–1D have enough accepted evidence that the player ship, one interceptor wing, one brawler, and one fodder cohort represent the intended motion grammar. A run shell may exist earlier, but it is not the combat-quality baseline until this condition is met.
 
 ### Outcome
 
@@ -5185,7 +7438,7 @@ The IDs below are **local proposal labels**, not queue IDs. Before execution, ma
 | **CRU-046** | Cryo Drift arena | Thermal zones, coolant props, wave arc, and Manifold boss. | CRU-041, CRU-043 | Thermal-state accessibility and cross-build viability. |
 | **CRU-047** | Conductivity graph | Local bounded graph over pylons, statuses, props, and eligible lines. | CRU-032 | Deterministic traversal and cost limits. |
 | **CRU-048** | Storm Lattice arena | Movable network, wave arc, and Grid Tyrant boss. | CRU-047, CRU-043 | Graph path truth and route readability. |
-| **CRU-049** | Swarm AI tiering | Shared perception/steering path for disposable bodies. | CRU-012 | Behavior equivalence goal and performance gain. |
+| **CRU-049** | Swarm runtime scale integration | Integrate the accepted cohort-motion kernel into Survival density and scheduling rather than inventing a second cheap-AI path. | CRU-012, CRU-MOV-019 | Behavior/readability goal, player-force retention, and measured performance gain. |
 | **CRU-050** | Spawn-scale profile | Measured run-specific budget profile inside authority. | CRU-049 | No cap bypass; target/floor performance comparison. |
 | **CRU-051** | VFX/audio causal grammar | Family/generation/material/status reads under saturation. | CRU-036 | Hero-event survival and accessibility variants. |
 | **CRU-052** | Run HUD | Wave, XP, credits, score, arena state, and boss system surfaces. | CRU-011, CRU-014 | No flight-HUD regression; input/UI scale checks. |
@@ -5205,6 +7458,37 @@ The IDs below are **local proposal labels**, not queue IDs. Before execution, ma
 | **CRU-066** | Modding boundary | Safe data extension for traits, waves, and arenas. | CRU-061 | Validation, versioning, and failure isolation. |
 | **CRU-067** | Ghost/replay research | Input trace or causal replay for same-seed comparison. | CRU-054 | Deterministic fidelity and storage cost. |
 | **CRU-068** | Co-op feasibility | Authority, netcode, physics determinism, UI, and product study. | CRU-048 | Research only; no implicit commitment. |
+
+## 31.0A Movement-convergence packet family
+
+These local labels refine the broad AI/flight intent that would otherwise be hidden inside `CRU-049`. They are still proposal labels, not admitted queue IDs.
+
+| Local ID | Candidate packet | Player/product outcome | Dependencies | Minimum proof |
+|---|---|---|---|---|
+| **CRU-MOV-001** | Current motion witness | Capture representative player and enemy wonkiness with exact seeds, hulls, routes, and normal-camera evidence. | CRU-001 | Reproducible motion traces and owner-level attribution. |
+| **CRU-MOV-002** | Motion telemetry contract | Expose requested/achieved acceleration, yaw, live authority, slot error, velocity error, phase, and lane truth. | CRU-MOV-001 | Counters match authoritative physics/AI state. |
+| **CRU-MOV-003** | Motion Lab setup | Add player courses, moving targets, formation presets, choreography selection, and same-seed reset to Combat Lab. | CRU-003, CRU-MOV-002 | Real New Game/canonical-writer setup; Browser/Electron reachability. |
+| **CRU-MOV-004** | Player response scenarios | Deterministic impulse, slalom, reversal, stop, and recovery scenarios for representative hull classes. | CRU-MOV-003 | Repeatability and semantic metrics, not only hashes. |
+| **CRU-MOV-005** | Hitch handling convergence | Make the starter acknowledge input immediately while retaining medium-reaction identity and honest momentum. | CRU-MOV-004 | Course comparison, normal-camera feel review, no speed/physics cheat. |
+| **CRU-MOV-006** | Wasp/Hornet handling convergence | Establish the agile combat-hull ceiling with crisp yaw brake, lateral authority, and visible RCS. | CRU-MOV-004 | Class separation versus Hitch; deterministic response bands. |
+| **CRU-MOV-007** | Drifter/heavy response pass | Make medium/heavy hulls command-responsive without erasing mass commitment. | CRU-MOV-004 | Immediate acknowledgement plus mass-scaled path change. |
+| **CRU-MOV-008** | AI capability envelope | Publish live forward/lateral/yaw/brake/speed authority for maneuver planning. | CRU-MOV-002 | Damage, fitting, mass, and drive-family changes affect envelope correctly. |
+| **CRU-MOV-009** | Hull-relative phase envelope | Replace/demote global maneuver caps with bounded fractions of live capability. | CRU-MOV-008 | Interceptor/brawler/sniper use distinct authored authority without cheating. |
+| **CRU-MOV-010** | Desired-state trajectory controller | Track desired position, velocity, heading, and arrival contract through physical controls. | CRU-MOV-008 | Moving-slot RMS/overshoot improvement and deterministic replay. |
+| **CRU-MOV-011** | Predictive local constraints | Add closest-approach prediction, stable passing side, and minimal path deformation. | CRU-MOV-010 | Hazard weave; no side chatter, deadlock, or routine pileup. |
+| **CRU-MOV-012** | Virtual formation frame | Decouple formation geometry from the leader body and carry frame position/velocity/heading. | CRU-MOV-010 | Curved-frame tracking and leader-loss continuity. |
+| **CRU-MOV-013** | Formation shape data | Add wedge, line, fan, pincer, screen, role sockets, dynamic spacing, and morph data. | CRU-MOV-012 | Shape readable without overlays and valid across mixed hull radii. |
+| **CRU-MOV-014** | Formation integrity | Derive Tight/Loose/Broken/Rallying states from physical coherence and losses. | CRU-MOV-012 | Standardized impulse/tether/disable break and bounded recovery. |
+| **CRU-MOV-015** | Attack-token allocator | Bound simultaneous commitments by role and wave pressure. | CRU-MOV-013 | Token conservation, replacement, and no reserve starvation. |
+| **CRU-MOV-016** | Lane reservation system | Allocate ingress, strike, orbit-sector, exit, and reform corridors around a moving target. | CRU-MOV-011, CRU-MOV-015 | No lane crossing/pileup in paired attack scenario. |
+| **CRU-MOV-017** | Interceptor-scissors choreography | Four-ship wedge → fan → paired crossing attacks → extension → reform. | CRU-MOV-013, CRU-MOV-016 | Telegraph, distinct lanes, clean extension, physical break response. |
+| **CRU-MOV-018** | Brawler/sniper choreography | Add brawler press and sniper-screen relocation as distinct collective motion identities. | CRU-MOV-016 | Motion-only role recognition and fair commitment windows. |
+| **CRU-MOV-019** | Cohort swarm kernel | Shared flow/shape/perception plus local separation for disposable bodies. | CRU-MOV-010 | 12/24/40 density profile, coherent fronts, retained player displacement. |
+| **CRU-MOV-020** | Swarm shape recipes | River, crescent, comet, braid, scissor, and pulse-ring entries. | CRU-MOV-019 | Each shape legible and physically disruptable. |
+| **CRU-MOV-021** | Environment-aware path candidates | Use one current, one gravity field, and one moving-machinery corridor without impossible foresight. | CRU-MOV-011 | Real field contribution, bounded candidate selection, perception compliance. |
+| **CRU-MOV-022** | Survival choreography bridge | Wave packages select entry formation, recipe, tokens, lanes, reserve timing, and disruption policy. | CRU-010, CRU-MOV-017, CRU-MOV-019 | Mixed-wave pressure remains readable and deterministic. |
+| **CRU-MOV-023** | Adventure patrol/convoy transfer | Apply shared virtual-frame and lane logic to one ordinary patrol and one convoy route. | CRU-MOV-017 | Normal Adventure route; campaign pacing and physics owners preserved. |
+| **CRU-MOV-024** | Motion acceptance matrix | Bind quantitative motion scenarios to normal-camera player/formation/swarm review. | CRU-MOV-005–023 as applicable | Explicit PASS/REVISE per hull, archetype, density, and route. |
 
 
 ## 31.1 Parallelization guidance
@@ -5255,7 +7539,7 @@ Suggested Plan Registry row:
 
 | Family | Canonical role | Current disposition | Status owner |
 |---|---|---|---|
-| `vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md` | Durable product and implementation quarry for Survival, Combat Lab, attack composition, arena laws, and Adventure combat convergence | **DURABLE DESIGN PROPOSAL / EXPERIMENT BANK — NOT ADMITTED WORK** | Product/design owner curates direction; executable work enters only through a stable program queue ID and active packet |
+| `vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md` | Durable product and implementation quarry for player flight feel, enemy choreography, formations, Survival, Combat Lab, attack composition, arena laws, and Adventure combat convergence | **DURABLE DESIGN PROPOSAL / EXPERIMENT BANK — NOT ADMITTED WORK** | Product/design owner curates direction; executable work enters only through a stable program queue ID and active packet |
 
 Do not call it ACTIVE SCOPE unless the user explicitly admits the entire program.
 
@@ -5609,6 +7893,96 @@ This document never says “done.”
 - invisible or subtle variety weighting option;
 - compare scored and unscored play.
 
+## 33.21 Scalar-speed patch masquerading as movement design
+
+**Failure:** Every ship receives higher speed/acceleration values, but steering, braking, formations, and attack geometry remain incoherent. The game becomes faster soup.
+
+**Mitigation:**
+
+- tune response before top speed;
+- derive AI envelopes from live hull authority;
+- measure overshoot, oscillation, and path intention;
+- require normal-camera choreography review;
+- preserve heavy/light identity.
+
+## 33.22 Formation as decoration
+
+**Failure:** Enemies spawn in a wedge, immediately abandon it, and fight as unrelated orbiters.
+
+**Mitigation:**
+
+- virtual formation frame;
+- functional role sockets;
+- shape morphs;
+- attack tokens and lanes;
+- screens/reserves/support relationships;
+- formation-break gameplay;
+- formation acceptance during the attack, not only on approach.
+
+## 33.23 Brownian swarm soup
+
+**Failure:** Cheap enemies independently seek, separate, and orbit until the screen looks busy but has no fronts, gaps, timing, or intention.
+
+**Mitigation:**
+
+- cohort flow plans;
+- authored swarm shapes;
+- bounded attack tokens;
+- pressure windows;
+- physics-retaining disruption;
+- density and readability review together.
+
+## 33.24 Over-smart local avoidance
+
+**Failure:** Safety steering dominates the authored path, so ships constantly appear to change their minds.
+
+**Mitigation:**
+
+- predictive closest approach;
+- stable passing-side reservations;
+- lane/corridor ownership;
+- constraint projection instead of unordered vector accumulation;
+- emergency breaks only when the route is genuinely invalid.
+
+## 33.25 Perfect coordination without vulnerability
+
+**Failure:** Formations are beautiful but instantly self-healing, erasing the value of player impulse, tether, collision, and disablement.
+
+**Mitigation:**
+
+- derived integrity;
+- disruption dwell;
+- physical recovery paths;
+- cancelled/mistimed attacks;
+- exposed specialists;
+- faction-specific rally behavior.
+
+## 33.26 AI cheating through responsiveness
+
+**Failure:** “Better AI” secretly receives impossible acceleration, instant knowledge, unbounded prediction, or untelegraphed firing.
+
+**Mitigation:**
+
+- live capability envelope;
+- canonical physical controls;
+- perception-limited environment knowledge;
+- authored reaction delay;
+- telegraph floors;
+- difficulty through coordination and composition.
+
+## 33.27 Metric-perfect but joyless motion
+
+**Failure:** Slot error and collision counts look excellent, but paths feel sterile, slow, or robotic.
+
+**Mitigation:**
+
+- quantitative metrics diagnose rather than decide;
+- normal-speed normal-camera review;
+- motion-only role-recognition test;
+- compare curvature, commitment, and recovery silhouette;
+- preserve controlled imperfection after disruption.
+
+
 ---
 
 # 34. Adventure-mode convergence
@@ -5944,6 +8318,27 @@ This is a far-future bridge from run history into the living universe.
 # 36. Definition of convergence
 
 SpaceFace has converged toward the intended arcade-physics core when all of the following are true.
+
+## Flight and movement
+
+- Player input receives immediate visible acknowledgement.
+- Light, medium, and heavy hulls differ through physical consequence rather than control latency.
+- The player can distinguish nose turn, velocity change, and path curvature.
+- Braking and lateral correction use visible real authority.
+- Enemy maneuver envelopes derive from live hull capability instead of one conservative global speed.
+- Formation followers match desired velocity as well as position.
+- Local avoidance does not routinely erase authored intent.
+
+## Enemy choreography
+
+- Enemy roles are recognizable from motion alone.
+- Squads enter, attack, exit, and reform through readable collective plans.
+- Formations perform tactical functions during combat, not only during approach.
+- Attack tokens and lanes bound simultaneous pressure without making reserves inert.
+- The player can physically break a formation and observe meaningful consequences.
+- Fodder swarms read as fronts, rivers, crescents, or other coherent shapes rather than Brownian soup.
+- Difficulty rises through timing, coordination, environment use, and composition rather than impossible physics.
+
 
 ## Access
 
@@ -6734,6 +9129,15 @@ Re-audit before implementation.
 | Architecture and single-writer contracts | `ARCHITECTURE.md`, nearest `AGENTS.md` |
 | Existing Sandbox setup | `src/ui/sandbox/sandboxSetup.js` |
 | Deterministic Lab | `src/testing/lab/`, `scripts/sf-lab.mjs` |
+| Player and NPC propulsion profiles | `src/core/flight/propulsionCatalog.js`, `src/core/flight/propulsionKernel.js` |
+| Derived hull handling and fitted mass | `src/systems/ships.js`, `src/data/ships.js` |
+| Live player/NPC flight authority | `src/systems/flightV3.js`, current SG-02/Rapier physics owner |
+| Tactical AI host and cadence | `src/systems/tacticalAI.js`, `src/ai/stack.js` |
+| Squad tactics and formation slots | `src/ai/squad.js` |
+| Combat doctrine phase machines | `src/ai/combatDoctrine.js` |
+| Per-ship maneuver planner | `src/ai/maneuver.js` |
+| AI sensor/roster/maneuver ports | `src/systems/aiPorts.js` |
+| Existing movement checks | `test/professional-enemy-maneuvers.test.mjs`, `scripts/check-m1-combat-doctrines.mjs`, `scripts/check-sg06-rapier-formation-convergence.mjs` |
 | Canonical weapons | `src/data/weapons.js` |
 | Combat actions/statuses/subsystems | `src/data/combatDefs.js`, `src/combat/` |
 | Physics authority/contact | `src/core/physicsAuthority.js` and current Rapier owners |
@@ -6854,11 +9258,31 @@ Recommendation: five authored arenas before generation.
 
 Recommendation: no architectural distortion for hypothetical co-op or public leaderboards. Preserve stable data and determinism because they are independently valuable.
 
+## F.16 Player-flight aggressiveness
+
+Experiment with response, yaw braking, lateral authority, and class-aware control shaping before altering top speed. The target is immediate command acknowledgement plus mass-scaled consequence. Do not settle the question with one global multiplier.
+
+## F.17 Formation rigidity
+
+Recommendation: formations are elastic tactical frames, not rails. They may deform under local constraints and break under physical disruption. The unresolved tuning question is how much slot error is visually acceptable before the formation becomes Loose or Broken.
+
+## F.18 Enemy choreography versus autonomy
+
+Recommendation: prioritize authored collective choreography for combat packages, with local autonomy used for execution and recovery. Do not make every disposable ship an independent tactician. Preserve enough autonomy that physical disruption and unexpected geometry can create new situations.
+
+## F.19 Attack-token visibility
+
+Experiment with fully invisible allocation, subtle engine/formation cues, and explicit threat marks. The player must understand active attackers without turning the HUD into token bookkeeping.
+
 ---
 
 # Closing directive
 
-Build the Lab first.
+Build the Motion Lab first.
+
+Make the Hitch answer immediately. Make one four-ship wing enter, split, attack, extend, and reform with visible purpose. Make one swarm move like a shape and remain throwable when the player breaks it.
+
+Then build the full Combat Lab.
 
 Then build one run.
 

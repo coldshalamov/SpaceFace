@@ -1676,8 +1676,55 @@ PHASE 3: POLISH, DIPLOMACY & CI
 ## 12. Crucible — Survival, Combat Lab, and arcade-physics convergence (`PQ-133`)
 
 **Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
-(6,900 lines; §30 is the phase roadmap, §31 the 69 provisional packets `CRU-000`–`CRU-068`, Appendix A
-the schemas, Appendix E the owner map, Appendix F the open product decisions with recommendations).
+(**updated to v2 on 2026-08-24: 6,875 → 9,299 lines**; §30 is the phase roadmap, §31 the 69 provisional
+packets `CRU-000`–`CRU-068`, Appendix A the schemas, Appendix E the owner map, Appendix F the open
+product decisions with recommendations).
+
+**What that file IS, in its own words (§32.1): a DURABLE DESIGN PROPOSAL / EXPERIMENT BANK — NOT
+ADMITTED WORK.** It "does not establish queue order, status, implementation, or acceptance", and must
+not be called active scope unless the owner admits the whole program. Its labels separate **CORE**
+(durable decision) from **FIRST SLICE** (narrow candidate, still needs admission) from **EXPERIMENT**
+/ **CONTENT BANK** / **FAR FUTURE**. Its own agent contract warns: *"Never turn this file into a
+giant checklist whose unchecked boxes imply a blocked game."* Read it as a quarry; admit work through
+a queue ID and an active packet, as `PQ-133` was.
+
+### 12.0 The v2 delta — a CORE CORRECTION that reorders the program
+
+The entire v2 addition is **one new section, §21A "Flight, formation, and enemy-motion convergence"**
+(2,095 lines, 30 subsections). Everything else is unchanged. It carries a **CORE CORRECTION dated
+2026-08-23**, and it is directional for anything touching flight or enemy motion:
+
+> Crucible cannot deliver the intended experience if the ships themselves remain mushy, indecisive,
+> or visually incoherent. Survival is a forcing function for combat density, and **density magnifies
+> every flaw in flight control and enemy movement.** The movement layer therefore becomes a
+> **prerequisite shared program, not post-launch Survival polish.**
+
+Its one-line target: **"Every ship should look like it meant to do what it just did."** Not faster —
+*intentional*. Speed without intention is pinball noise.
+
+The dependency order it asserts:
+
+```text
+Motion Lab → player handling convergence → hull-relative enemy actuator
+→ virtual formation + attack choreography → cheap coherent swarm motion
+→ ten-wave Survival shell → attack/modifier expansion → arena and boss breadth
+```
+
+**This reframes what "PQ-133 done" means.** The leaves below shipped their SYSTEMS and are correctly
+stamped; §21A adds a gate they were never measured against — *"no Survival vertical slice should be
+called representative until the motion-convergence gate passes."* That is a NEW bar from a newer
+document, not a defect in the delivered work, and it is not admitted work until the owner says so.
+
+Its named first slice (§21A.28) is deliberately small and is the obvious admission candidate: player
+Hitch and Wasp selectable; ONE four-ship wing that enters in wedge, widens to fan, sends two ships
+down distinct crossing lanes while two screen, extends without instant turn-back, and reforms through
+merge corridors; ONE twelve-body fodder cohort that reads as a river and stays physically throwable;
+ONE heavy brawler with a pressure corridor and a clean breakaway. Proof is deterministic scenarios
+M1/M4/M6/M8/M11 plus capture at the shipping camera — with **no new direct position/velocity writes,
+no campaign AI fork, and no performance regression hidden by cutting entity count or quality.**
+
+§21A explicitly does not prescribe permanent tuning values: every number in it is a candidate
+experiment band until an admitted packet promotes it.
 **Admitted 2026-08-21 as `PQ-133`.** Packet: [`design/program/roadmap/active/PQ-133.md`](./design/program/roadmap/active/PQ-133.md).
 Dispatch: `node scripts/program-dispatch.mjs --id PQ-133`.
 
