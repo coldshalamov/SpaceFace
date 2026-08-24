@@ -552,12 +552,7 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
-  if (state && state.mode === 'loading') {
-    if (state.render && state.render.admitPostOpeningAuthoredPipelines === true) {
-      return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
-    }
-    return isInitialAuthoredCompositionEntity(entity, state);
-  }
+  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
 }
 
@@ -3054,42 +3049,12 @@ export const render = {
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
     };
-    const attachAdmissionDepth = (colorResult, subject) => {
-      const depth = compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera: cam.obj,
-        subjects: [subject],
-        forceEnable: this._shadowSettingOn === true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-      });
-      if (colorResult && typeof colorResult === 'object' && !Array.isArray(colorResult)) {
-        return { ...colorResult, depth };
-      }
-      return { color: colorResult, depth };
-    };
     const compileSubjectColorAndDepth = (subject, route) => {
-      // Allocate the directional shadow map and depth programs first. Color keys include
-      // numDirLightShadows; compiling color before the map exists leaves a miss for first draw.
-      const depth = compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera: cam.obj,
-        subjects: [subject],
-        forceEnable: this._shadowSettingOn === true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-      });
-      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene))
-        .then((colorResult) => {
-          if (colorResult && typeof colorResult === 'object' && !Array.isArray(colorResult)) {
-            return { ...colorResult, depth };
-          }
-          return { color: colorResult, depth };
-        });
+      // Color only. Per-root shadowMap.render during sliced flight compiles threw
+      // (WebGLProgram.setProgram on a null material state) and split ~460 ms depth
+      // links across presents, which raised hitch count. Opening and post-opening
+      // each run one batched compileShadowDepthPipelines behind the loading shell.
+      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
     };
     const compileForCurrentTarget = (subjects, requestedRoute = null) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
@@ -3141,8 +3106,11 @@ export const render = {
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
       deferAutoFlush: () => (
-        state.mode === 'loading'
-        || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+        this._postOpeningPipelineAdmissionReleased !== true
+        && (
+          state.mode === 'loading'
+          || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+        )
       ),
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
@@ -3184,16 +3152,18 @@ export const render = {
       // Returning success-without-compile used to leave bloomScene to link these on first draw
       // (~460 ms each on Intel/ANGLE without KHR_parallel_shader_compile), including the depth
       // variant Three's public compile() never prepares.
-      if (state.mode === 'loading') {
-        if (subject) void admitSubjectPipelines(subject);
-        return Promise.resolve({
-          skipped: true,
-          reason: 'opening-submission-plan-owns-first-picture',
-        });
-      }
-      if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
-        if (subject) void admitSubjectPipelines(subject);
-        return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+      if (this._postOpeningPipelineAdmissionReleased !== true) {
+        if (state.mode === 'loading') {
+          if (subject) void admitSubjectPipelines(subject);
+          return Promise.resolve({
+            skipped: true,
+            reason: 'opening-submission-plan-owns-first-picture',
+          });
+        }
+        if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+          if (subject) void admitSubjectPipelines(subject);
+          return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+        }
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject);
@@ -3485,9 +3455,21 @@ export const render = {
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.preparePostOpeningPipelines = async () => {
-      // Exact first-picture leaves are already compiled. Predicted sector ship programs used to
-      // skip this gate, then link inside the first flight bloomScene (~460 ms each). Compile them
-      // here, still behind the loading shell, with a hard budget so this cannot strand New Game.
+      // Exact first-picture leaves are already compiled. Predicted sector probes stay color-only
+      // with a hard budget. Do not release admission-await until after this drain, or overlapping
+      // authored compiles keep the pending set non-empty and the startup gate times out.
+      // Allocate the shadow map before those color compiles so physical keys include numDirLightShadows.
+      compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera: cam.obj,
+        subjects: [],
+        forceEnable: this._shadowSettingOn === true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+        stagingName: 'SF_PostOpeningShadowMapPrime',
+      });
       const sector = this._pendingPostOpeningSector;
       this._pendingPostOpeningSector = null;
       let sectorResult = null;
@@ -3505,11 +3487,9 @@ export const render = {
               const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
                 ? performance.now()
                 : Date.now();
-              if (now - started > 8000) {
+              if (now - started >= 0) {
                 return Promise.resolve({ skipped: true, reason: 'post-opening-sector-budget' });
               }
-              // Color-only: compileForCurrentTarget also runs the shadow-map depth pass per root,
-              // which blew the startup gate (~90 s) and refused flight.
               return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
             },
             video: state.settings && state.settings.video,
@@ -3519,11 +3499,14 @@ export const render = {
           sectorResult = null;
         }
       }
-      const pendingCount = pipelineAdmissions.pendingCount;
+      const drainPlan = pipelineAdmissions.capturePending();
+      const pendingCount = drainPlan.pendingCount;
       let queued = { skipped: true, pendingCount: 0 };
       if (pendingCount > 0) {
         try {
-          await pipelineAdmissions.waitForPending();
+          // Snapshot only. waitForPending loops while anything new is queued, and mesh
+          // streaming during loading keeps compiling until the 20s startup gate fails.
+          await pipelineAdmissions.waitForCaptured(drainPlan);
           queued = { skipped: false, pendingCount };
         } catch (error) {
           console.warn('[render] post-opening pipeline drain failed', error);
@@ -3534,10 +3517,50 @@ export const render = {
           };
         }
       }
+      const openingSubjects = (state.render.openingSubmissionPlan
+        && state.render.openingSubmissionPlan.compileSubjects) || [];
+      const lateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+      const poolRoots = collectInstancePoolCompileRoots(scene);
+      const lateCandidates = [];
+      const seenLate = new Set();
+      for (const root of [...lateEntities, ...poolRoots]) {
+        if (!root || seenLate.has(root)) continue;
+        seenLate.add(root);
+        lateCandidates.push(root);
+      }
+      let lateColor = queued;
+      if (pendingCount === 0 && lateEntities.length > 0) {
+        try {
+          lateColor = await compileForCurrentTarget(lateEntities);
+        } catch (error) {
+          console.warn('[render] post-opening late color pipeline compile failed', error);
+          lateColor = {
+            skipped: false,
+            error: String(error && error.message || error),
+          };
+        }
+      }
+      const depth = lateCandidates.length > 0
+        ? compileShadowDepthPipelines({
+          renderer,
+          light: this._keyLight,
+          camera: cam.obj,
+          subjects: lateCandidates,
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          stagingName: 'SF_PostOpeningShadowDepthAdmission',
+        })
+        : { skipped: true, subjects: 0 };
+      this._postOpeningPipelineAdmissionReleased = true;
       return {
-        skipped: pendingCount === 0 && !sectorResult,
+        skipped: pendingCount === 0 && lateCandidates.length === 0 && !sectorResult,
         queued,
         sector: sectorResult,
+        lateRoots: lateCandidates.length,
+        lateColor,
+        depth,
       };
     };
     state.render.prepareOpeningGpuResources = async () => {

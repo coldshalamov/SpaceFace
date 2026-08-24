@@ -829,6 +829,8 @@ export function authoredCompositionFingerprintForEntity(entity, options = {}) {
     selector: {
       defId: data.defId || null,
       lootTableId: data.lootTableId || null,
+      assetRef: data.assetRef || null,
+      silhouette: data.silhouette || null,
       trafficRole: data.trafficRole || null,
       placeId: data.placeId || null,
       assetId: data.assetId || null,
@@ -1350,16 +1352,26 @@ export function spawnableShipArchetypePrewarmUrls() {
   ]);
 }
 
+function normalizePartUrl(url) {
+  return String(url || '').replace(/\\/g, '/').split(/[?#]/, 1)[0];
+}
+
+function wholeShipFileForResolution(entity, selection, options = {}) {
+  if (options.forceWholeShipFile) return options.forceWholeShipFile;
+  if (options.lodLevel) return wholeShipLodFileForEntity(entity, options.lodLevel, options);
+  return selection && selection.file || null;
+}
+
 /** Pure contract hook used by runtime composition and missing/corrupt fixture checks. */
 export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
   const selection = wholeShipVisualForEntity(entity, options);
   if (!selection) return null;
-  const wholeShipFile = options.forceWholeShipFile || selection.file;
+  const wholeShipFile = wholeShipFileForResolution(entity, selection, options);
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   // Forced LOD siblings may not share the LOD0 assetId; match on file path only then.
   const expectedAssetId = options.forceWholeShipFile ? null : selection.assetId;
   const record = (records || []).find((candidate) => (
-    String(candidate && candidate.url || '').endsWith(wholeShipFile)
+    normalizePartUrl(candidate && candidate.url).endsWith(wholeShipFile)
       && (!expectedAssetId || candidate.assetId === expectedAssetId)
   ));
   if (!record) throw new Error(requiredWholeShipMessage(entity, wholeShipFile, records, partRoot));
@@ -3244,7 +3256,7 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
     residencyOwner: boundary,
     residencyRole: entity && entity.isPlayer === true ? 'player' : 'current-sector',
     sectorId,
-    isResidencyOwnerActive: () => !!boundary && !!boundary.parent && entity && entity.alive !== false,
+    isResidencyOwnerActive: () => !!boundary && entity && entity.alive !== false,
     prepareAuthoredPipelines: liveState && liveState.render
       && typeof liveState.render.compileObjectPipelines === 'function'
       ? (root) => liveState.render.compileObjectPipelines(root)
@@ -3968,7 +3980,13 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       if (tier1) tier1.countAuthoredAdmissionJob('flight-compose-gated');
       return false;
     }
-    const library = await (prefetchedLibrary || preloadAuthoredAssetsForEntity(renderer, entity, options));
+    // Prefetch may have captured a plan before combat/traffic identity landed on the entity.
+    // Await any in-flight decode, then admit the *current* whole-ship selection so compose cannot
+    // look up a hull that was never added to the library.
+    if (prefetchedLibrary) {
+      try { await prefetchedLibrary; } catch { /* live admission below is authoritative */ }
+    }
+    const library = await preloadAuthoredAssetsForEntity(renderer, entity, options);
     const compositionStartedAtMs = monotonicNow();
     try {
       authored = buildComposedShip(entity, library, scene, boundary, options);
@@ -4500,25 +4518,27 @@ function loadCanonicalLibrary(renderer, options = {}) {
 
 async function ensureEntityLibrary(renderer, entity, options = {}) {
   const library = await loadCanonicalLibrary(renderer, options);
-  const plan = authoredPreloadPlanForEntity(entity, options);
-  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-    return library;
+  let plan = authoredPreloadPlanForEntity(entity, options);
+  // Combat/traffic identity can land while a captured plan's GLB is still decoding. Keep admitting
+  // until the live selector's records are in the library Map — sector prewarm residency is not
+  // that Map, so compose would otherwise throw on a hull that was never admitted.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+      return library;
+    }
+    retainLibraryPlan(renderer, library, plan, options);
+    await admitEntityPlan(renderer, options, library, plan);
+    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+      return library;
+    }
+    const currentPlan = authoredPreloadPlanForEntity(entity, options);
+    if (libraryHasPreloadPlan(library, currentPlan)) {
+      retainLibraryPlan(renderer, library, currentPlan, options);
+      return library;
+    }
+    plan = currentPlan;
   }
-  // Acquire any already-resident pieces before joining the serial decode lane. A live queued
-  // boundary is an owner too; without this hold an earlier boundary can release the shared
-  // generation while this request is waiting, forcing a needless re-decode or an incomplete plan.
-  retainLibraryPlan(renderer, library, plan, options);
-  await admitEntityPlan(renderer, options, library, plan);
-  // Departure is a successful cancellation boundary, not an authored-asset failure. The caller
-  // will observe its detached boundary and keep/discard the procedural root without warning.
-  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-    return library;
-  }
-  if (!libraryHasPreloadPlan(library, plan)) {
-    throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
-  }
-  retainLibraryPlan(renderer, library, plan, options);
-  return library;
+  throw new Error(`Authored entity assets are incomplete for ${entity && entity.id || 'unknown ship'}.`);
 }
 
 function admitEntityPlan(renderer, options, library, plan) {
@@ -4638,8 +4658,7 @@ function libraryHasPreloadPlan(library, plan) {
 
 function recordUrlEndsWith(record, file) {
   if (!recordIsResident(record) || typeof record.url !== 'string' || !record.url) return false;
-  const url = record.url.replace(/\\/g, '/').split(/[?#]/, 1)[0];
-  return url.endsWith(file);
+  return normalizePartUrl(record.url).endsWith(file);
 }
 
 function recordIsResident(record) {
@@ -6076,12 +6095,23 @@ export function runFlightKestrelTemplatePackageProbe() {
 }
 
 function requiredWholeShipMessage(entity, wholeShipFile, records, partRoot) {
-  const defId = entity && entity.data && entity.data.defId || 'unknown_ship';
+  const data = entity && entity.data || {};
+  const defId = data.defId || 'unknown_ship';
+  const identity = [
+    defId,
+    data.lootTableId ? `lootTableId=${data.lootTableId}` : '',
+    data.trafficRole ? `trafficRole=${data.trafficRole}` : '',
+    data.silhouette ? `silhouette=${data.silhouette}` : '',
+    data.assetRef ? `assetRef=${data.assetRef}` : '',
+  ].filter(Boolean).join(' ');
   const wantedUrl = `${partRoot || PART_RELEASE_ROOT}${wholeShipFile}`;
-  const loadedWholeShips = (records || [])
-    .map((record) => record && record.url)
-    .filter((url) => url && isWholeShipUrl(url));
-  return `[partsLibrary] release mode requires ${wantedUrl} for ${defId}; it did not pass the live authored-asset loader. ` +
+  const loadedWholeShips = (records || []).map((record) => {
+    const url = normalizePartUrl(record && record.url);
+    if (!url || !isWholeShipUrl(url)) return null;
+    const assetId = record && record.assetId ? record.assetId : 'none';
+    return `${url} (${assetId})`;
+  }).filter(Boolean);
+  return `[partsLibrary] release mode requires ${wantedUrl} for ${identity}; it did not pass the live authored-asset loader. ` +
     `Loaded whole-ship hull records: ${loadedWholeShips.length ? loadedWholeShips.join(', ') : 'none'}. ` +
     'Fix the GLB contract instead of falling back to modular hulls.';
 }

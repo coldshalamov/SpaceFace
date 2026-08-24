@@ -871,7 +871,7 @@ test('renderer wires startup to captured authored admissions, never the installe
 test('renderer entry points delegate route selection instead of branching on bloom controls', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const warmStart = source.indexOf('state.render.warmPostProcess =');
-  const compileStart = source.indexOf('const compileForCurrentTarget =', warmStart);
+  const compileStart = source.indexOf('const compileSubjectColorAndDepth =', warmStart);
   const openingStart = source.indexOf('state.render.prepareOpeningGpuResources =', compileStart);
   const openingEnd = source.indexOf('// Collision/socket/landing debug toggle', openingStart);
   const drawStart = source.indexOf('drawPreparedFrame()');
@@ -886,9 +886,11 @@ test('renderer entry points delegate route selection instead of branching on blo
   const drawWire = source.slice(drawStart, renderFrameStart);
   assert.match(warmWire, /this\._warmPostProcess\(scene, cam\.obj\)/);
   assert.match(compileWire,
-    /this\._compilePostRoute\(\s*route, batch\[0\], cam\.obj, scene/);
+    /this\._compilePostRoute\(\s*route, subject, cam\.obj, scene/);
   assert.match(compileWire,
-    /this\._compilePostRoute\(\s*route, staging, cam\.obj, scene/);
+    /compileSubjectColorAndDepth\(batch\[0\], route\)/);
+  assert.match(compileWire,
+    /compileSubjectColorAndDepth\(staging, route\)/);
   assert.match(compileWire, /restoreObjectHome\(home\)/);
   assert.match(openingWire, /openingSubmissionPlan/);
   assert.doesNotMatch(openingWire, /_renderOpeningPostFrame\(/,

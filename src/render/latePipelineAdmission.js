@@ -35,9 +35,12 @@ export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
 /** Instance-pool chunks live on the scene, not the entity mesh map. Include count=0 pending ones. */
 export function collectInstancePoolCompileRoots(scene) {
   const roots = [];
+  const seen = new Set();
   if (!scene) return roots;
   const visit = (object) => {
-    if (object && object.userData && object.userData.spacefaceInstancePool === true) roots.push(object);
+    if (!object || seen.has(object)) return;
+    seen.add(object);
+    if (object.userData && object.userData.spacefaceInstancePool === true) roots.push(object);
   };
   visit(scene);
   if (typeof scene.traverse === 'function') scene.traverse(visit);

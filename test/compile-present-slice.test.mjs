@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import {
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
+  revealSubjectForCompile,
   shouldSliceCompileAcrossPresents,
 } from '../src/render/compilePresentSlice.js';
 
@@ -62,4 +63,21 @@ test('live flight compile uses the present-sliced helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(source, /shouldSliceCompileAcrossPresents/);
   assert.match(source, /compileSubjectsAcrossPresents/);
+});
+
+test('reveal for compile shows hidden instanced meshes and restores count', () => {
+  const mesh = {
+    isInstancedMesh: true,
+    visible: false,
+    frustumCulled: true,
+    count: 0,
+  };
+  const restore = revealSubjectForCompile(mesh);
+  assert.equal(mesh.visible, true);
+  assert.equal(mesh.frustumCulled, false);
+  assert.equal(mesh.count, 1);
+  restore();
+  assert.equal(mesh.visible, false);
+  assert.equal(mesh.frustumCulled, true);
+  assert.equal(mesh.count, 0);
 });

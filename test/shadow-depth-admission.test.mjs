@@ -77,6 +77,58 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
   assert.equal(renderer._target?.name, 'previous');
 });
 
+test('hidden zero-count instanced casters are revealed for the shadow pass', () => {
+  const hull = {
+    isInstancedMesh: true,
+    isMesh: true,
+    castShadow: true,
+    visible: false,
+    frustumCulled: true,
+    count: 0,
+    name: 'hull',
+    parent: { children: [] },
+  };
+  hull.parent.children.push(hull);
+  const renders = [];
+  const renderer = {
+    shadowMap: {
+      enabled: false,
+      render(lights, staging) {
+        renders.push(staging.children.map((child) => ({
+          name: child.name,
+          visible: child.visible,
+          count: child.count,
+        })));
+      },
+    },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  const result = compileShadowDepthPipelines({
+    renderer,
+    light: { name: 'key', castShadow: false, shadow: { needsUpdate: false } },
+    camera: { name: 'chase' },
+    subjects: [hull],
+    forceEnable: true,
+    THREE: {
+      Group: class {
+        constructor() { this.children = []; this.name = ''; }
+        add(child) { this.children.push(child); }
+        clear() { this.children.length = 0; }
+        updateMatrixWorld() {}
+      },
+    },
+    captureObjectHome(object) { return { object }; },
+    restoreObjectHome() {},
+  });
+  assert.equal(result.skipped, false);
+  assert.equal(renders.length, 1);
+  assert.equal(renders[0][0].visible, true);
+  assert.equal(renders[0][0].count, 1);
+  assert.equal(hull.visible, false);
+  assert.equal(hull.count, 0);
+});
+
 test('inactive shadows skip unless forceEnable is set', () => {
   const hull = { isMesh: true, castShadow: true };
   const renderer = { shadowMap: { enabled: false, render() { throw new Error('must not render'); } } };

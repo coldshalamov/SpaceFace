@@ -83,6 +83,8 @@ const pageErrors = [];
 const shaderErrors = [];
 const missingAssets = [];
 const diagnostics = [];
+const invisibleAuthoredShips = [];
+const consoleWarningWork = [];
 
 function record(step, ok, detail) {
   results.push({ step, ok, detail });
@@ -225,6 +227,32 @@ try {
   page.on('console', (m) => {
     if (m.type() !== 'warning') return;
     const t = m.text();
+    const isWholeShipLoaderMiss = /Loaded whole-ship hull records:|did not pass the live authored-asset loader|release mode requires \S*wholeships\//i.test(t);
+    const isAuthoredFailClosed = /authored composition failed; no substitute visual published/i.test(t);
+    // Fail only the missing-required-whole-ship class. Other fail-closed authored errors stay
+    // diagnostics so a pipeline-admission stall cannot masquerade as this hull-record bug.
+    if (isWholeShipLoaderMiss || isAuthoredFailClosed) {
+      consoleWarningWork.push((async () => {
+        let full = t;
+        try {
+          const parts = [];
+          for (const arg of m.args()) {
+            parts.push(await arg.evaluate((value) => (
+              value instanceof Error ? value.message : String(value)
+            )));
+          }
+          if (parts.length) full = parts.join('\n');
+        } catch (_) { /* truncated Playwright text is still enough to classify the warning */ }
+        const wholeShipMiss = /Loaded whole-ship hull records:|did not pass the live authored-asset loader|release mode requires \S*wholeships\//i.test(full);
+        if (wholeShipMiss) {
+          invisibleAuthoredShips.push(full);
+          diagnostics.push('INVISIBLE SHIP: ' + full);
+        } else {
+          diagnostics.push('warn: ' + full.slice(0, 260));
+        }
+      })());
+      return;
+    }
     if (/authored|part library|asset|ktx|basis|decoder|preload|GPU|WebGL/i.test(t)) diagnostics.push('warn: ' + t.slice(0, 260));
   });
   page.on('response', (res) => {
@@ -635,6 +663,11 @@ try {
   record('ASSETS', assets.length === 0, assets.length === 0
     ? 'every request served'
     : assets.length + ' failed request(s):' + NLPAD + assets.slice(0, 10).join(NLPAD));
+
+  await Promise.all(consoleWarningWork);
+  record('AUTHORED HULL', invisibleAuthoredShips.length === 0, invisibleAuthoredShips.length === 0
+    ? 'no live entity failed closed as an invisible authored ship'
+    : invisibleAuthoredShips.join(NLPAD));
 
   if (diagnostics.length) console.log('  diagnostics:' + NLPAD + [...new Set(diagnostics)].slice(0, 12).join(NLPAD));
 
