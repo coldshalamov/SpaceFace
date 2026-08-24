@@ -8,6 +8,11 @@ import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool } from './contactMarks.js';
 import { addShieldContact, ageShieldContacts, clearShieldContacts } from './shieldContacts.js';
 import {
+  shouldDrawTableVfx,
+  tableLookAtDelta,
+  tableVfxDrawWuFromState,
+} from '../tabletopPolicy.js';
+import {
   FLIGHT_MODE,
   WEAPON_SOCKET_NAME,
   flightColorsForEntity,
@@ -19,12 +24,13 @@ import {
 const _color = new THREE.Color();
 const _local = { x: 0, z: 0 };
 const _seen = new Set();
+const _ribbonWorld = { x: 0, z: 0 };
+const _ribbonLookAt = { x: 0, z: 0 };
 const _offset = new THREE.Vector3();
 const _axis = new THREE.Vector3();
 const _invQuat = new THREE.Quaternion();
 const NEAR_MISS_RADIUS = 10;
 const FULL_LOD_DISTANCE = 240;
-const RIBBON_LOD_DISTANCE = 520;
 
 function hexColor(hex, target) {
   target.set(hex || '#ffffff');
@@ -305,6 +311,13 @@ export class WeaponVfxPresenter {
     this.bolts.beginFrame();
     _seen.clear();
     const camPos = camera && camera.position;
+    const state = this.state;
+    const playerId = state && state.playerId;
+    const targetId = state && state.player && state.player.targetId;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(playerId)
+      : null;
+    const ribbonDrawWu = tableVfxDrawWuFromState(state);
     for (let i = 0; i < entities.length; i++) {
       const entity = entities[i];
       if (!entity || !entity.alive || entity.type !== 'projectile') continue;
@@ -319,26 +332,35 @@ export class WeaponVfxPresenter {
         this._prevLocal,
       );
       const y = 0.32;
-      if (recipeUsesRibbonWake(recipe) || recipe.flight.mode === FLIGHT_MODE.ENERGY_CARD) {
-        _seen.add(entity.id);
-      }
       if (recipeUsesRibbonWake(recipe)) {
-        if (!this.ribbons.byEntity.has(entity.id)) {
-          flightColorsForEntity(recipe, entity, this._flightColors);
-          const ribbon = this._ribbonSpec;
-          ribbon.entityId = entity.id;
-          ribbon.x = currLocal.x; ribbon.y = y; ribbon.z = currLocal.z;
-          ribbon.width = recipe.flight.ribbonWidth;
-          ribbon.colorHead = this._flightColors.core;
-          ribbon.colorTail = this._flightColors.sheath;
-          ribbon.linger = recipe.flight.ribbonLinger;
-          this.ribbons.spawn(ribbon);
-        }
-        const dist = camPos
-          ? Math.hypot(camPos.x - currLocal.x, camPos.z - currLocal.z)
-          : 0;
-        if (dist < RIBBON_LOD_DISTANCE) {
+        _seen.add(entity.id);
+        // Projectiles inherit PQ-126 ribbon priority from their owner: the player and current
+        // target stay full even off-table. Every other wake follows the live look-at envelope.
+        const priorityRibbon = (
+          (playerId != null && (entity.id === playerId || entity.ownerId === playerId))
+          || (targetId != null && (entity.id === targetId || entity.ownerId === targetId))
+        );
+        _ribbonWorld.x = currX;
+        _ribbonWorld.z = currZ;
+        const look = tableLookAtDelta(state, player && player.pos, _ribbonWorld, _ribbonLookAt);
+        const ribbonOnTable = priorityRibbon
+          || !player
+          || shouldDrawTableVfx(look.x, look.z, ribbonDrawWu);
+        if (ribbonOnTable) {
+          if (!this.ribbons.byEntity.has(entity.id)) {
+            flightColorsForEntity(recipe, entity, this._flightColors);
+            const ribbon = this._ribbonSpec;
+            ribbon.entityId = entity.id;
+            ribbon.x = currLocal.x; ribbon.y = y; ribbon.z = currLocal.z;
+            ribbon.width = recipe.flight.ribbonWidth;
+            ribbon.colorHead = this._flightColors.core;
+            ribbon.colorTail = this._flightColors.sheath;
+            ribbon.linger = recipe.flight.ribbonLinger;
+            this.ribbons.spawn(ribbon);
+          }
           this.ribbons.pushHead(entity.id, currLocal.x, y, currLocal.z);
+        } else {
+          this.ribbons.release(entity.id);
         }
       }
       if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD) continue;

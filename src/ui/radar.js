@@ -73,6 +73,26 @@ const CAPITAL_DEFS = new Set(
 
 const trailMap = new Map();
 
+/**
+ * Range-ring policy: show the farthest positive finite range among the active entity's live
+ * equipped weapons and mining beam. Recompute from runtime data every draw so refits move the ring.
+ */
+export function rangeRingRatioForEntity(entity, radarRange) {
+  const data = entity && entity.data;
+  let maxRange = 0;
+  const weapons = data && data.weapons;
+  if (Array.isArray(weapons)) {
+    for (const weapon of weapons) {
+      const weaponRange = weapon && weapon.range;
+      if (Number.isFinite(weaponRange) && weaponRange > maxRange) maxRange = weaponRange;
+    }
+  }
+  const miningRange = data && data.miningBeam && data.miningBeam.range;
+  if (Number.isFinite(miningRange) && miningRange > maxRange) maxRange = miningRange;
+  if (!Number.isFinite(radarRange) || radarRange <= 0 || maxRange <= 0) return 0.6;
+  return Math.min(maxRange / radarRange, 1);
+}
+
 function playerProjSpeed(player) {
   const weapons = player && player.data && player.data.weapons;
   if (Array.isArray(weapons)) {
@@ -720,8 +740,7 @@ export function createRadar(ctx) {
 
     drawHeatZone(g, state.player && state.player.heatZone, playerX, playerZ, radarScale, center, radius);
 
-    const weaponRange = state.player && state.player.weaponRange;
-    const rangeRatio = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
+    const rangeRatio = rangeRingRatioForEntity(player, range);
     const weaponRingRadius = radius * rangeRatio;
     g.save();
     g.strokeStyle = 'rgba(99,243,255,0.18)';
