@@ -1,0 +1,96 @@
+name: Current-master overheating excision v2
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/run-overheating-excision.mjs
+      - .github/workflows/consolidated-overheating-excision-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-overheating-excision-v2
+  cancel-in-progress: true
+
+jobs:
+  excise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Wait for ownership audit and align with latest integration
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          found=0
+          for attempt in $(seq 1 36); do
+            git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+            if git cat-file -e refs/remotes/origin/integration/all-branches-20260824:design/program/branch-consolidation/overheating-reference-audit.json 2>/dev/null; then
+              found=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$found" != "1" ]; then
+            echo "Overheating ownership audit was not published." >&2
+            exit 1
+          fi
+          git checkout -B integration/all-branches-20260824 refs/remotes/origin/integration/all-branches-20260824
+          git rebase refs/remotes/origin/master
+
+      - name: Install repository and parser dependencies
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false --ignore-scripts recast @babel/parser
+
+      - name: Excise with protected binding positions
+        run: |
+          node scripts/run-overheating-excision.mjs
+          node scripts/check-no-overheating.mjs
+          node scripts/audit-overheating-removal.mjs
+
+      - name: Run affected subsystem tests and production build
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find test -maxdepth 1 -type f \( \
+            -iname '*weapon*.test.mjs' -o \
+            -iname '*mining*.test.mjs' -o \
+            -iname '*drill*.test.mjs' -o \
+            -iname '*equipment*.test.mjs' -o \
+            -iname '*hud*.test.mjs' \
+          \) -print | sort)
+          if [ "${#tests[@]}" -gt 0 ]; then node --test "${tests[@]}"; fi
+          node scripts/check-no-overheating.mjs
+          node scripts/check-type-floor.mjs
+          node scripts/check-program-docs.mjs
+          git diff --check
+          npm run build
+
+      - name: Upload corrected excision receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: overheating-excision-v2-receipts
+          path: |
+            design/program/branch-consolidation/overheating-*.json
+            design/program/branch-consolidation/*OVERHEATING*.md
+          retention-days: 30
+
+      - name: Publish validated excision
+        run: |
+          git add --sparse -A
+          git commit -m "refactor(gameplay): remove weapon mining-beam and drill overheating [skip ci]"
+          git fetch origin integration/all-branches-20260824
+          git rebase refs/remotes/origin/integration/all-branches-20260824
+          git push --force-with-lease origin HEAD:integration/all-branches-20260824
