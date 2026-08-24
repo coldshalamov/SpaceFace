@@ -949,6 +949,29 @@ ever saw, and they link on first draw. The fix is to route those through the sam
 admission path the opening uses, spread across frames because parallel compile is unavailable here.
 `precompile.js`, `pipelineReadiness.js` and `admissionSliceBudget.js` already exist for this shape.
 
+**2026-08-24 — THE COMPILE-ON-ADMISSION FIX DID NOT REMOVE THE BRICK. Measured, not assumed.**
+Two runs on a quiet-ish machine (one UI lane, no GPU work):
+
+```
+run 1   p95 6.1   max 3387   hitches 28 of 923
+run 2   p95 8.4   max 3173   hitches 17 of 902
+baseline p95 5.5  max 3237-3654  hitches 13-15 of 787-830
+```
+
+The max is unchanged. **What DID improve is the part the instrumentation catches**: the logged
+`[GPU brick]` events fell from 3229 ms / +7 programs to ~215 ms / +3 programs. So late admission is
+compiling *something* earlier — it is simply not the thing that costs 3.2 s.
+
+**And the 3.2 s is still inside `bloomScene`** (`bloomPhases` 180-sample max 3167.6 ms) while the
+`[GPU brick]` warning never fired for it. That is an INSTRUMENTATION BLIND SPOT: the warning is gated
+on `renderWorkEnabled`, and the costly event lands outside the window where that gate is true. **Fix
+the blind spot before the next attempt** — three rounds have now been aimed by partial evidence, and
+each time the evidence that was actually available pointed slightly wrong.
+
+Also note `hitches` rose (13-15 → 17-28) and `p95` rose (5.5 → 6.1/8.4). Those runs were contended
+by one active lane, so the rise is NOT established — but PQ-129's promotion law makes a hitch rise
+disqualifying, so this needs a clean A/B before the change is defended, not after.
+
 **This is why the instrumentation was kept when the fix was reverted.** One 20-second run then named
 in a single line what two rounds of reasoning had guessed wrong twice.
 **Reading:** the classifier DOES name an owner, so the gate's second clause is satisfied — but the honest conclusion is that Wave C's crowded-60-fps work is not what this machine needs next. Steady state already holds 60 fps; the remaining owner-visible cost is one ~3.6 s freeze entering flight, which is Wave B's *kill bricks* business, not Wave C's. Chase the brick before promoting `.11`-`.18`.
