@@ -11,19 +11,17 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeHtml } from '../comms.js';
+import { canvasFontScaled, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
 
-// Branch -> column index and accent colour. The DAG is laid out as columns by branch,
-// rows by topological depth (longest prereq chain).
+// Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
-  { id: 'combat',    label: 'Combat',    color: '#ff5470' },
-  { id: 'industry',  label: 'Industry',  color: '#ffb347' },
-  { id: 'drives',    label: 'Drives',    color: '#39d0ff' },
-  { id: 'logistics', label: 'Logistics', color: '#7af7d0' },
+  { id: 'combat',    label: 'Combat' },
+  { id: 'industry',  label: 'Industry' },
+  { id: 'drives',    label: 'Drives' },
+  { id: 'logistics', label: 'Logistics' },
 ];
 const BRANCH_INDEX = {};
 BRANCHES.forEach((b, i) => { BRANCH_INDEX[b.id] = i; });
-const BRANCH_COLOR = {};
-BRANCHES.forEach((b) => { BRANCH_COLOR[b.id] = b.color; });
 const UNLOCK_NAME_BY_ID = new Map(
   [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
 );
@@ -32,44 +30,92 @@ const NODE_W = 150, NODE_H = 58, COL_GAP = 26, ROW_GAP = 30, PAD_X = 28, PAD_Y =
 
 const STYLE_ID = 'sf-techtree-style';
 const CSS = `
-#sf-techtree { width: min(94vw, 1120px); height: min(90vh, 760px); display: flex; flex-direction: column;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge);
-  border-radius: 10px; box-shadow: 0 12px 48px rgba(0,0,0,.6); overflow: hidden; pointer-events: auto; }
-#sf-techtree .tt-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px;
-  border-bottom: 1px solid var(--panel-edge); background: rgba(8,14,26,.7); }
-#sf-techtree .tt-title { font-size: 1.2em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
-  text-shadow: 0 0 12px rgba(57,208,255,.5); }
-#sf-techtree .tt-res { font-family: var(--mono); font-size: .85em; display: flex; gap: 18px; }
-#sf-techtree .tt-res .cr { color: var(--energy); } #sf-techtree .tt-res .rp { color: var(--accent-2); }
-#sf-techtree .tt-res b { font-weight: 700; }
+#sf-techtree {
+  width: 100%; height: 100%; max-width: var(--sf-stage-max); margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: var(--sf-surface); color: var(--sf-paper);
+  border: 0; border-radius: 0; box-shadow: none; overflow: hidden; pointer-events: auto;
+  font-family: var(--sf-body-face); font-size: 14px;
+  padding-left: var(--sf-safe-inset-x); padding-right: var(--sf-safe-inset-x);
+}
+#sf-techtree .sf-fig,
+#sf-techtree .tt-res b,
+#sf-techtree .tt-cost,
+#sf-techtree .tt-zoom-badge {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: 13px; letter-spacing: 0;
+}
+#sf-techtree .tt-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge); background: var(--sf-surface);
+}
+#sf-techtree .tt-title {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  letter-spacing: 0; text-transform: none; color: var(--sf-paper); overflow-wrap: anywhere;
+}
+#sf-techtree .tt-res { display: flex; gap: var(--sp-4); color: var(--sf-calm); font-size: 13px; }
+#sf-techtree .tt-res .cr, #sf-techtree .tt-res .rp { color: var(--sf-you); }
+#sf-techtree .tt-res .count { color: var(--sf-calm); }
 #sf-techtree .tt-body { flex: 1; display: flex; min-height: 0; }
 #sf-techtree .tt-scroll { flex: 1; overflow: auto; position: relative; min-width: 0; }
 #sf-techtree canvas { display: block; cursor: default; }
-#sf-techtree .tt-side { width: 282px; border-left: 1px solid var(--panel-edge); background: rgba(6,11,21,.6);
-  padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-#sf-techtree .tt-sel-name { font-size: 1.06em; color: var(--ink); }
-#sf-techtree .tt-branch { font-family: var(--mono); font-size: .76em; text-transform: uppercase; letter-spacing: .1em; }
-#sf-techtree .tt-state { font-family: var(--mono); font-size: .8em; }
-#sf-techtree .tt-cost { display: flex; gap: 16px; font-family: var(--mono); font-size: .86em; }
-#sf-techtree .tt-cost .cr { color: var(--energy); } #sf-techtree .tt-cost .rp { color: var(--accent-2); }
-#sf-techtree .tt-cost .bad { color: var(--danger); }
-#sf-techtree .tt-unlocks { font-size: .8em; color: var(--ink-dim); line-height: 1.55; }
-#sf-techtree .tt-unlocks b { color: var(--ink); }
-#sf-techtree .tt-prereq { font-size: .78em; color: var(--ink-mute); line-height: 1.5; }
-#sf-techtree .tt-prereq .ok { color: var(--good); } #sf-techtree .tt-prereq .no { color: var(--danger); }
-#sf-techtree .tt-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-#sf-techtree .tt-actions button { width: 100%; padding: 9px; }
+#sf-techtree .tt-side {
+  width: 282px; border-left: 1px solid var(--sf-edge); background: var(--sf-surface);
+  padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); overflow-y: auto;
+}
+#sf-techtree .tt-sel-name {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2; color: var(--sf-paper);
+}
+#sf-techtree .tt-branch {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+#sf-techtree .tt-state {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+#sf-techtree .tt-state.is-researched { color: var(--sf-you); }
+#sf-techtree .tt-state.is-available { color: var(--sf-goal); }
+#sf-techtree .tt-state.is-locked { color: var(--sf-calm); }
+#sf-techtree .tt-cost { display: flex; gap: var(--sp-4); }
+#sf-techtree .tt-cost .cr, #sf-techtree .tt-cost .rp { color: var(--sf-you); }
+#sf-techtree .tt-cost .bad { color: var(--sf-foe); }
+#sf-techtree .tt-unlocks { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.55; }
+#sf-techtree .tt-unlocks b { color: var(--sf-paper); }
+#sf-techtree .tt-prereq { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; }
+#sf-techtree .tt-prereq .ok { color: var(--sf-you); }
+#sf-techtree .tt-prereq .no { color: var(--sf-foe); }
+#sf-techtree .tt-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+#sf-techtree .tt-actions button { width: 100%; padding: var(--sp-2); font-family: var(--sf-body-face); font-size: 14px; }
 #sf-techtree .tt-actions button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
-#sf-techtree .tt-unlock { background: rgba(57,208,255,.12); border-color: var(--accent); color: #fff;
-  text-shadow: 0 0 8px rgba(57,208,255,.6); }
-#sf-techtree .tt-foot { display: flex; gap: 16px; padding: 8px 18px; border-top: 1px solid var(--panel-edge);
-  font-family: var(--mono); font-size: .72em; color: var(--ink-mute); }
-#sf-techtree .tt-foot span { display: inline-flex; align-items: center; gap: 5px; }
-#sf-techtree .tt-sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-#sf-techtree .tt-hint { font-size: .78em; color: var(--ink-mute); }
-#sf-techtree .tt-zoom-badge { position: absolute; bottom: 8px; right: 8px; font-family: var(--mono, monospace);
-  font-size: 12px; color: var(--ink-dim); background: rgba(8,14,26,.85); border: 1px solid var(--panel-edge);
-  border-radius: 4px; padding: 3px 8px; pointer-events: none; z-index: 2; letter-spacing: .04em; }
+#sf-techtree .tt-unlock {
+  background: color-mix(in srgb, var(--sf-goal) 12%, transparent);
+  border-color: var(--sf-goal); color: var(--sf-paper);
+}
+#sf-techtree .tt-foot {
+  display: flex; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--sf-edge);
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+#sf-techtree .tt-foot span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+#sf-techtree .tt-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid var(--sf-edge); }
+#sf-techtree .tt-sw--available { background: var(--sf-goal); border-color: var(--sf-goal); }
+#sf-techtree .tt-sw--researched { background: var(--sf-you); border-color: var(--sf-you); }
+#sf-techtree .tt-sw--locked { background: var(--sf-calm); }
+#sf-techtree .tt-hint { font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-calm); }
+#sf-techtree .tt-zoom-badge {
+  position: absolute; bottom: var(--sp-2); right: var(--sp-2); color: var(--sf-calm);
+  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
+  padding: var(--sp-1) var(--sp-2); pointer-events: none; z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-techtree, #sf-techtree * { animation: none; transition: none; }
+}
+@media (forced-colors: active) {
+  #sf-techtree, #sf-techtree .tt-side, #sf-techtree .tt-zoom-badge {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+}
 `;
 
 function injectStyle() {
@@ -80,27 +126,35 @@ function injectStyle() {
   document.head.appendChild(el);
 }
 
-// Canvas 2D parses `font` with the CSS font shorthand parser, which does NOT resolve custom
-// properties: `g.font = '12px var(--mono)'` is invalid, silently ignored, and leaves the previous
-// value (initially 10px sans-serif) — the whole tree rendered in browser-default sans at the wrong
-// size with nothing reporting it. Resolve the tokens through getComputedStyle first; the resolved
-// strings are full font-family lists and drop straight into the shorthand.
-let _fontCache = null;
-function resolveCanvasFonts() {
-  if (_fontCache) return _fontCache;
-  const cs = getComputedStyle(document.documentElement);
-  const mono = (cs.getPropertyValue('--mono') || '').trim() || 'monospace';
-  const sans = (cs.getPropertyValue('--font') || '').trim() || 'sans-serif';
-  _fontCache = { mono, sans };
-  return _fontCache;
-}
-function invalidateCanvasFonts() { _fontCache = null; }
-if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
-  // Web fonts land after first paint; drop the cache and let the next refresh redraw with them.
-  document.fonts.addEventListener('loadingdone', invalidateCanvasFonts);
+function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+
+function canvasRoles() {
+  const fallback = { you: '#7af7d0', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350' };
+  if (typeof document === 'undefined' || !document.documentElement) return fallback;
+  let cs;
+  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
+  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
+  return {
+    you: read('--sf-you', fallback.you),
+    foe: read('--sf-foe', fallback.foe),
+    goal: read('--sf-goal', fallback.goal),
+    calm: read('--sf-calm', fallback.calm),
+    paper: read('--sf-paper', fallback.paper),
+    surface: read('--sf-surface', fallback.surface),
+    edge: read('--sf-edge', fallback.edge),
+  };
 }
 
-function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
+function paint(hex, a) {
+  if (a == null || a >= 1) return hex;
+  const n = String(hex || '').replace('#', '');
+  if (n.length < 6) return hex;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if (![r, g, b].every(Number.isFinite)) return hex;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
 
 function nodeName(id, nodes = TECH_NODES) {
   const node = (nodes || []).find((n) => n && n.id === id);
@@ -255,25 +309,25 @@ export const techTreeScreen = {
     this._root = rootEl;
     rootEl.id = 'sf-techtree';
     rootEl.innerHTML = `
-      <div class="tt-head">
+      <div class="tt-head sf-crest">
         <div class="tt-title">Research &amp; Tech</div>
         <div class="tt-res">
-          <div class="cr">CR <b data-cr>0</b></div>
-          <div class="rp">RP <b data-rp>0</b></div>
-          <div class="rp" style="color:var(--ink-dim)">UNLOCKED <b data-count>0/${TECH_NODES.length}</b></div>
+          <div class="cr">CR <b class="sf-fig" data-cr>0</b></div>
+          <div class="rp">RP <b class="sf-fig" data-rp>0</b></div>
+          <div class="count">UNLOCKED <b class="sf-fig" data-count>0/${TECH_NODES.length}</b></div>
         </div>
       </div>
       <div class="tt-body">
-        <div class="tt-scroll"><canvas></canvas></div>
-        <div class="tt-side">
+        <div class="tt-scroll sf-stage"><canvas></canvas></div>
+        <div class="tt-side sf-apron">
           <div data-sel><div class="tt-hint">Select a node to inspect its cost, effects and prerequisites.</div></div>
           <div class="tt-actions" data-actions></div>
         </div>
       </div>
       <div class="tt-foot">
-        <span><i class="tt-sw" style="background:#39d0ff"></i>Available</span>
-        <span><i class="tt-sw" style="background:rgba(57,208,255,.85);box-shadow:0 0 6px #39d0ff"></i>Researched</span>
-        <span><i class="tt-sw" style="background:#33425c"></i>Locked</span>
+        <span><i class="tt-sw tt-sw--available"></i>Available</span>
+        <span><i class="tt-sw tt-sw--researched"></i>Researched</span>
+        <span><i class="tt-sw tt-sw--locked"></i>Locked</span>
       </div>`;
 
     this._canvas = rootEl.querySelector('canvas');
@@ -404,19 +458,18 @@ export const techTreeScreen = {
 
     const nodes = this._nodes();
     const pos = this._layout.positions;
-    const fonts = resolveCanvasFonts();
+    const roles = canvasRoles();
+    const zoom = this._zoom || 1;
 
-    // branch column headers
+    // branch column headers — MICRO, calm: branch identity is column + word, not hue
     g.textAlign = 'left'; g.textBaseline = 'top';
     for (const b of BRANCHES) {
       const baseCol = this._layout.branchBaseX[b.id];
       if (baseCol == null) continue;
       const x = PAD_X + baseCol * (NODE_W + COL_GAP);
-      g.fillStyle = b.color;
-      g.globalAlpha = 0.85;
-      g.font = '700 12px ' + fonts.mono;
+      g.fillStyle = roles.calm;
+      g.font = canvasFontScaled(600, 12, zoom, 'subhead');
       g.fillText(b.label.toUpperCase(), x, 14);
-      g.globalAlpha = 1;
     }
 
     // ---- prereq edges ----
@@ -432,10 +485,9 @@ export const techTreeScreen = {
         const met = this._isResearched(p);
         g.beginPath();
         g.moveTo(parentBottom.x, parentBottom.y);
-        // simple bezier elbow
         const midY = (parentBottom.y + childTop.y) / 2;
         g.bezierCurveTo(parentBottom.x, midY, childTop.x, midY, childTop.x, childTop.y);
-        g.strokeStyle = met ? 'rgba(57,208,255,0.55)' : 'rgba(110,130,160,0.28)';
+        g.strokeStyle = met ? paint(roles.you, 0.55) : paint(roles.calm, 0.28);
         g.lineWidth = met ? 2 : 1;
         g.stroke();
       }
@@ -448,58 +500,38 @@ export const techTreeScreen = {
       const stt = this._nodeState(n);
       const sel = n.id === this._selectedId;
       const hov = n.id === this._hoverId;
-      const bcol = BRANCH_COLOR[n.branch] || '#39d0ff';
 
-      // card background
       g.beginPath();
       roundRect(g, p.x, p.y, NODE_W, NODE_H, 8);
-      if (stt === 'researched') {
-        g.fillStyle = 'rgba(57,208,255,0.18)';
-      } else if (stt === 'available') {
-        g.fillStyle = 'rgba(13,24,40,0.95)';
-      } else {
-        g.fillStyle = 'rgba(20,28,42,0.7)';
-      }
+      if (stt === 'researched') g.fillStyle = paint(roles.you, 0.16);
+      else if (stt === 'available') g.fillStyle = paint(roles.surface, 0.95);
+      else g.fillStyle = paint(roles.surface, 0.7);
       g.fill();
 
-      // border by state
       g.lineWidth = sel ? 2.5 : 1.5;
-      if (stt === 'researched') g.strokeStyle = '#39d0ff';
-      else if (stt === 'available') g.strokeStyle = sel || hov ? '#fff' : bcol;
-      else g.strokeStyle = 'rgba(80,100,130,0.5)';
+      if (stt === 'researched') g.strokeStyle = roles.you;
+      else if (stt === 'available') g.strokeStyle = sel || hov ? roles.paper : roles.goal;
+      else g.strokeStyle = paint(roles.edge, 0.8);
       g.stroke();
 
-      if (sel || (hov && stt !== 'locked')) {
-        g.save();
-        g.shadowColor = stt === 'researched' ? '#39d0ff' : bcol;
-        g.shadowBlur = 12;
-        g.stroke();
-        g.restore();
-      }
-
-      // name
-      g.fillStyle = stt === 'locked' ? 'rgba(150,168,196,0.55)' : '#dce8f5';
-      g.font = '600 12px ' + fonts.sans;
+      g.fillStyle = stt === 'locked' ? paint(roles.calm, 0.7) : roles.paper;
+      g.font = canvasFontScaled(600, 13, zoom, 'body');
       g.textAlign = 'left'; g.textBaseline = 'top';
-      wrapText(g, n.name, p.x + 9, p.y + 8, NODE_W - 18, 14, 2);
+      wrapText(g, n.name, p.x + 9, p.y + 8, NODE_W - 18, 15, 2);
 
-      // cost or check
-      g.font = '500 12px ' + fonts.mono;
+      g.font = canvasFontScaled(500, 13, zoom, 'data');
       if (stt === 'researched') {
-        g.fillStyle = '#62e08a';
+        g.fillStyle = roles.you;
         g.textAlign = 'right'; g.textBaseline = 'bottom';
-        g.fillText('✓ RESEARCHED', p.x + NODE_W - 8, p.y + NODE_H - 7);
+        g.fillText('RESEARCHED', p.x + NODE_W - 8, p.y + NODE_H - 7);
       } else {
         const cost = n.cost || {};
         g.textAlign = 'left'; g.textBaseline = 'bottom';
-        g.fillStyle = '#ffd84a';
+        g.fillStyle = roles.paper;
         g.fillText(fmtCr(cost.credits || 0), p.x + 9, p.y + NODE_H - 7);
-        g.fillStyle = '#7af7d0';
         g.textAlign = 'right';
         g.fillText((cost.rp || 0) + ' RP', p.x + NODE_W - 8, p.y + NODE_H - 7);
       }
-
-      // locked nodes read as locked through fill, border and name colour; no glyph needed.
     }
   },
 
@@ -560,7 +592,6 @@ export const techTreeScreen = {
     const creds = (st.player && st.player.credits) || 0;
     const rp = (st.player && st.player.researchPoints) || 0;
     const canAfford = creds >= (cost.credits || 0) && rp >= (cost.rp || 0);
-    const bcol = BRANCH_COLOR[n.branch] || '#39d0ff';
     const readiness = describeTechNodeReadiness(n, st, this._nodes());
 
     const prereqHtml = (n.prereqs && n.prereqs.length)
@@ -573,14 +604,14 @@ export const techTreeScreen = {
 
     sel.innerHTML = `
       <div class="tt-sel-name">${escapeHtml(n.name)}</div>
-      <div class="tt-branch" style="color:${bcol}">${escapeHtml(n.branch)} branch</div>
-      <div class="tt-state" style="color:${stateColor(stt)}">${stateLabel(stt)}</div>
+      <div class="tt-branch">${escapeHtml(n.branch)} branch</div>
+      <div class="tt-state is-${stt}">${stateLabel(stt)}</div>
       <div class="tt-cost">
         <span class="cr${creds >= (cost.credits || 0) ? '' : ' bad'}">${fmtCr(cost.credits || 0)} cr</span>
         <span class="rp${rp >= (cost.rp || 0) ? '' : ' bad'}">${cost.rp || 0} RP</span>
       </div>
       <div class="tt-unlocks">${formatUnlocks(n.unlocks)}</div>
-      <div class="tt-prereq"><b style="color:var(--ink-dim)">Prerequisites</b>${prereqHtml}</div>
+      <div class="tt-prereq"><b>Prerequisites</b>${prereqHtml}</div>
     `;
 
     if (stt === 'researched') {
@@ -610,8 +641,8 @@ export const techTreeScreen = {
   },
 
   _drawSignature() {
-    const f = resolveCanvasFonts();
-    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length, f.mono, f.sans].join('|');
+    const f = canvasFonts();
+    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length, this._zoom, f.data, f.body].join('|');
   },
 
   _sidebarSignature() {
@@ -629,7 +660,6 @@ export const techTreeScreen = {
 
 // ---- helpers ----------------------------------------------------------------
 function stateLabel(s) { return s === 'researched' ? 'RESEARCHED' : s === 'available' ? 'AVAILABLE' : 'LOCKED'; }
-function stateColor(s) { return s === 'researched' ? '#62e08a' : s === 'available' ? '#39d0ff' : '#84a0c8'; }
 
 function disabledActionHtml(readiness) {
   const label = readiness && readiness.actionLabel || 'Unavailable';

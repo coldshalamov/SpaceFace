@@ -600,7 +600,7 @@ function commandBriefHtml(brief) {
 function contractTermsHtml(m, state) {
   const terms = activeMissionContractTerms(m, state);
   if (!terms.length) return '';
-  return '<div class="sf-mlog-terms mono" aria-label="Contract terms">' + terms.map((term) => {
+    return '<div class="sf-mlog-terms" aria-label="Contract terms">' + terms.map((term) => {
     const kind = ['ok', 'info', 'warn', 'bad'].includes(term.kind) ? term.kind : 'info';
     return '<span class="sf-mlog-term sf-mlog-term--' + kind + '">' +
       '<b>' + escapeHtml(term.label) + '</b>' +
@@ -876,14 +876,14 @@ function careerChipHtml(chip, state) {
     + '<div class="sf-mlog-career-top">'
     +   '<span class="sf-mlog-career-title">' + escapeHtml(title) + '</span>'
     +   (statusLabel
-      ? '<span class="sf-mlog-career-status mono" role="status">' + escapeHtml(String(statusLabel)) + '</span>'
+      ? '<span class="sf-mlog-career-status" role="status">' + escapeHtml(String(statusLabel)) + '</span>'
       : '')
     + '</div>'
     + (stepTitle
-      ? '<div class="sf-mlog-career-step mono">' + escapeHtml(stepTitle) + '</div>'
+      ? '<div class="sf-mlog-career-step">' + escapeHtml(stepTitle) + '</div>'
       : '')
     + (placeLine
-      ? '<div class="sf-mlog-career-place mono" aria-label="'
+      ? '<div class="sf-mlog-career-place" aria-label="'
         + escapeHtml([place.contact ? ('Contact ' + place.contact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
         + '">'
         + (place.contact
@@ -899,14 +899,14 @@ function careerChipHtml(chip, state) {
       ? '<div class="sf-mlog-career-objective">' + escapeHtml(chip.objective) + '</div>'
       : '')
     + (progressLabel
-      ? '<div class="sf-mlog-career-progress mono" aria-label="' + escapeHtml(progressAria) + '">'
+      ? '<div class="sf-mlog-career-progress sf-fig" aria-label="' + escapeHtml(progressAria) + '">'
         + escapeHtml(progressLabel) + '</div>'
       : '')
     + (chip.nextAction
       ? '<div class="sf-mlog-career-next" aria-live="polite">' + escapeHtml(chip.nextAction) + '</div>'
       : '')
     + (consequence
-      ? '<div class="sf-mlog-career-consequence mono" aria-label="Consequence preview">'
+      ? '<div class="sf-mlog-career-consequence" aria-label="Consequence preview">'
         + escapeHtml(consequence) + '</div>'
       : '')
     + (chip.failureLine
@@ -998,9 +998,9 @@ function dispositionRouteRowsHtml(routes) {
     + routes.map((route) => {
       const status = route.status === 'ready' || route.status === 'declined' ? route.status : 'locked';
       return '<div class="sf-mlog-ending-route sf-mlog-ending-route--' + status + '" role="listitem" data-ending-route="' + escapeHtml(route.id) + '">' +
-        '<span class="sf-mlog-ending-code mono">' + escapeHtml(route.id) + '</span>' +
+        '<span class="sf-mlog-ending-code">' + escapeHtml(route.id) + '</span>' +
         '<span class="sf-mlog-ending-title">' + escapeHtml(route.title) + '</span>' +
-        '<span class="sf-mlog-ending-interface mono">' + escapeHtml(route.interfaceLabel) + '</span>' +
+        '<span class="sf-mlog-ending-interface">' + escapeHtml(route.interfaceLabel) + '</span>' +
         '<span class="sf-mlog-ending-reason">' + escapeHtml(route.reason) + '</span>' +
       '</div>';
     }).join('')
@@ -1568,10 +1568,10 @@ export const missionLogScreen = {
     rootEl.dataset.stamp = 'CONTRACT LEDGER / ACTIVE';
 
     // Header
-    const head = el('div', 'sf-mlog-head');
+    const head = el('div', 'sf-mlog-head sf-crest');
     head.innerHTML =
       '<span class="sf-mlog-title">MISSION LOG</span>' +
-      '<span class="sf-mlog-hint mono">' + BINDINGS.missionLog.label + ' to close</span>' +
+      '<span class="sf-mlog-hint">' + BINDINGS.missionLog.label + ' to close</span>' +
       '<button class="sf-mlog-close" type="button" aria-label="Close Mission Log">CLOSE</button>';
     rootEl.appendChild(head);
     this._closeBtn = head.querySelector('.sf-mlog-close');
@@ -1585,7 +1585,7 @@ export const missionLogScreen = {
     const activeH = el('div', 'sf-mlog-section-h', 'ACTIVE MISSIONS');
     rootEl.appendChild(activeH);
 
-    const list = el('div', 'sf-mlog-list');
+    const list = el('div', 'sf-mlog-list sf-apron');
     rootEl.appendChild(list);
     this._listEl = list;
 
@@ -1604,7 +1604,7 @@ export const missionLogScreen = {
     const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'CURRENT ACTION');
     recH.id = 'sf-mlog-current-action-heading';
     rootEl.insertBefore(recH, activeH);
-    const recEl = el('div', 'sf-mlog-recommend');
+    const recEl = el('div', 'sf-mlog-recommend sf-stage');
     recEl.setAttribute('role', 'region');
     recEl.setAttribute('aria-labelledby', recH.id);
     rootEl.insertBefore(recEl, activeH);
@@ -1935,17 +1935,17 @@ export const missionLogScreen = {
       top.innerHTML =
         '<span class="sf-mlog-card-title">' + escapeHtml(missionTitle(m)) + '</span>' +
         '<span class="sf-mlog-card-type">' + (m.id ? entitySpanHtml('contract:' + m.id, escapeHtml(prettyType(m.type))) : escapeHtml(prettyType(m.type))) + '</span>' +
-        '<span class="sf-mlog-card-risk r' + risk + '">R' + risk + '</span>';
+        '<span class="sf-mlog-card-risk sf-fig r' + risk + '">R' + risk + '</span>';
       card.appendChild(top);
 
       // Objective progress
-      const objLine = el('div', 'sf-mlog-obj mono');
+      const objLine = el('div', 'sf-mlog-obj');
       const prog = m.objectiveProgress || 0;
       const tgt = m.objectiveTarget || 1;
       const pct = Math.min(100, Math.round((prog / tgt) * 100));
       objLine.innerHTML =
         '<span class="sf-mlog-obj-text">' + escapeHtml(objectiveText(m)) + '</span>' +
-        '<span class="sf-mlog-obj-pct">' + pct + '%</span>';
+        '<span class="sf-mlog-obj-pct sf-fig">' + pct + '%</span>';
       card.appendChild(objLine);
 
       // Progress bar
@@ -1965,7 +1965,7 @@ export const missionLogScreen = {
       if (!isTracked) card.appendChild(el('div', 'sf-mlog-next', nextStepText(m)));
 
       // Meta row: destination, time, rewards
-      const meta = el('div', 'sf-mlog-meta mono');
+      const meta = el('div', 'sf-mlog-meta');
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
       const destStn = m.destStationId ? STATION_INFO.get(m.destStationId) : null;
       const destSec = m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
@@ -1980,9 +1980,9 @@ export const missionLogScreen = {
         : '';
       meta.innerHTML =
         '<span class="sf-mlog-dest">' + destHtml + '</span>' +
-        (remaining > 0 ? '<span class="sf-mlog-time' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
-        '<span class="sf-mlog-cr">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
-        (facHtml ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + facHtml + '</span>' : '');
+        (remaining > 0 ? '<span class="sf-mlog-time sf-fig' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
+        '<span class="sf-mlog-cr sf-fig">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
+        (facHtml ? '<span class="sf-mlog-fac">' + facHtml + '</span>' : '');
       card.appendChild(meta);
       card.insertAdjacentHTML('beforeend', contractTermsHtml(m, state));
 
@@ -2024,12 +2024,12 @@ export const missionLogScreen = {
     }
     this._storyEl.hidden = false;
     this._storyEl.innerHTML =
-      '<div class="sf-mlog-story-card" data-campaign-thread="true">' +
+      '<div class="sf-mlog-story-tile" data-campaign-thread="true">' +
         '<div class="sf-mlog-story-beat">' + escapeHtml(action.label || 'STORY') + '</div>' +
         '<div class="sf-mlog-story-objective">' + escapeHtml(action.title || 'Campaign continues') + '</div>' +
         '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
         dispositionRouteRowsHtml(action.routeOptions) +
-        (action.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(action.meta) + '</div>' : '') +
+        (action.meta ? '<div class="sf-mlog-rec-meta sf-fig">' + escapeHtml(action.meta) + '</div>' : '') +
         (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.secondaryAction === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(action.action) + '">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
           (action.secondaryAction === 'endgameSandbox' && action.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
@@ -2053,8 +2053,8 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
         (a.brief ? commandBriefHtml(a.brief) : '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>') +
         dispositionRouteRowsHtml(a.routeOptions) +
-        (a.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(a.meta) + '</div>' : '') +
-        '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
+        (a.meta ? '<div class="sf-mlog-rec-meta sf-fig">' + escapeHtml(a.meta) + '</div>' : '') +
+        '<div class="sf-mlog-rec-marker">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
           : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
         ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.secondaryAction === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
@@ -2167,26 +2167,26 @@ export const missionLogScreen = {
     for (const rowData of receipts) {
       const row = el('div', 'sf-mlog-receipt-row sf-mlog-receipt-row--' + rowData.tone);
       row.innerHTML =
-        '<div class="sf-mlog-receipt-outcome mono">' + escapeHtml(rowData.outcome) + '</div>' +
+        '<div class="sf-mlog-receipt-outcome">' + escapeHtml(rowData.outcome) + '</div>' +
         '<div class="sf-mlog-receipt-main">' +
           '<div class="sf-mlog-receipt-title">' + escapeHtml(rowData.title) + '</div>' +
           '<div class="sf-mlog-receipt-body">' + escapeHtml(rowData.body) + '</div>' +
-          (rowData.meta ? '<div class="sf-mlog-receipt-meta mono">' + escapeHtml(rowData.meta) + '</div>' : '') +
+          (rowData.meta ? '<div class="sf-mlog-receipt-meta sf-fig">' + escapeHtml(rowData.meta) + '</div>' : '') +
         '</div>';
       frag.appendChild(row);
     }
     if (log.length) {
-      frag.appendChild(el('div', 'sf-mlog-comp-subhead mono', 'CAREER TOTALS'));
+      frag.appendChild(el('div', 'sf-mlog-comp-subhead', 'CAREER TOTALS'));
     }
     for (const rec of log) {
-      const row = el('div', 'sf-mlog-comp-row mono');
+      const row = el('div', 'sf-mlog-comp-row');
       const success = Math.max(0, Number(rec.success) || 0);
       const count = Math.max(success, Number(rec.count) || 0);
       const failed = Math.max(0, count - success);
       row.innerHTML =
         '<span class="sf-mlog-comp-type">' + escapeHtml(prettyType(rec.type)) + '</span>' +
-        '<span class="sf-mlog-comp-count">' + success + ' completed · ' + failed + ' failed</span>' +
-        '<span class="sf-mlog-comp-cr">+' + (rec.totalCr || 0).toLocaleString() + ' cr paid</span>';
+        '<span class="sf-mlog-comp-count sf-fig">' + success + ' completed · ' + failed + ' failed</span>' +
+        '<span class="sf-mlog-comp-cr sf-fig">+' + (rec.totalCr || 0).toLocaleString() + ' cr paid</span>';
       frag.appendChild(row);
     }
     this._compListEl.appendChild(frag);
@@ -2195,235 +2195,290 @@ export const missionLogScreen = {
 
 // ---- CSS (injected once) ----
 const CSS = `
-/* Contract ledger on the shared menu fascia. styles/menu.css owns the plate material, the token
-   remap and the stamp; this sheet keeps only the log's own instrument layout — a full-bleed header
-   band over one inner scroller — plus its state colours. Selectors that have to beat menu.css's
-   (0,2,0) base carry .sf-menu so they tie and win on source order (this block injects at runtime). */
-.sf-menu.sf-mlog { width: min(92vw, 700px); max-height: min(88vh, 720px); display: flex;
-  flex-direction: column; gap: 0; padding: 20px 0 6px; overflow: hidden; pointer-events: auto;
-  animation: sf-fadein .3s var(--ease) both;
-  /* styles/ui.css defines --energy as the legacy #ffd84a, and the fascia token block has no such
-     name. Scope it to the amber warn signal so credit/consequence text cannot fall back to it. */
-  --energy: #e3a13d; }
-/* ui.css gives every bare <button> a 6px radius and a cyan bloom on hover. The fascia is machined
-   and has zero bloom, and the log's controls are bare buttons rather than .sf-btn. */
-.sf-menu.sf-mlog button { border-radius: 2px; }
+/* Contract ledger. styles/menu.css still owns the plate; this sheet is instrument grammar:
+   one DISPLAY (the current-action title), colour by meaning, 12px floor, --sf-data-face on figures.
+   Selectors that have to beat menu.css's (0,2,0) keep .sf-menu so they tie on source order. */
+.sf-menu.sf-mlog {
+  width: min(92vw, 700px); max-height: min(88vh, 720px); display: flex;
+  flex-direction: column; gap: 0; padding: var(--sp-4) 0 var(--sp-1); overflow: hidden;
+  pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
+  background: var(--sf-surface);
+}
+.sf-menu.sf-mlog button { border-radius: 2px; font-family: var(--sf-body-face); font-size: 13px; }
 .sf-menu.sf-mlog button:hover { box-shadow: none; }
 
-.sf-mlog-head { display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 14px 20px; border-bottom: 1px solid var(--panel-edge);
-  background: linear-gradient(180deg, #191d20, #121518); }
-.sf-mlog-title { font-family: var(--mono); font-size: 1.15rem; letter-spacing: .22em; color: var(--accent);
-  text-transform: uppercase; }
-.sf-mlog-hint { font-size: .68rem; color: var(--ink-mute); letter-spacing: .12em; }
-.sf-mlog-close { font-size: .78rem; padding: 5px 14px; }
+.sf-mlog .sf-fig {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: 13px; letter-spacing: 0;
+}
 
-.sf-mlog-section-h { font-family: var(--mono); font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--ink-mute); padding: 12px 20px 4px; }
-.sf-mlog-section-comp { display: flex; align-items: center; justify-content: space-between;
-  border-top: 1px solid var(--panel-edge); margin-top: 4px; padding-top: 10px; }
-.sf-mlog-toggle { font-size: .68rem; padding: 3px 10px; }
+.sf-mlog-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
+  background: var(--sf-surface);
+}
+.sf-mlog-title, .sf-mlog-section-h, .sf-mlog-rec-label, .sf-mlog-card-type,
+.sf-mlog-story-beat, .sf-mlog-career-status, .sf-mlog-career-step, .sf-mlog-term b,
+.sf-mlog-command-fact b, .sf-mlog-receipt-outcome, .sf-mlog-comp-subhead, .sf-mlog-ending-code {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-mlog-hint {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); letter-spacing: 0;
+}
+.sf-mlog-close { font-size: 13px; padding: var(--sp-1) var(--sp-3); color: var(--sf-paper); }
 
-/* Story objective section (P2-14) — always present so the log answers "what now". */
-.sf-mlog-story { padding: 4px 16px 6px; }
-.sf-mlog-story-card { border: 1px solid var(--accent); border-radius: 2px; padding: 11px 14px;
-  background: linear-gradient(180deg, rgba(30,34,37,.55), rgba(23,27,31,.55)); }
-.sf-mlog-story-beat { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
-.sf-mlog-story-objective { font-size: .92rem; color: var(--ink); line-height: 1.4; font-weight: 600; }
-.sf-mlog-story-introduces { font-size: .72rem; color: var(--ink-mute); margin-top: 6px; font-style: italic; }
-.sf-mlog-ending-routes { display: grid; gap: 4px; margin-top: 9px; }
-.sf-mlog-ending-route { display: grid; grid-template-columns: 24px minmax(96px,.8fr) minmax(120px,1.2fr);
-  gap: 2px 8px; align-items: baseline; padding: 5px 7px; border-left: 2px solid var(--panel-edge);
-  background: rgba(12,15,18,.28); }
-.sf-mlog-ending-route--ready { border-left-color: var(--energy); }
+.sf-mlog-section-h { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
+.sf-mlog-section-comp {
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px solid var(--sf-edge); margin-top: var(--sp-1); padding-top: var(--sp-2);
+}
+.sf-mlog-toggle { font-size: 12px; padding: var(--sp-1) var(--sp-2); color: var(--sf-calm); }
+
+.sf-mlog-story { padding: var(--sp-1) var(--sp-4) var(--sp-2); }
+.sf-mlog-story-tile {
+  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
+  border-radius: 2px; padding: var(--sp-3);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+.sf-mlog-story-beat { margin-bottom: var(--sp-1); color: var(--sf-goal); }
+.sf-mlog-story-objective {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; line-height: 1.25;
+  color: var(--sf-paper);
+}
+.sf-mlog-story-introduces {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-2); line-height: 1.4;
+}
+.sf-mlog-ending-routes { display: grid; gap: var(--sp-1); margin-top: var(--sp-2); }
+.sf-mlog-ending-route {
+  display: grid; grid-template-columns: 24px minmax(96px,.8fr) minmax(120px,1.2fr);
+  gap: var(--sp-1) var(--sp-2); align-items: baseline; padding: var(--sp-1) var(--sp-2);
+  border-left: var(--sf-rail-w) solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+}
+.sf-mlog-ending-route--ready { border-left-color: var(--sf-goal); }
 .sf-mlog-ending-route--declined { opacity: .62; }
-.sf-mlog-ending-code { color: var(--accent); font-size: .66rem; font-weight: 800; }
-.sf-mlog-ending-title { color: var(--ink); font-size: .7rem; font-weight: 650; overflow-wrap: anywhere; }
-.sf-mlog-ending-interface { color: var(--accent-3); font-size: .59rem; letter-spacing: .06em; overflow-wrap: anywhere; }
-.sf-mlog-ending-reason { grid-column: 2 / -1; color: var(--ink-mute); font-size: .63rem; line-height: 1.25;
-  overflow-wrap: anywhere; }
+.sf-mlog-ending-title {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; color: var(--sf-paper);
+  overflow-wrap: anywhere;
+}
+.sf-mlog-ending-interface { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); overflow-wrap: anywhere; }
+.sf-mlog-ending-reason {
+  grid-column: 2 / -1; font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3;
+  color: var(--sf-calm); overflow-wrap: anywhere;
+}
 
-.sf-mlog-recommend { padding: 4px 16px 8px; display: grid; grid-template-columns: minmax(0, 1fr);
-  gap: 8px; }
-.sf-mlog-rec-item { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 2px; padding: 10px 12px;
-  background: rgba(23,27,31,.58); }
-/* Emphasis is a left index notch + edge colour, never a bloom (menu.css .sf-slot.sel). */
-.sf-mlog-rec-item--primary { border-color: rgba(219,152,56,.7); box-shadow: inset 2px 0 0 var(--accent); }
-.sf-mlog-rec-item--warn { border-color: rgba(227,161,61,.7); box-shadow: inset 2px 0 0 var(--warn); }
-.sf-mlog-rec-item--bad { border-color: rgba(237,105,97,.76); box-shadow: inset 2px 0 0 var(--danger); }
-.sf-mlog-rec-label { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em; color: var(--accent);
-  text-transform: uppercase; margin-bottom: 4px; overflow-wrap: anywhere; }
-.sf-mlog-rec-item--warn .sf-mlog-rec-label { color: var(--warn); }
-.sf-mlog-rec-item--bad .sf-mlog-rec-label { color: var(--danger); }
-.sf-mlog-rec-title { font-size: .86rem; line-height: 1.25; color: var(--ink); font-weight: 700; margin-bottom: 4px;
-  overflow-wrap: anywhere; }
-.sf-mlog-rec-body { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
-.sf-mlog-command-brief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px;
-  margin-top: 7px; }
-.sf-mlog-command-fact { min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 6px;
-  align-items: start; padding-top: 5px; border-top: 1px solid rgba(102,100,93,.24); font-size: .7rem;
-  line-height: 1.3; color: var(--ink-dim); overflow-wrap: anywhere; }
-.sf-mlog-command-fact b { font-family: var(--mono); font-size: .55rem; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--ink-mute); }
-.sf-mlog-command-fact:nth-child(5) span { color: var(--energy); }
-.sf-mlog-command-fact:nth-child(6) span { color: var(--warn); }
-.sf-mlog-rec-meta { margin-top: 6px; color: var(--energy); font-size: .68rem; overflow-wrap: anywhere; }
-.sf-mlog-rec-marker { margin-top: 7px; color: var(--accent-3); font-size: .65rem; font-weight: 700;
-  letter-spacing: .08em; line-height: 1.3; }
-.sf-mlog-rec-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-.sf-mlog-rec-action { font-size: .66rem; padding: 4px 10px; border-color: var(--warn);
-  color: var(--warn); background: rgba(227,161,61,.08); }
-.sf-mlog-rec-action:hover { border-color: var(--accent-3); color: var(--accent-3); background: rgba(219,152,56,.14); }
-.sf-mlog-rec-map { border-color: rgba(219,152,56,.55); color: var(--accent); background: rgba(219,152,56,.08); }
-.sf-mlog-rec-secondary { border-color: var(--panel-edge); color: var(--ink-mute); background: transparent; }
+.sf-mlog-recommend { padding: var(--sp-1) var(--sp-4) var(--sp-2); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.sf-mlog-rec-item {
+  min-width: 0; border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+.sf-mlog-rec-item--primary { border-color: var(--sf-goal-edge); border-left: var(--sf-rail-w) solid var(--sf-goal); }
+.sf-mlog-rec-item--warn { border-color: var(--sf-goal-edge); border-left: var(--sf-rail-w) solid var(--sf-goal); }
+.sf-mlog-rec-item--bad { border-left: var(--sf-rail-w) solid var(--sf-foe); }
+.sf-mlog-rec-label { margin-bottom: var(--sp-1); overflow-wrap: anywhere; color: var(--sf-goal); }
+.sf-mlog-rec-item--warn .sf-mlog-rec-label { color: var(--sf-goal); }
+.sf-mlog-rec-item--bad .sf-mlog-rec-label { color: var(--sf-foe); }
+.sf-mlog-rec-title {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin-bottom: var(--sp-1);
+  overflow-wrap: anywhere;
+}
+.sf-mlog-rec-body { font-family: var(--sf-body-face); font-size: 14px; line-height: 1.4; color: var(--sf-calm); overflow-wrap: anywhere; }
+.sf-mlog-command-brief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
+.sf-mlog-command-fact {
+  min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--sp-2);
+  align-items: start; padding-top: var(--sp-1); border-top: 1px solid var(--sf-edge);
+  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; color: var(--sf-calm); overflow-wrap: anywhere;
+}
+.sf-mlog-command-fact:nth-child(5) span { color: var(--sf-you); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+.sf-mlog-command-fact:nth-child(6) span { color: var(--sf-foe); }
+.sf-mlog-rec-meta { margin-top: var(--sp-2); color: var(--sf-you); overflow-wrap: anywhere; }
+.sf-mlog-rec-marker {
+  margin-top: var(--sp-2); color: var(--sf-goal); font-family: var(--sf-subhead-face); font-weight: 600;
+  font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; line-height: 1.3;
+}
+.sf-mlog-rec-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.sf-mlog-rec-action {
+  font-size: 13px; padding: var(--sp-1) var(--sp-2); border-color: var(--sf-goal);
+  color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 10%, transparent);
+}
+.sf-mlog-rec-action:hover { border-color: var(--sf-goal); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 18%, transparent); }
+.sf-mlog-rec-map { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+.sf-mlog-rec-secondary { border-color: var(--sf-edge); color: var(--sf-calm); background: transparent; }
 
-/* Career ladder chip (CL-UI-03) — non-diegetic strip; no visor/portrait chrome. */
-.sf-mlog-section-career { color: var(--accent-2, var(--accent)); }
-.sf-mlog-career-list { padding: 4px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.sf-mlog-section-career { color: var(--sf-calm); }
+.sf-mlog-career-list { padding: var(--sp-1) var(--sp-4) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
 .sf-mlog-career-list[hidden], .sf-mlog-section-career[hidden] { display: none; }
-.sf-mlog-career { border: 1px solid rgba(219,152,56,.45); border-radius: 2px; padding: 11px 14px;
-  background: rgba(23,27,31,.62); }
-.sf-mlog-career--collapsed { opacity: .72; border-color: rgba(102,100,93,.4); }
-.sf-mlog-career--active { border-color: rgba(219,152,56,.7); box-shadow: inset 2px 0 0 var(--accent); }
-.sf-mlog-career--offered { border-color: rgba(86,187,178,.45); }
-.sf-mlog-career--failed, .sf-mlog-career--recovering {
-  border-color: rgba(227,161,61,.5); box-shadow: inset 2px 0 0 var(--warn); }
-.sf-mlog-career--complete { border-color: rgba(88,201,138,.35); }
-.sf-mlog-career--abandoned { border-color: rgba(102,100,93,.4); opacity: .78; }
-.sf-mlog-career-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.sf-mlog-career-title { flex: 1; font-size: .9rem; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
-.sf-mlog-career-status { flex: none; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--accent); padding: 1px 6px; border-radius: 2px; background: rgba(219,152,56,.1);
-  border: 1px solid rgba(219,152,56,.28); }
+.sf-mlog-career {
+  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+.sf-mlog-career--collapsed { opacity: .72; }
+.sf-mlog-career--active { border-left: var(--sf-rail-w) solid var(--sf-you); }
+.sf-mlog-career--offered { border-left: var(--sf-rail-w) solid var(--sf-you); }
+.sf-mlog-career--failed, .sf-mlog-career--recovering { border-left: var(--sf-rail-w) solid var(--sf-foe); }
+.sf-mlog-career--complete { border-left: var(--sf-rail-w) solid var(--sf-you); }
+.sf-mlog-career--abandoned { opacity: .78; }
+.sf-mlog-career-top { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-1); }
+.sf-mlog-career-title {
+  flex: 1; font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; color: var(--sf-paper);
+  overflow-wrap: anywhere;
+}
+.sf-mlog-career-status {
+  flex: none; padding: 1px var(--sp-2); border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-calm) 12%, transparent); border: 1px solid var(--sf-edge);
+}
 .sf-mlog-career--failed .sf-mlog-career-status,
-.sf-mlog-career--recovering .sf-mlog-career-status { color: var(--warn);
-  border-color: rgba(227,161,61,.4); background: rgba(227,161,61,.1); }
-.sf-mlog-career--complete .sf-mlog-career-status { color: var(--good);
-  border-color: rgba(88,201,138,.35); background: rgba(88,201,138,.08); }
-.sf-mlog-career--offered .sf-mlog-career-status { color: var(--accent-2);
-  border-color: rgba(86,187,178,.4); background: rgba(86,187,178,.1); }
-.sf-mlog-career-step { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-mute); margin-bottom: 4px; }
-.sf-mlog-career-place { font-size: .66rem; letter-spacing: .04em; color: var(--ink-mute);
-  margin-bottom: 4px; overflow-wrap: anywhere; }
-.sf-mlog-career-contact { color: var(--ink-dim); }
-.sf-mlog-career-location { color: var(--accent); }
-.sf-mlog-career-objective { font-size: .84rem; line-height: 1.35; color: var(--ink); font-weight: 600;
-  margin-bottom: 4px; overflow-wrap: anywhere; }
-.sf-mlog-career-progress { font-size: .68rem; color: var(--ink-mute); letter-spacing: .06em;
-  margin-bottom: 4px; }
-.sf-mlog-career-next { font-size: .74rem; line-height: 1.35; color: var(--ink-dim); margin-bottom: 4px;
-  overflow-wrap: anywhere; }
-.sf-mlog-career-consequence { font-size: .64rem; letter-spacing: .03em; color: var(--energy);
-  margin-bottom: 4px; overflow-wrap: anywhere; }
-.sf-mlog-career-fail { font-size: .74rem; line-height: 1.35; color: var(--warn); margin-bottom: 4px;
-  overflow-wrap: anywhere; }
-.sf-mlog-career-receipt { font-size: .7rem; line-height: 1.3; color: var(--ink-mute); margin-bottom: 4px;
-  overflow-wrap: anywhere; }
-.sf-mlog-career-choices { display: flex; flex-wrap: wrap; gap: 7px; margin: 6px 0 4px; }
-.sf-mlog-career-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-.sf-mlog-career-btn { font-size: .66rem; padding: 8px 12px; min-height: 44px; min-width: 44px;
-  border-color: var(--panel-edge); color: var(--ink-dim); background: rgba(255,255,255,.03); }
-.sf-mlog-career-btn:hover:not(:disabled) { border-color: var(--accent-3); color: var(--accent-3); }
-.sf-mlog-career-btn:focus-visible { outline: 2px solid var(--accent-3); outline-offset: 2px; }
+.sf-mlog-career--recovering .sf-mlog-career-status {
+  color: var(--sf-foe); border-color: var(--sf-foe); background: color-mix(in srgb, var(--sf-foe) 10%, transparent);
+}
+.sf-mlog-career--complete .sf-mlog-career-status {
+  color: var(--sf-you); border-color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent);
+}
+.sf-mlog-career--offered .sf-mlog-career-status {
+  color: var(--sf-you); border-color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent);
+}
+.sf-mlog-career-step { margin-bottom: var(--sp-1); }
+.sf-mlog-career-place {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-contact { color: var(--sf-calm); }
+.sf-mlog-career-location { color: var(--sf-goal); }
+.sf-mlog-career-objective {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; line-height: 1.35;
+  color: var(--sf-paper); margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-progress { color: var(--sf-calm); margin-bottom: var(--sp-1); }
+.sf-mlog-career-next {
+  font-family: var(--sf-body-face); font-size: 14px; line-height: 1.35; color: var(--sf-calm);
+  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-consequence {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-goal);
+  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-fail {
+  font-family: var(--sf-body-face); font-size: 14px; line-height: 1.35; color: var(--sf-foe);
+  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-receipt {
+  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3; color: var(--sf-calm);
+  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
+}
+.sf-mlog-career-choices { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-1); }
+.sf-mlog-career-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.sf-mlog-career-btn {
+  font-size: 13px; padding: var(--sp-2) var(--sp-3); min-height: 44px; min-width: 44px;
+  border-color: var(--sf-edge); color: var(--sf-calm); background: transparent;
+}
+.sf-mlog-career-btn:hover:not(:disabled) { border-color: var(--sf-you); color: var(--sf-you); }
+.sf-mlog-career-btn:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .sf-mlog-career-btn:disabled { opacity: .4; cursor: default; }
-.sf-mlog-career-btn-map { border-color: rgba(219,152,56,.55); color: var(--accent);
-  background: rgba(219,152,56,.08); }
-.sf-mlog-career-btn-recover { border-color: rgba(227,161,61,.45); color: var(--warn);
-  background: rgba(227,161,61,.08); }
-.sf-mlog-career-btn-track { border-color: var(--panel-edge-2); }
-.sf-mlog-career-btn-abandon { border-color: rgba(237,105,97,.35); color: var(--ink-mute); }
-.sf-mlog-career-btn-abandon:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
-.sf-mlog-career-btn-choice { border-color: rgba(219,152,56,.4); color: var(--ink);
-  background: rgba(219,152,56,.06); }
+.sf-mlog-career-btn-map { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+.sf-mlog-career-btn-recover { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+.sf-mlog-career-btn-track { border-color: var(--sf-edge); }
+.sf-mlog-career-btn-abandon { border-color: var(--sf-edge); color: var(--sf-calm); }
+.sf-mlog-career-btn-abandon:hover:not(:disabled) { border-color: var(--sf-foe); color: var(--sf-foe); }
+.sf-mlog-career-btn-choice { border-color: var(--sf-goal-edge); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
 
-.sf-mlog-list { flex: 1; overflow-y: auto; padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.sf-mlog-list { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-4) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
+.sf-mlog-empty { color: var(--sf-calm); font-size: 14px; padding: var(--sp-4) var(--sp-1); }
 
-.sf-mlog-empty { color: var(--ink-mute); font-size: .85rem; padding: 18px 4px; font-style: italic; }
+.sf-mlog-card {
+  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+.sf-mlog-card.tracked { border-left: var(--sf-rail-w) solid var(--sf-you); }
+.sf-mlog-card.urgent { border-color: var(--sf-foe); }
 
-.sf-mlog-card { border: 1px solid var(--panel-edge); border-radius: 2px; padding: 12px 14px;
-  background: rgba(23,27,31,.55); transition: border-color .15s ease, box-shadow .15s ease; }
-.sf-mlog-card.tracked { border-color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
-.sf-mlog-card.urgent { border-color: var(--warn); }
+.sf-mlog-card-top { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.sf-mlog-card-title { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; flex: 1; color: var(--sf-paper); overflow-wrap: anywhere; }
+.sf-mlog-card-type { padding: 1px var(--sp-2); border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 10%, transparent); }
+.sf-mlog-card-risk { padding: 1px var(--sp-1); border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 10%, transparent); color: var(--sf-calm); }
+.sf-mlog-card-risk.r0 { color: var(--sf-calm); }
+.sf-mlog-card-risk.r1 { color: var(--sf-you); }
+.sf-mlog-card-risk.r2 { color: var(--sf-goal); }
+.sf-mlog-card-risk.r3, .sf-mlog-card-risk.r4 { color: var(--sf-foe); }
 
-.sf-mlog-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.sf-mlog-card-title { font-size: .95rem; flex: 1; color: var(--ink); }
-.sf-mlog-card-type { font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px;
-  border-radius: 2px; background: var(--panel-2); color: var(--ink-dim); }
-.sf-mlog-card-risk { font-size: .58rem; letter-spacing: .06em; padding: 1px 5px; border-radius: 2px;
-  background: var(--panel-2); color: var(--ink-dim); }
-.sf-mlog-card-risk.r0 { color: var(--good); } .sf-mlog-card-risk.r1 { color: var(--accent-2); }
-.sf-mlog-card-risk.r2 { color: var(--warn); } .sf-mlog-card-risk.r3, .sf-mlog-card-risk.r4 { color: var(--danger); }
+.sf-mlog-obj { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 14px; margin-bottom: var(--sp-1); }
+.sf-mlog-obj-text { color: var(--sf-calm); }
+.sf-mlog-obj-pct { color: var(--sf-you); min-width: 36px; text-align: right; }
 
-.sf-mlog-obj { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  font-size: .8rem; margin-bottom: 4px; }
-.sf-mlog-obj-text { color: var(--ink-dim); }
-.sf-mlog-obj-pct { color: var(--accent); font-weight: 600; min-width: 36px; text-align: right; }
+.sf-mlog-pbar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 18%, transparent); overflow: hidden; margin-bottom: var(--sp-2); border: 1px solid var(--sf-edge); }
+.sf-mlog-pbar-fill { height: 100%; background: var(--sf-you); border-radius: 2px; }
+.sf-mlog-next { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; margin: 0 0 var(--sp-2); }
 
-.sf-mlog-pbar { height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; margin-bottom: 8px;
-  border: 1px solid rgba(59,64,63,.5); }
-.sf-mlog-pbar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-3));
-  border-radius: 2px; transition: width .3s ease; }
-.sf-mlog-next { color: var(--ink-mute); font-size: .74rem; line-height: 1.35; margin: 0 0 8px; }
+.sf-mlog-meta { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-family: var(--sf-body-face); font-size: 13px; margin-bottom: var(--sp-2); }
+.sf-mlog-dest { color: var(--sf-calm); }
+.sf-mlog-time { color: var(--sf-calm); }
+.sf-mlog-time.urgent { color: var(--sf-foe); font-weight: 600; }
+.sf-mlog-cr { color: var(--sf-you); }
+.sf-mlog-fac { font-size: 13px; color: var(--sf-calm); }
+.sf-mlog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--sp-2); margin: 0 0 var(--sp-2); }
+.sf-mlog-term {
+  min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--sf-edge); border-radius: 2px;
+  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3; color: var(--sf-calm); overflow-wrap: anywhere;
+}
+.sf-mlog-term--ok { border-color: var(--sf-you); color: var(--sf-you); }
+.sf-mlog-term--info { border-color: var(--sf-edge); color: var(--sf-calm); }
+.sf-mlog-term--warn { border-color: var(--sf-goal); color: var(--sf-goal); }
+.sf-mlog-term--bad { border-color: var(--sf-foe); color: var(--sf-foe); }
 
-.sf-mlog-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: .74rem; margin-bottom: 8px; }
-.sf-mlog-dest { color: var(--ink-dim); }
-.sf-mlog-time { color: var(--ink-mute); }
-.sf-mlog-time.urgent { color: var(--warn); font-weight: 600; }
-.sf-mlog-cr { color: var(--energy); }
-.sf-mlog-fac { font-size: .7rem; }
-.sf-mlog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px;
-  margin: 0 0 9px; }
-.sf-mlog-term { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 5px 7px;
-  border: 1px solid rgba(102,100,93,.34); border-radius: 2px; background: rgba(255,255,255,.035);
-  font-size: .64rem; line-height: 1.25; color: var(--ink-dim); overflow-wrap: anywhere; }
-.sf-mlog-term b { font-size: .55rem; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-mute); }
-.sf-mlog-term--ok { border-color: rgba(88,201,138,.34); color: var(--good); }
-.sf-mlog-term--info { border-color: rgba(219,152,56,.28); color: var(--accent); }
-.sf-mlog-term--warn { border-color: rgba(227,161,61,.38); color: var(--warn); }
-.sf-mlog-term--bad { border-color: rgba(237,105,97,.46); color: var(--danger); }
+.sf-mlog-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sf-mlog-btn-track { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-edge); color: var(--sf-calm); }
+.sf-mlog-btn-track:hover { border-color: var(--sf-you); color: var(--sf-you); }
+.sf-mlog-btn-track.active { border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent); }
+.sf-mlog-btn-map { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+.sf-mlog-btn-map:hover { border-color: var(--sf-goal); color: var(--sf-paper); }
+.sf-mlog-btn-abandon { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-edge); color: var(--sf-calm); }
+.sf-mlog-btn-abandon:hover { border-color: var(--sf-foe); color: var(--sf-foe); }
 
-.sf-mlog-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.sf-mlog-btn-track { font-size: .72rem; padding: 4px 12px; border-color: var(--panel-edge-2); color: var(--ink-dim); }
-.sf-mlog-btn-track:hover { border-color: var(--accent-3); color: var(--accent-3); }
-.sf-mlog-btn-track.active { border-color: var(--accent); color: var(--accent-3);
-  background: var(--mf-worklight-dim); }
-.sf-mlog-btn-map { font-size: .72rem; padding: 4px 12px; border-color: rgba(219,152,56,.55); color: var(--accent);
-  background: rgba(219,152,56,.08); }
-.sf-mlog-btn-map:hover { border-color: var(--accent-3); color: var(--accent-3); }
-.sf-mlog-btn-abandon { font-size: .72rem; padding: 4px 12px; border-color: var(--panel-edge); color: var(--ink-mute); }
-.sf-mlog-btn-abandon:hover { border-color: var(--danger); color: var(--danger); }
-
-.sf-mlog-comp-list { padding: 4px 16px 12px; }
-.sf-mlog-receipt-row { display: grid; grid-template-columns: 82px 1fr; gap: 9px; align-items: start;
-  padding: 8px 9px; margin-bottom: 7px; border: 1px solid rgba(102,100,93,.28); border-radius: 2px;
-  background: rgba(23,27,31,.5); }
-.sf-mlog-receipt-row--ok { border-color: rgba(88,201,138,.34); }
-.sf-mlog-receipt-row--warn { border-color: rgba(227,161,61,.36); }
-.sf-mlog-receipt-row--bad { border-color: rgba(237,105,97,.42); }
-.sf-mlog-receipt-outcome { font-size: .58rem; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-mute);
-  overflow-wrap: anywhere; }
-.sf-mlog-receipt-row--ok .sf-mlog-receipt-outcome { color: var(--good); }
-.sf-mlog-receipt-row--warn .sf-mlog-receipt-outcome { color: var(--warn); }
-.sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color: var(--danger); }
+.sf-mlog-comp-list { padding: var(--sp-1) var(--sp-4) var(--sp-3); }
+.sf-mlog-receipt-row {
+  display: grid; grid-template-columns: 82px 1fr; gap: var(--sp-2); align-items: start;
+  padding: var(--sp-2); margin-bottom: var(--sp-2); border: 1px solid var(--sf-edge); border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+.sf-mlog-receipt-row--ok { border-left: var(--sf-rail-w) solid var(--sf-you); }
+.sf-mlog-receipt-row--warn { border-left: var(--sf-rail-w) solid var(--sf-goal); }
+.sf-mlog-receipt-row--bad { border-left: var(--sf-rail-w) solid var(--sf-foe); }
+.sf-mlog-receipt-outcome { overflow-wrap: anywhere; }
+.sf-mlog-receipt-row--ok .sf-mlog-receipt-outcome { color: var(--sf-you); }
+.sf-mlog-receipt-row--warn .sf-mlog-receipt-outcome { color: var(--sf-goal); }
+.sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color: var(--sf-foe); }
 .sf-mlog-receipt-main { min-width: 0; }
-.sf-mlog-receipt-title { color: var(--ink); font-size: .82rem; font-weight: 700; line-height: 1.25;
-  overflow-wrap: anywhere; }
-.sf-mlog-receipt-body { color: var(--ink-dim); font-size: .72rem; line-height: 1.35; margin-top: 3px;
-  overflow-wrap: anywhere; }
-.sf-mlog-receipt-meta { color: var(--ink-mute); font-size: .62rem; line-height: 1.3; margin-top: 4px;
-  overflow-wrap: anywhere; }
-.sf-mlog-comp-subhead { color: var(--ink-mute); font-size: .58rem; letter-spacing: .14em; margin: 10px 2px 4px; }
-.sf-mlog-comp-row { display: flex; gap: 16px; align-items: center; padding: 5px 8px;
-  border-bottom: 1px solid rgba(59,64,63,.35); font-size: .76rem; color: var(--ink-mute); }
+.sf-mlog-receipt-title { color: var(--sf-paper); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+.sf-mlog-receipt-body { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; margin-top: var(--sp-1); overflow-wrap: anywhere; }
+.sf-mlog-receipt-meta { color: var(--sf-calm); margin-top: var(--sp-1); overflow-wrap: anywhere; }
+.sf-mlog-comp-subhead { margin: var(--sp-3) var(--sp-1) var(--sp-1); }
+.sf-mlog-comp-row {
+  display: flex; gap: var(--sp-4); align-items: center; padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--sf-edge); font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+}
 .sf-mlog-comp-type { flex: 1; }
-.sf-mlog-comp-count { color: var(--ink-dim); }
-.sf-mlog-comp-cr { color: var(--energy); opacity: .7; }
+.sf-mlog-comp-count { color: var(--sf-calm); }
+.sf-mlog-comp-cr { color: var(--sf-you); }
+
 @media (max-width: 700px), (max-height: 620px) {
   .sf-mlog-command-brief { grid-template-columns: minmax(0, 1fr); }
   .sf-mlog-command-fact { grid-template-columns: 44px minmax(0, 1fr); }
-  .sf-mlog-list { gap: 7px; }
-  .sf-mlog-card { padding: 9px 10px; }
+  .sf-mlog-list { gap: var(--sp-2); }
+  .sf-mlog-card { padding: var(--sp-2); }
+  .sf-mlog-rec-title { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-menu.sf-mlog, .sf-menu.sf-mlog * { animation: none; transition: none; }
+}
+@media (forced-colors: active) {
+  .sf-menu.sf-mlog, .sf-mlog-card, .sf-mlog-rec-item, .sf-mlog-career, .sf-mlog-story-tile, .sf-mlog-receipt-row {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+  .sf-mlog-card.tracked, .sf-mlog-rec-item--primary, .sf-mlog-career--active, .sf-mlog-story-tile {
+    border-left-color: CanvasText;
+  }
 }
 `;
