@@ -14,17 +14,63 @@ import {
 import { BINDINGS } from '../bindings.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
-import { canvasFont, canvasFontScaled } from '../canvasFonts.js';
+import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
 
-const FACTION_COLOR = Object.create(null);
 const FACTION_NAME = Object.create(null);
 const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
 for (const f of FACTION_META) {
-  FACTION_COLOR[f.id] = f.color || '#9aa8bc';
   FACTION_NAME[f.id] = f.short || f.name || f.id;
 }
+
+// Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill.
+export const ROLE_FALLBACK = {
+  you: '#7af7d0',
+  foe: '#ff5470',
+  goal: '#ffb347',
+  calm: '#84a0c8',
+  paper: '#d3e6ff',
+  surface: '#0b1220',
+  edge: '#1d3350',
+};
+
+export function canvasRoles() {
+  const fallback = ROLE_FALLBACK;
+  if (typeof document === 'undefined' || !document.documentElement) return fallback;
+  let cs;
+  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
+  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
+  return {
+    you: read('--sf-you', fallback.you),
+    foe: read('--sf-foe', fallback.foe),
+    goal: read('--sf-goal', fallback.goal),
+    calm: read('--sf-calm', fallback.calm),
+    paper: read('--sf-paper', fallback.paper),
+    surface: read('--sf-surface', fallback.surface),
+    edge: read('--sf-edge', fallback.edge),
+  };
+}
+
+function paint(hex, a) {
+  if (a == null || a >= 1) return hex;
+  const n = String(hex || '').replace('#', '');
+  if (n.length < 6) return hex;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if (![r, g, b].every(Number.isFinite)) return hex;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+function prefersReducedMotion() {
+  if (typeof document !== 'undefined' && document.documentElement
+    && document.documentElement.classList.contains('sf-reduce-motion')) return true;
+  try { return !!(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch { return false; }
+}
+
+function token(role) { return 'var(--sf-' + role + ')'; }
 
 const HAZARD_LABEL = Object.freeze({
   dense_asteroid: 'Asteroids', nebula: 'Nebula', radiation: 'Radiation', debris: 'Debris',
@@ -55,89 +101,191 @@ const DRIVER_LABEL = Object.freeze({
 
 const STYLE_ID = 'sf-starmap-style';
 const CSS = `
-#sf-starmap { width:min(94vw,1120px); height:min(90vh,760px); display:flex; flex-direction:column;
-  background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:1px solid var(--panel-edge);
-  border-radius:10px; box-shadow:0 12px 48px rgba(0,0,0,.6); overflow:hidden; pointer-events:auto; }
-#sf-starmap .sm-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 18px;
-  border-bottom:1px solid var(--panel-edge); background:rgba(8,14,26,.72); }
-#sf-starmap .sm-title { font-size:1.2em; letter-spacing:.12em; text-transform:uppercase; color:var(--accent);
-  text-shadow:0 0 12px rgba(57,208,255,.5); }
-#sf-starmap .sm-head-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
-#sf-starmap .sm-commodity { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:.68em;
-  letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
-#sf-starmap .sm-commodity .sf-select__field { max-width:190px; background:rgba(6,11,21,.78); border:1px solid var(--panel-edge);
-  color:var(--ink); border-radius:5px; padding:5px 7px; font:inherit; text-transform:none; letter-spacing:0; }
-#sf-starmap .sm-commodity .sf-select__field:focus-visible { outline:0; border-color:var(--accent); box-shadow:0 0 0 1px rgba(57,208,255,.2); }
-#sf-starmap .sm-stats { font-family:var(--mono); font-size:.8em; color:var(--ink-dim); display:flex; gap:16px; flex-wrap:wrap; }
-#sf-starmap .sm-stats b { color:var(--ink); font-weight:600; }
-#sf-starmap .sm-close { background:transparent; border:1px solid var(--panel-edge); color:var(--ink);
-  padding:5px 12px; border-radius:5px; cursor:pointer; font-family:var(--mono); font-size:.72em; letter-spacing:.08em; }
+#sf-starmap {
+  width: min(94vw, 1120px); height: min(90vh, 760px); display: flex; flex-direction: column;
+  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
+  overflow: hidden; pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
+}
+#sf-starmap .sf-fig,
+#sf-starmap .sm-stats b,
+#sf-starmap .sm-kv b,
+#sf-starmap .sm-influence-row b,
+#sf-starmap .sm-market-row b,
+#sf-starmap .sm-route-total,
+#sf-starmap .sm-objective-meta,
+#sf-starmap .sm-risk-head b {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: 13px; letter-spacing: 0;
+}
+#sf-starmap .sm-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge); background: var(--sf-surface);
+}
+#sf-starmap .sm-title {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+#sf-starmap .sm-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
+#sf-starmap .sm-commodity {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+#sf-starmap .sm-commodity .sf-select__field {
+  max-width: 190px; background: var(--sf-surface); border: 1px solid var(--sf-edge);
+  color: var(--sf-paper); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; text-transform: none; letter-spacing: 0;
+}
+#sf-starmap .sm-commodity .sf-select__field:focus-visible {
+  outline: 2px solid var(--sf-goal); outline-offset: 2px; border-color: var(--sf-goal); box-shadow: none;
+}
+#sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+#sf-starmap .sm-stats b { color: var(--sf-paper); }
+#sf-starmap .sm-close {
+  background: transparent; border: 1px solid var(--sf-edge); color: var(--sf-paper);
+  padding: var(--sp-1) var(--sp-3); border-radius: 2px; cursor: pointer;
+  font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0;
+}
 #sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
-  border-color:var(--accent); color:#fff; box-shadow:0 0 0 1px rgba(57,208,255,.18), 0 0 12px rgba(57,208,255,.14); }
-#sf-starmap .sm-body { flex:1; display:flex; min-height:0; }
-#sf-starmap .sm-canvas-wrap { flex:1; position:relative; min-width:0; }
-#sf-starmap canvas { position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; display:block; }
-#sf-starmap .sm-side { width:316px; border-left:1px solid var(--panel-edge); background:rgba(6,11,21,.66);
-  padding:14px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
-#sf-starmap .sm-sel-name { font-size:1.08em; color:var(--ink); }
-#sf-starmap .sm-sel-fac { font-family:var(--mono); font-size:.76em; margin-top:2px; }
-#sf-starmap .sm-section { margin-top:8px; padding-top:8px; border-top:1px solid rgba(57,208,255,.12); }
-#sf-starmap .sm-section-title { font-family:var(--mono); font-size:.68em; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--accent); margin-bottom:5px; }
-#sf-starmap .sm-kv { display:flex; justify-content:space-between; gap:10px; font-family:var(--mono); font-size:.76em;
-  color:var(--ink-dim); padding:2px 0; }
-#sf-starmap .sm-kv b { color:var(--ink); font-weight:600; text-align:right; }
-#sf-starmap .sm-driver { font-size:.72em; color:var(--ink-mute); line-height:1.35; margin:3px 0 6px; }
-#sf-starmap .sm-hint { font-size:.76em; color:var(--ink-mute); line-height:1.45; }
-#sf-starmap .sm-objective { border:1px solid rgba(255,210,74,.34); border-radius:6px; padding:9px 10px;
-  background:rgba(255,210,74,.065); box-shadow:0 0 18px rgba(255,210,74,.08); }
-#sf-starmap .sm-objective[hidden] { display:none; }
-#sf-starmap .sm-objective-k { font-family:var(--mono); font-size:.66em; letter-spacing:.14em; text-transform:uppercase;
-  color:#ffd24a; }
-#sf-starmap .sm-objective-title { margin-top:4px; color:#fff; font-weight:700; line-height:1.25; }
-#sf-starmap .sm-objective-body { margin-top:5px; color:var(--ink-dim); font-size:.78em; line-height:1.42; }
-#sf-starmap .sm-objective-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; font-family:var(--mono);
-  font-size:.68em; color:var(--ink-mute); }
-#sf-starmap .sm-objective-meta span { border:1px solid rgba(255,210,74,.18); border-radius:999px; padding:2px 6px;
-  background:rgba(6,11,21,.38); }
-#sf-starmap .sm-objective-meta .hot { color:#ffd24a; border-color:rgba(255,210,74,.36); }
-#sf-starmap .sm-objective button { width:100%; margin-top:9px; padding:8px; border-color:rgba(255,210,74,.46);
-  color:#fff; background:rgba(255,210,74,.12); }
+  border-color: var(--sf-you); color: var(--sf-you); box-shadow: none;
+}
+#sf-starmap .sm-body { flex: 1; display: flex; min-height: 0; }
+#sf-starmap .sm-canvas-wrap { flex: 1; position: relative; min-width: 0; }
+#sf-starmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; display: block; }
+#sf-starmap .sm-side {
+  width: 316px; border-left: 1px solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); overflow-y: auto;
+}
+#sf-starmap .sm-sel-head { border-left: var(--sf-rail-w) solid var(--sf-calm); padding-left: var(--sp-2); }
+#sf-starmap .sm-sel-head.is-here { border-left-color: var(--sf-you); }
+#sf-starmap .sm-sel-name {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2);
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; color: var(--sf-paper);
+  padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: 1px solid var(--sf-edge);
+}
+#sf-starmap .sm-sel-fac {
+  font-family: var(--sf-body-face); font-size: 13px; margin-top: var(--sp-1); color: var(--sf-calm);
+}
+#sf-starmap .sm-section { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--sf-edge); }
+#sf-starmap .sm-section-title {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+  color: var(--sf-calm); margin-bottom: var(--sp-1);
+}
+#sf-starmap .sm-kv {
+  display: flex; justify-content: space-between; gap: var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); padding: 2px 0;
+}
+#sf-starmap .sm-kv b { color: var(--sf-paper); font-weight: 500; text-align: right; }
+#sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
+#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.45; }
+#sf-starmap .sm-objective {
+  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
+  border-radius: 2px; padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+}
+#sf-starmap .sm-objective[hidden] { display: none; }
+#sf-starmap .sm-objective-k {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-goal);
+}
+#sf-starmap .sm-objective-title {
+  margin-top: var(--sp-1); font-family: var(--sf-display-face); font-weight: 700; font-size: 28px;
+  line-height: 1.1; color: var(--sf-paper); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
+}
+#sf-starmap .sm-objective-body {
+  margin-top: var(--sp-1); font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-calm); line-height: 1.45;
+}
+#sf-starmap .sm-objective-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); color: var(--sf-calm); }
+#sf-starmap .sm-objective-meta span {
+  border: 1px solid var(--sf-edge); border-radius: 2px; padding: 2px var(--sp-2);
+  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+}
+#sf-starmap .sm-objective-meta .hot { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
+#sf-starmap .sm-objective button {
+  width: 100%; margin-top: var(--sp-2); padding: var(--sp-2);
+  border-color: var(--sf-goal-edge); color: var(--sf-goal);
+  background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+}
 #sf-starmap .sm-objective button:hover, #sf-starmap .sm-objective button:focus-visible {
-  border-color:#ffd24a; box-shadow:0 0 0 1px rgba(255,210,74,.25), 0 0 16px rgba(255,210,74,.16); }
-#sf-starmap .sm-route { font-family:var(--mono); font-size:.78em; color:var(--accent-2); margin-top:7px; }
-#sf-starmap .sm-route-leg { font-family:var(--mono); font-size:.72em; color:var(--ink-dim); padding:2px 0 2px 9px;
-  border-left:2px solid rgba(57,208,255,.3); }
-#sf-starmap .sm-route-leg b { color:var(--accent); font-weight:600; }
-#sf-starmap .sm-route-total { font-family:var(--mono); font-size:.78em; color:var(--accent); padding:4px 0; font-weight:600; }
-#sf-starmap .sm-bar { height:5px; border-radius:4px; background:rgba(120,145,175,.16); overflow:hidden; margin:3px 0 5px; }
-#sf-starmap .sm-bar > i { display:block; height:100%; border-radius:inherit; background:currentColor; }
-#sf-starmap .sm-influence-row { display:grid; grid-template-columns:1fr 42px; gap:8px; align-items:center;
-  font-family:var(--mono); font-size:.7em; color:var(--ink-dim); margin:3px 0; }
-#sf-starmap .sm-influence-row b { text-align:right; color:var(--ink); }
-#sf-starmap .sm-risk { border:1px solid rgba(57,208,255,.15); border-radius:6px; padding:7px 8px; margin-top:5px;
-  background:rgba(4,9,18,.45); }
-#sf-starmap .sm-risk-head { display:flex; justify-content:space-between; font-family:var(--mono); font-size:.72em; }
-#sf-starmap .sm-risk-note { font-size:.68em; color:var(--ink-mute); line-height:1.35; margin-top:3px; }
-#sf-starmap .sm-market-memory { display:flex; flex-direction:column; gap:5px; }
-#sf-starmap .sm-market-row { display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:.72em;
-  color:var(--ink-dim); }
-#sf-starmap .sm-market-row b { font-weight:700; color:inherit; }
-#sf-starmap .sm-market-row.fresh { color:#64ffda; }
-#sf-starmap .sm-market-row.mid { color:#ffffff; }
-#sf-starmap .sm-market-row.old { color:#8c99ad; font-style:italic; }
-#sf-starmap .sm-actions { margin-top:auto; display:flex; flex-direction:column; gap:8px; padding-top:10px; }
-#sf-starmap .sm-actions button { width:100%; padding:9px; }
-#sf-starmap .sm-course { background:rgba(57,208,255,.12); border-color:var(--accent); color:#fff;
-  text-shadow:0 0 8px rgba(57,208,255,.6); }
-#sf-starmap .sm-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 18px;
-  border-top:1px solid var(--panel-edge); font-family:var(--mono); font-size:.69em; color:var(--ink-mute); }
-#sf-starmap .sm-legend { display:flex; gap:11px; flex-wrap:wrap; }
-#sf-starmap .sm-legend span { display:inline-flex; align-items:center; gap:4px; }
-#sf-starmap .sm-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
-@media (max-width:820px) {
-  #sf-starmap .sm-side { width:270px; }
-  #sf-starmap .sm-stats { gap:8px; }
+  border-color: var(--sf-goal); color: var(--sf-paper); box-shadow: none;
+}
+#sf-starmap .sm-route {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-you); margin-top: var(--sp-2);
+}
+#sf-starmap .sm-route-leg {
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+  padding: 2px 0 2px var(--sp-2); border-left: var(--sf-rail-w) solid var(--sf-you);
+}
+#sf-starmap .sm-route-leg b { color: var(--sf-paper); font-weight: 600; }
+#sf-starmap .sm-route-leg .sm-interdict { color: var(--sf-foe); }
+#sf-starmap .sm-route-total { color: var(--sf-you); padding: var(--sp-1) 0; }
+#sf-starmap .sm-bar {
+  height: var(--sf-rail-w); border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-calm) 18%, transparent); overflow: hidden; margin: var(--sp-1) 0;
+  border: 1px solid var(--sf-edge);
+}
+#sf-starmap .sm-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--sf-calm); }
+#sf-starmap .sm-influence-row {
+  display: grid; grid-template-columns: 1fr 42px; gap: var(--sp-2); align-items: center;
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin: var(--sp-1) 0;
+}
+#sf-starmap .sm-influence-row b { text-align: right; color: var(--sf-paper); }
+#sf-starmap .sm-risk {
+  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-2); margin-top: var(--sp-1);
+  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+}
+#sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); }
+#sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin-top: var(--sp-1); }
+#sf-starmap .sm-pips { letter-spacing: 0; }
+#sf-starmap .sm-pips--you { color: var(--sf-you); }
+#sf-starmap .sm-pips--calm { color: var(--sf-calm); }
+#sf-starmap .sm-pips--goal { color: var(--sf-goal); }
+#sf-starmap .sm-pips--foe { color: var(--sf-foe); }
+#sf-starmap .sm-pips-word {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+#sf-starmap .sm-market-memory { display: flex; flex-direction: column; gap: var(--sp-1); }
+#sf-starmap .sm-market-row {
+  display: flex; justify-content: space-between; gap: var(--sp-2);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+}
+#sf-starmap .sm-market-row.fresh { color: var(--sf-you); }
+#sf-starmap .sm-market-row.mid { color: var(--sf-paper); }
+#sf-starmap .sm-market-row.old { color: var(--sf-calm); font-style: italic; }
+#sf-starmap .sm-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); }
+#sf-starmap .sm-actions button { width: 100%; padding: var(--sp-2); }
+#sf-starmap .sm-course {
+  background: color-mix(in srgb, var(--sf-goal) 10%, transparent);
+  border-color: var(--sf-goal); color: var(--sf-goal);
+}
+#sf-starmap .sm-course:hover, #sf-starmap .sm-course:focus-visible { color: var(--sf-paper); }
+#sf-starmap .sm-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--sf-edge);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+}
+#sf-starmap .sm-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+#sf-starmap .sm-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
+#sf-starmap .sm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--sf-calm); }
+#sf-starmap .sm-dot--you { background: var(--sf-you); }
+#sf-starmap .sm-dot--goal { background: var(--sf-goal); }
+#sf-starmap .sm-dot--foe { background: var(--sf-foe); }
+@media (max-width: 820px) {
+  #sf-starmap .sm-side { width: 270px; }
+  #sf-starmap .sm-stats { gap: var(--sp-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-starmap, #sf-starmap * { animation: none; transition: none; }
+}
+@media (forced-colors: active) {
+  #sf-starmap, #sf-starmap .sm-objective, #sf-starmap .sm-side, #sf-starmap .sm-risk {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+  #sf-starmap .sm-objective, #sf-starmap .sm-sel-head { border-left-color: CanvasText; }
 }
 `;
 
@@ -161,18 +309,22 @@ function escapeHtml(value) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function factionName(id) { return FACTION_NAME[id] || (id ? id.replace(/^faction_/, '') : 'Unaffiliated'); }
-function factionColor(id) { return FACTION_COLOR[id] || '#9aa8bc'; }
-function dangerColor(v) {
-  if (v < 0.28) return '#62e08a';
-  if (v < 0.50) return '#ffd84a';
-  if (v < 0.72) return '#ffb347';
-  return '#ff5470';
+
+/** Three meaning bands: a gain (safe), what you are heading into, against you. */
+export function dangerRole(v) {
+  if (v < 0.28) return 'you';
+  if (v < 0.72) return 'goal';
+  return 'foe';
 }
-function pressureColor(v) {
-  if (v > 0.08) return '#ffb347';
-  if (v < -0.08) return '#64ffda';
-  return '#9aa8bc';
+export function dangerColor(v) { return token(dangerRole(v)); }
+
+/** Surplus is a gain; scarcity is what you are heading for; balanced is at rest. */
+export function pressureRole(v) {
+  if (v > 0.08) return 'goal';
+  if (v < -0.08) return 'you';
+  return 'calm';
 }
+export function pressureColor(v) { return token(pressureRole(v)); }
 function pressureLabel(v) {
   const a = Math.abs(v);
   if (a < 0.06) return 'balanced';
@@ -180,18 +332,19 @@ function pressureLabel(v) {
   return v > 0 ? `${strength} scarcity` : `${strength} surplus`;
 }
 function trendGlyph(v, eps = 0.002) { return v > eps ? '↑' : v < -eps ? '↓' : '→'; }
-function trendColor(v, goodWhenPositive = false) {
-  if (Math.abs(v) < 0.002) return '#9aa8bc';
+export function trendRole(v, goodWhenPositive = false) {
+  if (Math.abs(v) < 0.002) return 'calm';
   const positiveGood = goodWhenPositive ? v > 0 : v < 0;
-  return positiveGood ? '#62e08a' : '#ffb347';
+  return positiveGood ? 'you' : 'goal';
 }
+export function trendColor(v, goodWhenPositive = false) { return token(trendRole(v, goodWhenPositive)); }
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function securityPips(sec) {
-  if (sec >= 0.7) return '<span style="color:#62e08a; letter-spacing: 2px;">●●●</span> <span style="font-size:12px;color:var(--ink-dim);">HIGH</span>';
-  if (sec >= 0.4) return '<span style="color:#ffd84a; letter-spacing: 2px;">●●○</span> <span style="font-size:12px;color:var(--ink-dim);">MID</span>';
-  if (sec >= 0.15) return '<span style="color:#ffb347; letter-spacing: 2px;">●○○</span> <span style="font-size:12px;color:var(--ink-dim);">LOW</span>';
-  return '<span style="color:#ff5470; letter-spacing: 2px;">○○○</span> <span style="font-size:12px;color:var(--ink-dim);">NULL</span>';
+  if (sec >= 0.7) return '<span class="sm-pips sm-pips--you" aria-hidden="true">●●●</span> <span class="sm-pips-word">HIGH</span>';
+  if (sec >= 0.4) return '<span class="sm-pips sm-pips--calm" aria-hidden="true">●●○</span> <span class="sm-pips-word">MID</span>';
+  if (sec >= 0.15) return '<span class="sm-pips sm-pips--goal" aria-hidden="true">●○○</span> <span class="sm-pips-word">LOW</span>';
+  return '<span class="sm-pips sm-pips--foe" aria-hidden="true">○○○</span> <span class="sm-pips-word">NULL</span>';
 }
 function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
 function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
@@ -237,9 +390,9 @@ function stationSectorCatalog(state) {
 }
 
 function memoryTint(ageS) {
-  if (ageS < 600) return { key: 'fresh', color: 'cyan', italic: false };
-  if (ageS < 3600) return { key: 'mid', color: 'white', italic: false };
-  return { key: 'old', color: 'gray', italic: true };
+  if (ageS < 600) return { key: 'fresh', color: 'you', italic: false };
+  if (ageS < 3600) return { key: 'mid', color: 'paper', italic: false };
+  return { key: 'old', color: 'calm', italic: true };
 }
 
 function ageText(ageS) {
@@ -495,33 +648,33 @@ export const starmapScreen = {
     this._root = rootEl;
     rootEl.id = 'sf-starmap';
     rootEl.innerHTML = `
-      <div class="sm-head">
+      <div class="sm-head sf-crest">
         <div class="sm-title">NAV CHART</div>
         <div class="sm-head-actions">
           <label class="sm-commodity">Intel <select data-commodity></select></label>
           <div class="sm-stats">
-            <div>FUEL <b data-fuel>--/--</b></div>
-            <div>JUMP <b data-jstate>IDLE</b></div>
-            <div>RANGE <b data-range>adjacent</b></div>
-            <div>FIELD <b data-epoch>0.0d</b></div>
+            <div>FUEL <b class="sf-fig" data-fuel>--/--</b></div>
+            <div>JUMP <b class="sf-fig" data-jstate>IDLE</b></div>
+            <div>RANGE <b class="sf-fig" data-range>adjacent</b></div>
+            <div>FIELD <b class="sf-fig" data-epoch>0.0d</b></div>
           </div>
           <button class="sm-close" type="button" aria-label="Close Star Map">Close (${BINDINGS.starmap.label})</button>
         </div>
       </div>
       <div class="sm-body">
-        <div class="sm-canvas-wrap" data-centerpiece="map-command-table"><canvas></canvas></div>
+        <div class="sm-canvas-wrap sf-stage" data-centerpiece="map-command-table"><canvas></canvas></div>
         <div class="sm-side">
           <div class="sm-objective" data-objective hidden></div>
           <div data-sel><div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div></div>
           <div class="sm-actions" data-actions></div>
         </div>
       </div>
-      <div class="sm-foot">
+      <div class="sm-foot sf-apron">
         <div class="sm-legend">
-          <span><i class="sm-dot" style="background:#ff5470"></i>danger field</span>
-          <span><i class="sm-dot" style="background:#ffb347"></i>scarcity</span>
-          <span><i class="sm-dot" style="background:#64ffda"></i>surplus</span>
-          <span><i class="sm-dot" style="background:#c08bff"></i>contested</span>
+          <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
+          <span><i class="sm-dot sm-dot--goal"></i>scarcity</span>
+          <span><i class="sm-dot sm-dot--you"></i>surplus</span>
+          <span>× contested</span>
         </div>
         <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · moving beads show commodity flow</div>
       </div>`;
@@ -595,6 +748,7 @@ export const starmapScreen = {
     const saved = state.ui && state.ui.starmapView;
     this._cam = saved ? { cx: saved.cx || 0, cy: saved.cy || 0, zoom: saved.zoom || 1 } : { cx: 0, cy: 0, zoom: 1 };
     this._visible = true;
+    invalidateCanvasFonts();
     this._resize();
     this.refresh(this._ctx);
     this._startAnimLoop();
@@ -798,26 +952,28 @@ export const starmapScreen = {
     this._drawSig = this._drawSignature();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     const w = canvas.width / this._dpr, h = canvas.height / this._dpr;
+    const roles = canvasRoles();
     g.clearRect(0, 0, w, h);
-    g.fillStyle = 'rgba(4,8,16,.38)'; g.fillRect(0, 0, w, h);
+    g.fillStyle = paint(roles.surface, 0.92); g.fillRect(0, 0, w, h);
 
     const nodes = this._layout();
     const byId = Object.fromEntries(nodes.map((n) => [n.sector.id, n]));
-    const now = Date.now();
+    const reduced = prefersReducedMotion();
+    const now = reduced ? 0 : Date.now();
     g.save();
     g.translate(w / 2, h / 2);
     g.scale(this._cam.zoom, this._cam.zoom);
     g.translate(-this._cam.cx, -this._cam.cy);
-    this._drawEdges(g, nodes, byId, now);
-    this._drawWormholes(g, nodes, byId);
+    this._drawEdges(g, nodes, byId, now, roles);
+    this._drawWormholes(g, nodes, byId, roles);
     const route = this._route();
-    if (route) this._drawRoute(g, route, byId, now);
-    this._drawNodes(g, nodes, this._currentId(), now);
+    if (route) this._drawRoute(g, route, byId, now, roles, reduced);
+    this._drawNodes(g, nodes, this._currentId(), roles);
     g.restore();
-    if (this._hoverInfo && this._hoverId) this._drawTooltip(g, w, h);
+    if (this._hoverInfo && this._hoverId) this._drawTooltip(g, w, h, roles);
   },
 
-  _drawEdges(g, nodes, byId, now) {
+  _drawEdges(g, nodes, byId, now, roles) {
     const zoom = this._cam.zoom;
     for (const n of nodes) {
       const a = n.sector;
@@ -830,8 +986,8 @@ export const starmapScreen = {
         const averageDanger = bothKnown && sa && sb ? (sa.danger + sb.danger) * 0.5 : 0;
         g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
         g.strokeStyle = bothKnown
-          ? `rgba(${averageDanger > .65 ? '255,84,112' : '57,208,255'},${(0.18 + averageDanger * 0.20).toFixed(3)})`
-          : 'rgba(80,110,150,.12)';
+          ? paint(roles[dangerRole(averageDanger)], 0.18 + averageDanger * 0.20)
+          : paint(roles.calm, 0.12);
         g.lineWidth = (bothKnown ? 1.2 + averageDanger * 1.1 : 0.8) / zoom;
         g.setLineDash(bothKnown ? [] : [4 / zoom, 5 / zoom]);
         g.stroke(); g.setLineDash([]);
@@ -847,7 +1003,7 @@ export const starmapScreen = {
           const t = ((now / 2600 + phase + k * 0.5) % 1 + 1) % 1;
           const p = pointOnLine(from, to, t);
           g.beginPath(); g.arc(p.x, p.y, (1.8 + Math.abs(gradient) * 2.2) / zoom, 0, Math.PI * 2);
-          g.fillStyle = pressureColor(Math.max(sa.pricePressure, sb.pricePressure));
+          g.fillStyle = roles[pressureRole(Math.max(sa.pricePressure, sb.pricePressure))];
           g.globalAlpha = 0.45 + Math.abs(gradient) * 0.45;
           g.fill(); g.globalAlpha = 1;
         }
@@ -855,20 +1011,20 @@ export const starmapScreen = {
     }
   },
 
-  _drawWormholes(g, nodes, byId) {
+  _drawWormholes(g, nodes, byId, roles) {
     for (const n of nodes) {
       const wh = n.sector.wormholeTo;
       if (!wh || !byId[wh.sectorId] || !this._isDiscovered(n.sector.id)) continue;
       const b = byId[wh.sectorId];
       g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
-      g.strokeStyle = 'rgba(192,139,255,.45)';
+      g.strokeStyle = paint(roles.goal, 0.55);
       g.lineWidth = 1.5 / this._cam.zoom;
       g.setLineDash([2 / this._cam.zoom, 6 / this._cam.zoom]);
       g.stroke(); g.setLineDash([]);
     }
   },
 
-  _drawRoute(g, route, byId, now) {
+  _drawRoute(g, route, byId, now, roles, reduced) {
     if (!route.legs || !route.legs.length) return;
     const points = [];
     for (let i = 0; i < route.legs.length; i++) {
@@ -880,32 +1036,30 @@ export const starmapScreen = {
     const z = this._cam.zoom;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
-    g.lineWidth = 6 / z; g.strokeStyle = 'rgba(57,208,255,.14)'; g.stroke();
-    g.lineWidth = 3 / z; g.strokeStyle = 'rgba(57,208,255,.88)';
+    g.lineWidth = 6 / z; g.strokeStyle = paint(roles.you, 0.18); g.stroke();
+    g.lineWidth = 3 / z; g.strokeStyle = roles.you;
     g.setLineDash([8 / z, 6 / z]);
-    g.lineDashOffset = -(now * 0.04);
+    g.lineDashOffset = reduced ? 0 : -(now * 0.04);
     g.stroke();
     g.setLineDash([]);
     g.restore();
-    const p = pointOnPolyline(points, (now % 3000) / 3000);
-    g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    const p = pointOnPolyline(points, reduced ? 0 : (now % 3000) / 3000);
+    g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = roles.paper; g.fill();
   },
 
-  _drawNodes(g, nodes, currentId, now) {
+  _drawNodes(g, nodes, currentId, roles) {
     const z = this._cam.zoom;
     for (const n of nodes) {
       const s = n.sector;
       const known = this._isDiscovered(s.id);
       if (!known) {
-        g.beginPath(); g.arc(n.x, n.y, 8, 0, Math.PI * 2); g.fillStyle = 'rgba(40,54,76,.5)'; g.fill();
-        g.strokeStyle = 'rgba(120,140,170,.4)'; g.lineWidth = 1 / z; g.stroke();
-        g.fillStyle = 'rgba(150,170,200,.5)'; g.font = canvasFontScaled('600', 12, z, 'mono');
+        g.beginPath(); g.arc(n.x, n.y, 8, 0, Math.PI * 2); g.fillStyle = paint(roles.edge, 0.55); g.fill();
+        g.strokeStyle = paint(roles.calm, 0.4); g.lineWidth = 1 / z; g.stroke();
+        g.fillStyle = paint(roles.calm, 0.7); g.font = canvasFontScaled('600', 12, z, 'subhead');
         g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText('???', n.x, n.y + 10 / z);
         continue;
       }
       const signal = this._signal(s.id);
-      const dominant = signal && signal.dominantFactionId || s.factionId;
-      const core = factionColor(dominant);
       const danger = signal ? signal.danger : 0;
       const pressure = signal ? signal.pricePressure : 0;
       const selected = s.id === this._selectedId;
@@ -914,66 +1068,67 @@ export const starmapScreen = {
       const reachable = currentId && this._isNeighbor(currentId, s.id);
 
       if (selected || hover) {
-        g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2); g.fillStyle = 'rgba(57,208,255,.12)'; g.fill();
+        g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2); g.fillStyle = paint(roles.paper, 0.12); g.fill();
       }
       if (reachable) {
-        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = 'rgba(122,247,208,.58)';
+        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.you, 0.58);
         g.lineWidth = 1.4 / z; g.setLineDash([3 / z, 3 / z]); g.stroke(); g.setLineDash([]);
       }
       if (signal && signal.contestMargin < 0.16) {
-        g.beginPath(); g.arc(n.x, n.y, n.r + 9 / z, 0, Math.PI * 2); g.strokeStyle = 'rgba(192,139,255,.78)';
+        g.beginPath(); g.arc(n.x, n.y, n.r + 9 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.foe, 0.78);
         g.lineWidth = 1.5 / z; g.setLineDash([2 / z, 4 / z]); g.stroke(); g.setLineDash([]);
       }
 
       drawHexPath(g, n.x, n.y, n.r + 2.8 / z);
-      g.lineWidth = (2.2 + danger * 1.2) / z; g.strokeStyle = dangerColor(danger); g.stroke();
+      g.lineWidth = (2.2 + danger * 1.2) / z; g.strokeStyle = roles[dangerRole(danger)]; g.stroke();
       drawHexPath(g, n.x, n.y, n.r);
-      g.fillStyle = core; g.fill(); g.lineWidth = 1 / z; g.strokeStyle = 'rgba(255,255,255,.25)'; g.stroke();
+      g.fillStyle = current ? roles.you : selected ? roles.paper : roles.calm; g.fill();
+      g.lineWidth = 1 / z; g.strokeStyle = paint(roles.paper, 0.25); g.stroke();
 
       if (Math.abs(pressure) > 0.035) {
         g.beginPath();
         const extent = clamp(Math.abs(pressure), 0.08, 1) * Math.PI * 1.65;
         g.arc(n.x, n.y, n.r + 5.5 / z, -Math.PI / 2, -Math.PI / 2 + extent);
-        g.strokeStyle = pressureColor(pressure); g.lineWidth = 2.1 / z; g.stroke();
+        g.strokeStyle = roles[pressureRole(pressure)]; g.lineWidth = 2.1 / z; g.stroke();
       }
 
       if (current) {
-        const alpha = Math.sin(now * 0.004) * 0.3 + 0.7;
-        g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z + Math.sin(now * 0.003) * 3 / z, 0, Math.PI * 2);
-        g.strokeStyle = `rgba(57,208,255,${alpha.toFixed(2)})`; g.lineWidth = 2 / z; g.stroke();
-        g.fillStyle = '#fff'; g.font = canvasFontScaled('700', 12, z, 'mono'); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('●', n.x, n.y);
+        g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z, 0, Math.PI * 2);
+        g.strokeStyle = roles.you; g.lineWidth = 2 / z; g.stroke();
+        g.fillStyle = roles.paper; g.font = canvasFontScaled('700', 12, z, 'data');
+        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('●', n.x, n.y);
       }
 
       const labelY = n.y + n.r + 5 / z;
-      g.fillStyle = selected ? '#fff' : 'rgba(211,230,255,.90)';
-      g.font = `${current ? '700' : '500'} ${11 / z}px var(--font,sans-serif)`;
+      g.fillStyle = selected ? roles.paper : paint(roles.paper, 0.9);
+      g.font = canvasFontScaled(current ? '700' : '500', 13, z, 'body');
       g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
-      
+
       const memory = this._ctx.state.player && this._ctx.state.player.marketMemory;
       const sectMemory = memory && memory[s.id];
       const commQuote = sectMemory && sectMemory[this._commodityId];
       if (commQuote) {
         g.save();
-        g.fillStyle = '#ffe36b';
-        g.font = canvasFontScaled('', 12, z, 'mono');
+        g.fillStyle = roles.goal;
+        g.font = canvasFontScaled('500', 12, z, 'data');
         g.textAlign = 'left';
         g.textBaseline = 'middle';
         const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
         g.fillText(priceText, n.x + n.r + 5 / z, n.y);
         g.restore();
       }
-      
+
       if (signal) {
         const glyph = trendGlyph(signal.trend.danger);
-        g.fillStyle = trendColor(signal.trend.danger);
-        g.font = canvasFontScaled('700', 12, z, 'mono');
+        g.fillStyle = roles[trendRole(signal.trend.danger)];
+        g.font = canvasFontScaled('700', 12, z, 'data');
         g.fillText(`${Math.round(signal.danger * 100)}${glyph}`, n.x, labelY + 13 / z);
       }
-      this._drawFeatureIcons(g, n, s, z);
+      this._drawFeatureIcons(g, n, s, z, roles);
     }
   },
 
-  _drawFeatureIcons(g, n, s, z) {
+  _drawFeatureIcons(g, n, s, z, roles) {
     const icons = [];
     if (s.hazards && s.hazards.length) icons.push('!');
     if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push('◆');
@@ -982,27 +1137,30 @@ export const starmapScreen = {
     if (s.wormholeTo) icons.push('◌');
     if (!icons.length) return;
     const spacing = 12 / z, start = n.x - (icons.length - 1) * spacing / 2;
-    g.font = canvasFontScaled('700', 12, z, 'mono'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = canvasFontScaled('700', 12, z, 'data'); g.textAlign = 'center'; g.textBaseline = 'middle';
     for (let i = 0; i < icons.length; i++) {
       const icon = icons[i];
-      g.fillStyle = icon === '!' ? '#ffd84a' : icon === '◆' ? '#64ffda' : icon === '◌' ? '#c08bff' : '#ff5470';
+      g.fillStyle = icon === '!' ? roles.goal
+        : icon === '◆' ? roles.you
+          : icon === '◌' ? roles.goal
+            : roles.foe;
       g.fillText(icon, start + i * spacing, n.y - n.r - 8 / z);
     }
   },
 
-  _drawTooltip(g, canvasW, canvasH) {
+  _drawTooltip(g, canvasW, canvasH, roles) {
     const s = this._hoverInfo.node.sector;
     const signal = this._signal(s.id);
     const eff = this._effective(s.id);
     if (!signal || !eff) return;
     const lines = [
-      { text: s.name, color: '#fff', font: canvasFont('700', 13, 'sans') },
-      { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: factionColor(signal.dominantFactionId), font: canvasFont('600', 12, 'mono') },
-      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: dangerColor(signal.danger), font: canvasFont('600', 12, 'mono') },
-      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: pressureColor(signal.pricePressure), font: canvasFont('600', 12, 'mono') },
-      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: dangerColor(signal.danger), font: canvasFont('500', 12, 'mono') },
+      { text: s.name, color: roles.paper, font: canvasFont('700', 15, 'subhead') },
+      { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: roles.calm, font: canvasFont('600', 12, 'data') },
+      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: roles[dangerRole(signal.danger)], font: canvasFont('600', 12, 'data') },
+      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: roles[pressureRole(signal.pricePressure)], font: canvasFont('600', 12, 'data') },
+      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: roles[dangerRole(signal.danger)], font: canvasFont('500', 12, 'data') },
     ];
-    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: '#ffd84a', font: canvasFont('500', 12, 'mono') });
+    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: roles.goal, font: canvasFont('500', 12, 'data') });
     const lineH = 17, padX = 12, padY = 10;
     let maxW = 0;
     for (const line of lines) { g.font = line.font; maxW = Math.max(maxW, g.measureText(line.text).width); }
@@ -1010,8 +1168,8 @@ export const starmapScreen = {
     let x = this._mouseX + 16, y = this._mouseY - boxH / 2;
     if (x + boxW > canvasW - 8) x = this._mouseX - boxW - 16;
     y = clamp(y, 8, canvasH - boxH - 8);
-    g.fillStyle = 'rgba(8,14,28,.94)'; g.strokeStyle = 'rgba(57,208,255,.35)'; g.lineWidth = 1;
-    roundedRect(g, x, y, boxW, boxH, 6); g.fill(); g.stroke();
+    g.fillStyle = paint(roles.surface, 0.94); g.strokeStyle = roles.edge; g.lineWidth = 1;
+    roundedRect(g, x, y, boxW, boxH, 2); g.fill(); g.stroke();
     let ly = y + padY + 12;
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     for (const line of lines) { g.font = line.font; g.fillStyle = line.color; g.fillText(line.text, x + padX, ly); ly += lineH; }
@@ -1056,8 +1214,8 @@ export const starmapScreen = {
     const discovery = this._discovery(s.id);
     const topInfluence = Object.entries(signal.influence || {}).sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0])).slice(0, 3);
     const influenceHtml = topInfluence.map(([id, value]) => `
-      <div class="sm-influence-row" style="color:${factionColor(id)}"><span>${escapeHtml(factionName(id))}</span><b>${pct(value)}</b></div>
-      <div class="sm-bar" style="color:${factionColor(id)}"><i style="width:${pct(value)}"></i></div>`).join('');
+      <div class="sm-influence-row"><span>${escapeHtml(factionName(id))}</span><b class="sf-fig">${pct(value)}</b></div>
+      <div class="sm-bar"><i style="width:${pct(value)}"></i></div>`).join('');
     const fromSectorId = isCurrent ? undefined : currentId;
     const gate = forecastTransitFor(this._ctx.state, s.id, { fromSectorId, via: 'gate' });
     const drive = forecastTransitFor(this._ctx.state, s.id, { fromSectorId, via: 'drive' });
@@ -1070,27 +1228,28 @@ export const starmapScreen = {
     const memoryHtml = this._marketMemoryHtml(s.id);
 
     selected.innerHTML = `
-      <div style="height:4px; background:${factionColor(signal.ownerId) || '#9aa8bc'}; margin-bottom:10px; border-radius: 2px;"></div>
-      <div class="sm-sel-name" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px; margin-bottom:8px;">
+      <div class="sm-sel-head${isCurrent ? ' is-here' : ''}">
+      <div class="sm-sel-name">
         <span>${escapeHtml(s.name)}</span>
-        <div style="font-family:var(--mono);">${securityPips(eff.security)}</div>
+        <div>${securityPips(eff.security)}</div>
       </div>
-      <div class="sm-sel-fac" style="color:${factionColor(signal.dominantFactionId)}">
+      <div class="sm-sel-fac">
         ${escapeHtml(factionName(signal.dominantFactionId))} field · owner ${escapeHtml(factionName(signal.ownerId))}
+      </div>
       </div>
 
       <div class="sm-section">
         <div class="sm-section-title">Danger field</div>
-        <div class="sm-kv"><span>Exposure</span><b style="color:${dangerColor(signal.danger)}">${pct(signal.danger)} ${trendGlyph(signal.trend.danger)} ${signed(dangerTrend)}%/day</b></div>
-        <div class="sm-kv"><span>Encounter load</span><b>×${signal.encounterLoad.toFixed(2)}</b></div>
-        <div class="sm-kv"><span>Security / density</span><b>${eff.security.toFixed(2)} ${securityLabel(eff.security)} / ${enemyDensityLabel(eff.enemyDensity || 0)}</b></div>
+        <div class="sm-kv"><span>Exposure</span><b class="sf-fig" style="color:${dangerColor(signal.danger)}">${pct(signal.danger)} ${trendGlyph(signal.trend.danger)} ${signed(dangerTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Encounter load</span><b class="sf-fig">×${signal.encounterLoad.toFixed(2)}</b></div>
+        <div class="sm-kv"><span>Security / density</span><b class="sf-fig">${eff.security.toFixed(2)} ${securityLabel(eff.security)} / ${enemyDensityLabel(eff.enemyDensity || 0)}</b></div>
         <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.danger))}. This field feeds live enemy population and offscreen asset-loss risk.</div>
       </div>
 
       <div class="sm-section">
         <div class="sm-section-title">Trade pressure</div>
         <div class="sm-kv"><span>Market state</span><b style="color:${pressureColor(signal.pricePressure)}">${escapeHtml(pressureLabel(signal.pricePressure))}</b></div>
-        <div class="sm-kv"><span>Pressure trend</span><b style="color:${pressureColor(signal.trend.pricePressure)}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Pressure trend</span><b class="sf-fig" style="color:${pressureColor(signal.trend.pricePressure)}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
         <div class="sm-kv"><span>Stock consequence</span><b>${escapeHtml(marketFlowText)}</b></div>
         <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.pricePressure))}. Moving edge beads show modeled commodity flow toward scarcity.</div>
       </div>
@@ -1168,13 +1327,13 @@ export const starmapScreen = {
   },
 
   _riskHtml(label, risk) {
-    const color = risk.incidentChance > 0.55 ? '#ff5470' : risk.incidentChance > 0.25 ? '#ffb347' : '#62e08a';
-    const marginColor = risk.survivalMargin < 0 ? '#ff5470' : '#62e08a';
+    const color = risk.incidentChance > 0.55 ? token('foe') : risk.incidentChance > 0.25 ? token('goal') : token('you');
+    const marginColor = risk.survivalMargin < 0 ? token('foe') : token('you');
     return `<div class="sm-risk">
-      <div class="sm-risk-head"><span>${label}</span><b style="color:${color}">${pct(risk.incidentChance)} incident</b></div>
-      <div class="sm-kv"><span>Expected impact</span><b>${risk.expectedDamage} HP</b></div>
-      <div class="sm-kv"><span>Speed / threat</span><b>${Math.round(risk.maxSpeed)} / ${Math.round(risk.threatSpeed)}</b></div>
-      <div class="sm-kv"><span>Survival margin</span><b style="color:${marginColor}">${signed(risk.survivalMargin, 0)} HP</b></div>
+      <div class="sm-risk-head"><span>${label}</span><b class="sf-fig" style="color:${color}">${pct(risk.incidentChance)} incident</b></div>
+      <div class="sm-kv"><span>Expected impact</span><b class="sf-fig">${risk.expectedDamage} HP</b></div>
+      <div class="sm-kv"><span>Speed / threat</span><b class="sf-fig">${Math.round(risk.maxSpeed)} / ${Math.round(risk.threatSpeed)}</b></div>
+      <div class="sm-kv"><span>Survival margin</span><b class="sf-fig" style="color:${marginColor}">${signed(risk.survivalMargin, 0)} HP</b></div>
     </div>`;
   },
 
@@ -1183,7 +1342,7 @@ export const starmapScreen = {
     if (!route || !route.legs || !route.legs.length) return '';
     let html = `<div class="sm-section"><div class="sm-route">▸ Active Route (${route.totalHops || route.legs.length} hops)</div>`;
     for (const leg of route.legs) {
-      html += `<div class="sm-route-leg"><b>${escapeHtml(this._nameOf(leg.from))}</b> → <b>${escapeHtml(this._nameOf(leg.to))}</b> · ${Math.round(leg.fuel)}F${leg.interdict ? ' <span style="color:#ff5470">[!]</span>' : ''}</div>`;
+      html += `<div class="sm-route-leg"><b>${escapeHtml(this._nameOf(leg.from))}</b> → <b>${escapeHtml(this._nameOf(leg.to))}</b> · <span class="sf-fig">${Math.round(leg.fuel)}F</span>${leg.interdict ? ' <span class="sm-interdict">[!]</span>' : ''}</div>`;
     }
     html += `<div class="sm-route-total">Σ ${Math.round(route.totalFuel || 0)} fuel</div></div>`;
     return html;

@@ -173,6 +173,11 @@ function injectStyle() {
     }
     .sf-codex-beat.current { border-left-color: Highlight; }
   }
+  .sf-codex.sf-menu h1 { color: var(--sf-paper); }
+  .sf-codex.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-codex, .sf-codex * { animation: none !important; transition: none !important; }
+  }
   `;
   document.head.appendChild(s);
 }
@@ -442,14 +447,14 @@ export const codexScreen = {
     rootEl.appendChild(search);
     this._search = search;
 
-    const body = el('div', 'sf-settings-pane');
+    const body = el('div', 'sf-settings-pane sf-stage');
     body.style.overflowY = 'auto';
     body.style.flex = '1';
     body.style.minHeight = '0';
     rootEl.appendChild(body);
     this._body = body;
 
-    const foot = el('div', 'sf-foot');
+    const foot = el('div', 'sf-foot sf-apron');
     const close = el('button', 'sf-btn', 'Close'); close.style.width = 'auto';
     close.addEventListener('click', () => nav(ctx, 'popScreen'));
     foot.appendChild(close);
@@ -592,7 +597,7 @@ export const codexScreen = {
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
     const state = ctx && ctx.state;
     const gal = galaxyExplorationSummary(state);
-    const summaryCard = el('div', 'sf-codex-status');
+    const summaryCard = el('div', 'sf-codex-status sf-crest');
     summaryCard.setAttribute('aria-label', 'Survey and cartography summary');
     summaryCard.appendChild(el('div', 'sf-codex-status-title', 'Galaxy Cartography & Survey Status'));
     const summaryGrid = el('div', 'sf-codex-status-grid');
@@ -657,7 +662,7 @@ export const codexScreen = {
 
   _renderStatus(ctx) {
     const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
-    const box = el('div', 'sf-codex-status');
+    const box = el('div', 'sf-codex-status sf-crest');
     box.setAttribute('aria-label', 'Codex unlock status');
     box.appendChild(el('div', 'sf-codex-status-title', 'Codex Unlock Status'));
     const grid = el('div', 'sf-codex-status-grid');
@@ -717,7 +722,8 @@ export const codexScreen = {
     BEAT_CONTENT.forEach((content, i) => {
       const reached = i <= beat;
       const entry = el('div', 'sf-codex-entry sf-codex-beat' + (i === beat ? ' current' : ''));
-      entry.appendChild(el('h3', null, BEAT_TITLES[i] || ('Beat ' + i)));
+      const heading = el('h3', i === beat ? 'sf-codex-now' : null, BEAT_TITLES[i] || ('Beat ' + i));
+      entry.appendChild(heading);
       entry.appendChild(el('div', 'sf-codex-meta', reached ? ('Phase ' + content.phase) : 'Locked'));
       if (reached) {
         entry.appendChild(el('div', 'sf-codex-body', content.hint));
@@ -895,7 +901,7 @@ export const codexScreen = {
     PERSISTENT_CARGO.forEach((p) => {
       const entry = el('div', 'sf-codex-entry');
       entry.appendChild(el('h3', null, p.name));
-      entry.appendChild(el('div', 'sf-codex-meta', p.mass + ' t · unsellable'));
+      entry.appendChild(el('div', 'sf-codex-meta sf-fig', p.mass + ' t · unsellable'));
       entry.appendChild(el('div', 'sf-codex-note', p.note));
       this._body.appendChild(entry);
     });

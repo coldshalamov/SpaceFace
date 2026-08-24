@@ -10,6 +10,133 @@ import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
 import { canvasFont } from '../canvasFonts.js';
 
+const STYLE_ID = 'sf-range-style';
+
+// Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill / starmap.
+export const ROLE_FALLBACK = {
+  you: '#7af7d0',
+  foe: '#ff5470',
+  goal: '#ffb347',
+  calm: '#84a0c8',
+  paper: '#d3e6ff',
+  surface: '#0b1220',
+  edge: '#1d3350',
+};
+
+export function canvasRoles() {
+  const fallback = ROLE_FALLBACK;
+  if (typeof document === 'undefined' || !document.documentElement) return fallback;
+  let cs;
+  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
+  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
+  return {
+    you: read('--sf-you', fallback.you),
+    foe: read('--sf-foe', fallback.foe),
+    goal: read('--sf-goal', fallback.goal),
+    calm: read('--sf-calm', fallback.calm),
+    paper: read('--sf-paper', fallback.paper),
+    surface: read('--sf-surface', fallback.surface),
+    edge: read('--sf-edge', fallback.edge),
+  };
+}
+
+export function gateStrokeRole(state) {
+  if (state === 'passed') return 'you';
+  if (state === 'failed') return 'foe';
+  return 'calm';
+}
+
+const CSS = `
+#sf-range .sf-fig,
+#sf-range .sf-range__progress,
+#sf-range .sf-range__cleared,
+#sf-range .sf-range__rail-state {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: 13px; letter-spacing: 0;
+}
+#sf-range .sf-range__progress {
+  font-size: 20px; color: var(--sf-paper);
+}
+#sf-range .sf-range__cleared { font-size: 13px; color: var(--sf-calm); }
+#sf-range .sf-range__rule {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0;
+}
+#sf-range .sf-range__instruction {
+  font-family: var(--sf-body-face); font-weight: 500; font-size: 14px; line-height: 1.35;
+  color: var(--sf-calm); margin: 0;
+}
+#sf-range .sf-range__empty-title {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2;
+  color: var(--sf-paper);
+}
+#screens:has(> .screen[data-screen="range"].sf-screen--visible),
+#screens:has(> .screen[data-screen="range"].sf-screen--entering) {
+  background-color: var(--sf-surface);
+}
+#sf-range, #sf-range .sf-range__canvas { background: var(--sf-surface); }
+#sf-range .sf-range__empty {
+  background: color-mix(in srgb, var(--sf-surface) 95%, transparent);
+}
+#sf-range .sf-drawer { box-shadow: none; }
+#sf-range .sf-range__crest { gap: var(--sp-5); }
+#sf-range .sf-range__crest-main { gap: var(--sp-2); }
+#sf-range .sf-range__crest-side { gap: var(--sp-2); }
+#sf-range .sf-range__stage { padding: 0 var(--sp-5); }
+#sf-range .sf-drawer__deck { padding: var(--sp-4); gap: var(--sp-3); }
+#sf-range .sf-range__drawer-head { gap: var(--sp-2); padding: var(--sp-3); }
+#sf-range .sf-range__drawer-tab,
+#sf-range .sf-range__drawer-close,
+#sf-range .sf-range__drawer-title,
+#sf-range .sf-range__rail-group-head,
+#sf-range .sf-range__b-row .k,
+#sf-range .sf-range__who {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+#sf-range .sf-range__drawer-tab.is-on { border-color: var(--sf-you); color: var(--sf-you); }
+#sf-range .sf-range__rail-row {
+  border-left: var(--sf-rail-w) solid var(--sf-calm); border-radius: 2px;
+  padding: var(--sp-2); gap: var(--sp-2);
+}
+#sf-range .sf-range__rail-row[data-state="flown"] { border-left-color: var(--sf-goal); }
+#sf-range .sf-range__rail-row[data-state="cleared"] { border-left-color: var(--sf-you); }
+#sf-range .sf-range__verdict-mount,
+#sf-range .sf-range__verdict-plain {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2; color: var(--sf-paper);
+}
+#sf-range .sf-range__because {
+  font-family: var(--sf-body-face); font-weight: 500; font-size: 14px; line-height: 1.35; color: var(--sf-calm);
+}
+#sf-range .sf-range__verbs { gap: var(--sp-2); }
+#sf-range .sf-range__verbs .sf-btn {
+  font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0; padding: var(--sp-2) var(--sp-3);
+}
+#sf-range .sf-range__b-row { gap: var(--sp-2); }
+#sf-range .sf-range__b-row .v { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-paper); }
+#sf-range .sf-range__apron { gap: var(--sp-2); padding-bottom: var(--sp-4); }
+@media (max-width: 1280px) {
+  #sf-range .sf-range__progress { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sf-range, #sf-range * { animation: none; transition: none; }
+}
+@media (forced-colors: active) {
+  #sf-range, #sf-range .sf-range__canvas, #sf-range .sf-drawer, #sf-range .sf-range__rail-row, #sf-range .sf-range__empty {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+}
+`;
+
+function injectStyle() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(STYLE_ID)) return;
+  const el = document.createElement('style');
+  el.id = STYLE_ID;
+  el.textContent = CSS;
+  document.head.appendChild(el);
+}
+
 const STEP_S = 1 / 60;
 const MAX_FRAME_S = 0.1;
 const BOX_INSET = 24;
@@ -354,7 +481,8 @@ function mapPoint(bounds, width, height, x, z) {
   };
 }
 
-function drawAsteroid(ctx2d, anchor, bounds, width, height, forced) {
+function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
+  const ink = roles || canvasRoles();
   const point = mapPoint(bounds, width, height, anchor.x, anchor.z);
   const scale = (width - (BOX_INSET * 2)) / Math.max(1, bounds.maxX - bounds.minX);
   const radius = Math.max(18, finite(anchor.radius, 48) * scale);
@@ -370,16 +498,17 @@ function drawAsteroid(ctx2d, anchor, bounds, width, height, forced) {
   });
   ctx2d.closePath();
   if (!forced) {
-    ctx2d.fillStyle = '#2f3e58';
+    ctx2d.fillStyle = ink.edge;
     ctx2d.fill();
   }
-  ctx2d.strokeStyle = forced ? 'CanvasText' : '#84a0c8';
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.calm;
   ctx2d.lineWidth = 2;
   ctx2d.stroke();
   ctx2d.restore();
 }
 
-function drawPlayer(ctx2d, player, bounds, width, height, forced) {
+function drawPlayer(ctx2d, player, bounds, width, height, forced, roles) {
+  const ink = roles || canvasRoles();
   const point = mapPoint(bounds, width, height, player.x, player.z);
   const size = 12;
   ctx2d.save();
@@ -391,14 +520,14 @@ function drawPlayer(ctx2d, player, bounds, width, height, forced) {
   ctx2d.lineTo(-size * 0.72, -size * 0.56);
   ctx2d.closePath();
   if (!forced) {
-    ctx2d.fillStyle = '#7af7d0';
+    ctx2d.fillStyle = ink.you;
     ctx2d.fill();
   } else {
     ctx2d.fillStyle = 'CanvasText';
     ctx2d.fill();
   }
   ctx2d.lineWidth = 1.5;
-  ctx2d.strokeStyle = forced ? 'CanvasText' : '#d3e6ff';
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
   ctx2d.stroke();
   ctx2d.restore();
   return point;
@@ -421,7 +550,8 @@ function drawTrail(ctx2d, points, bounds, width, height, color, reduced) {
   ctx2d.restore();
 }
 
-function drawDrone(ctx2d, drone, bounds, width, height, forced) {
+function drawDrone(ctx2d, drone, bounds, width, height, forced, roles) {
+  const ink = roles || canvasRoles();
   const point = mapPoint(bounds, width, height, drone.x, drone.z);
   const radius = Math.max(9, finite(drone.radius, 14) * 0.45);
   ctx2d.save();
@@ -432,14 +562,14 @@ function drawDrone(ctx2d, drone, bounds, width, height, forced) {
   ctx2d.lineTo(point.x - radius, point.y);
   ctx2d.closePath();
   if (!forced) {
-    ctx2d.fillStyle = '#07111f';
+    ctx2d.fillStyle = ink.surface;
     ctx2d.fill();
   }
-  ctx2d.strokeStyle = forced ? 'CanvasText' : '#ffb347';
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
   ctx2d.lineWidth = 1.6;
   ctx2d.stroke();
   ctx2d.font = canvasFont('600', 12, 'body');
-  ctx2d.fillStyle = forced ? 'CanvasText' : '#d3e6ff';
+  ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
   ctx2d.textAlign = 'center';
   ctx2d.textBaseline = 'top';
   ctx2d.fillText(drone.shortName, point.x, point.y + radius + 6);
@@ -447,14 +577,15 @@ function drawDrone(ctx2d, drone, bounds, width, height, forced) {
   return point;
 }
 
-function drawWeakArc(ctx2d, drone, weakPoint, bounds, width, height, forced) {
+function drawWeakArc(ctx2d, drone, weakPoint, bounds, width, height, forced, roles) {
   if (!weakPoint) return;
+  const ink = roles || canvasRoles();
   const center = mapPoint(bounds, width, height, drone.x, drone.z);
   const radius = Math.max(12, finite(drone.radius, 14) * 0.68);
   const start = wrapAngle((drone.rot || 0) + weakPoint.arcCenter - weakPoint.arcHalfWidth);
   const end = wrapAngle((drone.rot || 0) + weakPoint.arcCenter + weakPoint.arcHalfWidth);
   ctx2d.save();
-  ctx2d.strokeStyle = forced ? 'CanvasText' : '#ffb347';
+  ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
   ctx2d.lineWidth = 1.4;
   if (forced) ctx2d.setLineDash([4, 3]);
   ctx2d.beginPath();
@@ -536,6 +667,7 @@ export const rangeScreen = {
   _otherFittings: [],
 
   mount(rootEl, ctx) {
+    injectStyle();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-range';
@@ -548,8 +680,8 @@ export const rangeScreen = {
             <p class="sf-range__instruction" data-range-instruction></p>
           </div>
           <div class="sf-range__crest-side">
-            <div class="sf-range__progress" data-range-progress></div>
-            <div class="sf-range__cleared" data-range-cleared></div>
+            <div class="sf-range__progress sf-fig" data-range-progress></div>
+            <div class="sf-range__cleared sf-fig" data-range-cleared></div>
           </div>
         </header>
         <section class="sf-stage sf-range__stage">
@@ -1316,11 +1448,11 @@ export const rangeScreen = {
       <div class="sf-range__b-row"><span class="k">NAME</span><span class="v">${drone.name}</span></div>
       <div class="sf-range__b-row"><span class="k">CLASS</span><span class="v">${drone.shipClass}</span></div>
       <div class="sf-range__b-row"><span class="k">BEHAVIOR</span><span class="v">${drone.behavior}</span></div>
-      <div class="sf-range__b-row"><span class="k">PREFERRED RANGE</span><span class="v">${drone.preferredRange}</span></div>
-      <div class="sf-range__b-row"><span class="k">TOP SPEED</span><span class="v">${drone.maxSpeed} wu/s</span></div>
-      <div class="sf-range__b-row"><span class="k">TURN RATE</span><span class="v">${drone.turnRate}</span></div>
-      <div class="sf-range__b-row"><span class="k">MASS</span><span class="v">${Math.round(drone.mass)} t</span></div>
-      <div class="sf-range__b-row"><span class="k">WEAK ARC</span><span class="v">${weakArc}</span></div>
+      <div class="sf-range__b-row"><span class="k">PREFERRED RANGE</span><span class="v sf-fig">${drone.preferredRange}</span></div>
+      <div class="sf-range__b-row"><span class="k">TOP SPEED</span><span class="v sf-fig">${drone.maxSpeed} wu/s</span></div>
+      <div class="sf-range__b-row"><span class="k">TURN RATE</span><span class="v sf-fig">${drone.turnRate}</span></div>
+      <div class="sf-range__b-row"><span class="k">MASS</span><span class="v sf-fig">${Math.round(drone.mass)} t</span></div>
+      <div class="sf-range__b-row"><span class="k">WEAK ARC</span><span class="v sf-fig">${weakArc}</span></div>
       <div class="sf-range__b-row"><span class="k">WEAK POINT</span><span class="v">${weakPoint ? `${weakPoint.label} (${weakPoint.hint}) ×${weakPoint.bonusMult}` : '—'}</span></div>
     `;
   },
@@ -1587,30 +1719,31 @@ export const rangeScreen = {
     const reduced = this._reducedMotion;
     const sim = this._sim;
 
+    const roles = canvasRoles();
     ctx2d.clearRect(0, 0, width, height);
-    ctx2d.fillStyle = '#070c16';
+    ctx2d.fillStyle = roles.surface;
     ctx2d.fillRect(0, 0, width, height);
 
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#84a0c8';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : roles.calm;
     ctx2d.lineWidth = forced ? 2 : 1;
     ctx2d.strokeRect(BOX_INSET, BOX_INSET, width - BOX_INSET * 2, height - BOX_INSET * 2);
 
     if (sim.ghostTrail && sim.ghostTrail.length > 1) {
-      drawTrail(ctx2d, sim.ghostTrail, sim.bounds, width, height, forced ? 'CanvasText' : '#84a0c8', true);
+      drawTrail(ctx2d, sim.ghostTrail, sim.bounds, width, height, forced ? 'CanvasText' : roles.calm, true);
     }
-    drawTrail(ctx2d, sim.trail, sim.bounds, width, height, forced ? 'CanvasText' : '#7af7d0', reduced);
+    drawTrail(ctx2d, sim.trail, sim.bounds, width, height, forced ? 'CanvasText' : roles.you, reduced);
 
-    if (sim.id === 'heavy_turns_wide') this._drawHeavyGates(ctx2d, sim, width, height, forced);
-    if (sim.id === 'stopping_takes_room') this._drawStopLine(ctx2d, sim, width, height, forced);
-    if (sim.id === 'swing_do_not_pull') this._drawSwingGate(ctx2d, sim, width, height, forced);
+    if (sim.id === 'heavy_turns_wide') this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'stopping_takes_room') this._drawStopLine(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'swing_do_not_pull') this._drawSwingGate(ctx2d, sim, width, height, forced, roles);
 
-    if (sim.anchor) drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced);
+    if (sim.anchor) drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
 
     if (sim.id === 'swing_do_not_pull' && sim.tether && sim.tether.active) {
       const a = mapPoint(sim.bounds, width, height, sim.anchor.x, sim.anchor.z);
       const p = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
       ctx2d.save();
-      ctx2d.strokeStyle = forced ? 'CanvasText' : '#d3e6ff';
+      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.you;
       ctx2d.lineWidth = forced ? 2 : 2.6;
       ctx2d.beginPath();
       ctx2d.moveTo(a.x, a.y);
@@ -1619,24 +1752,23 @@ export const rangeScreen = {
       ctx2d.restore();
     }
 
-    this._lastDroneScreen = drawDrone(ctx2d, sim.drone, sim.bounds, width, height, forced);
-    drawWeakArc(ctx2d, sim.drone, sim.weakPoint, sim.bounds, width, height, forced);
-    drawPlayer(ctx2d, sim.player, sim.bounds, width, height, forced);
+    this._lastDroneScreen = drawDrone(ctx2d, sim.drone, sim.bounds, width, height, forced, roles);
+    drawWeakArc(ctx2d, sim.drone, sim.weakPoint, sim.bounds, width, height, forced, roles);
+    drawPlayer(ctx2d, sim.player, sim.bounds, width, height, forced, roles);
 
-    if (sim.id === 'heavy_turns_wide') this._drawTurnArc(ctx2d, sim, width, height, forced);
-    if (sim.id === 'stopping_takes_room') this._drawStopBar(ctx2d, sim, width, height, forced);
-    if (sim.id === 'you_can_run_dry') this._drawEnergyReadout(ctx2d, sim, width, height, forced);
+    if (sim.id === 'heavy_turns_wide') this._drawTurnArc(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'stopping_takes_room') this._drawStopBar(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'you_can_run_dry') this._drawEnergyReadout(ctx2d, sim, width, height, forced, roles);
   },
 
-  _drawHeavyGates(ctx2d, sim, width, height, forced) {
+  _drawHeavyGates(ctx2d, sim, width, height, forced, roles) {
+    const ink = roles || canvasRoles();
     sim.gates.forEach((gate, index) => {
       const top = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.minZ);
       const bottom = mapPoint(sim.bounds, width, height, gate.x, sim.bounds.maxZ);
       const center = mapPoint(sim.bounds, width, height, gate.x, gate.centerZ);
       const state = gate.state;
-      let stroke = '#84a0c8';
-      if (state === 'passed') stroke = '#7af7d0';
-      else if (state === 'failed') stroke = '#ff5470';
+      let stroke = ink[gateStrokeRole(state)];
       if (forced) stroke = 'CanvasText';
       ctx2d.save();
       ctx2d.strokeStyle = stroke;
@@ -1645,7 +1777,7 @@ export const rangeScreen = {
       ctx2d.moveTo(top.x, top.y);
       ctx2d.lineTo(bottom.x, bottom.y);
       ctx2d.stroke();
-      ctx2d.fillStyle = forced ? 'CanvasText' : '#ffb347';
+      ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
       ctx2d.beginPath();
       ctx2d.arc(center.x, center.y, 5, 0, Math.PI * 2);
       ctx2d.fill();
@@ -1657,7 +1789,7 @@ export const rangeScreen = {
         ctx2d.fillText(state === 'passed' ? '✓' : '✕', center.x, center.y - 8);
       }
       ctx2d.font = canvasFont('600', 12, 'data');
-      ctx2d.fillStyle = forced ? 'CanvasText' : '#84a0c8';
+      ctx2d.fillStyle = forced ? 'CanvasText' : ink.calm;
       ctx2d.textAlign = 'center';
       ctx2d.textBaseline = 'top';
       ctx2d.fillText(String(index + 1), center.x, center.y + 8);
@@ -1665,25 +1797,27 @@ export const rangeScreen = {
     });
   },
 
-  _drawStopLine(ctx2d, sim, width, height, forced) {
+  _drawStopLine(ctx2d, sim, width, height, forced, roles) {
+    const ink = roles || canvasRoles();
     const top = mapPoint(sim.bounds, width, height, sim.stopLine, sim.bounds.minZ);
     const bottom = mapPoint(sim.bounds, width, height, sim.stopLine, sim.bounds.maxZ);
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#ffb347';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
     ctx2d.lineWidth = forced ? 2 : 1.6;
     ctx2d.beginPath();
     ctx2d.moveTo(top.x, top.y);
     ctx2d.lineTo(bottom.x, bottom.y);
     ctx2d.stroke();
     ctx2d.font = canvasFont('600', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : '#ffb347';
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'top';
     ctx2d.fillText('STOP', top.x, top.y + 6);
     ctx2d.restore();
   },
 
-  _drawStopBar(ctx2d, sim, width, height, forced) {
+  _drawStopBar(ctx2d, sim, width, height, forced, roles) {
+    const ink = roles || canvasRoles();
     const speed = speedOf(sim.player);
     const nowStop = speed > 0
       ? (speed * speed) / Math.max(0.001, 2 * finite(sim.model && sim.model.reverseAccel, 0.001))
@@ -1691,39 +1825,41 @@ export const rangeScreen = {
     const line = mapPoint(sim.bounds, width, height, sim.player.x + nowStop, sim.player.z);
     const now = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#7af7d0';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.you;
     ctx2d.lineWidth = forced ? 2 : 1.2;
     ctx2d.beginPath();
     ctx2d.moveTo(now.x, now.y + 18);
     ctx2d.lineTo(line.x, now.y + 18);
     ctx2d.stroke();
     ctx2d.font = canvasFont('500', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : '#7af7d0';
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.you;
     ctx2d.textAlign = 'left';
     ctx2d.textBaseline = 'bottom';
     ctx2d.fillText(`${Math.round(nowStop)} m`, Math.min(width - 80, now.x + 4), now.y + 15);
     ctx2d.restore();
   },
 
-  _drawSwingGate(ctx2d, sim, width, height, forced) {
+  _drawSwingGate(ctx2d, sim, width, height, forced, roles) {
+    const ink = roles || canvasRoles();
     const left = mapPoint(sim.bounds, width, height, sim.exitGate.centerX - sim.exitGate.half, sim.exitGate.z);
     const right = mapPoint(sim.bounds, width, height, sim.exitGate.centerX + sim.exitGate.half, sim.exitGate.z);
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#ffb347';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.goal;
     ctx2d.lineWidth = forced ? 2 : 1.6;
     ctx2d.beginPath();
     ctx2d.moveTo(left.x, left.y);
     ctx2d.lineTo(right.x, right.y);
     ctx2d.stroke();
     ctx2d.font = canvasFont('600', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : '#ffb347';
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.goal;
     ctx2d.textAlign = 'center';
     ctx2d.textBaseline = 'bottom';
     ctx2d.fillText('EXIT', (left.x + right.x) * 0.5, left.y - 4);
     ctx2d.restore();
   },
 
-  _drawTurnArc(ctx2d, sim, width, height, forced) {
+  _drawTurnArc(ctx2d, sim, width, height, forced, roles) {
+    const ink = roles || canvasRoles();
     const player = sim.player;
     const speed = speedOf(player);
     const yaw = Math.abs(player.yawRate);
@@ -1738,7 +1874,7 @@ export const rangeScreen = {
     const centerPt = mapPoint(sim.bounds, width, height, centerWorld.x, centerWorld.z);
     const radiusPx = Math.max(8, Math.hypot(playerPt.x - centerPt.x, playerPt.y - centerPt.y));
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#84a0c8';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.calm;
     ctx2d.lineWidth = 1.2;
     if (!forced) ctx2d.setLineDash([5, 4]);
     ctx2d.beginPath();
@@ -1748,20 +1884,21 @@ export const rangeScreen = {
     ctx2d.restore();
   },
 
-  _drawEnergyReadout(ctx2d, sim, width, height, forced) {
+  _drawEnergyReadout(ctx2d, sim, width, height, forced, roles) {
     if (!sim.energy) return;
+    const ink = roles || canvasRoles();
     const pct = clamp(sim.energy.cap / Math.max(1, sim.energy.capMax), 0, 1);
     const x = width - BOX_INSET - 18;
     const y = BOX_INSET + 26;
     const h = Math.max(120, height * 0.35);
     ctx2d.save();
-    ctx2d.strokeStyle = forced ? 'CanvasText' : '#84a0c8';
+    ctx2d.strokeStyle = forced ? 'CanvasText' : ink.calm;
     ctx2d.strokeRect(x, y, 10, h);
-    if (!forced) ctx2d.fillStyle = '#7af7d0';
+    if (!forced) ctx2d.fillStyle = pct > 0.15 ? ink.you : ink.foe;
     else ctx2d.fillStyle = 'CanvasText';
     ctx2d.fillRect(x + 1, y + (h * (1 - pct)) + 1, 8, Math.max(1, (h * pct) - 2));
     ctx2d.font = canvasFont('600', 12, 'data');
-    ctx2d.fillStyle = forced ? 'CanvasText' : '#d3e6ff';
+    ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
     ctx2d.textAlign = 'right';
     ctx2d.textBaseline = 'top';
     ctx2d.fillText(`${Math.round(pct * 100)}% CAP`, x - 6, y);

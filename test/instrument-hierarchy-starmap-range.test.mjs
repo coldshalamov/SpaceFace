@@ -1,7 +1,7 @@
-// PACKET HIERARCHY-2 — instrument grammar on the factions standing dial and the codex.
+// Instrument grammar on the star chart and the range.
 // Source contracts: 12px floor, one DISPLAY, colour by meaning, --sf-data-face on figures,
-// no hardcoded hex, no roleless azure/cyan accent, no animation:infinite, no native title=,
-// no forbidden class vocabulary, and no state resting on hue alone (words carry it).
+// no roleless cyan/purple, no animation:infinite, no native title=, no forbidden class
+// vocabulary, canvas fonts without var(), and SVG tokens (if any) on inline style.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,25 +9,30 @@ import { fileURLToPath } from 'node:url';
 
 import { auditTypeFloor } from '../scripts/check-type-floor.mjs';
 import { NATIVE_TITLE_RE, nativeTitlePropWrites } from '../scripts/check-ui-native-titles.mjs';
-import { standingColor, standingColorAt } from '../src/ui/station/screens/factions.js';
 import {
-  codexProgressSummary,
-  commUnlocked,
-  SIGNAL_ARCHIVE,
-} from '../src/ui/screens/codex.js';
+  dangerColor,
+  dangerRole,
+  pressureColor,
+  pressureRole,
+  trendRole,
+  ROLE_FALLBACK as STARMAP_ROLES,
+} from '../src/ui/screens/starmap.js';
+import {
+  gateStrokeRole,
+  ROLE_FALLBACK as RANGE_ROLES,
+} from '../src/ui/screens/range.js';
 
 const FILES = [
-  'src/ui/station/screens/factions.js',
-  'src/ui/screens/codex.js',
+  'src/ui/screens/starmap.js',
+  'src/ui/screens/range.js',
 ];
 const DISPLAY = new Map([
-  ['src/ui/station/screens/factions.js', '.sx-fac-ident h2'],
-  ['src/ui/screens/codex.js', '.sf-codex-now'],
+  ['src/ui/screens/starmap.js', '.sm-objective-title'],
+  ['src/ui/screens/range.js', '.sf-range__rule'],
 ]);
-const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide)/;
-// Same scale the three converted screens pinned (mission log / tech tree / local map).
+const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu)/;
 const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 28, 40, 64]);
-const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
+const GRAMMAR_HEX = [...new Set(Object.values(STARMAP_ROLES).map((h) => h.toLowerCase()))].sort();
 
 function load(rel) {
   return readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8');
@@ -45,6 +50,10 @@ function pxSizes(src) {
   const shorthand = /(^|[;{]|\s)font:\s*[^;}]*?([0-9]+(?:\.[0-9]+)?)px/g;
   while ((m = shorthand.exec(src))) out.push(Number(m[2]));
   return out;
+}
+
+function uniqueHex(src) {
+  return [...new Set([...src.matchAll(/#(?:[0-9a-fA-F]{3,8})\b/g)].map((m) => m[0].toLowerCase()))].sort();
 }
 
 test('type floor: nothing in the two screens is authored below 12px', () => {
@@ -80,44 +89,53 @@ test('every figure binds --sf-data-face', () => {
     assert.match(code, /font-family:\s*var\(--sf-data-face\)/, rel + ' has no --sf-data-face binding');
     assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
   }
-  const fac = load('src/ui/station/screens/factions.js');
-  assert.match(fac, /class="sx-dial-rep sf-fig"/);
-  assert.match(fac, /class="sf-fig" style="color:\$\{col\}"/);
-  const codex = load('src/ui/screens/codex.js');
-  assert.match(codex, /sf-codex-status-v sf-fig/);
+  const star = load('src/ui/screens/starmap.js');
+  assert.match(star, /class="sf-fig" data-fuel/);
+  assert.match(star, /canvasFontScaled\('700', 12, z, 'data'\)/);
+  const range = load('src/ui/screens/range.js');
+  assert.match(range, /sf-range__progress sf-fig/);
+  assert.match(range, /canvasFont\('600', 12, 'data'\)/);
 });
 
-test('colour is by meaning: role tokens present, zero hardcoded hex, no roleless azure/cyan', () => {
+test('colour is by meaning: role tokens present, grammar hex only, no roleless cyan/purple', () => {
+  assert.deepEqual([...new Set(Object.values(RANGE_ROLES).map((h) => h.toLowerCase()))].sort(), GRAMMAR_HEX);
   for (const rel of FILES) {
     const code = stripComments(load(rel));
     for (const role of ['--sf-you', '--sf-foe', '--sf-goal', '--sf-calm', '--sf-paper']) {
       assert.ok(code.includes(role), rel + ' missing ' + role);
     }
-    assert.equal((code.match(HEX_RE) || []).length, 0, rel + ' still authors a hardcoded hex literal');
+    assert.deepEqual(uniqueHex(code), GRAMMAR_HEX, rel + ' authored a hex outside the seven grammar roles');
     assert.equal((code.match(/var\(--accent\)|var\(--accent,|#39d0ff|#4aa8ff/g) || []).length, 0,
       rel + ' still spends the roleless cyan/azure accent');
+    assert.equal((code.match(/var\(--accent-3\)|#c08bff/g) || []).length, 0,
+      rel + ' still spends roleless purple');
     assert.equal((code.match(/animation:[^;}]*\binfinite\b/g) || []).length, 0,
       rel + ' has animation: infinite');
   }
 });
 
-test('standing colour is a meaning role indexed by tier, not a rainbow', () => {
-  assert.equal(standingColorAt(0), 'var(--sf-foe)');
-  assert.equal(standingColorAt(3), 'var(--sf-foe)');
-  assert.equal(standingColorAt(4), 'var(--sf-calm)');
-  assert.equal(standingColorAt(5), 'var(--sf-you)');
-  assert.equal(standingColorAt(8), 'var(--sf-you)');
-  assert.equal(standingColor(-800), 'var(--sf-foe)');
-  assert.equal(standingColor(0), 'var(--sf-calm)');
-  assert.equal(standingColor(500), 'var(--sf-you)');
+test('danger / pressure / gate colour is a meaning role, not a rainbow', () => {
+  assert.equal(dangerRole(0.1), 'you');
+  assert.equal(dangerRole(0.5), 'goal');
+  assert.equal(dangerRole(0.9), 'foe');
+  assert.equal(dangerColor(0.1), 'var(--sf-you)');
+  assert.equal(dangerColor(0.9), 'var(--sf-foe)');
+  assert.equal(pressureRole(-0.2), 'you');
+  assert.equal(pressureRole(0), 'calm');
+  assert.equal(pressureRole(0.2), 'goal');
+  assert.equal(pressureColor(0.2), 'var(--sf-goal)');
+  assert.equal(trendRole(0), 'calm');
+  assert.equal(gateStrokeRole('passed'), 'you');
+  assert.equal(gateStrokeRole('failed'), 'foe');
+  assert.equal(gateStrokeRole('pending'), 'calm');
 });
 
 test('SVG meaning colours ride inline style, never a presentation attribute', () => {
-  const fac = stripComments(load('src/ui/station/screens/factions.js'));
-  assert.match(fac, /style="stroke:\$\{standingColorAt\(i\)\}"/,
-    'dial segments must paint stroke from an inline style so CSS variables resolve');
-  assert.doesNotMatch(fac, /stroke="var\(/,
-    'a var() stroke presentation attribute silently paints nothing');
+  for (const rel of FILES) {
+    const code = stripComments(load(rel));
+    assert.doesNotMatch(code, /stroke="var\(/, rel + ' paints a var() stroke presentation attribute');
+    assert.doesNotMatch(code, /fill="var\(/, rel + ' paints a var() fill presentation attribute');
+  }
 });
 
 test('no native title=; naming avoids pulse/blink/flash and card/menu/panel/modal', () => {
@@ -144,36 +162,25 @@ test('crest / stage / apron zones are named on each screen', () => {
   }
 });
 
-test('no state rests on hue alone: the words sit beside every colour', () => {
-  const fac = load('src/ui/station/screens/factions.js');
-  // Tier name + signed rep always accompany the standing colour, in rail, dial and decisions.
-  assert.match(fac, /AUTHORITY · /);
-  assert.match(fac, /'ALIGN' : 'RIVAL'/);
-  assert.match(fac, /PEAK HELD/);
-  assert.match(fac, /escapeHtml\(tier\.name\)\} \$\{signed\(rep\)\}/);
-  const codex = load('src/ui/screens/codex.js');
-  // Locked, current and filed states each carry a word or glyph, never hue alone.
-  assert.match(codex, /— not yet encountered —/);
-  assert.match(codex, /YOUR CHOICE/);
-  assert.match(codex, /'✓ ' : ''/);
+test('canvas text does not pass var() into ctx.font', () => {
+  for (const rel of FILES) {
+    const code = stripComments(load(rel));
+    assert.doesNotMatch(code, /\.font\s*=\s*[`'"][^`'"]*var\(--/);
+    assert.match(code, /from '\.\.\/canvasFonts\.js'/);
+  }
 });
 
-test('codex model still gates by beat and reports honest progress', () => {
-  const fresh = codexProgressSummary({ beatIndex: 0, seenComms: {}, graffitiShown: {} });
-  assert.equal(fresh.beat, 0);
-  const story = fresh.items.find((item) => item.key === 'Story');
-  assert.ok(story && story.value === '1/8 beats', 'story count should start at 1/8');
-
-  assert.equal(commUnlocked({ id: 'x', beat: 3 }, { seenComms: {} }, 2, 'personal'), false);
-  assert.equal(commUnlocked({ id: 'x', beat: 3 }, { seenComms: { x: 1 } }, 0, 'personal'), true);
-  assert.equal(commUnlocked({ id: 't', beat: 0 }, { seenComms: {} }, 7, 'traps'), false,
-    'traps must never unlock by beat alone');
-
-  assert.ok(Object.isFrozen(SIGNAL_ARCHIVE));
-  assert.equal(SIGNAL_ARCHIVE.length, 4);
-  for (const signal of SIGNAL_ARCHIVE) {
-    assert.match(signal.poster, /^assets\/cinematics\/C-INTRO-\d+\.jpg$/);
-    assert.match(signal.video, /^assets\/cinematics\/C-INTRO-\d+_6s\.mp4$/);
-    assert.ok(signal.caption && signal.title);
-  }
+test('no state rests on hue alone: the words sit beside every colour', () => {
+  const star = load('src/ui/screens/starmap.js');
+  assert.match(star, /sm-pips-word">HIGH/);
+  assert.match(star, /sm-pips-word">NULL/);
+  assert.match(star, /pressureLabel/);
+  assert.match(star, /danger field/);
+  assert.match(star, /\[!\]/);
+  const range = load('src/ui/screens/range.js');
+  assert.match(range, /CLEARED/);
+  assert.match(range, /fillText\('STOP'/);
+  assert.match(range, /fillText\('EXIT'/);
+  assert.match(range, /% CAP/);
+  assert.match(range, /state === 'passed' \? '✓' : '✕'/);
 });
