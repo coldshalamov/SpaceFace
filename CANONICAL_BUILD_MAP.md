@@ -1955,12 +1955,12 @@ Motion Lab → player handling convergence → hull-relative enemy actuator
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| **`PQ-135.00`** | **The draw-to-fly speed governor stops crawling.** MEASURED DEFECT: ships cruise at **112-133 WU/s**; `PATH_CORNER_FLOOR_SPEED` is **14**, about one eighth. `worstCurvatureAhead` takes the MAX curvature over the lookahead, and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin — so a gentle curve pins the hull to the floor for the whole stroke. | A drawn stroke is flown at a speed a player would choose, AND still tracked. **The existing tracking test measures cross-track and never measures SPEED — it would pass at 1 WU/s.** Add the speed bar to it. |
-| **`PQ-135.01`** | **Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and a hull you can FEEL the difference between.** (§21A.5) | A repeatable slalom and reversal course, Hitch vs Wasp visibly different, no loss of honest momentum. |
-| **`PQ-135.02`** | Motion Lab: deterministic movement scenarios and motion telemetry, so feel is measured rather than argued. (§21A.23-.25) | Scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers. |
-| **`PQ-135.03`** | Hull-relative enemy capability envelopes and desired-state trajectory control. (§21A.6-.7) | Enemy motion derives from the hull it is flying, not a shared constant. |
-| **`PQ-135.04`** | **One four-ship wing with real choreography**: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors. (§21A.9-.13) | A player impulse can break the sequence, and disrupted members do not instantly snap back. |
-| **`PQ-135.05`** | **One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable.** (§21A.14) | It flows as a shoal rather than a dozen independent seekers jittering at the same point. |
+| **`PQ-135.00`** **[DONE]** | **The draw-to-fly speed governor stops crawling.** MEASURED DEFECT: ships cruise at **112-133 WU/s**; `PATH_CORNER_FLOOR_SPEED` is **14**, about one eighth. `worstCurvatureAhead` takes the MAX curvature over the lookahead, and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin — so a gentle curve pins the hull to the floor for the whole stroke. | A drawn stroke is flown at a speed a player would choose, AND still tracked. **The existing tracking test measures cross-track and never measures SPEED — it would pass at 1 WU/s.** Add the speed bar to it. |
+| **`PQ-135.01`** **[DONE]** | **Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and a hull you can FEEL the difference between.** (§21A.5) | A repeatable slalom and reversal course, Hitch vs Wasp visibly different, no loss of honest momentum. |
+| **`PQ-135.02`** **[DONE]** | Motion Lab: deterministic movement scenarios and motion telemetry, so feel is measured rather than argued. (§21A.23-.25) | Scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers. |
+| **`PQ-135.03`** **[DONE]** | Hull-relative enemy capability envelopes and desired-state trajectory control. (§21A.6-.7) | Enemy motion derives from the hull it is flying, not a shared constant. |
+| **`PQ-135.04`** **[DONE]** | **One four-ship wing with real choreography**: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors. (§21A.9-.13) | A player impulse can break the sequence, and disrupted members do not instantly snap back. |
+| **`PQ-135.05`** **[DONE]** | **One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable.** (§21A.14) | It flows as a shoal rather than a dozen independent seekers jittering at the same point. |
 
 ### Binding constraints (§21A.28, §21A.30)
 
@@ -2008,10 +2008,10 @@ were LODs, source files, and third-party kits. `check:asset-reachability` is the
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| **`PQ-136.00`** | **The wreck pack reaches the player.** 44 models, currently zero. Wrecks are the cheapest variety in the game — they need no AI, no balance pass, and no new systems; they need routing and placement. | A player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. |
-| **`PQ-136.01`** | The 30 unused `everyday_space_kit` props are placed where infrastructure belongs — stations, lanes, work sites. | Sectors read as inhabited rather than decorated with the same prop repeated. |
-| **`PQ-136.02`** | The 6 unused `npc_activity_pack` craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. | New occupational craft appear in traffic without a new AI path. |
-| **`PQ-136.03`** | **Half-finished or superseded hulls are triaged, not abandoned.** For each: field it, alter it into a variant (a different faction, a damaged version, a wreck), or record why it genuinely cannot be used. Deleting is the last option, not the first. | Every authored hull has a disposition on the record. |
+| **`PQ-136.00`** **[DONE]** | **The wreck pack reaches the player.** 44 models, currently zero. Wrecks are the cheapest variety in the game — they need no AI, no balance pass, and no new systems; they need routing and placement. | A player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. |
+| **`PQ-136.01`** **[DONE]** | The 30 unused `everyday_space_kit` props are placed where infrastructure belongs — stations, lanes, work sites. | Sectors read as inhabited rather than decorated with the same prop repeated. |
+| **`PQ-136.02`** **[DONE — 4 fielded, 3 held for still review]** | The 6 unused `npc_activity_pack` craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. | New occupational craft appear in traffic without a new AI path. |
+| **`PQ-136.03`** **[DONE]** | **Half-finished or superseded hulls are triaged, not abandoned.** For each: field it, alter it into a variant (a different faction, a damaged version, a wreck), or record why it genuinely cannot be used. Deleting is the last option, not the first. | Every authored hull has a disposition on the record. |
 
 ### Rules
 
