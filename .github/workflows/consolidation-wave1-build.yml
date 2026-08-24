@@ -1,0 +1,42 @@
+name: Consolidation wave 1 build
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/build-consolidation-wave1.sh
+      - .github/workflows/consolidation-wave1-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: consolidation-wave1-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message, '[consolidated]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout integration control surface
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/branch-consolidation-audit.mjs
+            /scripts/branch-family-topology.mjs
+            /scripts/branch-patch-outcomes.mjs
+            /scripts/consolidation-portability-probe.mjs
+            /scripts/build-consolidation-wave1.sh
+            /.github/workflows/branch-consolidation-audit.yml
+            /.github/workflows/consolidation-portability.yml
+            /.github/workflows/consolidation-wave1-build.yml
+          persist-credentials: true
+
+      - name: Assemble, validate, and publish one current-master integration branch
+        run: bash scripts/build-consolidation-wave1.sh
