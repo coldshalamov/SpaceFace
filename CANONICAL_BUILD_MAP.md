@@ -871,6 +871,17 @@ sync `buildComposedShip` still runs in flight via the empty-slot exception; hitc
 default-off; off-glass 3D horizons are mostly retired; crowded p95 is still GPU submit once
 bricks die; sim is not the hitch owner.
 
+**2026-08-23 gate reading (same instrument, same machine, real Intel GPU — `npm run probe:runtime-witness`, New Game seed 47, 20 s).** Wave C says *promote only after hitch count is halved or the classifier names that owner*, so this is the measurement that decides whether `.11`-`.18` dispatch at all. **Waves A and B are all ten DONE.** What the witness now sees:
+
+- **Steady state is no longer the problem.** `presentation` p95 **5.8 ms**, `render` p95 4.4 ms, `sim` p95 4.5 ms, 182 draw calls. That is comfortably 60 fps with headroom.
+- **One brick remains, and it is at `stage entering-flight`.** `presentation` max **3610 ms**, `render` max 3609 ms, `bloomScene` max 3607 ms. Read the distribution, not the average: 180 `bloomScene` samples with p95 5.1 ms but avg 22.9 ms means a SINGLE sample carries ~87 % of the total. This is one event, not a slow renderer. The 2026-08-20 baseline's *"one present max ~13 s"* is down to ~3.6 s but is not gone.
+- 815 frames, 17 hitches, named coverage 0.824; owners bloom 8, unknown 3, sim 2, externalScheduling 2, present 1, vfx 1.
+- Opening cost: 43 textures / 55.6 ms blocking upload; scene delta programs 40->41, geometries 19->39, textures 20->58.
+- Also caught, unrelated to hitching: a **404 during ordinary flight**, and a shader warning (`use of potentially uninitialized variable (f_surfaceColor)`).
+
+**Reading:** the classifier DOES name an owner, so the gate's second clause is satisfied — but the honest conclusion is that Wave C's crowded-60-fps work is not what this machine needs next. Steady state already holds 60 fps; the remaining owner-visible cost is one ~3.6 s freeze entering flight, which is Wave B's *kill bricks* business, not Wave C's. Chase the brick before promoting `.11`-`.18`.
+
+
 | Wave | Leaves | Reserved work | Player outcome |
 |---|---|---|---|
 | **A · name it** | `.01`–`.03` | `PQ-061` census, `PQ-062` live hitch classifier, `PQ-063` phase timers | Every >32 ms frame has a named owner on the real present path |
@@ -1165,7 +1176,7 @@ That is what Phase 0 is for, and it is why Phase 0 is not optional.
 | **3 · THE CHART** | **DONE** — J12 (`06a8161c`): pressure flows, route risk, traffic layer, dossiers. | `src/ui/galaxyMap.js`, `src/ui/map/` |
 | **4 · THE RANGE** | **DONE** — J11 (`9d242df7`): three drills + weak-point passes (`F4`). | `src/ui/screens/range.js` |
 | **5 · HUD + Power Bar** | **DONE** — J05 icons/crests (`e23a9ba9`), J06 Power Rail (`79e56c06`), J07 tactical HUD (`ad4764b5`…`f94a3368`), J08 reticle + threat halo (`bea90b47`), J14 tactile feedback (`f85507a9`), J15 quick-comms (`6cd90065`), responsive/ultrawide safe frame (`0996a2e4`). | `src/ui/hud.js`, `src/ui/powerRail.js`, `src/ui/threatHalo.js`, `src/ui/commsRadial.js` |
-| **6 · Station interiors** | **Stage 0 repair DONE** (`376fcc8f`: `translate` instead of `transform` on `button:active`, popover anchor exemption, `resolveTarget`). **Flatten DONE** (`9b424bbe`: 982 cascade-dead declarations removed with an independent cascade proof, 0.0000 % pixel diff on the pure-DOM tabs at three bands, Kimi vision IDENTICAL; 2,905 → 2,496 lines — "half the size" was not honestly reachable without changing appearance). **Stage 2 owed:** the 173 sub-12 px declarations (6.5–11.5 px) to the grammar floor by layout, token substitution against surviving values, `--sf-data-face` on every figure. | `styles/station-workbench.css`, `src/ui/station/` |
+| **6 · Station interiors** | **Stage 0 repair DONE** (`376fcc8f`: `translate` instead of `transform` on `button:active`, popover anchor exemption, `resolveTarget`). **Flatten DONE** (`9b424bbe`: 982 cascade-dead declarations removed with an independent cascade proof, 0.0000 % pixel diff on the pure-DOM tabs at three bands, Kimi vision IDENTICAL; 2,905 → 2,496 lines — "half the size" was not honestly reachable without changing appearance). **Stage 2 DONE** (`cff8fa37`): the sub-12 px declarations were taken to the grammar floor by layout rather than by shrinking anything else, and every figure now binds `--sf-data-face`. Verified 2026-08-23 against the file, not the commit message: the smallest `font-size` in `station-workbench.css` is 12 px (43 declarations sit at 13 px, none below 12), and `--sf-data-face` is bound 29 times. | `styles/station-workbench.css`, `src/ui/station/` |
 | **7 · Cleanup** | **Premise refuted 2026-08-21.** A resolved reverse-import walk reaches **27 of 27** files in `src/ui/screens/`; `stationHub.js` (4,057 lines) is imported by the live `stationApp.js`/`stationScreen.js`, and the live station screens import shared logic from the legacy `market.js`/`bar.js`/`services.js`/`shipLedger.js`/`factions.js`. Nothing is deletable without first refactoring the live station. What was wrong is fixed: both checks now lint the LIVE station (`30be9b1d`). A future Phase 7 is a refactor (lift shared logic out of the legacy modules), not a deletion. | `scripts/check-ui-screen-imports.mjs`, `scripts/check-command-deck-ui.mjs` |
 
 **Phase-0 addendum — three rulings the build produced, binding on every job below.**
@@ -1227,7 +1238,7 @@ stating once, globally:
   that lets this game be deep without being a spreadsheet." It is cheap — `causeLedger`'s enumerated
   phrase bank is the pattern — and it is now a line item in J2, J6 and J8.
 
-**Also landed from the earlier direction document:** the live-overlay fix (`body.ui-live-screen #hud { opacity: .5 }`) so a non-pausing screen no longer blinds the player, and an `sf-select` primitive (adoption incomplete — native `<select>` remains in `galaxyMap.js`, `screens/automationPanel.js`, `screens/starmap.js`).
+**Also landed from the earlier direction document:** the live-overlay fix (`body.ui-live-screen #hud { opacity: .5 }`) so a non-pausing screen no longer blinds the player, and an `sf-select` primitive. **Adoption is complete** — verified 2026-08-23 by call site, not by reading for `<select>`: all three named files (`galaxyMap.js`, `screens/automationPanel.js`, `screens/starmap.js`) import `enhanceSelects` and call it, which swaps the node in place. The native `<select>` still in the markup is the SOURCE the widget is built from, not a surviving OS dropdown — grepping for the tag reports a false gap.
 
 ### 11.11 What inhibits the player's best experience
 
@@ -1638,6 +1649,15 @@ wires it and becomes the VFX half of Crucible's causal grammar
 | `PQ-134.01` | `ArcadeStructuralFx` mounted in the presentation adapter behind `cueArbitration`; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat | **DONE** — mounted in `src/render/vfx.js`, admitted through `admitStructuralFxCue`, and driven by four live cue paths (`entity:killed`, `combat:collisionConsequence`, the bank-shot cue, and `presentation:vfxCue`). 16 tests green across `arcade-structural-fx-mount` and `vfx-arcade-structural-fx`, with a live probe wired as `check:arcade-structural-fx` |
 | `PQ-134.02` **[DONE - accepted by capture]** | Causal VFX/audio grammar (`CRU-051`): direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants | Four-way capture (Crucible wave 8, Foundry boss, Adventure fight, reduced-motion) reviewed at play size |
 
+**2026-08-23 — the grammar is now actually fed (`357eb134`).** `.02` was accepted by capture, but
+three of the eight families could not fire in ordinary play: `projectile:hit` carried no causal
+information, so `chain`, `field` and `reaction` only appeared when a receipt already happened to
+carry the flag. The hit path now stamps `causalTags` using the SAME tokens
+`causalKindsFromAttackSpec` produces — one frozen array per spec in a WeakMap, so a hit allocates
+nothing — plus `hops`/`chain`, `hasBounced`, and `family` for field and reaction payloads. Real
+emitted payloads were fed to `classifyCausalVfxFamily` and route to `chain`, `field` and `reaction`.
+Both 47-A goldens hold: this adds information to an event and does not move the simulation.
+
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 
 Who does what, recorded so a later session does not reinvent it.
@@ -1646,7 +1666,7 @@ Who does what, recorded so a later session does not reinvent it.
 |---|---|---|
 | **Primary implementer** | `cursor-agent` with Grok 4.6 | `cursor-agent -p --force --trust --output-format text --model cursor-grok-4.6-xhigh --workspace <repo> "<packet>"` |
 | **Primary implementer (alt)** | `grok` CLI 1.0.4, grok-4.6 | `grok --model grok-4.6 --reasoning-effort xhigh --prompt-file <packet.md> --output-format plain --max-turns N --no-plan --no-memory --disable-web-search --permission-mode auto --cwd <repo>` |
-| **Reviewer / auditor** | `codex` 0.148.0 npm build, GPT-5.6 Sol xhigh | `C:\Users\93rob\AppData\Roaming\npm\codex.cmd exec --ignore-user-config -m gpt-5.6-sol -c 'model_reasoning_effort="xhigh"' -s read-only -C <repo> - < packet.md` (the app-managed 0.130 build on PATH is too old; `-s workspace-write` for audits that write one file) |
+| **Reviewer / auditor** | `codex` npm build (0.149.0 as of 2026-08-23), GPT-5.6 Sol xhigh | `C:\Users\93rob\AppData\Roaming\npm\codex.cmd exec --ignore-user-config -m gpt-5.6-sol -c 'model_reasoning_effort="xhigh"' -s read-only -C <repo> - < packet.md` (the app-managed 0.130 build on PATH is too old; `-s workspace-write` for audits that write one file) |
 | **Frontend implementer** | `opencode` 1.18.18, GLM 5.3 Max (Z.ai coding plan) | `opencode run --dir <repo> --model zai-coding-plan/glm-5.3 --variant max --format json "<packet>"` — **GLM has no vision**; never accept its visual output on mechanical checks |
 | **Frontend visual reviewer** | `opencode` Kimi K3 xhigh (clinepass); `kimi` CLI k3-256k for small reviews | `opencode run --dir <repo> --model cline-pass/cline-pass/kimi-k3 --variant xhigh --format json "<packet>"`. Slow, silent first token; never kill on stdout silence |
 | **Fallback for frontend when every lane is out of quota** | Claude Opus 5 subagents | Agent tool, `model: opus` |
