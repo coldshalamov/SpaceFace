@@ -34,6 +34,9 @@ import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
+// A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
+// far past anything ordinary rendering explains, so it never fires in healthy play.
+const BRICK_WARN_MS = 200;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 export const POST_GRAIN_FPS = 12;
 export const DEFAULT_BLOOM_STRENGTH = 0.52;
@@ -742,22 +745,32 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // These pass bodies live for the bloom instance rather than being recreated as three arrow
   // closures every display frame. Explicit arguments preserve timePassGroup's local/finally
   // semantics without retaining mutable per-frame scene or camera state between renders.
+  // Program identities seen as of the last brick. Carried BETWEEN slow frames instead of rebuilt
+  // every frame, so the diff costs nothing until something is already wrong. Seeded once on the
+  // first scene pass so the FIRST brick still reports a real delta.
+  let brickSeenKeys = null;
+
   function renderScenePass(scene, camera, tier1) {
     const prevAutoClear = renderer.autoClear;
     renderer.autoClear = false;
-    const perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
-    const traceBrick = !!(perf && perf.renderWorkEnabled === true);
-    const info = traceBrick ? renderer.info : null;
-    const programsBefore = traceBrick && Array.isArray(info?.programs) ? info.programs.length : null;
-    // Snapshot the program IDENTITIES too, not just the count. "7 programs linked" says a brick
-    // happened; it does not say WHICH materials caused it, and without that the fix is a guess about
-    // which spawn the sector precompile failed to predict. Probe-gated, so it costs nothing in play.
-    const keysBefore = traceBrick && Array.isArray(info?.programs)
-      ? new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')))
-      : null;
-    const geometriesBefore = traceBrick && Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
-    const texturesBefore = traceBrick && Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
-    const startedAt = traceBrick && typeof performance !== 'undefined' && typeof performance.now === 'function'
+    // ALWAYS ARMED, and cheap. This was gated on `perf.renderWorkEnabled`, and the costly event —
+    // a 3,167 ms bloomScene — landed OUTSIDE the window where that gate was true, so the warning
+    // never fired for the one frame anyone cared about. Three attempts at the entering-flight brick
+    // were aimed by evidence this blind spot had already filtered. Do not re-gate it.
+    //
+    // The per-frame cost is one performance.now() pair and one array-length read. The expensive part
+    // — snapshotting program identities — happens ONLY on a frame that already blew the threshold,
+    // by diffing against a Set carried between slow frames rather than rebuilt every frame.
+    const info = renderer.info;
+    const programsBefore = Array.isArray(info?.programs) ? info.programs.length : null;
+    // Seed the baseline ONCE, on the very first scene pass. Without this the FIRST brick reports no
+    // delta — and the first brick is the entering-flight one, i.e. exactly the event being chased.
+    if (brickSeenKeys === null && Array.isArray(info?.programs)) {
+      brickSeenKeys = new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')));
+    }
+    const geometriesBefore = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+    const texturesBefore = Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
+    const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : 0;
     try {
@@ -767,11 +780,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
     } finally {
       renderer.autoClear = prevAutoClear;
-      if (traceBrick) {
+      {
         const elapsedMs = (typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now()
           : 0) - startedAt;
-        if (elapsedMs > 200) {
+        if (elapsedMs > BRICK_WARN_MS) {
           console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
             programsBefore,
             programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
@@ -779,13 +792,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             geometriesAfter: Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null,
             texturesBefore,
             texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
-            newPrograms: keysBefore && Array.isArray(info?.programs)
+            newPrograms: brickSeenKeys && Array.isArray(info?.programs)
               ? info.programs
                 .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
-                .filter((key) => !keysBefore.has(key))
+                .filter((key) => !brickSeenKeys.has(key))
                 .map((key) => key.slice(0, 120))
               : null,
           })}`);
+        }
+        // Refresh AFTER reporting, so the next brick reports what arrived since this one.
+        if (elapsedMs > BRICK_WARN_MS && Array.isArray(info?.programs)) {
+          brickSeenKeys = new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')));
         }
       }
     }
