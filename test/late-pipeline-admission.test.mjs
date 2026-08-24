@@ -67,7 +67,8 @@ test('admission compile path includes shadow depth and post-opening drain', asyn
   assert.match(renderer, /collectInstancePoolCompileRoots/);
   assert.match(renderer, /preparePostOpeningPipelines/);
   assert.match(renderer, /pipelineAdmissions\.compile\(subject\)/);
-  assert.match(renderer, /compileForCurrentTarget\(lateEntities\)/);
+  assert.match(renderer, /admitOpeningUnitsAcrossSlices/);
+  assert.match(renderer, /collectUncompiledSceneDrawables/);
   assert.match(readiness, /preparePostOpeningPipelines/);
   assert.match(
     renderer,

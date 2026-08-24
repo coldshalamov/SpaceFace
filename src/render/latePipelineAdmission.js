@@ -9,7 +9,20 @@ function isDrawable(object) {
     || object.isInstancedMesh === true
     || object.isPoints === true
     || object.isLine === true
+    || object.isSprite === true
   ));
+}
+
+/** Scene drawables that the opening leaf set never compiled. */
+export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
+  const opening = new Set(Array.isArray(openingSubjects) ? openingSubjects.filter(Boolean) : []);
+  const late = [];
+  if (!scene || typeof scene.traverse !== 'function') return late;
+  scene.traverse((object) => {
+    if (!isDrawable(object) || opening.has(object) || object.visible === false) return;
+    late.push(object);
+  });
+  return late;
 }
 
 export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {

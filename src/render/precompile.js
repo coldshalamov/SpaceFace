@@ -13,6 +13,7 @@ import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
+export { visiblePointLightBudget };
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 
@@ -31,7 +32,42 @@ const TRAFFIC_ROLE_SHIPS = Object.freeze([
   'ship_hornet',
 ]);
 const COMPILE_GRID_SPACING = 92;
+export const POINT_LIGHT_BUDGET_STAGING_NAME = 'SF_Precompile_EventLight_Staging';
 const compiledShipKeysByRenderer = new WeakMap();
+
+export function countVisiblePointLights(scene) {
+  let count = 0;
+  if (!scene || typeof scene.traverseVisible !== 'function') return count;
+  scene.traverseVisible((object) => { if (object && object.isPointLight === true) count++; });
+  return count;
+}
+
+export function releaseVisiblePointLightBudget(scene) {
+  const staging = scene && typeof scene.getObjectByName === 'function'
+    ? scene.getObjectByName(POINT_LIGHT_BUDGET_STAGING_NAME)
+    : null;
+  if (!staging) return null;
+  staging.removeFromParent();
+  if (typeof staging.clear === 'function') staging.clear();
+  return staging;
+}
+
+export function syncVisiblePointLightBudget(scene, video) {
+  releaseVisiblePointLightBudget(scene);
+  const target = visiblePointLightBudget(video);
+  const visible = countVisiblePointLights(scene);
+  if (!scene || visible >= target) return null;
+  const lightStaging = new THREE.Group();
+  lightStaging.name = POINT_LIGHT_BUDGET_STAGING_NAME;
+  scene.add(lightStaging);
+  for (let i = visible; i < target; i++) {
+    const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
+    standIn.name = `SF_Precompile_EventLight_${i}`;
+    standIn.position.set(i * 24, 10, 0);
+    lightStaging.add(standIn);
+  }
+  return lightStaging;
+}
 const pipelineKeepAliveByRenderer = new WeakMap();
 const globalPipelinesCompiledByRenderer = new WeakSet();
 const globalPrecompilePromiseByRenderer = new WeakMap();
@@ -90,25 +126,12 @@ async function precompileNow(
     // the first time a weapon flash fires (measured as multi-second freezes on Intel/ANGLE).
     // The vfx event-light pool keeps its lights permanently visible (intensity-only flashes);
     // if it hasn't attached yet, stage stand-ins so the compiled count still matches runtime.
-    const targetPointLights = visiblePointLightBudget(options.video);
-    let visiblePointLights = 0;
-    scene.traverseVisible((object) => { if (object.isPointLight) visiblePointLights++; });
-    if (visiblePointLights < targetPointLights) {
-      // WebGLRenderer.compile(staging, camera, scene) gathers target-scene lights and then gathers
-      // lights from the staging subject. A stand-in parented under staging is therefore visited
-      // twice because staging is already attached to scene, producing a 12-light shader key for
-      // the six-light live pool. Keep temporary lights as a target-scene sibling so each is counted
-      // exactly once while every compiled material still sees the production light cardinality.
-      lightStaging = new THREE.Group();
-      lightStaging.name = 'SF_Precompile_EventLight_Staging';
-      scene.add(lightStaging);
-      for (let i = visiblePointLights; i < targetPointLights; i++) {
-        const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
-        standIn.name = `SF_Precompile_EventLight_${i}`;
-        standIn.position.set(i * 24, 10, 0);
-        lightStaging.add(standIn);
-      }
-    }
+    // WebGLRenderer.compile(staging, camera, scene) gathers target-scene lights and then gathers
+    // lights from the staging subject. A stand-in parented under staging is therefore visited
+    // twice because staging is already attached to scene, producing a 12-light shader key for
+    // the six-light live pool. Keep temporary lights as a target-scene sibling so each is counted
+    // exactly once while every compiled material still sees the production light cardinality.
+    lightStaging = syncVisiblePointLightBudget(scene, options.video);
 
     if (incremental) await yieldToMain();
     let index = 0;

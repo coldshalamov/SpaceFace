@@ -32,6 +32,7 @@
 // drop-in replacement for renderer.render — the render layer calls bloom.render(scene, camera) instead.
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
+import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
@@ -888,6 +889,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     );
   }
 
+  function touchScenePipelines(subject, camera, lightingScene = subject) {
+    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene);
+  }
+
   async function prepareResources(yieldToMain = () => Promise.resolve()) {
     if (typeof renderer.initRenderTarget !== 'function') {
       return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
@@ -903,6 +908,26 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         height: target.height,
         durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - started,
       });
+    }
+    await yieldToMain();
+    const previousTarget = typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null;
+    const previousMat = quadMesh.material;
+    try {
+      if (down[0]) {
+        quadMesh.material = downsampleMat;
+        renderer.setRenderTarget(down[0]);
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      }
+      quadMesh.material = compositeMat;
+      renderer.setRenderTarget(null);
+      if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+    } finally {
+      quadMesh.material = previousMat;
+      if (typeof renderer.setRenderTarget === 'function') {
+        renderer.setRenderTarget(previousTarget || null);
+      }
     }
     await yieldToMain();
     return { skipped: false, targets: targets.length, allocations };
@@ -1046,6 +1071,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     render,
     compileScenePipelines,
     warmScenePipelines,
+    touchScenePipelines,
     prepareResources,
     contextLossResources,
     setSize,

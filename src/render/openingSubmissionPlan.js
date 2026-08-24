@@ -357,8 +357,23 @@ function materialProgramSubjectManifest(material) {
     fog: material && material.fog !== false,
     lights: material && material.lights === true,
     toneMapped: material && material.toneMapped !== false,
+    declaredProgramKey: String(
+      material && (material.programCacheKey
+        || material.userData && (
+          material.userData.openingProgramSubjectKey || material.userData.programKey
+        )
+      ) || '',
+    ),
+    shader: `${shaderSourceSignature(material && material.vertexShader)}|${
+      shaderSourceSignature(material && material.fragmentShader)}`,
     textures,
   };
+}
+
+function shaderSourceSignature(source) {
+  if (typeof source !== 'string' || !source) return '';
+  const last = source.length - 1;
+  return `${source.length}:${source.charCodeAt(0)}:${source.charCodeAt(last >> 1)}:${source.charCodeAt(last)}`;
 }
 
 /**
@@ -366,16 +381,13 @@ function materialProgramSubjectManifest(material) {
  * driver cache key is only knowable after compile, while this key is the exact material subject
  * identity used to select the leaf for that one compile. Receipts separately record the actual
  * renderer.info cache keys after admission.
+ *
+ * Do not return `customProgramCacheKey()` alone. Authored families share that string across
+ * distinct maps/defines, which collapsed forty first-picture leaves into three admitted
+ * programs while bloomScene still linked seventeen driver variants.
  */
 export function openingProgramSubjectKey(material) {
   if (!material) return null;
-  const declared = material.programCacheKey
-    || material.userData && (material.userData.openingProgramSubjectKey || material.userData.programKey);
-  if (declared) return String(declared);
-  const custom = typeof material.customProgramCacheKey === 'function'
-    ? (() => { try { return String(material.customProgramCacheKey() || ''); } catch (_) { return ''; } })()
-    : '';
-  if (custom) return custom;
   return `producer-program:${contentHashForProducerManifest(materialProgramSubjectManifest(material))}`;
 }
 

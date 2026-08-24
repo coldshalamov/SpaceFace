@@ -22,6 +22,12 @@ test('collects mesh-like children and falls back to the root', () => {
   };
   assert.deepEqual(collectCompileSubjects(root).map((item) => item.name), ['hull', 'canopy']);
   assert.deepEqual(collectCompileSubjects({ name: 'empty' }).map((item) => item.name), ['empty']);
+  assert.deepEqual(
+    collectCompileSubjects({
+      traverse(fn) { fn({ isSprite: true, name: 'spark' }); },
+    }).map((item) => item.name),
+    ['spark'],
+  );
 });
 
 test('flight after first paint yields between compile subjects; loading does not slice', async () => {

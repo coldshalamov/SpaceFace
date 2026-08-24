@@ -97,6 +97,7 @@ import {
   invalidatePrecompileState,
   precompileGlobalPipelines,
   precompilePipelines,
+  syncVisiblePointLightBudget,
 } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
@@ -149,6 +150,7 @@ import {
 import {
   collectInstancePoolCompileRoots,
   collectLateAdmittedCompileRoots,
+  collectUncompiledSceneDrawables,
 } from './latePipelineAdmission.js';
 import {
   armAdmissionShadows,
@@ -172,6 +174,11 @@ import {
   createOpeningSubmissionReceipt,
   validateOpeningSubmissionReceipt,
 } from './openingSubmissionPlan.js';
+import {
+  admitOpeningUnitsAcrossSlices,
+  touchSubjectOnExactTarget,
+  uniqueAdmissionUnits,
+} from './openingGpuAdmission.js';
 import {
   stampContactShadowPoolPackage,
   stampShipAuxPoolPackage,
@@ -2366,7 +2373,10 @@ export const render = {
     this._envMap = null;
     try {
       // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
-      const bakeEnv = () => this._bakeEnv();
+      const bakeEnv = () => {
+        if (this._openingEnvFrozen === true) return;
+        this._bakeEnv();
+      };
       setTimeout(bakeEnv, 120); // let the starfield's async background decode first
     } catch (_) { /* PMREM unavailable */ }
 
@@ -2503,6 +2513,7 @@ export const render = {
             this._bakeEnv({
               previousEnvMap: this._lostEnvMap,
               disposePrevious: false,
+              force: true,
             });
             this._lostEnvMap = null;
             // Fresh GPU timer set bound to the restored context (default OFF).
@@ -2713,6 +2724,41 @@ export const render = {
       this.bloom = null;
       this._postNativeFallbackReason = 'post-processor-unavailable';
     }
+    this._firstPresentGpuReady = false;
+    this._firstPresentGpuAdmission = (async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 140));
+        if (typeof this._bakeEnv === 'function') this._bakeEnv();
+        syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+        compileShadowDepthPipelines({
+          renderer,
+          light: this._keyLight,
+          camera: cam.obj,
+          subjects: [],
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          stagingName: 'SF_BootShadowMapPrime',
+        });
+        const leaves = collectOpeningSubmissionLeaves(scene, { includeOffscreen: true });
+        const route = this._selectPostRoute();
+        await admitOpeningUnitsAcrossSlices({
+          units: uniqueAdmissionUnits(leaves),
+          compileOne: (subject) => Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)),
+          touchOne: (subject) => (
+            this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+              ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
+              : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene)
+          ),
+          yieldToMain: yieldToBrowser,
+        });
+      } catch (error) {
+        console.warn('[render] first-present GPU admission failed', error);
+      } finally {
+        this._firstPresentGpuReady = true;
+      }
+    })();
     this._postOptionsSig = null;
     // Collision/socket/landing-contact debug visualization (spec §12.5). OFF by default; toggled via
     // the render system handle (state.render.debug.toggle) — wired to F7 in ui/input.js.
@@ -3056,6 +3102,12 @@ export const render = {
       // each run one batched compileShadowDepthPipelines behind the loading shell.
       return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
     };
+    const touchExactTargetSubject = (subject) => {
+      if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
+        return this.bloom.touchScenePipelines(subject, cam.obj, scene);
+      }
+      return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
+    };
     const compileForCurrentTarget = (subjects, requestedRoute = null) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
@@ -3353,6 +3405,20 @@ export const render = {
         || plan.firstPlayablePipelineSet.complete !== true) {
         throw new Error('Opening submission plan is incomplete; refusing first-playable admission');
       }
+      // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
+      // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
+      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera: cam.obj,
+        subjects: [],
+        forceEnable: this._shadowSettingOn === true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+        stagingName: 'SF_OpeningShadowMapPrime',
+      });
       // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
       // opening key set (including the measured opening-only misses) is compiled once for this
       // first picture. No broad authored root is admitted a second time.
@@ -3390,17 +3456,22 @@ export const render = {
         subjects.push(subject);
       }
       const route = this._selectPostRoute();
-      // Use the existing exact-target admission seam to compile the frozen flat leaf set in one
-      // driver batch. It temporarily records/restores each leaf's production parent; no scene
-      // render or hidden discovery pass is introduced, and the live lighting scene remains the
-      // third compile argument so program keys match the first visible route.
+      const units = uniqueAdmissionUnits(subjects);
       const result = subjects.length > 0
-        ? await compileForCurrentTarget(subjects, route)
+        ? await admitOpeningUnitsAcrossSlices({
+          units,
+          compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
+          touchOne: touchExactTargetSubject,
+          yieldToMain: yieldToBrowser,
+        })
         : { skipped: true, reason: 'empty opening draw set' };
       const shadowResult = warmOpeningShadowPipelines(subjects);
+      this._firstPresentGpuReady = true;
       return {
         schema: plan.schema,
         drawLeaves: subjects.length,
+        materials: units.materialCount,
+        geometries: units.geometryCount,
         result,
         shadowResult,
       };
@@ -3470,28 +3541,20 @@ export const render = {
         restoreObjectHome,
         stagingName: 'SF_PostOpeningShadowMapPrime',
       });
+      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
       const sector = this._pendingPostOpeningSector;
       this._pendingPostOpeningSector = null;
       let sectorResult = null;
       if (sector && !gpu.software) {
-        const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
-          ? performance.now()
-          : Date.now();
         const route = this._selectPostRoute();
         try {
           sectorResult = await precompilePipelines(renderer, scene, cam.obj, {
             sector,
             incremental: true,
             yieldToMain: yieldToBrowser,
-            preparePipelines: (subject) => {
-              const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
-                ? performance.now()
-                : Date.now();
-              if (now - started >= 0) {
-                return Promise.resolve({ skipped: true, reason: 'post-opening-sector-budget' });
-              }
-              return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
-            },
+            preparePipelines: (subject) => Promise.resolve(
+              this._compilePostRoute(route, subject, cam.obj, scene),
+            ),
             video: state.settings && state.settings.video,
           });
         } catch (error) {
@@ -3528,10 +3591,23 @@ export const render = {
         seenLate.add(root);
         lateCandidates.push(root);
       }
+      const uncompiledScene = collectUncompiledSceneDrawables(scene, openingSubjects);
+      for (const root of uncompiledScene) {
+        if (!root || seenLate.has(root)) continue;
+        seenLate.add(root);
+        lateCandidates.push(root);
+      }
       let lateColor = queued;
-      if (pendingCount === 0 && lateEntities.length > 0) {
+      const lateCompileRoots = [...lateEntities, ...poolRoots, ...uncompiledScene];
+      if (lateCompileRoots.length > 0) {
         try {
-          lateColor = await compileForCurrentTarget(lateEntities);
+          const route = this._selectPostRoute();
+          lateColor = await admitOpeningUnitsAcrossSlices({
+            units: uniqueAdmissionUnits(lateCompileRoots.flatMap((root) => collectCompileSubjects(root))),
+            compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
+            touchOne: touchExactTargetSubject,
+            yieldToMain: yieldToBrowser,
+          });
         } catch (error) {
           console.warn('[render] post-opening late color pipeline compile failed', error);
           lateColor = {
@@ -3571,6 +3647,9 @@ export const render = {
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
+        if (this._firstPresentGpuAdmission) {
+          await this._firstPresentGpuAdmission;
+        }
         const plan = state.render.openingSubmissionPlan || buildOpeningSubmissionPlan();
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
@@ -3589,11 +3668,20 @@ export const render = {
         if (this.bloom && typeof this.bloom.prepareResources === 'function') {
           result.post = await this.bloom.prepareResources(yieldToBrowser);
         }
+        const geometryUnits = uniqueAdmissionUnits(plan.residencySubjects);
+        result.geometries = await admitOpeningUnitsAcrossSlices({
+          units: { programSubjects: [], geometrySubjects: geometryUnits.geometrySubjects, geometryCount: geometryUnits.geometryCount, materialCount: 0 },
+          touchOne: touchExactTargetSubject,
+          yieldToMain: yieldToBrowser,
+        });
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
         state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
         await yieldToBrowser();
+        // Boot admission and sliced touches may still settle on this turn. Recapture so extra
+        // already-linked programs cannot fail the first-draw identity gate closed.
+        state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
         state.render.startupGpuResidency = result;
         return result;
       } finally {
@@ -4353,6 +4441,7 @@ export const render = {
     });
     bus.on('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {
+        this._openingEnvFrozen = false;
         releaseOpeningGraphPublication(this);
         // A save/load transition replaces entity objects while commonly reusing their numeric IDs.
         // Never let the prior flight's glass/runway membership gate the restored world by ID: it
@@ -4717,6 +4806,7 @@ export const render = {
   // init after the starfield background decodes, AND on WebGL context restore (a lost GL context
   // invalidates the envMap GPU texture — without re-baking, chrome hulls go matte after recovery).
   _bakeEnv(options = {}) {
+    if (this._openingEnvFrozen === true && options.force !== true) return;
     try {
       const renderer = this.renderer, scene = this.scene, state = this.state;
       const previousEnvMap = Object.prototype.hasOwnProperty.call(options, 'previousEnvMap')
@@ -5708,6 +5798,8 @@ export const render = {
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
             freezeOpeningGraphPublication(this);
+            this._bakeEnv();
+            this._openingEnvFrozen = true;
             succeeded = true;
             return true;
           }
@@ -5891,6 +5983,10 @@ export const render = {
     // trigger the entire first texture/shader upload during a progress yield, freezing that shell
     // for 5-8 seconds on SwiftShader and low-end drivers.
     if (this.state.mode === 'loading') return false;
+    // Menu is DOM. Hold the first 3D present until boot GPU admission has linked the live
+    // background programs and uploaded their buffers; otherwise bloomScene pays 17 first-use
+    // links on Intel/ANGLE in one presented frame.
+    if (this.state.mode === 'menu' && this._firstPresentGpuReady !== true) return false;
     // Entity roots may spawn/rebuild and VFX events may fire between render updates;
     // reassert diagnostic owner seams immediately before draw so nothing leaks a frame.
     try { this.state?.render?.perfEntityIsolation?.reassert?.(); } catch (_) { /* diagnostic only */ }
@@ -5941,6 +6037,18 @@ export const render = {
           this.state.render && this.state.render.openingSubmissionFirstDrawSubmittedAt,
         );
       if (openingFirstDraw) {
+        const openingPlan = this.state.render && this.state.render.openingSubmissionPlan;
+        if (openingPlan && openingPlan.complete === true) {
+          // Loading may still link exact-target extras after the gpu-resources receipt.
+          // Fold those already-resident programs into the baseline so pre-submit cannot
+          // freeze the picture for work that is already done. Post-submit still flags
+          // programs created by this first presented draw.
+          this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
+            this.renderer,
+            openingPlan,
+            { scene: this.scene },
+          );
+        }
         const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
         const preSubmitValidation = receipt
           ? validateOpeningSubmissionReceipt(receipt, this.renderer)
@@ -5951,7 +6059,10 @@ export const render = {
           };
         this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
         if (!preSubmitValidation.ok) {
-          this.state.render.openingSubmissionValidation = preSubmitValidation;
+          const missingCount = (preSubmitValidation.missingProgramKeys || []).length
+            + (preSubmitValidation.missingGeometryBufferIds || []).length
+            + (preSubmitValidation.missingTextureIds || []).length
+            + (preSubmitValidation.missingShadowResourceIds || []).length;
           const failure = {
             reason: preSubmitValidation.reason || null,
             uncaptured: preSubmitValidation.uncaptured || [],
@@ -5964,8 +6075,19 @@ export const render = {
             missingTextureIds: preSubmitValidation.missingTextureIds || [],
             missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
           };
-          console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
-          return false;
+          // Loading admission may compile extra programs/textures after the frozen census.
+          // Those extras are already resident, so they are not a first-draw hitch. Only a
+          // missing required identity can refuse the first presented frame.
+          if (missingCount > 0) {
+            this.state.render.openingSubmissionValidation = preSubmitValidation;
+            console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
+            return false;
+          }
+          this.state.render.openingSubmissionPreSubmitValidation = {
+            ...preSubmitValidation,
+            ok: true,
+            extrasOnly: true,
+          };
         }
       }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so

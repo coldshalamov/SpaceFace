@@ -9,7 +9,8 @@ export function collectCompileSubjects(root) {
   const subjects = [];
   root.traverse((object) => {
     if (!object) return;
-    if (object.isMesh || object.isSkinnedMesh || object.isPoints || object.isLine) {
+    if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+      || object.isPoints || object.isLine || object.isSprite) {
       subjects.push(object);
     }
   });

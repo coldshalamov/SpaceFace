@@ -13,6 +13,7 @@ import {
   createFirstPlayablePipelineSet,
   createOpeningSubmissionPlan,
   createOpeningSubmissionReceipt,
+  openingProgramSubjectKey,
   stampOpeningSubmissionPackage,
   validateOpeningSubmissionReceipt,
 } from '../src/render/openingSubmissionPlan.js';
@@ -266,6 +267,19 @@ test('opening submission plan admits only camera-contributing production leaves'
     },
   };
   assert.deepEqual(collectOpeningSubmissionLeaves(root, { camera }), [near]);
+});
+
+test('opening program subject keys keep family shaders distinct when maps differ', () => {
+  const family = () => 'spaceface-common-rock-pbr';
+  const mapA = new THREE.Texture();
+  mapA.name = 'albedo-a';
+  const mapB = new THREE.Texture();
+  mapB.name = 'albedo-b';
+  const a = new THREE.MeshStandardMaterial({ map: mapA });
+  const b = new THREE.MeshStandardMaterial({ map: mapB });
+  a.customProgramCacheKey = family;
+  b.customProgramCacheKey = family;
+  assert.notEqual(openingProgramSubjectKey(a), openingProgramSubjectKey(b));
 });
 
 test('first playable pipeline set is content-hash bound and defers global misses', () => {
