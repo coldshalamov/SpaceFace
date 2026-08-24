@@ -54,8 +54,8 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 9,
-    "combat:damage": 9,
+    "projectile:hit": 2,
+    "combat:damage": 2,
     "economy:tick": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
@@ -63,12 +63,12 @@
     "presentation:audioCue": 4,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 13,
-    "presentation:cue": 13,
+    "presentation:cueApplied": 6,
+    "presentation:cue": 6,
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70",
+    "authoritativeHash": "60551f42970fa9dab5980828466d2e841201ae10fd0fd605f7c2bdc8809f60ee",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -125,6 +125,11 @@
     "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields. Player path stays on heading. projectile:hit and combat:damage 6->9; cue fanout 10->13. combat:fire stays 17.",
     "Prior authoritativeHash was 8c7c22f4aa02ff47441a81b9cf0d762f8dcbfcfb56744ba8171155c805edde85.",
     "2026-08-21 deliberate CONTENT_ONLY re-record for the causal physics active set. sim-golden-diff against cdf6138d found 20 physics-membership leaves changed and ZERO entity pos / vel / rot / angVel / prevPos fields changed.",
-    "V3 now reports seven causally active Rapier bodies instead of ten; far actors remain durable. Uninterrupted and reload-at-600 hashes match. Trace counts and motion are unchanged. Prior hash: 30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350."
+    "V3 now reports seven causally active Rapier bodies instead of ten; far actors remain durable. Uninterrupted and reload-at-600 hashes match. Trace counts and motion are unchanged. Prior hash: 30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350.",
+    "2026-08-24 deliberate re-record for PQ-135.01 per-hull feel envelopes (owner-mandated: every ship was heavy like underwater).",
+    "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields — the player path under the same stick tape, plus matching physics-body x/z/vx/vz, input aimWorld, and two scenario-timing fields (event[2] tick 171->149).",
+    "Trace counts moved: projectile:hit and combat:damage 9->2, presentation cue fanout 13->6. combat:fire UNCHANGED at 17 — same shots fired; the crisper hull evades seven that used to connect (entity[2] shield 40.75->110).",
+    "Legacy envelope stays bit-identical: compatibility flight was deliberately given no feel envelopes.",
+    "Prior authoritativeHash was b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70."
   ]
 }
