@@ -949,6 +949,31 @@ ever saw, and they link on first draw. The fix is to route those through the sam
 admission path the opening uses, spread across frames because parallel compile is unavailable here.
 `precompile.js`, `pipelineReadiness.js` and `admissionSliceBudget.js` already exist for this shape.
 
+**2026-08-24 (LATER) — THE BRICK IS FIXED, AND WAVE C's GATE IS NOW OPEN.** Opening GPU admission
+(`e7c6dffd`) gets the opening's programs linked and geometry uploaded before the first presented
+frame. Re-measured independently on a quiet machine, twice:
+
+| | before | after |
+|---|---|---|
+| worst frame | 3237-3654 ms | **5-6 ms** |
+| presentation p95 | 5.5 ms | **3.1 ms** |
+| hitches | 13-15 of ~800 | **1 of ~1215** |
+| `[GPU brick]` lines | several per run | **none** |
+
+Typical frames got FASTER, so nothing was traded. **Hitch count 13 -> 1 clears the promotion law
+("promote only after hitch count is halved") by a wide margin**, which is the law attempt 1 died on.
+
+**But read what that means before dispatching `.11`-`.18`.** Wave C is *crowded 60 fps* work. The
+machine now holds **p95 3.1 ms** — roughly a 5x margin on a 16.7 ms frame — with one hitch in 1,215
+frames. The gate opening does NOT establish that the crowd is a problem; it establishes that the
+brick that made everything look like a problem is gone. **Re-measure the actual crowded case before
+admitting any of `.11`-`.18`, and close as no-op whatever the measurement does not justify.** §8.2's
+own rule applies: these are reserved identities, and a plan is legal only if the player-facing game
+is unchanged.
+
+Still open, deliberately out of scope for that job: Continue/load logs two ~730 ms bricks
+(programs 14 -> 17, geometries 13 -> 19). New Game is clean.
+
 **2026-08-24 — THE COMPILE-ON-ADMISSION FIX DID NOT REMOVE THE BRICK. Measured, not assumed.**
 Two runs on a quiet-ish machine (one UI lane, no GPU work):
 
