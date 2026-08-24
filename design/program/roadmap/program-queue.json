@@ -8866,7 +8866,7 @@
       "priority": 385,
       "title": "Motion Lab: deterministic movement scenarios and motion telemetry",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-motion"
@@ -8878,7 +8878,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-02-motion-lab-REPORT.md"
+      ],
       "brief": "Motion Lab: deterministic movement scenarios and motion telemetry so feel is measured rather than argued (21A.23-.25). Done when scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers."
     },
     {
