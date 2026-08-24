@@ -414,6 +414,13 @@ it supplies no task, ownership, gate, quota, or acceptance authority.
 
 ## 3. Authority and truth
 
+**The plan-family index is [`design/PLAN_REGISTRY.md`](./design/PLAN_REGISTRY.md).** It names which
+plan family owns what, and which are ACTIVE, FUTURE or subordinate evidence. It correctly points at
+THIS file as the agent front door, but nothing here pointed back at it — so an agent entering
+through the front door could not find the index. That gap is closed here. If you are looking for a
+plan and it is not in this document, look there before assuming it does not exist.
+
+
 Use this order when sources disagree:
 
 1. the user's current direction;
@@ -1029,6 +1036,36 @@ spawn, and the opening budget is already spoken for.
 | **A · name it** | `.01`–`.03` | `PQ-061` census, `PQ-062` live hitch classifier, `PQ-063` phase timers | Every >32 ms frame has a named owner on the real present path |
 | **B · kill bricks** | `.04`–`.10` | `PQ-073` compose slice, `PQ-075` next-contact, `PQ-064`/`PQ-072` shader keys, `PQ-074` upload, `PQ-054` leftover admission, `PQ-101` catch-up | First hostile and Continue no longer drop 40–250+ ms bricks |
 | **C · crowded 60 fps** | `.11`–`.18` planned | `PQ-068` submit, `PQ-052` batching, `PQ-076` lanes, `PQ-108` tiny LOD, `PQ-080` cadence, `PQ-097` bloom-if-pole, `PQ-087` autosave, `PQ-094` sweep | Promote only after hitch count is halved or the classifier names that owner |
+
+**2026-08-24 — WAVE C IS MEASURED AND SEVEN OF EIGHT LEAVES ARE CLOSED AS NO-OPS.** A crowded scene
+was built deliberately (218 draw calls, 12 nearby contacts) rather than an idle fly, and every phase
+came in under the 16.7 ms budget: **render p95 7.4 ms, presentation p95 9.4 ms, sim p95 7.7 ms.**
+The poles these leaves assume do not exist on this machine.
+
+| Leaf | Disposition | The number that decided it |
+|---|---|---|
+| `.11` glass/runway submit | **CLOSE — NO-OP** | 39-43 submitted objects; render p95 7.4 ms. Submission was not the pole. |
+| `.12` rigid opaque batching | **CLOSE — NO-OP** | 218 draw calls and render still 7.4 ms. No evidence to replay the rejected candidate. |
+| `.13` canopy/plume lanes | **CLOSE — NO-OP** | No canopy or plume lane was ever named as an owner. |
+| `.14` tiny-fighter LOD | **CLOSE — NO-OP** | Crowded contacts were CLOSE, not 30-pixel fighters. |
+| `.15` off-table AI sleep | **CLOSE — NO-OP** | tacticalAI 3.0 ms p95, physics 1.2 ms; off-table sleep is already wired. |
+| `.16` cheaper bloom/HDR | **CLOSE — NO-OP** | bloom scene/downsample/composite p95 5.8 / 0.2 / 0.1 ms. Post was not the pole. |
+| `.17` autosave off the callback | **CLOSE — NO-OP** | Autosave owned **0** of 122 hitches. |
+| `.18` pole sweep | **JUSTIFIED — and this review IS it** | Only 71.3 % of hitches got a named owner. |
+
+**What the sweep found instead.** 122 hitch frames (11.7 %) remain, and the largest bucket is
+**external scheduling (55) plus unknown (35)** — outside the measured game phases. The strongest
+in-game lead points back at Wave B territory, not Wave C: four more `bloomScene` bricks of
+**219-496 ms**, each accompanied by new shader-program or geometry activity, while an authored
+background job was still running. **Compile / upload / admission again, in the crowded and
+Continue paths this time.**
+
+**Instrument limits, stated so the next reader does not over-trust this:** no GPU timestamp queries,
+so compilation, upload and driver stalls cannot be separated precisely; 35 hitches remain unowned;
+the crowd was synthetic, not an organic playthrough; the 30-pixel fighter case was never exercised;
+and the authored-settlement gate would not complete, so this reflects the live fallback/admission
+state rather than a fully settled fleet.
+
 
 Illegal here: default quality cuts, headless hitch-budget as acceptance, replaying the rejected
 BatchedMesh candidate, starting Worker/WebGPU because Wave B is hard, shrinking hail 5200 as a
@@ -1935,6 +1972,50 @@ Motion Lab → player handling convergence → hull-relative enemy actuator
 `PQ-135.00` is small, contained, and immediately felt — do it first. `.01` and `.02` are the real
 "nimble" work and belong together, because feel that is not measured is feel that regresses.
 `.03`-`.05` are the enemy half and depend on `.01` landing first, per §21A's own order.
+
+## 13B. Field the authored assets we already own (`PQ-136`) — ADMITTED 2026-08-24
+
+**Owner, 2026-08-24, after playtest:** *"if there was ever restarted or abandoned graphics work,
+there should not be abandoned and unused files like that... we already have a dearth of variety in
+this game for most things so we need to have everything utilized if we can."*
+
+### The measurement
+
+`check:asset-reachability` reports **276 referenced runtime assets** routed correctly — the runtime
+wiring is healthy. The problem is not broken routing, it is **authored work that was never routed at
+all.** Counted 2026-08-24:
+
+| Pack | Models | Referenced by `src/` | Unused |
+|---|---|---|---|
+| `assets/incubator/wreck_aftermath_pack` | 44 | **0** | **44 — the entire pack** |
+| `assets/incubator/everyday_space_kit` | 62 | 32 | 30 |
+| `assets/incubator/npc_activity_pack` | 15 | 9 | 6 |
+
+**Eighty authored models the player never sees.** The wreck pack is hero wreck hulls plus component
+and fragment kits built to an authored-fracture grammar (truss versus plated); the space kit is
+infrastructure props; the activity pack is occupational craft.
+
+**Do not measure this with a filename grep.** A first pass reported "852 of 1,412 models unused" and
+was WRONG — models resolve through manifests and LOD families, not literal paths, so most of those
+were LODs, source files, and third-party kits. `check:asset-reachability` is the instrument.
+
+### The leaves
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-136.00`** | **The wreck pack reaches the player.** 44 models, currently zero. Wrecks are the cheapest variety in the game — they need no AI, no balance pass, and no new systems; they need routing and placement. | A player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. |
+| **`PQ-136.01`** | The 30 unused `everyday_space_kit` props are placed where infrastructure belongs — stations, lanes, work sites. | Sectors read as inhabited rather than decorated with the same prop repeated. |
+| **`PQ-136.02`** | The 6 unused `npc_activity_pack` craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. | New occupational craft appear in traffic without a new AI path. |
+| **`PQ-136.03`** | **Half-finished or superseded hulls are triaged, not abandoned.** For each: field it, alter it into a variant (a different faction, a damaged version, a wreck), or record why it genuinely cannot be used. Deleting is the last option, not the first. | Every authored hull has a disposition on the record. |
+
+### Rules
+
+- **Reuse before authoring.** No new model is commissioned for a slot an existing unused asset can
+  fill; that is the whole point of this plan.
+- A variant (repaint, damage pass, faction kit, wreck conversion) counts as fielding.
+- The asset pipeline contract and reachability checks stay green — this adds routing, not exceptions.
+- **Preserve valuable future work** (`PLAN_REGISTRY.md` rule 6): mark `FUTURE` or `PARTIAL` rather
+  than deleting because no implementation exists yet.
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 
