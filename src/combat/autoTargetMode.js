@@ -245,13 +245,17 @@ const PATH_CORRIDOR = 16;                 // cross-track error (WU) at which the
 const PATH_CORRECTION_GAIN = 1.35;        // how hard the corridor steers back onto the line
 const PATH_PROJECTION_WINDOW = 30;        // WU of path searched ahead of committed progress
 const PATH_PROJECTION_BACK = 6;           // WU of slack behind it, so a shoved hull is not stranded
-const PATH_CURVE_STENCIL = 2;             // nodes either side used to measure curvature (~12 WU baseline)
+const PATH_CURVE_STENCIL = 8;             // nodes either side: 24 WU chord — ship turning scale, not 8-px jitter
+const PATH_CURVE_SMOOTH_HALF = 2;         // ±2 nodes (15 WU) signed boxcar; tremor cancels, corners persist
 const PATH_VELOCITY_ERROR_FULL = 26;      // velocity error (WU/s) that commands full thrust
 const PATH_CORNER_FLOOR_SPEED = 14;       // hairpins throttle down to this, never to a deadlock
 const PATH_BRAKE_MARGIN = 6;              // WU/s over the governed speed before the brake is asserted
 const PATH_MAX_NODES = 8192;              // ~24 km of stroke at 3 WU spacing; bounds one cache build
 const PATH_REST_SPEED = 1;                // below this the hull is genuinely stopped, not coasting              // WU/s over the governed speed before the brake is asserted
 
+// SIGNED curvature on a ship-scale chord. Taking abs() per sample was the crawl: 8-px hand
+// tremor is zero-mean heading noise, but |k| rectifies it into a fake hairpin, and MAX over
+// the lookahead then pins the hull to PATH_CORNER_FLOOR_SPEED for the whole stroke.
 function pathCurvatureAt(nodes, index) {
   const lo = index - PATH_CURVE_STENCIL;
   const hi = index + PATH_CURVE_STENCIL;
@@ -262,7 +266,7 @@ function pathCurvatureAt(nodes, index) {
   const h1 = Math.atan2(b.z - a.z, b.x - a.x);
   const h2 = Math.atan2(c.z - b.z, c.x - b.x);
   const arc = PATH_CURVE_STENCIL * PATH_RESAMPLE_SPACING;
-  return Math.abs(wrapAngle(h2 - h1)) / Math.max(arc, 1e-6);
+  return wrapAngle(h2 - h1) / Math.max(arc, 1e-6);
 }
 
 function appendResampledPoint(cache, x, z, sourceIndex) {
@@ -418,14 +422,27 @@ function projectOntoPath(cache, px, pz) {
   return { s: bestS, x: bestX, z: bestZ, tx: bestTx, tz: bestTz, cross, dist: Math.sqrt(bestSq) };
 }
 
-// Worst curvature between here and the carrot decides the corner speed, so the hull is already slow
-// when it ARRIVES at a hairpin rather than discovering it mid-corner.
+// Worst *smoothed* curvature between here and the carrot decides the corner speed, so the hull
+// is already slow when it ARRIVES at a hairpin rather than discovering it mid-corner. Raw
+// per-sample MAX is forbidden: a hand stroke sampled every ~8 screen pixels reads its own
+// sampling jitter as a hairpin. Signed k is boxcar-averaged over PATH_CURVE_SMOOTH_HALF, then
+// abs'd — zero-mean tremor cancels, a persistent turn does not. No per-frame allocation.
 function worstCurvatureAhead(cache, fromS, toS) {
+  const nodes = cache.nodes;
+  const last = nodes.length - 1;
   const i0 = nodeIndexAtS(cache, fromS);
   const i1 = nodeIndexAtS(cache, toS);
   let worst = 0;
   for (let i = i0; i <= i1; i += 1) {
-    const k = pathCurvatureAt(cache.nodes, i);
+    const a = i - PATH_CURVE_SMOOTH_HALF < 0 ? 0 : i - PATH_CURVE_SMOOTH_HALF;
+    const b = i + PATH_CURVE_SMOOTH_HALF > last ? last : i + PATH_CURVE_SMOOTH_HALF;
+    let sum = 0;
+    let n = 0;
+    for (let j = a; j <= b; j += 1) {
+      sum += pathCurvatureAt(nodes, j);
+      n += 1;
+    }
+    const k = n > 0 ? Math.abs(sum / n) : 0;
     if (k > worst) worst = k;
   }
   return worst;
@@ -532,9 +549,14 @@ function followAutoTargetPath(inp, player, state, runtime) {
 
   // Speed governor. "Follow the line" at finite thrust means DECELERATING INTO a hairpin, not cutting
   // it: a pure-pursuit controller with no governor still corners wide and still reads as broken.
+  // Closing a large cross-track offset is the same budget as a corner: k ≈ 2 |cross| / lookahead²
+  // (sagitta of the return). On the line this is ~0; a hull 55 WU off that still commanded cruise
+  // ate the path before the restoring pull could cover it.
   const curvature = worstCurvatureAhead(cache, cache.progressS, carrotS);
-  const cornerSpeed = curvature > 1e-5
-    ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / curvature))
+  const returnK = 2 * Math.abs(projection.cross) / Math.max(lookahead * lookahead, 1);
+  const kUse = curvature > returnK ? curvature : returnK;
+  const cornerSpeed = kUse > 1e-5
+    ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / kUse))
     : Infinity;
   // How far is there still to travel? Arc-length remaining alone is wrong for a DISPLACED hull: a
   // ship shoved 50 WU sideways at s = 110 of a 120 WU stroke has remaining = 10, which drives the

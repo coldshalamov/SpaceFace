@@ -8821,7 +8821,7 @@
       "priority": 383,
       "title": "Draw-to-fly speed governor stops crawling (floor 14 vs 112-133 cruise)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-motion"
@@ -8833,7 +8833,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-00-speed-governor-REPORT.md"
+      ],
       "brief": "The draw-to-fly speed governor stops crawling. Measured defect: ships cruise at 112-133 WU/s while PATH_CORNER_FLOOR_SPEED is 14 (about one eighth); worstCurvatureAhead takes MAX curvature over the lookahead and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin, pinning the hull to the floor for the whole stroke. Done when a drawn stroke is flown at a speed a player would choose AND still tracked. The existing tracking test measures cross-track and never SPEED (it would pass at 1 WU/s) - add the speed bar to it. Seam: src/combat/autoTargetMode.js."
     },
     {

@@ -24,7 +24,9 @@
 //
 // Bounds below carry roughly 3-6x headroom over measured behaviour, so ordinary tuning does not
 // turn this red, but a structural regression does. Verified by mutation: zeroing the cross-track
-// correction gain, or removing the curvature speed governor, each turns this file red.
+// correction gain, or removing the curvature speed governor, each turns this file red. A third
+// mutation is now in scope: restoring per-sample MAX of |curvature| turns the speed bar red, and
+// ignoring curvature turns the hairpin slowdown bar red.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,6 +91,30 @@ function unevenSampling() {
   for (let i = 1; i <= 60; i += 1) {
     const t = i / 60;
     pts.push({ x: 390 + t * 120, z: -Math.sin(t * Math.PI) * 80 });
+  }
+  return pts;
+}
+
+// The crawl: a gentle S with the sampling tremor a real hand produces. AUTO_TARGET_PATH_MIN_SCREEN_PX
+// is 8; after world projection that is a few WU, and a 1 WU perpendicular wobble is typical pixel
+// quantization plus a slightly unsteady stroke. Deterministic LCG — same stroke in, same speeds out.
+function handDrawnGentleS() {
+  const src = gentleS();
+  const pts = [];
+  let seed = 0xA5F17C3D;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = 0; i < src.length; i += 1) {
+    const p = src[i];
+    const prev = src[i === 0 ? 0 : i - 1];
+    const next = src[i === src.length - 1 ? i : i + 1];
+    const tx = next.x - prev.x;
+    const tz = next.z - prev.z;
+    const len = Math.max(Math.hypot(tx, tz), 1e-6);
+    const wobble = (rnd() - 0.5) * 2.4;
+    pts.push({ x: p.x + (-tz / len) * wobble, z: p.z + (tx / len) * wobble });
   }
   return pts;
 }
@@ -165,6 +191,20 @@ function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = sorted.length >> 1;
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function percentile(values, p) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.floor(p * (sorted.length - 1))));
+  return sorted[idx];
+}
+
+function mean(values) {
+  if (!values.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < values.length; i += 1) sum += values[i];
+  return sum / values.length;
 }
 
 // --------------------------------------------------------------------------------------- the run
@@ -246,12 +286,20 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
 
   const crossSamples = [];
   const signs = [];
+  const cruiseSpeeds = [];
+  const onTrackSpeeds = [];
+  let peakSpeed = 0;
   let flown = 0;
   let bestS = 0;
   let prevX = player.pos.x;
   let prevZ = player.pos.z;
   let stalled = 0;
   let ticks = 0;
+  const cruise = Number.isFinite(profile.maxSpeed) && profile.maxSpeed > 0
+    ? profile.maxSpeed
+    : (Number.isFinite(player.maxSpeed) && player.maxSpeed > 0 ? player.maxSpeed : 120);
+  const speedLo = Math.min(80, total * 0.15);
+  const speedHi = Math.max(speedLo + 1, total - Math.min(120, total * 0.22));
 
   for (; ticks < MAX_TICKS; ticks += 1) {
     tickAutoTarget(state, DT, null, runtime);
@@ -301,6 +349,12 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
     const near = nearestOnPolyline(points, player.pos.x, player.pos.z);
     crossSamples.push(Math.abs(near.cross));
     signs.push(Math.sign(near.cross));
+    const nowSpeed = Math.hypot(player.vel.x, player.vel.z);
+    if (nowSpeed > peakSpeed) peakSpeed = nowSpeed;
+    if (near.s > speedLo && near.s < speedHi) {
+      cruiseSpeeds.push(nowSpeed);
+      if (Math.abs(near.cross) < 8) onTrackSpeeds.push(nowSpeed);
+    }
 
     // COVERAGE, not "progress". Progress-by-nearest-point is not a completion metric: it reads
     // 1.000 for the OLD controller on every shape (a hull wandering 400 WU wide still passes near
@@ -363,6 +417,12 @@ function flyStroke(points, startOffset = { x: 0, z: 0 }) {
     maxCross: Math.max(...crossSamples),
     flipsPer100: (flips / Math.max(flown, 1)) * 100,
     ticks,
+    cruise,
+    meanSpeed: mean(cruiseSpeeds),
+    p10Speed: percentile(cruiseSpeeds, 0.1),
+    p50Speed: percentile(cruiseSpeeds, 0.5),
+    p10OnTrack: percentile(onTrackSpeeds, 0.1),
+    peakSpeed,
   };
 }
 
@@ -391,6 +451,51 @@ for (const [name, points, medianBound, maxBound, flipBound] of CASES) {
       `${name}: ${r.flipsPer100.toFixed(2)} line crossings per 100 WU exceeds ${flipBound} — the hull is oscillating across the line, not tracking it`);
   });
 }
+
+test('a drawn stroke is flown at a speed a player would choose, AND still tracked', () => {
+  // Exit gate for the crawl. The tracking assertions above never measured speed — they would pass
+  // at 1 WU/s. Cruise in this harness is the follower's governed max (player.maxSpeed = 120; the
+  // catalog profile has no maxSpeed, so pathAuthority uses that). A straight holds ~102 WU/s in
+  // the mid-stroke; an unjittered gentle S holds ~82. 60% of cruise is 72, just under the real
+  // curve and well above the jittered crawl (~36) the old MAX-|k| governor produced.
+  const GENTLE_MEDIAN = 4;
+  const GENTLE_MAX = 12;
+  const GENTLE_FLIPS = 1.6;
+  const HAIRPIN_MEDIAN = 4;
+  const HAIRPIN_MAX = 12;
+  const gentle = flyStroke(gentleS());
+  const drawn = flyStroke(handDrawnGentleS());
+  const pin = flyStroke(hairpin());
+  const cruise = drawn.cruise;
+  const speedBar = 0.6 * cruise;
+
+  assert.ok(gentle.meanSpeed >= speedBar,
+    `gentle-s mid-stroke ${gentle.meanSpeed.toFixed(1)} WU/s is below 60% of cruise ${cruise} (${speedBar.toFixed(1)})`);
+  assert.ok(drawn.meanSpeed >= speedBar,
+    `hand-drawn gentle-s mid-stroke ${drawn.meanSpeed.toFixed(1)} WU/s is below 60% of cruise ${cruise} (${speedBar.toFixed(1)}) — stroke jitter is still being read as a hairpin`);
+
+  // A genuine corner must still slow down WHILE TRACKING, so the fix cannot be "ignore curvature".
+  // Off-track p10 is a trap: a hull that blows the hairpin wide then crawls back still looks slow.
+  assert.ok(pin.p10OnTrack <= 0.5 * cruise,
+    `hairpin on-track 10th-percentile speed ${pin.p10OnTrack.toFixed(1)} WU/s did not drop to ≤ 50% of cruise ${cruise} — the governor is ignoring the corner`);
+  assert.ok(pin.p10OnTrack < 0.75 * gentle.meanSpeed,
+    `hairpin on-track 10th-percentile ${pin.p10OnTrack.toFixed(1)} WU/s is not slower than the gentle S (${gentle.meanSpeed.toFixed(1)}) — curvature is not governing`);
+
+  for (const [name, r] of [['gentle-s', gentle], ['hand-drawn-gentle-s', drawn]]) {
+    assert.ok(r.coverage >= 0.95,
+      `${name}: hull only reached ${(r.coverage * 100).toFixed(1)}% along the drawn stroke`);
+    assert.ok(r.medianCross <= GENTLE_MEDIAN,
+      `${name}: median cross-track ${r.medianCross.toFixed(2)} WU exceeds ${GENTLE_MEDIAN} WU — the hull is not on the line`);
+    assert.ok(r.maxCross <= GENTLE_MAX,
+      `${name}: worst cross-track ${r.maxCross.toFixed(2)} WU exceeds ${GENTLE_MAX} WU — the hull left the line`);
+    assert.ok(r.flipsPer100 <= GENTLE_FLIPS,
+      `${name}: ${r.flipsPer100.toFixed(2)} line crossings per 100 WU exceeds ${GENTLE_FLIPS}`);
+  }
+  assert.ok(pin.medianCross <= HAIRPIN_MEDIAN,
+    `hairpin: median cross-track ${pin.medianCross.toFixed(2)} WU exceeds ${HAIRPIN_MEDIAN} WU`);
+  assert.ok(pin.maxCross <= HAIRPIN_MAX,
+    `hairpin: worst cross-track ${pin.maxCross.toFixed(2)} WU exceeds ${HAIRPIN_MAX} WU`);
+});
 
 test('a drawn loop is flown, never cut', () => {
   // The specific regression this guards: a global nearest-point search snaps to the returning lobe
