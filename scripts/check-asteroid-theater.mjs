@@ -569,7 +569,14 @@ try {
         if (box.thicknessPx > 3) failures.push(`${label}: §3.2 the hover outline is ${box.thicknessPx.toFixed(1)}px — a hairline, not a frame`);
         if (box.opacity > 0.75) failures.push(`${label}: §3.2 the hover outline sits at ${box.opacity} alpha — the loudest thing on the board`);
       }
-      await page.mouse.move(0, 0);        // back to the no-hover default view
+      // The hover above is a synthetic MouseEvent on the canvas. Playwright's cursor is
+      // already at (0,0) from the lens-gone move, so `page.mouse.move(0, 0)` is a no-op and
+      // never fires mouseleave — the lens stays armed and later counts against the palette
+      // word budget. Dispatch the board's real leave path, then park on chrome.
+      await releaseSyntheticBoardHover(page);
+      if (!(await isLensGone(page))) {
+        failures.push(`${label}: §3.2 synthetic hover left the lens armed after release`);
+      }
     }
 
     // ---------------------------------------------------------------- §6.3 earned palette (.09)
@@ -749,6 +756,10 @@ try {
           }
         }
         // §11.3 again, with the palette on the glass: the row must cost the drive view no words.
+        const lens = screen.querySelector('.aw-lens');
+        if (lens && visible(lens)) {
+          out.problems.push('§11.3 the cursor lens is still on the glass while the palette word budget is counted');
+        }
         const words = [];
         for (const el of screen.querySelectorAll('*')) {
           if (!visible(el)) continue;
@@ -1168,6 +1179,27 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log('check-asteroid-theater: theater invariants hold');
+}
+
+async function isLensGone(page) {
+  return page.evaluate(() => {
+    const el = document.querySelector('.aw-lens');
+    if (!el) return true;
+    if (!el.getClientRects().length) return true;
+    const cs = getComputedStyle(el);
+    return cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0;
+  });
+}
+
+async function releaseSyntheticBoardHover(page) {
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.ast-canvas');
+    if (!canvas) return;
+    canvas.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+  });
+  const vp = page.viewportSize() || { width: 1280, height: 720 };
+  await page.mouse.move(Math.round(vp.width / 2), 8);
+  await page.waitForTimeout(300);
 }
 
 function findSystemBrowser() {

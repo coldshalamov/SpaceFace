@@ -47,7 +47,10 @@ try {
   const issues = collectPageIssues(page);
 
   await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+    try {
+      sessionStorage.setItem('sf.cinematicSeen', '1');
+      localStorage.setItem('sf.firstRunIntroSeen', '1');
+    } catch (_) {}
   });
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.state.render && window.SF.state.render.renderer, null, { timeout: 90000 });
@@ -137,7 +140,12 @@ try {
   await warmStressPipelines(page);
   console.log('[hitch-budget] stress pipelines ready');
   await waitForStressAssets(page);
-  const sample = await sampleHitches(page, { warmupMs: WARMUP_MS, durationMs: DURATION_MS, frameBudgetMs: FRAME_BUDGET_MS });
+  const sample = await sampleHitches(page, {
+    warmupMs: WARMUP_MS,
+    durationMs: DURATION_MS,
+    frameBudgetMs: FRAME_BUDGET_MS,
+    pumpDuringSettle: !!(argv['pump-during-settle'] || argv.pumpDuringSettle),
+  });
   const attribution = await page.evaluate(() => ({
     longtasks: (window.__HITCH_LONGTASKS__ || []).filter((t) => t.ms >= 50).slice(-40),
     resources: (window.__HITCH_RESOURCES__ || []).slice(-40),
@@ -177,6 +185,7 @@ try {
     scenario: stress,
     frameMs: sample.frameMs,
     settleWait: sample.settleWait,
+    settleQueue: sample.settleQueue || null,
     histogram: sample.histogram,
     spikes: sample.spikes.slice(0, 20),
     programEvents: sample.programEvents,
@@ -188,6 +197,7 @@ try {
       frameBudgetMs: FRAME_BUDGET_MS,
       frameMs: sample.frameMs,
       settleWait: sample.settleWait,
+      settleQueue: sample.settleQueue,
       spikes: sample.spikes,
       topSpikeSources: sample.topSpikeSources,
       programEvents: sample.programEvents,
@@ -412,7 +422,8 @@ async function warmStressPipelines(page) {
 }
 
 async function sampleHitches(page, opts) {
-  return page.evaluate(({ warmupMs, durationMs, frameBudgetMs }) => new Promise((resolve) => {
+  return page.evaluate(({ warmupMs, durationMs, frameBudgetMs, pumpDuringSettle }) => new Promise((resolve) => {
+    const started = performance.now();
     const frames = [];
     const spikes = [];
     let last = null;
@@ -421,9 +432,11 @@ async function sampleHitches(page, opts) {
     let finished = false;
     let watchdog = null;
     let settleWait = 'warmup';
+    let warmupPumpStopped = false;
     let previousProgramCount = 0;
     let previousProgramKeys = new Set();
     const programEvents = [];
+    let settleQueue = null;
 
     function resetRuntimeProbes() {
       try { if (window.__THREE_GAME_DIAGNOSTICS__ && window.__THREE_GAME_DIAGNOSTICS__.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) {}
@@ -492,9 +505,11 @@ async function sampleHitches(page, opts) {
         over50: frames.filter((value) => value > 50).length,
       };
       const diagnostics = readDiagnostics();
+      settleQueue = settleQueue || authoredQueueSnapshot();
       resolve({
         frameMs,
         settleWait,
+        settleQueue,
         programEvents,
         histogram: histogram(frames),
         spikes: spikes.sort((a, b) => b.ms - a.ms),
@@ -503,25 +518,48 @@ async function sampleHitches(page, opts) {
       });
     }
 
+    function stopWarmupPump() {
+      if (warmupPumpStopped) return;
+      warmupPumpStopped = true;
+      try { if (window.SF) window.SF.bus.emit('mining:stop', {}); } catch (_) {}
+    }
+
     function tick(now) {
       if (finished) return;
       if (sampleStart == null) {
-        pumpStress(now);
-        if (runtimeSettled()) {
-          if (settledAt == null) settledAt = now;
-          const stableWarmupMs = now - settledAt;
-          if (stableWarmupMs < warmupMs) {
-            settleWait = `post-settle-warmup:${Math.round(stableWarmupMs)}/${warmupMs}`;
-          } else {
-            const stress = window.__SF_HITCH_STRESS__;
-            if (stress) stress.nextBurstAt = now + 120;
-            sampleStart = now;
-            last = now;
-            resetRuntimeProbes();
-            watchdog = setTimeout(finish, durationMs + 1000);
-          }
-        } else {
+        const elapsed = now - started;
+        // Warm combat/mining GPU programs first, then STOP pumping and wait for the
+        // authored-upgrade queue to drain. Pumping during the settle gate keeps
+        // retargeting enemies, which re-admits authored jobs every 120ms, so
+        // `running` never stays false and the check samples zero frames.
+        if (elapsed < warmupMs) {
+          pumpStress(now);
+          settleWait = `stress-warmup:${Math.round(elapsed)}/${warmupMs}`;
           settledAt = null;
+        } else {
+          if (pumpDuringSettle) pumpStress(now);
+          else stopWarmupPump();
+          if (runtimeSettled()) {
+            if (settledAt == null) settledAt = now;
+            // WarmupMs is the stress-pump window. After that pump stops, a short idle
+            // is enough to prove admission drained. Requiring another full warmupMs of
+            // idle races the watchdog and samples nothing.
+            const stableMs = Math.min(1000, warmupMs);
+            const stableWarmupMs = now - settledAt;
+            if (stableWarmupMs < stableMs) {
+              settleWait = `post-settle-warmup:${Math.round(stableWarmupMs)}/${stableMs}`;
+            } else {
+              const stress = window.__SF_HITCH_STRESS__;
+              if (stress) stress.nextBurstAt = now + 120;
+              sampleStart = now;
+              last = now;
+              resetRuntimeProbes();
+              watchdog = setTimeout(finish, durationMs + 1000);
+            }
+          } else {
+            settledAt = null;
+            settleQueue = authoredQueueSnapshot();
+          }
         }
       } else {
         pumpStress(now);
@@ -593,8 +631,26 @@ async function sampleHitches(page, opts) {
       else requestAnimationFrame(tick);
     }
 
-    watchdog = setTimeout(finish, warmupMs + durationMs + 30000);
+    watchdog = setTimeout(finish, warmupMs + warmupMs + durationMs + 30000);
     requestAnimationFrame(tick);
+
+    function authoredQueueSnapshot() {
+      const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
+      let queue = { pending: 0, running: false };
+      try {
+        const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
+        if (typeof queueStats === 'function') queue = queueStats(scene) || queue;
+      } catch (_) {}
+      const diag = scene && scene.userData && scene.userData.authoredUpgradeDiagnostics || {};
+      const lastJob = Array.isArray(diag.jobs) && diag.jobs.length ? diag.jobs[diag.jobs.length - 1] : null;
+      return {
+        pending: Number(queue.pending) || 0,
+        running: !!queue.running,
+        activeJobs: Number(diag.activeJobs) || 0,
+        lastJobKey: lastJob && lastJob.key || null,
+        lastJobStatus: lastJob && lastJob.status || null,
+      };
+    }
 
     function readDiagnostics() {
       const diag = window.__THREE_GAME_DIAGNOSTICS__;
@@ -678,11 +734,12 @@ async function sampleHitches(page, opts) {
       if (meshQueueRemaining > 0) { settleWait = `mesh-queue:${meshQueueRemaining}`; return false; }
       if (render._meshReconcileDirty) { settleWait = 'mesh-reconcile'; return false; }
       if (window.__SF_RENDER_WARMUP_READY__ === false) { settleWait = 'render-warmup'; return false; }
+      let queue = { pending: 0, running: false };
       try {
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
-        const queue = typeof queueStats === 'function'
-          ? queueStats(state.render && state.render.scene)
-          : { pending: 0, running: false };
+        if (typeof queueStats === 'function') {
+          queue = queueStats(state.render && state.render.scene) || queue;
+        }
         if (queue.pending > 0 || queue.running) {
           settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}`;
           return false;
@@ -697,7 +754,17 @@ async function sampleHitches(page, opts) {
       for (const id of requiredIds) {
         const entity = state.entities && state.entities.get(id);
         if (!entity || entity.alive === false || entity._noMesh) continue;
-        if (!entity.mesh) { settleWait = `mesh-missing:${entity.type || 'unknown'}:${entity.id}`; return false; }
+        if (!entity.mesh) {
+          const admissionBusy = meshQueueRemaining > 0
+            || !!render._meshReconcileDirty
+            || queue.pending > 0
+            || queue.running;
+          if (admissionBusy) {
+            settleWait = `mesh-missing:${entity.type || 'unknown'}:${entity.id}`;
+            return false;
+          }
+          continue;
+        }
         if (entity.type === 'ship') {
           const assetState = entity.mesh.userData && entity.mesh.userData.authoredAssetState;
           const relevant = typeof window.__SF_IS_AUTHORED_UPGRADE_RELEVANT__ === 'function'
@@ -773,6 +840,9 @@ function printReport(report) {
   console.log(`[hitch-budget] scenario=${report.scenario.baseScenario} enemies=${report.scenario.enemies} asteroids=${report.scenario.asteroids}`);
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
   console.log(`[hitch-budget] settle=${report.settleWait}`);
+  if (report.settleQueue) {
+    console.log(`[hitch-budget] settleQueue pending=${report.settleQueue.pending} running=${report.settleQueue.running} activeJobs=${report.settleQueue.activeJobs} last=${report.settleQueue.lastJobKey || '-'} ${report.settleQueue.lastJobStatus || ''}`);
+  }
   console.log(`[hitch-budget] >${report.runner.frameBudgetMs}ms=${report.frameMs.overBudget} unexpected=${report.frameMs.unexpectedOverBudget} scheduler-only=${report.frameMs.schedulerOnlyOverBudget} >40ms=${report.frameMs.over40} >50ms=${report.frameMs.over50}`);
   if (report.programEvents.length) {
     console.log('[hitch-budget] new GPU programs during sample:');
@@ -803,10 +873,15 @@ function printReport(report) {
 }
 
 function buildFailureEvidence({
-  frameBudgetMs, frameMs, settleWait, spikes, topSpikeSources, programEvents, pageErrors, out,
+  frameBudgetMs, frameMs, settleWait, settleQueue, spikes, topSpikeSources, programEvents, pageErrors, out,
 }) {
   const reasons = [];
-  if (settleWait !== 'settled') reasons.push(`runtime did not settle before sampling: ${settleWait}`);
+  if (settleWait !== 'settled') {
+    const queueNote = settleQueue
+      ? ` (pending=${settleQueue.pending} running=${settleQueue.running} activeJobs=${settleQueue.activeJobs})`
+      : '';
+    reasons.push(`runtime did not settle before sampling: ${settleWait}${queueNote}`);
+  }
   if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
   if (frameMs.unexpectedOverBudget > 0) {
     reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);

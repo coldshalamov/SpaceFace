@@ -11,8 +11,12 @@
 //   belowFold  — element bottom past the viewport bottom (content the player cannot read)
 //   collisions — element rect intersecting a persistent shell widget's rect
 //
+// Unreachable or colliding content is a failure, not an observation. Without an exit code the
+// probe is a report nobody has to obey. Widths are 1280, 1440 and 1920 at the captured height:
+// a single 1440 pass hid a contracts collision that only appears on the narrower board.
+//
 // Usage: node scripts/probe-station-overflow.mjs
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -20,8 +24,14 @@ import { join } from 'node:path';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const WIDTH = Math.max(1024, Number(process.env.SF_CAPTURE_WIDTH) || 1440);
 const HEIGHT = Math.max(700, Number(process.env.SF_CAPTURE_HEIGHT) || 900);
+const VIEWPORTS = process.env.SF_CAPTURE_WIDTH
+  ? [{ width: Math.max(1024, Number(process.env.SF_CAPTURE_WIDTH)), height: HEIGHT }]
+  : [
+    { width: 1280, height: HEIGHT },
+    { width: 1440, height: HEIGHT },
+    { width: 1920, height: HEIGHT },
+  ];
 const OUT = join(ROOT, '.devshots', 'station-overflow');
 const TABS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger'];
 mkdirSync(OUT, { recursive: true });
@@ -36,7 +46,7 @@ function freePort() {
 async function startServer() {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
-    cwd: ROOT, env: { ...process.env, PORT: String(port) }, stdio: 'ignore',
+    cwd: ROOT, env: { ...process.env, PORT: String(port) }, stdio: 'ignore', windowsHide: true,
   });
   const baseUrl = `http://127.0.0.1:${port}/`;
   for (let i = 0; i < 60; i++) {
@@ -44,6 +54,15 @@ async function startServer() {
     await new Promise((r) => setTimeout(r, 200));
   }
   throw new Error('server start timeout');
+}
+
+function terminateChild(child) {
+  if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (process.platform === 'win32' && child.pid) {
+    try { spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* ok */ }
+    return;
+  }
+  try { child.kill(); } catch { /* ok */ }
 }
 
 let server = null;
@@ -55,9 +74,17 @@ try {
     headless: process.env.SF_CAPTURE_HEADLESS === '1',
     args: ['--use-gl=angle', '--ignore-gpu-blocklist'],
   });
-  const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT } });
+  const page = await browser.newPage({ viewport: VIEWPORTS[0] });
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error && error.message ? error.message : String(error)));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') pageErrors.push(msg.text());
+  });
   await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch { /* ok */ }
+    try {
+      sessionStorage.setItem('sf.cinematicSeen', '1');
+      localStorage.setItem('sf.firstRunIntroSeen', '1');
+    } catch { /* ok */ }
   });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -66,11 +93,25 @@ try {
     window.SF.bus.emit('game:new', { name: 'Overflow Probe', seed: 47 });
     window.SF.bus.emit('ui:closeAll', {});
   });
-  await page.waitForFunction(() => {
-    const st = window.SF && window.SF.state;
-    const p = st && st.entities && st.entities.get(st.playerId);
-    return !!(st && st.mode === 'flight' && p && p.alive !== false && p.hull > 0);
-  }, null, { timeout: 120000 });
+  try {
+    await page.waitForFunction(() => {
+      const st = window.SF && window.SF.state;
+      const p = st && st.entities && st.entities.get(st.playerId);
+      return !!(st && st.mode === 'flight' && p && p.alive !== false && p.hull > 0);
+    }, null, { timeout: 120000 });
+  } catch (error) {
+    const snap = await page.evaluate(() => {
+      const st = window.SF && window.SF.state;
+      const overlay = document.getElementById('boot-overlay');
+      return {
+        hasSF: !!window.SF,
+        mode: st && st.mode || null,
+        playerId: st && st.playerId || null,
+        overlay: overlay ? overlay.className : null,
+      };
+    }).catch(() => ({ hasSF: false }));
+    throw new Error(`flight never ready (${JSON.stringify(snap)}; pageErrors=${JSON.stringify(pageErrors.slice(0, 6))}): ${error && error.message ? error.message : error}`);
+  }
   await page.evaluate(() => {
     const st = window.SF.state;
     const station = st.entityList.find((e) =>
@@ -97,8 +138,10 @@ try {
       const r = el.getBoundingClientRect();
       return r.width > 4 && r.height > 4;
     };
-    // Persistent shell widgets that content must not sit under.
-    const widgets = [...root.querySelectorAll('[class*="comms"], [class*="__foot"], [class*="footer"]')]
+    // Persistent shell widgets that content must not sit under. Tab-local rows such as
+    // `.sx-dossier__foot` are content, not shell: matching `[class*="__foot"]` turned the
+    // contracts Accept bar into a widget and reported its own Active Missions header as a hit.
+    const widgets = [...root.querySelectorAll('.sx-comms, .sx-comms *')]
       .filter(visible).map((el) => ({ el, rect: rect(el), name: label(el) }));
 
     // An element clipped by an ancestor scroller is REACHABLE (or already hidden) — it is not
@@ -151,20 +194,26 @@ try {
   }, tab);
 
   const results = [];
-  for (const tab of TABS) {
-    await page.evaluate((id) => {
-      const root = document.querySelector('[data-screen="station"]');
-      const t = root && (root.querySelector(`[data-nav="${id}"]`) || root.querySelector(`[data-tab="${id}"]`));
-      if (t) t.click();
-    }, tab);
-    await page.waitForTimeout(500);
-    const r = await measure(tab);
-    results.push(r);
-    const nBelow = (r.belowFold || []).length;
-    const nColl = (r.collisions || []).length;
-    console.log(`${tab.padEnd(11)} belowFold=${String(nBelow).padStart(2)}  collisions=${String(nColl).padStart(2)}`);
-    for (const b of (r.belowFold || []).slice(0, 4)) console.log(`    CUT ${b.cutBy}px  ${b.name}`);
-    for (const c of (r.collisions || []).slice(0, 4)) console.log(`    HITS ${c.widget}  <-  ${c.name}`);
+  for (const vp of VIEWPORTS) {
+    await page.setViewportSize(vp);
+    await page.waitForTimeout(400);
+    console.log(`\n${vp.width}x${vp.height}`);
+    for (const tab of TABS) {
+      await page.evaluate((id) => {
+        const root = document.querySelector('[data-screen="station"]');
+        const t = root && (root.querySelector(`[data-nav="${id}"]`) || root.querySelector(`[data-tab="${id}"]`));
+        if (t) t.click();
+      }, tab);
+      await page.waitForTimeout(500);
+      const r = await measure(tab);
+      r.viewport = `${vp.width}x${vp.height}`;
+      results.push(r);
+      const nBelow = (r.belowFold || []).length;
+      const nColl = (r.collisions || []).length;
+      console.log(`${tab.padEnd(11)} belowFold=${String(nBelow).padStart(2)}  collisions=${String(nColl).padStart(2)}`);
+      for (const b of (r.belowFold || []).slice(0, 4)) console.log(`    CUT ${b.cutBy}px  ${b.name}`);
+      for (const c of (r.collisions || []).slice(0, 4)) console.log(`    HITS ${c.widget}  <-  ${c.name}`);
+    }
   }
 
   writeFileSync(join(OUT, 'station-overflow.json'), JSON.stringify(results, null, 2));
@@ -172,10 +221,13 @@ try {
   const totalColl = results.reduce((n, r) => n + (r.collisions || []).length, 0);
   console.log(`\nTOTAL belowFold=${totalBelow}  collisions=${totalColl}`);
   console.log('wrote →', join(OUT, 'station-overflow.json'));
+  // Unreachable content is a failure, not an observation. Without this the probe is a report
+  // nobody reads rather than a check anything has to obey.
+  if (totalBelow || totalColl) process.exitCode = 1;
 } catch (err) {
   console.error('probe-station-overflow failed:', err && err.message ? err.message : err);
   process.exitCode = 1;
 } finally {
   if (browser) await browser.close().catch(() => {});
-  if (server && server.child) server.child.kill();
+  if (server && server.child) terminateChild(server.child);
 }
