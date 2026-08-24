@@ -493,6 +493,25 @@ For visual work, do not instruct agents to make less. Require the exact authored
 
 ## 7. Verification that converges
 
+**A check that runs a `node:test` file with `await import()` CANNOT FAIL.** Found 2026-08-23 in a
+brand-new check whose own header promised "a `count > 0` rule is expressly rejected". Importing a
+`node:test` module registers its tests and the runner executes them, but a failing assertion is
+reported to the REPORTER — it does not reject the import. The block had a `try`/`catch`, an error
+message and a failure counter, and still exited **0** with a deliberately failing test injected.
+
+Run the suite as a child process and honour its exit code:
+
+```js
+const suite = spawnSync(process.execPath, ['--test', join(ROOT, 'test/x.test.mjs')], { cwd: ROOT });
+if (suite.status !== 0) { /* fail */ }
+```
+
+This is the §11.10a rule in its sharpest form: **reading that block would never have revealed it —
+mutating it took one minute.** A check that cannot fail is worse than no check, because it converts
+"unverified" into "verified" in everyone's mind. Before trusting any new gate, inject a failure and
+watch it go red.
+
+
 Choose the proof layer through [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). The
 finite review and validation state machine lives in
 [`00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md). Its essential rules
