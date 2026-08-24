@@ -26,17 +26,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Sparse checkout code and tests
+      - name: Sparse checkout current code, UI, tests, and design authority
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           filter: blob:none
+          sparse-checkout-cone-mode: false
           sparse-checkout: |
-            src
-            test
-            scripts
-            design/program/branch-consolidation
-            .github/workflows/consolidation-portability.yml
+            /src/
+            /test/
+            /scripts/
+            /design/
+            /docs/
+            /.github/
+            /styles/
+            /index.html
+            /package.json
+            /ARCHITECTURE.md
+            /CANONICAL_BUILD_MAP.md
+            /AGENTS.md
           persist-credentials: false
 
       - name: Fetch every donor ref without asset payloads
