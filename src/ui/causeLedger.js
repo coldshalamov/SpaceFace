@@ -25,6 +25,7 @@ import { CAUSE_PHRASES, CAUSE_AXES, DIRECTION_WORDS, TREND_EPSILON } from '../da
 import { sectorSignalFor } from '../systems/sectorSim.js';
 import { SECTORS } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
+import { showWhyTip, hideWhyTip } from './whyReveal.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -117,15 +118,12 @@ export function causeFor(state, sectorId) {
 
 // ── registry SYSTEMS-only entry (event-driven; guarded tooltip; zero voice) ─────────────────────
 
-const TOOLTIP_ID = 'sf-cause-ledger-tip';
-
 export const causeLedger = {
   name: 'causeLedger',
 
   init(ctx) {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
-    this._tipEl = null;
     this._onEnter = (p) => this._refresh(p && p.sectorId);
     this._onDocked = (p) => this._refresh(p && p.stationId ? STATION_TO_SECTOR.get(p.stationId) : null);
     if (this._bus && this._bus.on) {
@@ -152,7 +150,9 @@ export const causeLedger = {
     if (typeof document === 'undefined') return;
     this._over = (ev) => {
       const row = ev.target && ev.target.closest && ev.target.closest('[data-cmdty], .st-row');
-      if (!row || !row.closest || !row.closest('.st-market')) { this._hideTip(); return; }
+      // `.st-market` is the legacy hub host; `.sx-mkt` is the live station rebuild's market screen
+      // (the reference hover was silently dead there — no ancestor matched, so no price why).
+      if (!row || !row.closest || !row.closest('.st-market, .sx-mkt')) { this._hideTip(); return; }
       const model = this._state && this._state.ui && this._state.ui.causeLedger;
       const lines = model && model.lines;
       const text = lines && [lines.pricePressure, lines.danger].filter(Boolean).join('\n');
@@ -168,32 +168,15 @@ export const causeLedger = {
   },
 
   _showTip(text, x, y) {
-    if (typeof document === 'undefined') return;
-    let el = this._tipEl;
-    if (!el || !el.isConnected) {
-      el = document.createElement('div');
-      el.id = TOOLTIP_ID;
-      el.setAttribute('role', 'tooltip');
-      // Non-diegetic, never blocks input (pointer-events none), never speaks.
-      el.style.cssText = [
-        'position:fixed', 'max-width:42ch', 'padding:8px 12px', 'white-space:pre-line',
-        'background:rgba(8,14,26,0.92)', 'border:1px solid rgba(110,150,210,0.4)',
-        'border-radius:5px', 'color:#cfe2ff', 'font:12px/1.45 system-ui,sans-serif',
-        'pointer-events:none', 'z-index:90',
-      ].join(';');
-      (document.body || document.documentElement).appendChild(el);
-      this._tipEl = el;
-    }
-    el.textContent = text;
-    const pad = 14;
-    const vw = (typeof window !== 'undefined' && window.innerWidth) || 1280;
-    el.style.left = Math.min(x + pad, vw - 340) + 'px';
-    el.style.top = (y + pad) + 'px';
-    el.style.display = 'block';
+    // ONE tooltip mechanism (whyReveal.js, generalised from this module): shared element, shared
+    // positioning, shared visual identity. This delegation is what keeps tier 2 one system. The
+    // owner token means this module can retract only the tip IT showed — its mouseover sweep of
+    // non-market rows must never erase a [data-why] reveal the pointer is resting on.
+    showWhyTip(text, x, y, 'causeLedger');
   },
 
   _hideTip() {
-    if (this._tipEl) this._tipEl.style.display = 'none';
+    hideWhyTip('causeLedger');
   },
 
   destroy() {
@@ -209,8 +192,7 @@ export const causeLedger = {
     }
     this._over = null;
     this._out = null;
-    if (this._tipEl && this._tipEl.parentNode) this._tipEl.parentNode.removeChild(this._tipEl);
-    this._tipEl = null;
+    this._hideTip();
   },
 };
 

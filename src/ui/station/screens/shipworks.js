@@ -102,7 +102,9 @@ function plusMinus(value, digits = 1) {
 
 function whyAttr(text) {
   if (!text || !String(text).trim()) return '';
-  return ` data-why="${escapeHtml(String(text))}"`;
+  // tabindex travels with the why: a hover-only affordance does not exist for a keyboard player
+  // (INSTRUMENT_GRAMMAR §7 tier 2 = hover AND focus). Buttons carrying this attr are unaffected.
+  return ` data-why="${escapeHtml(String(text))}" tabindex="0"`;
 }
 
 function gaugeNorm(key, raw, stats) {
@@ -454,6 +456,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const tile = document.createElement('div');
       tile.className = 'sx-sw-gauge';
       tile.setAttribute('data-gauge', def.key);
+      // The gauge value is a tier-2 carrier (syncGaugeValues stamps data-why below): focusable so
+      // the same reveal answers keyboard focus, not only hover.
+      tile.setAttribute('tabindex', '0');
       tile.innerHTML =
         `<div class="sx-sw-gauge__dial"></div>` +
         `<span class="sx-sw-gauge__k">${escapeHtml(def.label)}</span>` +

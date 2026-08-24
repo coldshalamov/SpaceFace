@@ -240,6 +240,7 @@
     "check:gate-control": "node scripts/check-gate-control.mjs",
     "check:sector-atmosphere": "npm run check:sector-postcard && npm run check:station-bubbles && npm run check:dock-deny-banner && npm run check:station-glyphs && npm run check:station-broadcast && npm run check:hazard-language && npm run check:danger-gradient && npm run check:station-side-events && npm run check:gate-control",
     "check:cause-ledger": "node scripts/check-cause-ledger.mjs",
+    "check:tier2-why": "node scripts/check-tier2-why.mjs",
     "check:provenance-phrases": "node scripts/check-provenance-phrases.mjs",
     "check:economy-born-missions": "node scripts/check-economy-born-missions.mjs",
     "check:customs-prompt": "node scripts/check-customs-prompt.mjs",

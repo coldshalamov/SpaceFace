@@ -10,6 +10,7 @@ import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TUNING, MISSION_TYPES, missionMinRepForRisk } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
+import { contractTermById } from '../../../data/contractClauses.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
@@ -36,6 +37,17 @@ const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
 
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const num = (v) => Math.max(0, Math.round(Number(v) || 0));
+
+/** Tier-2 "why" for a clause/condition chip, from the ENUMERATED catalog only (grammar §7):
+ * CONTRACT_CLAUSES / missionConditions via contractTermById. An unknown id renders NOTHING —
+ * never the offer row's free text, never a guess. `tabindex` makes the reveal answer keyboard
+ * focus, not just hover. Exported for the tier-2 check. */
+export function clauseWhyAttr(clause) {
+  const term = clause && clause.id ? contractTermById(clause.id) : null;
+  const prose = term && term.prose ? String(term.prose).trim() : '';
+  if (!prose) return '';
+  return ` data-why="${escapeHtml(prose)}" tabindex="0"`;
+}
 const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout)));
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
 const collateral = (m) => num(m.collateral_cr != null ? m.collateral_cr : (m.collateralCr != null ? m.collateralCr : m.collateral));
@@ -432,7 +444,7 @@ export function createContractsScreen(ctx) {
           (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +
           (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
           (!standingOk ? `<p class="sx-dossier__gate">${icon('factions', 14)}<span>${escapeHtml(readiness)}</span></p>` : '') +
-          (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag" title="${escapeHtml(c.prose || '')}">${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
+          (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
         `</div>` +
 
         `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +

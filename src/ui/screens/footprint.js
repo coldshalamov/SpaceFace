@@ -147,7 +147,9 @@ function nodeWord(node) {
   return kind || 'entry';
 }
 
-function nodeWhy(node) {
+// Exported for the tier-2 check: nodeWhy is the enumerated phrase composer for board nodes
+// (REP_REASON_LABELS / OUTCOME_WORDS banks). Unknown kinds render '' — never invented text.
+export function nodeWhy(node) {
   if (!node || typeof node !== 'object') return '';
   const kind = asString(node.k);
   if (kind === 'act') {

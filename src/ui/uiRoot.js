@@ -12,6 +12,7 @@
 
 import { createScreenManager } from './screenManager.js';
 import { createEntityLinks } from './entityLinks.js';
+import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
@@ -355,6 +356,8 @@ export const ui = {
     this._cinematicTeardown = null;
     if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
     this.entityLinks = null;
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -396,6 +399,12 @@ export const ui = {
     if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
     this.entityLinks = createEntityLinks(ctx);
     ctx.entityLinks = this.entityLinks;
+
+    // Tier 2 "why" (INSTRUMENT_GRAMMAR §7): ONE delegated capture reveal for every `[data-why]`
+    // carrier — causeLedger's market tooltip generalised (whyReveal.js). Hover AND keyboard focus,
+    // never a click. Mounted at document level so station workspace and modal screens share it.
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = mountWhyReveal();
 
     // Grammar §9.10: sound on every state change — one delegated pointerover on #screens,
     // rate-limited ~40ms, makes every surface feel responsive without per-widget listeners.
@@ -1178,6 +1187,8 @@ export const ui = {
     this._cinematicTeardown = null;
     if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
     this.entityLinks = null;
+    if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
+    this.whyReveal = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
