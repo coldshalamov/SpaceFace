@@ -17,7 +17,12 @@ import {
   stampOpeningSubmissionPackage,
   validateOpeningSubmissionReceipt,
 } from '../src/render/openingSubmissionPlan.js';
-import { collectOpeningEntityRootCandidates } from '../src/render/renderer.js';
+import {
+  collectOpeningEntityRootCandidates,
+  collectOpeningShadowCasterRootCandidates,
+} from '../src/render/renderer.js';
+import { ensureOpeningGeneratedScenarioPropPackage } from '../src/render/precompile.js';
+import { build47aScenarioProp } from '../src/render/scenarioProps47a.js';
 
 const CONTENT_HASH = 'a'.repeat(64);
 
@@ -254,6 +259,108 @@ test('opening admission excludes entity leaves masked by the live camera layer c
     },
   );
   assert.deepEqual(candidates.map((candidate) => candidate.root.name), ['layer-visible']);
+});
+
+test('opening admission adds off-camera roots that the first shadow pass will submit', () => {
+  const scene = new THREE.Scene();
+  const makeRoot = (name, { castShadow = true } = {}) => {
+    const root = new THREE.Group();
+    root.name = name;
+    const leaf = mesh(`${name}-leaf`);
+    leaf.castShadow = castShadow;
+    root.add(leaf);
+    scene.add(root);
+    return { root, leaf };
+  };
+  const player = makeRoot('player');
+  const cameraVisible = makeRoot('camera-visible');
+  const corridorPin = makeRoot('helios-corridor-pin');
+  const civilianPod = makeRoot('civilian-pod');
+  const receiveOnly = makeRoot('receive-only', { castShadow: false });
+  const outsideShadow = makeRoot('outside-shadow');
+  const entities = new Map([
+    ['player', { id: 'player', alive: true, type: 'ship' }],
+    ['visible', { id: 'visible', alive: true, type: 'ship' }],
+    ['pin', { id: 'pin', alive: true, type: 'fx' }],
+    ['pod', { id: 'pod', alive: true, type: 'payload' }],
+    ['receive', { id: 'receive', alive: true, type: 'fx' }],
+    ['outside', { id: 'outside', alive: true, type: 'ship' }],
+  ]);
+  const meshes = new Map([
+    ['player', player.root],
+    ['visible', cameraVisible.root],
+    ['pin', corridorPin.root],
+    ['pod', civilianPod.root],
+    ['receive', receiveOnly.root],
+    ['outside', outsideShadow.root],
+  ]);
+  const mainCamera = {
+    frustum: { intersectsObject: (object) => object === cameraVisible.leaf },
+    layers: { test: () => true },
+  };
+  const shadowCamera = {
+    frustum: {
+      intersectsObject: (object) => object === corridorPin.leaf || object === civilianPod.leaf,
+    },
+    layers: { test: () => true },
+  };
+  const mainCandidates = collectOpeningEntityRootCandidates(meshes, entities, {
+    playerId: 'player', scene, camera: mainCamera,
+  });
+  assert.deepEqual(mainCandidates.map((candidate) => candidate.root.name), ['camera-visible']);
+
+  const shadowCandidates = collectOpeningShadowCasterRootCandidates(meshes, entities, {
+    playerId: 'player', scene, camera: shadowCamera,
+    alreadyIncluded: mainCandidates.map((candidate) => candidate.root),
+  });
+  assert.deepEqual(
+    shadowCandidates.map((candidate) => candidate.root.name),
+    ['helios-corridor-pin', 'civilian-pod'],
+  );
+  assert.ok(shadowCandidates.every((candidate) => (
+    candidate.role === 'firstFrameShadowCaster'
+      && candidate.includeOffscreen === true
+      && candidate.reason === 'first-shadow-pass-caster-outside-main-camera'
+  )));
+});
+
+test('the generated 47-A pod enters the shadow cohort with a verified producer recipe', () => {
+  const pod = build47aScenarioProp({
+    id: 'civilian-pod',
+    type: 'payload',
+    radius: 8,
+    data: { assetRef: 'asset.slice.civilian_pod' },
+  });
+  const packageInfo = ensureOpeningGeneratedScenarioPropPackage(pod);
+  assert.equal(packageInfo?.contentHashVerified, true);
+  assert.match(packageInfo?.contentHash || '', /^[a-f0-9]{64}$/);
+  assert.equal(packageInfo?.producer, 'scenario-47a-generated-prop');
+
+  const census = createOpeningProducerCensus(pod, {
+    includeOffscreen: true,
+    route: { shadow: true, target: 'screen' },
+  });
+  const combined = combineOpeningProducerCensuses([census]);
+  const plan = createOpeningSubmissionPlan({
+    candidates: [{
+      root: pod,
+      role: 'firstFrameShadowCaster',
+      startupRole: 'first-shadow-pass-caster',
+      blocking: true,
+      reason: 'first-shadow-pass-caster-outside-main-camera',
+      includeOffscreen: true,
+    }],
+    shadows: true,
+    globalProgramKeys: combined.globalProgramKeys,
+    openingProgramKeys: combined.openingProgramKeys,
+    requiredContentHashes: combined.requiredContentHashes,
+    producerCensus: combined,
+    producerResourceIdentitySets: combined.resourceIdentitySets,
+  });
+  assert.equal(plan.complete, true);
+  assert.equal(plan.roots[0].productionBoundary.contentHashVerified, true);
+  assert.equal(plan.drawLeaves.length, 6);
+  assert.equal(plan.geometryBuffers.length, 6);
 });
 
 test('opening submission plan admits only camera-contributing production leaves', () => {

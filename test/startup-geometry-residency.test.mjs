@@ -4,12 +4,74 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  captureOpeningAdmissionIdentity,
+  describeOpeningAdmissionIdentityDelta,
+} from '../src/render/openingGpuAdmission.js';
+import {
   collectStartupGeometryDrawables,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
 } from '../src/render/startupGpuResidency.js';
 
 const RENDERER_SOURCE = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+
+test('first-visible admission identity names late roots, leaves, materials, and program families', () => {
+  const scene = new THREE.Scene();
+  const planned = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  planned.name = 'planned-player-hull';
+  const lateRoot = new THREE.Group();
+  lateRoot.name = 'Civilian_Pod_47A';
+  const lateMaterial = new THREE.MeshStandardMaterial();
+  lateMaterial.name = 'CivilianPod_White_Ceramic';
+  const lateLeaf = new THREE.Mesh(new THREE.BoxGeometry(), lateMaterial);
+  lateLeaf.name = 'CivilianPod_Pressure_Capsule';
+  lateRoot.add(lateLeaf);
+  scene.add(planned, lateRoot);
+
+  const materialProperties = new WeakMap();
+  materialProperties.set(planned.material, { programs: new Map([['physical,STANDARD,PLANNED', {}]]) });
+  materialProperties.set(lateMaterial, { programs: new Map() });
+  const renderer = {
+    info: { programs: [{ cacheKey: 'physical,STANDARD,PLANNED' }] },
+    properties: { get: (material) => materialProperties.get(material) || {} },
+  };
+  const before = captureOpeningAdmissionIdentity(renderer, scene, {
+    compileSubjects: [planned],
+  });
+  lateLeaf.geometry.addEventListener('dispose', () => {});
+  materialProperties.get(lateMaterial).programs.set('physical,STANDARD,LATE', {});
+  renderer.info.programs.push({ cacheKey: 'physical,STANDARD,LATE' }, { cacheKey: 'depth,LATE' });
+
+  const delta = describeOpeningAdmissionIdentityDelta(before, renderer, scene, {
+    compileSubjects: [planned],
+  });
+  assert.deepEqual(delta.newProgramFamilyKeys, ['depth', 'physical,STANDARD']);
+  assert.equal(delta.lateAdmissions.length, 1);
+  assert.deepEqual(delta.lateAdmissions[0], {
+    root: 'Civilian_Pod_47A',
+    object: 'CivilianPod_Pressure_Capsule',
+    material: 'CivilianPod_White_Ceramic',
+    materialType: 'MeshStandardMaterial',
+    geometryAdmitted: true,
+    programFamilyKeys: ['physical,STANDARD'],
+    programKeys: ['physical,STANDARD,LATE'],
+    planned: false,
+    exempted: false,
+    exemptionReason: null,
+  });
+  assert.deepEqual(delta.unattributedProgramFamilyKeys, ['depth']);
+  assert.equal(delta.unexplained, true);
+
+  const exempted = describeOpeningAdmissionIdentityDelta(before, renderer, scene, {
+    compileSubjects: [planned],
+  }, {
+    exemptions: [{ root: 'Civilian_Pod_47A', reason: 'deliberate diagnostic fixture' }],
+  });
+  assert.equal(exempted.lateAdmissions[0].exempted, true);
+  assert.equal(exempted.lateAdmissions[0].exemptionReason, 'deliberate diagnostic fixture');
+  assert.equal(exempted.unexplained, true,
+    'a named root exemption cannot silently accept an unattributed depth-program admission');
+});
 
 function setVector(target, x, y, z, w) {
   if (x && x.isVector4) target.copy(x);
@@ -102,6 +164,10 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
     'the unconditional first-visible count line must emit exactly once per opening');
   assert.match(firstDraw, /reason:\s*'first-visible-geometry-delta'/,
     'the post-submit gate must fail when the visible pass creates GPU geometries');
+  assert.match(firstDraw, /first-visible-program-delta/,
+    'the post-submit gate must also fail on unexplained first-visible programs');
+  assert.match(firstDraw, /lateAdmissions/,
+    'the first-visible failure payload must name owning roots, objects, materials, and program families');
   assert.match(
     firstDraw,
     /first-visible-pass-residency geometries=\$\{openingFirstDrawCountsBefore\.geometries\}->\$\{after\.geometries\} programs=\$\{openingFirstDrawCountsBefore\.programs\}->\$\{after\.programs\} geometry-only-brick=\$\{geometryOnlyBrick\}/,

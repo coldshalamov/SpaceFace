@@ -97,6 +97,7 @@ import {
 } from './postTelemetry.js';
 import {
   invalidatePrecompileState,
+  ensureOpeningGeneratedScenarioPropPackage,
   precompileGlobalPipelines,
   precompilePipelines,
   syncVisiblePointLightBudget,
@@ -178,6 +179,8 @@ import {
 } from './openingSubmissionPlan.js';
 import {
   admitOpeningUnitsAcrossSlices,
+  captureOpeningAdmissionIdentity,
+  describeOpeningAdmissionIdentityDelta,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -233,6 +236,10 @@ function writeScreenProjection(out, x, y, onScreen) {
 }
 const _socketGlobalXZ = { x: 0, z: 0 };
 const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
+// Empty by design for PQ-129.20: every known first-visible admission belongs behind the loading
+// boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
+// ignores reasonless entries so this cannot become a silent allow-list.
+const OPENING_LATE_ADMISSION_EXEMPTIONS = Object.freeze([]);
 
 function openingSubmissionCamera(camera) {
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return null;
@@ -379,6 +386,40 @@ export function collectOpeningEntityRootCandidates(meshes, entities, options = {
       startupRole: 'first-picture-entity-root',
       blocking: true,
       reason: 'currently-visible-first-picture-entity-root',
+    });
+  }
+  return candidates;
+}
+
+/**
+ * Roots outside the main camera can still be submitted by the opening directional-shadow pass.
+ * Include their complete root because createOpeningSubmissionPlan has one main-camera census; the
+ * root's cast-shadow leaf is the reason, while includeOffscreen keeps its exact siblings available
+ * to the bounded compile/residency admission rather than dropping the candidate as empty.
+ */
+export function collectOpeningShadowCasterRootCandidates(meshes, entities, options = {}) {
+  const candidates = [];
+  const playerId = options.playerId;
+  const scene = options.scene || null;
+  const camera = options.camera || null;
+  const alreadyIncluded = new Set(Array.isArray(options.alreadyIncluded)
+    ? options.alreadyIncluded.filter(Boolean) : []);
+  if (!camera || !meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
+  for (const [id, root] of meshes) {
+    if (!root || alreadyIncluded.has(root) || root.visible === false
+        || (playerId != null && id === playerId)) continue;
+    if (scene && root.parent !== scene) continue;
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false || entity._noMesh) continue;
+    const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
+    if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
+    candidates.push({
+      root,
+      role: 'firstFrameShadowCaster',
+      startupRole: 'first-shadow-pass-caster',
+      blocking: true,
+      reason: 'first-shadow-pass-caster-outside-main-camera',
+      includeOffscreen: true,
     });
   }
   return candidates;
@@ -3504,6 +3545,25 @@ export const render = {
         camera: submissionCamera,
       })) addCandidate(candidate.root, candidate);
 
+      // The first shadow-map render has a wider, light-space skirt than the camera glass. Helios'
+      // corridor pin and the 47-A civilian pod sit in that exact band on New Game: invisible to the
+      // main-camera census, but submitted as six pod meshes plus one pin mesh by the shadow camera.
+      // Treat that pass as part of the opening picture so its seven geometries and depth/color
+      // programs are admitted in the same bounded loading batches as camera-visible leaves.
+      const shadowSubmissionCamera = this._shadowSettingOn === true
+        ? openingSubmissionCamera(this._activeShadowCamera)
+        : null;
+      for (const candidate of collectOpeningShadowCasterRootCandidates(
+        this._meshes,
+        state.entities,
+        {
+          playerId: state.playerId,
+          scene,
+          camera: shadowSubmissionCamera,
+          alreadyIncluded: [...seenRoots],
+        },
+      )) addCandidate(candidate.root, candidate);
+
       // These renderer-owned pools are real first-picture draw roots once the final entity frame
       // populates them. They are not entity children and therefore cannot be discovered by the
       // entity-root census above.
@@ -3544,6 +3604,9 @@ export const render = {
       if (scene.background && scene.background.isTexture === true) textures.push(scene.background);
       if (scene.environment && scene.environment.isTexture === true) textures.push(scene.environment);
       const openingRoute = this._selectPostRoute();
+      for (const candidate of candidates) {
+        ensureOpeningGeneratedScenarioPropPackage(candidate.root);
+      }
       const producerCensuses = candidates.map((candidate) => createOpeningProducerCensus(
         candidate.root,
         {
@@ -5925,11 +5988,23 @@ export const render = {
     const camera = openingSubmissionCamera(this.cam && this.cam.obj);
     if (!camera || !this.scene || !this._meshes) return null;
     const entities = state && state.entities;
+    const shadowRoots = new Set(collectOpeningShadowCasterRootCandidates(
+      this._meshes,
+      entities,
+      {
+        playerId: state.playerId,
+        scene: this.scene,
+        camera: this._shadowSettingOn === true
+          ? openingSubmissionCamera(this._activeShadowCamera)
+          : null,
+      },
+    ).map((candidate) => candidate.root));
     const pending = new Set();
     for (const [id, root] of this._meshes) {
       const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
       if (!entity || entity.alive === false || entity._noMesh) continue;
-      if (!openingEntityRootIntersectsCamera(root, entity, camera, this.scene)) continue;
+      if (!openingEntityRootIntersectsCamera(root, entity, camera, this.scene)
+          && !shadowRoots.has(root)) continue;
       const userData = root.userData || {};
       const status = userData.authoredAssetState;
       const settled = status === 'authored'
@@ -6268,6 +6343,7 @@ export const render = {
     let disposeRegistrationProbe = null;
     let openingFirstDraw = false;
     let openingFirstDrawCountsBefore = null;
+    let openingFirstDrawIdentityBefore = null;
     try {
       dynamicBufferEpoch = this._dynamicBuffers.arm();
       disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(
@@ -6340,6 +6416,11 @@ export const render = {
           programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
           geometries: Number(memory.geometries) || 0,
         };
+        openingFirstDrawIdentityBefore = captureOpeningAdmissionIdentity(
+          this.renderer,
+          this.scene,
+          this.state.render.openingSubmissionPlan,
+        );
       }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
@@ -6361,14 +6442,22 @@ export const render = {
             geometries: after.geometries - openingFirstDrawCountsBefore.geometries,
           };
           const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
+          const lateAdmissions = describeOpeningAdmissionIdentityDelta(
+            openingFirstDrawIdentityBefore,
+            this.renderer,
+            this.scene,
+            this.state.render.openingSubmissionPlan,
+            { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
+          );
           this.state.render.openingFirstVisibleGpuCounts = {
             before: openingFirstDrawCountsBefore,
             after,
             delta,
             geometryOnlyBrick,
+            lateAdmissions,
           };
           console.info(
-            `[render] first-visible-pass-residency geometries=${openingFirstDrawCountsBefore.geometries}->${after.geometries} programs=${openingFirstDrawCountsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick}`,
+            `[render] first-visible-pass-residency geometries=${openingFirstDrawCountsBefore.geometries}->${after.geometries} programs=${openingFirstDrawCountsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick} lateAdmissions=${JSON.stringify(lateAdmissions)}`,
           );
         }
       }
@@ -6385,12 +6474,31 @@ export const render = {
         this.renderer,
       );
       const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
-      const validation = firstVisibleGpuCounts
+      const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
+        firstVisibleGpuCounts.delta.geometries !== 0
+        || firstVisibleGpuCounts.delta.programs !== 0
+      );
+      const lateAdmissionIdentity = firstVisibleGpuCounts
+        && firstVisibleGpuCounts.lateAdmissions;
+      const namedGeometryAdmission = lateAdmissionIdentity
+        && lateAdmissionIdentity.lateAdmissions.some((row) => row.geometryAdmitted === true);
+      const namedProgramAdmission = lateAdmissionIdentity
+        && lateAdmissionIdentity.newProgramKeys.length > 0;
+      const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
+        !lateAdmissionIdentity
+        || lateAdmissionIdentity.unexplained === true
+        || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
+        || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+      );
+      const firstVisibleAdmissionFailure = firstVisibleGpuCounts
         && firstVisibleGpuCounts.delta.geometries !== 0
+        ? { reason: 'first-visible-geometry-delta' }
+        : { reason: 'first-visible-program-delta' };
+      const validation = unexplainedFirstVisibleAdmission
         ? {
           ...receiptValidation,
+          ...firstVisibleAdmissionFailure,
           ok: false,
-          reason: 'first-visible-geometry-delta',
           firstVisibleGpuCounts,
         }
         : receiptValidation;

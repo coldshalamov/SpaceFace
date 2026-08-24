@@ -11,6 +11,7 @@ import {
 } from './partsLibrary.js';
 import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 export { visiblePointLightBudget };
@@ -34,6 +35,99 @@ const TRAFFIC_ROLE_SHIPS = Object.freeze([
 const COMPILE_GRID_SPACING = 92;
 export const POINT_LIGHT_BUDGET_STAGING_NAME = 'SF_Precompile_EventLight_Staging';
 const compiledShipKeysByRenderer = new WeakMap();
+
+function openingRecipeValue(value) {
+  if (value == null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (Array.isArray(value)) return value.map(openingRecipeValue);
+  if (typeof value !== 'object') return String(value);
+  const result = {};
+  for (const key of Object.keys(value).sort()) {
+    const entry = value[key];
+    if (typeof entry === 'function' || entry === undefined) continue;
+    result[key] = openingRecipeValue(entry);
+  }
+  return result;
+}
+
+function openingScenarioMaterialRecipe(material) {
+  return {
+    name: String(material && material.name || ''),
+    type: String(material && material.type || 'Material'),
+    color: material && material.color && typeof material.color.getHexString === 'function'
+      ? material.color.getHexString() : null,
+    emissive: material && material.emissive && typeof material.emissive.getHexString === 'function'
+      ? material.emissive.getHexString() : null,
+    emissiveIntensity: Number(material && material.emissiveIntensity) || 0,
+    roughness: Number(material && material.roughness) || 0,
+    metalness: Number(material && material.metalness) || 0,
+    opacity: Number.isFinite(Number(material && material.opacity)) ? Number(material.opacity) : 1,
+    transparent: material && material.transparent === true,
+    depthWrite: material && material.depthWrite !== false,
+    side: Number(material && material.side) || 0,
+    blending: Number(material && material.blending) || 0,
+    programFamily: String(material && material.userData?.spacefaceProgramFamily || ''),
+  };
+}
+
+/**
+ * Publish the generated 47-A pod's producer-owned recipe before the exact opening census reads it.
+ * Unlike authored GLBs it has no byte package, so its immutable leaf/material recipe is the hash
+ * boundary. Renderer admission calls this producer helper; it does not synthesize provenance from
+ * renderer counters or replace a package that the prop already owns.
+ */
+export function ensureOpeningGeneratedScenarioPropPackage(root) {
+  if (!root || root.userData?.scenarioAssetRef !== 'asset.slice.civilian_pod') return null;
+  if (root.userData.openingSubmissionPackage) return root.userData.openingSubmissionPackage;
+  const leaves = [];
+  root.traverse((object) => {
+    if (!object || !object.geometry || !object.material) return;
+    const geometry = object.geometry;
+    const materials = Array.isArray(object.material) ? object.material.filter(Boolean) : [object.material];
+    leaves.push({
+      name: String(object.name || object.type || ''),
+      type: String(object.type || ''),
+      castShadow: object.castShadow === true,
+      receiveShadow: object.receiveShadow === true,
+      position: object.position && typeof object.position.toArray === 'function'
+        ? object.position.toArray() : null,
+      rotation: object.rotation
+        ? [object.rotation.x, object.rotation.y, object.rotation.z, object.rotation.order]
+        : null,
+      scale: object.scale && typeof object.scale.toArray === 'function'
+        ? object.scale.toArray() : null,
+      geometry: {
+        type: String(geometry.type || 'BufferGeometry'),
+        parameters: openingRecipeValue(geometry.parameters || null),
+        attributes: Object.keys(geometry.attributes || {}).sort().map((name) => {
+          const attribute = geometry.attributes[name];
+          return {
+            name,
+            itemSize: Number(attribute && attribute.itemSize) || 0,
+            count: Number(attribute && attribute.count) || 0,
+            normalized: attribute && attribute.normalized === true,
+          };
+        }),
+        indexCount: Number(geometry.index && geometry.index.count) || 0,
+        drawRange: geometry.drawRange
+          ? { start: Number(geometry.drawRange.start) || 0, count: Number(geometry.drawRange.count) || 0 }
+          : null,
+      },
+      materials: materials.map(openingScenarioMaterialRecipe),
+    });
+  });
+  return stampOpeningSubmissionPackage(root, {
+    schema: 'spaceface.scenario47aGeneratedPropProducer.v1',
+    producer: 'scenario-47a-generated-prop',
+    assetRef: root.userData.scenarioAssetRef,
+    assetId: root.userData.assetId || null,
+    renderContract: openingRecipeValue(root.userData.renderContract || null),
+    leaves,
+  }, {
+    producer: 'scenario-47a-generated-prop',
+    assetId: root.userData.assetId || 'SF_47A_CIVILIAN_POD',
+  });
+}
 
 export function countVisiblePointLights(scene) {
   let count = 0;
