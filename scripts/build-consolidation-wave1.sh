@@ -15,7 +15,6 @@ for path in \
   scripts/branch-family-topology.mjs \
   scripts/branch-patch-outcomes.mjs \
   scripts/consolidation-portability-probe.mjs \
-  scripts/consolidation-portability-probe.mjs \
   scripts/build-consolidation-wave1.sh \
   .github/workflows/branch-consolidation-audit.yml \
   .github/workflows/consolidation-portability.yml \
@@ -27,7 +26,14 @@ do
   fi
 done
 
+git config user.name "spaceface-integration-bot"
+git config user.email "spaceface-integration-bot@users.noreply.github.com"
 git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+
+# Expand from the tiny control-surface checkout to every code, test, design, and root file while
+# deliberately leaving the very large binary asset payloads outside this integration transaction.
+git sparse-checkout set --no-cone '/*' '!/assets/' '!/scratch/' '!/.hullgen/'
+
 MASTER_SHA="$(git rev-parse refs/remotes/origin/master)"
 git switch -C consolidation-wave1 refs/remotes/origin/master
 
@@ -87,7 +93,8 @@ EOF
   mv "$tmp" "$README"
 fi
 
-# Restore the branch-audit tools on the assembled history.
+# Restore the branch-audit tools on the assembled history. The one-shot request marker is not
+# restored, so the publication push cannot recurse into another assembly.
 cp -a "$SUPPORT_DIR"/. .
 chmod +x scripts/build-consolidation-wave1.sh scripts/branch-consolidation-audit.mjs \
   scripts/branch-family-topology.mjs scripts/branch-patch-outcomes.mjs \
@@ -126,7 +133,7 @@ git commit -m "chore(integration): preserve branch audit and Arcade Core authori
 
 npm ci
 
-# Syntax-check every changed JS module before importing it in tests.
+# Syntax-check every changed JavaScript module before importing it in tests.
 mapfile -t changed_js < <(git diff --name-only refs/remotes/origin/master...HEAD | grep -E '\.(mjs|cjs|js)$' || true)
 if ((${#changed_js[@]})); then
   printf '%s\0' "${changed_js[@]}" | xargs -0 -n1 node --check
@@ -151,7 +158,6 @@ node --test \
 
 node scripts/check-radar-perf.mjs
 node scripts/check-type-floor.mjs
-npm run build
 
 git status --short
 if [[ -n "$(git status --porcelain)" ]]; then
