@@ -1,0 +1,58 @@
+name: Consolidation donor portability
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/consolidation-portability-probe.mjs
+      - .github/workflows/consolidation-portability.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - scripts/consolidation-portability-probe.mjs
+      - .github/workflows/consolidation-portability.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolidation-portability-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Sparse checkout code and tests
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            src
+            test
+            scripts
+            design/program/branch-consolidation
+            .github/workflows/consolidation-portability.yml
+          persist-credentials: false
+
+      - name: Fetch every donor ref without asset payloads
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+
+      - name: Probe each donor independently
+        run: node scripts/consolidation-portability-probe.mjs
+
+      - name: Upload portability report
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidation-portability
+          path: |
+            design/program/branch-consolidation/portability.json
+            design/program/branch-consolidation/PORTABILITY.md
+          retention-days: 14
