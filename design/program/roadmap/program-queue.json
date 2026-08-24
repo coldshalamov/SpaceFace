@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-21",
+  "updatedAt": "2026-08-24",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2611,130 +2611,12 @@
         "flight-motion"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.00",
-      "priority": 57,
-      "title": "Draw-to-fly speed governor stops crawling (floor 14 vs 112-133 cruise)",
-      "state": "ready",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
+        "CANONICAL_BUILD_MAP.md",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md"
       ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.01",
-      "priority": 57,
-      "title": "Player flight feel: crisp response, honest momentum, hulls that differ",
-      "state": "ready",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.02",
-      "priority": 57,
-      "title": "Motion Lab: deterministic movement scenarios and motion telemetry",
-      "state": "ready",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.03",
-      "priority": 57,
-      "title": "Hull-relative enemy capability envelopes and desired-state control",
-      "state": "planned",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135.01"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.04",
-      "priority": 57,
-      "title": "One four-ship wing with real attack-lane choreography",
-      "state": "planned",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135.01",
-        "PQ-135.03"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
-    },
-    {
-      "id": "PQ-135.05",
-      "priority": 57,
-      "title": "One twelve-body fodder cohort that flows and stays throwable",
-      "state": "planned",
-      "canonical": [
-        "FLIGHT-MOVEMENT-CONVERGENCE"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-135.01"
-      ],
-      "mutexes": [
-        "flight-motion"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13a",
-        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
-      ]
+      "checks": [],
+      "evidence": [],
+      "brief": "Flight and movement convergence per CRUCIBLE_SURVIVAL_MASTER_PLAN.md section 21A, admitted by the owner 2026-08-24 after playtest (\"every ship is heavy like underwater\"). Target: every ship should look like it meant to do what it just did. Order: Motion Lab -> player handling -> hull-relative enemy actuator -> formation choreography -> coherent swarm. Binding: no new direct position/velocity writes, no campaign AI fork, no perf regression hidden by cutting entity count or quality. See CANONICAL_BUILD_MAP.md section 13A."
     },
     {
       "id": "PQ-136",
@@ -2750,84 +2632,11 @@
         "asset-fielding"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md#13b"
-      ]
-    },
-    {
-      "id": "PQ-136.00",
-      "priority": 58,
-      "title": "Wreck & aftermath pack reaches the player (44 models, 0 used)",
-      "state": "ready",
-      "canonical": [
-        "FIELD-AUTHORED-ASSETS"
+        "CANONICAL_BUILD_MAP.md"
       ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-136"
-      ],
-      "mutexes": [
-        "asset-fielding"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13b"
-      ]
-    },
-    {
-      "id": "PQ-136.01",
-      "priority": 58,
-      "title": "Place the 30 unused everyday_space_kit infrastructure props",
-      "state": "ready",
-      "canonical": [
-        "FIELD-AUTHORED-ASSETS"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-136"
-      ],
-      "mutexes": [
-        "asset-fielding"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13b"
-      ]
-    },
-    {
-      "id": "PQ-136.02",
-      "priority": 58,
-      "title": "Field the 6 unused npc_activity_pack craft as working NPCs",
-      "state": "ready",
-      "canonical": [
-        "FIELD-AUTHORED-ASSETS"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-136"
-      ],
-      "mutexes": [
-        "asset-fielding"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13b"
-      ]
-    },
-    {
-      "id": "PQ-136.03",
-      "priority": 58,
-      "title": "Triage every half-finished hull: field, convert to variant, or record why not",
-      "state": "planned",
-      "canonical": [
-        "FIELD-AUTHORED-ASSETS"
-      ],
-      "aliases": [],
-      "dependsOn": [
-        "PQ-136"
-      ],
-      "mutexes": [
-        "asset-fielding"
-      ],
-      "sources": [
-        "CANONICAL_BUILD_MAP.md#13b"
-      ]
+      "checks": [],
+      "evidence": [],
+      "brief": "Field the authored assets we already own: 80 unused authored models (wreck_aftermath_pack 44/44 unused, everyday_space_kit 30 unused, npc_activity_pack 6 unused) plus triage of half-finished hulls. Reuse before authoring; a variant counts as fielding; check:asset-reachability is the instrument, never a filename grep. See CANONICAL_BUILD_MAP.md section 13B."
     }
   ],
   "dispatchUnits": [
@@ -7920,7 +7729,9 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-18-pole-sweep-REPORT.md"
+      ],
       "brief": "Reserved PQ-094. Recurring: if a live pole has no leaf, mint one in PERF_OPTION_SPACE and admit a PQ-129 leaf. If a leaf is disproved, keep the reject receipt. Never done forever.",
       "note": "The 2026-08-24 crowded-scene review IS the pole sweep."
     },
@@ -9003,6 +8814,232 @@
       ],
       "receiptRefs": [],
       "brief": "Direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants; four-way capture at play size."
+    },
+    {
+      "id": "PQ-135.00",
+      "parentId": "PQ-135",
+      "priority": 383,
+      "title": "Draw-to-fly speed governor stops crawling (floor 14 vs 112-133 cruise)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "src/combat/autoTargetMode.js",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The draw-to-fly speed governor stops crawling. Measured defect: ships cruise at 112-133 WU/s while PATH_CORNER_FLOOR_SPEED is 14 (about one eighth); worstCurvatureAhead takes MAX curvature over the lookahead and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin, pinning the hull to the floor for the whole stroke. Done when a drawn stroke is flown at a speed a player would choose AND still tracked. The existing tracking test measures cross-track and never SPEED (it would pass at 1 WU/s) - add the speed bar to it. Seam: src/combat/autoTargetMode.js."
+    },
+    {
+      "id": "PQ-135.01",
+      "parentId": "PQ-135",
+      "priority": 384,
+      "title": "Player flight feel: crisp response, honest momentum, hulls that differ",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-135.00"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "src/systems/flightV3.js",
+        "src/systems/flight.js",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and hulls you can FEEL the difference between (21A.5). Done when a repeatable slalom and reversal course shows Hitch vs Wasp visibly different with no loss of honest momentum. No new direct position/velocity writes - motion goes through the canonical physical control path."
+    },
+    {
+      "id": "PQ-135.02",
+      "parentId": "PQ-135",
+      "priority": 385,
+      "title": "Motion Lab: deterministic movement scenarios and motion telemetry",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "test/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Motion Lab: deterministic movement scenarios and motion telemetry so feel is measured rather than argued (21A.23-.25). Done when scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers."
+    },
+    {
+      "id": "PQ-135.03",
+      "parentId": "PQ-135",
+      "priority": 386,
+      "title": "Hull-relative enemy capability envelopes and desired-state control",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-135.01"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Hull-relative enemy capability envelopes and desired-state trajectory control (21A.6-.7). Done when enemy motion derives from the hull it is flying, not a shared constant. No campaign AI fork."
+    },
+    {
+      "id": "PQ-135.04",
+      "parentId": "PQ-135",
+      "priority": 387,
+      "title": "One four-ship wing with real attack-lane choreography",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-135.01",
+        "PQ-135.03"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "One four-ship wing with real choreography: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors (21A.9-.13). Done when a player impulse can break the sequence and disrupted members do not instantly snap back."
+    },
+    {
+      "id": "PQ-135.05",
+      "parentId": "PQ-135",
+      "priority": 388,
+      "title": "One twelve-body fodder cohort that flows and stays throwable",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-135.01"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable (21A.14). Done when it flows as a shoal rather than a dozen independent seekers jittering at the same point."
+    },
+    {
+      "id": "PQ-136.00",
+      "parentId": "PQ-136",
+      "priority": 389,
+      "title": "Wreck & aftermath pack reaches the player (44 models, 0 used)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "paths": [
+        "assets/incubator/wreck_aftermath_pack/",
+        "src/render/",
+        "src/systems/"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The wreck pack reaches the player: 44 authored models (hero wreck hulls plus component/fragment kits, authored-fracture grammar truss vs plated), currently zero referenced by src/. Wrecks are the cheapest variety in the game - no AI, no balance pass, no new systems; they need routing and placement. Done when a player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. Reuse before authoring."
+    },
+    {
+      "id": "PQ-136.01",
+      "parentId": "PQ-136",
+      "priority": 390,
+      "title": "Place the 30 unused everyday_space_kit infrastructure props",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "paths": [
+        "assets/incubator/everyday_space_kit/",
+        "src/render/",
+        "src/systems/"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The 30 unused everyday_space_kit props are placed where infrastructure belongs - stations, lanes, work sites. Done when sectors read as inhabited rather than decorated with the same prop repeated."
+    },
+    {
+      "id": "PQ-136.02",
+      "parentId": "PQ-136",
+      "priority": 391,
+      "title": "Field the 6 unused npc_activity_pack craft as working NPCs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "paths": [
+        "assets/incubator/npc_activity_pack/",
+        "src/systems/traffic.js",
+        "src/systems/npcJobs.js"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The 6 unused npc_activity_pack occupational craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. Done when new occupational craft appear in traffic without a new AI path."
+    },
+    {
+      "id": "PQ-136.03",
+      "parentId": "PQ-136",
+      "priority": 392,
+      "title": "Triage every half-finished hull: field, convert to variant, or record why not",
+      "kind": "program_control",
+      "state": "planned",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "paths": [
+        "design/graphics-sprints/VISUAL_ASSET_CATALOG.md",
+        "assets/"
+      ],
+      "checks": [
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Half-finished or superseded hulls are triaged, not abandoned. For each: field it, alter it into a variant (different faction, damaged version, wreck), or record why it genuinely cannot be used. Deleting is the last option. Done when every authored hull has a disposition on the record. Preserve valuable future work: mark FUTURE or PARTIAL rather than deleting."
     }
   ]
 }
