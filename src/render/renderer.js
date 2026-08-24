@@ -34,8 +34,10 @@ import {
   getAuthoredInstancePoolDiagnostics,
   isInitialAuthoredCompositionEntity,
   preloadAuthoredPartLibrary,
+  prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   publishPreparedAuthoredBoundary,
+  resumeAuthoredUpgradeQueueAfterOpening,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
@@ -920,13 +922,23 @@ export function shouldPresentShieldBubble(shield, flash) {
   return Number(shield) > 0 && Number(flash) > SHIELD_PRESENTATION_EPSILON;
 }
 
-export function createShipAuxPool(scene) {
+export function createShipAuxPool(scene, options = {}) {
   const pool = {
     scene,
     shield: { capacity: 0, mesh: null, material: createShieldAuxMaterial() },
     nav: { capacity: 0, mesh: null, material: createNavLightAuxMaterial() },
     entityPasses: 0,
     entitiesVisited: 0,
+    deferGrowth: options.deferGrowth === true,
+    yieldToPostPaint: typeof options.yieldToPostPaint === 'function'
+      ? options.yieldToPostPaint : null,
+    prepareGpuResidency: typeof options.prepareGpuResidency === 'function'
+      ? options.prepareGpuResidency : null,
+    shouldDeferGrowth: typeof options.shouldDeferGrowth === 'function'
+      ? options.shouldDeferGrowth : () => true,
+    pendingGrowth: null,
+    requestedShieldCapacity: 0,
+    requestedNavCapacity: 0,
   };
   ensureShieldAuxCapacity(pool.shield, SHIP_AUX_SHIELD_INITIAL_CAPACITY, scene);
   ensureNavLightAuxCapacity(pool.nav, SHIP_AUX_NAV_INITIAL_CAPACITY, scene);
@@ -1092,6 +1104,173 @@ function ensureNavLightAuxCapacity(pool, desired, scene, preserveCount = 0) {
   if (scene) scene.add(mesh);
 }
 
+function shipAuxCapacityDemand(frameOrEntities, meshes) {
+  const classifiedFrame = frameOrEntities && Array.isArray(frameOrEntities.shipAux)
+    ? frameOrEntities
+    : null;
+  const entities = classifiedFrame ? classifiedFrame.shipAux : frameOrEntities;
+  let shield = 0;
+  let nav = 0;
+  if (!Array.isArray(entities)) return { shield, nav };
+  for (const item of entities) {
+    const entity = item && item.entity || item;
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    const root = item && item.mesh || (meshes && meshes.get(entity.id));
+    if (!root || root.visible === false || !root.userData) continue;
+    const bubble = root.userData.shieldBubble;
+    if (bubble) {
+      const uniforms = bubble.material && bubble.material.uniforms;
+      const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
+      if (shouldPresentShieldBubble(entity.shield, flash)) shield++;
+    }
+    for (const source of getPooledNavLightSources(root)) {
+      nav += Math.max(0, Number(source && source.count) || 0);
+    }
+  }
+  return { shield, nav };
+}
+
+/** Size the exact loading/sector census before its renderer-owned pool roots are published. */
+export function ensureShipAuxPoolCapacityForFrame(pool, frameOrEntities, meshes) {
+  if (!pool) return { shield: 0, nav: 0 };
+  const demand = shipAuxCapacityDemand(frameOrEntities, meshes);
+  ensureShieldAuxCapacity(pool.shield, demand.shield, pool.scene);
+  ensureNavLightAuxCapacity(pool.nav, demand.nav, pool.scene);
+  return demand;
+}
+
+function createDetachedShipAuxReplacements(pool, shieldCapacity, navCapacity) {
+  const replacements = { shield: null, nav: null };
+  if (shieldCapacity > pool.shield.capacity) {
+    const detached = { capacity: 0, mesh: null, material: pool.shield.material };
+    ensureShieldAuxCapacity(detached, shieldCapacity, null);
+    replacements.shield = detached;
+  }
+  if (navCapacity > pool.nav.capacity) {
+    const detached = { capacity: 0, mesh: null, material: pool.nav.material };
+    ensureNavLightAuxCapacity(detached, navCapacity, null);
+    replacements.nav = detached;
+  }
+  return replacements;
+}
+
+function disposeDetachedShipAuxReplacements(replacements) {
+  const shield = replacements && replacements.shield && replacements.shield.mesh;
+  if (shield) {
+    if (shield.geometry && typeof shield.geometry.dispose === 'function') shield.geometry.dispose();
+    if (typeof shield.dispose === 'function') shield.dispose();
+  }
+  const nav = replacements && replacements.nav && replacements.nav.mesh;
+  if (nav && typeof nav.dispose === 'function') nav.dispose();
+}
+
+function activateShieldAuxReplacement(pool, replacement, dynamicBufferOwner) {
+  if (!replacement || !replacement.mesh) return false;
+  const previous = pool.mesh;
+  if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+  pool.mesh = replacement.mesh;
+  pool.capacity = replacement.capacity;
+  pool.dynamicBufferOwner = dynamicBufferOwner;
+  if (previous && pool.scene) pool.scene.remove(previous);
+  if (pool.scene) pool.scene.add(replacement.mesh);
+  if (previous) {
+    if (previous.geometry && typeof previous.geometry.dispose === 'function') previous.geometry.dispose();
+    if (typeof previous.dispose === 'function') previous.dispose();
+  }
+  return true;
+}
+
+function activateNavAuxReplacement(pool, replacement, dynamicBufferOwner) {
+  if (!replacement || !replacement.mesh) return false;
+  const previous = pool.mesh;
+  if (pool.dynamicBufferOwner) unregisterDynamicBufferOwner(pool.dynamicBufferOwner);
+  pool.mesh = replacement.mesh;
+  pool.capacity = replacement.capacity;
+  pool.dynamicBufferOwner = dynamicBufferOwner;
+  if (previous && pool.scene) pool.scene.remove(previous);
+  if (pool.scene) pool.scene.add(replacement.mesh);
+  if (previous && typeof previous.dispose === 'function') previous.dispose();
+  return true;
+}
+
+function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
+  if (!pool || pool.deferGrowth !== true) return null;
+  if (pool.shouldDeferGrowth() !== true) return null;
+  pool.requestedShieldCapacity = Math.max(pool.requestedShieldCapacity || 0, shieldCapacity || 0);
+  pool.requestedNavCapacity = Math.max(pool.requestedNavCapacity || 0, navCapacity || 0);
+  if (pool.pendingGrowth) return pool.pendingGrowth;
+  const yieldToPostPaint = pool.yieldToPostPaint;
+  const prepareGpuResidency = pool.prepareGpuResidency;
+  if (typeof yieldToPostPaint !== 'function' || typeof prepareGpuResidency !== 'function') return null;
+
+  const growth = Promise.resolve().then(async () => {
+    await yieldToPostPaint();
+    if (pool.shouldDeferGrowth() !== true) return false;
+    const replacements = createDetachedShipAuxReplacements(
+      pool,
+      pool.requestedShieldCapacity,
+      pool.requestedNavCapacity,
+    );
+    const roots = [replacements.shield && replacements.shield.mesh, replacements.nav && replacements.nav.mesh]
+      .filter(Boolean);
+    if (roots.length === 0) return false;
+    const residencyCounts = roots.map((root) => root.count);
+    let shieldOwner = null;
+    let navOwner = null;
+    try {
+      // Detached pools are intentionally invisible with count=0, but the geometry residency pass
+      // rejects zero-count InstancedMesh roots because they cannot submit. Give only its clipped
+      // proxy pass one instance, then restore the unpublished production counts before activation.
+      for (const root of roots) root.count = Math.max(1, Number(root.count) || 0);
+      try {
+        await prepareGpuResidency(roots);
+      } finally {
+        for (let index = 0; index < roots.length; index++) roots[index].count = residencyCounts[index];
+      }
+      if (replacements.shield) {
+        shieldOwner = registerShieldAuxDynamicOwner(pool.scene, replacements.shield.mesh);
+      }
+      if (replacements.nav) {
+        navOwner = registerNavAuxDynamicOwner(pool.scene, replacements.nav.mesh);
+      }
+      if (replacements.shield) {
+        activateShieldAuxReplacement(pool.shield, replacements.shield, shieldOwner);
+        shieldOwner = null;
+      }
+      if (replacements.nav) {
+        activateNavAuxReplacement(pool.nav, replacements.nav, navOwner);
+        navOwner = null;
+      }
+      return true;
+    } catch (error) {
+      if (shieldOwner) unregisterDynamicBufferOwner(shieldOwner);
+      if (navOwner) unregisterDynamicBufferOwner(navOwner);
+      disposeDetachedShipAuxReplacements(replacements);
+      pool.requestedShieldCapacity = pool.shield.capacity;
+      pool.requestedNavCapacity = pool.nav.capacity;
+      console.warn('[render] deferred ship auxiliary pool admission failed', error);
+      return false;
+    }
+  }).finally(() => {
+    if (pool.pendingGrowth === growth) pool.pendingGrowth = null;
+    if (pool.requestedShieldCapacity > pool.shield.capacity
+        || pool.requestedNavCapacity > pool.nav.capacity) {
+      queueShipAuxPoolGrowth(
+        pool,
+        pool.requestedShieldCapacity,
+        pool.requestedNavCapacity,
+      );
+    }
+  });
+  pool.pendingGrowth = growth;
+  return growth;
+}
+
+export async function waitForShipAuxPoolGrowth(pool) {
+  while (pool && pool.pendingGrowth) await pool.pendingGrowth;
+  return true;
+}
+
 export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   if (!pool) return;
   const classifiedFrame = frameOrEntities && Array.isArray(frameOrEntities.shipAux)
@@ -1120,40 +1299,44 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       const uniforms = bubble.material && bubble.material.uniforms;
       const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
       if (shouldPresentShieldBubble(entity.shield, flash)) {
-        ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
-        const shieldMesh = pool.shield.mesh;
-        const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
-        const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
-        bubble.updateWorldMatrix(true, false);
-        if (writeInstanceMatrixIfChanged(
-          shieldMesh, shieldCount, bubble.matrixWorld,
-          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_MATRIX,
-        )) shieldMatrixDirty = true;
-        const color = uniforms && uniforms.uColor && uniforms.uColor.value;
-        if (writeInstanceColorIfChanged(
-          shieldMesh, shieldCount, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
-          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_COLOR,
-        )) shieldColorDirty = true;
-        if (writeScalarAttributeIfChanged(
-          flashAttr, shieldCount, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0,
-          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_FLASH,
-        )) shieldFlashDirty = true;
-        if (writeScalarAttributeIfChanged(
-          baseAttr, shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
-          pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_BASE,
-        )) shieldBaseDirty = true;
-        const hits = readShieldContacts(entity.id, SHIELD_HIT_SCRATCH) || SHIELD_HIT_SCRATCH;
-        if (!hits) SHIELD_HIT_SCRATCH.fill(0);
-        for (let hit = 0; hit < SHIELD_HIT_SLOTS; hit++) {
-          const hitAttr = shieldMesh.geometry.getAttribute(`instanceHit${hit}`);
-          const o = hit * 4;
-          if (writeVec4AttributeIfChanged(
-            hitAttr, shieldCount,
-            hits[o], hits[o + 1], hits[o + 2], hits[o + 3],
-            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_HIT0 + hit,
-          )) shieldBaseDirty = true;
+        if (pool.deferGrowth !== true) {
+          ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
         }
-        shieldCount++;
+        const shieldIndex = shieldCount++;
+        if (shieldIndex < pool.shield.capacity) {
+          const shieldMesh = pool.shield.mesh;
+          const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
+          const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
+          bubble.updateWorldMatrix(true, false);
+          if (writeInstanceMatrixIfChanged(
+            shieldMesh, shieldIndex, bubble.matrixWorld,
+            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_MATRIX,
+          )) shieldMatrixDirty = true;
+          const color = uniforms && uniforms.uColor && uniforms.uColor.value;
+          if (writeInstanceColorIfChanged(
+            shieldMesh, shieldIndex, color && color.isColor ? color : SHIP_AUX_COLOR.set(0x5fd0ff),
+            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_COLOR,
+          )) shieldColorDirty = true;
+          if (writeScalarAttributeIfChanged(
+            flashAttr, shieldIndex, uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0,
+            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_FLASH,
+          )) shieldFlashDirty = true;
+          if (writeScalarAttributeIfChanged(
+            baseAttr, shieldIndex, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
+            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_BASE,
+          )) shieldBaseDirty = true;
+          const hits = readShieldContacts(entity.id, SHIELD_HIT_SCRATCH) || SHIELD_HIT_SCRATCH;
+          if (!hits) SHIELD_HIT_SCRATCH.fill(0);
+          for (let hit = 0; hit < SHIELD_HIT_SLOTS; hit++) {
+            const hitAttr = shieldMesh.geometry.getAttribute(`instanceHit${hit}`);
+            const o = hit * 4;
+            if (writeVec4AttributeIfChanged(
+              hitAttr, shieldIndex,
+              hits[o], hits[o + 1], hits[o + 2], hits[o + 3],
+              pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_HIT0 + hit,
+            )) shieldBaseDirty = true;
+          }
+        }
       }
     }
 
@@ -1163,7 +1346,9 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       source.updateWorldMatrix(true, false);
       const sourceCount = Math.max(0, source.count || 0);
       if (!sourceCount) continue;
-      ensureNavLightAuxCapacity(pool.nav, navCount + sourceCount, pool.scene, navCount);
+      if (pool.deferGrowth !== true) {
+        ensureNavLightAuxCapacity(pool.nav, navCount + sourceCount, pool.scene, navCount);
+      }
       const navMesh = pool.nav.mesh;
       const mat = Array.isArray(source.material) ? source.material[0] : source.material;
       const base = mat && mat.emissive && mat.emissive.isColor ? mat.emissive : (mat && mat.color && mat.color.isColor ? mat.color : SHIP_AUX_COLOR.set(0x88eeff));
@@ -1171,29 +1356,31 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       SHIP_AUX_COLOR.copy(base).multiplyScalar(Math.max(0, intensity));
       if (mat && Number.isFinite(mat.opacity)) SHIP_AUX_COLOR.multiplyScalar(Math.max(0, mat.opacity));
       for (let i = 0; i < sourceCount; i++) {
+        const navIndex = navCount++;
+        if (navIndex >= pool.nav.capacity) continue;
         source.getMatrixAt(i, SHIP_AUX_LOCAL_MATRIX);
         SHIP_AUX_WORLD_MATRIX.multiplyMatrices(source.matrixWorld, SHIP_AUX_LOCAL_MATRIX);
         if (writeInstanceMatrixIfChanged(
-          navMesh, navCount, SHIP_AUX_WORLD_MATRIX,
+          navMesh, navIndex, SHIP_AUX_WORLD_MATRIX,
           pool.nav.dynamicBufferOwner, SHIP_AUX_NAV_MATRIX,
         )) navMatrixDirty = true;
         if (writeInstanceColorIfChanged(
-          navMesh, navCount, SHIP_AUX_COLOR,
+          navMesh, navIndex, SHIP_AUX_COLOR,
           pool.nav.dynamicBufferOwner, SHIP_AUX_NAV_COLOR,
         )) navColorDirty = true;
-        navCount++;
       }
     }
   }
 
   const shieldMesh = pool.shield.mesh;
+  const visibleShieldCount = Math.min(shieldCount, pool.shield.capacity);
   const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
   const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
-  shieldMesh.visible = shieldCount > 0;
+  shieldMesh.visible = visibleShieldCount > 0;
   if (pool.shield.dynamicBufferOwner) {
-    commitDynamicBufferOwner(pool.shield.dynamicBufferOwner, shieldCount);
+    commitDynamicBufferOwner(pool.shield.dynamicBufferOwner, visibleShieldCount);
   } else {
-    if (shieldMesh.count !== shieldCount) shieldMesh.count = shieldCount;
+    if (shieldMesh.count !== visibleShieldCount) shieldMesh.count = visibleShieldCount;
     if (shieldMatrixDirty) shieldMesh.instanceMatrix.needsUpdate = true;
     if (shieldColorDirty && shieldMesh.instanceColor) shieldMesh.instanceColor.needsUpdate = true;
     if (shieldFlashDirty) flashAttr.needsUpdate = true;
@@ -1201,17 +1388,22 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   }
 
   const navMesh = pool.nav.mesh;
-  navMesh.visible = navCount > 0;
+  const visibleNavCount = Math.min(navCount, pool.nav.capacity);
+  navMesh.visible = visibleNavCount > 0;
   if (pool.nav.dynamicBufferOwner) {
-    commitDynamicBufferOwner(pool.nav.dynamicBufferOwner, navCount);
+    commitDynamicBufferOwner(pool.nav.dynamicBufferOwner, visibleNavCount);
   } else {
-    if (navMesh.count !== navCount) navMesh.count = navCount;
+    if (navMesh.count !== visibleNavCount) navMesh.count = visibleNavCount;
     if (navMatrixDirty) navMesh.instanceMatrix.needsUpdate = true;
     if (navColorDirty && navMesh.instanceColor) navMesh.instanceColor.needsUpdate = true;
   }
 
   pool.entityPasses = 1;
   pool.entitiesVisited = entitiesVisited;
+  if (pool.deferGrowth === true
+      && (shieldCount > pool.shield.capacity || navCount > pool.nav.capacity)) {
+    queueShipAuxPoolGrowth(pool, shieldCount, navCount);
+  }
 }
 
 function writeInstanceMatrixIfChanged(mesh, index, matrix, dynamicBufferOwner = null, bindingIndex = 0, epsilon = 1e-6) {
@@ -2648,7 +2840,18 @@ export const render = {
     this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
-    this._shipAuxPool = createShipAuxPool(scene);
+    this._shipAuxPool = createShipAuxPool(scene, {
+      deferGrowth: true,
+      yieldToPostPaint: yieldToNextPresent,
+      prepareGpuResidency: (roots) => prepareStartupGpuResidency(renderer, roots, {
+        includeGeometry: true,
+        yieldToMain: yieldToBrowser,
+      }),
+      shouldDeferGrowth: () => (
+        state.mode === 'flight'
+        && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+      ),
+    });
     this._asteroidInstancePool = createAsteroidInstancePool(scene);
     this._entityFrame = createRenderEntityFrame();
     this._presentationWorld = createPresentationWorld();
@@ -3169,6 +3372,7 @@ export const render = {
     });
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
       prepareStartupGpuResidency(renderer, subject, {
+        includeGeometry: true,
         yieldToMain: async () => {
           if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
             await yieldToNextPresent();
@@ -3522,7 +3726,11 @@ export const render = {
         ? Promise.resolve(plan)
         : gpuResidencyAdmissions.waitForCaptured(plan)
     );
-    state.render.resumeDeferredPipelineAdmissions = () => pipelineAdmissions.resumeAutoFlush();
+    state.render.resumeDeferredPipelineAdmissions = () => {
+      const pipelines = pipelineAdmissions.resumeAutoFlush();
+      resumeAuthoredUpgradeQueueAfterOpening(scene);
+      return pipelines;
+    };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.preparePostOpeningPipelines = async () => {
@@ -3657,6 +3865,7 @@ export const render = {
           throw new Error('Opening submission plan is incomplete; refusing first-playable GPU admission');
         }
         const result = await prepareStartupGpuResidency(renderer, plan.residencySubjects, {
+          includeGeometry: false,
           yieldToMain: yieldToBrowser,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
@@ -5695,6 +5904,7 @@ export const render = {
       this.scene.updateMatrixWorld(true);
     }
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+    ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     const openingShadowRadius = liveShadowCastRadius(state);
     this._frameShadowCastRadius = openingShadowRadius;
@@ -5775,6 +5985,7 @@ export const render = {
       ? this.state.render.deferNoncriticalMeshStreaming === true
       : false;
     let succeeded = false;
+    let preparedHandoffCohort = false;
     // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
     // roots may finish their authored child swap below; no new residency/build pass can introduce a
     // different root after capture and before the first draw.
@@ -5782,6 +5993,22 @@ export const render = {
     if (this.state && this.state.render) this.state.render.deferNoncriticalMeshStreaming = true;
     this._openingFirstPicturePrepared = true;
     try {
+      // A replacement requested by the prior flight may already be between its post-paint yield and
+      // activation when Continue enters loading. Let that finite job settle (it aborts when loading
+      // owns the picture) before the exact opening census can capture a pool root.
+      let auxGrowthTimeout = null;
+      let auxGrowthReady;
+      try {
+        auxGrowthReady = await Promise.race([
+          waitForShipAuxPoolGrowth(this._shipAuxPool).then(() => true),
+          new Promise((resolve) => {
+            auxGrowthTimeout = setTimeout(() => resolve(false), waitMs);
+          }),
+        ]);
+      } finally {
+        if (auxGrowthTimeout !== null) clearTimeout(auxGrowthTimeout);
+      }
+      if (!auxGrowthReady) throw new Error('opening ship auxiliary pool admission timed out');
       for (let pass = 0; pass < 8; pass++) {
         if (!this._publishOpeningFirstPicture()) {
           throw new Error('opening first-picture render publication unavailable');
@@ -5797,6 +6024,35 @@ export const render = {
           const late = this._openingFirstPictureUpgradePromises();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
+            if (!preparedHandoffCohort) {
+              preparedHandoffCohort = true;
+              const cohortNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                ? performance.now()
+                : Date.now();
+              const cohortRemaining = deadline - cohortNow;
+              if (!(cohortRemaining > 0)) {
+                throw new Error('opening authored boundary cohort timed out');
+              }
+              let cohortTimeout = null;
+              let cohort;
+              try {
+                cohort = await Promise.race([
+                  prepareFirstQueuedAuthoredBoundaryForOpening(this.scene),
+                  new Promise((resolve) => {
+                    cohortTimeout = setTimeout(() => resolve(null), cohortRemaining);
+                  }),
+                ]);
+              } finally {
+                if (cohortTimeout !== null) clearTimeout(cohortTimeout);
+              }
+              if (cohort === null) throw new Error('opening authored boundary cohort timed out');
+              if (this.state && this.state.render) {
+                this.state.render.openingAuthoredBoundaryCohort = cohort;
+              }
+              // A prepared boundary may add an exact first-picture root. Re-publish once before
+              // freezing the graph so Continue captures its final material and geometry identity.
+              if (cohort && cohort.prepared === true) continue;
+            }
             freezeOpeningGraphPublication(this);
             this._bakeEnv();
             this._openingEnvFrozen = true;
@@ -5819,6 +6075,7 @@ export const render = {
       throw new Error('opening first-picture boundary did not settle');
     } finally {
       if (!succeeded) {
+        resumeAuthoredUpgradeQueueAfterOpening(this.scene);
         this._deferNoncriticalMeshStreaming = previousDefer;
         if (this.state && this.state.render) {
           this.state.render.deferNoncriticalMeshStreaming = previousRenderDefer;

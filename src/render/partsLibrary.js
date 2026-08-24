@@ -3106,6 +3106,62 @@ export function enqueueBoundaryUpgrade(scene, job) {
   return completion;
 }
 
+function invalidateScheduledUpgradeFrame(state) {
+  if (!state) return false;
+  state.frameScheduleToken = (Number(state.frameScheduleToken) || 0) + 1;
+  const invalidated = state.frameScheduled === true;
+  state.frameScheduled = false;
+  return invalidated;
+}
+
+/**
+ * Continue/load handoff cohort: finish at most one queued heavy boundary while loading still owns
+ * the picture, then hold the remaining queue until the first playable paint releases it.
+ *
+ * The hold is checked when the callback executes, not when it is scheduled, so a loading rAF cannot
+ * race mode handover and synchronously compose inside the first flight display callback.
+ */
+export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
+  const state = upgradeQueueState(scene);
+  state.openingHandoffHold = true;
+  invalidateScheduledUpgradeFrame(state);
+
+  const inFlight = [...state.byBoundary.values()].find((job) => job.lifecycle === 'in-flight');
+  if (inFlight) {
+    await inFlight.completion;
+    return { prepared: true, source: 'in-flight', key: inFlight.key };
+  }
+
+  for (const job of [...state.jobs]) {
+    if (jobStillNeeded(state, job)) continue;
+    const index = state.jobs.indexOf(job);
+    if (index >= 0) state.jobs.splice(index, 1);
+    cancelQueuedJob(state, job);
+  }
+  if (state.jobs.length === 0) {
+    state.running = false;
+    publishUpgradeDiagnostics(state);
+    return { prepared: false, source: 'empty' };
+  }
+
+  const completion = admitNextUpgradeJob(state);
+  if (!completion || typeof completion.then !== 'function') {
+    return { prepared: false, source: 'unavailable' };
+  }
+  const result = await completion;
+  return { prepared: true, source: 'queued', result };
+}
+
+/** Release the bounded handoff hold after the first playable picture has painted or startup aborts. */
+export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  const held = state.openingHandoffHold === true;
+  state.openingHandoffHold = false;
+  scheduleNextUpgradeFrame(state);
+  return held;
+}
+
 function upgradeQueueState(scene) {
   let state = upgradeQueuesByScene.get(scene);
   if (!state) {
@@ -3115,6 +3171,8 @@ function upgradeQueueState(scene) {
       running: false,
       inFlight: 0,
       frameScheduled: false,
+      frameScheduleToken: 0,
+      openingHandoffHold: false,
       lateSkips: 0,
       byBoundary: new Map(),
       byKey: new Map(),
@@ -3409,9 +3467,8 @@ function scheduleUpgradeFrame(callback) {
   // ("promote only after hitch count is halved") forbids outright.
   //
   // The brick itself is real and reproducible: ~3.2-3.7 s at entering-flight across four runs.
-  // The next attempt should defer only the ONE huge first compose, not every flight upgrade frame -
-  // the display callback is right for the QUEUE and wrong for that single job - and must gate on
-  // something that cannot race flight handover.
+  // PQ-129.19 handles the ONE huge handoff compose through the separate loading-owned cohort above;
+  // its execution-time token/hold cannot race flight handover. The ordinary queue remains here.
   // Stay on the display callback. Parking a 40–150 ms compose on setTimeout(0) between
   // frames made every rAF late while the queue was full. The merge cache is what makes
   // the job cheaper; the scheduler must not turn some hitches into a 30 fps floor.
@@ -3428,7 +3485,7 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled) return;
+  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
@@ -3438,7 +3495,12 @@ function scheduleNextUpgradeFrame(state) {
   // One entity admission per frame: keep post-boot authored upgrades bounded even when several
   // decoded packages become eligible together.
   state.frameScheduled = true;
-  scheduleUpgradeFrame(() => admitNextUpgradeJob(state));
+  const token = (Number(state.frameScheduleToken) || 0) + 1;
+  state.frameScheduleToken = token;
+  scheduleUpgradeFrame(() => {
+    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+    admitNextUpgradeJob(state);
+  });
 }
 
 function admitNextUpgradeJob(state) {
@@ -3452,7 +3514,7 @@ function admitNextUpgradeJob(state) {
     state.lateSkips = gate.skippedCount;
     if (!gate.start) {
       scheduleNextUpgradeFrame(state);
-      return;
+      return null;
     }
   }
   state.jobs.sort((a, b) => {
@@ -3464,12 +3526,12 @@ function admitNextUpgradeJob(state) {
   if (!job) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
-    return;
+    return null;
   }
   if (!jobStillNeeded(state, job)) {
     cancelQueuedJob(state, job);
     scheduleNextUpgradeFrame(state);
-    return;
+    return null;
   }
 
   job.lifecycle = 'in-flight';
@@ -3528,6 +3590,7 @@ function admitNextUpgradeJob(state) {
       scheduleNextUpgradeFrame(state);
     });
   scheduleNextUpgradeFrame(state);
+  return job.completion;
 }
 
 function authoredUpgradeConcurrencyLimit() {

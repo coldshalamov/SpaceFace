@@ -41,8 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-136.01 space-kit props | fable-campaign-20260824 lane PROPS | MUTATING | `src/systems/world.js` (dressing only), `src/render/partsLibrary.js` (additive), `src/data/**` one table, kit manifests, one test | review, commit, release row |
-| PQ-129.19 continue bricks | fable-campaign-20260824 lane CONTINUEBRICK | MUTATING | `src/render/startupGpuResidency.js`, `src/render/openingGpuAdmission.js`, `src/render/renderer.js`, `src/render/partsLibrary.js` (admission scheduling) | review, GPU A/B, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
