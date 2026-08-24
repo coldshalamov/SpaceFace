@@ -44,6 +44,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Keep the VFX contract independently observable even when an unrelated program-control
+      # document blocks the wider matrix. This is the executable oracle for PRs touching the player
+      # plume/contrail path, not a substitute for the full suite below.
+      - name: Validate immutable thruster history
+        run: node --test test/plasma-stream-thruster.test.mjs test/thruster-history-contract.test.mjs
+
       - name: Validate program control plane
         run: |
           node scripts/check-program-docs.mjs

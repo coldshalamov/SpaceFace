@@ -1,43 +1,18 @@
 /**
- * The drive FORGE — the mouth the worldline is drawn out of.
+ * The drive FORGE — the steady mouth where the live plume begins.
  *
- * WHY THIS EXISTS
- * ---------------
- * The contrail is a history of where the thruster was, and a history has to start somewhere you can
- * see. Without a source it begins at an arbitrary point in empty space: flying straight that reads
- * as merely abrupt, but in a hard turn the line leaves at an angle to the hull and appears to come
- * out of flat nothing beside the ship.
- *
- * WHY NOT JUST BRIGHTEN THE THROAT LAMP
- * -------------------------------------
- * The throat glow in `plasmaStream.js` is a camera-facing disc, and it is deliberately dim — it was
- * turned down because at strength it "read as a hard grey-blue ball stuck on the back of the hull".
- * That is not a tuning accident, it is what a billboard does. A disc that always faces the camera
- * has no relationship to the direction the line leaves in, so it can only ever be a bright spot NEAR
- * the line, never the thing the line comes OUT of. Scaling it up buys a bigger ball.
- *
- * WHAT THIS IS INSTEAD
- * --------------------
- * A short flared collar, coaxial with the line's own heading, sitting at the bell: a muzzle the line
- * is extruded through. Because it is built around the line's axis rather than the camera's, the line
- * threads it at every attitude, and a hard turn swings the mouth with the line instead of leaving it
- * behind. Seen from astern it is an iris; seen side-on it is a lit slot. Both are a mouth.
- *
- * AND IT SHARES THE ENGINE'S CLOCK
- * --------------------------------
- * The forge flashes on exactly the pulse that the contrail stamps its shed bands with, at the same
- * rate and in the same phase. So a pulse is seen to fire at the mouth and then seen travelling away
- * as a band on the line, and the two elements read as one event with a cause rather than as a glow
- * that happens to sit near a ribbon. That shared clock is the whole join.
+ * The forge is nozzle-local and belongs to the live engine, not to recorded history. It provides a
+ * coaxial luminous collar so the plume visibly emerges from the bell at every camera angle. It has
+ * no pulse clock and does not synchronize with the contrail: the contrail is immutable historical
+ * light, while this is a steady source whose intensity follows the current drive envelope.
  */
 import * as THREE from 'three';
 
 /** Length of the collar in world units. Long enough to be a mouth, short enough not to be a jet. */
 export const FORGE_LENGTH_WU = 5.4;
-/** Mouth and aft radii, as multiples of the throat radius. Flares back to meet the line's width. */
+/** Mouth and aft radii as multiples of the throat radius. */
 export const FORGE_MOUTH_SCALE = 0.94;
 export const FORGE_AFT_SCALE = 1.52;
-/** Rings along the collar, and segments around it. */
 const RINGS = 14;
 const SEGS = 28;
 
@@ -56,8 +31,6 @@ const FORGE_VERT = /* glsl */`
 
   void main() {
     vTube = aTube;
-    // position.xy carries the unit ring direction; the profile is applied here so radius and length
-    // are live uniforms rather than baked, and one geometry serves every drive state.
     float radius = mix(uMouthRadius, uAftRadius, aTube);
     vec3 local = vec3(position.x * radius, position.y * radius, aTube * uLength);
     vec4 world = modelMatrix * vec4(local, 1.0);
@@ -76,7 +49,6 @@ const FORGE_FRAG = /* glsl */`
   uniform float uBoost;
   uniform float uOpacity;
   uniform float uRadiance;
-  uniform float uFlash;
   uniform vec3  uCamPos;
 
   varying float vTube;
@@ -84,24 +56,18 @@ const FORGE_FRAG = /* glsl */`
   varying vec3  vNormal;
 
   void main() {
-    // Grazing gain. A shell lit only by its own emission reads as a solid cone head-on; weighting the
-    // rim is what makes it a mouth with a hole in it rather than a plug.
     vec3 V = normalize(uCamPos - vWorldPos);
     float facing = abs(dot(normalize(vNormal), V));
     float graze = clamp(1.0 - facing, 0.0, 1.0);
     float shell = 0.30 + pow(graze, 1.7) * 1.35;
 
-    // The lip is the aperture itself: a tight band at the mouth. The body falls away aft so the
-    // collar hands off to the line instead of ending on an edge.
     float lip = exp(-vTube * vTube * 58.0);
     float body = exp(-vTube * 2.35);
 
     float energy = (lip * 1.15 + body * 0.5) * (0.30 + uDrive * 0.95 + uBoost * 0.55);
-    energy *= uFlash;
     energy *= shell;
 
     vec3 col = mix(uEdgeColor, uCoreColor, clamp(lip * 1.25 + uBoost * 0.3, 0.0, 1.0));
-
     float alpha = clamp(energy * uOpacity, 0.0, 1.0);
     if (alpha < 0.004) discard;
     gl_FragColor = vec4(col * uRadiance * (0.6 + energy * 1.1), alpha);
@@ -124,6 +90,7 @@ function buildForgeGeometry(T) {
       v++;
     }
   }
+
   const quads = RINGS * SEGS;
   const index = new Uint16Array(quads * 6);
   let i = 0;
@@ -132,11 +99,12 @@ function buildForgeGeometry(T) {
       const a = r * (SEGS + 1) + s;
       const b = a + 1;
       const c = a + (SEGS + 1);
-      const dd = c + 1;
+      const d = c + 1;
       index[i++] = a; index[i++] = b; index[i++] = c;
-      index[i++] = b; index[i++] = dd; index[i++] = c;
+      index[i++] = b; index[i++] = d; index[i++] = c;
     }
   }
+
   const geo = new T.BufferGeometry();
   geo.setAttribute('position', new T.BufferAttribute(position, 3));
   geo.setAttribute('aTube', new T.BufferAttribute(tube, 1));
@@ -144,9 +112,7 @@ function buildForgeGeometry(T) {
   return geo;
 }
 
-/**
- * One forge. Sits at a nozzle and points along the direction that nozzle's line leaves in.
- */
+/** One steady forge. Sits at a nozzle and points along the direction the live plume leaves. */
 export class DriveForge {
   constructor(T = THREE, opts = {}) {
     this.THREE = T;
@@ -162,7 +128,6 @@ export class DriveForge {
         uBoost: { value: 0 },
         uOpacity: { value: 0.5 },
         uRadiance: { value: 2.05 },
-        uFlash: { value: 1 },
         uCamPos: { value: new T.Vector3() },
       },
       vertexShader: FORGE_VERT,
@@ -190,32 +155,47 @@ export class DriveForge {
   }
 
   /**
-   * @param {{x:number,y:number,z:number}|null} nozzle where the bell is
-   * @param {{x:number,y:number,z:number}|null} aft unit direction the LINE leaves in (not the hull's
-   *   pointing — the mouth follows the line so the two never come apart in a turn)
-   * @param {object} env drive envelope; reads drive, boost, throatRadius
-   * @param {number} flash 0..1+ pulse gain, shared with the contrail's shed bands
+   * @param {{x:number,y:number,z:number,aftX?:number,aftY?:number,aftZ?:number}|null} nozzle where the bell is; its current aft axis is authoritative
+   * @param {{x:number,y:number,z:number}|null} aft fallback direction for legacy callers only
+   * @param {object} env current drive envelope; reads drive, boost and throatRadius
    */
-  update(nozzle, aft, env, flash) {
-    if (!nozzle || !aft) {
+  update(nozzle, aft, env) {
+    if (!nozzle) {
       this.mesh.visible = false;
       return;
     }
+
+    // A forge is the live mouth of the current thruster. It must follow the current nozzle axis,
+    // never the tangent of recorded history. Pointing it at the history line recreates the false
+    // visual attachment — a horse-tail connector that bends toward wherever the ship used to be.
+    const hasNozzleAxis = Number.isFinite(nozzle.aftX)
+      && Number.isFinite(nozzle.aftZ)
+      && Math.hypot(nozzle.aftX, nozzle.aftY || 0, nozzle.aftZ) > 1e-6;
+    const aimX = hasNozzleAxis ? nozzle.aftX : aft && aft.x;
+    const aimY = hasNozzleAxis ? (nozzle.aftY || 0) : aft && aft.y;
+    const aimZ = hasNozzleAxis ? nozzle.aftZ : aft && aft.z;
+    const aimLen = Math.hypot(aimX || 0, aimY || 0, aimZ || 0);
+    if (!(aimLen > 1e-6)) {
+      this.mesh.visible = false;
+      return;
+    }
+
     const drive = Math.max(0, Math.min(1.4, (env && env.drive) || 0));
     const boost = Math.max(0, (env && env.boost) || 0);
     const u = this.material.uniforms;
     u.uDrive.value = drive;
     u.uBoost.value = boost;
-    u.uFlash.value = flash != null ? flash : 1;
 
     const throat = env && env.throatRadius != null ? env.throatRadius : 1.32;
     u.uMouthRadius.value = throat * FORGE_MOUTH_SCALE;
     u.uAftRadius.value = throat * FORGE_AFT_SCALE;
 
     this.mesh.position.set(nozzle.x, nozzle.y, nozzle.z);
-    // Local +Z runs down the collar, so aiming +Z along the aft direction lays the mouth on the bell
-    // and the flare on the line.
-    this._aim.set(nozzle.x + aft.x, nozzle.y + aft.y, nozzle.z + aft.z);
+    this._aim.set(
+      nozzle.x + aimX / aimLen,
+      nozzle.y + aimY / aimLen,
+      nozzle.z + aimZ / aimLen,
+    );
     this.mesh.lookAt(this._aim);
     this.mesh.updateMatrixWorld();
     this.mesh.visible = drive > 0.004;
@@ -226,10 +206,11 @@ export class DriveForge {
       element: 'forge',
       construction: 'coaxial-collar',
       billboard: false,
+      temporalModulation: false,
+      aimSource: 'current-nozzle-axis',
       visible: !!this.mesh.visible,
       lengthWU: this.material.uniforms.uLength.value,
       mouthRadius: this.material.uniforms.uMouthRadius.value,
-      flash: this.material.uniforms.uFlash.value,
     };
   }
 

@@ -13,11 +13,11 @@ import {
   JET_LENGTH_WU,
   RIBBON_ACROSS,
 } from '../src/render/thruster/ribbon/plasmaRibbons.js';
+import { DriveForge } from '../src/render/thruster/ribbon/driveForge.js';
 import {
   ContrailTrail,
   STRAND_COUNT,
   TRAIL_SECONDS,
-  MAX_SPAN_WU,
   MIN_STEP_WU,
 } from '../src/render/thruster/ribbon/contrailTrail.js';
 import {
@@ -32,12 +32,18 @@ import {
 } from '../src/render/thruster/ribbon/driveEnvelope.js';
 
 const THRUST = { drive: 1, throttle: 1, boost: 0, speed: 160, speedDrive: 0.6 };
+const BURN = { drive: 1, emitFloor: 0.08, boost: 0, dash: 0 };
+const COLD = { drive: 0, emitFloor: 0.08, boost: 0, dash: 0 };
 
 function runFrames(stream, sockets, drive, frames, owner, stepX = 2.0) {
   for (let i = 0; i < frames; i++) {
     if (sockets) sockets[0].x = i * stepX;
     stream.update(1 / 60, sockets, drive, { reducedMotion: false }, owner);
   }
+}
+
+function close(a, b, eps = 1e-4) {
+  return Math.abs(a - b) <= eps;
 }
 
 test('smoothstep is monotonic on unit interval', () => {
@@ -85,13 +91,13 @@ test('the exhaust is swept ribbon sheets, not points, sprites or a density field
   const info = stream.inspect();
   assert.equal(info.medium, 'ribbon-sheets');
   assert.equal(info.construction, 'swept-ribbon-sheets');
-  assert.equal(info.ribbon.grazing, true, 'grazing-angle brightening is mandatory (required §2.2)');
+  assert.equal(info.ribbon.grazing, true, 'grazing-angle brightening is mandatory');
   assert.equal(info.ribbon.visible, true, 'the jet draws under thrust');
   assert.ok(info.active, 'stream should be active under thrust');
   stream.dispose();
 });
 
-test('the plume and the contrail are separate elements, not one object', () => {
+test('the live plume and immutable history are separate objects', () => {
   const scene = new THREE.Scene();
   const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
   stream.attach(scene);
@@ -102,22 +108,21 @@ test('the plume and the contrail are separate elements, not one object', () => {
   assert.equal(info.ribbon.element, 'plume');
   assert.equal(info.contrail.element, 'contrail');
   assert.notEqual(info.ribbon.construction, info.contrail.construction);
-  // Making these one object is what forced the jet to be two seconds long, which at cruise is
-  // hundreds of world units — a tail welded to the hull rather than a jet.
-  assert.equal(info.contrail.advectsAft, false, 'a history trail must never advect along the exhaust axis');
+  assert.equal(info.contrail.construction, 'immutable-worldline-sheets');
+  assert.equal(info.contrail.retention, 'time-only');
+  assert.equal(info.contrail.sampleCenters, 'immutable-world-space');
+  assert.equal(info.contrail.advectsAft, false);
   stream.dispose();
 });
 
 test('sheets are wide enough to carry a crease, not one-normal wire strips', () => {
-  // A two-vertex strip has a single normal across its whole width, so its grazing term is constant
-  // and it can only ever look like wire. The curved cross-section is the reason this reads as sheets.
   assert.ok(RIBBON_ACROSS >= 3, `sheets need interior vertices, got ${RIBBON_ACROSS}`);
 
   const plume = new PlasmaRibbonPlume(THREE, {});
   const sides = plume.geometry.attributes.aSide.array;
   const unique = new Set(Array.from(sides.slice(0, RIBBON_ACROSS)));
-  assert.equal(unique.size, RIBBON_ACROSS, 'each vertex across the sheet is at a distinct offset');
-  assert.ok(Math.min(...unique) < -0.9 && Math.max(...unique) > 0.9, 'cross-section spans both rims');
+  assert.equal(unique.size, RIBBON_ACROSS, 'each vertex across the sheet has a distinct offset');
+  assert.ok(Math.min(...unique) < -0.9 && Math.max(...unique) > 0.9);
   assert.ok(plume.material.uniforms.uCurve.value > 0, 'cross-section is curled, not flat');
   plume.dispose();
 });
@@ -125,22 +130,17 @@ test('sheets are wide enough to carry a crease, not one-normal wire strips', () 
 test('the jet is nozzle-local and about two hull lengths, never a dragged tail', () => {
   const plume = new PlasmaRibbonPlume(THREE, {});
   const nozzle = { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 };
-  // Fly a long way at full drive. A jet must not grow with distance travelled; only the contrail does.
   for (let i = 0; i < 600; i++) {
     nozzle.x += 3;
     plume.update(1 / 60, nozzle, { drive: 1, boost: 0, dash: 0, jetLength: JET_LENGTH_WU });
   }
   const info = plume.inspect();
-  // Hull is ~8 WU. Anything past a few hull lengths is a tail, not a plume.
   assert.ok(info.jetLength <= 8 * 3, `jet must stay short, got ${info.jetLength} WU`);
   assert.equal(info.animated, 'travelling-wave');
   plume.dispose();
 });
 
-test('gas flows through the jet: the form is not a still image being translated', () => {
-  // The rejected construction keyed every swirl and curl to a parcel's age, and a parcel's
-  // age-to-position mapping never changes, so the plume's shape was CONSTANT in the ship's frame.
-  // Structure here must be a function of time at a fixed nozzle pose and a fixed drive.
+test('gas flows through the live jet: its form is not a still image', () => {
   const plume = new PlasmaRibbonPlume(THREE, {});
   const nozzle = { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 };
   const env = { drive: 1, boost: 0, dash: 0, jetLength: JET_LENGTH_WU };
@@ -151,41 +151,37 @@ test('gas flows through the jet: the form is not a still image being translated'
   for (let i = 0; i < 30; i++) plume.update(1 / 60, nozzle, env);
   const t1 = plume.material.uniforms.uTime.value;
 
-  assert.ok(t1 > t0, 'the jet advances in time even when nothing about the ship changes');
-  assert.ok(plume.material.uniforms.uFlowRate.value > 0, 'structures must travel down the jet');
-  assert.ok(plume.material.uniforms.uAxialFreq.value > 0, 'there must be structure along the jet to travel');
-  assert.notEqual(plume.material.uniforms.uFlicker.value, f0, 'combustion is rough, not perfectly steady');
+  assert.ok(t1 > t0, 'the live jet advances in time');
+  assert.ok(plume.material.uniforms.uFlowRate.value > 0);
+  assert.ok(plume.material.uniforms.uAxialFreq.value > 0);
+  assert.notEqual(plume.material.uniforms.uFlicker.value, f0);
   plume.dispose();
 });
 
-test('throttle moves the jet LENGTH, and never its opacity', () => {
+test('throttle moves live-jet length and never its opacity', () => {
   const base = { jetLength: 17, throatRadius: 1.32, spread: 2.6, radiance: 0.85, opacity: 0.055 };
   const idle = resolvePlumeShape({ spool: IDLE_FLOOR, boost: 0, dash: 0 }, base, {});
   const half = resolvePlumeShape({ spool: 0.5, boost: 0, dash: 0 }, base, {});
   const full = resolvePlumeShape({ spool: 1, boost: 0, dash: 0 }, base, {});
 
-  assert.ok(idle.jetLength < half.jetLength && half.jetLength < full.jetLength,
-    'the jet reaches further as the drive comes up');
-  assert.ok(idle.jetLength > 0, 'a lit engine still has gas in the bell');
-  assert.ok(idle.jetLength < full.jetLength * 0.25, 'a light touch is a stub, not a full-length jet');
-  // Transparency is material. How hard the engine runs does not change how see-through its exhaust is.
+  assert.ok(idle.jetLength < half.jetLength && half.jetLength < full.jetLength);
+  assert.ok(idle.jetLength > 0);
+  assert.ok(idle.jetLength < full.jetLength * 0.25);
   assert.equal(idle.opacity, full.opacity, 'opacity must not be an animation channel');
 });
 
-test('the contrail exists only where the nozzle has actually been', () => {
+test('every contrail center sample is an exact position the emitting nozzle occupied', () => {
   const trail = new ContrailTrail(THREE, {});
-  const env = { drive: 1, emitFloor: 0.08 };
   const nozzle = { x: 0, y: 0, z: 0 };
   const visited = [];
 
-  // Fly a quarter circle so the flown path and the current heading clearly disagree.
   let rot = 0;
   for (let i = 0; i < 90; i++) {
     rot += (1 / 60) * 1.2;
     nozzle.x += Math.cos(rot) * 2.0;
     nozzle.z += Math.sin(rot) * 2.0;
     visited.push({ x: nozzle.x, y: nozzle.y, z: nozzle.z });
-    trail.update(1 / 60, nozzle, env);
+    trail.update(1 / 60, nozzle, BURN);
   }
 
   const samples = trail.samplePositions();
@@ -193,127 +189,194 @@ test('the contrail exists only where the nozzle has actually been', () => {
   for (const s of samples) {
     let best = Infinity;
     for (const v of visited) {
-      const d = Math.hypot(s.x - v.x, s.y - v.y, s.z - v.z);
-      if (d < best) best = d;
+      best = Math.min(best, Math.hypot(s.x - v.x, s.y - v.y, s.z - v.z));
     }
-    // The whole rule: no vertex anywhere the nozzle has not been. Any aft advection breaks this by
-    // world units; the tolerance here is float32 storage precision on ~100 WU coordinates.
-    assert.ok(best < 1e-3, `contrail sample is off the flown path by ${best} WU`);
+    assert.ok(best < 1e-3, `contrail center is off the flown path by ${best} WU`);
   }
-  assert.ok(trail.inspect().spanWU > 20, 'a flown path has real extent');
+  assert.ok(trail.inspect().spanWU > 20, 'the recorded history has real extent');
   trail.dispose();
 });
 
-test('the contrail is leftover jet sheets with mass at birth, not a pin or a highway', () => {
+test('the contrail is readable overlapping energy sheets, not a pin', () => {
   const trail = new ContrailTrail(THREE, {});
   const u = trail.material.uniforms;
 
-  assert.ok(TRAIL_SECONDS >= 1.0 && TRAIL_SECONDS <= 1.4, 'history trail is about half the prior window');
-  assert.ok(MAX_SPAN_WU <= 110, 'high speed cannot restore a screen-spanning highway');
-  assert.equal(trail.strands, STRAND_COUNT, 'geometry and material use the same sheet count');
+  assert.ok(TRAIL_SECONDS >= 1.0 && TRAIL_SECONDS <= 1.4);
+  assert.equal(trail.strands, STRAND_COUNT);
   assert.ok(trail.strands >= 10, `overlapping sheets, got ${trail.strands}`);
   assert.ok(trail.across >= 3, 'sheets need a curved cross-section for grazing');
-  assert.ok(u.uRadiance.value >= 1.0, 'leftover light is bright at birth');
-  assert.ok(u.uRadiusHead.value >= 1.2, 'birth radius matches the exhaust column, not a pin');
-  assert.ok(u.uWidthHead.value >= 1.2, 'birth width has mass');
-  assert.ok(u.uRadiusTail.value > u.uRadiusHead.value, 'leftover plasma still spreads as it cools');
-
-  // It shipped invisible once: tuned so faint that half the effect was technically present on the play
-  // route and could not be seen. These are floors, not taste.
+  assert.ok(u.uRadiance.value >= 1.0);
+  assert.ok(u.uRadiusHead.value >= 1.2);
+  assert.ok(u.uWidthHead.value >= 1.2);
+  assert.ok(u.uRadiusTail.value > u.uRadiusHead.value, 'the static volume has radial depth');
   assert.ok(u.uOpacity.value >= 0.02, `contrail must be readable, opacity ${u.uOpacity.value}`);
-  assert.ok(u.uRadiance.value >= 0.3, `contrail must be readable, radiance ${u.uRadiance.value}`);
   trail.dispose();
 });
 
-test('high speed cannot stretch the contrail past the length cap', () => {
-  const trail = new ContrailTrail(THREE, {});
-  const nozzle = { x: 0, y: 0, z: 0 };
-  for (let i = 0; i < 400; i++) {
-    nozzle.x += 3;
-    trail.update(1 / 60, nozzle, { drive: 1, emitFloor: 0.08 });
+test('distance and speed cannot trim young history', () => {
+  const near = new ContrailTrail(THREE, {});
+  const far = new ContrailTrail(THREE, {});
+  const a = { x: 0, y: 0, z: 0 };
+  const b = { x: 0, y: 0, z: 0 };
+
+  for (let i = 0; i < 40; i++) {
+    a.x += 0.5;
+    b.x += 4;
+    near.update(1 / 60, a, BURN);
+    far.update(1 / 60, b, BURN);
   }
-  const info = trail.inspect();
-  assert.ok(info.spanWU <= MAX_SPAN_WU + 4, `span ${info.spanWU.toFixed(1)} WU exceeds cap ${MAX_SPAN_WU}`);
-  trail.dispose();
+
+  assert.equal(far.liveSampleCount(), near.liveSampleCount(), 'lifetime, not speed, owns retention');
+  assert.ok(far.inspect().visibleSpanWU > 140, 'there is no hidden 104 WU distance guillotine');
+  assert.equal(far.inspect().distanceTrim, false);
+  far.dispose();
+  near.dispose();
 });
 
-test('a parked ship thrusting lays down no contrail', () => {
+test('a parked ship thrusting lays down no spatial trail', () => {
   const trail = new ContrailTrail(THREE, {});
-  const env = { drive: 1, emitFloor: 0.08 };
   const nozzle = { x: 5, y: 0, z: -3 };
-  for (let i = 0; i < 600; i++) trail.update(1 / 60, nozzle, env);
+  for (let i = 0; i < 600; i++) trail.update(1 / 60, nozzle, BURN);
 
   const info = trail.inspect();
-  // One place is not a path. The rejected build put a full-length ribbon behind a stationary ship the
-  // instant the throttle moved, because it advected exhaust aft instead of recording positions.
-  assert.ok(info.liveSamples < 2, `holding station must not accumulate a trail, got ${info.liveSamples}`);
-  assert.equal(info.visible, false, 'nothing to draw');
-  assert.ok(info.spanWU < 1e-6, `no spatial extent, got ${info.spanWU}`);
+  assert.ok(info.liveSamples < 2, `holding station must not accumulate a path, got ${info.liveSamples}`);
+  assert.equal(info.visible, false);
+  assert.ok(info.spanWU < 1e-6);
   trail.dispose();
 });
 
-test('the contrail needs real movement, not sub-step jitter', () => {
+test('sub-step jitter never rewrites or densely resamples the newest fact', () => {
   const trail = new ContrailTrail(THREE, {});
-  const env = { drive: 1, emitFloor: 0.08 };
   const nozzle = { x: 0, y: 0, z: 0 };
   const creep = MIN_STEP_WU * 0.1;
   for (let i = 0; i < 300; i++) {
     nozzle.x += creep;
-    trail.update(1 / 60, nozzle, env);
+    trail.update(1 / 60, nozzle, BURN);
   }
   const samples = trail.samplePositions();
-  // Samples are spaced by distance, so a crawl produces few of them rather than a dense pile.
   assert.ok(samples.length < 60, `distance-spaced sampling, got ${samples.length} samples`);
+  for (let i = 1; i < samples.length; i++) {
+    assert.ok(Math.abs(samples[i - 1].x - samples[i].x) >= MIN_STEP_WU - 1e-4);
+  }
   trail.dispose();
 });
 
-test('the line is never shed: a cold drive reels it in, it does not detach', () => {
+test('cutting thrust leaves every young sample fixed in space; age alone removes it', () => {
   const trail = new ContrailTrail(THREE, {});
   const nozzle = { x: 0, y: 0, z: 0 };
-  const headGap = () => {
-    const s = trail.samplePositions();
-    return s.length ? Math.hypot(nozzle.x - s[0].x, nozzle.y - s[0].y, nozzle.z - s[0].z) : 0;
-  };
 
-  for (let i = 0; i < 120; i++) {
-    nozzle.x += 2;
-    trail.update(1 / 60, nozzle, { drive: 1, emitFloor: 0.08 });
-  }
-  assert.ok(trail.inspect().liveSamples > 8, 'trail accumulated under thrust');
-  for (const s of trail.samplePositions()) {
-    assert.ok(s.age < TRAIL_SECONDS, 'samples retire on the clock');
-  }
-  assert.ok(headGap() < 1e-3, 'under power the line starts at the nozzle');
-
-  // THE BUG THIS GUARDS. Recording used to be gated on the drive being lit, so releasing the
-  // throttle froze the head in world space while momentum carried the ship on — a 61 WU gap opened
-  // inside one second and the line hung in space like a shed tail. A history of where the thruster
-  // WAS cannot come unstuck from the thruster. So: still moving, drive cold, and the head must stay
-  // welded to the nozzle while the TAIL is what comes in.
-  const spanBefore = trail.inspect().visibleSpanWU;
-  let worstGap = 0;
   for (let i = 0; i < 30; i++) {
     nozzle.x += 2;
-    trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
-    worstGap = Math.max(worstGap, headGap());
+    nozzle.z = Math.sin(i * 0.15) * 4;
+    trail.update(1 / 60, nozzle, BURN);
   }
-  assert.ok(worstGap < 1e-3, `coasting must not shed the line, head drifted ${worstGap.toFixed(2)} WU`);
+  const before = trail.samplePositions().map((s) => ({ ...s }));
+  assert.ok(before.length > 20);
+
+  for (let i = 0; i < 12; i++) {
+    nozzle.x += 8;
+    nozzle.z -= 5;
+    trail.update(1 / 60, nozzle, COLD);
+  }
+
+  const after = trail.samplePositions();
+  assert.equal(after.length, before.length, 'no young sample may be reeled or distance-trimmed');
+  for (let i = 0; i < before.length; i++) {
+    assert.ok(close(after[i].x, before[i].x), `sample ${i} moved in x`);
+    assert.ok(close(after[i].y, before[i].y), `sample ${i} moved in y`);
+    assert.ok(close(after[i].z, before[i].z), `sample ${i} moved in z`);
+    assert.ok(close(after[i].age, before[i].age + 0.2, 2e-4), `sample ${i} did not age normally`);
+  }
   assert.ok(
-    trail.inspect().visibleSpanWU < spanBefore - 20,
-    'a cold drive reels the line in from the back',
+    Math.hypot(nozzle.x - after[0].x, nozzle.y - after[0].y, nozzle.z - after[0].z) > 20,
+    'the old history must remain behind instead of welding itself to the current nozzle',
   );
 
-  // Stopped and cold: the reel runs the tail all the way onto the head and the line is gone.
-  for (let i = 0; i < 240; i++) trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
-  const info = trail.inspect();
-  // The floor is the shader's, not the trail's: span is clamped off zero so the dissolve cannot
-  // divide by it. Anything at that floor is a line of no length.
-  assert.ok(info.visibleSpanWU <= 0.01, `the line is drawn fully in, ${info.visibleSpanWU} WU left`);
-  assert.equal(info.visible, false, 'and stops drawing');
+  for (let i = 0; i < Math.ceil(TRAIL_SECONDS * 60) + 4; i++) {
+    trail.update(1 / 60, nozzle, COLD);
+  }
+  assert.equal(trail.liveSampleCount(), 0, 'all samples eventually expire on their own clocks');
+  assert.equal(trail.mesh.visible, false);
   trail.dispose();
 });
 
-test('cutting thrust puts the jet out and the trail drains', () => {
+test('the history and forge have no pulse clock, travelling bands or live-nozzle override', () => {
+  const trail = new ContrailTrail(THREE, {});
+  const forge = new DriveForge(THREE, {});
+  const uniforms = trail.material.uniforms;
+  const bannedUniforms = [
+    'uTime',
+    'uRingHz',
+    'uRingGain',
+    'uLiveNozzlePos',
+    'uIsEmitting',
+    'uHeadArc',
+    'uSpanWU',
+    'uDissolveWU',
+  ];
+  for (const name of bannedUniforms) {
+    assert.equal(name in uniforms, false, `${name} reintroduces non-history authority`);
+  }
+  assert.doesNotMatch(trail.material.vertexShader, /\buTime\b|uRing|vBirth/);
+  assert.doesNotMatch(trail.material.fragmentShader, /\buTime\b|uRing|vBirth|fract\s*\(/);
+
+  const nozzle = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 30; i++) {
+    nozzle.x += 2;
+    trail.update(1 / 60, nozzle, BURN);
+    assert.equal(trail.bandFlash(1), 1, 'forge compatibility gain must be perfectly steady');
+  }
+  assert.equal(trail.inspect().temporalModulation, false);
+  assert.equal('uFlash' in forge.material.uniforms, false, 'the forge must be steady');
+  assert.doesNotMatch(forge.material.fragmentShader, /uFlash|pulse|fract\s*\(/i);
+  assert.equal(forge.inspect().temporalModulation, false);
+  forge.dispose();
+  trail.dispose();
+});
+
+test('emission gaps and teleports start disconnected segments without deleting history', () => {
+  const trail = new ContrailTrail(THREE, {});
+  const nozzle = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 8; i++) {
+    nozzle.x += 2;
+    trail.update(1 / 60, nozzle, BURN);
+  }
+  const originalCount = trail.liveSampleCount();
+  const originalSegment = trail.samplePositions()[0].segment;
+
+  for (let i = 0; i < 4; i++) {
+    nozzle.x += 2;
+    trail.update(1 / 60, nozzle, COLD);
+  }
+  trail.update(1 / 60, nozzle, BURN);
+  let samples = trail.samplePositions();
+  assert.equal(samples.length, originalCount + 1);
+  assert.notEqual(samples[0].segment, originalSegment, 'restart begins a disconnected burn segment');
+
+  const beforeTeleport = samples.length;
+  nozzle.x += 1000;
+  trail.update(1 / 60, nozzle, BURN);
+  samples = trail.samplePositions();
+  assert.equal(samples.length, beforeTeleport + 1, 'teleport does not erase young history');
+  assert.notEqual(samples[0].segment, samples[1].segment, 'teleport begins a disconnected segment');
+  trail.dispose();
+});
+
+test('a full history buffer skips births instead of evicting young facts', () => {
+  const trail = new ContrailTrail(THREE, { samples: 4, trailSeconds: 10 });
+  const nozzle = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 20; i++) {
+    nozzle.x += 1;
+    trail.update(1 / 60, nozzle, BURN);
+  }
+  const samples = trail.samplePositions();
+  assert.equal(samples.length, 4);
+  assert.ok(trail.inspect().capacitySkips > 0);
+  assert.ok(samples.every((s) => s.age < 1), 'capacity pressure cannot masquerade as expiry');
+  trail.dispose();
+});
+
+test('cutting thrust puts the live jet out while recorded light fades in place', () => {
   const scene = new THREE.Scene();
   const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
   stream.attach(scene);
@@ -322,18 +385,18 @@ test('cutting thrust puts the jet out and the trail drains', () => {
   runFrames(stream, sockets, THRUST, 60, owner, 1.5);
   assert.ok(stream.inspect().contrail.liveSamples > 8, 'trail accumulated under thrust');
 
-  // Release is a spool-down, not a switch: the drive keeps burning weakly while it cools, which is the
-  // whole point of the asymmetric envelope. What must not happen is exhaust outliving its clock.
   const cutoff = { drive: 0, throttle: 0, boost: 0, speed: 0, speedDrive: 0 };
-  for (let i = 0; i < 300; i++) stream.update(1 / 60, sockets, cutoff, { reducedMotion: false }, owner);
+  for (let i = 0; i < 300; i++) {
+    stream.update(1 / 60, sockets, cutoff, { reducedMotion: false }, owner);
+  }
   const info = stream.inspect();
-  assert.equal(info.contrail.liveSamples, 0, 'all exhaust ages out once the drive is cold');
-  assert.equal(info.ribbon.visible, false, 'a cold drive draws no jet');
-  assert.equal(info.active, false, 'a cold drive with no exhaust is not active');
+  assert.equal(info.contrail.liveSamples, 0, 'all recorded light ages out');
+  assert.equal(info.ribbon.visible, false, 'a cold drive draws no live jet');
+  assert.equal(info.active, false);
   stream.dispose();
 });
 
-test('plasma stream reuses one fallback identity without sockets or an owner', () => {
+test('plasma stream reuses one fallback identity without sockets or owner', () => {
   const scene = new THREE.Scene();
   const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
   stream.attach(scene);
@@ -345,65 +408,58 @@ test('plasma stream reuses one fallback identity without sockets or an owner', (
   }
 
   const info = stream.inspect();
-  assert.strictEqual(stream._fallbackNozzle, fallback, 'fallback nozzle identity stays stable');
-  assert.strictEqual(stream._owner, fallback, 'omitted owner resolves to the same fallback identity');
-  assert.equal(info.ribbon.visible, true, 'socketless callers still get a jet');
-  assert.ok(info.path.historyCount > 8,
-    `fallback identity must retain path history across frames, got ${info.path.historyCount}`);
+  assert.strictEqual(stream._fallbackNozzle, fallback);
+  assert.strictEqual(stream._owner, fallback);
+  assert.equal(info.ribbon.visible, true);
+  assert.ok(info.path.historyCount > 8);
   stream.dispose();
 });
 
-test('the drive spools over roughly half to three-quarters of a second, and cools slower', () => {
+test('the drive spools over roughly half to three-quarters second and cools slower', () => {
   const env = createDriveEnvelope();
   const input = { throttle: 1, speedNorm: 0, boosting: false, dashFired: false, alive: true };
   const dt = 1 / 120;
-
   let tTo90 = 0;
   const full = resolveDriveTarget(1, 0);
   for (let i = 0; i < 600; i++) {
     integrateDriveEnvelope(env, input, dt);
-    if (env.spool >= full * 0.9) { tTo90 = (i + 1) * dt; break; }
+    if (env.spool >= full * 0.9) {
+      tTo90 = (i + 1) * dt;
+      break;
+    }
   }
-  assert.ok(tTo90 > 0.35 && tTo90 < 0.8, `spool must be visible, not a step: reached 90% at ${tTo90.toFixed(3)}s`);
-
-  // Cooling is slower than lighting up.
-  assert.ok(RATES.spoolFallTau > RATES.spoolRiseTau, 'drive cools slower than it lights');
-  assert.ok(RATES.boostFallTau > RATES.boostRiseTau, 'boost cools slower than it blasts');
-  assert.ok(RATES.boostRiseTau < RATES.spoolRiseTau * 0.5, 'boost is a blast, not another spool');
+  assert.ok(tTo90 > 0.35 && tTo90 < 0.8, `reached 90% at ${tTo90.toFixed(3)}s`);
+  assert.ok(RATES.spoolFallTau > RATES.spoolRiseTau);
+  assert.ok(RATES.boostFallTau > RATES.boostRiseTau);
+  assert.ok(RATES.boostRiseTau < RATES.spoolRiseTau * 0.5);
 });
 
-test('idle glows, and speed contributes a bounded share that throttle cannot swallow', () => {
-  assert.equal(resolveDriveTarget(0, 0), IDLE_FLOOR, 'a live drive idles rather than going black');
+test('idle glows and speed contributes a bounded share throttle cannot swallow', () => {
+  assert.equal(resolveDriveTarget(0, 0), IDLE_FLOOR);
 
-  // The old code took Math.max(throttle, speed...), so at full throttle speed could never show.
   const parked = resolveDriveTarget(1, 0);
   const hauling = resolveDriveTarget(1, 1);
-  assert.ok(hauling > parked, 'speed must still register at full throttle');
+  assert.ok(hauling > parked);
   const share = (hauling - parked) / (1 - IDLE_FLOOR);
-  assert.ok(
-    Math.abs(share - SPEED_SHARE) < 0.02,
-    `speed should own about ${SPEED_SHARE} of the target, measured ${share.toFixed(3)}`,
-  );
-  assert.ok(hauling <= 1.0001, 'target stays normalised');
-
-  // Coasting fast with no command must not fake a firing drive.
+  assert.ok(Math.abs(share - SPEED_SHARE) < 0.02);
+  assert.ok(hauling <= 1.0001);
   assert.ok(resolveDriveTarget(0, 1) < 0.5, 'coasting is residual heat, not full burn');
 });
 
 test('dash is a one-shot supernova with a long cooling tail', () => {
-  assert.equal(sampleDashFlare(-1), 0, 'no flare before a dash');
-  assert.ok(sampleDashFlare(0.05) > 0.9, 'flare peaks almost immediately');
-  assert.ok(sampleDashFlare(0.12) === 1, 'brief hold at full');
+  assert.equal(sampleDashFlare(-1), 0);
+  assert.ok(sampleDashFlare(0.05) > 0.9);
+  assert.equal(sampleDashFlare(0.12), 1);
   const mid = sampleDashFlare(0.45);
   const late = sampleDashFlare(0.7);
-  assert.ok(mid > late && late > 0, 'release decays rather than cutting');
-  assert.equal(sampleDashFlare(1.2), 0, 'flare is over inside about a second');
+  assert.ok(mid > late && late > 0);
+  assert.equal(sampleDashFlare(1.2), 0);
 
   const env = createDriveEnvelope();
   const input = { throttle: 1, speedNorm: 0, boosting: false, dashFired: true, alive: true };
   integrateDriveEnvelope(env, input, 1 / 60);
-  assert.ok(env.dash > 0, 'dash event lights the flare');
+  assert.ok(env.dash > 0);
   input.dashFired = false;
   for (let i = 0; i < 200; i++) integrateDriveEnvelope(env, input, 1 / 60);
-  assert.equal(env.dash, 0, 'flare is one-shot and clears itself');
+  assert.equal(env.dash, 0);
 });
