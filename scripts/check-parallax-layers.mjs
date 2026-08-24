@@ -7,19 +7,22 @@ import * as THREE from 'three';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MODULE_PATH = fileURLToPath(new URL('../src/render/parallaxLayers.js', import.meta.url));
+const BACKGROUND_FRAME_TEST = fileURLToPath(new URL('../test/space-background-frame-coordinates.test.mjs', import.meta.url));
 
 execFileSync(process.execPath, ['--check', MODULE_PATH], { cwd: ROOT, stdio: 'pipe' });
+execFileSync(process.execPath, ['--test', BACKGROUND_FRAME_TEST], { cwd: ROOT, stdio: 'inherit' });
 
 const parallaxLayers = await import(pathToFileURL(MODULE_PATH).href);
 assert.equal(typeof parallaxLayers.init, 'function', 'parallaxLayers.init export missing');
 assert.equal(typeof parallaxLayers.update, 'function', 'parallaxLayers.update export missing');
 assert.equal(typeof parallaxLayers.dispose, 'function', 'parallaxLayers.dispose export missing');
+assert.equal(typeof parallaxLayers.wrapParallaxCoordinate, 'function', 'wrap helper export missing');
 
 checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 80, mid: 1400, near: 96 });
 checkStack({ particleQuality: 'low', motionReduce: false }, { far: 40, mid: 700, near: 48 });
 checkStack({ particleQuality: 'low', motionReduce: true }, { far: 40, mid: 700, near: 24 });
 
-console.log('Parallax layers OK: opaque instanced chips, quality counts, GPU spin, no point sprites');
+console.log('Parallax layers OK: global-focus per-instance wrap, rebase continuity, static matrices, GPU spin');
 
 function checkStack(video, expected) {
   const scene = new THREE.Scene();
@@ -48,6 +51,22 @@ function checkStack(video, expected) {
     assert.equal(mesh.material.depthWrite, true, `${video.particleQuality}: ${label} must occlude`);
     assert.notEqual(mesh.material.blending, THREE.AdditiveBlending,
       `${video.particleQuality}: ${label} must not be an additive glow card`);
+
+    const wrap = mesh.material.userData.spacefaceParallaxInstanceWrap;
+    assert.ok(wrap, `${video.particleQuality}: ${label} global-focus wrap contract missing`);
+    assert.equal(wrap.mode, 'per-instance-global-focus');
+    assert.equal(wrap.uniforms.factor.value, group.userData.factor);
+    assert.equal(wrap.uniforms.tile.value, group.userData.tileSize);
+    assert.match(mesh.material.customProgramCacheKey(), /spaceface-parallax-instance-wrap-v1/);
+
+    const shader = shaderFixture();
+    mesh.material.onBeforeCompile(shader, {});
+    assert.equal(shader.uniforms.uParallaxWorldFocus, wrap.uniforms.worldFocus);
+    assert.equal(shader.uniforms.uParallaxFactor, wrap.uniforms.factor);
+    assert.equal(shader.uniforms.uParallaxTile, wrap.uniforms.tile);
+    assert.match(shader.vertexShader, /sfParallaxWrappedCenter/);
+    assert.match(shader.vertexShader, /uParallaxWorldFocus \* uParallaxFactor/);
+    assert.match(shader.vertexShader, /mvPosition\.xyz \+=/);
   }
 
   assert.equal(mid.children[0].count, expected.mid, `${video.particleQuality}: mid mesh count`);
@@ -63,19 +82,79 @@ function checkStack(video, expected) {
   const matrixVersion = mid.children[0].instanceMatrix.version;
   const matrixBytes = mid.children[0].instanceMatrix.array.slice();
   const spinUniforms = mid.children[0].material.userData.spacefaceParallaxMidDebrisGpuSpin?.uniforms;
+  const wrapUniforms = mid.children[0].material.userData.spacefaceParallaxInstanceWrap.uniforms;
   assert.ok(spinUniforms, `${video.particleQuality}: GPU spin uniforms missing`);
+
+  // First frame sits immediately below a floating-origin threshold.
   parallaxLayers.update(1 / 60);
+  assert.equal(mid.position.x, 8191, 'draw group follows frame-local camera X');
+  assert.equal(mid.position.z, -3200, 'draw group follows frame-local camera Z');
+  assert.equal(wrapUniforms.worldFocus.value.x, 8191, 'wrap samples global focus before rebase');
+  assert.equal(wrapUniforms.worldFocus.value.y, -3200, 'wrap samples global focus before rebase');
+  const beforeWrapped = parallaxLayers.wrapParallaxCoordinate(
+    0,
+    wrapUniforms.worldFocus.value.x,
+    wrapUniforms.factor.value,
+    wrapUniforms.tile.value,
+  );
+
+  // Cross the origin boundary while moving only two galactic world units.
+  state.world.frameOrigin.x = 8192;
+  state.world.frameOrigin.z = -4096;
+  state.world.frameOriginSeq = 1;
+  state.camera.focus.x = 1;
+  state.camera.focus.z = 896;
+  parallaxLayers.update(1 / 60);
+
+  assert.equal(mid.position.x, 1, 'draw group follows rebased local camera X');
+  assert.equal(mid.position.z, 896, 'draw group follows rebased local camera Z');
+  assert.equal(wrapUniforms.worldFocus.value.x, 8193, 'global wrap focus advances by physical travel only');
+  assert.equal(wrapUniforms.worldFocus.value.y, -3200, 'global wrap focus ignores local rebase jump');
+  const afterWrapped = parallaxLayers.wrapParallaxCoordinate(
+    0,
+    wrapUniforms.worldFocus.value.x,
+    wrapUniforms.factor.value,
+    wrapUniforms.tile.value,
+  );
+  const wrappedStep = circularDelta(afterWrapped, beforeWrapped, wrapUniforms.tile.value);
+  assert.ok(Math.abs(wrappedStep + wrapUniforms.factor.value * 2) < 1e-7,
+    `per-instance wrap should move only by physical parallax; received ${wrappedStep}`);
+
   assert.equal(mid.children[0].instanceMatrix.version, matrixVersion,
     `${video.particleQuality}: steady animation must not request a matrix upload`);
   assert.deepEqual(mid.children[0].instanceMatrix.array, matrixBytes,
     `${video.particleQuality}: steady animation must not rewrite matrix bytes`);
-  assert.equal(spinUniforms.primaryTime.value, 1 / 60,
+  assert.equal(spinUniforms.primaryTime.value, 2 / 60,
     `${video.particleQuality}: visible primary debris clock should advance`);
-  assert.equal(spinUniforms.tailTime.value, expected.mid === 1400 ? 1 / 60 : 0,
+  assert.equal(spinUniforms.tailTime.value, expected.mid === 1400 ? 2 / 60 : 0,
     `${video.particleQuality}: hidden upper-half debris clock should pause`);
+
+  assert.throws(
+    () => mid.children[0].material.onBeforeCompile({ uniforms: {}, vertexShader: 'void main() {}' }, {}),
+    /parallax band shader contract changed: missing common declarations/,
+  );
 
   parallaxLayers.dispose();
   assert.equal(scene.children.length, 0, `${video.particleQuality}: dispose should remove groups`);
+}
+
+function shaderFixture() {
+  return {
+    uniforms: {},
+    vertexShader: [
+      '#include <common>',
+      'void main() {',
+      '#include <begin_vertex>',
+      '#include <project_vertex>',
+      '}',
+    ].join('\n'),
+    fragmentShader: 'void main() {}',
+  };
+}
+
+function circularDelta(next, previous, period) {
+  const half = period * 0.5;
+  return ((next - previous + half) % period + period) % period - half;
 }
 
 function makeState(video) {
@@ -88,7 +167,8 @@ function makeState(video) {
   return {
     settings: { video },
     render: { sectorPalette: { dust: 0x425987, nebulaTint: 0x334466 } },
-    camera: { focus: { x: 320, y: 0, z: -180 } },
+    world: { frameOrigin: { x: 0, z: 0 }, frameOriginSeq: 0 },
+    camera: { focus: { x: 8191, y: 0, z: -3200 } },
     playerId: 1,
     entities: new Map([[1, player]]),
   };

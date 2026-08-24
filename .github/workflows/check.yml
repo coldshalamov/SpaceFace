@@ -44,6 +44,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Keep the focused renderer/ship contracts ahead of the repository-wide control-plane gate.
+      # This makes a visual regression independently observable even when unrelated plan-index work
+      # on master has temporarily made the broader control-plane validation red.
+      - name: Validate visual continuity
+        run: |
+          npm run check:parallax
+          npm run check:live-whole-ship-admission
+
       - name: Validate program control plane
         run: |
           node scripts/check-program-docs.mjs

@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { displacementScalar } from './objectSpaceGeology.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
+
+// renderer.js imports this module before it constructs SpaceBackground. Install the coordinate
+// adapter at that boundary so every ordinary browser/Electron route receives the same fix.
+installSpaceBackgroundFrameCoordinateBridge();
 
 const PALETTE_LERP_SECONDS = 1.5;
 const FALLBACK_DUST = '#35406a';
@@ -17,6 +22,7 @@ const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
 const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
 const MID_SPIN_PARAMS_ATTRIBUTE = 'aParallaxSpinParams';
 const MID_SPIN_SHADER_KEY = 'spaceface-parallax-mid-debris-gpu-spin-v2';
+const INSTANCE_WRAP_SHADER_KEY = 'spaceface-parallax-instance-wrap-v1';
 const EMPTY_OBJECT = {};
 
 let active = null;
@@ -35,6 +41,15 @@ export function dispose() {
   if (!active) return;
   active.dispose();
   active = null;
+}
+
+/** GLSL-equivalent scalar wrap, exported for continuity tests and diagnostics. */
+export function wrapParallaxCoordinate(base, globalFocus, factor, tile) {
+  const period = Number.isFinite(tile) && tile > 0 ? tile : 1;
+  const value = (Number.isFinite(base) ? base : 0)
+    - (Number.isFinite(globalFocus) ? globalFocus : 0) * (Number.isFinite(factor) ? factor : 0);
+  const half = period * 0.5;
+  return ((value + half) % period + period) % period - half;
 }
 
 class ParallaxLayers {
@@ -87,14 +102,23 @@ class ParallaxLayers {
     this._detectPaletteChange();
     this._syncQuality();
 
+    // Camera focus is frame-local. Procedural membership must be sampled in galactic-global space,
+    // while each finite draw group remains centered on the local camera. Moving the whole group with
+    // a modulo used to make every asteroid teleport together at a tile seam and made a rebase select
+    // an unrelated field. The shader now wraps every instance independently from global focus.
     const camera = this.state.camera || EMPTY_OBJECT;
     const focus = camera.focus || camera.obj && camera.obj.position || null;
-    const x = focus && Number.isFinite(focus.x) ? focus.x : 0;
-    const z = focus && Number.isFinite(focus.z) ? focus.z : 0;
+    const localX = focus && Number.isFinite(focus.x) ? focus.x : 0;
+    const localZ = focus && Number.isFinite(focus.z) ? focus.z : 0;
+    const origin = this.state.world && this.state.world.frameOrigin || EMPTY_OBJECT;
+    const worldX = localX + (Number.isFinite(origin.x) ? origin.x : 0);
+    const worldZ = localZ + (Number.isFinite(origin.z) ? origin.z : 0);
+
     for (let i = 0; i < this._layers.length; i++) {
       const layer = this._layers[i];
-      layer.group.position.x = wrapOffset(x * (1 - layer.factor), layer.tile);
-      layer.group.position.z = wrapOffset(z * (1 - layer.factor), layer.tile);
+      layer.group.position.x = localX;
+      layer.group.position.z = localZ;
+      layer.motionUniforms.worldFocus.value.set(worldX, worldZ);
     }
 
     this._updatePalette(frameDt);
@@ -168,8 +192,17 @@ class ParallaxLayers {
     group.userData.baseCount = spec.count;
     group.userData.activeCount = spec.count;
 
+    const motionUniforms = {
+      worldFocus: { value: new THREE.Vector2() },
+      factor: { value: spec.factor },
+      tile: { value: spec.tile },
+    };
     const material = createChipMaterial(this._sharedMaps, colorMul);
-    if (spin) configureMidDebrisGpuSpin(material, this._debrisSpinUniforms);
+    configureParallaxBandGpuMotion(
+      material,
+      motionUniforms,
+      spin ? this._debrisSpinUniforms : null,
+    );
 
     const geometry = this._chipTemplate.clone();
     let spinAxes = null;
@@ -235,9 +268,9 @@ class ParallaxLayers {
 
     this.scene.add(group);
     this.groups.push(group);
-    this._layers.push({ group, factor: spec.factor, tile: spec.tile });
+    this._layers.push({ group, factor: spec.factor, tile: spec.tile, motionUniforms });
     this._bandMaterials.push({ material, colorMul });
-    return { group, mesh };
+    return { group, mesh, motionUniforms };
   }
 
   _syncQuality() {
@@ -279,10 +312,11 @@ class ParallaxLayers {
       stampOpeningSubmissionPackage(group, {
         schema: 'spaceface.parallaxProducerManifest.v1',
         producer: `parallax:${group.name}`,
-        version: 2,
+        version: 3,
         layer: group.userData.layer || group.name,
         factor: Number(group.userData.factor) || 0,
         tileSize: Number(group.userData.tileSize) || 0,
+        wrapMode: 'per-instance-global-focus',
         baseCount: Number(group.userData.baseCount) || 0,
         activeCount: Number(group.userData.activeCount) || 0,
         geometryAttributes: geometry ? Object.keys(geometry.attributes || {}).sort() : [],
@@ -366,7 +400,7 @@ function createChipGeometry(variantIndex) {
 }
 
 function createChipMaterial(maps, colorMul) {
-  const material = new THREE.MeshStandardMaterial({
+  return new THREE.MeshStandardMaterial({
     color: new THREE.Color(ROCK_BASE).multiplyScalar(colorMul),
     map: maps && maps.baseColor || null,
     normalMap: maps && maps.normal || null,
@@ -382,23 +416,32 @@ function createChipMaterial(maps, colorMul) {
     depthWrite: true,
     depthTest: true,
   });
-  return material;
 }
 
-function configureMidDebrisGpuSpin(material, uniforms) {
+function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms = null) {
   const originalOnBeforeCompile = material.onBeforeCompile;
   const originalProgramCacheKey = material.customProgramCacheKey();
-  material.onBeforeCompile = function parallaxMidDebrisGpuSpin(shader, renderer) {
-    if (typeof originalOnBeforeCompile === 'function') {
-      originalOnBeforeCompile.call(this, shader, renderer);
+  const spin = !!spinUniforms;
+
+  material.onBeforeCompile = function parallaxBandGpuMotion(shader, renderer) {
+    if (typeof originalOnBeforeCompile === 'function') originalOnBeforeCompile.call(this, shader, renderer);
+
+    shader.uniforms.uParallaxWorldFocus = motionUniforms.worldFocus;
+    shader.uniforms.uParallaxFactor = motionUniforms.factor;
+    shader.uniforms.uParallaxTile = motionUniforms.tile;
+    if (spin) {
+      shader.uniforms.uParallaxPrimaryTime = spinUniforms.primaryTime;
+      shader.uniforms.uParallaxTailTime = spinUniforms.tailTime;
     }
-    shader.uniforms.uParallaxPrimaryTime = uniforms.primaryTime;
-    shader.uniforms.uParallaxTailTime = uniforms.tailTime;
-    shader.vertexShader = replaceRequiredShaderSource(
-      shader.vertexShader,
+
+    const declarations = [
       '#include <common>',
-      [
-        '#include <common>',
+      'uniform vec2 uParallaxWorldFocus;',
+      'uniform float uParallaxFactor;',
+      'uniform float uParallaxTile;',
+    ];
+    if (spin) {
+      declarations.push(
         `attribute vec3 ${MID_SPIN_AXIS_ATTRIBUTE};`,
         `attribute vec3 ${MID_SPIN_PARAMS_ATTRIBUTE};`,
         'uniform float uParallaxPrimaryTime;',
@@ -408,37 +451,74 @@ function configureMidDebrisGpuSpin(material, uniforms) {
         '  float s = sin(angle);',
         '  return point * c + cross(axis, point) * s + axis * dot(axis, point) * (1.0 - c);',
         '}',
-      ].join('\n'),
-      'common declarations',
-    );
+      );
+    }
     shader.vertexShader = replaceRequiredShaderSource(
       shader.vertexShader,
-      '#include <begin_vertex>',
-      [
+      '#include <common>',
+      declarations.join('\n'),
+      'common declarations',
+    );
+
+    if (spin) {
+      shader.vertexShader = replaceRequiredShaderSource(
+        shader.vertexShader,
         '#include <begin_vertex>',
-        `float sfParallaxTime = mix(uParallaxPrimaryTime, uParallaxTailTime, ${MID_SPIN_PARAMS_ATTRIBUTE}.z);`,
-        `float sfParallaxAngle = ${MID_SPIN_PARAMS_ATTRIBUTE}.x + ${MID_SPIN_PARAMS_ATTRIBUTE}.y * sfParallaxTime;`,
-        `transformed = sfRotateParallaxDebris(transformed, ${MID_SPIN_AXIS_ATTRIBUTE}, sfParallaxAngle);`,
+        [
+          '#include <begin_vertex>',
+          `float sfParallaxTime = mix(uParallaxPrimaryTime, uParallaxTailTime, ${MID_SPIN_PARAMS_ATTRIBUTE}.z);`,
+          `float sfParallaxAngle = ${MID_SPIN_PARAMS_ATTRIBUTE}.x + ${MID_SPIN_PARAMS_ATTRIBUTE}.y * sfParallaxTime;`,
+          `transformed = sfRotateParallaxDebris(transformed, ${MID_SPIN_AXIS_ATTRIBUTE}, sfParallaxAngle);`,
+        ].join('\n'),
+        'local vertex rotation',
+      );
+    }
+
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <project_vertex>',
+      [
+        '#include <project_vertex>',
+        'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
+        'vec2 sfParallaxWrappedCenter = mod(',
+        '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
+        '  uParallaxTile',
+        ') - uParallaxTile * 0.5;',
+        'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',
+        'mvPosition.xyz += (modelViewMatrix * vec4(sfParallaxDelta.x, 0.0, sfParallaxDelta.y, 0.0)).xyz;',
+        'gl_Position = projectionMatrix * mvPosition;',
       ].join('\n'),
-      'local vertex rotation',
+      'projected instance wrap',
     );
   };
-  material.customProgramCacheKey = () => `${originalProgramCacheKey}|${MID_SPIN_SHADER_KEY}`;
+
+  material.customProgramCacheKey = () => [
+    originalProgramCacheKey,
+    INSTANCE_WRAP_SHADER_KEY,
+    spin ? MID_SPIN_SHADER_KEY : '',
+  ].filter(Boolean).join('|');
   material.userData = {
     ...(material.userData || {}),
-    spacefaceParallaxMidDebrisGpuSpin: {
-      version: 2,
-      axisAttribute: MID_SPIN_AXIS_ATTRIBUTE,
-      paramsAttribute: MID_SPIN_PARAMS_ATTRIBUTE,
-      uniforms,
+    spacefaceParallaxInstanceWrap: {
+      version: 1,
+      mode: 'per-instance-global-focus',
+      uniforms: motionUniforms,
     },
+    ...(spin ? {
+      spacefaceParallaxMidDebrisGpuSpin: {
+        version: 2,
+        axisAttribute: MID_SPIN_AXIS_ATTRIBUTE,
+        paramsAttribute: MID_SPIN_PARAMS_ATTRIBUTE,
+        uniforms: spinUniforms,
+      },
+    } : {}),
   };
   material.needsUpdate = true;
 }
 
 function replaceRequiredShaderSource(source, needle, replacement, label) {
   if (typeof source !== 'string' || !source.includes(needle)) {
-    throw new Error(`[render] parallax mid-debris shader contract changed: missing ${label}`);
+    throw new Error(`[render] parallax band shader contract changed: missing ${label}`);
   }
   return source.replace(needle, replacement);
 }
@@ -452,10 +532,6 @@ function resolvePaletteColor(target, palette) {
   try { target.set(value != null ? value : FALLBACK_DUST); }
   catch (_) { target.set(FALLBACK_DUST); }
   return target;
-}
-
-function wrapOffset(value, tile) {
-  return value - Math.floor(value / tile) * tile - tile * 0.5;
 }
 
 function makeRand(seed) {
