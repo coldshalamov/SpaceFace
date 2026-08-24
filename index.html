@@ -37,106 +37,22 @@
     </div>
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
-      <div class="boot-terminal-frame">
-        <div class="boot-term-scanlines" aria-hidden="true"></div>
-        <header class="boot-term-header">
-          <div class="boot-term-tag"><span class="boot-status-pill" aria-hidden="true"></span><span class="boot-registry" aria-hidden="true">VHL-4471-T · TESSERA // COLD RESTART</span></div>
-          <div class="boot-term-meta">
-            <span class="boot-term-stat">KERNEL: <span class="boot-stat-val">SF-4.8.19</span></span>
-            <span class="boot-term-stat">CORRIDOR: <span class="boot-stat-val">47-A REACH</span></span>
-            <span class="boot-term-stat">CLK: <span class="boot-stat-val" data-loading-clock>00:00:00.0</span></span>
-          </div>
-        </header>
-
-        <main class="boot-term-body">
-          <section class="boot-term-col boot-col-left" aria-hidden="true">
-            <div class="boot-panel-header">
-              <span class="boot-panel-title">SYS_DIAGNOSTICS</span>
-              <span class="boot-panel-sub">ADDR_0x7FA0</span>
-            </div>
-            <div class="boot-diag-stream" data-loading-diag-stream>
-              <div class="boot-diag-line is-done"><span class="diag-tag">[OK]</span> POST_START: VHL-4471-T BUS SYNC</div>
-              <div class="boot-diag-line is-done"><span class="diag-tag">[OK]</span> VHL_KERNEL: MEMORY ALLOCATED 64TB</div>
-              <div class="boot-diag-line is-pending"><span class="diag-tag">[..]</span> THREE_GL: WEBGL CONTEXT MOUNTED</div>
-            </div>
-            <div class="boot-hex-panel">
-              <div class="boot-hex-header">HEAP_DUMP (HEX)</div>
-              <div class="boot-hex-dump" data-loading-hex>0x7FA0: 53 46 20 54 45 53 53 45 52 41 20 4F 50 54 49 43</div>
-            </div>
-          </section>
-
-          <section class="boot-term-center">
-            <div class="boot-canvas-wrapper">
-              <canvas id="boot-terminal-canvas" class="boot-canvas" width="640" height="380"></canvas>
-              <div class="boot-corner-bracket boot-cb-tl" aria-hidden="true"></div>
-              <div class="boot-corner-bracket boot-cb-tr" aria-hidden="true"></div>
-              <div class="boot-corner-bracket boot-cb-bl" aria-hidden="true"></div>
-              <div class="boot-corner-bracket boot-cb-br" aria-hidden="true"></div>
-              <div class="boot-watermark" aria-hidden="true">NEURAL LIDAR // CYBERPUNK FEED</div>
-            </div>
-            <div class="boot-title-lockup">
-              <span class="boot-title">SPACEFACE</span>
-              <span class="boot-sub" data-loading-label>Initializing systems…</span>
-              <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
-            </div>
-          </section>
-
-          <section class="boot-term-col boot-col-right" aria-hidden="true">
-            <div class="boot-panel-header">
-              <span class="boot-panel-title">SUBSYSTEM_STATUS</span>
-              <span class="boot-panel-sub">CH-01/04</span>
-            </div>
-            <div class="boot-subsys-list" data-loading-subsystems>
-              <div class="boot-subsys-row">
-                <span class="subsys-name">PWR_CORE</span>
-                <div class="subsys-led-bar"><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span></div>
-                <span class="subsys-val">68%</span>
-              </div>
-              <div class="boot-subsys-row">
-                <span class="subsys-name">AVIONICS</span>
-                <div class="subsys-led-bar"><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span></div>
-                <span class="subsys-val">100%</span>
-              </div>
-              <div class="boot-subsys-row">
-                <span class="subsys-name">OPT_ARRAY</span>
-                <div class="subsys-led-bar"><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span></div>
-                <span class="subsys-val">50%</span>
-              </div>
-              <div class="boot-subsys-row">
-                <span class="subsys-name">NAV_LINK</span>
-                <div class="subsys-led-bar"><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg active"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span><span class="subsys-seg"></span></div>
-                <span class="subsys-val">70%</span>
-              </div>
-            </div>
-            <div class="boot-panel-header boot-waveform-header">
-              <span class="boot-panel-title">CARRIER_SIGNAL_WAVE</span>
-              <span class="boot-panel-sub">1420.4 MHz</span>
-            </div>
-            <div class="boot-waveform-container">
-              <canvas id="boot-waveform-canvas" class="boot-waveform-canvas" width="200" height="48"></canvas>
-            </div>
-            <div class="boot-telemetry-metrics">
-              <div>BEARING: <span class="boot-stat-val">184.2° / +04.1°</span></div>
-              <div>IFF LOCK: <span class="boot-stat-val">VHL-4471-T</span></div>
-            </div>
-          </section>
-        </main>
-
-        <footer class="boot-term-footer">
-          <div class="boot-progress-bar-wrap">
-            <span class="boot-progress" aria-hidden="true"><span data-loading-progress></span></span>
-            <div class="boot-progress-meta">
-              <span class="boot-progress-segments" data-loading-segments>[........................]</span>
-              <span class="boot-progress-pct" data-loading-pct>0%</span>
-            </div>
-          </div>
-          <div class="boot-prompt-line">
-            <span class="boot-prompt-prefix">SYS_EXEC &gt;</span>
-            <span class="boot-prompt-cmd" data-loading-stage-name>INITIALIZING_SYSTEMS</span>
-            <span class="boot-cursor" aria-hidden="true"></span>
-          </div>
-        </footer>
+      <canvas id="boot-terminal-canvas" class="boot-canvas" width="640" height="380"></canvas>
+      <div class="boot-scrim" aria-hidden="true"></div>
+      <header class="boot-meta" aria-hidden="true">
+        <span class="boot-meta__registry">VHL-4471-T · TESSERA // COLD RESTART</span>
+        <span class="boot-meta__clock" data-loading-clock>00:00:00.0</span>
+      </header>
+      <div class="boot-lockup">
+        <span class="boot-wordmark">SPACEFACE</span>
+        <span class="boot-label" data-loading-label>Initializing systems…</span>
+        <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
+        <div class="boot-progress-row" aria-hidden="true">
+          <span class="boot-progress"><span data-loading-progress></span></span>
+          <span class="boot-progress-pct" data-loading-pct>0%</span>
+        </div>
       </div>
+      <span class="boot-skip" aria-hidden="true">Press any key to skip</span>
     </div>
   </div>
   <script type="module">

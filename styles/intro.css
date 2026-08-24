@@ -1,23 +1,34 @@
 /* ============================================================================
-   SpaceFace · INTRO SEQUENCE — boot console → cinematic title.
+   SpaceFace · INTRO SEQUENCE — boot → cinematic title.
 
-   Concept: the Tessera wakes after 14 months impounded. The boot is a cold-start
-   console on pure black (no artwork — the ship has no optics yet). The title is
-   "optics online": the gate-ring still bleeds in from black and drifts like a
-   slow approach, with an editorial film-title lockup — off-white Saira caps, one
-   hairline rule, letterspaced mono telemetry, and a single signal cyan used only
-   for live marks. No glow-heavy gamer chrome, no boxes.
+   Concept: the Tessera wakes after 14 months impounded. The boot is a cold open
+   on the signal-field engine at full bleed — no window frame, no terminal
+   chrome — with one quiet registry line, one brand lockup, and one honest
+   progress bar. The title is "optics online": the gate-ring still bleeds in
+   from black and drifts like a slow approach, with an editorial film-title
+   lockup — off-white Saira caps, one hairline rule, letterspaced mono
+   telemetry, and a single signal cyan used only for live marks. No glow-heavy
+   gamer chrome, no boxes.
 
    Behavior hooks other code depends on (do not rename):
-     #boot-overlay (+ .hidden), [data-loading-label], [data-loading-detail],
-     [data-loading-progress], .boot-error
+     #boot-overlay (+ .hidden), #boot-terminal-canvas, [data-loading-clock],
+     [data-loading-label], [data-loading-detail], [data-loading-progress],
+     [data-loading-pct], .boot-error
      #cinematic-splash, #cinematic-title, #cinematic-summary, #cinematic-signal
    ============================================================================ */
 
-/* ---- 1. Boot console ---------------------------------------------------------
-   High-density retro-futuristic CRT dot-matrix & 3D vector wireframe terminal.
-   Cold-start POST telemetry, rotating phosphor vessel schematics, real-time
-   oscilloscope carrier wave, and streaming diagnostics. */
+/* ---- 1. Boot — cold open -----------------------------------------------------
+   The signal-field engine IS the screen (design/LOADING_TERMINAL_HANDOFF.md):
+   it fills the frame edge to edge, and the UI sits on it as a quiet annotation
+   layer. What was removed from the old boot console, and why:
+     - the framed "terminal window" — a centred box floating over black is the
+       cheap-web-game read the instrument grammar bans (grammar §6, full-bleed);
+     - SYS_DIAGNOSTICS / HEAP_DUMP / SUBSYSTEM_STATUS / CARRIER_SIGNAL_WAVE —
+       flavour chrome and bracket punctuation, banned by grammar §9;
+     - the ASCII segment meter and phase-name prompt line — a second,
+       redundant progress encoding competing with the real one.
+   What remains is all real: the registry of the ship you're waking, the
+   elapsed clock, the live stage label, and one progress track. */
 
 #boot-overlay {
   position: fixed;
@@ -27,444 +38,148 @@
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--sf-surface) 90%, transparent) 0%, color-mix(in srgb, var(--bg) 99%, transparent) 85%);
   transition: opacity .8s ease;
   overflow: hidden;
-  padding: 10px;
-  box-sizing: border-box;
 }
 #boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
-@keyframes sf-boot-frame-poweron {
-  0% {
-    opacity: 0;
-    transform: scale(0.97) translateY(6px);
-    filter: brightness(2.2) contrast(1.6);
-  }
-  35% {
-    opacity: 0.85;
-    filter: brightness(1.4) contrast(1.2);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: brightness(1) contrast(1);
-  }
+.boot-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.boot-terminal-frame {
-  position: relative;
-  width: min(98vw, 1600px);
-  height: min(96vh, 980px);
-  max-height: 98vh;
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in srgb, var(--bg) 95%, transparent);
-  border: 1px solid rgba(78, 195, 230, 0.32);
-  border-radius: 4px;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(78, 195, 230, 0.04);
-  padding: 14px 18px;
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
-  color: #a9b8c4;
-  overflow: hidden;
-  box-sizing: border-box;
-  animation: sf-boot-frame-poweron 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.boot-term-scanlines {
+/* Legibility scrim: the edges fall to black so the meta line and the lockup
+   read over any phase of the field, brightest TEMPEST included. */
+.boot-scrim {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 2px);
-  opacity: 0.7;
-  z-index: 10;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 78%, transparent) 0%, transparent 16%),
+    linear-gradient(0deg, color-mix(in srgb, var(--bg) 94%, transparent) 0%, color-mix(in srgb, var(--bg) 62%, transparent) 24%, transparent 52%),
+    radial-gradient(120% 90% at 50% 46%, transparent 55%, color-mix(in srgb, var(--bg) 55%, transparent) 100%);
 }
 
-/* Header */
-.boot-term-header {
-  position: relative;
+/* Top edge: the ship's registry tag + the one real instrument (elapsed clock). */
+.boot-meta {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 2;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(78, 195, 230, 0.2);
-  padding-bottom: 8px;
+  align-items: baseline;
+  padding: clamp(14px, 2.2vw, 26px) clamp(18px, 2.8vw, 38px);
+  pointer-events: none;
+}
+.boot-meta__registry {
+  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.2em;
+  letter-spacing: .18em;
   text-transform: uppercase;
+  color: var(--ink-mute);
 }
-.boot-term-tag {
-  display: flex;
-  align-items: center;
-  color: #8296a4;
-}
-.boot-status-pill {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--sf-you);
-  box-shadow: 0 0 8px var(--sf-you);
-  margin-right: 8px;
-  animation: sf-intro-blink 1.2s steps(2, end) infinite;
-}
-.boot-registry {
+.boot-meta__clock {
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .25em;
-  color: #a9b8c4;
-}
-.boot-term-meta {
-  display: flex;
-  gap: 16px;
-  color: #54646f;
-}
-.boot-term-stat {
-  display: inline-flex;
-  gap: 4px;
-}
-.boot-stat-val {
-  color: #4ec3e6;
-  font-weight: 500;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-mute);
 }
 
-/* Body / Columns */
-.boot-term-body {
-  position: relative;
+/* Bottom-center lockup: the screen's one DISPLAY element (the wordmark), the
+   live stage sentence, and the progress track. */
+.boot-lockup {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(30px, 7vh, 76px);
+  transform: translateX(-50%);
   z-index: 2;
-  display: grid;
-  grid-template-columns: 240px 1fr 240px;
-  gap: 16px;
-  align-items: stretch;
-  margin: 10px 0;
-  flex: 1;
-  min-height: 0;
-}
-
-.boot-term-col {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 12px;
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
-  border: 1px solid rgba(148, 178, 205, 0.15);
-  border-radius: 3px;
-  padding: 10px;
-  box-sizing: border-box;
-}
-
-.boot-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(148, 178, 205, 0.15);
-  padding-bottom: 4px;
-  color: #74879a;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-size: 12px;
-}
-.boot-panel-title {
-  color: #a9b8c4;
-  font-weight: 600;
-}
-.boot-panel-sub {
-  color: #54646f;
-}
-
-/* Diagnostics Stream */
-.boot-diag-stream {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 220px;
-  overflow: hidden;
-  font-size: 12px;
-  line-height: 1.45;
-}
-.boot-diag-line {
-  color: #687885;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  transition: color .2s ease;
-}
-.boot-diag-line.is-done {
-  color: #a9b8c4;
-}
-.boot-diag-line.is-latest {
-  color: #e9eff4;
-  text-shadow: 0 0 8px color-mix(in srgb, var(--sf-you) 55%, transparent);
-}
-.diag-tag {
-  color: var(--sf-you);
-  font-weight: 600;
-  margin-right: 4px;
-}
-.boot-diag-line.is-pending .diag-tag {
-  color: #4ec3e6;
-}
-
-/* Hex Dump */
-.boot-hex-panel {
-  margin-top: auto;
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  border: 1px solid rgba(78, 195, 230, 0.15);
-  padding: 8px;
-  border-radius: 2px;
-}
-.boot-hex-header {
-  font-size: 12px;
-  color: #54646f;
-  letter-spacing: 0.15em;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-}
-.boot-hex-dump {
-  font-size: 12px;
-  color: #4ec3e6;
-  letter-spacing: 0.05em;
-  line-height: 1.4;
-  font-family: inherit;
-}
-
-/* Center Stage */
-.boot-term-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  position: relative;
-  min-height: 0;
-}
-.boot-canvas-wrapper {
-  position: relative;
-  width: 100%;
-  flex: 1;
-  min-height: 380px;
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  border: 1px solid rgba(78, 195, 230, 0.28);
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: crosshair;
-}
-.boot-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.boot-corner-bracket {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-color: #4ec3e6;
-  border-style: solid;
-  pointer-events: none;
-  z-index: 4;
-}
-.boot-cb-tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
-.boot-cb-tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
-.boot-cb-bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
-.boot-cb-br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
-
-.boot-watermark {
-  position: absolute;
-  bottom: 8px;
-  right: 12px;
-  font-size: 12px;
-  letter-spacing: 0.2em;
-  color: rgba(78, 195, 230, 0.4);
-  pointer-events: none;
-  z-index: 4;
-}
-
-.boot-title-lockup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 10px;
+  width: min(92vw, 560px);
   text-align: center;
+  pointer-events: none;
 }
-.boot-title {
-  margin-bottom: 3px;
-  font-family: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+.boot-wordmark {
+  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: .26em;
+  text-indent: .26em;
+  color: var(--ink);
+}
+.boot-label {
+  margin-top: 10px;
+  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
   font-weight: 600;
-  font-size: 24px;
-  letter-spacing: .4em;
-  text-indent: .4em;
-  color: #e9eff4;
-  text-shadow: 0 0 16px rgba(78, 195, 230, 0.4);
-}
-.boot-sub {
-  font-size: 12px;
-  letter-spacing: .22em;
-  text-indent: .22em;
-  text-transform: uppercase;
-  color: #a9b8c4;
-  text-shadow: none;
+  font-size: 15px;
+  letter-spacing: .02em;
+  color: var(--ink);
 }
 .boot-detail {
-  min-height: 1.4em;
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.4;
-  letter-spacing: .1em;
-  color: #687885;
-  text-align: center;
-  text-shadow: none;
+  margin-top: 3px;
+  min-height: 1.45em;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-dim);
 }
-
-/* Subsystems Column */
-.boot-subsys-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 12px;
-}
-.boot-subsys-row {
+.boot-progress-row {
   display: flex;
   align-items: center;
-  color: #8296a4;
-}
-.subsys-name {
-  width: 62px;
-  color: #a9b8c4;
-  font-weight: 500;
-  font-size: 12px;
-}
-.subsys-led-bar {
-  flex: 1;
-  margin: 0 8px;
-  height: 6px;
-  display: flex;
-  gap: 2px;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  padding: 1px;
-  border-radius: 1px;
-  border: 1px solid rgba(78, 195, 230, 0.2);
-}
-.subsys-seg {
-  flex: 1;
-  background: rgba(78, 195, 230, 0.12);
-  border-radius: 0.5px;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
-}
-.subsys-seg.active {
-  background: #4ec3e6;
-  box-shadow: 0 0 4px rgba(78, 195, 230, 0.8);
-}
-.subsys-val {
-  width: 32px;
-  text-align: right;
-  color: var(--sf-you);
-  font-size: 12px;
-}
-
-.boot-waveform-container {
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  border: 1px solid rgba(78, 195, 230, 0.15);
-  padding: 4px;
-  border-radius: 2px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.boot-waveform-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.boot-telemetry-metrics {
-  margin-top: auto;
-  font-size: 12px;
-  color: #61737f;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  letter-spacing: 0.1em;
-}
-
-/* Footer / Progress */
-.boot-term-footer {
-  position: relative;
-  z-index: 2;
-  border-top: 1px solid rgba(78, 195, 230, 0.2);
-  padding-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.boot-progress-bar-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+  margin-top: 14px;
+  width: min(56vw, 380px);
 }
 .boot-progress {
-  position: relative;
-  display: block;
-  width: 100%;
+  flex: 1;
   height: 2px;
-  background: rgba(148, 178, 205, .18);
   border-radius: 1px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
 }
 .boot-progress > span {
-  position: absolute;
-  left: 0;
-  top: 0;
   display: block;
-  width: 0;
   height: 100%;
+  width: 0;
   background: #4ec3e6;
-  box-shadow: 0 0 8px rgba(78, 195, 230, .6);
+  box-shadow: 0 0 8px rgba(78, 195, 230, .55);
   transition: width .25s ease-out;
 }
-.boot-progress > span::after {
-  content: "";
-  position: absolute;
-  right: -2px;
-  top: -2px;
-  width: 6px;
-  height: 6px;
-  background: #c4efff;
-  box-shadow: 0 0 10px rgba(140, 220, 250, .9);
-}
-.boot-progress-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #74879a;
-  letter-spacing: 0.1em;
-}
 .boot-progress-pct {
-  color: var(--sf-you);
-  font-weight: 600;
-}
-.boot-prompt-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
   font-size: 12px;
-  color: #687885;
-  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  color: #4ec3e6;
+  min-width: 4ch;
+  text-align: left;
 }
-.boot-prompt-prefix {
-  color: var(--sf-you);
+
+/* Skip hint — honest (loadingPresenter skips the min-display on any key), and
+   deliberately late: it appears only once the boot has had its first moment. */
+.boot-skip {
+  position: absolute;
+  right: clamp(18px, 2.8vw, 38px);
+  bottom: clamp(14px, 2.4vh, 26px);
+  z-index: 2;
+  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
   font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  opacity: 0;
+  animation: boot-skip-in .6s ease-out 4s forwards;
+  pointer-events: none;
 }
-.boot-prompt-cmd {
-  color: #e9eff4;
-}
-.boot-cursor {
-  width: 6px;
-  height: 11px;
-  background: rgba(78, 195, 230, .8);
-  animation: sf-intro-blink 1.15s steps(2, end) infinite;
-  display: inline-block;
-}
-@keyframes sf-intro-blink { 50% { opacity: .12; } }
+@keyframes boot-skip-in { to { opacity: 1; } }
 
 .boot-error {
   max-width: 70ch;
@@ -475,20 +190,6 @@
   white-space: pre-wrap;
   text-align: left;
   text-shadow: none;
-}
-
-/* Responsive Collapse for Narrow Screens */
-@media (max-width: 860px) {
-  .boot-term-body {
-    grid-template-columns: 1fr;
-    min-height: auto;
-  }
-  .boot-term-col {
-    display: none;
-  }
-  .boot-canvas-wrapper {
-    height: 240px;
-  }
 }
 
 /* ---- 2. Cinematic title ------------------------------------------------------
@@ -700,6 +401,8 @@
   color: #61737f;
 }
 
+@keyframes sf-intro-blink { 50% { opacity: .12; } }
+
 /* ---- 3. Reduced motion ---------------------------------------------------------
    The global a11y layer already compresses durations to ~0ms, which lands these
    fill-forwards reveals on their end state. These rules make the resting state
@@ -707,20 +410,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   #boot-overlay, .boot-progress > span, #cinematic-splash { transition: none; }
-  .boot-terminal-frame,
-  .boot-cursor,
-  .boot-status-pill,
+  .boot-skip,
   .cine-contract::before,
   .cine-signal__k::before { animation: none; }
+  .boot-skip { opacity: 1; }
   .cine-bg { animation: none; opacity: .94; transform: none; }
   .cine-tag, .cine-eyebrow, .cine-title, .cine-rule,
   .cine-contract, .cine-begin, .cine-signal { animation: none; opacity: 1; transform: none; }
 }
-html.sf-reduce-motion .boot-terminal-frame,
-html.sf-reduce-motion .boot-cursor,
-html.sf-reduce-motion .boot-status-pill,
+html.sf-reduce-motion .boot-skip,
 html.sf-reduce-motion .cine-contract::before,
 html.sf-reduce-motion .cine-signal__k::before { animation: none !important; }
+html.sf-reduce-motion .boot-skip { opacity: 1; }
 html.sf-reduce-motion .cine-bg { animation: none !important; opacity: .94; transform: none; }
 html.sf-reduce-motion .cine-tag,
 html.sf-reduce-motion .cine-eyebrow,
@@ -729,5 +430,3 @@ html.sf-reduce-motion .cine-rule,
 html.sf-reduce-motion .cine-contract,
 html.sf-reduce-motion .cine-begin,
 html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !important; transform: none !important; }
-
-
