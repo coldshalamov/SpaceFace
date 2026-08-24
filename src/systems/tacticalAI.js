@@ -10,6 +10,10 @@ import {
 } from '../ai/engagementAuthority.js';
 import { hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
 import { recipeIdFromEntity } from '../ai/squadFrame.js';
+import {
+  cohortRecipeFromEntity,
+  createFodderCohortDirector,
+} from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 import { ManeuverKind } from '../ai/contracts.js';
 
@@ -85,6 +89,13 @@ export function createTacticalAISystem({
   const hullHint = { hullId: null, flightClass: null };
   function bindHullResolver(liveStack) {
     if (!liveStack || !liveStack.maneuver) return;
+    if (!liveStack.fodderCohorts) {
+      liveStack.fodderCohorts = createFodderCohortDirector({ seed: liveStack.seed || 1 });
+    }
+    const frames = liveStack.maneuver.squadFrames;
+    if (frames && typeof frames.attachCohorts === 'function') {
+      frames.attachCohorts(liveStack.fodderCohorts);
+    }
     liveStack.maneuver.resolveHull = (entityId) => {
       const state = ctxRef && ctxRef.state;
       const entities = state && state.entities;
@@ -145,14 +156,18 @@ export function createTacticalAISystem({
 
     update(_dt, state) {
       ensureActivityClassified(state);
+      markCheapCohortMembers(state);
       const liveStack = ensureStack(state);
+      bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
       const dt = Number.isFinite(_dt) && _dt > 0 ? _dt : 1 / 60;
       stepSquadFrames(liveStack, state, tick, dt);
+      stepFodderCohorts(liveStack, state, tick, dt);
       if (tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         driveChoreographyMembers(liveStack, state, tick, null);
+        driveCohortMembers(liveStack, state, tick);
         revalidateCachedAIFiringIntents(liveStack, state);
         applySquadTokenFireGate(liveStack, state);
         return;
@@ -199,6 +214,7 @@ export function createTacticalAISystem({
         applyAIFiringIntent(decision, state);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || []);
+      driveCohortMembers(liveStack, state, tick);
       applySquadTokenFireGate(liveStack, state);
     },
 
@@ -272,6 +288,102 @@ function stepSquadFrames(liveStack, state, tick, dt) {
   director.stepAll(tick, dt, squads, (id) => (
     entities && typeof entities.get === 'function' ? entities.get(id) : null
   ));
+}
+
+function markCheapCohortMembers(state) {
+  const list = state && state.entityList;
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!cohortRecipeFromEntity(entity)) continue;
+    const ai = entity.data && entity.data.ai;
+    if (!ai) continue;
+    ai.passive = true;
+    ai.allowPassiveManeuver = false;
+  }
+}
+
+function stepFodderCohorts(liveStack, state, tick, dt) {
+  const director = liveStack && liveStack.fodderCohorts;
+  if (!director || typeof director.stepAll !== 'function') return;
+  const groups = gatherCohorts(state);
+  if (!groups.length) return;
+  const entities = state && state.entities;
+  director.stepAll(
+    tick,
+    dt,
+    groups,
+    (id) => (entities && typeof entities.get === 'function' ? entities.get(id) : null),
+    state,
+  );
+}
+
+function gatherCohorts(state) {
+  const list = state && state.entityList;
+  if (!list || !list.length) return [];
+  const byId = new Map();
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    const recipeId = cohortRecipeFromEntity(entity);
+    if (!recipeId) continue;
+    const ai = entity.data && entity.data.ai;
+    const cohortId = String(ai.squadId || ai.cohortId || recipeId);
+    let group = byId.get(cohortId);
+    if (!group) {
+      group = {
+        id: cohortId,
+        recipeId,
+        members: [],
+        targetId: ai.forcePlayerTarget && state.playerId != null ? state.playerId : null,
+      };
+      byId.set(cohortId, group);
+    }
+    group.members.push(entity);
+    if (group.targetId == null) {
+      const combat = entity.data && entity.data.combat;
+      if (combat && combat.targetId != null) group.targetId = combat.targetId;
+    }
+  }
+  return [...byId.values()];
+}
+
+function driveCohortMembers(liveStack, state, tick) {
+  const director = liveStack && liveStack.fodderCohorts;
+  if (!director || director.activeCohortCount() === 0) return;
+  const maneuverPort = liveStack.ports && liveStack.ports.maneuver;
+  const list = state && state.entityList;
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    if (!cohortRecipeFromEntity(entity)) continue;
+    stampFodder(entity, director.planFor(entity.id), director);
+    if (entityNeedsAiThink(entity, state) === false) continue;
+    const request = planChoreographyManeuver(liveStack, state, entity, tick);
+    if (request && maneuverPort && typeof maneuverPort.request === 'function') {
+      maneuverPort.request(request);
+    }
+  }
+}
+
+function stampFodder(entity, plan, director) {
+  if (!entity || !entity.data) return;
+  const ai = entity.data.ai || (entity.data.ai = {});
+  const stamp = ai.fodderCohort || (ai.fodderCohort = {});
+  const inspect = plan && plan.squadId && director && typeof director.inspect === 'function'
+    ? director.inspect(plan.squadId)
+    : null;
+  stamp.phase = plan ? plan.phase : null;
+  stamp.shape = inspect ? inspect.shape : null;
+  stamp.integrity = plan ? plan.integrity : null;
+  stamp.slotError = plan ? plan.slotError : null;
+  stamp.shapeError = plan && Number.isFinite(plan.shapeError) ? plan.shapeError : stamp.slotError;
+  stamp.disrupted = !!(plan && plan.disrupted);
+  stamp.coast = !!(plan && plan.coast);
+  stamp.neighborCount = plan && Number.isFinite(plan.neighborCount) ? plan.neighborCount : 0;
+  stamp.usedSpatialHash = !!(plan && plan.usedSpatialHash);
+  stamp.queryMode = plan && plan.queryMode ? plan.queryMode : (stamp.usedSpatialHash ? 'spatial_hash' : 'cohort_radius');
+  stamp.laneId = plan ? plan.laneId : null;
 }
 
 function gatherRecipeSquads(state) {

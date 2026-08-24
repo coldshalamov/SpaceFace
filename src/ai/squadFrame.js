@@ -72,12 +72,19 @@ export class SquadFrameDirector {
     this.seed = seed >>> 0;
     this.frames = new Map();
     this.byEntity = new Map();
+    this.cohorts = null;
     this.lastTick = -1;
     this.scratchMembers = [];
   }
 
+  attachCohorts(director) {
+    this.cohorts = director || null;
+    return this.cohorts;
+  }
+
   has(entityId) {
-    return this.byEntity.has(entityId);
+    if (this.byEntity.has(entityId)) return true;
+    return !!(this.cohorts && typeof this.cohorts.has === 'function' && this.cohorts.has(entityId));
   }
 
   activeSquadCount() {
@@ -86,7 +93,10 @@ export class SquadFrameDirector {
 
   planFor(entityId) {
     const link = this.byEntity.get(entityId);
-    return link ? link.plan : null;
+    if (link) return link.plan;
+    return this.cohorts && typeof this.cohorts.planFor === 'function'
+      ? this.cohorts.planFor(entityId)
+      : null;
   }
 
   inspect(squadId = null) {
@@ -101,7 +111,10 @@ export class SquadFrameDirector {
 
   forget(entityId) {
     const link = this.byEntity.get(entityId);
-    if (!link) return;
+    if (!link) {
+      if (this.cohorts && typeof this.cohorts.forget === 'function') this.cohorts.forget(entityId);
+      return;
+    }
     this.byEntity.delete(entityId);
     const frame = this.frames.get(link.squadId);
     if (!frame) return;

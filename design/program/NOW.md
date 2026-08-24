@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-24
-baseCommit: 2dc07db6915024087682c235bd2ecf52609d20e5
+baseCommit: 9d3a50a2a8ca743a28ba32b31ec6c82463a5edee
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-135.05 fodder cohort | fable-campaign-20260824 lane FODDER | MUTATING | new `src/ai/fodderCohort.js`, `src/systems/tacticalAI.js`, `src/ai/squadFrame.js`, `src/data/squadChoreography.js`, motion lab files | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 

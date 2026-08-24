@@ -2601,7 +2601,7 @@
       "id": "PQ-135",
       "priority": 57,
       "title": "Flight and movement convergence: ships that look like they meant it",
-      "state": "ready",
+      "state": "implemented",
       "canonical": [
         "FLIGHT-MOVEMENT-CONVERGENCE"
       ],
@@ -8944,7 +8944,7 @@
       "priority": 388,
       "title": "One twelve-body fodder cohort that flows and stays throwable",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-135.01"
       ],
@@ -8958,7 +8958,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-05-fodder-cohort-REPORT.md"
+      ],
       "brief": "One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable (21A.14). Done when it flows as a shoal rather than a dozen independent seekers jittering at the same point."
     },
     {

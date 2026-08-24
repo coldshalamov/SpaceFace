@@ -475,23 +475,95 @@ export function nearestNeighborStats(positions) {
 
 export function flowAlignment(velocities) {
   if (!velocities || velocities.length < 2) return 0;
+  const axis = dominantFlowAxis(velocities);
+  return axis ? jsonNumber(axis.mag, 0) : 0;
+}
+
+export function dominantFlowAxis(velocities) {
+  if (!velocities || velocities.length < 2) return null;
   let mx = 0;
   let mz = 0;
-  const units = [];
+  let n = 0;
   for (const vel of velocities) {
     const mag = Math.hypot(vel.x || 0, vel.z || 0);
     if (mag < 0.5) continue;
-    const ux = vel.x / mag;
-    const uz = vel.z / mag;
-    units.push({ x: ux, z: uz });
-    mx += ux;
-    mz += uz;
+    mx += vel.x / mag;
+    mz += vel.z / mag;
+    n++;
   }
-  if (units.length < 2) return 0;
-  mx /= units.length;
-  mz /= units.length;
+  if (n < 2) return null;
+  mx /= n;
+  mz /= n;
   const mag = Math.hypot(mx, mz);
-  return jsonNumber(mag, 0);
+  if (mag < 1e-9) return { x: 1, z: 0, mag: 0, count: n };
+  return { x: mx / mag, z: mz / mag, mag, count: n };
+}
+
+export function flowAxisShare(velocities, minDot = 0.72) {
+  const axis = dominantFlowAxis(velocities);
+  if (!axis || axis.count < 2) return 0;
+  let ok = 0;
+  let n = 0;
+  for (const vel of velocities || []) {
+    const mag = Math.hypot(vel.x || 0, vel.z || 0);
+    if (mag < 0.5) continue;
+    n++;
+    const dot = (vel.x / mag) * axis.x + (vel.z / mag) * axis.z;
+    if (dot >= minDot) ok++;
+  }
+  return n ? jsonNumber(ok / n, 0) : 0;
+}
+
+/** Positive: tips sit closer to the target than the belly (concave front). */
+export function crescentConcavity(positions, target) {
+  if (!positions || positions.length < 5 || !target) return 0;
+  let cx = 0;
+  let cz = 0;
+  for (const p of positions) {
+    cx += p.x || 0;
+    cz += p.z || 0;
+  }
+  cx /= positions.length;
+  cz /= positions.length;
+  const tx = (target.x || 0) - cx;
+  const tz = (target.z || 0) - cz;
+  const tlen = Math.hypot(tx, tz) || 1;
+  const ax = tx / tlen;
+  const az = tz / tlen;
+  const rx = -az;
+  const rz = ax;
+  const rows = [];
+  for (const p of positions) {
+    const dx = (p.x || 0) - cx;
+    const dz = (p.z || 0) - cz;
+    rows.push({
+      along: dx * ax + dz * az,
+      lat: Math.abs(dx * rx + dz * rz),
+    });
+  }
+  rows.sort((a, b) => b.lat - a.lat);
+  const tipN = Math.max(2, Math.floor(rows.length * 0.25));
+  const bellyN = Math.max(2, Math.floor(rows.length * 0.25));
+  const byLat = rows.slice().sort((a, b) => a.lat - b.lat);
+  let tipAlong = 0;
+  for (let i = 0; i < tipN; i++) tipAlong += rows[i].along;
+  let bellyAlong = 0;
+  for (let i = 0; i < bellyN; i++) bellyAlong += byLat[i].along;
+  return jsonNumber(tipAlong / tipN - bellyAlong / bellyN, 0);
+}
+
+export function alongImpulseDisplacement(before, after, dir) {
+  if (!before || !after || !before.length || before.length !== after.length) return 0;
+  const mag = Math.hypot(dir && dir.x || 0, dir && dir.z || 0) || 1;
+  const nx = (dir.x || 0) / mag;
+  const nz = (dir.z || 0) / mag;
+  let sum = 0;
+  for (let i = 0; i < before.length; i++) {
+    const dx = (after[i].x || 0) - (before[i].x || 0);
+    const dz = (after[i].z || 0) - (before[i].z || 0);
+    sum += dx * nx + dz * nz;
+  }
+  return jsonNumber(sum / before.length, 0);
 }
 
 export function minPairDistance(positions) {

@@ -7,7 +7,11 @@ import { wrapAngle } from '../core/rng.js';
 import { queuePhysicsImpulse, readPhysicsTelemetry } from '../core/physicsAuthority.js';
 import { ManeuverPlanner } from '../ai/maneuver.js';
 import { AI_CONTRACT_VERSION, ManeuverKind, makeThrusterRequest } from '../ai/contracts.js';
-import { hullClearanceBar } from '../data/squadChoreography.js';
+import {
+  COHORT_RECIPE_CRESCENT,
+  COHORT_RECIPE_RIVER,
+  hullClearanceBar,
+} from '../data/squadChoreography.js';
 import { SQUAD_RECIPE_INTERCEPTOR_SCISSORS } from '../ai/squadFrame.js';
 import {
   forceSharedEnemyMotionEnvelope,
@@ -23,11 +27,14 @@ import { createTacticalAISystem } from './tacticalAI.js';
 import { weapons } from './weapons.js';
 import {
   angularSignChangesPerSecond,
+  alongImpulseDisplacement,
   compactMetrics,
   controlSignChangesPerSecond,
   createMotionTrace,
+  crescentConcavity,
   envelopeTrackingMetrics,
   flowAlignment,
+  flowAxisShare,
   headingOscillationRms,
   jsonNumber,
   maybePushSample,
@@ -452,16 +459,37 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
   }
 }
 
-export async function runM11({ seed = MOTION_LAB_SEED } = {}) {
-  const cohort12 = await runSwarmCohort(seed, 12);
-  const cohort24 = await runSwarmCohort(seed, 24);
+export async function runM11({ seed = MOTION_LAB_SEED, crescent = true } = {}) {
+  const cohort12 = await runSwarmCohort(seed, {
+    count: 12,
+    recipeId: COHORT_RECIPE_RIVER,
+    squadId: 'm11_river_12',
+  });
+  const cohort24 = await runSwarmCohort(seed, {
+    count: 24,
+    recipeId: COHORT_RECIPE_RIVER,
+    squadId: 'm11_river_24',
+  });
+  const crescent12 = crescent
+    ? await runSwarmCohort(seed, {
+      count: 12,
+      recipeId: COHORT_RECIPE_CRESCENT,
+      squadId: 'm11_crescent_12',
+    })
+    : null;
+  const payload = {
+    cohort12: cohort12.metrics,
+    cohort24: cohort24.metrics,
+  };
+  if (crescent12) payload.crescent12 = crescent12.metrics;
+  const traces = { cohort12: cohort12.trace, cohort24: cohort24.trace };
+  if (crescent12) traces.crescent12 = crescent12.trace;
+  const cost = { cohort12: cohort12.cost, cohort24: cohort24.cost };
+  if (crescent12) cost.crescent12 = crescent12.cost;
   return {
-    metrics: namedScenarioMetrics('M11', seed, {
-      cohort12: cohort12.metrics,
-      cohort24: cohort24.metrics,
-    }),
-    traces: { cohort12: cohort12.trace, cohort24: cohort24.trace },
-    cost: { cohort12: cohort12.cost, cohort24: cohort24.cost },
+    metrics: namedScenarioMetrics('M11', seed, payload),
+    traces,
+    cost,
   };
 }
 
@@ -615,6 +643,42 @@ export function formatM6Table(metrics) {
     widths[1] = Math.max(widths[1], String(row[1]).length);
   }
   return rows.map((row) => `${String(row[0]).padEnd(widths[0])}  ${String(row[1]).padEnd(widths[1])}`).join('\n');
+}
+
+export function formatM11Table(metrics) {
+  const keys = [
+    'count',
+    'shape',
+    'flowCoherence',
+    'flowAxisShare',
+    'nnMean',
+    'nnMin',
+    'collisions',
+    'throwDisplacementWu',
+    'impulseRetention',
+    'disruptionResponseS',
+    'maxNeighbors',
+    'queryMode',
+    'usedSpatialHash',
+  ];
+  const groups = [
+    ['12 river', metrics && metrics.cohort12],
+    ['24 river', metrics && metrics.cohort24],
+  ];
+  if (metrics && metrics.crescent12) groups.push(['12 crescent', metrics.crescent12]);
+  const header = ['metric', ...groups.map((g) => g[0])];
+  const rows = [header];
+  for (const key of keys) {
+    rows.push([key, ...groups.map((g) => num(g[1] && g[1][key]))]);
+  }
+  if (metrics && metrics.crescent12) {
+    rows.push(['crescentConcavity', '—', '—', num(metrics.crescent12.crescentConcavity)]);
+  }
+  const widths = header.map(() => 0);
+  for (const row of rows) {
+    for (let i = 0; i < row.length; i++) widths[i] = Math.max(widths[i], String(row[i]).length);
+  }
+  return rows.map((row) => row.map((cell, i) => String(cell).padEnd(widths[i])).join('  ')).join('\n');
 }
 
 export function formatM4HullTable(metrics) {
@@ -826,36 +890,49 @@ async function runM3Hull(seed, hull) {
   }
 }
 
-async function runSwarmCohort(seed, count) {
+async function runSwarmCohort(seed, opts) {
+  const count = typeof opts === 'number' ? opts : (opts && opts.count) || 12;
+  const recipeId = (opts && opts.recipeId) || COHORT_RECIPE_RIVER;
+  const squadId = (opts && opts.squadId) || `m11_${recipeId}_${count}`;
+  const shape = recipeId === COHORT_RECIPE_CRESCENT ? 'crescent' : 'river';
   const host = await bootMotionLab({ seed, kind: 'ai' });
   const started = nowNs();
+  const impulseDir = { x: 0.2, z: 1 };
   try {
-    spawnPlayer(host, 'ship_kestrel', { x: 520, z: 0 }, 0);
-    const ships = [];
-    const cols = Math.ceil(Math.sqrt(count));
-    for (let i = 0; i < count; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      ships.push(spawnEnemy(host, 'wasp_swarmer', {
-        x: -40 - row * 36,
-        z: (col - (cols - 1) / 2) * 34,
-      }, { squadId: 'm11_river' }));
-    }
+    const player = spawnPlayer(host, 'ship_kestrel', { x: 520, z: 0 }, 0);
+    const ships = spawnFodderCohort(host, {
+      squadId,
+      recipeId,
+      count,
+      playerPos: player.pos,
+    });
     await host.ready();
     const ids = ships.map((e) => e.id);
-    const trace = createMotionTrace({ scenarioId: 'M11', seed, extra: { count } });
+    const shoved = ships.slice(0, Math.min(4, ships.length));
+    const trace = createMotionTrace({ scenarioId: 'M11', seed, extra: { count, shape, recipeId } });
     const contacts = bindContacts(host, trace, ids);
     const ticks = 360;
     const disruptTick = 150;
+    const holdTicks = 15;
     let disruptedTick = null;
     let reacqTick = null;
     let preAlign = 0;
+    let posAtImpulse = null;
+    let throwDisplacementWu = 0;
+    let impulseRetention = 0;
+    let peakNeighbors = 0;
+    let hashSeen = false;
+    const flowAlignSamples = [];
+    const flowShareSamples = [];
+    const nnMinSamples = [];
+    const concavitySamples = [];
+    let queryMode = 'none';
     for (let i = 0; i < ticks; i++) {
-      writePlayerInput(host.state, { moveZ: 0.8 });
+      writePlayerInput(host.state, { moveZ: 0.55 });
       const tick = host.state.tick | 0;
       if (tick === disruptTick) {
         preAlign = flowAlignment(ships.filter((e) => e.alive !== false).map((e) => e.vel));
-        applyStandardRepulsorImpulse(ships.slice(0, Math.min(4, ships.length)), { x: 0.2, z: 1 });
+        applyStandardRepulsorImpulse(shoved, impulseDir);
         disruptedTick = tick;
       }
       host.runtime.step(MOTION_LAB_DT);
@@ -863,9 +940,46 @@ async function runSwarmCohort(seed, count) {
       const positions = live.map((e) => ({ x: e.pos.x, z: e.pos.z }));
       const velocities = live.map((e) => e.vel);
       const align = flowAlignment(velocities);
-      if (disruptedTick != null && reacqTick == null && tick > disruptedTick + 20 && align >= Math.max(0.45, preAlign * 0.85)) {
-        reacqTick = tick;
+      const share = flowAxisShare(velocities, 0.72);
+      if (tick >= 48 && tick < disruptTick) {
+        flowAlignSamples.push(align);
+        flowShareSamples.push(share);
+        const nnNow = nearestNeighborStats(positions);
+        if (Number.isFinite(nnNow.nnMin)) nnMinSamples.push(nnNow.nnMin);
+        if (shape === 'crescent') {
+          concavitySamples.push(crescentConcavity(positions, { x: player.pos.x, z: player.pos.z }));
+        }
       }
+      if (tick === disruptTick) {
+        posAtImpulse = shoved.map((e) => ({ x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z }));
+      }
+      if (tick === disruptTick + holdTicks && posAtImpulse) {
+        const after = shoved.map((e) => ({ x: e.pos.x, z: e.pos.z }));
+        throwDisplacementWu = alongImpulseDisplacement(posAtImpulse, after, impulseDir);
+        let ballistic = 0;
+        for (const sample of posAtImpulse) {
+          ballistic += (sample.vx || 0) * impulseDir.x + (sample.vz || 0) * impulseDir.z;
+        }
+        const dirMag = Math.hypot(impulseDir.x, impulseDir.z) || 1;
+        ballistic = (ballistic / posAtImpulse.length) / dirMag * (holdTicks * MOTION_LAB_DT);
+        impulseRetention = ballistic > 1
+          ? jsonNumber(throwDisplacementWu / ballistic, 0)
+          : 0;
+      }
+      if (disruptedTick != null && reacqTick == null && tick > disruptedTick + 20) {
+        if (shovedReacquired(shoved) && align >= Math.max(0.48, preAlign * 0.75)) {
+          reacqTick = tick;
+        }
+      }
+      let maxN = 0;
+      for (const ship of live) {
+        const stamp = ship.data && ship.data.ai && ship.data.ai.fodderCohort;
+        if (stamp && stamp.usedSpatialHash) hashSeen = true;
+        if (stamp && stamp.queryMode && queryMode === 'none') queryMode = stamp.queryMode;
+        if (stamp && stamp.queryMode === 'spatial_hash') queryMode = 'spatial_hash';
+        if (stamp && stamp.neighborCount > maxN) maxN = stamp.neighborCount;
+      }
+      if (maxN > peakNeighbors) peakNeighbors = maxN;
       const phase = tick < disruptTick ? 'flow' : 'disrupted';
       if (tick === 0 || tick === disruptTick) pushPhase(trace, phase, tick);
       if (tick % 8 === 0) {
@@ -883,17 +997,34 @@ async function runSwarmCohort(seed, count) {
     const positions = live.map((e) => ({ x: e.pos.x, z: e.pos.z }));
     const velocities = live.map((e) => e.vel);
     const nn = nearestNeighborStats(positions);
+    const flowMin = nnMinSamples.length ? Math.min(...nnMinSamples) : nn.nnMin;
     const wallMs = nsToMs(nowNs() - started);
+    const target = { x: player.pos.x, z: player.pos.z };
     const metrics = compactMetrics({
       count,
+      shape,
       flowAlignment: flowAlignment(velocities),
+      flowCoherence: meanNumber(flowAlignSamples),
+      flowAxisShare: meanNumber(flowShareSamples),
+      crescentConcavity: shape === 'crescent'
+        ? (concavitySamples.length ? meanNumber(concavitySamples) : crescentConcavity(positions, target))
+        : 0,
       ...nn,
+      nnMin: jsonNumber(flowMin, nn.nnMin),
+      endNnMin: jsonNumber(nn.nnMin, 0),
+      flowNnMin: jsonNumber(flowMin, nn.nnMin),
+      queryMode: hashSeen ? 'spatial_hash' : (queryMode === 'none' ? 'cohort_radius' : queryMode),
+      throwDisplacementWu: jsonNumber(throwDisplacementWu, 0),
+      impulseRetention: jsonNumber(impulseRetention, 0),
       disruptionResponseS: disruptedTick == null
         ? null
         : jsonNumber(((reacqTick == null ? host.state.tick | 0 : reacqTick) - disruptedTick) * MOTION_LAB_DT),
       reacquired: reacqTick != null,
       collisions: trace.contacts.length,
       alive: live.length,
+      maxNeighbors: peakNeighbors,
+      usedSpatialHash: hashSeen,
+      neighborBound: count,
     });
     return {
       metrics,
@@ -902,11 +1033,78 @@ async function runSwarmCohort(seed, count) {
         stepWallMs: wallMs,
         perMemberMs: live.length ? wallMs / live.length : wallMs,
         memberCount: count,
+        maxNeighbors: peakNeighbors,
+        usedSpatialHash: hashSeen,
       },
     };
   } finally {
     host.dispose();
   }
+}
+
+function spawnFodderCohort(host, { squadId, recipeId, count }) {
+  const ships = [];
+  const crescent = recipeId === COHORT_RECIPE_CRESCENT;
+  const lanes = count <= 12 ? 3 : 4;
+  const laneSpacing = 46;
+  const alongSpacing = 46;
+  if (crescent) {
+    const span = 2.15;
+    const radius = 168;
+    const cx = 360;
+    const cz = 0;
+    const gate = { x: cx, z: cz };
+    for (let i = 0; i < count; i++) {
+      const u = count <= 1 ? 0.5 : i / (count - 1);
+      const ang = -span * 0.5 + span * u;
+      const x = cx - Math.cos(ang) * radius;
+      const z = cz + Math.sin(ang) * radius;
+      ships.push(spawnEnemy(host, 'wasp_swarmer', { x, z }, {
+        squadId,
+        cohortRecipe: recipeId,
+        rot: 0,
+        gate,
+      }));
+    }
+    return ships;
+  }
+  const gate = { x: 80, z: 0 };
+  for (let i = 0; i < count; i++) {
+    const lane = i % lanes;
+    const row = Math.floor(i / lanes);
+    const x = -40 - row * alongSpacing;
+    const z = (lane - (lanes - 1) / 2) * laneSpacing;
+    ships.push(spawnEnemy(host, 'wasp_swarmer', { x, z }, {
+      squadId,
+      cohortRecipe: recipeId,
+      rot: 0,
+      gate,
+    }));
+  }
+  return ships;
+}
+
+function shovedReacquired(shoved) {
+  if (!shoved || !shoved.length) return false;
+  for (const ship of shoved) {
+    if (!ship || ship.alive === false) return false;
+    const stamp = ship.data && ship.data.ai && ship.data.ai.fodderCohort;
+    if (!stamp) return false;
+    if (stamp.coast || stamp.disrupted) return false;
+  }
+  return true;
+}
+
+function meanNumber(values) {
+  if (!values || !values.length) return 0;
+  let sum = 0;
+  let n = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    sum += value;
+    n++;
+  }
+  return n ? jsonNumber(sum / n, 0) : 0;
 }
 
 function m1InputPlan() {
@@ -1077,6 +1275,12 @@ function spawnEnemy(host, typeId, pos, opts = {}) {
   if (opts.squadRecipe) spec.data.ai.squadRecipe = opts.squadRecipe;
   if (opts.squadRole) spec.data.ai.squadRole = opts.squadRole;
   if (opts.squadSocket) spec.data.ai.squadSocket = opts.squadSocket;
+  if (opts.cohortRecipe) {
+    spec.data.ai.cohortRecipe = opts.cohortRecipe;
+    spec.data.ai.passive = true;
+    spec.data.ai.allowPassiveManeuver = false;
+  }
+  if (opts.gate) spec.data.ai.cohortGate = { x: opts.gate.x, z: opts.gate.z };
   spec.data.ai.activity = {
     ...(spec.data.ai.activity || {}),
     kind: 'attack_run',

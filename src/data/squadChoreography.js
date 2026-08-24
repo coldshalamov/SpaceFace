@@ -118,12 +118,98 @@ export const SQUAD_RECIPES = Object.freeze({
   [SQUAD_RECIPE_INTERCEPTOR_SCISSORS]: INTERCEPTOR_SCISSORS_RECIPE,
 });
 
+export const COHORT_RECIPE_RIVER = 'fodder_river';
+export const COHORT_RECIPE_CRESCENT = 'fodder_crescent';
+
+export const COHORT_PHASE = Object.freeze({
+  STREAM: 'stream',
+  PRESS: 'press',
+  REFORM: 'reform',
+});
+
+export const COHORT_SHAPE_RIVER = Object.freeze({
+  id: 'cohort_river',
+  family: 'river',
+  spacingRule: 'dynamic_hull_clearance',
+});
+
+export const COHORT_SHAPE_CRESCENT = Object.freeze({
+  id: 'cohort_crescent',
+  family: 'crescent',
+  spacingRule: 'dynamic_hull_clearance',
+});
+
+export const COHORT_SHAPES = Object.freeze({
+  [COHORT_SHAPE_RIVER.id]: COHORT_SHAPE_RIVER,
+  [COHORT_SHAPE_CRESCENT.id]: COHORT_SHAPE_CRESCENT,
+  river: COHORT_SHAPE_RIVER,
+  crescent: COHORT_SHAPE_CRESCENT,
+});
+
+const FODDER_COAST = Object.freeze({
+  coastMinS: 0.82,
+  coastMaxS: 1.35,
+  deformRadiusMult: 1.85,
+  reformPolicy: 'rejoin_slots',
+  queryRadius: 64,
+  separationRadius: 48,
+});
+
+export const FODDER_RIVER_RECIPE = Object.freeze({
+  id: COHORT_RECIPE_RIVER,
+  family: 'fodder_cohort',
+  shape: 'river',
+  memberCount: 12,
+  cruiseSpeed: 50,
+  speedBand: Object.freeze({ min: 38, max: 58 }),
+  densityTarget: 44,
+  laneSpacing: 46,
+  alongSpacing: 46,
+  corridorWidth: 150,
+  standoff: 0,
+  pressureGain: 0.18,
+  arcSpan: 0,
+  arcRadius: 0,
+  ...FODDER_COAST,
+});
+
+export const FODDER_CRESCENT_RECIPE = Object.freeze({
+  id: COHORT_RECIPE_CRESCENT,
+  family: 'fodder_cohort',
+  shape: 'crescent',
+  memberCount: 12,
+  cruiseSpeed: 22,
+  speedBand: Object.freeze({ min: 12, max: 36 }),
+  densityTarget: 40,
+  laneSpacing: 40,
+  alongSpacing: 40,
+  corridorWidth: 220,
+  standoff: 240,
+  pressureGain: 0.08,
+  arcSpan: 2.15,
+  arcRadius: 168,
+  ...FODDER_COAST,
+});
+
+export const COHORT_RECIPES = Object.freeze({
+  [COHORT_RECIPE_RIVER]: FODDER_RIVER_RECIPE,
+  [COHORT_RECIPE_CRESCENT]: FODDER_CRESCENT_RECIPE,
+});
+
 export function getSquadRecipe(id) {
   return SQUAD_RECIPES[id] || null;
 }
 
+export function getCohortRecipe(id) {
+  return COHORT_RECIPES[id] || null;
+}
+
 export function getFormationShape(id) {
   return FORMATION_SHAPES[id] || null;
+}
+
+export function getCohortShape(id) {
+  return COHORT_SHAPES[id] || null;
 }
 
 export function hullClearanceSpacing(radii, scale = 1) {

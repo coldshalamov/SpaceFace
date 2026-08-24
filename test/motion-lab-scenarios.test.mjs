@@ -13,12 +13,19 @@ import {
   forceSquadFrameMutation,
 } from '../src/ai/squadFrame.js';
 import {
+  composeDesiredVelocity,
+  forceFodderCohortMutation,
+  meanNeighborSeparation,
+  normalizeSteeringWeights,
+} from '../src/ai/fodderCohort.js';
+import {
   MOTION_LAB_SEED,
   formatM1Table,
   formatM2Table,
   formatM3Table,
   formatM4HullTable,
   formatM6Table,
+  formatM11Table,
   runM1,
   runM2,
   runM3,
@@ -287,6 +294,30 @@ test('mutation: four close-attack tokens break the simultaneous-attacker gate', 
   }
 });
 
+test('fodder steering weights stay normalized and do not grow with neighbor count', () => {
+  const weights = normalizeSteeringWeights({
+    flow: 0.46, slot: 0.16, separation: 0.22, alignment: 0.10, hazard: 0.12, pressure: 0.06,
+  });
+  const sum = Object.values(weights).reduce((n, w) => n + w, 0);
+  assert.ok(Math.abs(sum - 1) < 1e-9, 'phase weights must sum to 1 after normalization');
+
+  const self = { x: 0, z: 0 };
+  const one = meanNeighborSeparation(self, [{ x: 10, z: 0 }], 40);
+  const eight = meanNeighborSeparation(self, Array.from({ length: 8 }, () => ({ x: 10, z: 0 })), 40);
+  assert.ok(Math.abs(Math.hypot(one.x, one.z) - Math.hypot(eight.x, eight.z)) < 1e-9,
+    'mean separation must not grow when the same neighbor is repeated');
+
+  const composed = composeDesiredVelocity({
+    flow: { x: 50, z: 0 },
+    slot: { x: 10, z: 0 },
+    separation: { x: 0, z: 20 },
+    alignment: { x: 50, z: 0 },
+    hazard: { x: 0, z: 0 },
+    pressure: { x: 8, z: 0 },
+  }, weights, 58);
+  assert.ok(composed.mag <= 58 + 1e-6, 'composed desired velocity is capped by the speed band');
+});
+
 test('M11 swarm river is deterministic and keeps wall-time out of the metrics', LONG, async () => {
   const result = await runTwice(() => runM11({ seed: SEED }));
   assert.equal(result.metrics.scenarioId, 'M11');
@@ -301,4 +332,81 @@ test('M11 swarm river is deterministic and keeps wall-time out of the metrics', 
   assert.equal(blob.includes('perMemberMs'), false);
   assert.ok(result.cost && result.cost.cohort12 && Number.isFinite(result.cost.cohort12.stepWallMs));
   assert.ok(Number.isFinite(result.cost.cohort12.perMemberMs));
+
+  const c12 = result.metrics.cohort12;
+  const c24 = result.metrics.cohort24;
+  const crescent = result.metrics.crescent12;
+
+  // Flow coherence: baseline seekers were 0.63–0.69. A river's members share one axis;
+  // 0.82 means the mean unit-velocity still holds 82% of its length (~35° spread).
+  assert.ok(c12.flowCoherence >= 0.82, 'twelve-body river flow coherence must rise well above the 0.63–0.69 seeker baseline');
+  assert.ok(c24.flowCoherence >= 0.82, 'twenty-four-body river must keep the same flow floor');
+  assert.ok(c12.flowAxisShare >= 0.75, 'river members share a dominant flow axis');
+  assert.equal(c12.shape, 'river');
+
+  // Nearest-neighbor: tighten the pack without pileups. Baseline 24-body min was ~8 (hull overlap).
+  assert.equal(c12.collisions, 0);
+  assert.equal(c24.collisions, 0);
+  assert.ok(c12.nnMin >= 20, 'twelve-body river must keep a min-separation floor');
+  assert.ok(c24.nnMin >= 20, 'twenty-four-body river must not pile up');
+  assert.ok(c12.nnMean <= 55, 'twelve-body mean spacing is a corridor, not a spray');
+  assert.ok(c24.nnMean <= 50, 'twenty-four-body mean spacing stays inside the corridor');
+
+  // Throwability: impulse displacement is retained; reacquire is later than the 0.35 s snap-back.
+  assert.ok(c12.throwDisplacementWu >= 8, 'shoved bodies leave the river as physical objects');
+  assert.ok(c12.impulseRetention >= 0.50, 'the cohort must not steering-cancel the player impulse');
+  assert.equal(c12.reacquired, true);
+  assert.ok(c12.disruptionResponseS > 0.35, 'reacquire must be later than the seeker baseline');
+  assert.ok(c12.disruptionResponseS >= 0.70, 'the thrown interval is visible, not a one-tick blip');
+  assert.ok(c12.disruptionResponseS <= 3.5, 'survivors do rejoin after the coast');
+  assert.ok(c24.disruptionResponseS > 0.35);
+  assert.ok(c24.impulseRetention >= 0.50);
+
+  // Cost: one radius query per member, visits bounded by neighbors-in-radius, not all-pairs.
+  // The physics owner parks the spatial hash below 96 colliders, so the motion-lab scene uses the
+  // same radius filter on the cohort list; crowded play uses the live hash when it is active.
+  assert.ok(c12.queryMode === 'spatial_hash' || c12.queryMode === 'cohort_radius');
+  assert.ok(c24.queryMode === 'spatial_hash' || c24.queryMode === 'cohort_radius');
+  assert.ok(c12.maxNeighbors < c12.count, 'twelve-body queries stay inside the radius, not an all-pairs scan');
+  assert.ok(c24.maxNeighbors < c24.count, 'twenty-four-body queries must not visit the whole cohort');
+  assert.ok(c24.maxNeighbors <= c12.maxNeighbors + 6, 'local neighbor count does not grow with roster size');
+
+  // Crescent is the smoke shape: concave front toward the target.
+  assert.ok(crescent, 'M11 includes a crescent smoke run');
+  assert.equal(crescent.shape, 'crescent');
+  assert.ok(crescent.crescentConcavity > 0, 'crescent tips sit ahead of the belly (concave toward the target)');
+  assert.equal(crescent.collisions, 0);
+
+  console.log('\nM11 fodder cohort\n' + formatM11Table(result.metrics) + '\n');
+});
+
+test('mutation: impulse-cancelling steering turns the throwability gate red', LONG, async () => {
+  const live = await runM11({ seed: SEED, crescent: false });
+  forceFodderCohortMutation({ cancelImpulses: true });
+  try {
+    const mutated = await runM11({ seed: SEED, crescent: false });
+    assert.ok(live.metrics.cohort12.disruptionResponseS > 0.35, 'live river already has a visible coast');
+    assert.ok(
+      mutated.metrics.cohort12.disruptionResponseS <= 0.35
+      || mutated.metrics.cohort12.impulseRetention < 0.50,
+      'cranking steering to cancel impulses must fail throwability',
+    );
+  } finally {
+    forceFodderCohortMutation(null);
+  }
+});
+
+test('mutation: removing separation turns the pileup gate red', LONG, async () => {
+  const live = await runM11({ seed: SEED, crescent: false });
+  forceFodderCohortMutation({ disableSeparation: true });
+  try {
+    const mutated = await runM11({ seed: SEED, crescent: false });
+    assert.ok(live.metrics.cohort24.nnMin >= 20, 'live twenty-four-body river already holds min-separation');
+    assert.ok(
+      mutated.metrics.cohort24.nnMin < 20 || mutated.metrics.cohort24.collisions > 0,
+      'without local separation the pileup floor goes red',
+    );
+  } finally {
+    forceFodderCohortMutation(null);
+  }
 });
