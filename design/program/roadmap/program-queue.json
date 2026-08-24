@@ -2735,6 +2735,99 @@
         "CANONICAL_BUILD_MAP.md#13a",
         "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
       ]
+    },
+    {
+      "id": "PQ-136",
+      "priority": 58,
+      "title": "Field the authored assets we already own",
+      "state": "ready",
+      "canonical": [
+        "FIELD-AUTHORED-ASSETS"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13b"
+      ]
+    },
+    {
+      "id": "PQ-136.00",
+      "priority": 58,
+      "title": "Wreck & aftermath pack reaches the player (44 models, 0 used)",
+      "state": "ready",
+      "canonical": [
+        "FIELD-AUTHORED-ASSETS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-136"
+      ],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13b"
+      ]
+    },
+    {
+      "id": "PQ-136.01",
+      "priority": 58,
+      "title": "Place the 30 unused everyday_space_kit infrastructure props",
+      "state": "ready",
+      "canonical": [
+        "FIELD-AUTHORED-ASSETS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-136"
+      ],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13b"
+      ]
+    },
+    {
+      "id": "PQ-136.02",
+      "priority": 58,
+      "title": "Field the 6 unused npc_activity_pack craft as working NPCs",
+      "state": "ready",
+      "canonical": [
+        "FIELD-AUTHORED-ASSETS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-136"
+      ],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13b"
+      ]
+    },
+    {
+      "id": "PQ-136.03",
+      "priority": 58,
+      "title": "Triage every half-finished hull: field, convert to variant, or record why not",
+      "state": "planned",
+      "canonical": [
+        "FIELD-AUTHORED-ASSETS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-136"
+      ],
+      "mutexes": [
+        "asset-fielding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13b"
+      ]
     }
   ],
   "dispatchUnits": [

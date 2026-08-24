@@ -414,6 +414,13 @@ it supplies no task, ownership, gate, quota, or acceptance authority.
 
 ## 3. Authority and truth
 
+**The plan-family index is [`design/PLAN_REGISTRY.md`](./design/PLAN_REGISTRY.md).** It names which
+plan family owns what, and which are ACTIVE, FUTURE or subordinate evidence. It correctly points at
+THIS file as the agent front door, but nothing here pointed back at it — so an agent entering
+through the front door could not find the index. That gap is closed here. If you are looking for a
+plan and it is not in this document, look there before assuming it does not exist.
+
+
 Use this order when sources disagree:
 
 1. the user's current direction;
@@ -1935,6 +1942,50 @@ Motion Lab → player handling convergence → hull-relative enemy actuator
 `PQ-135.00` is small, contained, and immediately felt — do it first. `.01` and `.02` are the real
 "nimble" work and belong together, because feel that is not measured is feel that regresses.
 `.03`-`.05` are the enemy half and depend on `.01` landing first, per §21A's own order.
+
+## 13B. Field the authored assets we already own (`PQ-136`) — ADMITTED 2026-08-24
+
+**Owner, 2026-08-24, after playtest:** *"if there was ever restarted or abandoned graphics work,
+there should not be abandoned and unused files like that... we already have a dearth of variety in
+this game for most things so we need to have everything utilized if we can."*
+
+### The measurement
+
+`check:asset-reachability` reports **276 referenced runtime assets** routed correctly — the runtime
+wiring is healthy. The problem is not broken routing, it is **authored work that was never routed at
+all.** Counted 2026-08-24:
+
+| Pack | Models | Referenced by `src/` | Unused |
+|---|---|---|---|
+| `assets/incubator/wreck_aftermath_pack` | 44 | **0** | **44 — the entire pack** |
+| `assets/incubator/everyday_space_kit` | 62 | 32 | 30 |
+| `assets/incubator/npc_activity_pack` | 15 | 9 | 6 |
+
+**Eighty authored models the player never sees.** The wreck pack is hero wreck hulls plus component
+and fragment kits built to an authored-fracture grammar (truss versus plated); the space kit is
+infrastructure props; the activity pack is occupational craft.
+
+**Do not measure this with a filename grep.** A first pass reported "852 of 1,412 models unused" and
+was WRONG — models resolve through manifests and LOD families, not literal paths, so most of those
+were LODs, source files, and third-party kits. `check:asset-reachability` is the instrument.
+
+### The leaves
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-136.00`** | **The wreck pack reaches the player.** 44 models, currently zero. Wrecks are the cheapest variety in the game — they need no AI, no balance pass, and no new systems; they need routing and placement. | A player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. |
+| **`PQ-136.01`** | The 30 unused `everyday_space_kit` props are placed where infrastructure belongs — stations, lanes, work sites. | Sectors read as inhabited rather than decorated with the same prop repeated. |
+| **`PQ-136.02`** | The 6 unused `npc_activity_pack` craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. | New occupational craft appear in traffic without a new AI path. |
+| **`PQ-136.03`** | **Half-finished or superseded hulls are triaged, not abandoned.** For each: field it, alter it into a variant (a different faction, a damaged version, a wreck), or record why it genuinely cannot be used. Deleting is the last option, not the first. | Every authored hull has a disposition on the record. |
+
+### Rules
+
+- **Reuse before authoring.** No new model is commissioned for a slot an existing unused asset can
+  fill; that is the whole point of this plan.
+- A variant (repaint, damage pass, faction kit, wreck conversion) counts as fielding.
+- The asset pipeline contract and reachability checks stay green — this adds routing, not exceptions.
+- **Preserve valuable future work** (`PLAN_REGISTRY.md` rule 6): mark `FUTURE` or `PARTIAL` rather
+  than deleting because no implementation exists yet.
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 
