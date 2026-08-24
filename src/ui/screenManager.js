@@ -4,28 +4,26 @@
 //
 // Every modal screen is built ONCE and cached in #screens; only the top of the stack is
 // display:flex, all others display:none (DOM retained so scroll/tab state persists).
-// Pushing a PAUSING screen adds `.ui-modal-open` to <body> (CSS hides #hud + shows the backdrop);
-// pushing a non-pausing "live" screen (maps, tech tree, mission log, automation) adds
-// `.ui-live-screen` instead — the sim keeps running, so the HUD, reticle and alerts stay
-// readable at reduced opacity under a light dim (FRONTEND_DIRECTION §3.5).
-// Popping back to an empty stack removes both → the flight HUD returns.
+// Every pushed screen is an interruption surface: the simulation freezes, the flight HUD becomes
+// inaccessible, and the active screen owns input until the stack returns to empty.
+// Popping back to an empty stack removes modal chrome and resumes the prior aggregate time state.
 //
-// Screens that "pause the sim" (pause / menus) request a freeze while at least one such screen is
-// open and emit sim:pause/sim:resume exactly once at the aggregate boundary. Screen modules do not
-// own timeScale.
+// Screen modules never write timeScale. ScreenManager owns one aggregate ui:pausing-screen request
+// and emits sim:pause/sim:resume exactly once at the empty/non-empty boundary.
 
 import { createTimeEffects } from '../core/timeEffects.js';
 import { createScreenMemory } from './screenMemory.js';
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station', 'sandbox',
-  // Owner ruling 2026-08-15 (build map §11.3): menus pause the world, Skyrim-style. The four
-  // instruments are full-depth strategic screens; 'ship' and 'range' land now, the rest join as
-  // they are built. Quick mid-combat verbs stay on the non-pausing tier instead.
+// Known inventory retained as an auditable product contract and for audio-policy probes. Runtime
+// pause ownership is deliberately based on stack occupancy, so a newly registered future screen
+// cannot accidentally become a live combat overlay because somebody forgot to extend this list.
+const PAUSING_SCREENS = new Set([
+  'pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex',
+  'drill', 'base', 'station', 'sandbox',
   'ship', 'range', 'footprint',
-  // Chart maps now pause with the rest of strategic instruments (J12, fact 2).
-  'galaxyMap', 'localmap',
-  // Crucible: §12.2 adopts a FULL pause during a draft and the ten-wave refit (PQ-133).
-  'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleResults']);
+  'galaxyMap', 'starmap', 'localmap', 'missionLog', 'techTree', 'automation',
+  'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleResults',
+]);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
 export function createScreenManager(ctx) {
@@ -99,13 +97,13 @@ export function createScreenManager(ctx) {
       const t = el.getAttribute('tabindex');
       if (t != null && Number(t) < 0) return false;
       // skip elements in a hidden subtree
-      let p = el.parentNode;
-      while (p && p !== root) {
-        if (p.inert) return false;
-        if (p.hidden) return false;
-        if (p.style && p.style.display === 'none') return false;
-        if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
-        p = p.parentNode;
+      let parent = el.parentNode;
+      while (parent && parent !== root) {
+        if (parent.inert) return false;
+        if (parent.hidden) return false;
+        if (parent.style && parent.style.display === 'none') return false;
+        if (parent.getAttribute && parent.getAttribute('aria-hidden') === 'true') return false;
+        parent = parent.parentNode;
       }
       return true;
     });
@@ -146,12 +144,12 @@ export function createScreenManager(ctx) {
     if (el.hidden) return false;
     if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
     if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
-    let p = el.parentNode;
-    while (p && p !== document && p !== document.documentElement) {
-      if (p.hidden) return false;
-      if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
-      if (p.style && (p.style.display === 'none' || p.style.visibility === 'hidden')) return false;
-      p = p.parentNode;
+    let parent = el.parentNode;
+    while (parent && parent !== document && parent !== document.documentElement) {
+      if (parent.hidden) return false;
+      if (parent.getAttribute && parent.getAttribute('aria-hidden') === 'true') return false;
+      if (parent.style && (parent.style.display === 'none' || parent.style.visibility === 'hidden')) return false;
+      parent = parent.parentNode;
     }
     return true;
   }
@@ -213,10 +211,10 @@ export function createScreenManager(ctx) {
   }
 
   function syncVisibility() {
-    const top = stack[stack.length - 1] || null;
+    const topId = stack[stack.length - 1] || null;
     for (const [id, rec] of registry) {
       if (!rec.el) continue;
-      if (id === top) {
+      if (id === topId) {
         // A cached screen may be reopened before its previous 200ms exit transition settles.
         // Cancel that stale callback so it cannot hide the newly active screen.
         cancelPendingExit(rec);
@@ -249,20 +247,15 @@ export function createScreenManager(ctx) {
       if (open) screensRoot.removeAttribute('aria-hidden');
       else screensRoot.setAttribute('aria-hidden', 'true');
     }
-    // Live overlays: non-pausing screens (maps, tech tree, mission log, automation) sit over a
-    // RUNNING sim. They must not blind the player — the old blanket `.ui-modal-open` zeroed the
-    // HUD, reticle and alerts while enemies kept shooting (FRONTEND_DIRECTION §3.5). Only a
-    // pausing screen, docking, or a fulfillment blackout keeps the full modal treatment.
+
+    // Every stack screen is a modal interruption surface. The chart, mission log, automation,
+    // settings, and future registered screens all receive the same input fence and simulation
+    // freeze. There is deliberately no `.ui-live-screen` downgrade: a beautiful map that lets an
+    // off-screen enemy keep killing the player is not a map, it is an ambush.
     const externalModal = state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
-    const liveOverlay = open && !externalModal && stack.every((id) => !PAUSING_SCREENS.has(id));
-    // Reconciliation request: a stack screen, docking, or the external blackout each ask for full
-    // modal semantics. The live-overlay downgrade above is the only softening and is definitionally
-    // false while docking or a fulfillment blackout is active, so external blackout semantics
-    // survive init/re-init reconciliation.
-    const modalOpen = open || state.ui.docked === true
-      || state.ui.fulfillmentBlackoutActive === true;
-    document.body.classList.toggle('ui-modal-open', modalOpen && !liveOverlay);
-    document.body.classList.toggle('ui-live-screen', liveOverlay);
+    const modalOpen = open || externalModal;
+    document.body.classList.toggle('ui-modal-open', modalOpen);
+    document.body.classList.remove('ui-live-screen');
     syncHudAccessibility(open || externalModal || state.mode !== 'flight');
     if (backdrop) {
       backdrop.hidden = !open;
@@ -297,10 +290,10 @@ export function createScreenManager(ctx) {
   }
 
   // Reconcile the request unconditionally. A new game/load resets transient effects, so a visible
-  // pausing stack must repair its request even while pauseEmitted still reflects the same boundary.
+  // stack must repair its request even while pauseEmitted still reflects the same boundary.
   // pauseEmitted gates only the aggregate event pair.
   function syncPause() {
-    const wantPause = state.ui.docked === true || stack.some((id) => PAUSING_SCREENS.has(id));
+    const wantPause = state.ui.docked === true || stack.length > 0;
     if (wantPause) timeEffects.set('ui:pausing-screen', PAUSE_REQUEST);
     else timeEffects.clear('ui:pausing-screen');
     if (wantPause && !pauseEmitted) {
@@ -460,9 +453,9 @@ export function createScreenManager(ctx) {
 
     // J4, two hooks that are not optional:
     //
-    // FLUSH BEFORE A SAVE. The chart is a non-pausing live overlay, so the interval autosave keeps
-    // firing while it is open. Without this, every autosave taken with a screen up records the
-    // PREVIOUS session's bag — "it remembers, but one session late", which is maddening to debug.
+    // FLUSH BEFORE A SAVE. Any cached screen can own unsaved tab/filter/scroll state. The save hook
+    // writes that state before serialization so every save records the currently visible screen,
+    // not the previous session's bag.
     bus.on('save:started', () => {
       const id = top();
       const rec = id && registry.get(id);
@@ -532,10 +525,10 @@ export function createScreenManager(ctx) {
     syncHudAccessibility(externalModal || state.mode !== 'flight');
   }
 
+  // Retained for callers that branch on the old API. Universal interruption semantics mean the
+  // answer is now always false.
   function isLiveOverlay() {
-    if (!stack.length) return false;
-    if (state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true) return false;
-    return stack.every((id) => !PAUSING_SCREENS.has(id));
+    return false;
   }
 
   return {
