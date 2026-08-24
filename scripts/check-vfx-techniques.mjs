@@ -107,7 +107,12 @@ function assertPlayerPlumeConstruction() {
   // many sheets independently run out rather than a plane where the mesh ends.
   assert.match(ribbons, /sheetReach/, 'B9: sheets must reach different distances, or the tail is a flat cut');
   assert.match(ribbons, /runout/, 'B9: sheet material must run out before its geometry does');
-  assert.match(trail, /lifeOut/, 'B9: contrail strands must expire at different ages, not all at once');
+  // The contrail became an immutable world-space history (d3405236): strands no longer expire on a
+  // per-strand age clock, so the old `lifeOut` symbol is gone. The B9 intent — material reaches
+  // zero before the geometry does, and strands do not share one identical envelope — is now carried
+  // by the history-position fade and the per-strand world seed.
+  assert.match(trail, /1\.0\s*-\s*vLife/, 'B9: contrail material must run out along the recorded history, not cut at the mesh end');
+  assert.match(trail, /worldSeed/, 'B9: contrail strands must vary by seed, or the tail is one repeated envelope');
 
   // The contrail is half of this effect, and it has shipped invisible once — tuned so faint that it was
   // technically present on the play route and could not be seen. Floors here, not taste.
