@@ -983,10 +983,17 @@ Already ruled out, so nobody redoes it: the file is **not missing** (7,867,164 b
 `PACKAGED_LIVE_WHOLE_SHIP_FILES` and in `release_manifest.json` with the same entry count as its
 sibling `ashline_dart.glb`, which loads fine. **The rejection is a live-loader policy, not the file.**
 
-Lead: the reported defId is `ship_wasp`, but `ship_wasp` maps to `wasp_production_v1.glb`
-(`partsLibrary.js:1015`) while `ashline_rig.glb` is the mapping for ROLE ids (`reaver_pirate`,
-`mine_layer_jackal`, `corsair_raider`, `tether_control_raider`, ~1161-1164). Enemies `wasp_swarmer`
-and `lancer_sniper` carry `shipId: 'ship_wasp'`. The role mapping and the ship mapping disagree.
+**The mapping lead was chased and DISPROVEN — do not repeat it.** `wholeShipVisualForEntity`
+always takes the file and the assetId from the SAME map, so no cross-map mismatch is possible. The
+four hostile ids that use `ashline_rig.glb` (`reaver_pirate`, `mine_layer_jackal`, `corsair_raider`,
+`tether_control_raider`) all resolve to `SF_WHOLESHIP_ASHLINE_RIG`, and every one of the 12 hostile
+file entries has a matching assetId — zero missing.
+
+**So the record is simply not in `records` at lookup time.** `resolveRequiredWholeShipRecord`
+(`partsLibrary.js:1365`) throws when no loaded record ends with the wanted file. The asset is
+listed in `spawnableShipArchetypePrewarmUrls()`, so the sector prewarm is supposed to cover it —
+which makes this a **prefetch/timing** defect, not a data-mapping one. The next step is to capture
+the untruncated error, whose tail lists the whole-ships that DID load; that list is the evidence.
 
 The fix must also add a check that **FAILS** when a whole-ship required by a live entity does not
 load and no substitute is published. This class currently reports as a passing warning, which is
