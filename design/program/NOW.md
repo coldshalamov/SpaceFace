@@ -41,8 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| FOLLOWUPS-2 receipts+physics triage | fable-campaign-20260824 lane FOLLOWUPS2 | MUTATING | Pelican receipt data, possibly failing physics test files | review, commit, release row |
 | FIX-G econ/factions/roles | fable-campaign-20260824 lane FIXG | MUTATING | `src/systems/economy.js`, `src/systems/factions.js`, `src/systems/traffic.js`, `src/economy/freightCausality.js`, tests | review, commit, release row |
-| FIX-H save bounds | fable-campaign-20260824 lane FIXH | MUTATING | `src/save/saveSystem.js`, `src/systems/ships.js`, tests | review, commit, release row |
 | PQ-135.05 fodder cohort | fable-campaign-20260824 lane FODDER | MUTATING | new `src/ai/fodderCohort.js`, `src/systems/tacticalAI.js`, `src/ai/squadFrame.js`, `src/data/squadChoreography.js`, motion lab files | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
