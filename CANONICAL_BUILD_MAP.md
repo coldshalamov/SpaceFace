@@ -900,6 +900,34 @@ bricks die; sim is not the hitch owner.
 - Opening cost: 43 textures / 55.6 ms blocking upload; scene delta programs 40->41, geometries 19->39, textures 20->58.
 - Also caught, unrelated to hitching: a **404 during ordinary flight**, and a shader warning (`use of potentially uninitialized variable (f_surfaceColor)`).
 
+**2026-08-23 — THE GATE IS ANSWERED, AND WAVE C IS NOT WHAT THIS MACHINE NEEDS.**
+
+Waves A and B are all ten done. Measured on a real Intel GPU with the campaign's own instrument:
+
+- **Steady state already holds 60 fps.** presentation p95 **5.5 ms**, 182 draw calls, 15 hitches in
+  830 frames. Wave C is "crowded 60 fps" work; the crowd is not the problem here.
+- **One brick remains: ~3.2-3.7 s at entering-flight**, with the player in control. Four runs:
+  3164, 3237, 3291, 3654 ms. That is Wave B's *kill bricks* business, not Wave C's.
+
+**The obvious fix for it was built, measured, and REJECTED** — recorded here so it is not retried
+blind. Moving authored compose off the display callback during flight, clean A/B, instrument held
+constant, two runs per arm (p95 / max ms / hitches per frames):
+
+| arm | run 1 | run 2 |
+|---|---|---|
+| with the change | 6.7 / **10** / **80** of 760 | 7.5 / **3164** / 14 of 849 |
+| without | 5.5 / 3291 / 15 of 830 | 5.8 / 3654 / 15 of 819 |
+
+It is **unreliable** — it killed the brick in one run of two, because the gate reads `mode` at
+SCHEDULE time and a compose queued just before handover still takes the old path. And when it did
+apply it took hitches from 15 to 80, which **this table's own promotion law forbids**. A prior
+attempt had left a warning ("the scheduler must not turn some hitches into a 30 fps floor"); the
+attempt deleted it, and it is now restored on `scheduleUpgradeFrame` with these numbers beside it.
+
+**Next attempt should defer only the ONE huge first compose, not every flight upgrade frame** — the
+display callback is right for the queue and wrong for that single job — and must gate on something
+that cannot race flight handover. Do not promote `.11`-`.18` on the strength of this brick.
+
 **Reading:** the classifier DOES name an owner, so the gate's second clause is satisfied — but the honest conclusion is that Wave C's crowded-60-fps work is not what this machine needs next. Steady state already holds 60 fps; the remaining owner-visible cost is one ~3.6 s freeze entering flight, which is Wave B's *kill bricks* business, not Wave C's. Chase the brick before promoting `.11`-`.18`.
 
 
