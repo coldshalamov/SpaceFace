@@ -1,0 +1,45 @@
+name: Branch consolidation audit
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/branch-consolidation-audit.mjs
+      - .github/workflows/branch-consolidation-audit.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-audit
+  cancel-in-progress: true
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout integration branch with complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Fetch every remote branch
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+
+      - name: Compute patch-equivalent branch inventory
+        run: node scripts/branch-consolidation-audit.mjs
+
+      - name: Commit durable audit ledger
+        run: |
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          git add design/program/branch-consolidation/
+          if git diff --cached --quiet; then
+            echo "Inventory is unchanged."
+            exit 0
+          fi
+          git commit -m "chore(integration): inventory every remote branch [skip ci]"
+          git push origin HEAD:integration/all-branches-20260824
