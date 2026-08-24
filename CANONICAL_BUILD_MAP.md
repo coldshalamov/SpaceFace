@@ -1882,6 +1882,60 @@ nothing — plus `hops`/`chain`, `hasBounced`, and `family` for field and reacti
 emitted payloads were fed to `classifyCausalVfxFamily` and route to `chain`, `field` and `reaction`.
 Both 47-A goldens hold: this adds information to an event and does not move the simulation.
 
+## 13A. Flight and movement convergence (`PQ-135`) — ADMITTED 2026-08-24
+
+**Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
+§21A, the v2 addition. **Admitted here by the owner on 2026-08-24** after playtest.
+
+The source file calls itself an experiment bank and asks not to be treated as a checklist. That
+caution is about not turning 9,299 lines of brainstorm into 9,299 blocked boxes — it is **not** a
+reason to leave real work out of the plans. The concrete, owner-confirmed slices are admitted below
+with stable IDs. Everything NOT listed here stays a quarry.
+
+### Why it is admitted: the owner played it
+
+> "it's not possible to fly in this game in a way that's nimble, every ship is heavy like underwater
+> or something and the auto-target flight system just kind of lazily inches along the line like a
+> Waymo in a school-zone which isn't useful in combat either"
+
+§21A independently reaches the same verdict — ships that are *"mushy, indecisive"* — and sets the
+target: **"Every ship should look like it meant to do what it just did."** Not faster. *Intentional.*
+Speed without intention is pinball noise.
+
+§21A's dependency order, which this section adopts:
+
+```text
+Motion Lab → player handling convergence → hull-relative enemy actuator
+→ virtual formation + attack choreography → cheap coherent swarm motion
+```
+
+### The leaves
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-135.00`** | **The draw-to-fly speed governor stops crawling.** MEASURED DEFECT: ships cruise at **112-133 WU/s**; `PATH_CORNER_FLOOR_SPEED` is **14**, about one eighth. `worstCurvatureAhead` takes the MAX curvature over the lookahead, and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin — so a gentle curve pins the hull to the floor for the whole stroke. | A drawn stroke is flown at a speed a player would choose, AND still tracked. **The existing tracking test measures cross-track and never measures SPEED — it would pass at 1 WU/s.** Add the speed bar to it. |
+| **`PQ-135.01`** | **Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and a hull you can FEEL the difference between.** (§21A.5) | A repeatable slalom and reversal course, Hitch vs Wasp visibly different, no loss of honest momentum. |
+| **`PQ-135.02`** | Motion Lab: deterministic movement scenarios and motion telemetry, so feel is measured rather than argued. (§21A.23-.25) | Scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers. |
+| **`PQ-135.03`** | Hull-relative enemy capability envelopes and desired-state trajectory control. (§21A.6-.7) | Enemy motion derives from the hull it is flying, not a shared constant. |
+| **`PQ-135.04`** | **One four-ship wing with real choreography**: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors. (§21A.9-.13) | A player impulse can break the sequence, and disrupted members do not instantly snap back. |
+| **`PQ-135.05`** | **One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable.** (§21A.14) | It flows as a shoal rather than a dozen independent seekers jittering at the same point. |
+
+### Binding constraints (§21A.28, §21A.30)
+
+- **No new direct position/velocity writes.** Motion comes through the canonical physical control
+  path or it does not ship.
+- **No campaign AI fork.** One game path.
+- **No performance regression hidden by cutting entity count or quality.**
+- Proof is normal-speed capture at the SHIPPING camera plus deterministic scenarios — not a clip
+  recorded at a flattering angle.
+- Every tuning number in §21A is a candidate experiment band, not law, until a leaf promotes it.
+
+### Sequencing note
+
+`PQ-135.00` is small, contained, and immediately felt — do it first. `.01` and `.02` are the real
+"nimble" work and belong together, because feel that is not measured is feel that regresses.
+`.03`-`.05` are the enemy half and depend on `.01` landing first, per §21A's own order.
+
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 
 Who does what, recorded so a later session does not reinvent it.

@@ -2596,6 +2596,145 @@
         "playable"
       ],
       "brief": "The orphan branch feat/arcade-vfx-foundation (20216c9c) was pulled to master as ce340812: a pooled instanced structural-FX primitive set (blades 128, broken arcs 48, shards 64) with priority-aware slot admission and zero consumers. Wire it behind cueArbitration for kill, hard-collision, and bank-shot cues, then grow it into the causal VFX/audio grammar Crucible needs (family/generation/material/status legible under saturation). See CANONICAL_BUILD_MAP.md section 13."
+    },
+    {
+      "id": "PQ-135",
+      "priority": 57,
+      "title": "Flight and movement convergence: ships that look like they meant it",
+      "state": "ready",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.00",
+      "priority": 57,
+      "title": "Draw-to-fly speed governor stops crawling (floor 14 vs 112-133 cruise)",
+      "state": "ready",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.01",
+      "priority": 57,
+      "title": "Player flight feel: crisp response, honest momentum, hulls that differ",
+      "state": "ready",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.02",
+      "priority": 57,
+      "title": "Motion Lab: deterministic movement scenarios and motion telemetry",
+      "state": "ready",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.03",
+      "priority": 57,
+      "title": "Hull-relative enemy capability envelopes and desired-state control",
+      "state": "planned",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135.01"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.04",
+      "priority": 57,
+      "title": "One four-ship wing with real attack-lane choreography",
+      "state": "planned",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135.01",
+        "PQ-135.03"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
+    },
+    {
+      "id": "PQ-135.05",
+      "priority": 57,
+      "title": "One twelve-body fodder cohort that flows and stays throwable",
+      "state": "planned",
+      "canonical": [
+        "FLIGHT-MOVEMENT-CONVERGENCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-135.01"
+      ],
+      "mutexes": [
+        "flight-motion"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md#13a",
+        "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md#21a"
+      ]
     }
   ],
   "dispatchUnits": [
