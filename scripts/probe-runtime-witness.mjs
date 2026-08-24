@@ -1159,27 +1159,31 @@ async function installOpeningFirstTouchOwnerWitness(targetPage) {
       }
     };
     const installOpeningHook = () => {
-      const original = renderSystem?._renderOpeningPostFrame;
+      // Live opening submits through `_renderPostRoute` from drawPreparedFrame. `_renderOpeningPostFrame`
+      // is a dead alias used only by unit tests, so hooking it never armed a cold capture.
+      const original = renderSystem?._renderPostRoute;
       if (typeof original !== 'function') {
         trace.status = 'invalid';
-        pushError('render registry did not expose _renderOpeningPostFrame');
+        pushError('render registry did not expose _renderPostRoute');
         return false;
       }
       trace.originalOpening = original;
-      const wrapper = function openingFirstTouchOwnerHook(scene, camera) {
+      const wrapper = function openingFirstTouchOwnerHook(route, scene) {
         if (trace.cold?.invocationStarted === true) return original.apply(this, arguments);
+        if (state?.mode !== 'flight') return original.apply(this, arguments);
+        if (!scene || scene !== renderSystem.scene) return original.apply(this, arguments);
         trace.cold = trace.cold || {};
         trace.cold.invocationStarted = true;
         try {
-          return captureRun('cold', scene, 'opening-post-frame', () => original.apply(this, arguments));
+          return captureRun('cold', scene, `opening-post-route:${String(route || 'unknown')}`, () => original.apply(this, arguments));
         } finally {
-          trace.hooks.openingRestored = restoreHook(renderSystem, '_renderOpeningPostFrame', original, wrapper);
+          trace.hooks.openingRestored = restoreHook(renderSystem, '_renderPostRoute', original, wrapper);
         }
       };
       trace.openingWrapper = wrapper;
       trace.cold = { invocationStarted: false, completed: false };
-      renderSystem._renderOpeningPostFrame = wrapper;
-      if (renderSystem._renderOpeningPostFrame !== wrapper) {
+      renderSystem._renderPostRoute = wrapper;
+      if (renderSystem._renderPostRoute !== wrapper) {
         trace.status = 'invalid';
         pushError('opening hook assignment did not stick');
         return false;
@@ -1324,7 +1328,7 @@ async function installOpeningFirstTouchOwnerWitness(targetPage) {
       if (trace.originalOpening && trace.openingWrapper) {
         trace.hooks.openingRestored = restoreHook(
           renderSystem,
-          '_renderOpeningPostFrame',
+          '_renderPostRoute',
           trace.originalOpening,
           trace.openingWrapper,
         );
@@ -2411,6 +2415,11 @@ try {
       consoleHits.push(`[console.${msg.type()}] ${text}`);
     }
   });
+  page.on('response', (response) => {
+    if (response.status() === 404) {
+      consoleHits.push(`[http.404] ${response.url()}`);
+    }
+  });
   page.on('pageerror', (err) => {
     pageErrors.push(String(err && err.stack || err));
   });
@@ -2599,6 +2608,12 @@ try {
       openingExactOwnerTouch = await markOpeningExactOwnerInputResponsive(page);
     }
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
+      const coldCaptured = await page.waitForFunction(() => (
+        window.__SF_OPENING_FIRST_TOUCH_OWNER__?.coldRun?.kind === 'cold'
+      ), null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      if (!coldCaptured) {
+        throw new Error('Opening first-touch owner diagnostic could not capture its cold full-scene route before warm arm');
+      }
       const warmArmed = await armOpeningFirstTouchOwnerWarmReference(page);
       if (warmArmed?.hooks?.warmInstalled !== true) {
         throw new Error('Opening first-touch owner diagnostic could not arm its warm full-scene route after input response');

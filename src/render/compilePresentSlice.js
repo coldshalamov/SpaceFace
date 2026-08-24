@@ -49,3 +49,28 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
   if (options.forceWholeBatch === true) return false;
   return options.firstPlayable === true && options.mode === 'flight';
 }
+
+/** Wait until the current display callback has presented, then resume on a later turn. */
+export function yieldAfterPresent() {
+  return new Promise((resolve) => {
+    armCallbackAfterPresent(resolve);
+  });
+}
+
+/** Arm work after the displayed frame so a 100ms+ job cannot nest inside present. */
+export function armCallbackAfterPresent(callback) {
+  if (typeof callback !== 'function') return;
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    setTimeout(callback, 0);
+  };
+  const raf = typeof globalThis.requestAnimationFrame === 'function'
+    ? globalThis.requestAnimationFrame.bind(globalThis)
+    : null;
+  if (raf) raf(fire);
+  // Headless / background documents can stall rAF forever. A short timeout unsticks
+  // admission without putting the job on the present callback.
+  setTimeout(fire, raf ? 48 : 0);
+}

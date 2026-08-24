@@ -394,11 +394,19 @@ export async function warmScenePipelinesForRenderTarget(
   if (typeof subject.traverse === 'function') {
     subject.traverse((object) => {
       objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
+      object.visible = true;
       if ('frustumCulled' in object) object.frustumCulled = false;
     });
   }
+  let alreadyInScene = subject === lightingScene;
+  for (let current = subject; current && !alreadyInScene; current = current.parent) {
+    if (current === lightingScene) alreadyInScene = true;
+  }
   try {
-    if (subject !== lightingScene && subject.parent !== lightingScene) lightingScene.add(subject);
+    if (!alreadyInScene && subject !== lightingScene && subject.parent !== lightingScene) {
+      lightingScene.add(subject);
+    }
+    if (typeof subject.updateMatrixWorld === 'function') subject.updateMatrixWorld(true);
     renderer.setRenderTarget(renderTarget || null);
     renderer.render(lightingScene, camera);
     return {
@@ -737,6 +745,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function renderScenePass(scene, camera, tier1) {
     const prevAutoClear = renderer.autoClear;
     renderer.autoClear = false;
+    const perf = instrument && typeof instrument.getPerf === 'function' ? instrument.getPerf() : null;
+    const traceBrick = !!(perf && perf.renderWorkEnabled === true);
+    const info = traceBrick ? renderer.info : null;
+    const programsBefore = traceBrick && Array.isArray(info?.programs) ? info.programs.length : null;
+    const geometriesBefore = traceBrick && Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+    const texturesBefore = traceBrick && Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
+    const startedAt = traceBrick && typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : 0;
     try {
       renderer.setRenderTarget(rtScene);
       renderer.clear();
@@ -744,6 +761,21 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
     } finally {
       renderer.autoClear = prevAutoClear;
+      if (traceBrick) {
+        const elapsedMs = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : 0) - startedAt;
+        if (elapsedMs > 200) {
+          console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
+            programsBefore,
+            programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+            geometriesBefore,
+            geometriesAfter: Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null,
+            texturesBefore,
+            texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+          })}`);
+        }
+      }
     }
   }
 

@@ -3356,6 +3356,32 @@ function settleUpgradeJob(job, status, result = null, error = null) {
 }
 
 function scheduleUpgradeFrame(callback) {
+  // DO NOT MOVE THIS OFF THE DISPLAY CALLBACK WITHOUT RE-RUNNING THE A/B BELOW. Two separate
+  // attempts have now failed here, and the warning from the first one is preserved verbatim:
+  //
+  //   "Stay on the display callback. Parking a 40-150 ms compose on setTimeout(0) between frames
+  //    made every rAF late while the queue was full. The merge cache is what makes the job cheaper;
+  //    the scheduler must not turn some hitches into a 30 fps floor."
+  //
+  // 2026-08-23, second attempt: gate `mode === 'flight'` here and arm the callback after present.
+  // MEASURED AND REJECTED by a clean A/B on a real Intel GPU, instrument held constant, two runs
+  // per arm (presentation p95 / max ms / hitches per frames):
+  //
+  //   with the change   6.7 /   10 / 80 of 760      <- brick gone, but 5x the hitches
+  //                     7.5 / 3164 / 14 of 849      <- brick BACK; the change did not even apply
+  //   without           5.5 / 3291 / 15 of 830
+  //                     5.8 / 3654 / 15 of 819
+  //
+  // Two independent reasons it was rejected. (1) It is UNRELIABLE: it removed the brick in only one
+  // of two runs. The gate reads `mode` at SCHEDULE time, so a compose queued moments before flight
+  // handover still takes the old path and bricks anyway - the mode flag is the wrong signal.
+  // (2) When it DID apply it raised the hitch count from 15 to 80, which PQ-129's own promotion law
+  // ("promote only after hitch count is halved") forbids outright.
+  //
+  // The brick itself is real and reproducible: ~3.2-3.7 s at entering-flight across four runs.
+  // The next attempt should defer only the ONE huge first compose, not every flight upgrade frame -
+  // the display callback is right for the QUEUE and wrong for that single job - and must gate on
+  // something that cannot race flight handover.
   // Stay on the display callback. Parking a 40–150 ms compose on setTimeout(0) between
   // frames made every rAF late while the queue was full. The merge cache is what makes
   // the job cheaper; the scheduler must not turn some hitches into a 30 fps floor.
