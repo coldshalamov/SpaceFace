@@ -1,387 +1,307 @@
-// Radar / minimap (ARCHITECTURE §5, spec "Radar/minimap") — a 180px <canvas> in the HUD
-// corner redrawn at ~20Hz. Player fixed at center; world entities projected via radarRange.
+// Second-generation tactical radar.
 //
-// Identity language (shape + color; amber reserved for mission waypoints only):
-//   cyan-blue HEX    = station / dock (always; not faction-tinted)
-//   violet double-ring = jump gate
-//   red TRIANGLE     = hostile ship
-//   grey diamond     = asteroid (dim background clutter)
-//   amber DIAMOND    = active waypoint ONLY
-// Off-range hostiles → hollow chevron on the rim; off-range stations → edge hex pip.
-// Target ring + DPI scale keep blips crisp on HiDPI.
+// The radar is a decision instrument, not a miniature screenshot of space. Its primary classes are
+// drawn natively as crisp semantic glyphs; no canvas bloom is used. Shape, fill, outline weight,
+// direction, and scale carry identity before colour does.
 //
-// Click to expand: click the dial to toggle a 340px tactical view showing 2× range.
-// Motion trails show recent ship movement paths.
+// World projection (fixed chase camera):
+//   bx = C - (entity.x - player.x) / range * R
+//   by = C - (entity.z - player.z) / range * R
 //
-// Formulas (§ spec): bx = C - (e.x-p.x)/range*R ; by = C - (e.z-p.z)/range*R.
-// NOTE: BOTH axes are negated vs. a naïve projection. The chase cam sits at +Y/-Z looking toward
-// +Z with up = +Y, so world +Z reads as screen UP (canvas +y is down) and world +X reads as screen
-// LEFT. Mirroring both keeps the radar oriented exactly as the player sees the world — otherwise
-// contacts (and the heading marker) flip left/right or up/down relative to the viewport.
+// +X reads left and +Z reads up, matching the player-facing world view.
+// Off-range threat policy: the nearest hostile becomes a hollow chevron at the rim; persistent
+// infrastructure keeps its own hex/ring identity rather than masquerading as another arrow.
 
-import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.js';
+import { semanticColor, semanticShape } from './accessibility.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { SHIPS } from '../data/ships.js';
-// Canvas cannot answer a CSS media query, so the radar has to ask in JS or the threat pulse
-// keeps animating for players who asked it not to.
 import { prefersReducedMotion } from './effects/effectRuntime.js';
+import {
+  TACTICAL_MAP_PALETTE,
+  drawGateGlyph,
+  drawHostileGlyph,
+  drawObjectiveBracket,
+  drawObjectiveCorridor,
+  drawPlayerHull,
+  drawStationGlyph,
+  formatRadarDistance,
+  planObjectiveCue,
+  planUnresolvedObjectiveCue,
+  projectRadarPoint,
+  sanitizeMapLabel,
+  tacticalRadarMetrics,
+} from './map/tacticalMapGrammar.js';
+import { installMapParityBridge } from './map/mapParityBridge.js';
 
-// ── dimensions ──────────────────────────────────────────────────────────────────────────────
-// Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
-// only while open, avoiding a permanently composited 340px HiDPI surface during normal flight.
-// J07: 180 -> 220. COMPACT_R is NOT derived from COMPACT_SIZE, so it has to move with it or the
-// ring floats inside a canvas with a dead margin. The 15px inset (110 - 105) is the same
-// proportional breathing room the old 180/86 pair had.
-// styles: `--sf-radar-size` in uiRoot.injectHudCss must equal COMPACT_SIZE. Pinned by
-// test/j07-hud-contract.test.mjs, because a comment has never prevented that drift here.
 const COMPACT_SIZE = 220;
-const COMPACT_C    = COMPACT_SIZE / 2;
-const COMPACT_R    = 105;
-// SCREENS_A 6.1: the hostile count at which the dial stops shouting. Exported so the swarm law
-// has one owner rather than a literal in every surface that has to obey it.
+const COMPACT_C = COMPACT_SIZE / 2;
+const COMPACT_R = 105;
+const EXPAND_SIZE = 340;
+const EXPAND_C = EXPAND_SIZE / 2;
+const EXPAND_R = 165;
+
 export const SWARM_DENSITY_THRESHOLD = 8;
 
-const EXPAND_SIZE  = 340;
-const EXPAND_C     = EXPAND_SIZE / 2;
-const EXPAND_R     = 165;
-
-// ── colors ──────────────────────────────────────────────────────────────────────────────────
-// IFF language (keep amber/yellow reserved for mission waypoints only — see COL.objective):
-//   cyan-blue hex  = station / dock (infrastructure, always same identity)
-//   violet ring    = jump gate
-//   red triangle   = hostile ship
-//   grey diamond   = asteroid (background clutter — dim on purpose)
-//   amber diamond  = active waypoint ONLY
-const FACTION_COLOR = {
-  faction_scn: '#4DA8FF', faction_mts: '#46E08A', faction_dmc: '#C9772E',
-  faction_reach: '#FF4D5E', faction_quiet: '#B06CFF', faction_vael: '#2FCFA0',
-  faction_free: '#4ECBE0', faction_choir: '#E85FD0',
-};
-const COL = {
-  player: '#00F0FF', hostile: '#ff5470', neutral: '#9aa8bc',
-  // Asteroids stay cool-grey and dim so they never compete with stations or hostiles.
-  asteroid: '#4a5564',
-  pickup: '#ffe36b',
-  // Station identity is always cyan-blue infrastructure — not faction-tinted grey squares.
-  // Faction color used to make SCN docks look like generic blue ship blips.
-  station: '#3ecbff',
-  gate: '#c4a6ff',
-  objective: '#ffb35c', ring: '#1d3350',
-};
-
-// ── blip helpers ────────────────────────────────────────────────────────────────────────────
-// Player projectile speed for the lead marker (matches src/systems/weapons.js._playerProjSpeed).
-// Used only to place the intercept cue; never affects actual firing.
-function playerProjSpeed(p) {
-  const ws = p && p.data && p.data.weapons;
-  if (ws) {
-    for (const w of ws) {
-      const sp = w.projSpeed;
-      if (sp && sp > 0) return sp;
-    }
-  }
-  return 360;
-}
-
-function shipState(e, playerTeam, state) {
-  if (isHostileToPlayer(e, playerTeam, state)) return 'hostile';
-  if (e.factionId && FACTION_COLOR[e.factionId]) return 'friendly';
-  return 'neutral';
-}
-
-function blipColor(e, playerTeam, mode, state) {
-  if (e.type === 'asteroid') return COL.asteroid;
-  if (e.type === 'pickup')   return COL.pickup;
-  if (e.type === 'station') {
-    // Gates keep a violet ring identity; all docks share one cyan-blue hex so players can
-    // learn "blue hex = place I can dock" without reading faction palette first.
-    if (e.data && e.data.isGate) return COL.gate;
-    return COL.station;
-  }
-  // Faction tint for friendly/neutral traffic when known (role/intent still carried by shape).
-  if (!isHostileToPlayer(e, playerTeam, state) && e.factionId && FACTION_COLOR[e.factionId]) {
-    return FACTION_COLOR[e.factionId];
-  }
-  return semanticColor(shipState(e, playerTeam, state), mode);
-}
-
-/**
- * Role/intent shape without labels: patrol diamond, hauler square, courier thin diamond,
- * named contact gets a slightly larger mark. Hostility still overrides via semanticShape.
- */
-function contactBlipShape(e, playerTeam, state) {
-  if (isHostileToPlayer(e, playerTeam, state)) return semanticShape('hostile');
-  const role = String((e.data && (e.data.trafficRole || e.data.role)) || '').toLowerCase();
-  if (role === 'patrol' || role === 'escort') return 'diamond';
-  if (role === 'courier' || role === 'rescue') return 'diamond';
-  if (role === 'hauler' || role === 'miner' || role === 'smuggler') return 'square';
-  if (e.data && e.data.namedLaneContactId) return 'diamond';
-  return semanticShape(shipState(e, playerTeam, state));
-}
-
-// Redundant blip shape so hostility is readable without color (colorblind mode). Caller sets fillStyle.
-function drawShipShape(g, x, y, shape, scale = 1) {
-  const s = scale > 0 ? scale : 1;
-  if (shape === 'triangle') {
-    g.beginPath(); g.moveTo(x, y - 3 * s); g.lineTo(x + 2.8 * s, y + 2.5 * s); g.lineTo(x - 2.8 * s, y + 2.5 * s); g.closePath(); g.fill();
-  } else if (shape === 'diamond') {
-    g.beginPath(); g.moveTo(x, y - 3 * s); g.lineTo(x + 3 * s, y); g.lineTo(x, y + 3 * s); g.lineTo(x - 3 * s, y); g.closePath(); g.fill();
-  } else {
-    g.fillRect(x - 2 * s, y - 2 * s, 4 * s, 4 * s);
-  }
-}
-
-// ── J07 contact marks ───────────────────────────────────────────────────────────────────────
-// A 4px dot says "a thing is there". A chevron says "a thing is there and it is coming at you",
-// which is the only version of that fact worth radar space in a fight. Heading uses the same
-// `Math.PI + rot` convention as the player marker below, so a contact pointing at the centre of
-// the dial really is pointing at you on screen.
-
-// Capital = the hulls whose arrival changes the shape of a fight. Derived from the ship table
-// rather than an id list, so a new tier-4 hull is a capital the day it is authored.
-const CAPITAL_ROLES = new Set(['battlecruiser', 'flagship', 'gunship', 'carrier', 'dreadnought']);
-const CAPITAL_DEFS = new Set(
-  SHIPS.filter((s) => (s.tier != null && s.tier >= 4) || CAPITAL_ROLES.has(s.role)).map((s) => s.id),
-);
-function isCapitalContact(e) {
-  const d = e && e.data;
-  if (!d) return false;
-  if (d.defId && CAPITAL_DEFS.has(d.defId)) return true;
-  return CAPITAL_ROLES.has(String(d.trafficRole || d.role || '').toLowerCase());
-}
-
-function entityHeading(e) {
-  if (e && Number.isFinite(e.rot)) return e.rot;
-  // Fall back to course over ground; a drifting contact with no rotation still has a direction.
-  const v = e && e.vel;
-  if (v && (Math.abs(v.x) > 1e-4 || Math.abs(v.z) > 1e-4)) return Math.atan2(v.x, v.z);
-  return null;
-}
-
-// Open heading chevron. Stroked, not filled, so a dense swarm reads as outlines (SCREENS_A §6.1.4
-// spends --sf-foe on the selected target only) while the selected contact still fills.
-function drawHeadingChevron(g, x, y, heading, col, { scale = 1, filled = false } = {}) {
-  const s = scale > 0 ? scale : 1;
-  g.save();
-  g.translate(x, y);
-  if (heading != null) g.rotate(Math.PI + heading);
-  g.beginPath();
-  g.moveTo(0, -4.2 * s);
-  g.lineTo(3.4 * s, 3.2 * s);
-  g.lineTo(0, 1.3 * s);
-  g.lineTo(-3.4 * s, 3.2 * s);
-  g.closePath();
-  if (filled) { g.fillStyle = col; g.fill(); }
-  else { g.strokeStyle = col; g.lineWidth = 1.4; g.stroke(); }
-  g.restore();
-}
-
-// Double-stroke elongated hull. The second, inset outline is the whole point: at radar scale a
-// capital must be distinguishable from a fighter by WEIGHT, not by being 2px bigger.
-function drawCapitalSilhouette(g, x, y, heading, col, scale = 1) {
-  const s = scale > 0 ? scale : 1;
-  g.save();
-  g.translate(x, y);
-  if (heading != null) g.rotate(Math.PI + heading);
-  g.strokeStyle = col;
-  for (const [k, w, a] of [[1, 1.6, 1], [0.55, 1, 0.7]]) {
-    g.globalAlpha = a;
-    g.lineWidth = w;
-    g.beginPath();
-    g.moveTo(0, -7.5 * s * k);
-    g.lineTo(3.6 * s * k, -1.5 * s * k);
-    g.lineTo(3.0 * s * k, 6.0 * s * k);
-    g.lineTo(-3.0 * s * k, 6.0 * s * k);
-    g.lineTo(-3.6 * s * k, -1.5 * s * k);
-    g.closePath();
-    g.stroke();
-  }
-  g.globalAlpha = 1;
-  g.restore();
-}
-
-// High-threat pulsation. Reduced motion keeps the ring and drops the animation — the ring is the
-// information, the pulse is only the emphasis, so nothing is lost by freezing it.
-function drawThreatRing(g, x, y, col, now, reduced) {
-  const phase = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
-  g.save();
-  g.strokeStyle = col;
-  g.globalAlpha = reduced ? 0.5 : 0.28 + 0.42 * phase;
-  g.lineWidth = 1;
-  g.beginPath();
-  g.arc(x, y, 7.5 + (reduced ? 1.5 : 3 * phase), 0, Math.PI * 2);
-  g.stroke();
-  g.globalAlpha = 1;
-  g.restore();
-}
-
-// ── glow helpers ────────────────────────────────────────────────────────────────────────────
-// Canvas shadowBlur is expensive on the always-mounted compact HUD. Keep the richer glow for the
-// opt-in expanded tactical radar, but draw compact blips with a capped halo so normal flight does
-// not repaint a costly blurred canvas every radar tick.
-let activeGlowScale = 0.35;
-function glow(g, color, blur)  {
-  const scaled = blur * activeGlowScale;
-  if (scaled <= 0.25) { noGlow(g); return; }
-  g.shadowColor = color;
-  g.shadowBlur = scaled;
-}
-function noGlow(g)             { g.shadowBlur = 0; g.shadowColor = 'transparent'; }
-
-// ── motion trails ───────────────────────────────────────────────────────────────────────────
-// Per-ship position history: Map<entityId, [{x, z}]>, max TRAIL_MAX entries.
-// Sampled when the ship has moved ≥ ~20 world units since the last recorded point.
 const TRAIL_MAX = 7;
-const trailMap  = new Map();
 const MAX_TRAIL_UPDATES = 72;
 const TRAIL_PRUNE_INTERVAL = 20;
 const RADAR_QUERY_RADIUS_PAD = 32;
 const RADAR_SPATIAL_MIN_ASTEROIDS = 96;
 const RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4;
+const MAX_SEMANTIC_HOSTILES = 32;
+const MAX_SEMANTIC_INFRASTRUCTURE = 20;
 
-function updateTrail(e) {
-  let hist = trailMap.get(e.id);
-  if (!hist) { hist = []; trailMap.set(e.id, hist); }
-  const last = hist[hist.length - 1];
-  const dx = last ? e.pos.x - last.x : Infinity;
-  const dz = last ? e.pos.z - last.z : Infinity;
-  if (!last || dx * dx + dz * dz > 400) {   // ~20 world-unit threshold
-    hist.push({ x: e.pos.x, z: e.pos.z });
-    if (hist.length > TRAIL_MAX) hist.shift();
-  }
-}
+const FACTION_COLOR = Object.freeze({
+  faction_scn: '#4DA8FF',
+  faction_mts: '#46E08A',
+  faction_dmc: '#C9772E',
+  faction_reach: '#FF4D5E',
+  faction_quiet: '#B06CFF',
+  faction_vael: '#2FCFA0',
+  faction_free: '#4ECBE0',
+  faction_choir: '#E85FD0',
+});
 
-function drawTrail(g, e, px, pz, scale, C, col) {
-  const hist = trailMap.get(e.id);
-  if (!hist || hist.length < 2) return;
-  g.save();
-  g.lineWidth   = 1;
-  g.shadowColor = col;
-  g.shadowBlur  = 2 * activeGlowScale;
-  for (let i = 1; i < hist.length; i++) {
-    g.globalAlpha = (i / hist.length) * 0.4;
-    g.strokeStyle = col;
-    const x0 = C - (hist[i - 1].x - px) * scale;
-    const y0 = C - (hist[i - 1].z - pz) * scale;
-    const x1 = C - (hist[i].x     - px) * scale;
-    const y1 = C - (hist[i].z     - pz) * scale;
-    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
-  }
-  g.restore();
-}
+const CAPITAL_ROLES = new Set(['battlecruiser', 'flagship', 'gunship', 'carrier', 'dreadnought']);
+const CAPITAL_DEFS = new Set(
+  SHIPS
+    .filter((ship) => (ship.tier != null && ship.tier >= 4) || CAPITAL_ROLES.has(ship.role))
+    .map((ship) => ship.id),
+);
 
-function drawAsteroidBlip(g, bx, by) {
-  // Tiny dim diamond — background mass only. Must not read as station (hex) or ship (tri/square).
-  g.beginPath();
-  g.moveTo(bx, by - 1.6); g.lineTo(bx + 1.6, by); g.lineTo(bx, by + 1.6); g.lineTo(bx - 1.6, by);
-  g.closePath();
-  g.fill();
-}
+const trailMap = new Map();
 
-/** Station / dock pad: flat-top hexagon + inner berth square. Gates: double ring. */
-function drawStationBlip(g, bx, by, col, isGate) {
-  if (isGate) {
-    g.strokeStyle = col;
-    g.lineWidth = 1.7;
-    g.beginPath(); g.arc(bx, by, 5.2, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 1.2;
-    g.beginPath(); g.arc(bx, by, 2.6, 0, Math.PI * 2); g.stroke();
-    // Portal ticks — readable without relying on color alone.
-    g.beginPath();
-    g.moveTo(bx - 1.4, by - 5.2); g.lineTo(bx - 1.4, by - 3.4);
-    g.moveTo(bx + 1.4, by - 5.2); g.lineTo(bx + 1.4, by - 3.4);
-    g.moveTo(bx - 1.4, by + 3.4); g.lineTo(bx - 1.4, by + 5.2);
-    g.moveTo(bx + 1.4, by + 3.4); g.lineTo(bx + 1.4, by + 5.2);
-    g.stroke();
-    return;
-  }
-  // Flat-top hex (r≈5.4) — larger and differently shaped from ship squares / asteroid diamonds.
-  const r = 5.4;
-  g.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    const x = bx + Math.cos(a) * r;
-    const y = by + Math.sin(a) * r;
-    if (i === 0) g.moveTo(x, y);
-    else g.lineTo(x, y);
-  }
-  g.closePath();
-  g.fillStyle = col;
-  g.fill();
-  g.strokeStyle = 'rgba(232,251,255,0.95)';
-  g.lineWidth = 1.35;
-  g.stroke();
-  // Inner berth: dark square so the glyph never collapses to a filled blob at a glance.
-  g.fillStyle = 'rgba(4,14,22,0.88)';
-  g.fillRect(bx - 1.8, by - 1.8, 3.6, 3.6);
-  g.strokeStyle = col;
-  g.lineWidth = 1;
-  g.strokeRect(bx - 1.8, by - 1.8, 3.6, 3.6);
-}
-
-/** Edge chevron for an off-range station (always shown — docks stay navigable). */
-function drawStationEdgeMarker(g, bx, by, angle, col, isGate) {
-  g.save();
-  g.translate(bx, by);
-  g.rotate(angle);
-  g.strokeStyle = col;
-  g.fillStyle = col;
-  g.lineWidth = 1.4;
-  if (isGate) {
-    g.beginPath(); g.arc(0, 0, 4, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.moveTo(2, 0); g.lineTo(6, 0); g.stroke();
-  } else {
-    // Mini hex + direction tick so off-range docks don't look like hostile chevrons.
-    const r = 4.2;
-    g.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i - Math.PI / 6;
-      const x = Math.cos(a) * r;
-      const y = Math.sin(a) * r;
-      if (i === 0) g.moveTo(x, y);
-      else g.lineTo(x, y);
+function playerProjSpeed(player) {
+  const weapons = player && player.data && player.data.weapons;
+  if (Array.isArray(weapons)) {
+    for (const weapon of weapons) {
+      const speed = Number(weapon && weapon.projSpeed);
+      if (Number.isFinite(speed) && speed > 0) return speed;
     }
-    g.closePath();
-    g.fill();
-    g.strokeStyle = 'rgba(232,251,255,0.9)';
-    g.lineWidth = 1;
+  }
+  return 360;
+}
+
+function isCapitalContact(entity) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  if (data.defId && CAPITAL_DEFS.has(data.defId)) return true;
+  return CAPITAL_ROLES.has(String(data.trafficRole || data.role || '').toLowerCase());
+}
+
+function entityHeading(entity) {
+  if (entity && Number.isFinite(entity.rot)) return entity.rot;
+  const velocity = entity && entity.vel;
+  if (velocity && (Math.abs(velocity.x) > 1e-4 || Math.abs(velocity.z) > 1e-4)) {
+    return Math.atan2(velocity.x, velocity.z);
+  }
+  return null;
+}
+
+function shipState(entity, playerTeam, state) {
+  if (isHostileToPlayer(entity, playerTeam, state)) return 'hostile';
+  if (entity && entity.factionId && FACTION_COLOR[entity.factionId]) return 'friendly';
+  return 'neutral';
+}
+
+function contactColor(entity, playerTeam, colorblindMode, state) {
+  const semanticState = shipState(entity, playerTeam, state);
+  if (colorblindMode && colorblindMode !== 'none') {
+    return semanticColor(semanticState, colorblindMode);
+  }
+  if (semanticState === 'hostile') return TACTICAL_MAP_PALETTE.hostile;
+  if (entity && entity.factionId && FACTION_COLOR[entity.factionId]) return FACTION_COLOR[entity.factionId];
+  return TACTICAL_MAP_PALETTE.neutral;
+}
+
+function contactShape(entity, playerTeam, state) {
+  if (isHostileToPlayer(entity, playerTeam, state)) return semanticShape('hostile');
+  const role = String((entity.data && (entity.data.trafficRole || entity.data.role)) || '').toLowerCase();
+  if (role === 'hauler' || role === 'miner' || role === 'smuggler') return 'square';
+  if (role === 'patrol' || role === 'escort' || role === 'courier' || role === 'rescue') return 'diamond';
+  return semanticShape(shipState(entity, playerTeam, state));
+}
+
+function updateTrail(entity) {
+  let history = trailMap.get(entity.id);
+  if (!history) {
+    history = [];
+    trailMap.set(entity.id, history);
+  }
+  const last = history[history.length - 1];
+  const dx = last ? entity.pos.x - last.x : Infinity;
+  const dz = last ? entity.pos.z - last.z : Infinity;
+  if (!last || dx * dx + dz * dz > 400) {
+    history.push({ x: entity.pos.x, z: entity.pos.z });
+    if (history.length > TRAIL_MAX) history.shift();
+  }
+}
+
+function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
+  const history = trailMap.get(entity.id);
+  if (!history || history.length < 2) return;
+  g.save();
+  g.lineWidth = 1;
+  g.strokeStyle = colour;
+  for (let i = 1; i < history.length; i += 1) {
+    g.globalAlpha = (i / history.length) * 0.34;
+    const x0 = center - (history[i - 1].x - playerX) * scale;
+    const y0 = center - (history[i - 1].z - playerZ) * scale;
+    const x1 = center - (history[i].x - playerX) * scale;
+    const y1 = center - (history[i].z - playerZ) * scale;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x1, y1);
     g.stroke();
-    g.strokeStyle = col;
-    g.beginPath(); g.moveTo(r + 0.5, 0); g.lineTo(r + 4.5, 0); g.stroke();
   }
   g.restore();
 }
 
-function drawTargetRing(g, bx, by, C) {
-  // Thin dashed tether from the player (center) to the current target (Tactical-Visor §3D).
-  g.save();
-  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1; g.setLineDash([3, 4]);
-  g.beginPath(); g.moveTo(C, C); g.lineTo(bx, by); g.stroke();
-  g.restore();
-  glow(g, '#fff', 8);
-  g.strokeStyle = '#fff'; g.lineWidth = 1.3;
-  g.beginPath(); g.arc(bx, by, 6.5, 0, Math.PI * 2); g.stroke();
-  noGlow(g);
+function drawAsteroidBlip(g, x, y) {
+  g.beginPath();
+  g.moveTo(x, y - 1.7);
+  g.lineTo(x + 1.7, y);
+  g.lineTo(x, y + 1.7);
+  g.lineTo(x - 1.7, y);
+  g.closePath();
+  g.fill();
 }
 
-function waypointLabel(wp) {
-  const raw = wp && (wp.sectorName || wp.label || wp.mapLabel || 'Objective');
-  const text = String(raw || 'Goal').replace(/\s+/g, ' ').trim();
-  return (text || 'Goal').toUpperCase().slice(0, 18);
+function drawNeutralContact(g, entity, x, y, heading, colour, {
+  selected = false,
+  named = false,
+  playerTeam = null,
+  state = null,
+} = {}) {
+  const shape = contactShape(entity, playerTeam, state);
+  const scale = named ? 1.25 : 1;
+  g.save();
+  g.translate(x, y);
+  if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
+  g.strokeStyle = colour;
+  g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
+  g.lineWidth = selected ? 1.8 : 1.35;
+  if (shape === 'square') {
+    g.beginPath();
+    g.rect(-3.4 * scale, -3.4 * scale, 6.8 * scale, 6.8 * scale);
+  } else if (shape === 'diamond') {
+    g.beginPath();
+    g.moveTo(0, -4 * scale);
+    g.lineTo(3.5 * scale, 0);
+    g.lineTo(0, 4 * scale);
+    g.lineTo(-3.5 * scale, 0);
+    g.closePath();
+  } else {
+    g.beginPath();
+    g.moveTo(0, -4.5 * scale);
+    g.lineTo(3.5 * scale, 3.4 * scale);
+    g.lineTo(0, 1.3 * scale);
+    g.lineTo(-3.5 * scale, 3.4 * scale);
+    g.closePath();
+  }
+  g.fill();
+  g.stroke();
+  g.restore();
+
+  if (named) {
+    g.save();
+    g.strokeStyle = colour;
+    g.globalAlpha = 0.58;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(x, y, 6.3, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+}
+
+function drawHostileEdgeMarker(g, x, y, angle, selected = false) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(angle);
+  g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
+  g.fillStyle = selected ? TACTICAL_MAP_PALETTE.hostile : TACTICAL_MAP_PALETTE.groundPlate;
+  g.lineWidth = 1.8;
+  g.beginPath();
+  g.moveTo(-5.5, -5);
+  g.lineTo(5.5, 0);
+  g.lineTo(-5.5, 5);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.restore();
+}
+
+function drawTargetRing(g, x, y, center) {
+  g.save();
+  g.strokeStyle = 'rgba(244,240,230,0.52)';
+  g.lineWidth = 1;
+  g.setLineDash([3, 4]);
+  g.beginPath();
+  g.moveTo(center, center);
+  g.lineTo(x, y);
+  g.stroke();
+  g.setLineDash([]);
+  g.strokeStyle = TACTICAL_MAP_PALETTE.ink;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.arc(x, y, 7.2, 0, Math.PI * 2);
+  g.stroke();
+  g.restore();
+}
+
+function drawThreatRing(g, metrics, hostileCount, now, reducedMotion) {
+  if (hostileCount < 4) return;
+  const severity = Math.min(1, hostileCount / SWARM_DENSITY_THRESHOLD);
+  const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
+  const alpha = 0.22 + severity * 0.24 + pulse * 0.08;
+  const radius = metrics.radius - 3;
+  g.save();
+  g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
+  g.lineWidth = hostileCount >= SWARM_DENSITY_THRESHOLD ? 2 : 1.25;
+  g.globalAlpha = alpha;
+  for (const angle of [-Math.PI * 0.78, -Math.PI * 0.22, Math.PI * 0.22, Math.PI * 0.78]) {
+    g.beginPath();
+    g.arc(metrics.center, metrics.center, radius, angle - 0.08, angle + 0.08);
+    g.stroke();
+  }
+  g.restore();
+}
+
+function waypointLabel(waypoint) {
+  return sanitizeMapLabel(
+    waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE'),
+    20,
+  );
+}
+
+function drawWaypointDiamond(g, cue, now, reducedMotion) {
+  const pulse = reducedMotion ? 0 : 0.5 + 0.5 * Math.sin(now * 0.0042);
+  drawObjectiveBracket(g, cue.x, cue.y, { pulse });
+}
+
+function drawWaypointEdgeArrow(g, cue, now, reducedMotion) {
+  const pulse = reducedMotion ? 0 : 0.35 + 0.35 * Math.sin(now * 0.0042);
+  drawObjectiveBracket(g, cue.x, cue.y, {
+    offRange: true,
+    unresolved: !cue.resolved,
+    angle: cue.angle,
+    pulse,
+  });
 }
 
 export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, center, radius) {
   const viewport = Math.max(24, Number(size) || 0);
   const c = Number.isFinite(center) ? center : viewport / 2;
   const r = Math.max(12, Number(radius) || viewport / 2 - 4);
-  const width = Math.min(viewport - 8, Math.max(28, Math.ceil(Number(textWidth) || 0) + 8));
-  const height = 13;
+  const width = Math.min(viewport - 8, Math.max(36, Math.ceil(Number(textWidth) || 0) + 10));
+  const height = 18;
   const x = Number(markerX) || c;
   const y = Number(markerY) || c;
-  const horizontalGap = 12;
-  const verticalGap = 11;
+  const horizontalGap = 14;
+  const verticalGap = 13;
   const preferLeft = x >= c;
   const preferAbove = y >= c;
   const candidates = [
@@ -390,7 +310,7 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
     { x: preferLeft ? x + horizontalGap : x - horizontalGap - width, y: y - height / 2 },
     { x: x - width / 2, y: preferAbove ? y + verticalGap : y - verticalGap - height },
   ];
-  const playerSafe = { x: c - 12, y: c - 12, width: 24, height: 24 };
+  const playerSafe = { x: c - 16, y: c - 16, width: 32, height: 32 };
   const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
   for (const candidate of candidates) {
     const rect = {
@@ -403,217 +323,258 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
       && rect.x + rect.width > playerSafe.x
       && rect.y < playerSafe.y + playerSafe.height
       && rect.y + rect.height > playerSafe.y;
-    if (!overlapsPlayer || Math.hypot(x - c, y - c) < 18) return rect;
+    if (!overlapsPlayer || Math.hypot(x - c, y - c) < 20) return rect;
   }
   const angle = Math.atan2(y - c, x - c);
   return {
-    x: clamp(c + Math.cos(angle) * Math.min(r * 0.55, 32) - width / 2, 4, viewport - 4 - width),
-    y: clamp(c + Math.sin(angle) * Math.min(r * 0.55, 32) - height / 2, 4, viewport - 4 - height),
+    x: clamp(c + Math.cos(angle) * Math.min(r * 0.55, 36) - width / 2, 4, viewport - 4 - width),
+    y: clamp(c + Math.sin(angle) * Math.min(r * 0.55, 36) - height / 2, 4, viewport - 4 - height),
     width,
     height,
   };
 }
 
-function drawWaypointLabel(g, label, x, y, opts = {}) {
+function drawObjectiveLabel(g, cue) {
+  if (!cue) return;
   g.save();
-  g.font = 'bold 7px monospace';
-  const width = g.measureText ? g.measureText(label).width : label.length * 5;
+  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+  const text = cue.resolved
+    ? `${cue.label}  ${formatRadarDistance(cue.distance)}`
+    : `${cue.label}  ROUTE`;
+  const measured = g.measureText ? g.measureText(text).width : text.length * 7;
   const placement = placeRadarObjectiveLabel(
-    width,
-    x,
-    y,
-    opts.size,
-    opts.center,
-    opts.radius,
+    measured,
+    cue.x,
+    cue.y,
+    cue.metrics.size,
+    cue.metrics.center,
+    cue.metrics.radius,
   );
-  g.fillStyle = 'rgba(4,8,16,0.94)';
-  g.strokeStyle = 'rgba(255,179,92,0.9)';
+  g.fillStyle = 'rgba(5,12,16,0.95)';
+  g.fillRect(placement.x, placement.y, placement.width, placement.height);
+  g.strokeStyle = 'rgba(255,192,100,0.82)';
   g.lineWidth = 1;
-  g.beginPath();
-  g.rect(placement.x, placement.y, placement.width, placement.height);
-  g.fill();
-  g.stroke();
+  g.strokeRect(placement.x + 0.5, placement.y + 0.5, placement.width - 1, placement.height - 1);
   g.textAlign = 'left';
-  g.textBaseline = 'top';
-  g.fillStyle = '#ffb35c';
-  g.fillText(label, placement.x + 4, placement.y + 3);
+  g.textBaseline = 'middle';
+  g.fillStyle = TACTICAL_MAP_PALETTE.objective;
+  g.fillText(text, placement.x + 5, placement.y + placement.height / 2 + 0.5);
   g.restore();
 }
 
-function drawWaypointDiamond(g, x, y, label, C, R, SIZE) {
+function drawRangePlate(g, metrics, range, expanded) {
   g.save();
-  glow(g, COL.objective, 12);
-  g.strokeStyle = COL.objective;
-  g.fillStyle = 'rgba(255,227,107,0.16)';
-  g.lineWidth = 2.4;
-  g.beginPath();
-  g.moveTo(x, y - 9);
-  g.lineTo(x + 9, y);
-  g.lineTo(x, y + 9);
-  g.lineTo(x - 9, y);
-  g.closePath();
-  g.fill();
-  g.stroke();
-  g.strokeStyle = '#ffffff';
-  g.lineWidth = 1.0;
-  g.stroke();
-  noGlow(g);
-  g.globalAlpha = 0.48;
-  g.beginPath();
-  g.arc(x, y, 14, 0, Math.PI * 2);
-  g.stroke();
-  g.restore();
-  drawWaypointLabel(g, label, x, y, { size: SIZE, center: C, radius: R });
-}
-
-function drawWaypointEdgeArrow(g, x, y, angle, label, C, R, SIZE) {
-  g.save();
-  g.translate(x, y);
-  g.rotate(angle);
-  glow(g, COL.objective, 9);
-  g.fillStyle = COL.objective;
-  g.strokeStyle = '#ffffff';
+  const text = `RANGE ${(range / 1000).toFixed(range >= 10000 ? 0 : 1)}K`;
+  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+  const width = Math.ceil(g.measureText(text).width) + 12;
+  const height = 18;
+  const x = metrics.size - width - 5;
+  const y = metrics.size - height - 4;
+  g.fillStyle = 'rgba(5,12,16,0.90)';
+  g.fillRect(x, y, width, height);
+  g.strokeStyle = 'rgba(174,183,182,0.42)';
   g.lineWidth = 1;
-  g.beginPath();
-  g.moveTo(-7, -6);
-  g.lineTo(7, 0);
-  g.lineTo(-7, 6);
-  g.closePath();
-  g.fill();
-  g.stroke();
-  noGlow(g);
+  g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  g.fillStyle = expanded ? TACTICAL_MAP_PALETTE.ink : TACTICAL_MAP_PALETTE.inkDim;
+  g.textAlign = 'left';
+  g.textBaseline = 'middle';
+  g.fillText(text, x + 6, y + height / 2 + 0.5);
   g.restore();
-  drawWaypointLabel(g, label, x, y, { size: SIZE, center: C, radius: R });
 }
 
-function drawHeatZone(g, zone, px, pz, scale, C, R) {
+function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   if (!zone || !zone.active || !(zone.radius > 0) || !(zone.level > 0)) return;
-  const cx = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
-  const cz = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
-  const dx = cx - px;
-  const dz = cz - pz;
-  const zx = C - dx * scale;
-  const zy = C - dz * scale;
-  const zr = Math.max(2, zone.radius * scale);
+  const zoneX = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
+  const zoneZ = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
+  const dx = zoneX - playerX;
+  const dz = zoneZ - playerZ;
+  const x = center - dx * scale;
+  const y = center - dz * scale;
+  const zoneRadius = Math.max(2, zone.radius * scale);
   const outside = dx * dx + dz * dz > zone.radius * zone.radius;
   const clearAfter = zone.clearAfterS || 0;
-  const remaining = outside && clearAfter > 0 ? Math.max(0, Math.ceil(clearAfter - (zone.outsideS || 0))) : 0;
+  const remaining = outside && clearAfter > 0
+    ? Math.max(0, Math.ceil(clearAfter - (zone.outsideS || 0)))
+    : 0;
 
   g.save();
-  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
-  g.globalAlpha = 1;
-  g.fillStyle = 'rgba(255,84,112,0.055)';
-  g.strokeStyle = outside ? 'rgba(255,205,95,0.9)' : 'rgba(255,84,112,0.82)';
+  g.beginPath();
+  g.arc(center, center, radius, 0, Math.PI * 2);
+  g.clip();
+  g.fillStyle = 'rgba(255,84,112,0.045)';
+  g.strokeStyle = outside ? 'rgba(255,205,95,0.86)' : 'rgba(255,84,112,0.76)';
   g.lineWidth = outside ? 1.6 : 1.25;
   g.setLineDash(outside ? [7, 4] : [4, 5]);
-  g.beginPath(); g.arc(zx, zy, zr, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.beginPath();
+  g.arc(x, y, zoneRadius, 0, Math.PI * 2);
+  g.fill();
+  g.stroke();
   g.setLineDash([]);
-  g.fillStyle = outside ? 'rgba(255,205,95,0.95)' : 'rgba(255,84,112,0.72)';
-  g.beginPath(); g.arc(zx, zy, 2.2, 0, Math.PI * 2); g.fill();
   g.restore();
 
   g.save();
-  g.font = 'bold 7px monospace';
+  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
   g.textAlign = 'center';
-  g.textBaseline = 'top';
-  g.fillStyle = outside ? 'rgba(255,205,95,0.95)' : 'rgba(255,84,112,0.82)';
-  g.fillText(remaining > 0 ? 'HEAT ' + zone.level + '  ' + remaining + 'S' : 'HEAT ' + zone.level, C, C + R - 15);
+  g.textBaseline = 'bottom';
+  g.fillStyle = outside ? 'rgba(255,205,95,0.94)' : 'rgba(255,84,112,0.88)';
+  g.fillText(remaining > 0 ? `HEAT ${zone.level}  ${remaining}S` : `HEAT ${zone.level}`, center, center + radius - 5);
   g.restore();
 }
 
-// ── factory ─────────────────────────────────────────────────────────────────────────────────
+function drawBackground(g, center, radius) {
+  g.clearRect(0, 0, center * 2, center * 2);
+  const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
+  gradient.addColorStop(0, 'rgba(3,18,28,0.64)');
+  gradient.addColorStop(0.68, 'rgba(4,20,32,0.34)');
+  gradient.addColorStop(1, 'rgba(10,48,58,0.12)');
+  g.fillStyle = gradient;
+  g.beginPath();
+  g.arc(center, center, radius, 0, Math.PI * 2);
+  g.fill();
+
+  g.save();
+  g.beginPath();
+  g.arc(center, center, radius, 0, Math.PI * 2);
+  g.clip();
+  g.strokeStyle = 'rgba(57,208,255,0.10)';
+  g.lineWidth = 1;
+  const step = radius / 3;
+  for (let d = step; d <= radius; d += step) {
+    g.beginPath();
+    g.moveTo(center - d, center - radius);
+    g.lineTo(center - d, center + radius);
+    g.moveTo(center + d, center - radius);
+    g.lineTo(center + d, center + radius);
+    g.moveTo(center - radius, center - d);
+    g.lineTo(center + radius, center - d);
+    g.moveTo(center - radius, center + d);
+    g.lineTo(center + radius, center + d);
+    g.stroke();
+  }
+  for (const fraction of [0.25, 0.5, 1]) {
+    g.strokeStyle = fraction === 1
+      ? 'rgba(0,240,255,0.20)'
+      : 'rgba(0,240,255,0.10)';
+    g.lineWidth = fraction === 1 ? 1.25 : 1;
+    g.beginPath();
+    g.arc(center, center, radius * fraction, 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(0,240,255,0.13)';
+  g.beginPath();
+  g.moveTo(center, center - radius);
+  g.lineTo(center, center + radius);
+  g.moveTo(center - radius, center);
+  g.lineTo(center + radius, center);
+  g.stroke();
+  g.restore();
+}
+
 export function createRadar(ctx) {
   const { state, bus } = ctx;
-
   const wrap = document.createElement('div');
   wrap.className = 'sf-radar-wrap';
 
   const dial = document.createElement('div');
   dial.className = 'sf-radar';
-  dial.title = 'Click to expand tactical view';
+  dial.title = 'Local tactical radar — click for expanded sensor range';
+  dial.style.position = 'relative';
 
-  // Canvas pair: main draw surface + pre-rendered static background. Normal flight keeps these at
-  // compact HUD size; tactical expansion opts into the larger surface on demand.
-  // Cap DPR high enough for crisp blips on modern HiDPI without ballooning the always-on buffer.
-  const dpr      = Math.min(window.devicePixelRatio || 1, 2.5);
-  const canvas   = document.createElement('canvas');
-  const bgCanvas = document.createElement('canvas');
-  // Prefer crisp geometry over soft filters — radar readability is shape/color, not bloom.
-  const g  = canvas.getContext('2d');
-  const bg = bgCanvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const canvas = document.createElement('canvas');
+  canvas.className = 'sf-radar-semantic-canvas';
+  canvas.setAttribute('role', 'img');
+  const backgroundCanvas = document.createElement('canvas');
+  const g = canvas.getContext('2d');
+  const background = backgroundCanvas.getContext('2d');
+  if (!g || !background) {
+    wrap.appendChild(dial);
+    return { el: wrap, draw() {}, invalidate() {}, destroy() {} };
+  }
+
   let configuredSize = 0;
-  let configuredC = COMPACT_C;
-  let configuredR = COMPACT_R;
+  let configuredCenter = COMPACT_C;
+  let configuredRadius = COMPACT_R;
+  let expanded = false;
 
-  function configureCanvas(size, C, R) {
+  function configureCanvas(size, center, radius) {
     if (configuredSize === size) return;
     configuredSize = size;
-    configuredC = C;
-    configuredR = R;
-    const px = Math.round(size * dpr);
-    canvas.width = px; canvas.height = px;
-    bgCanvas.width = px; bgCanvas.height = px;
-    canvas.style.width = size + 'px';
-    canvas.style.height = size + 'px';
+    configuredCenter = center;
+    configuredRadius = radius;
+    const pixels = Math.round(size * dpr);
+    canvas.width = pixels;
+    canvas.height = pixels;
+    backgroundCanvas.width = pixels;
+    backgroundCanvas.height = pixels;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    bg.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Avoid bilinear soft-edges on the blip pass; the pre-baked bg is already smooth.
+    background.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.imageSmoothingEnabled = false;
-    bg.imageSmoothingEnabled = true;
-    drawBackground(bg, C, R);
+    background.imageSmoothingEnabled = true;
+    drawBackground(background, center, radius);
   }
-  configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
 
-  let expanded = false;
+  configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
   dial.appendChild(canvas);
 
-  // Exact objective key only. Contact identities live in the compact overview; the old five-color
-  // legend made the mission marker compete with stations, rocks, and hostiles.
   const objectiveKey = document.createElement('div');
-  objectiveKey.className = 'sf-radar-objective-key mono';
-  objectiveKey.hidden = true;
+  objectiveKey.className = 'sf-radar-objective-key sf-radar-semantic-key mono';
+  objectiveKey.hidden = false;
   wrap.append(dial, objectiveKey);
 
-  // ── expanded toggle ───────────────────────────────────────────────────────────────────────
-  // Toggling .sf-radar--expanded grows the dial and switches to the larger tactical canvas.
-  // position:fixed lifts the wrap out of the rightdock flow so it doesn't push other elements.
-  function setExpanded(v) {
-    expanded = v;
-    dial.classList.toggle('sf-radar--expanded', v);
-    if (v) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
+  const parityTeardown = installMapParityBridge();
+
+  function setExpanded(value) {
+    expanded = !!value;
+    dial.classList.toggle('sf-radar--expanded', expanded);
+    if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
-    wrap.style.cssText = v
+    wrap.style.cssText = expanded
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
   }
 
-  dial.addEventListener('click', () => setExpanded(!expanded));
+  const onDialClick = () => setExpanded(!expanded);
+  dial.addEventListener('click', onDialClick);
 
-  // Collapse on sector change — entity list and all trails are stale after a gate jump
-  const onSectorEnter = () => { trailMap.clear(); if (expanded) setExpanded(false); };
-
-  // ── contact list cache ────────────────────────────────────────────────────────────────────
   let contactList = [];
   let asteroidList = [];
   let contactsDirty = true;
-  let cachedEntityList = null, cachedLength = -1, cachedPlayerId = null;
-  let radarQueryScratch = [];
+  let cachedEntityList = null;
+  let cachedLength = -1;
+  let cachedPlayerId = null;
+  const radarQueryScratch = [];
   let trailPruneCountdown = 0;
+  const unsubscribers = [];
 
-  function markContactsDirty() { contactsDirty = true; }
-
-  if (bus && bus.on) {
-    bus.on('entity:spawned',   markContactsDirty);
-    bus.on('entity:destroyed', markContactsDirty);
-    bus.on('game:started',     markContactsDirty);
-    bus.on('save:loaded',      markContactsDirty);
-    bus.on('sector:enter',     markContactsDirty);
-    bus.on('sector:enter',     onSectorEnter);
+  function markContactsDirty() {
+    contactsDirty = true;
   }
 
-  function isRadarContact(e, player) {
-    if (!e || e === player) return false;
-    return e.type !== 'projectile' && e.type !== 'fx';
+  function onSectorEnter() {
+    trailMap.clear();
+    if (expanded) setExpanded(false);
+    markContactsDirty();
+  }
+
+  if (bus && typeof bus.on === 'function') {
+    for (const [event, handler] of [
+      ['entity:spawned', markContactsDirty],
+      ['entity:destroyed', markContactsDirty],
+      ['game:started', markContactsDirty],
+      ['save:loaded', markContactsDirty],
+      ['sector:enter', onSectorEnter],
+    ]) {
+      const off = bus.on(event, handler);
+      if (typeof off === 'function') unsubscribers.push(off);
+    }
+  }
+
+  function isRadarContact(entity, player) {
+    if (!entity || entity === player) return false;
+    return entity.type !== 'projectile' && entity.type !== 'fx';
   }
 
   function indexedRadarContacts() {
@@ -627,18 +588,24 @@ export function createRadar(ctx) {
     if (indexedRadarContacts()) return;
     const list = state.entityList;
     if (!Array.isArray(list)) return;
-    if (!contactsDirty && cachedEntityList === list && cachedLength === list.length && cachedPlayerId === state.playerId) {
-      return;
+    if (
+      !contactsDirty
+      && cachedEntityList === list
+      && cachedLength === list.length
+      && cachedPlayerId === state.playerId
+    ) return;
+
+    contactList = [];
+    asteroidList = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const entity = list[i];
+      if (!isRadarContact(entity, player)) continue;
+      if (entity.type === 'asteroid') asteroidList.push(entity);
+      else contactList.push(entity);
     }
-    contactList.length = 0;
-    asteroidList.length = 0;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!isRadarContact(e, player)) continue;
-      if (e.type === 'asteroid') asteroidList.push(e);
-      else contactList.push(e);
-    }
-    cachedEntityList = list; cachedLength = list.length; cachedPlayerId = state.playerId;
+    cachedEntityList = list;
+    cachedLength = list.length;
+    cachedPlayerId = state.playerId;
     contactsDirty = false;
   }
 
@@ -656,115 +623,125 @@ export function createRadar(ctx) {
     return asteroidList;
   }
 
-  function nearbyAsteroidCandidates(px, pz, range, asteroidCount) {
+  function nearbyAsteroidCandidates(playerX, playerZ, range, asteroidCount) {
     const hash = state.spatialHash;
     if (!hash || typeof hash.queryRadius !== 'function') return null;
     if (!hash.diagnostics || !(hash.diagnostics.activeBuckets > 0)) return null;
     if (asteroidCount < RADAR_SPATIAL_MIN_ASTEROIDS) return null;
     const queryRadius = range + RADAR_QUERY_RADIUS_PAD;
     const cell = Math.max(1, hash.cell || 64);
-    const x0 = Math.floor((px - queryRadius) / cell);
-    const x1 = Math.floor((px + queryRadius) / cell);
-    const z0 = Math.floor((pz - queryRadius) / cell);
-    const z1 = Math.floor((pz + queryRadius) / cell);
+    const x0 = Math.floor((playerX - queryRadius) / cell);
+    const x1 = Math.floor((playerX + queryRadius) / cell);
+    const z0 = Math.floor((playerZ - queryRadius) / cell);
+    const z1 = Math.floor((playerZ + queryRadius) / cell);
     const rectangularVisits = (x1 - x0 + 1) * (z1 - z0 + 1);
-    const activeBuckets = hash.diagnostics.activeBuckets || (hash._activeBuckets && hash._activeBuckets.length) || 0;
-    const estimatedVisits = rectangularVisits > activeBuckets * 3 ? activeBuckets : rectangularVisits;
+    const activeBuckets = hash.diagnostics.activeBuckets
+      || (hash._activeBuckets && hash._activeBuckets.length)
+      || 0;
+    const estimatedVisits = rectangularVisits > activeBuckets * 3
+      ? activeBuckets
+      : rectangularVisits;
     if (estimatedVisits > asteroidCount * RADAR_QUERY_VISIT_RATIO_LIMIT) return null;
     radarQueryScratch.length = 0;
-    hash.queryRadius(px, pz, queryRadius, radarQueryScratch, { countDiagnostics: false });
+    hash.queryRadius(playerX, playerZ, queryRadius, radarQueryScratch, { countDiagnostics: false });
     return radarQueryScratch;
   }
 
-  // ── draw ──────────────────────────────────────────────────────────────────────────────────
+  function updateObjectiveKey(waypoint, cue) {
+    if (waypoint) {
+      const label = waypointLabel(waypoint);
+      const wpLabel = label;
+      const legacyIdentity = `◆ AMBER DIAMOND · ${wpLabel}`;
+      const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
+      objectiveKey.textContent = `⌜◆⌝  OBJ  ${distance}  ·  ${label}`;
+      objectiveKey.title = `${legacyIdentity} · FOUR-CORNER BRACKET · ROUTE CORRIDOR`;
+      objectiveKey.dataset.mode = 'objective';
+      return;
+    }
+    objectiveKey.textContent = 'YOU HULL · HOSTILE CHEVRON · DOCK HEX · GATE RINGS';
+    objectiveKey.removeAttribute('title');
+    objectiveKey.dataset.mode = 'legend';
+  }
+
   function draw() {
-    const p = state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(state.playerId)
-      : null;
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
-    activeGlowScale = expanded ? 1 : 0.35;
+
+    const metrics = tacticalRadarMetrics(expanded);
+    const size = configuredSize;
+    const center = configuredCenter;
+    const radius = configuredRadius;
     const baseRange = (state.ui && state.ui.radarRange) || 4000;
-    const range     = expanded ? baseRange * 2 : baseRange;
-    const rangeSq   = range * range;
-    const C = configuredC, R = configuredR, SIZE = configuredSize;
-    const radarScale = R / range;
+    const range = expanded ? baseRange * 2 : baseRange;
+    const rangeSq = range * range;
+    const radarScale = radius / range;
     const now = Date.now();
+    const reducedMotion = prefersReducedMotion();
 
-    g.clearRect(0, 0, SIZE, SIZE);
-    g.drawImage(bgCanvas, 0, 0, SIZE, SIZE);
+    g.clearRect(0, 0, size, size);
+    g.drawImage(backgroundCanvas, 0, 0, size, size);
 
-    // ── heading reference only (Tactical-Visor §3D: no enclosing border ring / dial) ──────
-    g.fillStyle    = 'rgba(0,240,255,0.45)';
-    g.font         = 'bold 7px monospace';
-    g.textAlign    = 'center';
-    g.textBaseline = 'bottom';
-    g.fillText('N', C, C - R - 1);
-
-    // ── scan sweep: 20° bright wedge + 30° trailing fade + leading edge line ─────────────
-    const sweepAngle = ((now % 3000) / 3000) * Math.PI * 2;
+    // One crisp sweep line preserves sensor motion without washing the entire instrument in bloom.
+    const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
     g.save();
-    g.beginPath(); g.moveTo(C, C); g.arc(C, C, R, sweepAngle, sweepAngle + 0.35); g.closePath();
-    g.fillStyle = 'rgba(0,240,255,0.14)'; g.fill();
-    g.beginPath(); g.moveTo(C, C); g.arc(C, C, R, sweepAngle - 0.55, sweepAngle); g.closePath();
-    g.fillStyle = 'rgba(0,240,255,0.04)'; g.fill();
-    g.strokeStyle = 'rgba(0,240,255,0.32)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(C, C);
-    g.lineTo(C + Math.cos(sweepAngle) * R, C + Math.sin(sweepAngle) * R);
+    g.strokeStyle = 'rgba(99,243,255,0.20)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(center, center);
+    g.lineTo(center + Math.cos(sweepAngle) * radius, center + Math.sin(sweepAngle) * radius);
     g.stroke();
     g.restore();
 
-    // ── tactical mode overlay (expanded only) ─────────────────────────────────────────────
-    if (expanded) {
-      g.save();
-      g.fillStyle    = 'rgba(0,240,255,0.55)';
-      g.font         = 'bold 9px monospace';
-      g.textAlign    = 'center';
-      g.textBaseline = 'top';
-      g.fillText('▸ TACTICAL  ·  ' + (range / 1000).toFixed(1) + 'K RANGE', C, C - R + 10);
-      // distance labels on the 25 / 50 / 100% rings
-      g.font         = '7px monospace';
-      g.fillStyle    = 'rgba(0,240,255,0.32)';
-      g.textAlign    = 'left';
-      g.textBaseline = 'middle';
-      for (const f of [0.25, 0.5, 1.0]) {
-        g.fillText((range * f / 1000).toFixed(1) + 'k', C + R * f + 3, C - 5);
-      }
-      g.font         = '7px monospace';
-      g.fillStyle    = 'rgba(0,240,255,0.28)';
-      g.textAlign    = 'center';
-      g.textBaseline = 'bottom';
-      g.fillText('[click to close]', C, C + R - 6);
-      g.restore();
+    g.save();
+    g.fillStyle = 'rgba(99,243,255,0.72)';
+    g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'bottom';
+    g.fillText('N', center, center - radius + 14);
+    g.restore();
+
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) {
+      updateObjectiveKey(null, null);
+      return;
     }
 
-    if (!p || !p.pos) return;
-    const px = p.pos.x, pz = p.pos.z;
-    const targetId   = state.player && state.player.targetId;
-    const playerTeam = p.team;
-    const cbMode     = (state.settings && state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
+    const playerX = player.pos.x;
+    const playerZ = player.pos.z;
+    const targetId = state.player && state.player.targetId;
+    const playerTeam = player.team;
+    const colorblindMode = (
+      state.settings
+      && state.settings.accessibility
+      && state.settings.accessibility.colorblindMode
+    ) || 'none';
 
-    drawHeatZone(g, state.player && state.player.heatZone, px, pz, radarScale, C, R);
+    drawHeatZone(g, state.player && state.player.heatZone, playerX, playerZ, radarScale, center, radius);
 
-    // ── weapon/mining range ring ──────────────────────────────────────────────────────────
-    const weaponRange = state.player.weaponRange;
-    const rngRatio    = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
-    const rngR        = R * rngRatio;
+    const weaponRange = state.player && state.player.weaponRange;
+    const rangeRatio = weaponRange ? Math.min(weaponRange / range, 1) : 0.6;
+    const weaponRingRadius = radius * rangeRatio;
     g.save();
-    g.strokeStyle = 'rgba(0,240,255,0.13)'; g.lineWidth = 1; g.setLineDash([3, 4]);
-    g.beginPath(); g.arc(C, C, rngR, 0, Math.PI * 2); g.stroke();
-    g.setLineDash([]); g.restore();
-    g.fillStyle    = 'rgba(0,240,255,0.2)'; g.font = '6px monospace';
-    g.textAlign    = 'center'; g.textBaseline = 'bottom';
-    g.fillText('RNG', C, C - rngR - 1);
+    g.strokeStyle = 'rgba(99,243,255,0.18)';
+    g.lineWidth = 1;
+    g.setLineDash([3, 4]);
+    g.beginPath();
+    g.arc(center, center, weaponRingRadius, 0, Math.PI * 2);
+    g.stroke();
+    g.setLineDash([]);
+    g.restore();
 
-    // ── contacts ─────────────────────────────────────────────────────────────────────────
-    const list = contactsFor(p);
-    const asteroidFallback = asteroidsFor(p);
-    const asteroidSource = nearbyAsteroidCandidates(px, pz, range, asteroidFallback.length) || asteroidFallback;
+    const contacts = contactsFor(player);
+    const asteroidFallback = asteroidsFor(player);
+    const asteroidSource = nearbyAsteroidCandidates(
+      playerX,
+      playerZ,
+      range,
+      asteroidFallback.length,
+    ) || asteroidFallback;
 
-    // Prune trails for destroyed/removed entities. Trail sampling itself happens only for in-range
-    // ships below, so dense asteroid fields or off-sector traffic cannot burn radar time.
     if (trailPruneCountdown-- <= 0) {
       trailPruneCountdown = TRAIL_PRUNE_INTERVAL;
       for (const id of trailMap.keys()) {
@@ -772,392 +749,353 @@ export function createRadar(ctx) {
       }
     }
 
-    let targetAsteroidBlip = false, targetAsteroidX = 0, targetAsteroidY = 0;
-    // Asteroids: no glow, low alpha — field texture only. Stations/ships must stay legible on top.
-    const asteroidCol = COL.asteroid;
+    let targetAsteroid = null;
     g.save();
-    g.globalAlpha = 0.42;
-    g.fillStyle = asteroidCol;
-    noGlow(g);
-    for (let i = 0; i < asteroidSource.length; i++) {
-      const e = asteroidSource[i];
-      if (!e || !e.pos || !e.alive || e === p || e.type !== 'asteroid' || (state.entities && state.entities.get && state.entities.get(e.id) !== e)) continue;
-      const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const distSq = dx * dx + dz * dz;
-      if (distSq > rangeSq) continue;
-      const bx = C - dx * radarScale;
-      const by = C - dz * radarScale;
-      drawAsteroidBlip(g, bx, by);
-      if (e.id === targetId) {
-        targetAsteroidBlip = true;
-        targetAsteroidX = bx;
-        targetAsteroidY = by;
-      }
+    g.globalAlpha = 0.38;
+    g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
+    for (let i = 0; i < asteroidSource.length; i += 1) {
+      const entity = asteroidSource[i];
+      if (
+        !entity
+        || !entity.pos
+        || !entity.alive
+        || entity === player
+        || entity.type !== 'asteroid'
+        || (state.entities && state.entities.get && state.entities.get(entity.id) !== entity)
+      ) continue;
+      const dx = entity.pos.x - playerX;
+      const dz = entity.pos.z - playerZ;
+      if (dx * dx + dz * dz > rangeSq) continue;
+      const x = center - dx * radarScale;
+      const y = center - dz * radarScale;
+      drawAsteroidBlip(g, x, y);
+      if (entity.id === targetId) targetAsteroid = { x, y };
     }
     g.restore();
-    if (targetAsteroidBlip) drawTargetRing(g, targetAsteroidX, targetAsteroidY, C);
+    if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
-    let nearestOffScreenHostile = null;
-    let minHostileDistSq = Infinity;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.pos || !e.alive || e === p) continue;
-      const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const distSq = dx * dx + dz * dz;
-      if (distSq > rangeSq) {
-        const isHostile = isHostileToPlayer(e, playerTeam, state);
-        if (isHostile && distSq < minHostileDistSq) {
-          minHostileDistSq = distSq;
-          nearestOffScreenHostile = e;
+    let hostileCount = 0;
+    let salientContactCount = 0;
+    let nearestOffRangeHostile = null;
+    let nearestOffRangeHostileDistanceSq = Infinity;
+    const hostileMarks = [];
+    const infrastructureMarks = [];
+
+    for (let i = 0; i < contacts.length; i += 1) {
+      const entity = contacts[i];
+      if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+      const dx = entity.pos.x - playerX;
+      const dz = entity.pos.z - playerZ;
+      const distanceSq = dx * dx + dz * dz;
+      const hostile = isHostileToPlayer(entity, playerTeam, state);
+      const station = entity.type === 'station';
+      const gate = station && !!(entity.data && entity.data.isGate);
+      if (hostile || station || entity.id === targetId) salientContactCount += 1;
+
+      if (distanceSq > rangeSq) {
+        if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
+          nearestOffRangeHostileDistanceSq = distanceSq;
+          nearestOffRangeHostile = entity;
         }
+        if (station) {
+          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+          if (projected) infrastructureMarks.push({ entity, projected, gate, distanceSq });
+        }
+        continue;
+      }
+
+      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+      if (!projected) continue;
+      if (hostile) {
+        hostileCount += 1;
+        hostileMarks.push({ entity, projected, distanceSq });
+      } else if (station) {
+        infrastructureMarks.push({ entity, projected, gate, distanceSq });
       }
     }
 
-    // Two-pass draw: ships/pickups/wrecks first, then stations on top so docks never hide under traffic.
+    const swarmQuiet = hostileCount >= SWARM_DENSITY_THRESHOLD;
+    hostileMarks.sort((a, b) => (
+      a.entity.id === targetId ? -1
+        : b.entity.id === targetId ? 1
+          : a.distanceSq - b.distanceSq
+    ));
+    infrastructureMarks.sort((a, b) => a.distanceSq - b.distanceSq);
+
     let trailUpdates = 0;
-    const stationPass = [];
-    // SCREENS_A 6.1: at or above SWARM_DENSITY_THRESHOLD hostiles, threat rings collapse onto the
-    // selected target alone. Twenty pulsing rings is twenty things with equal priority.
-    let hostilesInRange = 0;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.pos || !e.alive || e === p || e.type === 'station') continue;
-      const ddx = e.pos.x - px, ddz = e.pos.z - pz;
-      if (ddx * ddx + ddz * ddz > rangeSq) continue;
-      if (isHostileToPlayer(e, playerTeam, state)) hostilesInRange++;
-    }
-    const swarmQuiet = hostilesInRange >= SWARM_DENSITY_THRESHOLD;
-    const reducedMotion = prefersReducedMotion();
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.pos || !e.alive || e === p) continue;
-      if (e.type === 'station') {
-        stationPass.push(e);
-        continue;
-      }
-      const type = e.type;
-      const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const distSq = dx * dx + dz * dz;
-      const col = blipColor(e, playerTeam, cbMode, state);
-      let bx, by, off = false, offAngle = 0;
+    for (let i = 0; i < contacts.length; i += 1) {
+      const entity = contacts[i];
+      if (!entity || !entity.pos || !entity.alive || entity === player || entity.type === 'station') continue;
+      const dx = entity.pos.x - playerX;
+      const dz = entity.pos.z - playerZ;
+      const distanceSq = dx * dx + dz * dz;
+      if (distanceSq > rangeSq) continue;
 
-      if (distSq > rangeSq) {
-        off = true;
-        // -dz/-dx: world +Z = screen up, world +X = screen left (see header note)
-        offAngle = Math.atan2(-dz, -dx);
-        bx = C + Math.cos(offAngle) * R; by = C + Math.sin(offAngle) * R;
-      } else {
-        bx = C - dx * radarScale; by = C - dz * radarScale;   // both axes mirrored to match screen
+      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+      if (!projected) continue;
+      const x = projected.x;
+      const y = projected.y;
+      const type = entity.type;
+      const hostile = isHostileToPlayer(entity, playerTeam, state);
+      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+
+      if ((type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES) {
+        updateTrail(entity);
+        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+        trailUpdates += 1;
       }
 
-      // motion trail (in-range ships/drones only)
-      if (!off && (type === 'ship' || type === 'drone')) {
-        if (trailUpdates < MAX_TRAIL_UPDATES) {
-          updateTrail(e);
-          trailUpdates++;
-        }
-        drawTrail(g, e, px, pz, radarScale, C, col);
-      }
+      if (hostile) continue; // drawn in the crisp priority pass below
 
-      g.fillStyle = col; g.strokeStyle = col;
-
-      if (off) {
-        if (e === nearestOffScreenHostile) {
-          g.save(); g.translate(bx, by); g.rotate(offAngle);
-          g.fillStyle = col; g.strokeStyle = col;
-          g.lineWidth = 1.5;
-          g.beginPath();
-          g.moveTo(-4, -4); g.lineTo(3, 0); g.lineTo(-4, 4); g.closePath();
-          g.fill();
-          g.restore();
-        }
-        continue;
-
-      } else if (type === 'pickup') {
-        // spinning animated diamond with pulse glow
-        const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
+      if (type === 'pickup') {
+        const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.005);
         g.save();
-        g.globalAlpha = 0.6 + 0.4 * pulse;
-        glow(g, col, 10 * pulse);
-        g.translate(bx, by); g.rotate((now * 0.0008) % (Math.PI * 2));
-        g.beginPath(); g.moveTo(0, -4); g.lineTo(3.5, 0); g.lineTo(0, 4); g.lineTo(-3.5, 0); g.closePath(); g.fill();
-        noGlow(g); g.restore();
-
+        g.globalAlpha = 0.7 + 0.3 * pulse;
+        g.fillStyle = '#ffe36b';
+        g.translate(x, y);
+        if (!reducedMotion) g.rotate((now * 0.0008) % (Math.PI * 2));
+        g.beginPath();
+        g.moveTo(0, -4.5);
+        g.lineTo(4, 0);
+        g.lineTo(0, 4.5);
+        g.lineTo(-4, 0);
+        g.closePath();
+        g.fill();
+        g.restore();
       } else if (type === 'wreck') {
-        g.strokeStyle = col;
+        g.save();
+        g.strokeStyle = colour;
         g.lineWidth = 1.5;
         g.beginPath();
-        g.moveTo(bx - 2.5, by - 2.5); g.lineTo(bx + 2.5, by + 2.5);
-        g.moveTo(bx - 2.5, by + 2.5); g.lineTo(bx + 2.5, by - 2.5);
+        g.moveTo(x - 3, y - 3);
+        g.lineTo(x + 3, y + 3);
+        g.moveTo(x - 3, y + 3);
+        g.lineTo(x + 3, y - 3);
         g.stroke();
-
+        g.restore();
       } else {
-        const isHostile = isHostileToPlayer(e, playerTeam, state);
-        // Compact flight: keep hostiles readable with a light pulse; avoid heavy blur that softens edges.
-        const glowBlur  = isHostile ? (expanded ? 7 + 3 * Math.sin(now * 0.004) : 4) : (expanded ? 5 : 2.5);
-        glow(g, col, glowBlur);
-        const named = !!(e.data && e.data.namedLaneContactId);
-        // J07: heading chevrons replace the dot. The SELECTED contact fills; everything else is an
-        // outline, so twenty hostiles do not read as twenty equal priorities (SCREENS_A §6.1.4).
-        const selected = e.id === targetId;
-        const heading = entityHeading(e);
-        if (isCapitalContact(e)) {
-          drawCapitalSilhouette(g, bx, by, heading, col, named ? 1.15 : 1);
-        } else {
-          drawHeadingChevron(g, bx, by, heading, col, { scale: named ? 1.35 : 1, filled: selected });
-        }
-        if (isHostile && (selected || swarmQuiet === false)) drawThreatRing(g, bx, by, col, now, reducedMotion);
-        // Named contact: thin outer ring (identity, not text spam).
-        if (named && !isHostile) {
-          g.strokeStyle = col;
-          g.lineWidth = 1;
-          g.globalAlpha = 0.55;
-          g.beginPath(); g.arc(bx, by, 5.5, 0, Math.PI * 2); g.stroke();
-          g.globalAlpha = 1;
-        }
-        noGlow(g);
+        drawNeutralContact(g, entity, x, y, entityHeading(entity), colour, {
+          selected: entity.id === targetId,
+          named: !!(entity.data && entity.data.namedLaneContactId),
+          playerTeam,
+          state,
+        });
       }
 
-      // target ring
-      if (e.id === targetId) {
-        drawTargetRing(g, bx, by, C);
+      if (entity.id === targetId) drawTargetRing(g, x, y, center);
+    }
+
+    for (const mark of hostileMarks.slice(0, MAX_SEMANTIC_HOSTILES)) {
+      const selected = mark.entity.id === targetId;
+      drawHostileGlyph(
+        g,
+        mark.projected.x,
+        mark.projected.y,
+        entityHeading(mark.entity),
+        { selected, capital: isCapitalContact(mark.entity) },
+      );
+      if (selected || !swarmQuiet) {
+        drawContactThreatPulse(
+          g,
+          mark.projected.x,
+          mark.projected.y,
+          selected,
+          now,
+          reducedMotion,
+        );
+      }
+      if (selected) drawTargetRing(g, mark.projected.x, mark.projected.y, center);
+    }
+
+    if (nearestOffRangeHostile) {
+      const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics);
+      if (projected) {
+        drawHostileEdgeMarker(g, projected.x, projected.y, projected.angle, nearestOffRangeHostile.id === targetId);
       }
     }
 
-    // Stations last: distinctive cyan hex / violet gate ring, including off-range edge markers.
-    for (let i = 0; i < stationPass.length; i++) {
-      const e = stationPass[i];
-      if (!e || !e.pos) continue;
-      const dx = e.pos.x - px, dz = e.pos.z - pz;
-      const distSq = dx * dx + dz * dz;
-      const isGate = !!(e.data && e.data.isGate);
-      const col = blipColor(e, playerTeam, cbMode, state);
-      let bx, by, off = false, offAngle = 0;
-
-      if (distSq > rangeSq) {
-        off = true;
-        offAngle = Math.atan2(-dz, -dx);
-        bx = C + Math.cos(offAngle) * R;
-        by = C + Math.sin(offAngle) * R;
+    for (const mark of infrastructureMarks.slice(0, MAX_SEMANTIC_INFRASTRUCTURE)) {
+      if (mark.gate) {
+        drawGateGlyph(g, mark.projected.x, mark.projected.y, {
+          offRange: mark.projected.offRange,
+          angle: mark.projected.angle,
+        });
       } else {
-        bx = C - dx * radarScale;
-        by = C - dz * radarScale;
+        drawStationGlyph(g, mark.projected.x, mark.projected.y, {
+          offRange: mark.projected.offRange,
+          angle: mark.projected.angle,
+        });
       }
-
-      if (off) {
-        // All docks/gates get an edge pip (not only the nearest) — navigation affordance.
-        glow(g, col, expanded ? 6 : 3);
-        drawStationEdgeMarker(g, bx, by, offAngle, col, isGate);
-        noGlow(g);
-        continue;
-      }
-
-      // Soft halo only — stroke edges stay sharp (imageSmoothing off + limited blur).
-      glow(g, col, expanded ? 8 : 3.5);
-      drawStationBlip(g, bx, by, col, isGate);
-      noGlow(g);
-
-      if (e.id === targetId) {
-        drawTargetRing(g, bx, by, C);
+      if (mark.entity.id === targetId && !mark.projected.offRange) {
+        drawTargetRing(g, mark.projected.x, mark.projected.y, center);
       }
     }
 
-    // ── scan pings ────────────────────────────────────────────────────────────────────────
     const sectorId = state.world && state.world.currentSectorId;
     const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (Array.isArray(pings) || list.some(e => e.alive && e.data && e.data.pingedUntil > state.simTime)) {
+    if (Array.isArray(pings) || contacts.some((entity) => (
+      entity && entity.alive && entity.data && entity.data.pingedUntil > state.simTime
+    ))) {
       g.save();
-      g.font = 'bold 9px monospace';
+      g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.strokeStyle = '#ffd24a';
       g.lineWidth = 1;
-      const pulse = 0.5 + 0.5 * Math.sin(now * 0.015);
-      g.globalAlpha = 0.4 + 0.6 * pulse;
-      
+      const pulse = reducedMotion ? 0.7 : 0.5 + 0.5 * Math.sin(now * 0.015);
+      g.globalAlpha = 0.5 + 0.5 * pulse;
+
       if (Array.isArray(pings)) {
         for (const ping of pings) {
           if (!ping || !ping.pos) continue;
-          const dx = ping.pos.x - px, dz = ping.pos.z - pz;
-          const distSq = dx * dx + dz * dz;
-          if (distSq > rangeSq) continue;
-          const bx = C - dx * radarScale;
-          const by = C - dz * radarScale;
-          g.strokeText('?', bx, by);
+          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics);
+          if (!projected || projected.offRange) continue;
+          g.strokeText('?', projected.x, projected.y);
         }
       }
-      for (let i = 0; i < list.length; i++) {
-        const e = list[i];
-        if (!e || !e.pos || !e.alive || e === p) continue;
-        if (e.data && e.data.pingedUntil > (state.simTime || 0)) {
-          const dx = e.pos.x - px, dz = e.pos.z - pz;
-          const distSq = dx * dx + dz * dz;
-          if (distSq > rangeSq) continue;
-          const bx = C - dx * radarScale;
-          const by = C - dz * radarScale;
-          g.strokeText('?', bx, by);
-        }
+      for (const entity of contacts) {
+        if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+        if (!(entity.data && entity.data.pingedUntil > (state.simTime || 0))) continue;
+        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
+        if (!projected || projected.offRange) continue;
+        g.strokeText('?', projected.x, projected.y);
       }
       g.restore();
     }
 
-    // ── intercept lead marker (spec §9.3) ────────────────────────────────────────────────
-    // Shows where to aim to hit the locked target, accounting for both ships' velocity. This is the
-    // target-centric combat cue that makes maneuvering matter more than pixel-perfect free aim.
     if (targetId) {
-      const tgt = state.entities.get(targetId);
-      if (tgt && tgt.alive) {
-        const projSpeed = playerProjSpeed(p);
-        const lead = solveIntercept(p.pos, p.vel || { x: 0, z: 0 }, tgt.pos, tgt.vel || { x: 0, z: 0 }, projSpeed);
+      const target = state.entities.get(targetId);
+      if (target && target.alive && target.pos) {
+        const lead = solveIntercept(
+          player.pos,
+          player.vel || { x: 0, z: 0 },
+          target.pos,
+          target.vel || { x: 0, z: 0 },
+          playerProjSpeed(player),
+        );
         if (lead) {
-          const ldx = lead.aimPoint.x - px, ldz = lead.aimPoint.z - pz;
-          const ldistSq = ldx * ldx + ldz * ldz;
-          // Project the lead point the same way blips are (both axes negated, see header note).
-          let lbx, lby, offR = false;
-          if (ldistSq > rangeSq) {
-            offR = true;
-            const la = Math.atan2(-ldz, -ldx);
-            lbx = C + Math.cos(la) * R; lby = C + Math.sin(la) * R;
-          } else {
-            lbx = C - ldx * radarScale; lby = C - ldz * radarScale;
-          }
-          g.save();
-          g.strokeStyle = 'rgba(255,220,90,0.9)';
-          g.fillStyle = 'rgba(255,220,90,0.9)';
-          g.lineWidth = 1.1;
-          // Small crosshair + tick line from the target ring to the lead point.
-          g.beginPath(); g.moveTo(lbx - 3.2, lby); g.lineTo(lbx + 3.2, lby);
-          g.moveTo(lbx, lby - 3.2); g.lineTo(lbx, lby + 3.2); g.stroke();
-          if (!offR) {
-            g.setLineDash([2, 2]);
+          const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics);
+          if (leadPoint) {
+            g.save();
+            g.strokeStyle = 'rgba(255,220,90,0.92)';
+            g.lineWidth = 1.2;
             g.beginPath();
-            const tdx = tgt.pos.x - px, tdz = tgt.pos.z - pz;
-            const tbx = C - tdx * radarScale, tby = C - tdz * radarScale;
-            g.moveTo(tbx, tby); g.lineTo(lbx, lby); g.stroke();
-            g.setLineDash([]);
+            g.moveTo(leadPoint.x - 3.5, leadPoint.y);
+            g.lineTo(leadPoint.x + 3.5, leadPoint.y);
+            g.moveTo(leadPoint.x, leadPoint.y - 3.5);
+            g.lineTo(leadPoint.x, leadPoint.y + 3.5);
+            g.stroke();
+            if (!leadPoint.offRange) {
+              const targetPoint = projectRadarPoint(player.pos, target.pos, range, metrics);
+              if (targetPoint) {
+                g.setLineDash([2, 2]);
+                g.beginPath();
+                g.moveTo(targetPoint.x, targetPoint.y);
+                g.lineTo(leadPoint.x, leadPoint.y);
+                g.stroke();
+                g.setLineDash([]);
+              }
+            }
+            g.restore();
           }
-          g.restore();
         }
       }
     }
 
-    // ── waypoint / objective marker ───────────────────────────────────────────────────────
-    const wp  = state.nav && state.nav.waypoint;
-    const pos = resolveWaypointPresentationPosition(state, wp);
-    const wpLabel = waypointLabel(wp);
-    const objectiveKeyText = wp ? `◆ AMBER DIAMOND · ${wpLabel}` : '';
-    if (objectiveKey.textContent !== objectiveKeyText) objectiveKey.textContent = objectiveKeyText;
-    const objectiveHidden = !wp;
-    if (objectiveKey._sfHidden !== objectiveHidden) {
-      objectiveKey._sfHidden = objectiveHidden;
-      objectiveKey.hidden = objectiveHidden;
-    }
-    if (wp && !pos) {
-      g.save();
-      const x = C, y = C - R + 18;
-      g.strokeStyle = COL.objective;
-      g.fillStyle = COL.objective;
-      glow(g, COL.objective, 8);
-      g.beginPath();
-      g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath();
-      g.stroke();
-      noGlow(g);
-      g.restore();
-      drawWaypointLabel(g, wpLabel, x, y, { size: SIZE, center: C, radius: R });
-    } else if (pos) {
-      const dx = pos.x - px, dz = pos.z - pz;
-      const distSq = dx * dx + dz * dz;
-      let bx, by;
-      const off = distSq > rangeSq;
-      if (off) {
-        const a = Math.atan2(-dz, -dx);
-        bx = C + Math.cos(a) * R; by = C + Math.sin(a) * R;
-        drawWaypointEdgeArrow(g, bx, by, a, wpLabel, C, R, SIZE);
-      } else {
-        bx = C - dx * radarScale; by = C - dz * radarScale;
-        drawWaypointDiamond(g, bx, by, wpLabel, C, R, SIZE);
-      }
-    }
+    const waypoint = state.nav && state.nav.waypoint;
+    const waypointPos = resolveWaypointPresentationPosition(state, waypoint);
+    const label = waypointLabel(waypoint);
+    const cue = waypoint
+      ? (
+        waypointPos
+          ? planObjectiveCue({
+            playerPos: player.pos,
+            waypointPos,
+            range,
+            hostileCount,
+            contactCount: salientContactCount,
+            expanded,
+            label,
+          })
+          : planUnresolvedObjectiveCue({ expanded, label })
+      )
+      : null;
 
-    // ── claim beacons ─────────────────────────────────────────────────────────────────────
-    // Drawn straight from state.beacons (not the contact list) so a deployed beacon always shows a
-    // pulsing amber marker regardless of how the entity index buckets it.
-    const beaconList = state.beacons;
-    if (Array.isArray(beaconList) && beaconList.length) {
-      const bpulse = 0.5 + 0.5 * Math.sin(now * 0.006);
+    drawObjectiveCorridor(g, cue);
+    if (cue) {
+      if (cue.offRange) drawWaypointEdgeArrow(g, cue, now, reducedMotion);
+      else drawWaypointDiamond(g, cue, now, reducedMotion);
+      if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
+    }
+    updateObjectiveKey(waypoint, cue);
+
+    const beacons = state.beacons;
+    if (Array.isArray(beacons) && beacons.length) {
+      const beaconPulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.006);
       g.save();
+      g.strokeStyle = '#ffd24a';
+      g.fillStyle = '#ffd24a';
       g.lineWidth = 1.2;
-      for (const b of beaconList) {
-        if (!b || b.alive === false) continue;
-        const dx = b.x - px, dz = b.z - pz;
-        if (dx * dx + dz * dz > rangeSq) continue;
-        const bx = C - dx * radarScale, by = C - dz * radarScale;
-        glow(g, '#ffd24a', 6 + 4 * bpulse);
-        g.strokeStyle = 'rgba(255,210,74,' + (0.45 + 0.45 * bpulse).toFixed(2) + ')';
-        g.beginPath(); g.arc(bx, by, 4 + 2 * bpulse, 0, Math.PI * 2); g.stroke();
-        g.fillStyle = 'rgba(255,210,74,0.9)';
-        g.beginPath(); g.moveTo(bx, by - 2.4); g.lineTo(bx + 2.4, by); g.lineTo(bx, by + 2.4); g.lineTo(bx - 2.4, by); g.closePath(); g.fill();
-        noGlow(g);
+      for (const beacon of beacons) {
+        if (!beacon || beacon.alive === false) continue;
+        const projected = projectRadarPoint(
+          player.pos,
+          { x: beacon.x, z: beacon.z },
+          range,
+          metrics,
+        );
+        if (!projected || projected.offRange) continue;
+        g.globalAlpha = 0.5 + beaconPulse * 0.4;
+        g.beginPath();
+        g.arc(projected.x, projected.y, 4 + beaconPulse * 2, 0, Math.PI * 2);
+        g.stroke();
+        g.beginPath();
+        g.moveTo(projected.x, projected.y - 2.5);
+        g.lineTo(projected.x + 2.5, projected.y);
+        g.lineTo(projected.x, projected.y + 2.5);
+        g.lineTo(projected.x - 2.5, projected.y);
+        g.closePath();
+        g.fill();
       }
       g.restore();
     }
 
-    // ── player marker ─────────────────────────────────────────────────────────────────────
-    // rot + π projects the nose onto canvas in the same direction the player faces on screen.
-    g.save(); g.translate(C, C); g.rotate(Math.PI + p.rot);
-    // forward FOV cone (~30-degree spread, faint)
-    g.fillStyle = 'rgba(0,240,255,0.07)';
-    g.beginPath(); g.moveTo(6, 0); g.lineTo(24, -5.5); g.lineTo(24, 5.5); g.closePath(); g.fill();
-    // player triangle with strong glow
-    glow(g, COL.player, 12);
-    g.fillStyle = COL.player;
-    g.beginPath(); g.moveTo(6, 0); g.lineTo(-5, -4); g.lineTo(-5, 4); g.closePath(); g.fill();
-    noGlow(g);
-    g.restore();
+    drawPlayerHull(g, center, center, player.rot, { label: !expanded });
+    drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
+    drawRangePlate(g, metrics, range, expanded);
+
+    canvas.setAttribute(
+      'aria-label',
+      waypoint
+        ? `Local tactical radar. You are the cyan centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
+        : 'Local tactical radar. You are the cyan centre hull. Hostiles are red chevrons, stations are cyan berth hexagons, and gates are violet double rings.',
+    );
   }
 
-  return { el: wrap, draw, invalidate: markContactsDirty };
+  function invalidate() {
+    markContactsDirty();
+  }
+
+  function destroy() {
+    dial.removeEventListener('click', onDialClick);
+    for (const unsubscribe of unsubscribers.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    try { parityTeardown(); } catch (_) {}
+    trailMap.clear();
+  }
+
+  return { el: wrap, draw, invalidate, destroy };
 }
 
-// ── static background (pre-rendered once per size change) ────────────────────────────────────
-// Tactical-Visor §3D: the radar reads as a raw projection, not an enclosed dial. No filled panel
-// backdrop — instead a faint top-down Cartesian grid + subtle range rings, all clipped to the
-// circle. A very light dark wash only at the center keeps blips legible over bright nebulae.
-function drawBackground(g, C, R) {
-  g.clearRect(0, 0, C * 2, C * 2);
-
-  // Soft central wash (legibility against bright backgrounds) — slightly denser than the old
-  // wash so cyan station hexes and red hostiles separate from starfield/nebula, still no hard disc.
-  const grad = g.createRadialGradient(C, C, 0, C, C, R);
-  grad.addColorStop(0,   'rgba(3,18,28,0.62)');
-  grad.addColorStop(0.68, 'rgba(4,20,32,0.30)');
-  grad.addColorStop(1,   'rgba(10,48,58,0.10)');
-  g.fillStyle = grad;
-  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.fill();
-
-  // Clip remaining grid art to the circle so the Cartesian lines fade at the rim, not as a square.
+function drawContactThreatPulse(g, x, y, selected, now, reducedMotion) {
+  const phase = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
   g.save();
-  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
-
-  // Cartesian grid — a bit more structure so distance/bearing reads without a full dial bezel.
-  g.strokeStyle = 'rgba(57,208,255,0.11)';
-  g.lineWidth   = 1;
-  const step = R / 3;
-  for (let d = step; d <= R; d += step) {
-    g.beginPath(); g.moveTo(C - d, C - R); g.lineTo(C - d, C + R);
-    g.moveTo(C + d, C - R); g.lineTo(C + d, C + R);
-    g.moveTo(C - R, C - d); g.lineTo(C + R, C - d);
-    g.moveTo(C - R, C + d); g.lineTo(C + R, C + d); g.stroke();
-  }
-
-  // concentric range rings at 25 / 50 / 100% — outer ring slightly brighter
-  for (const f of [0.25, 0.5, 1.0]) {
-    g.strokeStyle = f === 1.0 ? 'rgba(0,240,255,0.18)' : 'rgba(0,240,255,0.09)';
-    g.lineWidth   = f === 1.0 ? 1.25 : 1;
-    g.beginPath(); g.arc(C, C, R * f, 0, Math.PI * 2); g.stroke();
-  }
-  // crosshair axes
-  g.strokeStyle = 'rgba(0,240,255,0.12)';
-  g.beginPath(); g.moveTo(C, C - R); g.lineTo(C, C + R); g.moveTo(C - R, C); g.lineTo(C + R, C); g.stroke();
+  g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
+  g.globalAlpha = selected ? 0.75 : 0.28 + 0.28 * phase;
+  g.lineWidth = selected ? 1.5 : 1;
+  g.beginPath();
+  g.arc(x, y, selected ? 9.5 : 8 + phase * 2, 0, Math.PI * 2);
+  g.stroke();
   g.restore();
 }
