@@ -168,14 +168,15 @@ const TRAIL_VERT = /* glsl */`
     // Collapse both rows surrounding a segment break. This prevents the fixed index buffer from
     // drawing a bridge across a teleport or a period when the engine was not emitting.
     float segmentEdge = 1.0 - max(1.0 - prevSame, 1.0 - nextSame);
-    float active = liveMask(aSample) * segmentEdge;
-    radius *= active;
+    // "active" is a reserved word in GLSL ES; a driver may refuse to compile it.
+    float liveFactor = liveMask(aSample) * segmentEdge;
+    radius *= liveFactor;
 
     vec3 center = p + ref * (cos(theta) * radius) + up * (sin(theta) * radius);
 
     float halfWidth = mix(uWidthHead, uWidthTail, 0.18 + staticTexture * 0.66) * 0.5;
     halfWidth *= 0.68 + sheetSeed * 0.64;
-    halfWidth *= active;
+    halfWidth *= liveFactor;
 
     float twist = aStrand * 2.399 + worldSeed * 1.3 + segment * 0.071;
     vec3 wide = normalize(ref * cos(twist) + up * sin(twist));
