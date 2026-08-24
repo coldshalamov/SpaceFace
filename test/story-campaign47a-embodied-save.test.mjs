@@ -152,7 +152,7 @@ function contractSnapshot(state) {
   } : null;
 }
 
-test('save v11 remains the live carrier', () => assert.equal(CURRENT_VERSION, 11));
+test('save v14 remains the live carrier', () => assert.equal(CURRENT_VERSION, 14));
 
 test('B1 authored contract survives Continue with authority metadata', () => {
   const h = harness();
@@ -199,11 +199,22 @@ test('B7 pending ending survives Continue without applying a choice', () => {
   h.state.player.credits = 120_000;
   h.state.factions.faction_mts.rep = 60;
   h.missions._checkStoryGates();
-  h.story._maybeOfferEndgame();
+  // Live offer gate: Deep Reach operation + Ashfall desk, not credits in Helios.
+  h.state.story.flags.deep_reach_operation_complete = true;
+  h.state.world.currentSectorId = 'sector_ashfall_reach';
+  h.bus.emit('dock:docked', { stationId: 'station_ashcache' });
+  if (!h.state.story.endgameOffered) h.story._maybeOfferEndgame();
+  assert.equal(h.state.story.flags.endgame, true);
+  assert.equal(h.state.story.flags.deep_reach_operation_complete, true);
+  assert.equal(h.state.story.flags.ashfall_visited, true);
+  assert.equal(h.state.story.flags.deep_reach_ashfall_docked, true);
   assert.equal(h.state.story.endgameOffered, true);
   assert.equal(h.state.story.endgameChoice, null);
   const next = roundTrip(h);
   assert.equal(next.state.story.beatIndex, 7);
+  assert.equal(next.state.story.flags.deep_reach_operation_complete, true);
+  assert.equal(next.state.story.flags.ashfall_visited, true);
+  assert.equal(next.state.story.flags.deep_reach_ashfall_docked, true);
   assert.equal(next.state.story.endgameOffered, true);
   assert.equal(next.state.story.endgameChoice, null);
 });

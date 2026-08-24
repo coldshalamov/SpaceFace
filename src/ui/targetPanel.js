@@ -72,7 +72,7 @@ const ROLE_LABEL = {
   escort: 'Escort', smuggler: 'Smuggler', pirate: 'Raider', rescue: 'Rescue',
   tanker: 'Tanker', prospector: 'Prospector', sweeper: 'Sweeper', tug: 'Tug',
   shuttle: 'Shuttle', surveyor: 'Survey', salvor: 'Salvor', tender: 'Tender',
-  ore_carrier: 'Ore Barge', express: 'Liner',
+  ore_carrier: 'Ore Barge', express: 'Liner', customs: 'Customs',
 };
 
 const GIMMICK_LABELS = {

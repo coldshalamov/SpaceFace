@@ -40,7 +40,7 @@ export const FREIGHT_MARKET_KEYS_FALLBACK = Object.freeze([
   'cmdty_scrap_metal',
 ]);
 
-/** Roles that haul tradeable cargo (match traffic.js trading roles). */
+/** Roles that haul tradeable cargo that settles as station stock on arrival/loss. */
 export const FREIGHT_TRADING_ROLES = Object.freeze([
   'hauler',
   'courier',
@@ -48,6 +48,7 @@ export const FREIGHT_TRADING_ROLES = Object.freeze([
   'ore_carrier',
   'smuggler',
   'express',
+  'shuttle',
 ]);
 
 const ROLE_CAPACITY = Object.freeze({
@@ -57,6 +58,7 @@ const ROLE_CAPACITY = Object.freeze({
   ore_carrier: 36,
   smuggler: 14,
   express: 28,
+  shuttle: 16,
   patrol: 0,
   escort: 0,
   pirate: 0,
