@@ -5,6 +5,9 @@
 // and photographs: the fresh cutaway, the build ghost with its contact ring, the running site,
 // and the flight-world payoff (exterior relay + courier launch). Evidence only — assertions live
 // in test/asteroid-sites.test.mjs. Output: .devshots/asteroid-works/.
+//
+// PQ-131 art units: node scripts/capture-asteroid-works.mjs --part=<id>
+// writes works-part-<id>-work.png and works-part-<id>-site.png at 1920×1080.
 import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer as createNetServer } from 'node:net';
@@ -31,6 +34,122 @@ let server = null;
 let browser = null;
 let issues = null;
 const failures = [];
+
+// PQ-131.00 scaffold for later art units (.01 rover onward). Controller-run.
+//   node scripts/capture-asteroid-works.mjs --part=drill_platform
+// Opens the mine, loads that id through loadWorksPart, and writes work-register
+// (120 px/cell) plus site-register (19 px/cell) stills. Do not treat these as
+// review stills until the unit wires the authored asset and seats it.
+const PART_ID = (process.argv.find((arg) => arg.startsWith('--part=')) || '').slice('--part='.length)
+  || null;
+
+async function captureAuthoredWorksPart(partId) {
+  // Later art units review at play size: 1920×1080 → 120 px/cell work, 19 px/cell site.
+  const partViewport = { width: 1920, height: 1080 };
+  server = await startFreshServer();
+  const executablePath = findSystemBrowser();
+  browser = await chromium.launch(executablePath ? {
+    headless: false,
+    executablePath,
+    args: ['--no-first-run', '--no-default-browser-check', '--disable-extensions',
+      `--window-size=${partViewport.width},${partViewport.height}`, '--force-device-scale-factor=1'],
+  } : { headless: true });
+  const page = await browser.newPage({ viewport: partViewport, deviceScaleFactor: 1 });
+  issues = collectPageIssues(page);
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.setItem('sf.cinematicSeen', '1');
+      localStorage.setItem('sf.firstRunIntroSeen', '1');
+    } catch (_) {}
+  });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await page.evaluate(async () => {
+    const ready = window.SF.state.render && window.SF.state.render.authoredPartLibraryReady;
+    if (ready && typeof ready.then === 'function') await ready.catch(() => {});
+  });
+  await page.evaluate(() => {
+    window.SF.bus.emit('game:new', { name: 'Works Part Capture', difficulty: 'standard' });
+  });
+  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120000 });
+  await page.waitForTimeout(1500);
+
+  const opened = await page.evaluate(() => {
+    const sf = window.SF;
+    const st = sf.state;
+    const cargo = st.player.cargo;
+    cargo.capVolume = Math.max(cargo.capVolume, 400);
+    for (const [k, q] of Object.entries({
+      cmdty_regocrete: 30, cmdty_control_unit: 8, cmdty_refined_metals: 10,
+      cmdty_electronics: 6, cmdty_purified_silica: 6,
+    })) cargo.items[k] = (cargo.items[k] || 0) + q;
+    const ast = st.entityList.find((e) => e && e.alive !== false && e.type === 'asteroid'
+      && e.data && (e.data.yieldU || 0) > 10);
+    if (!ast) return { ok: false };
+    st.ui.pendingDrillAsteroidId = ast.id;
+    sf.ctx.screenManager.pushScreen('drill');
+    return { ok: true, asteroidId: ast.id };
+  });
+  if (!opened.ok) throw new Error('no live asteroid found for the works-part capture');
+  await page.waitForFunction(() => !!window.SF.state.drill, null, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.ast-canvas');
+    return !!(canvas && canvas.__ast3d && typeof canvas.__ast3d.loadWorksPart === 'function');
+  }, null, { timeout: 15000 });
+  await page.waitForTimeout(800);
+
+  const mounted = await page.evaluate(async (id) => {
+    const h = document.querySelector('.ast-canvas').__ast3d;
+    const result = id === 'drill_platform' && typeof h.mountWorksProof === 'function'
+      ? await h.mountWorksProof()
+      : await h.loadWorksPart(id);
+    if (h.worksProofCell) h.frameCell(h.worksProofCell.col, h.worksProofCell.row);
+    h.setZoomRegister('work');
+    return result;
+  }, partId);
+  if (!mounted || !mounted.ok) {
+    throw new Error(`loadWorksPart(${partId}) failed: ${JSON.stringify(mounted)}`);
+  }
+  await page.waitForTimeout(400);
+  const workName = `works-part-${partId}-work.png`;
+  await page.screenshot({ path: join(OUT_DIR, workName), type: 'png' });
+
+  await page.evaluate(() => {
+    document.querySelector('.ast-canvas').__ast3d.setZoomRegister('site');
+  });
+  await page.waitForTimeout(400);
+  const siteName = `works-part-${partId}-site.png`;
+  await page.screenshot({ path: join(OUT_DIR, siteName), type: 'png' });
+
+  console.log(`works-part ${partId} mounted`, JSON.stringify({
+    id: mounted.id,
+    lod: mounted.lod,
+    colourSpace: mounted.colourSpace,
+    hooks: mounted.hooks,
+    work: workName,
+    site: siteName,
+  }, null, 2));
+}
+
+if (PART_ID) {
+  try {
+    await captureAuthoredWorksPart(PART_ID);
+  } catch (err) {
+    failures.push(err && err.message ? err.message : String(err));
+    try {
+      const errors = issues ? issues.errorIssues() : [];
+      if (errors.length) failures.push('page errors: ' + errors.map((e) => e.text || e).join(' | '));
+    } catch (_) {}
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    if (server && server.kill) await server.kill().catch(() => {});
+  }
+  if (failures.length) {
+    console.error('capture-asteroid-works --part FAIL:\n' + failures.join('\n'));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 try {
   server = await startFreshServer();

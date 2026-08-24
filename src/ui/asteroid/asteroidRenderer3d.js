@@ -4939,6 +4939,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     get worksProofMounted() { return !!worksProofGroup; },
     get worksHostElement() { return worksHost; },
     mountWorksProof,
+    async loadWorksPart(id, options = {}) {
+      if (worksTearingDown || disposed || glTeardownDone) {
+        return { ok: false, reason: 'tearing-down' };
+      }
+      const loader = ensureWorksLoader();
+      if (!loader) return { ok: false, reason: 'no-loader' };
+      const group = await loader.loadWorksPart(id, options);
+      if (worksTearingDown || disposed || glTeardownDone) {
+        if (group) loader.releaseWorksPart(group);
+        return { ok: false, reason: 'tearing-down' };
+      }
+      if (!group) return { ok: false, reason: 'load-null', stats: loader.stats() };
+      if (!group.parent) scene.add(group);
+      const hookNames = group.userData.worksHooks || {};
+      const hooks = {};
+      for (const name of Object.keys(hookNames)) hooks[name] = hookNames[name] ? name : null;
+      return {
+        ok: true,
+        id,
+        stats: loader.stats(),
+        hooks,
+        colourSpace: inspectWorksColourSpace(group),
+        nodeLod: group.userData.worksNodeLod || null,
+        lod: inspectWorksLod(group),
+      };
+    },
     releaseWorksProof() {
       unmountWorksProof({ forget: true });
       return worksLoader ? worksLoader.stats() : null;

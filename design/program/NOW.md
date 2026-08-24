@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-24
-baseCommit: 9d3a50a2a8ca743a28ba32b31ec6c82463a5edee
+baseCommit: 1667de421d95eafe44652d8484bcbba3fe39c84c
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-131.00 works loader | fable-campaign-20260824 lane WORKSLOADER | MUTATING | `src/ui/asteroid/asteroidRenderer3d.js`, `src/render/assetLoader.js` + `partsLibrary.js` (additive), new works camera py, capture script, one test | review, GPU proof, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 

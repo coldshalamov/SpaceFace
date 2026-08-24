@@ -50,6 +50,44 @@ function applyLodVisibility(group, register) {
   });
 }
 
+function collectMaterialTextures(material, into) {
+  if (!material) return;
+  for (const key in material) {
+    if (!Object.prototype.hasOwnProperty.call(material, key)) continue;
+    const value = material[key];
+    if (value && value.isTexture && !value.isRenderTargetTexture) into.add(value);
+  }
+}
+
+function collectGroupGpuResources(group, into) {
+  if (!group) return;
+  const recorded = group.userData && group.userData.worksGpuResources;
+  if (Array.isArray(recorded)) {
+    for (let i = 0; i < recorded.length; i++) if (recorded[i]) into.add(recorded[i]);
+  }
+  group.traverse((obj) => {
+    if (obj.geometry) into.add(obj.geometry);
+    const mats = Array.isArray(obj.material) ? obj.material : (obj.material ? [obj.material] : []);
+    for (let i = 0; i < mats.length; i++) {
+      const mat = mats[i];
+      if (!mat) continue;
+      into.add(mat);
+      collectMaterialTextures(mat, into);
+    }
+  });
+}
+
+// Residency no-ops resource.dispose until its refcount hits zero. Three.js only decrements
+// renderer.info from the original disposer, and only after first draw. Call that disposer
+// so GPU-registered geometry cannot outlive this loader.
+function disposeRendererBoundResource(resource) {
+  if (!resource || typeof resource.dispose !== 'function') return;
+  const proto = Object.getPrototypeOf(resource);
+  const inherited = proto && typeof proto.dispose === 'function' ? proto.dispose : null;
+  if (inherited && resource.dispose !== inherited) inherited.call(resource);
+  else resource.dispose();
+}
+
 function instantiateBlueprint(blueprint, hookNames) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
@@ -58,6 +96,7 @@ function instantiateBlueprint(blueprint, hookNames) {
   const tagSeen = Object.create(null);
   const tagsPresent = [];
   let untagged = 0;
+  const gpuResources = new Set();
 
   for (const prim of blueprint.primitives) {
     const mesh = new THREE.Mesh(prim.geometry, prim.material);
@@ -73,11 +112,15 @@ function instantiateBlueprint(blueprint, hookNames) {
       tagSeen[lod] = true;
       tagsPresent.push(lod);
     }
+    if (prim.geometry) gpuResources.add(prim.geometry);
+    if (prim.material) gpuResources.add(prim.material);
+    collectMaterialTextures(prim.material, gpuResources);
     root.add(mesh);
   }
   tagsPresent.sort();
   root.userData.worksLodTags = tagsPresent;
   root.userData.worksUntaggedMeshes = untagged;
+  root.userData.worksGpuResources = [...gpuResources];
 
   for (const marker of blueprint.markers || []) {
     const node = new THREE.Object3D();
@@ -102,7 +145,6 @@ function instantiateBlueprint(blueprint, hookNames) {
 function releaseClone(group) {
   if (!group) return;
   if (group.parent) group.parent.remove(group);
-  // Graph only: geometries and materials stay on the residency-managed blueprint.
   const stack = [group];
   while (stack.length) {
     const node = stack.pop();
@@ -112,10 +154,11 @@ function releaseClone(group) {
   }
 }
 
-export function createWorksPartLoader({ renderer, registry } = {}) {
+export function createWorksPartLoader({ renderer, registry, lease: injectedLease } = {}) {
   if (!renderer) throw new Error('[worksPartLoader] renderer is required');
   const table = registry || WORKS_PARTS;
-  const lease = createAuthoredAssetLease(renderer, {
+  // Production always binds createAuthoredAssetLease (shared KTX2). injectedLease is the headless proof seam.
+  const lease = injectedLease || createAuthoredAssetLease(renderer, {
     ownerId: 'asteroid-works',
     role: 'preview',
   });
@@ -212,8 +255,11 @@ export function createWorksPartLoader({ renderer, registry } = {}) {
   function dispose(reason = 'works-screen-exit') {
     if (closed) return 0;
     closed = true;
+    const gpu = new Set();
+    for (let i = 0; i < live.length; i++) collectGroupGpuResources(live[i], gpu);
     while (live.length) releaseWorksPart(live[live.length - 1]);
     lease.release(reason);
+    for (const resource of gpu) disposeRendererBoundResource(resource);
     return disposeAuthoredAssetRuntime(renderer);
   }
 

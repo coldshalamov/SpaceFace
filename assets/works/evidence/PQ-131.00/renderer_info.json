@@ -316,10 +316,10 @@
     },
     "mounted": {
       "pixels": 71824,
-      "nonBackground": 71442,
-      "lit": 70495,
-      "meanLuma": 115.72808683407123,
-      "meanLitLuma": 117.0615935740081,
+      "nonBackground": 71115,
+      "lit": 69140,
+      "meanLuma": 115.2192016705298,
+      "meanLitLuma": 118.02774279721878,
       "readX": 826,
       "readY": 386,
       "readW": 268,
@@ -327,30 +327,30 @@
     },
     "unmounted": {
       "pixels": 71824,
-      "nonBackground": 71335,
-      "lit": 69985,
-      "meanLuma": 94.51614163874565,
-      "meanLitLuma": 96.02652648996076,
+      "nonBackground": 70867,
+      "lit": 68223,
+      "meanLuma": 94.0729004332063,
+      "meanLitLuma": 97.06363067000878,
       "readX": 826,
       "readY": 386,
       "readW": 268,
       "readH": 268
     },
     "delta": {
-      "changed": 27569,
-      "meanAbs": 195.6535964307737,
-      "mountedLitChanged": 27562,
-      "meanMountedLuma": 151.58488303530075
+      "changed": 27573,
+      "meanAbs": 194.1973307220832,
+      "mountedLitChanged": 27566,
+      "meanMountedLuma": 151.4889351104419
     }
   },
   "scenePass": {
     "mounted": {
-      "triangles": 73176,
-      "calls": 127
+      "triangles": 56378,
+      "calls": 116
     },
     "unmounted": {
-      "triangles": 71168,
-      "calls": 119
+      "triangles": 54370,
+      "calls": 108
     }
   },
   "mask": {
@@ -364,85 +364,85 @@
     "real": {
       "stats": {
         "count": 23297,
-        "meanLuma": 151.8367440786439,
+        "meanLuma": 151.75593425763722,
         "medianLuma": 143.3864,
-        "stdevLuma": 21.667430540927924,
-        "meanR": 204.67983002103276,
-        "meanG": 147.561359831738,
-        "meanB": 38.586255741082546,
+        "stdevLuma": 21.550512812486836,
+        "meanR": 204.59020474739236,
+        "meanG": 147.4614757264884,
+        "meanB": 38.720350259690086,
         "p05Luma": 142.599,
         "p95Luma": 194.9596
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 96.7545545692564,
-        "medianLuma": 103.24239999999999,
-        "stdevLuma": 31.75837092149464,
-        "meanR": 108.56702579731297,
-        "meanG": 95.09868223376401,
-        "meanB": 78.37434004378247,
-        "p05Luma": 36.6418,
-        "p95Luma": 136.098
+        "meanLuma": 97.5481234407844,
+        "medianLuma": 99.73179999999999,
+        "stdevLuma": 40.62396388059671,
+        "meanR": 111.9860067819891,
+        "meanG": 95.78495085204104,
+        "meanB": 72.50002146199081,
+        "p05Luma": 29.331799999999998,
+        "p95Luma": 166.4064
       },
       "delta": {
-        "changed": 23279,
-        "changedFrac": 0.9992273683306864
+        "changed": 23281,
+        "changedFrac": 0.9993132162939434
       }
     },
     "black": {
       "stats": {
         "count": 23297,
-        "meanLuma": 0.002241799373309868,
+        "meanLuma": 0.6500759239387045,
         "medianLuma": 0,
-        "stdevLuma": 0.06390168852442728,
-        "meanR": 0.0027471348242262953,
-        "meanG": 0.0023178950079409365,
-        "meanB": 0,
+        "stdevLuma": 7.804210140453528,
+        "meanR": 0.7297935356483668,
+        "meanG": 0.6690561016439885,
+        "meanB": 0.22732540670472592,
         "p05Luma": 0,
         "p95Luma": 0
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 96.7534982186533,
-        "medianLuma": 103.24239999999999,
-        "stdevLuma": 31.758770364367397,
-        "meanR": 108.56556638193759,
-        "meanG": 95.09765205820491,
-        "meanB": 78.37421127183758,
-        "p05Luma": 36.6418,
-        "p95Luma": 136.098
+        "meanLuma": 97.54841128900519,
+        "medianLuma": 99.73179999999999,
+        "stdevLuma": 40.62455911547058,
+        "meanR": 111.98643602180539,
+        "meanG": 95.78520839593081,
+        "meanB": 72.50019315791732,
+        "p05Luma": 29.331799999999998,
+        "p95Luma": 166.4064
       },
       "delta": {
-        "changed": 23224,
-        "changedFrac": 0.9968665493411168
+        "changed": 23196,
+        "changedFrac": 0.9956646778555179
       }
     },
     "flat": {
       "stats": {
         "count": 23297,
-        "meanLuma": 159,
+        "meanLuma": 158.98453291840144,
         "medianLuma": 159,
-        "stdevLuma": 0,
-        "meanR": 159,
-        "meanG": 159,
-        "meanB": 159,
+        "stdevLuma": 0.8737553262027294,
+        "meanR": 159.02064643516331,
+        "meanG": 158.99141520367428,
+        "meanB": 158.8100184573121,
         "p05Luma": 159,
         "p95Luma": 159
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 96.75137124093087,
-        "medianLuma": 103.24239999999999,
-        "stdevLuma": 31.756908143010318,
-        "meanR": 108.5625617032236,
-        "meanG": 95.09546293514187,
-        "meanB": 78.37528437137829,
-        "p05Luma": 36.6418,
-        "p95Luma": 136.098
+        "meanLuma": 97.54678275314235,
+        "medianLuma": 99.6832,
+        "stdevLuma": 40.62804204311321,
+        "meanR": 111.98416105077906,
+        "meanG": 95.78357728462892,
+        "meanB": 72.50049362578874,
+        "p05Luma": 29.331799999999998,
+        "p95Luma": 166.4064
       },
       "delta": {
-        "changed": 23297,
-        "changedFrac": 1
+        "changed": 23294,
+        "changedFrac": 0.9998712280551144
       }
     },
     "ghost": {
@@ -482,7 +482,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9992273683306864,
+        "value": 0.9993132162939434,
         "floor": 0.5,
         "pass": true
       },
@@ -492,7 +492,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 21.667430540927924,
+        "value": 21.550512812486836,
         "floor": 6,
         "pass": true
       },
@@ -509,7 +509,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9968665493411168,
+        "value": 0.9956646778555179,
         "floor": 0.5,
         "pass": true
       },
@@ -519,9 +519,9 @@
         "pass": false
       },
       "MASK_VARIETY": {
-        "value": 0.06390168852442728,
+        "value": 7.804210140453528,
         "floor": 6,
-        "pass": false
+        "pass": true
       },
       "TRI_DELTA": {
         "value": 2008,
@@ -536,7 +536,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 1,
+        "value": 0.9998712280551144,
         "floor": 0.5,
         "pass": true
       },
@@ -546,7 +546,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 0,
+        "value": 0.8737553262027294,
         "floor": 6,
         "pass": false
       },
@@ -590,7 +590,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9992273683306864,
+        "value": 0.9993132162939434,
         "floor": 0.5,
         "pass": true
       },
@@ -600,7 +600,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 21.667430540927924,
+        "value": 21.546187845113415,
         "floor": 6,
         "pass": true
       },
@@ -613,8 +613,7 @@
   },
   "negativeCaught": {
     "black": [
-      "MASK_LIT",
-      "MASK_VARIETY"
+      "MASK_LIT"
     ],
     "flat": [
       "MASK_VARIETY"
@@ -632,10 +631,10 @@
     "armed": false,
     "rendererInfo": {
       "memory": {
-        "geometries": 86,
-        "textures": 31
+        "geometries": 81,
+        "textures": 35
       },
-      "programs": 24,
+      "programs": 22,
       "render": {
         "triangles": 2,
         "calls": 1
@@ -686,10 +685,10 @@
   },
   "before": {
     "memory": {
-      "geometries": 86,
-      "textures": 31
+      "geometries": 81,
+      "textures": 35
     },
-    "programs": 24,
+    "programs": 22,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -697,8 +696,8 @@
   },
   "afterLoad": {
     "memory": {
-      "geometries": 102,
-      "textures": 55
+      "geometries": 100,
+      "textures": 59
     },
     "programs": 29,
     "render": {
@@ -708,8 +707,8 @@
   },
   "hide1": {
     "memory": {
-      "geometries": 86,
-      "textures": 31
+      "geometries": 84,
+      "textures": 35
     },
     "programs": 27,
     "render": {
@@ -721,8 +720,8 @@
   },
   "hide2": {
     "memory": {
-      "geometries": 86,
-      "textures": 31
+      "geometries": 84,
+      "textures": 35
     },
     "programs": 27,
     "render": {
@@ -734,8 +733,8 @@
   },
   "disposePath": {
     "memory": {
-      "geometries": 86,
-      "textures": 31
+      "geometries": 84,
+      "textures": 35
     },
     "programs": 27,
     "render": {
@@ -747,8 +746,8 @@
   },
   "afterDispose": {
     "memory": {
-      "geometries": 86,
-      "textures": 31
+      "geometries": 84,
+      "textures": 35
     },
     "programs": 27,
     "render": {
@@ -760,26 +759,26 @@
   },
   "deltas": {
     "load": {
-      "geometries": 16,
+      "geometries": 19,
       "textures": 24,
-      "programs": 5
+      "programs": 7
     },
     "hide1": {
-      "geometries": 0,
+      "geometries": 3,
       "textures": 0,
-      "programs": 3,
+      "programs": 5,
       "rendererLive": true
     },
     "hide2": {
-      "geometries": 0,
+      "geometries": 3,
       "textures": 0,
-      "programs": 3,
+      "programs": 5,
       "rendererLive": true
     },
     "disposePath": {
-      "geometries": 0,
+      "geometries": 3,
       "textures": 0,
-      "programs": 3,
+      "programs": 5,
       "rendererLive": true
     }
   },

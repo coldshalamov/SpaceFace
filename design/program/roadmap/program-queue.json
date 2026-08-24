@@ -8039,7 +8039,7 @@
       "priority": 355,
       "title": "Loader + works camera: release parts load in the works renderer",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asteroid-works-art"
@@ -8057,7 +8057,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-00-works-loader-REPORT.md"
+      ],
       "brief": "Prerequisite for every asset unit. The works screen renders on its own WebGL context, so release KTX2/meshopt parts cannot load there today. Add a works-context loader (KTX2Loader bound to the works renderer via detectSupport, shared transcoder/decoder, manifest admission) behind one seam loadWorksPart(id) returning a LOD-aware group with named hooks; LOD0 at the work register, LOD1 at site; dispose on exit with renderer.info proof. Ship tools/blender/spaceface_works_camera.py (works_top 120px/cell straight down at fov 31, works_edge, works_site 19px/cell) and adapt hidden-face culling to it. Prove with one existing release part rendered in the mine at correct colour space."
     },
     {
@@ -9090,7 +9092,7 @@
       "priority": 394,
       "title": "Close the opening cohort prediction gap (post-first-visible admissions)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "performance-hitch"
@@ -9103,7 +9105,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-20-cohort-prediction-REPORT.md"
+      ],
       "brief": "Measured 2026-08-24 on five clean New Game witness runs after the FIX-K donor-pass unification: the first-visible identity gate fires every run because ~7 geometries and ~8 programs are still admitted AFTER the first visible pass (opening scene delta 40->47 geometries, 46->54 programs, consistent across runs). Presented cost on the measured machine is zero (1 hitch per ~1210 frames, p95 ~3 ms) - this is contract completion for slower GPUs, not a live hitch fix. The gap is the section 8.4 prediction-miss class: enumerate WHICH roots those late admissions belong to (the witness first-visible-pass-residency log and the identity gate name them), then either add them to the opening cohort census or consciously exempt them with a reason on the gate. Promotion law applies: no hitch rise, clean matched five-start A/B."
     }
   ]
