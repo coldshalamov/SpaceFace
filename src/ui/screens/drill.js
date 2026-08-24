@@ -226,24 +226,185 @@ export function createDrillInputController({ drillSys, getState }) {
   };
 }
 
-// Presentation palette — locked SpaceFace tokens (hex fallbacks match styles/ui.css defaults).
-const COL = {
-  accent: '#39d0ff',
-  accent2: '#39d0ff',
-  accent3: '#8d66ff',
-  warn: '#ffb35c',
-  danger: '#ff5c5c',
-  good: '#62e08a',
-  ink: '#d7e6ff',
-  inkDim: '#84a0c8',
-  inkMute: '#5a7aa0',
-  panel: '#0b1220',
+// Presentation palette — one instrument-grammar resolver (same path as localmap.js).
+// Hex fallbacks match styles/ui.css :root defaults. --accent has no role and is not used.
+export const ROLE_FALLBACK = {
+  you: '#7af7d0',
+  foe: '#ff5470',
+  goal: '#ffb347',
+  calm: '#84a0c8',
+  paper: '#d3e6ff',
+  surface: '#0b1220',
+  edge: '#1d3350',
 };
+
+export function canvasRoles() {
+  const fallback = ROLE_FALLBACK;
+  if (typeof document === 'undefined' || !document.documentElement) return fallback;
+  let cs;
+  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
+  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
+  return {
+    you: read('--sf-you', fallback.you),
+    foe: read('--sf-foe', fallback.foe),
+    goal: read('--sf-goal', fallback.goal),
+    calm: read('--sf-calm', fallback.calm),
+    paper: read('--sf-paper', fallback.paper),
+    surface: read('--sf-surface', fallback.surface),
+    edge: read('--sf-edge', fallback.edge),
+  };
+}
+
+export function paint(hex, a) {
+  if (a == null || a >= 1) return hex;
+  const n = String(hex || '').replace('#', '');
+  if (n.length < 6) return hex;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if (![r, g, b].every(Number.isFinite)) return hex;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
+const MATERIAL_MARK = {
+  you: '▣',
+  matrix: '·',
+  basalt: '/',
+  gas: '✕',
+  ice: '◆',
+  exotic: '⬡',
+  metal: '▭',
+};
+
+export function materialKind(key) {
+  const id = String(key || '');
+  if (id === 'rover' || id === 'drill') return 'you';
+  if (id === 'dirt') return 'matrix';
+  if (id === 'rock') return 'basalt';
+  if (id === 'gas' || id === 'gasRevealed') return 'gas';
+  if (id === 'cmdty_ice_water' || id.includes('_ice_')) return 'ice';
+  if (id.includes('_gem_') || id.includes('_exotic_') || id === 'cmdty_ore_einsteinium') return 'exotic';
+  if (id.startsWith('cmdty_')) return 'metal';
+  return 'matrix';
+}
+
+export function colorForMaterial(key, roles) {
+  const r = roles || canvasRoles();
+  switch (materialKind(key)) {
+    case 'you': return r.you;
+    case 'gas': return r.foe;
+    case 'ice': return r.paper;
+    case 'exotic': return r.goal;
+    case 'metal': return r.calm;
+    case 'basalt': return r.edge;
+    default: return r.surface;
+  }
+}
+
+function svgDoc(inner, size = 40) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + size + ' ' + size
+    + '" width="' + size + '" height="' + size + '">' + inner + '</svg>';
+}
+
+function matrixSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.surface + '"/>'
+    + '<circle cx="7" cy="9" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="18" cy="6" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="29" cy="11" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="9" cy="22" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="22" cy="19" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="33" cy="24" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="14" cy="32" r="1.1" fill="' + r.edge + '"/>'
+    + '<circle cx="26" cy="34" r="1.1" fill="' + r.edge + '"/>'
+  );
+}
+
+function basaltSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.edge + '"/>'
+    + '<path d="M4 8 L18 22 L8 36" fill="none" stroke="' + r.surface + '" stroke-width="2"/>'
+    + '<path d="M22 4 L36 20 L28 38" fill="none" stroke="' + r.surface + '" stroke-width="2"/>'
+    + '<path d="M2 28 L16 14" fill="none" stroke="' + r.surface + '" stroke-width="1.5"/>'
+  );
+}
+
+function metalSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.surface + '"/>'
+    + '<rect x="6" y="9" width="18" height="10" rx="1.5" fill="' + r.calm + '" stroke="' + r.edge + '" stroke-width="1.5"/>'
+    + '<rect x="14" y="20" width="18" height="10" rx="1.5" fill="' + r.calm + '" stroke="' + r.edge + '" stroke-width="1.5"/>'
+  );
+}
+
+function iceSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.surface + '"/>'
+    + '<polygon points="20,4 36,20 20,36 4,20" fill="' + r.paper + '" stroke="' + r.edge + '" stroke-width="1.5"/>'
+    + '<polygon points="20,10 30,20 20,30 10,20" fill="' + r.surface + '"/>'
+  );
+}
+
+function exoticSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.surface + '"/>'
+    + '<polygon points="20,5 33,12.5 33,27.5 20,35 7,27.5 7,12.5" fill="' + r.goal + '" stroke="' + r.edge + '" stroke-width="1.5"/>'
+  );
+}
+
+function gasRevealedSvg(r) {
+  return svgDoc(
+    '<rect width="40" height="40" fill="' + r.surface + '"/>'
+    + '<polygon points="20,6 34,32 6,32" fill="none" stroke="' + r.foe + '" stroke-width="2.5"/>'
+    + '<path d="M14 16 L26 28 M26 16 L14 28" stroke="' + r.foe + '" stroke-width="2.5" fill="none"/>'
+  );
+}
+
+function roverSvg(r) {
+  return svgDoc(
+    '<rect x="6" y="40" width="52" height="14" rx="6" fill="' + r.surface + '" stroke="' + r.edge + '" stroke-width="2"/>'
+    + '<rect x="10" y="18" width="44" height="24" rx="4" fill="' + r.you + '" stroke="' + r.edge + '" stroke-width="2"/>'
+    + '<polygon points="22,18 32,6 48,18" fill="' + r.surface + '" stroke="' + r.edge + '" stroke-width="2"/>'
+    + '<rect x="16" y="24" width="14" height="8" fill="' + r.paper + '"/>'
+    + '<circle cx="18" cy="47" r="5" fill="' + r.edge + '"/>'
+    + '<circle cx="32" cy="47" r="5" fill="' + r.edge + '"/>'
+    + '<circle cx="46" cy="47" r="5" fill="' + r.edge + '"/>',
+    64
+  );
+}
+
+export function buildSvgTemplates(roles) {
+  const r = roles || canvasRoles();
+  const metal = metalSvg(r);
+  const dirt = matrixSvg(r);
+  return {
+    rover: roverSvg(r),
+    dirt,
+    rock: basaltSvg(r),
+    gas: dirt,
+    gasRevealed: gasRevealedSvg(r),
+    cmdty_silicate: metal,
+    cmdty_ice_water: iceSvg(r),
+    cmdty_ore_iron: metal,
+    cmdty_ore_copper: metal,
+    cmdty_ore_titanium: metal,
+    cmdty_ore_bronzium: metal,
+    cmdty_ore_silverium: metal,
+    cmdty_ore_goldium: metal,
+    cmdty_ore_platinium: metal,
+    cmdty_ore_platinoid: metal,
+    cmdty_ore_einsteinium: exoticSvg(r),
+    cmdty_gem_emerald: exoticSvg(r),
+    cmdty_gem_ruby: exoticSvg(r),
+    cmdty_gem_diamond: exoticSvg(r),
+    cmdty_exotic_amazonite: exoticSvg(r),
+  };
+}
 
 /** Spawn a burst of state-driven particles (sparks / debris / steam). Pure helper for tests. */
 export function spawnParticleBurst(into, opts) {
   const {
-    x, y, count = 6, color = COL.accent, life = 0.35, size = 2,
+    x, y, count = 6, color = canvasRoles().you, life = 0.35, size = 2,
     speed = 40, gravity = 0, kind = 'spark', vx0 = 0, vy0 = 0, cone = Math.PI * 2, angle = 0,
   } = opts || {};
   const out = into || [];
@@ -306,15 +467,14 @@ export function buildOverlay(width, height) {
   oc.height = height;
   const octx = oc.getContext('2d');
   if (!octx) return null;
-  // Subtle depth bands. These read as instrumentation, not a CRT filter.
-  octx.fillStyle = 'rgba(0, 0, 0, 0.035)';
+  const r = canvasRoles();
+  octx.fillStyle = paint(r.edge, 0.12);
   for (let y = 0; y < height; y += 8) {
     octx.fillRect(0, y, width, 1);
   }
-  // Vignette glow.
   const grad = octx.createRadialGradient(width / 2, height / 2, height / 2, width / 2, height / 2, width);
-  grad.addColorStop(0, 'rgba(57, 208, 255, 0.01)');
-  grad.addColorStop(1, 'rgba(5, 10, 20, 0.35)');
+  grad.addColorStop(0, paint(r.you, 0.01));
+  grad.addColorStop(1, paint(r.surface, 0.35));
   octx.fillStyle = grad;
   octx.fillRect(0, 0, width, height);
   return oc;
@@ -328,6 +488,7 @@ export function buildHeadlightSprite(width = 210, height = 150) {
   oc.height = height;
   const octx = oc.getContext('2d');
   if (!octx) return null;
+  const r = canvasRoles();
   octx.save();
   octx.beginPath();
   octx.moveTo(0, height / 2);
@@ -336,9 +497,9 @@ export function buildHeadlightSprite(width = 210, height = 150) {
   octx.closePath();
   octx.clip();
   const grad = octx.createRadialGradient(0, height / 2, 8, width * 0.72, height / 2, width * 0.62);
-  grad.addColorStop(0, 'rgba(255, 229, 164, 0.28)');
-  grad.addColorStop(0.4, 'rgba(255, 229, 164, 0.11)');
-  grad.addColorStop(1, 'rgba(255, 229, 164, 0)');
+  grad.addColorStop(0, paint(r.goal, 0.28));
+  grad.addColorStop(0.4, paint(r.goal, 0.11));
+  grad.addColorStop(1, paint(r.goal, 0));
   octx.fillStyle = grad;
   octx.fillRect(0, 0, width, height);
   octx.restore();
@@ -367,9 +528,18 @@ function legendIconImg(iconKey, size = 22) {
 
 function makeLegendItem(label, iconKey, opts = {}) {
   const item = document.createElement('span');
+  const matKey = iconKey || (opts.icons && opts.icons[0]) || '';
+  const kind = materialKind(matKey);
   item.className = 'drill-legend-item'
     + (opts.warn ? ' warn' : '')
     + (opts.locked ? ' locked' : '');
+  item.dataset.mat = kind;
+
+  const mark = document.createElement('span');
+  mark.className = 'drill-legend-mark';
+  mark.setAttribute('aria-hidden', 'true');
+  mark.textContent = MATERIAL_MARK[kind] || '';
+  item.appendChild(mark);
 
   if (opts.icons) {
     opts.icons.forEach((key, i) => {
@@ -457,371 +627,27 @@ function renderDrillLegend(gridEl, field, drillTier = 1) {
   }
 }
 
-// Spark/glow colors for minerals
-const ORE_SPARK_COLOR = {
-  cmdty_ore_iron: '#c8a878',
-  cmdty_ore_copper: '#14b8a6',
-  cmdty_silicate: '#b8b8d0',
-  cmdty_ore_titanium: '#d0d8e8',
-  cmdty_ore_platinoid: '#e8d850',
-  cmdty_ice_water: '#9ad8ff',
-  cmdty_ore_bronzium: '#94a3b8',
-  cmdty_ore_silverium: '#d0d8e8',
-  cmdty_ore_goldium: '#fff275',
-  cmdty_ore_platinium: '#d7e6ff',
-  cmdty_ore_einsteinium: '#8d66ff',
-  cmdty_gem_emerald: '#5cffbe',
-  cmdty_gem_ruby: '#ff5c5c',
-  cmdty_gem_diamond: '#39d0ff',
-  cmdty_exotic_amazonite: '#00ffd5',
-};
-
-// Inline SVG assets for rover, drill bit, blocks, and minerals
-const SVG_TEMPLATES = {
-  rover: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-    <defs>
-      <linearGradient id="chassisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#1e293b" />
-        <stop offset="45%" stop-color="#0f172a" />
-        <stop offset="100%" stop-color="#020617" />
-      </linearGradient>
-      <linearGradient id="armorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#38bdf8" />
-        <stop offset="100%" stop-color="#0369a1" />
-      </linearGradient>
-      <linearGradient id="canopyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0ea5e9" />
-        <stop offset="40%" stop-color="#38bdf8" />
-        <stop offset="100%" stop-color="#0284c7" />
-      </linearGradient>
-    </defs>
-    <!-- Shadow -->
-    <ellipse cx="32" cy="54" rx="24" ry="4" fill="rgba(0, 0, 0, 0.5)" />
-    <!-- Treads/Tracks -->
-    <rect x="4" y="42" width="56" height="14" rx="6" fill="#090d16" stroke="#1e293b" stroke-width="2.5" />
-    <circle cx="12" cy="49" r="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-    <circle cx="32" cy="49" r="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-    <circle cx="52" cy="49" r="6" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
-    <path d="M 4 49 L 8 42 L 56 42 L 60 49 L 56 56 L 8 56 Z" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,3" />
-    <!-- Hydraulic shocks -->
-    <line x1="20" y1="36" x2="20" y2="44" stroke="#475569" stroke-width="4" />
-    <line x1="44" y1="36" x2="44" y2="44" stroke="#475569" stroke-width="4" />
-    <!-- Main Chassis body -->
-    <path d="M 8 40 L 14 20 L 48 20 L 54 40 Z" fill="url(#chassisGrad)" stroke="#1e293b" stroke-width="2" />
-    <!-- Layered metal armor plates -->
-    <path d="M 11 38 L 15 22 L 30 22 L 28 38 Z" fill="url(#armorGrad)" opacity="0.9" />
-    <path d="M 32 38 L 34 22 L 47 22 L 51 38 Z" fill="url(#armorGrad)" opacity="0.95" />
-    <!-- Rivets/Bolts -->
-    <circle cx="16" cy="24" r="1.2" fill="#e2e8f0" />
-    <circle cx="28" cy="24" r="1.2" fill="#e2e8f0" />
-    <circle cx="34" cy="24" r="1.2" fill="#e2e8f0" />
-    <circle cx="45" cy="24" r="1.2" fill="#e2e8f0" />
-    <!-- Cockpit / Glass Canopy -->
-    <path d="M 22 20 L 30 8 L 44 20 Z" fill="#0f172a" stroke="#1e293b" stroke-width="2" />
-    <path d="M 24 19 L 30 10 L 42 19 Z" fill="url(#canopyGrad)" stroke="#e0f2fe" stroke-width="1" />
-    <!-- Gloss sheen reflection -->
-    <polygon points="33,11 39,19 36,19 31,12" fill="#ffffff" opacity="0.5" />
-    <!-- Exhaust vent pipe on back -->
-    <rect x="6" y="24" width="6" height="12" fill="#334155" rx="1.5" stroke="#0f172a" stroke-width="1" />
-    <line x1="6" y1="28" x2="12" y2="28" stroke="#020617" />
-    <line x1="6" y1="31" x2="12" y2="31" stroke="#020617" />
-    <line x1="6" y1="34" x2="12" y2="34" stroke="#020617" />
-    <!-- Spotlight light beam -->
-    <polygon points="50,30 64,24 64,36" fill="rgba(255,179,92,0.25)" />
-    <!-- Headlight casing -->
-    <path d="M 48 27 L 53 27 L 51 32 Z" fill="#ffb35c" stroke="#b45309" stroke-width="1" />
-    <circle cx="50" cy="29" r="1.5" fill="#ffffff" />
-  </svg>`,
-
-  drillBit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-    <defs>
-      <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#94a3b8" />
-        <stop offset="45%" stop-color="#475569" />
-        <stop offset="100%" stop-color="#1e293b" />
-      </linearGradient>
-    </defs>
-    <!-- Heavy mounting block bracket -->
-    <rect x="0" y="6" width="6" height="20" fill="#334155" stroke="#0f172a" stroke-width="1.5" />
-    <circle cx="3" cy="16" r="2.5" fill="#64748b" />
-    <!-- Main gear socket collar -->
-    <rect x="6" y="9" width="4" height="14" fill="#475569" stroke="#0f172a" stroke-width="1.5" />
-    <!-- Reinforced Cone -->
-    <path d="M 10 5 L 29 16 L 10 27 Z" fill="url(#metalGrad)" stroke="#0f172a" stroke-width="2" />
-    <!-- Flutes and helical grooving -->
-    <path d="M 10 8 Q 19 16 10 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" />
-    <path d="M 13 10 Q 23 16 13 22" fill="none" stroke="#ffffff" stroke-width="1.5" />
-    <path d="M 17 13 Q 27 16 17 19" fill="none" stroke="#94a3b8" stroke-width="1.5" />
-    <!-- Tungsten tip ring -->
-    <polygon points="28,14 32,16 28,18" fill="#38bdf8" stroke="#0284c7" stroke-width="0.75" />
-  </svg>`,
-
-  dirt: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#3a2e22" />
-    <!-- Soil strata lines -->
-    <path d="M 0 8 L 15 15 L 25 5 L 40 12" fill="none" stroke="#2a1f16" stroke-width="2.5" />
-    <path d="M 0 25 L 20 32 L 40 22" fill="none" stroke="#2a1f16" stroke-width="2.5" />
-    <!-- Little soil rocks/detritus -->
-    <polygon points="6,24 10,21 12,25 8,27" fill="#4d3d2e" stroke="#211810" stroke-width="1" />
-    <polygon points="28,12 32,10 34,14 30,16" fill="#4d3d2e" stroke="#211810" stroke-width="1" />
-    <polygon points="18,30 23,28 24,33 19,34" fill="#2a1f16" />
-    <!-- Small grain specs -->
-    <circle cx="5" cy="5" r="1" fill="#4d3d2e" />
-    <circle cx="35" cy="35" r="1.2" fill="#4d3d2e" />
-    <circle cx="16" cy="18" r="1" fill="#4d3d2e" />
-  </svg>`,
-
-  rock: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#25252b" />
-    <!-- Fractured crystalline cracks -->
-    <path d="M 0 0 L 14 12 L 20 0 M 14 12 L 26 22 L 40 16 M 26 22 L 22 40 M 14 12 L 0 28 L 22 40" fill="none" stroke="#141417" stroke-width="2.5" />
-    <!-- Facet highlight and shading -->
-    <polygon points="14,12 26,22 22,40 0,28" fill="rgba(255,255,255,0.04)" />
-    <polygon points="26,22 40,16 40,40 22,40" fill="rgba(0,0,0,0.22)" />
-    <!-- Little shiny flecks -->
-    <polygon points="8,8 10,6 12,9 9,10" fill="#64748b" opacity="0.3" />
-    <polygon points="32,28 35,26 36,30 33,31" fill="#475569" opacity="0.4" />
-  </svg>`,
-
-  gas: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <!-- Unrevealed gas looks identical to normal dirt to preserve stealth -->
-    <rect width="40" height="40" fill="#3a2e22" />
-    <path d="M 0 8 L 15 15 L 25 5 L 40 12" fill="none" stroke="#2a1f16" stroke-width="2.5" />
-    <path d="M 0 25 L 20 32 L 40 22" fill="none" stroke="#2a1f16" stroke-width="2.5" />
-    <polygon points="6,24 10,21 12,25 8,27" fill="#4d3d2e" stroke="#211810" stroke-width="1" />
-  </svg>`,
-
-  gasRevealed: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <!-- Revealed gas pocket showing toxic venting clouds -->
-    <rect width="40" height="40" fill="#2c2018" />
-    <path d="M 0 8 L 15 15 L 25 5 L 40 12" fill="none" stroke="#1b120c" stroke-width="2" />
-    <!-- Pulsing gas cloud pattern -->
-    <path d="M 8 16 Q 20 4 32 16 T 20 36 Z" fill="rgba(180,60,200,0.4)" stroke="rgba(180,60,200,0.8)" stroke-width="2.5" />
-    <circle cx="20" cy="18" r="6" fill="rgba(180,60,200,0.6)" />
-    <!-- Danger indicator -->
-    <path d="M 20 12 L 23 18 H 17 Z" fill="#facc15" />
-    <rect x="19" y="15" width="2" height="2" fill="#000" />
-  </svg>`,
-
-  // Default mineral matrix with detailed crystals protruding
-  cmdty_silicate: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#3a2e22" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#2a1f16" stroke-width="4.5" />
-    <!-- Multi-faceted gray silicate crystals -->
-    <polygon points="8,14 16,10 20,18 12,22 6,18" fill="#94a3b8" stroke="#475569" stroke-width="1" />
-    <polygon points="12,10 16,10 16,18 12,18" fill="#cbd5e1" />
-    <polygon points="22,24 30,20 32,28 24,30" fill="#64748b" stroke="#334155" stroke-width="1" />
-    <polygon points="26,20 30,20 30,28 26,28" fill="#94a3b8" />
-  </svg>`,
-
-  cmdty_ice_water: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#2d3748" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#1a202c" stroke-width="4" />
-    <!-- Glacial Ice crystals -->
-    <polygon points="12,6 26,10 22,24 8,18" fill="#bae6fd" stroke="#0284c7" stroke-width="1.5" />
-    <polygon points="12,6 20,10 18,24 10,18" fill="#e0f2fe" />
-    <polygon points="20,20 34,16 30,30 16,28" fill="#38bdf8" stroke="#0369a1" stroke-width="1" opacity="0.8" />
-    <polygon points="20,20 28,16 26,30 18,28" fill="#bae6fd" opacity="0.8" />
-  </svg>`,
-
-  cmdty_ore_iron: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#3a2e22" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#251b12" stroke-width="4" />
-    <!-- Heavy textured iron blobs -->
-    <rect x="8" y="10" width="10" height="10" rx="3" fill="#c8a878" stroke="#785830" stroke-width="1.5" />
-    <circle cx="11" cy="13" r="1.5" fill="#f5e0b8" />
-    <rect x="22" y="18" width="12" height="10" rx="4" fill="#a08058" stroke="#583818" stroke-width="1.5" />
-    <circle cx="26" cy="22" r="1.8" fill="#c8a878" />
-  </svg>`,
-
-  cmdty_ore_copper: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#2a2418" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#1a140c" stroke-width="4" />
-    <!-- Malachite / verdigris copper — round botryoidal nodules, green-teal palette -->
-    <circle cx="14" cy="16" r="7" fill="#0f766e" stroke="#134e4a" stroke-width="1.5" />
-    <circle cx="14" cy="16" r="4.5" fill="#2dd4bf" opacity="0.85" />
-    <circle cx="12" cy="14" r="1.8" fill="#99f6e4" />
-    <circle cx="28" cy="24" r="8" fill="#115e59" stroke="#0f766e" stroke-width="1.5" />
-    <circle cx="28" cy="24" r="5" fill="#14b8a6" opacity="0.9" />
-    <circle cx="26" cy="22" r="2" fill="#5eead4" />
-    <path d="M 8 30 Q 20 26 32 32" fill="none" stroke="#0d9488" stroke-width="2" opacity="0.6" />
-  </svg>`,
-
-  cmdty_ore_bronzium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#2d3238" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#1a1f24" stroke-width="4" />
-    <!-- Nickel ore — cool gray industrial ingot plates, angular not round -->
-    <rect x="7" y="9" width="14" height="10" rx="1" fill="url(#nickelPlateGrad)" stroke="#475569" stroke-width="1.5" transform="rotate(-8 14 14)" />
-    <rect x="9" y="11" width="6" height="6" fill="#e2e8f0" opacity="0.45" transform="rotate(-8 14 14)" />
-    <polygon points="22,18 34,14 32,28 20,30" fill="url(#nickelShardGrad)" stroke="#64748b" stroke-width="1.5" />
-    <polygon points="22,18 28,14 26,28 20,30" fill="#cbd5e1" opacity="0.55" />
-    <line x1="24" y1="16" x2="30" y2="26" stroke="#f8fafc" stroke-width="1" opacity="0.5" />
-    <defs>
-      <linearGradient id="nickelPlateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#f1f5f9" />
-        <stop offset="45%" stop-color="#94a3b8" />
-        <stop offset="100%" stop-color="#475569" />
-      </linearGradient>
-      <linearGradient id="nickelShardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#cbd5e1" />
-        <stop offset="50%" stop-color="#64748b" />
-        <stop offset="100%" stop-color="#334155" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_ore_silverium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#3a2e22" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#251b12" stroke-width="4" />
-    <!-- Silver ore shards -->
-    <polygon points="18,6 30,16 20,30 8,20" fill="url(#silverDetailedGrad)" stroke="#475569" stroke-width="1.5" />
-    <polygon points="18,6 24,16 20,30 14,20" fill="#ffffff" opacity="0.65" />
-    <polygon points="24,16 30,16 20,30" fill="#94a3b8" opacity="0.5" />
-    <defs>
-      <linearGradient id="silverDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#ffffff" />
-        <stop offset="40%" stop-color="#cbd5e1" />
-        <stop offset="100%" stop-color="#334155" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_ore_goldium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#36291e" />
-    <path d="M 0 20 Q 20 10 40 25 M 15 0 Q 22 20 10 40" fill="none" stroke="#251b12" stroke-width="4.5" />
-    <!-- Rich heavy gold nugget cluster -->
-    <path d="M 12 12 Q 20 6 28 14 T 20 30 T 8 20 Z" fill="url(#goldDetailedGrad)" stroke="#854d0e" stroke-width="2" />
-    <!-- Golden reflection sparks -->
-    <polygon points="12,12 20,10 22,18 14,20" fill="#fef08a" opacity="0.75" />
-    <polygon points="20,10 28,14 24,22 22,18" fill="#eab308" opacity="0.6" />
-    <circle cx="16" cy="14" r="2.5" fill="#ffffff" opacity="0.9" />
-    <defs>
-      <linearGradient id="goldDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#fde047" />
-        <stop offset="50%" stop-color="#ca8a04" />
-        <stop offset="100%" stop-color="#713f12" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_ore_platinium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#2d3748" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#1a202c" stroke-width="4" />
-    <!-- Platinum geometric blades -->
-    <polygon points="20,6 32,16 20,32 8,16" fill="url(#platDetailedGrad)" stroke="#38bdf8" stroke-width="1.5" />
-    <polygon points="20,6 26,16 20,32 14,16" fill="#e0f2fe" />
-    <polygon points="26,16 32,16 20,32" fill="#0284c7" opacity="0.6" />
-    <defs>
-      <linearGradient id="platDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#ffffff" />
-        <stop offset="35%" stop-color="#bae6fd" />
-        <stop offset="100%" stop-color="#0369a1" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_ore_einsteinium: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#282236" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#120c1c" stroke-width="4.5" />
-    <!-- Shimmering dark matter crystals -->
-    <polygon points="20,6 30,16 20,30 10,16" fill="url(#einsDetailedGrad)" stroke="#d946ef" stroke-width="2" />
-    <polygon points="20,6 25,16 20,30 15,16" fill="#fae8ff" />
-    <!-- Energy spark center -->
-    <circle cx="20" cy="16" r="4.5" fill="#ffffff" />
-    <defs>
-      <linearGradient id="einsDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#f0abfc" />
-        <stop offset="50%" stop-color="#c084fc" />
-        <stop offset="100%" stop-color="#581c87" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_gem_emerald: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#223626" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#0c1c0f" stroke-width="4" />
-    <!-- Highly faceted hex emerald crystals -->
-    <polygon points="20,4 30,10 30,24 20,30 10,24 10,10" fill="url(#emDetailedGrad)" stroke="#10b981" stroke-width="2" />
-    <polygon points="20,8 26,12 26,22 20,26 14,22 14,12" fill="#a7f3d0" opacity="0.65" />
-    <polygon points="20,8 20,26" stroke="#059669" stroke-width="1.5" />
-    <defs>
-      <linearGradient id="emDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#34d399" />
-        <stop offset="50%" stop-color="#059669" />
-        <stop offset="100%" stop-color="#064e3b" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_gem_ruby: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#362222" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#1c0c0c" stroke-width="4" />
-    <!-- Rich ruby cluster -->
-    <polygon points="20,4 30,12 26,28 14,28 10,12" fill="url(#rubyDetailedGrad)" stroke="#ef4444" stroke-width="2" />
-    <polygon points="20,8 26,14 23,24 17,24 14,14" fill="#fecaca" opacity="0.6" />
-    <polygon points="20,4 20,28" stroke="#dc2626" stroke-width="1.5" />
-    <defs>
-      <linearGradient id="rubyDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#f87171" />
-        <stop offset="50%" stop-color="#dc2626" />
-        <stop offset="100%" stop-color="#7f1d1d" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_gem_diamond: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#222f3d" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#0f172a" stroke-width="4" />
-    <!-- Prismatic sky-blue diamond prisms -->
-    <polygon points="20,5 31,14 20,29 9,14" fill="url(#diaDetailedGrad)" stroke="#38bdf8" stroke-width="2" />
-    <polygon points="20,5 26,14 20,21 14,14" fill="#ffffff" />
-    <polygon points="26,14 31,14 20,29" fill="#0284c7" opacity="0.6" />
-    <defs>
-      <linearGradient id="diaDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#ffffff" />
-        <stop offset="40%" stop-color="#bae6fd" />
-        <stop offset="100%" stop-color="#0369a1" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-
-  cmdty_exotic_amazonite: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <rect width="40" height="40" fill="#1b2830" />
-    <path d="M 0 20 Q 20 10 40 25" fill="none" stroke="#091216" stroke-width="4.5" />
-    <!-- Shimmering turquoise branches -->
-    <polygon points="10,10 26,8 30,24 16,30 8,22" fill="url(#amzDetailedGrad)" stroke="#00f5ff" stroke-width="2" />
-    <polygon points="14,14 22,12 24,20 18,22" fill="#e0fefe" opacity="0.7" />
-    <!-- Glowing internal spark -->
-    <circle cx="20" cy="18" r="3" fill="#ffffff" />
-    <defs>
-      <linearGradient id="amzDetailedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#22d3ee" />
-        <stop offset="50%" stop-color="#06b6d4" />
-        <stop offset="100%" stop-color="#4f46e5" />
-      </linearGradient>
-    </defs>
-  </svg>`,
-};
-
-// Synchronously load SVGs into Image structures (browser only — guarded so the module imports
-// cleanly under Node, where the static check-ui-screen-imports harness evaluates it).
+let SVG_TEMPLATES = {};
 const IMAGES = {};
-if (typeof Image !== 'undefined') {
-  for (const key in SVG_TEMPLATES) {
-    const img = new Image();
+
+function hydrateImages(roles) {
+  SVG_TEMPLATES = buildSvgTemplates(roles || canvasRoles());
+  if (typeof Image === 'undefined') return;
+  for (const key of Object.keys(SVG_TEMPLATES)) {
+    const img = IMAGES[key] || new Image();
     img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SVG_TEMPLATES[key]);
     IMAGES[key] = img;
   }
 }
+hydrateImages(ROLE_FALLBACK);
 
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
+  hydrateImages(canvasRoles());
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
 .drill-screen {
-  --drill-shell: rgba(5, 9, 18, 0.96);
-  --drill-line: rgba(57, 208, 255, 0.24);
   display: grid;
   grid-template-columns: minmax(190px, 260px) minmax(420px, 1fr) minmax(190px, 260px);
   gap: 10px;
@@ -832,65 +658,67 @@ function injectStyle() {
   box-sizing: border-box;
   pointer-events: auto;
   align-items: stretch;
-  font-family: var(--mono);
-  color: var(--ink-dim);
+  font-family: var(--sf-body-face);
+  color: var(--sf-calm);
+  background: var(--sf-surface);
 }
 .drill-title {
   margin: 0;
-  font: 700 17px/1.2 var(--mono);
-  letter-spacing: .18em;
-  color: var(--ink);
+  font: 700 17px/1.2 var(--sf-display-face);
+  letter-spacing: 0;
+  color: var(--sf-paper);
   text-transform: uppercase;
 }
 .drill-kicker {
+  font-family: var(--sf-subhead-face);
   font-size: 12px;
-  letter-spacing: .16em;
-  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--sf-calm);
   text-transform: uppercase;
 }
-.drill-side-panel {
+.drill-housing {
   min-width: 0;
-  background: var(--drill-shell);
-  border: 1px solid var(--drill-line);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-edge);
   border-radius: 3px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 14px 36px rgba(0,0,0,0.42);
-  color: var(--ink-dim);
+  color: var(--sf-calm);
   overflow: auto;
   box-sizing: border-box;
 }
-.drill-side-panel .panel-section {
+.drill-housing .drill-deck {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 9px;
-  border-bottom: 1px solid rgba(57, 208, 255, 0.12);
+  border-bottom: 1px solid var(--sf-edge);
   padding-bottom: 14px;
 }
-.drill-side-panel .panel-section:last-child {
-  border-bottom: none;
-}
-.drill-side-panel .sec-title {
+.drill-housing .drill-deck:last-child { border-bottom: none; }
+.drill-housing .sec-title {
   position: relative;
   padding-left: 9px;
+  font-family: var(--sf-subhead-face);
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.35;
-  color: var(--accent);
-  letter-spacing: .15em;
+  color: var(--sf-calm);
+  letter-spacing: .18em;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
-.drill-side-panel .sec-title::before {
+.drill-housing .sec-title::before {
   content: '';
   position: absolute;
   inset: 1px auto 1px 0;
   width: 2px;
-  background: var(--accent);
+  background: var(--sf-calm);
 }
-.drill-side-panel .readout-row {
+.drill-housing .readout-row {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -899,11 +727,16 @@ function injectStyle() {
   font-size: 12px;
   line-height: 1.35;
 }
-.drill-side-panel .readout-row .lbl { color: var(--ink-mute); overflow-wrap: anywhere; }
-.drill-side-panel .readout-row .val { color: var(--accent); text-align: right; }
-.drill-side-panel .readout-row .val.good { color: var(--good); }
-.drill-side-panel .readout-row .val.warn { color: var(--warn); }
-.drill-side-panel .readout-row .val.bad { color: var(--danger); }
+.drill-housing .readout-row .lbl { color: var(--sf-calm); overflow-wrap: anywhere; }
+.drill-housing .readout-row .val {
+  color: var(--sf-paper);
+  text-align: right;
+  font-family: var(--sf-data-face);
+  font-variant-numeric: tabular-nums;
+}
+.drill-housing .readout-row .val.good { color: var(--sf-you); }
+.drill-housing .readout-row .val.warn { color: var(--sf-goal); }
+.drill-housing .readout-row .val.bad { color: var(--sf-foe); }
 .drill-control-list {
   list-style: none;
   padding: 0;
@@ -912,7 +745,7 @@ function injectStyle() {
   gap: 8px;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--ink-dim);
+  color: var(--sf-calm);
 }
 .drill-control-list li { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; }
 .drill-screen kbd {
@@ -920,12 +753,12 @@ function injectStyle() {
   min-width:0;
   box-sizing: border-box;
   padding: 2px 5px;
-  border: 1px solid rgba(57,208,255,.28);
+  border: 1px solid var(--sf-edge);
   border-radius: 2px;
-  background: rgba(57,208,255,.06);
-  color: var(--accent);
-  font: 700 12px/1.4 var(--mono);
-  letter-spacing: .05em;
+  background: color-mix(in srgb, var(--sf-you) 8%, transparent);
+  color: var(--sf-you);
+  font: 700 12px/1.4 var(--sf-data-face);
+  letter-spacing: 0;
   text-align: center;
 }
 .drill-scan-button {
@@ -936,9 +769,8 @@ function injectStyle() {
   justify-content: space-between;
   gap: 12px;
 }
-.drill-scan-button [data-scan-state] { color: var(--ink-dim); }
-
-.drill-center-panel {
+.drill-scan-button [data-scan-state] { color: var(--sf-calm); }
+.drill-stage {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -950,11 +782,10 @@ function injectStyle() {
   position: relative;
   width: 100%;
   max-width: 900px;
-  border: 1px solid var(--drill-line);
+  border: 1px solid var(--sf-edge);
   border-radius: 3px;
-  background: #050912;
+  background: var(--sf-surface);
   overflow: hidden;
-  box-shadow: 0 16px 42px rgba(0,0,0,.46);
 }
 .drill-canvas {
   display: block;
@@ -964,7 +795,7 @@ function injectStyle() {
   outline: none;
 }
 .drill-canvas:focus-visible {
-  box-shadow: inset 0 0 0 3px var(--accent);
+  box-shadow: inset 0 0 0 3px var(--sf-you);
 }
 .sonar-canvas {
   width: 100%;
@@ -972,8 +803,8 @@ function injectStyle() {
   height: auto;
   margin: 2px auto 0;
   display: block;
-  background: #030812;
-  border: 1px solid rgba(57,208,255,.18);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-edge);
   border-radius: 2px;
 }
 .drill-hud {
@@ -982,66 +813,53 @@ function injectStyle() {
   grid-template-columns: repeat(6, minmax(0,1fr));
   gap: 1px;
   max-width: 960px;
-  border: 1px solid rgba(57,208,255,.14);
-  background: rgba(5,9,18,.88);
+  border: 1px solid var(--sf-edge);
+  background: var(--sf-surface);
   font-size: 12px;
-  color: var(--ink-mute);
-  letter-spacing: .08em;
+  color: var(--sf-calm);
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 .drill-hud > span { min-width: 0; padding: 7px 8px; text-align: center; overflow-wrap: anywhere; }
-.drill-hud > span + span { border-left: 1px solid rgba(57,208,255,.1); }
-.drill-hud .v { color:var(--accent); }
-.drill-hud .warn { color:var(--warn); }
-.drill-hud .bad { color:var(--danger); }
+.drill-hud > span + span { border-left: 1px solid var(--sf-edge); }
+.drill-hud .v { color:var(--sf-paper); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+.drill-hud .warn { color:var(--sf-goal); }
+.drill-hud .bad { color:var(--sf-foe); }
 .drill-status-banner {
   display:flex; align-items:center; gap:9px;
   width:100%; max-width:900px; box-sizing:border-box;
   padding:8px 12px; margin-top:2px;
-  border:1px solid rgba(255,92,92,0.5); border-radius:3px;
-  background:rgba(255,92,92,0.1);
-  color:var(--danger); font-size:12px; letter-spacing:.06em; line-height:1.35;
-  animation:drill-cargo-pulse 1.6s ease-in-out infinite;
+  border:1px solid var(--sf-foe); border-radius:3px;
+  background: color-mix(in srgb, var(--sf-foe) 12%, transparent);
+  color:var(--sf-foe); font-size:12px; letter-spacing:0; line-height:1.35;
 }
 .drill-status-banner[hidden] { display:none; }
 .drill-status-banner.warn {
-  border-color:rgba(255,179,92,0.55); background:rgba(255,179,92,0.12); color:var(--warn);
-  animation:drill-warn-pulse 1.8s ease-in-out infinite;
+  border-color:var(--sf-goal);
+  background: color-mix(in srgb, var(--sf-goal) 12%, transparent);
+  color:var(--sf-goal);
 }
-.drill-status-banner.warn .drill-status-banner-icon { background:var(--warn); color:#1a1206; }
+.drill-status-banner.warn .drill-status-banner-icon { background:var(--sf-goal); color:var(--sf-surface); }
 .drill-status-banner-icon {
   flex:0 0 auto; width:16px; height:16px; display:flex; align-items:center; justify-content:center;
   font-weight:700; font-size:12px; border-radius:50%;
-  background:var(--danger); color:#160808;
+  background:var(--sf-foe); color:var(--sf-surface);
 }
 .drill-status-banner-text { min-width:0; overflow-wrap:anywhere; }
-/* legacy class kept for any external CSS hooks */
-.drill-cargo-banner { /* alias */ }
-@keyframes drill-cargo-pulse {
-  0%,100% { background:rgba(255,92,92,0.1); }
-  50% { background:rgba(255,92,92,0.2); }
-}
-@keyframes drill-warn-pulse {
-  0%,100% { background:rgba(255,179,92,0.1); }
-  50% { background:rgba(255,179,92,0.2); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .drill-status-banner { animation:none; }
-}
-html.sf-reduce-motion .drill-status-banner { animation:none; }
-.drill-screen.reduce-motion .drill-status-banner { animation:none; }
 .drill-legend {
   display:flex;
   flex-direction:column;
   gap:7px;
   width:100%;
   max-width:900px;
-  color:var(--ink-mute);
+  color:var(--sf-calm);
 }
 .drill-legend-title {
+  font-family: var(--sf-subhead-face);
   font-size:12px;
-  color:var(--accent);
-  letter-spacing:.15em;
+  font-weight: 600;
+  color:var(--sf-calm);
+  letter-spacing:.18em;
   text-transform:uppercase;
   text-align:center;
 }
@@ -1053,9 +871,9 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   align-items:center;
   min-width:0;
   padding:8px;
-  border:1px solid rgba(57,208,255,.12);
+  border:1px solid var(--sf-edge);
   border-radius:2px;
-  background:rgba(5,9,18,.78);
+  background:var(--sf-surface);
 }
 .drill-legend-item {
   min-width:0;
@@ -1063,38 +881,42 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   align-items:center;
   gap:6px;
   font-size:12px;
-  color:var(--ink-dim);
+  color:var(--sf-calm);
   padding:3px 6px;
   border-radius:2px;
-  background:rgba(255,255,255,.025);
+  border: 1px solid var(--sf-edge);
 }
-.drill-legend-item.warn { color:var(--warn); }
-.drill-legend-item.locked { color:var(--warn); }
+.drill-legend-item.warn { color:var(--sf-goal); }
+.drill-legend-item.locked { color:var(--sf-goal); }
+.drill-legend-mark { display:none; font-family: var(--sf-data-face); }
 .drill-legend-icon {
   width:22px;
   height:22px;
   border-radius:2px;
-  border:1px solid rgba(57,208,255,.18);
+  border:1px solid var(--sf-edge);
   image-rendering:auto;
   flex-shrink:0;
-  background:#0a0d14;
+  background:var(--sf-surface);
 }
-.drill-legend-arrow { font-size:12px; color:var(--ink-mute); opacity:0.7; }
-.drill-legend-label { letter-spacing:0.04em; white-space:nowrap; }
+.drill-legend-arrow { font-size:12px; color:var(--sf-calm); opacity:0.7; }
+.drill-legend-label { letter-spacing:0; white-space:nowrap; }
 .drill-legend-badge {
-  font-size:12px; font-weight:bold; letter-spacing:0.08em; padding:1px 4px; border-radius:3px;
-  background:rgba(57,208,255,0.12); color:var(--accent); border:1px solid rgba(57,208,255,0.22);
+  font-size:12px; font-weight:bold; letter-spacing:0; padding:1px 4px; border-radius:3px;
+  background: color-mix(in srgb, var(--sf-you) 12%, transparent);
+  color:var(--sf-you); border:1px solid var(--sf-edge);
+  font-family: var(--sf-data-face);
 }
 .drill-legend-badge.bad {
-  background:rgba(255,84,112,0.14); color:var(--danger); border-color:rgba(255,84,112,0.35);
+  background: color-mix(in srgb, var(--sf-foe) 14%, transparent);
+  color:var(--sf-foe); border-color:var(--sf-foe);
 }
 .drill-legend-note {
-  font-size:12px; color:var(--ink-mute); letter-spacing:0.02em; text-align:center;
+  font-size:12px; color:var(--sf-calm); letter-spacing:0; text-align:center;
 }
 .drill-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
 .drill-foot button.sf-btn { width:auto; min-height:40px; padding:9px 22px; }
 .drill-screen button:focus-visible {
-  outline:2px solid var(--accent);
+  outline:2px solid var(--sf-you);
   outline-offset:3px;
 }
 .drill-sr-status {
@@ -1108,99 +930,76 @@ html.sf-reduce-motion .drill-status-banner { animation:none; }
   white-space:nowrap;
   border:0;
 }
-
-/* Persistent, compact activity feed. Routine receipts never cover the playfield. */
 .drill-activity-feed { display:flex; flex-direction:column; gap:5px; min-height:72px; max-height:156px; overflow:hidden; }
-.drill-activity-empty { color:var(--ink-mute); font-size:12px; line-height:1.4; }
-.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--accent); background:rgba(57,208,255,.045); color:var(--ink-dim); font-size:12px; line-height:1.35; overflow-wrap:anywhere; animation:drill-feed-in .12s ease-out; }
-.drill-activity-item.warn { border-left-color:var(--warn); color:var(--warn); background:rgba(255,179,92,.055); }
-.drill-activity-item.bad { border-left-color:var(--danger); color:var(--danger); background:rgba(255,92,92,.06); }
+.drill-activity-empty { color:var(--sf-calm); font-size:12px; line-height:1.4; }
+.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--sf-you); background: color-mix(in srgb, var(--sf-you) 6%, transparent); color:var(--sf-calm); font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
+.drill-activity-item.warn { border-left-color:var(--sf-goal); color:var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+.drill-activity-item.bad { border-left-color:var(--sf-foe); color:var(--sf-foe); background: color-mix(in srgb, var(--sf-foe) 8%, transparent); }
 .drill-activity-item .icon { font-weight:700; color:currentColor; }
-.drill-activity-item .value { color:var(--accent); font-size:12px; }
-.drill-activity-item .count { color:var(--ink-mute); font-size:12px; }
-@keyframes drill-feed-in { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
-
-/* Drill Extraction Summary Modal */
-.drill-summary-modal {
+.drill-activity-item .value { color:var(--sf-paper); font-size:12px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+.drill-activity-item .count { color:var(--sf-calm); font-size:12px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+.drill-summary-drawer {
   position: absolute;
   left: 0; top: 0; width: 100%; height: 100%;
-  background: rgba(4, 6, 10, 0.85);
+  background: color-mix(in srgb, var(--sf-surface) 85%, transparent);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
-  opacity: 0; transition: opacity 0.22s ease-out;
   pointer-events: auto;
 }
-.drill-summary-modal.active {
-  opacity: 1;
-}
-.drill-summary-box {
-  background: rgba(10, 14, 23, 0.96);
-  border: 1px solid var(--panel-edge);
+.drill-summary-drawer.active { opacity: 1; }
+.drill-summary-slab {
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-edge);
   border-radius: 3px;
   padding: 24px;
   width: min(480px, calc(100vw - 32px));
   box-sizing: border-box;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.85);
   display: flex; flex-direction: column; gap: 16px;
-  transform: scale(0.92); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.drill-summary-modal.active .drill-summary-box {
-  transform: scale(1);
-}
-.drill-summary-box .title {
-  font-family: var(--mono);
+.drill-summary-slab .title {
+  font-family: var(--sf-subhead-face);
   font-size: 13px;
-  letter-spacing: .16em;
-  color: var(--accent);
-  text-shadow: 0 0 10px rgba(57,208,255,0.3);
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: var(--sf-calm);
   text-align: center;
-  border-bottom: 1px solid rgba(57,208,255,0.15);
+  border-bottom: 1px solid var(--sf-edge);
   padding-bottom: 10px;
   text-transform: uppercase;
 }
-.drill-summary-box .item-list {
+.drill-summary-slab .item-list {
   display: flex; flex-direction: column; gap: 8px;
   max-height: 240px; overflow-y: auto;
 }
-.drill-summary-box .item-row {
+.drill-summary-slab .item-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.06);
+  padding: 6px 0; border-bottom: 1px dashed var(--sf-edge);
 }
-.drill-summary-box .item-row .left {
+.drill-summary-slab .item-row .left {
   display: flex; align-items: center; gap: 10px;
 }
-.drill-summary-box .item-row .icon {
+.drill-summary-slab .item-row .icon {
   width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
 }
-.drill-summary-box .item-row .icon img {
+.drill-summary-slab .item-row .icon img {
   width: 100%; height: 100%; object-fit: contain;
 }
-.drill-summary-box .item-row .name {
-  min-width:0; overflow-wrap:anywhere; font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+.drill-summary-slab .item-row .name {
+  min-width:0; overflow-wrap:anywhere; font-family: var(--sf-body-face); font-size: 12px; color: var(--sf-calm);
 }
-.drill-summary-box .item-row .value {
-  font-family: var(--mono); font-size: 12px; color: var(--accent);
+.drill-summary-slab .item-row .value {
+  font-family: var(--sf-data-face); font-size: 12px; color: var(--sf-paper); font-variant-numeric: tabular-nums;
 }
-.drill-summary-box .total-row {
+.drill-summary-slab .total-row {
   display: flex; justify-content: space-between; align-items: center;
-  margin-top: 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);
-  font-family: var(--mono); font-size: 12px; font-weight: bold; color: #ffffff;
+  margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--sf-edge);
+  font-family: var(--sf-data-face); font-size: 12px; font-weight: bold; color: var(--sf-paper);
+  font-variant-numeric: tabular-nums;
 }
-.drill-summary-box .total-row .val {
-  color: var(--accent);
-}
-.drill-summary-box button.sf-btn {
+.drill-summary-slab .total-row .val { color: var(--sf-you); }
+.drill-summary-slab button.sf-btn {
   margin-top: 8px; align-self: center; width: 140px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .drill-activity-item, .drill-summary-modal, .drill-summary-box { transition: none; animation:none; }
-}
-html.sf-reduce-motion .drill-activity-item,
-html.sf-reduce-motion .drill-summary-modal,
-html.sf-reduce-motion .drill-summary-box { transition: none; }
-.drill-screen.reduce-motion .drill-activity-item,
-.drill-screen.reduce-motion .drill-summary-modal,
-.drill-screen.reduce-motion .drill-summary-box { transition:none; }
 @media (max-width: 900px) {
   .drill-screen {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr);
@@ -1209,35 +1008,43 @@ html.sf-reduce-motion .drill-summary-box { transition: none; }
     padding: 10px 0;
     overflow-y: auto;
   }
-  .drill-center-panel { grid-column: 1 / -1; grid-row: 1; }
-  .drill-side-panel { min-height: 320px; }
-  .drill-side-panel.left-panel { grid-column: 1; grid-row: 2; }
-  .drill-side-panel.right-panel { grid-column: 2; grid-row: 2; }
+  .drill-stage { grid-column: 1 / -1; grid-row: 1; }
+  .drill-housing { min-height: 320px; }
+  .drill-housing.left-housing { grid-column: 1; grid-row: 2; }
+  .drill-housing.right-housing { grid-column: 2; grid-row: 2; }
 }
 @media (max-width: 620px) {
   .drill-screen { grid-template-columns: minmax(0,1fr); width: calc(100vw - 16px); }
-  .drill-center-panel,
-  .drill-side-panel.left-panel,
-  .drill-side-panel.right-panel { grid-column: 1; }
-  .drill-side-panel.left-panel { grid-row: 2; }
-  .drill-side-panel.right-panel { grid-row: 3; }
+  .drill-stage,
+  .drill-housing.left-housing,
+  .drill-housing.right-housing { grid-column: 1; }
+  .drill-housing.left-housing { grid-row: 2; }
+  .drill-housing.right-housing { grid-row: 3; }
   .drill-hud { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .drill-hud > span:nth-child(3) { border-left:0; border-top:1px solid rgba(57,208,255,.1); }
-  .drill-hud > span:nth-child(4) { border-top:1px solid rgba(57,208,255,.1); }
-  .drill-title { font-size:14px; letter-spacing:.12em; }
+  .drill-hud > span:nth-child(3) { border-left:0; border-top:1px solid var(--sf-edge); }
+  .drill-hud > span:nth-child(4) { border-top:1px solid var(--sf-edge); }
+  .drill-title { font-size:14px; letter-spacing:0; }
 }
 @media (max-height: 760px) and (min-width: 901px) {
   .drill-screen { height: 94vh; gap:10px; }
-  .drill-side-panel { padding:11px; gap:11px; }
-  .drill-side-panel .panel-section { gap:6px; padding-bottom:10px; }
+  .drill-housing { padding:11px; gap:11px; }
+  .drill-housing .drill-deck { gap:6px; padding-bottom:10px; }
   .drill-legend-grid { padding:5px; gap:4px; }
   .drill-legend-icon { width:18px; height:18px; }
 }
 @media (forced-colors: active) {
-  .drill-screen, .drill-side-panel, .drill-canvas-wrap, .drill-hud, .drill-legend-grid {
-    border-color:CanvasText;
+  .drill-screen, .drill-housing, .drill-canvas-wrap, .drill-hud, .drill-legend-grid, .drill-summary-slab {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
   }
-  .drill-side-panel, .drill-hud, .drill-legend-grid { background:Canvas; color:CanvasText; }
+  .drill-legend-mark { display:inline; }
+  .drill-legend-item[data-mat="metal"] .drill-legend-icon { outline: 2px solid CanvasText; }
+  .drill-legend-item[data-mat="ice"] .drill-legend-icon { outline: 2px dashed CanvasText; }
+  .drill-legend-item[data-mat="exotic"] .drill-legend-icon { outline: 3px dotted CanvasText; }
+  .drill-legend-item[data-mat="gas"] .drill-legend-icon { outline: 2px double CanvasText; }
+  .drill-legend-item[data-mat="basalt"] .drill-legend-icon { outline: 2px solid CanvasText; }
+  .drill-legend-item[data-mat="matrix"] .drill-legend-icon { outline: 1px solid CanvasText; }
 }
 `;
   document.head.appendChild(s);
@@ -1261,12 +1068,12 @@ export const drillScreen = {
     // 1. LEFT TELEMETRY PANEL
     // ==========================================
     const leftPanel = document.createElement('aside');
-    leftPanel.className = 'drill-side-panel left-panel';
+    leftPanel.className = 'drill-housing left-housing';
     leftPanel.setAttribute('aria-label', 'Bore link and survey controls');
     
     // Header
     const leftHeader = document.createElement('div');
-    leftHeader.className = 'panel-section';
+    leftHeader.className = 'drill-deck';
     leftHeader.innerHTML = `
       <div class="sec-title">Bore link</div>
       <div class="readout-row"><span class="lbl">Status</span><span class="val good">Nominal</span></div>
@@ -1277,7 +1084,7 @@ export const drillScreen = {
     
     // Sonar section
     const sonarSec = document.createElement('div');
-    sonarSec.className = 'panel-section';
+    sonarSec.className = 'drill-deck';
     sonarSec.innerHTML = `
       <div class="sec-title">Seismic survey</div>
     `;
@@ -1293,7 +1100,7 @@ export const drillScreen = {
     
     // Controls list
     const controlSec = document.createElement('div');
-    controlSec.className = 'panel-section';
+    controlSec.className = 'drill-deck';
     controlSec.innerHTML = `
       <div class="sec-title">Rig controls</div>
       <ul class="drill-control-list">
@@ -1313,7 +1120,7 @@ export const drillScreen = {
     // 2. CENTER PANEL (PRIMARY CANVAS)
     // ==========================================
     const centerPanel = document.createElement('div');
-    centerPanel.className = 'drill-center-panel';
+    centerPanel.className = 'drill-stage';
     
     const kicker = document.createElement('div');
     kicker.className = 'drill-kicker';
@@ -1401,21 +1208,21 @@ export const drillScreen = {
     // 3. RIGHT PANEL (ANALYSIS & MANIFEST)
     // ==========================================
     const rightPanel = document.createElement('aside');
-    rightPanel.className = 'drill-side-panel right-panel';
+    rightPanel.className = 'drill-housing right-housing';
     rightPanel.setAttribute('aria-label', 'Target analysis and extraction manifest');
     
     const scanSec = document.createElement('div');
-    scanSec.className = 'panel-section';
+    scanSec.className = 'drill-deck';
     scanSec.innerHTML = `
       <div class="sec-title">Target analysis</div>
-      <div id="drill-scan-target" style="font-size:12px; line-height:1.4; color:var(--ink-dim);">
+      <div id="drill-scan-target" style="font-size:12px; line-height:1.4; color:var(--sf-calm);">
         Resolving adjacent strata…
       </div>
     `;
     rightPanel.appendChild(scanSec);
 
     const activitySec = document.createElement('div');
-    activitySec.className = 'panel-section';
+    activitySec.className = 'drill-deck';
     activitySec.innerHTML = `
       <div class="sec-title">Rig activity</div>
       <div class="drill-activity-feed" data-drill-activity-feed>
@@ -1426,17 +1233,17 @@ export const drillScreen = {
     rightPanel.appendChild(activitySec);
     
     const manifestSec = document.createElement('div');
-    manifestSec.className = 'panel-section';
+    manifestSec.className = 'drill-deck';
     manifestSec.innerHTML = `
       <div class="sec-title">Extraction manifest</div>
       <div id="drill-cargo-manifest-list" style="display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto; padding-right:4px;">
-        <div style="font-size:12px; color:var(--ink-mute);">No minerals extracted.</div>
+        <div style="font-size:12px; color:var(--sf-calm);">No minerals extracted.</div>
       </div>
     `;
     rightPanel.appendChild(manifestSec);
     
     const engineSec = document.createElement('div');
-    engineSec.className = 'panel-section';
+    engineSec.className = 'drill-deck';
     engineSec.innerHTML = `
       <div class="sec-title">Drill assembly</div>
       <div class="readout-row"><span class="lbl">DRILL HEAD</span><span class="val" data-drill-tier>BASIC MK1</span></div>
@@ -1635,7 +1442,7 @@ export const drillScreen = {
     // Cached HUD element handles + last-written values (avoids per-frame querySelector + DOM writes).
     const hudEls = {};
     const hudCache = {};
-    // Cached --mono font family — resolved once per session. Was 10× getComputedStyle/frame below,
+    // Cached --sf-data-face family — resolved once per session. Was 10× getComputedStyle/frame below,
     // each forcing a synchronous layout recalculation (the main source of visible chop).
     let monoFamily = 'monospace';
     // Pre-rendered static depth overlay — drawn once, blitted per frame.
@@ -1658,15 +1465,16 @@ export const drillScreen = {
     let motionReduce = prefersReducedMotion({
       motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
     });
+    let roles = canvasRoles();
 
     const unsubs = [];
 
     function sparkColorFor(type, ore) {
-      if (type === 'dirt') return '#a78262';
-      if (type === 'rock') return COL.inkMute;
-      if (type === 'gas') return COL.accent3;
-      if (type === 'vein' && ore) return ORE_SPARK_COLOR[ore] || COL.warn;
-      return COL.ink;
+      if (type === 'dirt') return roles.edge;
+      if (type === 'rock') return roles.paper;
+      if (type === 'gas') return colorForMaterial('gas', roles);
+      if (type === 'vein' && ore) return colorForMaterial(ore, roles);
+      return roles.paper;
     }
 
     function faceAngle(dir) {
@@ -1684,7 +1492,7 @@ export const drillScreen = {
       strataCtx.clearRect(x, y, TILE, TILE);
 
       if (t.type === 'empty') {
-        strataCtx.strokeStyle = 'rgba(57,208,255,0.03)';
+        strataCtx.strokeStyle = paint(roles.edge, 0.18);
         strataCtx.lineWidth = 1;
         strataCtx.strokeRect(x, y, TILE, TILE);
         return;
@@ -1704,19 +1512,19 @@ export const drillScreen = {
       if (img?.complete && img.naturalWidth > 0) {
         strataCtx.drawImage(img, x, y, TILE, TILE);
       } else if (surveyed && t.type === 'vein' && t.ore) {
-        strataCtx.fillStyle = 'rgba(255, 92, 92, 0.25)';
+        strataCtx.fillStyle = paint(roles.foe, 0.25);
         strataCtx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-        strataCtx.strokeStyle = '#ff5c5c';
+        strataCtx.strokeStyle = roles.foe;
         strataCtx.lineWidth = 1.5;
         strataCtx.strokeRect(x + 4, y + 4, TILE - 8, TILE - 8);
-        strataCtx.fillStyle = '#ffb35c';
-        strataCtx.font = 'bold 8px ' + monoFamily;
+        strataCtx.fillStyle = roles.goal;
+        strataCtx.font = 'bold 12px ' + monoFamily;
         strataCtx.textAlign = 'center';
         strataCtx.fillText('?', x + TILE / 2, y + TILE / 2 + 3);
       } else {
         // Images decode asynchronously on first boot. Preserve material readability for that short
         // window; buildStrataCache runs again as soon as every SVG is decoded.
-        strataCtx.fillStyle = (t.type === 'rock' || t.type === 'vein') ? '#222f3d' : '#3b3026';
+        strataCtx.fillStyle = (t.type === 'rock' || t.type === 'vein') ? roles.edge : roles.surface;
         strataCtx.fillRect(x, y, TILE, TILE);
       }
 
@@ -1725,13 +1533,13 @@ export const drillScreen = {
         const tier = drillScreen._drillTier || 1;
         if (tier < req) {
           strataCtx.save();
-          strataCtx.fillStyle = 'rgba(8, 12, 20, 0.55)';
+          strataCtx.fillStyle = paint(roles.surface, 0.55);
           strataCtx.fillRect(x, y, TILE, TILE);
-          strataCtx.strokeStyle = 'rgba(255, 92, 92, 0.85)';
+          strataCtx.strokeStyle = paint(roles.foe, 0.85);
           strataCtx.lineWidth = 1.5;
           strataCtx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
-          strataCtx.fillStyle = '#ff8a4a';
-          strataCtx.font = 'bold 9px ' + monoFamily;
+          strataCtx.fillStyle = roles.foe;
+          strataCtx.font = 'bold 12px ' + monoFamily;
           strataCtx.textAlign = 'center';
           strataCtx.fillText(`MK${req}`, x + TILE / 2, y + TILE / 2 + 3);
           strataCtx.restore();
@@ -1797,13 +1605,13 @@ export const drillScreen = {
       yieldFlash.text = '+' + p.qty + ' ' + name.toUpperCase();
       const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
       const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
-      const color = ORE_SPARK_COLOR[p.commodityId] || COL.accent2;
+      const color = colorForMaterial(p.commodityId, roles);
       spawnParticleBurst(particles, {
         x: px, y: py, count: 10, color, life: 0.55, size: 2.4, speed: 55,
         kind: 'spark', gravity: 40, cone: Math.PI * 2,
       });
       spawnParticleBurst(particles, {
-        x: px, y: py - 6, count: 3, color: COL.accent2, life: 0.9, size: 1.5,
+        x: px, y: py - 6, count: 3, color: roles.you, life: 0.9, size: 1.5,
         speed: 8, kind: 'floater', text: '+' + p.qty, vy0: -18,
       });
       pushActivity(`+${p.qty} ${name} extracted`, 'info', p.commodityId, p.qty);
@@ -1819,12 +1627,12 @@ export const drillScreen = {
       const px = (p.pos?.col ?? 0) * TILE + TILE / 2;
       const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
       spawnParticleBurst(particles, {
-        x: px, y: py, count: motionReduce ? 4 : 14, color: COL.accent3,
+        x: px, y: py, count: motionReduce ? 4 : 14, color: roles.foe,
         life: 0.55, size: 3, speed: 70, kind: 'spark', cone: Math.PI * 2,
       });
       if (!motionReduce) {
         spawnParticleBurst(particles, {
-          x: px, y: py, count: 2, color: 'rgba(192,139,255,0.55)',
+          x: px, y: py, count: 2, color: paint(roles.foe, 0.55),
           life: 0.4, size: 6, speed: 0, kind: 'ring',
         });
       }
@@ -1846,7 +1654,7 @@ export const drillScreen = {
         const px = (p.pos.col ?? 0) * TILE + TILE / 2;
         const py = (p.pos.row ?? 0) * TILE + TILE / 2;
         spawnParticleBurst(particles, {
-          x: px, y: py - 6, count: 2, color: COL.warn, life: 1.0, size: 1.5,
+          x: px, y: py - 6, count: 2, color: roles.goal, life: 1.0, size: 1.5,
           speed: 6, kind: 'floater', text: `MK${p.tierReq || 2} LOCKED`, vy0: -16,
         });
       }
@@ -1854,7 +1662,7 @@ export const drillScreen = {
         const px = (p.pos.col ?? 0) * TILE + TILE / 2;
         const py = (p.pos.row ?? 0) * TILE + TILE / 2;
         spawnParticleBurst(particles, {
-          x: px, y: py - 6, count: 2, color: COL.warn, life: 1.1, size: 1.5,
+          x: px, y: py - 6, count: 2, color: roles.goal, life: 1.1, size: 1.5,
           speed: 6, kind: 'floater', text: 'ROCK EMPTY', vy0: -16,
         });
       }
@@ -1878,7 +1686,7 @@ export const drillScreen = {
       const py = (p.pos?.row ?? 0) * TILE + TILE / 2;
       const name = commodityName(p.commodityId);
       spawnParticleBurst(particles, {
-        x: px, y: py - 6, count: 3, color: COL.danger, life: 1.0, size: 1.5,
+        x: px, y: py - 6, count: 3, color: roles.foe, life: 1.0, size: 1.5,
         speed: 8, kind: 'floater', text: 'CARGO FULL', vy0: -18,
       });
       cargoFullFlash.t = motionReduce ? 0.4 : 1.0;
@@ -1917,7 +1725,7 @@ export const drillScreen = {
         life: 0.45, size: 2.8, speed: 60, kind: 'spark', gravity: 55, cone: Math.PI * 2,
       });
       spawnParticleBurst(particles, {
-        x: cx, y: cy, count: 4, color: 'rgba(167,130,98,0.4)',
+        x: cx, y: cy, count: 4, color: paint(roles.edge, 0.4),
         life: 0.5, size: 3.5, speed: 18, kind: 'dust',
       });
       canvasDirty = true;
@@ -1948,7 +1756,7 @@ export const drillScreen = {
       });
       if (!motionReduce && Math.random() < 0.45) {
         spawnParticleBurst(particles, {
-          x: cx, y: cy, count: 1, color: 'rgba(167,130,98,0.35)',
+          x: cx, y: cy, count: 1, color: paint(roles.edge, 0.35),
           life: 0.4, size: 2.5, speed: 12, kind: 'dust', angle: ang + Math.PI, cone: 0.8,
         });
       }
@@ -1965,7 +1773,7 @@ export const drillScreen = {
       const cy = h / 2;
       
       // Draw grid rings
-      sonarCtx.strokeStyle = 'rgba(57, 208, 255, 0.08)';
+      sonarCtx.strokeStyle = paint(roles.you, 0.08);
       sonarCtx.lineWidth = 1;
       for (let r = 25; r <= 65; r += 20) {
         sonarCtx.beginPath();
@@ -1984,14 +1792,14 @@ export const drillScreen = {
       const sweepAngle = progress * Math.PI * 2;
 
       if (active) {
-        sonarCtx.fillStyle = 'rgba(57, 208, 255, 0.04)';
+        sonarCtx.fillStyle = paint(roles.you, 0.04);
         sonarCtx.beginPath();
         sonarCtx.moveTo(cx, cy);
         sonarCtx.arc(cx, cy, 65, sweepAngle - 0.45, sweepAngle);
         sonarCtx.closePath();
         sonarCtx.fill();
 
-        sonarCtx.strokeStyle = 'rgba(57, 208, 255, 0.4)';
+        sonarCtx.strokeStyle = paint(roles.you, 0.4);
         sonarCtx.beginPath();
         sonarCtx.moveTo(cx, cy);
         sonarCtx.lineTo(cx + Math.cos(sweepAngle) * 65, cy + Math.sin(sweepAngle) * 65);
@@ -2013,7 +1821,7 @@ export const drillScreen = {
               if (!tile || !tile.surveyed || (tile.type !== 'vein' && tile.type !== 'gas')) continue;
               const px = cx + dc * 12;
               const py = cy + dr * 12;
-              const color = tile.type === 'gas' ? COL.danger : (ORE_SPARK_COLOR[tile.ore] || COL.warn);
+              const color = tile.type === 'gas' ? roles.foe : (colorForMaterial(tile.ore, roles));
               sonarCtx.globalAlpha = active ? 0.95 : 0.68;
               sonarCtx.strokeStyle = color;
               sonarCtx.fillStyle = color;
@@ -2038,7 +1846,7 @@ export const drillScreen = {
         }
       }
 
-      sonarCtx.fillStyle = COL.ink;
+      sonarCtx.fillStyle = roles.paper;
       sonarCtx.fillRect(cx - 2, cy - 2, 4, 4);
     }
 
@@ -2085,7 +1893,7 @@ export const drillScreen = {
         spawnParticleBurst(particles, {
           x: tx + (Math.random() - 0.5) * TILE * 0.6,
           y: ty + (Math.random() - 0.5) * TILE * 0.6,
-          count: 2, color: 'rgba(167, 130, 98, 0.4)',
+          count: 2, color: paint(roles.edge, 0.4),
           life: 0.55, size: 2.4, speed: 16, kind: 'dust',
         });
       }
@@ -2136,9 +1944,10 @@ export const drillScreen = {
     function render(dt) {
       const d = state.drill;
       if (!d) return false;
+      roles = canvasRoles();
       ctx2d.setTransform(1, 0, 0, 1, 0, 0);
       ctx2d.clearRect(0, 0, canvas.width, canvas.height);
-      ctx2d.fillStyle = '#060913';
+      ctx2d.fillStyle = roles.surface;
       ctx2d.fillRect(0, 0, canvas.width, canvas.height);
       const shake = drillGasShakeOffset(gasHitShake.t, gasHitShake.elapsed, motionReduce);
       ctx2d.save();
@@ -2167,12 +1976,12 @@ export const drillScreen = {
       const endRow = Math.min(ROWS, Math.ceil((viewY + viewHeight) / TILE) + 1);
 
       // Draw background (outer space sky)
-      ctx2d.fillStyle = '#060913';
+      ctx2d.fillStyle = roles.surface;
       ctx2d.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw cavern tunnels background below surface
       const tunnelTopY = Math.max(0, 0 - viewY);
-      ctx2d.fillStyle = '#10141e';
+      ctx2d.fillStyle = roles.edge;
       ctx2d.fillRect(0, tunnelTopY, canvas.width, Math.max(0, ROWS * TILE - viewY));
 
       // The unchanged field is one cached bitmap. Only break/reveal neighborhoods repaint it.
@@ -2218,7 +2027,7 @@ export const drillScreen = {
           ctx2d.stroke();
         } else if (p.isFloater && p.text) {
           ctx2d.fillStyle = p.color;
-          ctx2d.font = 'bold 11px ' + monoFamily;
+          ctx2d.font = 'bold 12px ' + monoFamily;
           ctx2d.textAlign = 'center';
           ctx2d.fillText(p.text, p.x, py);
         } else if (p.isSteam) {
@@ -2258,8 +2067,8 @@ export const drillScreen = {
         const a = Math.min(1, cargoFullFlash.t);
         const vg = ctx2d.createLinearGradient(0, 0, 0, canvas.height);
         vg.addColorStop(0, `rgba(255,179,92,${0.34 * a})`);
-        vg.addColorStop(0.18, 'rgba(255,179,92,0)');
-        vg.addColorStop(0.82, 'rgba(255,179,92,0)');
+        vg.addColorStop(0.18, paint(roles.goal, 0));
+        vg.addColorStop(0.82, paint(roles.goal, 0));
         vg.addColorStop(1, `rgba(255,179,92,${0.34 * a})`);
         ctx2d.fillStyle = vg;
         ctx2d.fillRect(0, 0, canvas.width, canvas.height);
@@ -2273,7 +2082,7 @@ export const drillScreen = {
       if (d.cableTrail && d.cableTrail.length > 0) {
         ctx2d.save();
         // Thick dark outer casing
-        ctx2d.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx2d.strokeStyle = paint(roles.surface, 0.85);
         ctx2d.lineWidth = 5;
         ctx2d.lineCap = 'round';
         ctx2d.lineJoin = 'round';
@@ -2288,14 +2097,14 @@ export const drillScreen = {
         ctx2d.stroke();
 
         // Glowing inner core
-        ctx2d.strokeStyle = '#0ea5e9';
-        ctx2d.shadowColor = '#38bdf8';
+        ctx2d.strokeStyle = roles.you;
+        ctx2d.shadowColor = roles.you;
         ctx2d.shadowBlur = 6;
         ctx2d.lineWidth = 2.2;
         ctx2d.stroke();
 
         // Power trace only moves while the rig is moving or drilling.
-        ctx2d.strokeStyle = '#e0f2fe';
+        ctx2d.strokeStyle = roles.paper;
         ctx2d.shadowBlur = 0;
         ctx2d.lineWidth = 1.2;
         ctx2d.setLineDash([5, 12]);
@@ -2364,10 +2173,10 @@ export const drillScreen = {
       if (yieldFlash.t > 0) {
         ctx2d.save();
         ctx2d.globalAlpha = Math.min(1, yieldFlash.t * 1.4);
-        ctx2d.fillStyle = COL.accent2;
+        ctx2d.fillStyle = roles.you;
         ctx2d.font = 'bold 13px ' + monoFamily;
         ctx2d.textAlign = 'center';
-        ctx2d.shadowColor = '#000000';
+        ctx2d.shadowColor = roles.surface;
         ctx2d.shadowBlur = 4;
         const floatY = motionReduce ? 10 : (1 - Math.min(1, yieldFlash.t)) * 28;
         ctx2d.fillText(yieldFlash.text, rx + TILE / 2, ry - 10 - floatY);
@@ -2383,8 +2192,8 @@ export const drillScreen = {
         const gh = 100;
         
         // Slot background
-        ctx2d.fillStyle = 'rgba(15, 23, 42, 0.75)';
-        ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.25)';
+        ctx2d.fillStyle = paint(roles.surface, 0.75);
+        ctx2d.strokeStyle = paint(roles.you, 0.25);
         ctx2d.lineWidth = 1;
         ctx2d.fillRect(gx, gy, gw, gh);
         ctx2d.strokeRect(gx, gy, gw, gh);
@@ -2393,26 +2202,26 @@ export const drillScreen = {
         const fillHeight = (d.drillTemp / 100) * gh;
         const fy = gy + gh - fillHeight;
         
-        let fillCol = COL.accent;
+        let fillCol = roles.you;
         if (d.overheated) {
-          fillCol = (!motionReduce && Math.floor(performance.now() / 200) % 2 === 0) ? COL.danger : COL.warn;
+          fillCol = (!motionReduce && Math.floor(performance.now() / 200) % 2 === 0) ? roles.foe : roles.goal;
         } else if (d.drillTemp > 75) {
-          fillCol = COL.danger;
+          fillCol = roles.foe;
         } else if (d.drillTemp > 45) {
-          fillCol = COL.warn;
+          fillCol = roles.goal;
         }
         
         ctx2d.fillStyle = fillCol;
         ctx2d.fillRect(gx + 1, fy + 1, gw - 2, fillHeight - 2);
         
         // Label
-        ctx2d.fillStyle = 'rgba(211, 230, 255, 0.6)';
-        ctx2d.font = 'bold 9px ' + monoFamily;
+        ctx2d.fillStyle = paint(roles.paper, 0.6);
+        ctx2d.font = 'bold 12px ' + monoFamily;
         ctx2d.textAlign = 'left';
         ctx2d.fillText('TEMP', gx, gy + gh + 12);
         
         if (d.overheated) {
-          ctx2d.fillStyle = COL.danger;
+          ctx2d.fillStyle = roles.foe;
           ctx2d.fillText('OVERHEAT', gx + 14, gy + 12);
         }
         ctx2d.restore();
@@ -2429,20 +2238,20 @@ export const drillScreen = {
         const fillHeight = (energy / 100) * gh;
         const fy = gy + gh - fillHeight;
 
-        ctx2d.fillStyle = 'rgba(15, 23, 42, 0.75)';
-        ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.25)';
+        ctx2d.fillStyle = paint(roles.surface, 0.75);
+        ctx2d.strokeStyle = paint(roles.you, 0.25);
         ctx2d.lineWidth = 1;
         ctx2d.fillRect(gx, gy, gw, gh);
         ctx2d.strokeRect(gx, gy, gw, gh);
-        ctx2d.fillStyle = d.energyDepleted ? COL.danger : (energy < 25 ? COL.warn : COL.good);
+        ctx2d.fillStyle = d.energyDepleted ? roles.foe : (energy < 25 ? roles.goal : roles.you);
         ctx2d.fillRect(gx + 1, fy + 1, gw - 2, Math.max(0, fillHeight - 2));
 
-        ctx2d.fillStyle = 'rgba(211, 230, 255, 0.6)';
-        ctx2d.font = 'bold 9px ' + monoFamily;
+        ctx2d.fillStyle = paint(roles.paper, 0.6);
+        ctx2d.font = 'bold 12px ' + monoFamily;
         ctx2d.textAlign = 'right';
         ctx2d.fillText('ENERGY', gx + gw, gy + gh + 12);
         if (d.energyDepleted) {
-          ctx2d.fillStyle = COL.danger;
+          ctx2d.fillStyle = roles.foe;
           ctx2d.fillText('EMPTY', gx - 6, gy + 12);
         }
         ctx2d.restore();
@@ -2450,8 +2259,8 @@ export const drillScreen = {
 
       // --- 3.5 Depth telemetry markings ---
       ctx2d.save();
-      ctx2d.fillStyle = 'rgba(57, 208, 255, 0.38)';
-      ctx2d.font = 'bold 8.5px ' + monoFamily;
+      ctx2d.fillStyle = paint(roles.you, 0.38);
+      ctx2d.font = 'bold 12px ' + monoFamily;
       ctx2d.textAlign = 'right';
       
       const stepY = TILE * 2;
@@ -2475,9 +2284,8 @@ export const drillScreen = {
         const ty = tr * TILE - viewY;
         
         ctx2d.save();
-        // Locked reticle — danger token; no blink under motionReduce
-        const flash = motionReduce || Math.floor(performance.now() / 180) % 2 === 0;
-        ctx2d.strokeStyle = flash ? COL.danger : 'rgba(255, 84, 112, 0.3)';
+        // Locked reticle — foe token plus corner ticks and MK label; colour is not the only cue.
+        ctx2d.strokeStyle = roles.foe;
         ctx2d.lineWidth = 2;
         ctx2d.strokeRect(tx + 2, ty + 2, TILE - 4, TILE - 4);
         
@@ -2490,14 +2298,14 @@ export const drillScreen = {
         ctx2d.stroke();
         
         // Warning text block
-        ctx2d.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx2d.fillStyle = paint(roles.surface, 0.9);
         ctx2d.fillRect(tx - 30, ty - 18, TILE + 60, 14);
-        ctx2d.strokeStyle = COL.danger;
+        ctx2d.strokeStyle = roles.foe;
         ctx2d.lineWidth = 1;
         ctx2d.strokeRect(tx - 30, ty - 18, TILE + 60, 14);
         
-        ctx2d.fillStyle = COL.danger;
-        ctx2d.font = 'bold 8.5px ' + monoFamily;
+        ctx2d.fillStyle = roles.foe;
+        ctx2d.font = 'bold 12px ' + monoFamily;
         ctx2d.textAlign = 'center';
         
         const names = { 2: 'MK2 DRILL REQ', 3: 'MK3 DRILL REQ', 4: 'MK4 DRILL REQ' };
@@ -2518,7 +2326,7 @@ export const drillScreen = {
           
           ctx2d.save();
           // 1. Draw target indicator frame
-          ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.7)';
+          ctx2d.strokeStyle = paint(roles.you, 0.7);
           ctx2d.lineWidth = 1.5;
           ctx2d.strokeRect(hx + 1, hy + 1, TILE - 2, TILE - 2);
           
@@ -2542,17 +2350,17 @@ export const drillScreen = {
           
           ctx2d.fillStyle = 'rgba(6, 10, 18, 0.95)';
           ctx2d.fillRect(mx, my, tw, th);
-          ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.35)';
+          ctx2d.strokeStyle = paint(roles.you, 0.35);
           ctx2d.lineWidth = 1;
           ctx2d.strokeRect(mx, my, tw, th);
           
           // Faint left accent line
-          ctx2d.fillStyle = 'rgba(57, 208, 255, 0.8)';
+          ctx2d.fillStyle = paint(roles.you, 0.8);
           ctx2d.fillRect(mx, my, 3, th);
           
           // Text fields
-          ctx2d.fillStyle = '#ffffff';
-          ctx2d.font = 'bold 10px ' + monoFamily;
+          ctx2d.fillStyle = roles.paper;
+          ctx2d.font = 'bold 12px ' + monoFamily;
           ctx2d.textAlign = 'left';
           
           let name = 'UNKNOWN STRATA';
@@ -2593,18 +2401,18 @@ export const drillScreen = {
           ctx2d.fillText(name, mx + 8, my + 14);
           
           ctx2d.fillStyle = 'rgba(215, 230, 255, 0.6)';
-          ctx2d.font = '10px ' + monoFamily;
+          ctx2d.font = '12px ' + monoFamily;
           ctx2d.fillText(subtitle, mx + 8, my + 30);
           if (valueText) {
             ctx2d.fillText(valueText, mx + 8, my + 44);
           }
           
           if (isBlocked) {
-            ctx2d.fillStyle = '#ff5c5c';
-            ctx2d.font = 'bold 9px ' + monoFamily;
+            ctx2d.fillStyle = roles.foe;
+            ctx2d.font = 'bold 12px ' + monoFamily;
             ctx2d.fillText('LOCKED — UPGRADE DRILL', mx + 8, my + 60);
           } else {
-            ctx2d.fillStyle = 'rgba(57, 208, 255, 0.8)';
+            ctx2d.fillStyle = paint(roles.you, 0.8);
             ctx2d.fillText(reqText, mx + 8, my + 60);
           }
           
@@ -2649,8 +2457,8 @@ export const drillScreen = {
       }
       if (entries.length === 0) {
         const empty = document.createElement('div');
-        empty.style.fontSize = '11px';
-        empty.style.color = 'var(--ink-mute)';
+        empty.style.fontSize = '12px';
+        empty.style.color = 'var(--sf-calm)';
         empty.textContent = 'No minerals extracted.';
         hudEls.manifest.replaceChildren(empty);
         return;
@@ -2661,7 +2469,7 @@ export const drillScreen = {
         const basePrice = COMMODITY_BY_ID.get(commodityId)?.basePrice || 0;
         const row = document.createElement('div');
         row.className = 'readout-row';
-        row.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        row.style.borderBottom = '1px solid paint(roles.paper, 0.05)';
         row.style.padding = '3px 0';
         const label = document.createElement('span');
         label.className = 'lbl';
@@ -2796,15 +2604,15 @@ export const drillScreen = {
           if (!drillSys.isTileSurveyed(nc, nr)) {
             html = '<strong>UNSURVEYED STRATA</strong><br>Pulse survey to resolve';
           } else if (t.type === 'empty') {
-            html = '<span style="color:var(--ink-mute);">Target</span><br>Open bore';
+            html = '<span style="color:var(--sf-calm);">Target</span><br>Open bore';
           } else if (t.type === 'dirt') {
             html = '<strong>SOFT REGOLITH</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
-              + '<br><span style="color:var(--ink-mute);">Bore only — no cargo yield</span>';
+              + '<br><span style="color:var(--sf-calm);">Bore only — no cargo yield</span>';
           } else if (t.type === 'rock') {
             html = '<strong>SOLID BASALT</strong><br>Integrity ' + Math.ceil(t.hp) + '/' + t.maxHp + workLine
-              + `<br>Risk ${t.risk || 'low'} · <span style="color:var(--ink-mute);">No ore — clears path only</span>`;
+              + `<br>Risk ${t.risk || 'low'} · <span style="color:var(--sf-calm);">No ore — clears path only</span>`;
           } else if (t.type === 'gas') {
-            html = '<strong style="color:#ff5c5c;">HAZARD — COMPRESSED GAS</strong><br>Risk critical · damages hull, yields no cargo · route around';
+            html = '<strong style="color:var(--sf-foe);">HAZARD — COMPRESSED GAS</strong><br>Risk critical · damages hull, yields no cargo · route around';
           } else if (t.type === 'vein' && t.ore) {
             const name = commodityName(t.ore);
             const basePrice = COMMODITY_BY_ID.get(t.ore)?.basePrice || 0;
@@ -2813,15 +2621,15 @@ export const drillScreen = {
             const blocked = tier < req;
             const rockEmpty = Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0;
             const tierLine = blocked
-              ? `<strong style="color:#ff5c5c;">LOCKED — needs Drill MK${req}</strong>`
+              ? `<strong style="color:var(--sf-foe);">LOCKED — needs Drill MK${req}</strong>`
               : `Drill MK${req}`;
             const payLine = rockEmpty
-              ? '<br><strong style="color:var(--warn);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
+              ? '<br><strong style="color:var(--sf-goal);">ROCK PLAYED OUT — this vein pays 0 until recovery</strong>'
               : '';
             html = `<strong>${name.toUpperCase()} VEIN</strong><br>Estimate ${basePrice} Cr/u · yield ${t.yieldU || 0}u${workLine}<br>Risk ${t.risk || 'low'} · ${tierLine}${payLine}`;
           }
         } else {
-          html = '<span style="color:var(--ink-mute);">Target</span><br>Asteroid boundary';
+          html = '<span style="color:var(--sf-calm);">Target</span><br>Asteroid boundary';
         }
         setHtml(hudEls.scan, 'scan', html);
       }
@@ -2872,7 +2680,7 @@ export const drillScreen = {
       lastActivity = null;
 
       const monoVar = (typeof window !== 'undefined' && window.getComputedStyle)
-        ? window.getComputedStyle(document.body).getPropertyValue('--mono')
+        ? window.getComputedStyle(document.body).getPropertyValue('--sf-data-face')
         : '';
       monoFamily = (monoVar && monoVar.trim()) || 'monospace';
 
@@ -2996,13 +2804,13 @@ function showDrillSummaryModal(yieldLog) {
   if (items.length === 0) return;
 
   const modal = document.createElement('div');
-  modal.className = 'drill-summary-modal';
+  modal.className = 'drill-summary-drawer';
   modal.setAttribute('role', 'dialog');
   modal.setAttribute('aria-modal', 'true');
   modal.setAttribute('aria-labelledby', 'drill-summary-title');
   
   const box = document.createElement('div');
-  box.className = 'drill-summary-box';
+  box.className = 'drill-summary-slab';
   
   const title = document.createElement('h2');
   title.className = 'title';
@@ -3100,97 +2908,81 @@ function showDrillSummaryModal(yieldLog) {
 }
 
 function drawAugerDrillBit(ctx2d, x, y, size, angle, time) {
+  const r = canvasRoles();
   ctx2d.save();
   ctx2d.translate(x, y);
   ctx2d.rotate(angle);
-  
+
   const w = size;
   const h = size * 0.7;
-  
-  // 1. Bracket mount (carbon grey)
-  ctx2d.fillStyle = '#1e293b';
-  ctx2d.fillRect(-w/2, -h*0.35, w*0.18, h*0.7);
-  ctx2d.strokeStyle = '#475569';
+
+  ctx2d.fillStyle = r.edge;
+  ctx2d.fillRect(-w / 2, -h * 0.35, w * 0.18, h * 0.7);
+  ctx2d.strokeStyle = r.calm;
   ctx2d.lineWidth = 1.2;
-  ctx2d.strokeRect(-w/2, -h*0.35, w*0.18, h*0.7);
-  
-  // 2. Drive shaft (chrome steel)
-  const shaftG = ctx2d.createLinearGradient(0, -h*0.2, 0, h*0.2);
-  shaftG.addColorStop(0, '#64748b');
-  shaftG.addColorStop(0.5, '#f1f5f9');
-  shaftG.addColorStop(1, '#334155');
+  ctx2d.strokeRect(-w / 2, -h * 0.35, w * 0.18, h * 0.7);
+
+  const shaftG = ctx2d.createLinearGradient(0, -h * 0.2, 0, h * 0.2);
+  shaftG.addColorStop(0, r.calm);
+  shaftG.addColorStop(0.5, r.paper);
+  shaftG.addColorStop(1, r.edge);
   ctx2d.fillStyle = shaftG;
-  ctx2d.fillRect(-w/2 + w*0.18, -h*0.2, w*0.14, h*0.4);
-  
-  // 3. Main screw cone
-  const coneG = ctx2d.createLinearGradient(0, -h/2, 0, h/2);
-  coneG.addColorStop(0, '#94a3b8');
-  coneG.addColorStop(0.3, '#f8fafc');
-  coneG.addColorStop(0.7, '#475569');
-  coneG.addColorStop(1, '#0f172a');
-  
+  ctx2d.fillRect(-w / 2 + w * 0.18, -h * 0.2, w * 0.14, h * 0.4);
+
+  const coneG = ctx2d.createLinearGradient(0, -h / 2, 0, h / 2);
+  coneG.addColorStop(0, r.calm);
+  coneG.addColorStop(0.35, r.paper);
+  coneG.addColorStop(1, r.edge);
   ctx2d.fillStyle = coneG;
   ctx2d.beginPath();
-  const bx = -w/2 + w*0.32;
-  ctx2d.moveTo(bx, -h/2);
-  ctx2d.lineTo(w/2, 0);
-  ctx2d.lineTo(bx, h/2);
+  const bx = -w / 2 + w * 0.32;
+  ctx2d.moveTo(bx, -h / 2);
+  ctx2d.lineTo(w / 2, 0);
+  ctx2d.lineTo(bx, h / 2);
   ctx2d.closePath();
   ctx2d.fill();
-  
-  ctx2d.strokeStyle = '#64748b';
+  ctx2d.strokeStyle = r.calm;
   ctx2d.lineWidth = 1;
   ctx2d.stroke();
-  
-  // 4. Helical spiral grooves (scrolling curve strips inside cone)
-  const scrollSpeed = 35.0; // px/sec
+
+  const scrollSpeed = 35.0;
   const grooveSpacing = w * 0.22;
   const offset = (time * scrollSpeed) % grooveSpacing;
-  
   ctx2d.save();
   ctx2d.beginPath();
-  ctx2d.moveTo(bx, -h/2);
-  ctx2d.lineTo(w/2, 0);
-  ctx2d.lineTo(bx, h/2);
+  ctx2d.moveTo(bx, -h / 2);
+  ctx2d.lineTo(w / 2, 0);
+  ctx2d.lineTo(bx, h / 2);
   ctx2d.closePath();
   ctx2d.clip();
-  
-  ctx2d.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx2d.strokeStyle = paint(r.surface, 0.85);
   ctx2d.lineWidth = 2.6;
-  
   const numThreads = 6;
   for (let i = -1; i < numThreads; i++) {
     const gx = bx + i * grooveSpacing + offset;
-    if (gx > w/2) continue;
-    
-    const tFrac = (w/2 - gx) / (w/2 - bx); // base to tip scale factor
+    if (gx > w / 2) continue;
+    const tFrac = (w / 2 - gx) / (w / 2 - bx);
     const gh = h * 0.5 * tFrac;
-    
     ctx2d.beginPath();
     ctx2d.moveTo(gx, -gh);
-    ctx2d.quadraticCurveTo(gx + grooveSpacing*0.4, 0, gx, gh);
+    ctx2d.quadraticCurveTo(gx + grooveSpacing * 0.4, 0, gx, gh);
     ctx2d.stroke();
-    
-    // Glowing cyan outline
-    ctx2d.strokeStyle = 'rgba(57, 208, 255, 0.45)';
+    ctx2d.strokeStyle = paint(r.you, 0.45);
     ctx2d.lineWidth = 1.0;
     ctx2d.beginPath();
     ctx2d.moveTo(gx + 1.5, -gh);
-    ctx2d.quadraticCurveTo(gx + 1.5 + grooveSpacing*0.4, 0, gx + 1.5, gh);
+    ctx2d.quadraticCurveTo(gx + 1.5 + grooveSpacing * 0.4, 0, gx + 1.5, gh);
     ctx2d.stroke();
-    
-    ctx2d.strokeStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx2d.strokeStyle = paint(r.surface, 0.85);
     ctx2d.lineWidth = 2.6;
   }
   ctx2d.restore();
-  
-  // 5. High-energy drill tip
-  ctx2d.fillStyle = '#39d0ff';
-  ctx2d.shadowColor = '#0ea5e9';
+
+  ctx2d.fillStyle = r.you;
+  ctx2d.shadowColor = r.you;
   ctx2d.shadowBlur = 4;
   ctx2d.beginPath();
-  ctx2d.arc(w/2, 0, 2.5, 0, Math.PI*2);
+  ctx2d.arc(w / 2, 0, 2.5, 0, Math.PI * 2);
   ctx2d.fill();
-  
   ctx2d.restore();
 }
