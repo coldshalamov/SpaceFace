@@ -21,6 +21,75 @@ for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.se
 
 const LEGAL_TONE = { legal: '', restricted: 'warn', contraband: 'loss' };
 const LEGAL_LABEL = { legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' };
+const STYLE_ID = 'sf-market-style';
+
+export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
+export function chartTrendColor(up) { return up ? 'var(--sf-you)' : 'var(--sf-foe)'; }
+export function legalityRole(legal) {
+  if (legal === 'contraband') return 'foe';
+  if (legal === 'restricted') return 'goal';
+  return 'calm';
+}
+
+function injectStyle() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+  if (typeof document.getElementById === 'function' && document.getElementById(STYLE_ID)) return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = CSS;
+  document.head.appendChild(s);
+}
+
+const CSS = `
+.sx-mkt { color: var(--sf-paper); font-family: var(--sf-body-face); }
+.sx-mkt .sf-fig,
+.sx-mkt .sx-stat__v,
+.sx-mkt .sx-mkt-row__price,
+.sx-mkt .sx-qty__in,
+.sx-mkt .sx-mkt-delta {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.sx-mkt .sx-stat__v { font-size: 15px; color: var(--sf-paper); }
+.sx-mkt-title h2 {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  letter-spacing: 0; text-transform: none; color: var(--sf-paper); margin: 0;
+}
+.sx-mkt-row__tr.is-up, .sx-mkt-delta.is-up { color: var(--sf-you); }
+.sx-mkt-row__tr.is-down, .sx-mkt-delta.is-down { color: var(--sf-foe); }
+.sx-mkt .sx-kv b.is-loss { color: var(--sf-foe); }
+.sx-mkt .sx-kv b.is-gain { color: var(--sf-you); }
+.sx-mkt .sx-mkt-row.is-tracked {
+  box-shadow: none;
+  border-left: var(--sf-rail-w) solid var(--sf-goal);
+}
+.sx-mkt .sx-mkt-row__flag { color: var(--sf-goal); }
+.sx-mkt .sx-mkt-tracked {
+  border-color: var(--sf-goal-edge);
+  background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  color: var(--sf-paper);
+}
+.sx-mkt .sx-mkt-tracked b, .sx-mkt .sx-mkt-tracked .sx-ico { color: var(--sf-goal); }
+.sx-mkt .sx-demand--1 i:nth-child(1) { background: var(--sf-foe); }
+.sx-mkt .sx-demand--2 i:nth-child(1), .sx-mkt .sx-demand--2 i:nth-child(2) { background: var(--sf-calm); }
+.sx-mkt .sx-demand--3 i { background: var(--sf-you); }
+.sx-mkt .sx-trade__go--buy, .sx-mkt .sx-trade__go--sell {
+  background: var(--sf-you); color: var(--sf-surface);
+}
+.sx-mkt .sx-qty__slider { accent-color: var(--sf-you); }
+.sx-mkt .sx-qty__b:hover, .sx-mkt .sx-qty__max:hover { border-color: var(--sf-goal); color: var(--sf-paper); }
+.sx-mkt .sx-route-row__s { color: var(--sf-you); }
+.sx-mkt .sx-tag--warn { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
+.sx-mkt .sx-tag--bad { color: var(--sf-foe); border-color: color-mix(in srgb, var(--sf-foe) 45%, transparent); }
+@media (forced-colors: active) {
+  .sx-mkt .sx-mkt-tracked, .sx-mkt .sx-trade__go--buy, .sx-mkt .sx-trade__go--sell {
+    background: Canvas; color: CanvasText; border: 1px solid CanvasText;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-mkt, .sx-mkt * { animation: none !important; transition: none !important; }
+}
+`;
 const MARKET_FILTERS = [
   { id: 'all', label: 'All stock' },
   { id: 'hold', label: 'In hold' },
@@ -114,17 +183,20 @@ function buildChart(hist, avg, gradientId, label) {
   const avgY = y(avg).toFixed(1);
   const endX = x(hist.length - 1).toFixed(1), endY = y(hist[hist.length - 1]).toFixed(1);
   const up = hist[hist.length - 1] >= hist[0];
-  const stroke = up ? 'var(--gain)' : 'var(--loss)';
+  const stroke = chartTrendColor(up);
+  const fill0 = up
+    ? 'color-mix(in srgb, var(--sf-you) 28%, transparent)'
+    : 'color-mix(in srgb, var(--sf-foe) 26%, transparent)';
   return (
     `<svg class="sx-mkt-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" tabindex="0" aria-label="${escapeHtml(label || 'Price history')}. Use left and right arrows to inspect values; drag to compare an interval.">` +
       `<defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">` +
-        `<stop offset="0" stop-color="${up ? 'rgba(63,208,127,.28)' : 'rgba(255,106,114,.26)'}"/>` +
-        `<stop offset="1" stop-color="rgba(63,208,127,0)"/>` +
+        `<stop offset="0" style="stop-color:${fill0}"/>` +
+        `<stop offset="1" style="stop-color:transparent"/>` +
       `</linearGradient></defs>` +
       `<line class="sx-mkt-avg" x1="${padX}" y1="${avgY}" x2="${W - padX}" y2="${avgY}"/>` +
       `<path d="${area}" fill="url(#${gradientId})"/>` +
-      `<path class="sx-mkt-line" d="${line}" fill="none" stroke="${stroke}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` +
-      `<circle cx="${endX}" cy="${endY}" r="4.5" fill="${stroke}"/>` +
+      `<path class="sx-mkt-line" d="${line}" fill="none" style="stroke:${stroke}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` +
+      `<circle cx="${endX}" cy="${endY}" r="4.5" style="fill:${stroke}"/>` +
       `<rect class="sx-mkt-brush" x="0" y="${padTop}" width="0" height="${H - padTop - padBot}" hidden/>` +
       `<g class="sx-mkt-cursor" hidden><line x1="0" y1="${padTop}" x2="0" y2="${H - padBot}"/><circle cx="0" cy="0" r="4"/><text x="7" y="16"></text></g>` +
       `<rect class="sx-mkt-hit" x="${padX}" y="${padTop}" width="${W - padX * 2}" height="${H - padTop - padBot}" fill="transparent"/>` +
@@ -133,13 +205,14 @@ function buildChart(hist, avg, gradientId, label) {
 }
 
 export function createMarketScreen(ctx) {
+  injectStyle();
   const el = document.createElement('div');
   el.className = 'sx-mkt';
   el.innerHTML =
     `<aside class="sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
     `<nav class="sx-mkt__list" aria-label="Commodities"></nav>` +
-    `<section class="sx-mkt__stage"></section>` +
-    `<aside class="sx-mkt__console">` +
+    `<section class="sx-mkt__stage sf-stage"></section>` +
+    `<aside class="sx-mkt__console sf-apron">` +
       `<div class="sx-mkt__trade"></div>` +
       `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
     `</aside>`;
@@ -285,8 +358,8 @@ export function createMarketScreen(ctx) {
           `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
           `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
             `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
-          `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price">${fmt(buy)}<i> cr</i></span>` +
-            `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span></span>` +
+          `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price sf-fig">${fmt(buy)}<i> cr</i></span>` +
+            `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲ UP' : '▼ DOWN'} ${Math.abs(pct)}%</span></span>` +
           `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'NORMAL DEMAND')}</span>` +
           (cardDrivers.length ? `<span class="sx-mkt-row__drivers" aria-hidden="true">${cardDrivers.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` : '') +
         `</button>`
@@ -387,11 +460,11 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     stageEl.innerHTML =
       (isTracked ? `<div class="sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}">${icon('contracts', 15)}<span><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</span></div>` : '') +
-      `<div class="sx-mkt-head">` +
+      `<div class="sx-mkt-head sf-crest">` +
         `<div class="sx-mkt-title"><h2>${entitySpanHtml('commodity:' + r.id, escapeHtml(def.name))}</h2>` +
           `<span class="sx-tag${legalTone ? ' sx-tag--' + (legalTone === 'loss' ? 'bad' : 'warn') : ''}">${LEGAL_LABEL[legal]}</span>` +
           `<span class="sx-mkt-cat-inline">${escapeHtml(def.category || '')}</span></div>` +
-        `<div class="sx-mkt-delta ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%<span>vs. period open</span></div>` +
+        `<div class="sx-mkt-delta ${up ? 'is-up' : 'is-down'}">${up ? '▲ UP' : '▼ DOWN'} ${Math.abs(pct)}%<span>vs. period open</span></div>` +
       `</div>` +
       `<div class="sx-mkt-driver-ribbon" aria-label="Why this quote">` +
         drivers.primary.map((item) => `<span data-direction="${item.direction}" aria-label="${escapeHtml(item.explanation)}"><b>${escapeHtml(item.shortLabel)}</b><i>${escapeHtml(item.label)}</i></span>`).join('') +
@@ -465,7 +538,7 @@ export function createMarketScreen(ctx) {
   }
 
   function statCell(k, v, sub) {
-    return `<div class="sx-stat"><span class="sx-stat__k">${k}</span><span class="sx-stat__v">${v}</span><span class="sx-stat__sub">${sub}</span></div>`;
+    return `<div class="sx-stat"><span class="sx-stat__k">${k}</span><span class="sx-stat__v sf-fig">${v}</span><span class="sx-stat__sub">${sub}</span></div>`;
   }
 
   function renderConsole(state) {
@@ -502,7 +575,7 @@ export function createMarketScreen(ctx) {
         `</div>` +
         `<div class="sx-qty">` +
           `<button type="button" class="sx-qty__b" data-q="-1" aria-label="Less">–</button>` +
-          `<input class="sx-qty__in" type="text" inputmode="numeric" value="${qty}" aria-label="Quantity"/>` +
+          `<input class="sx-qty__in sf-fig" type="text" inputmode="numeric" value="${qty}" aria-label="Quantity"/>` +
           `<button type="button" class="sx-qty__b" data-q="1" aria-label="More">+</button>` +
           `<button type="button" class="sx-qty__max" data-q="max">Max</button>` +
         `</div>` +

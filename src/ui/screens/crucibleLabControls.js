@@ -194,21 +194,69 @@ function applyStep(ctx) {
 
 // --- DOM layer ----------------------------------------------------------------
 
+const STYLE_ID = 'sf-lab-controls-style';
+const CSS = `
+.sf-lab-runtime { color: var(--sf-paper); font-family: var(--sf-body-face); font-size: 12px; }
+.sf-lab-runtime .sf-fig, .sf-lab-speed-now {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.sf-lab-runtime .sf-crest {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-lab-speed-now {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  color: var(--sf-paper); letter-spacing: 0; text-transform: none;
+}
+.sf-lab-speed-now.is-you { color: var(--sf-you); }
+.sf-lab-speed-now.is-goal { color: var(--sf-goal); }
+.sf-lab-invuln.is-you { border-color: var(--sf-you); color: var(--sf-you); }
+.sf-lab-runtime select {
+  background: color-mix(in srgb, var(--sf-surface) 72%, transparent); color: var(--sf-paper);
+  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
+  font-family: var(--sf-data-face); font-size: 13px;
+}
+.sf-lab-runtime .sf-apron { color: var(--sf-calm); font-size: 12px; line-height: 1.4; }
+.sf-lab-runtime .sf-btn--danger { color: var(--sf-foe); }
+@media (forced-colors: active) {
+  .sf-lab-runtime select, .sf-lab-invuln.is-you { background: Canvas; color: CanvasText; border-color: CanvasText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-lab-runtime, .sf-lab-runtime * { animation: none !important; transition: none !important; }
+}
+`;
+
+function injectStyle() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+  if (typeof document.getElementById !== 'function') return;
+  if (document.getElementById(STYLE_ID)) return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = CSS;
+  document.head.appendChild(s);
+}
+
+export function labSpeedRole(scale) {
+  if (scale > 1) return 'you';
+  if (scale < 1) return 'goal';
+  return 'calm';
+}
+
 export function mountCrucibleLabControls(ctx, hostEl) {
   if (!hostEl || typeof document === 'undefined' || typeof document.createElement !== 'function') {
     return null;
   }
+  injectStyle();
 
   const row = document.createElement('div');
-  row.className = 'sf-sandbox-lab-actions';
+  row.className = 'sf-sandbox-lab-actions sf-lab-runtime sf-stage';
   row.setAttribute('role', 'group');
   row.setAttribute('aria-label', 'Combat Lab runtime');
-  row.style.fontSize = 'var(--t-sm, 12px)';
 
   const heading = document.createElement('span');
+  heading.className = 'sf-crest';
   heading.textContent = 'Runtime';
-  heading.style.fontSize = 'var(--t-sm, 12px)';
-  heading.style.color = 'var(--ink-dim, var(--sf-calm, #84a0c8))';
   row.appendChild(heading);
 
   const stepBtn = makeButton(
@@ -217,25 +265,18 @@ export function mountCrucibleLabControls(ctx, hostEl) {
   );
   const refillBtn = makeButton('Refill', 'Restore hull, armor, shields, capacitor, and heat');
   const invulnBtn = makeButton('Invulnerable: off', 'Toggle player invulnerability');
+  invulnBtn.classList.add('sf-lab-invuln');
   const clearBtn = makeButton('Clear enemies', 'Remove Lab-spawned enemies without scoring a kill');
   clearBtn.classList.add('sf-btn--danger');
 
   const speedLabel = document.createElement('label');
   speedLabel.textContent = 'Speed';
-  speedLabel.style.fontSize = 'var(--t-sm, 12px)';
-  speedLabel.style.color = 'var(--ink-dim, var(--sf-calm, #84a0c8))';
   speedLabel.style.display = 'inline-flex';
   speedLabel.style.alignItems = 'center';
   speedLabel.style.gap = '8px';
   const speedSel = document.createElement('select');
   speedSel.setAttribute('aria-label', 'Simulation speed');
-  speedSel.style.fontSize = 'var(--t-sm, 12px)';
-  speedSel.style.background = 'var(--panel-2, #111d30)';
-  speedSel.style.color = 'var(--ink, var(--sf-paper, #d3e6ff))';
-  speedSel.style.border = '1px solid var(--panel-edge, #1d3350)';
-  speedSel.style.borderRadius = '4px';
-  speedSel.style.padding = '5px 7px';
-  speedSel.style.fontFamily = 'var(--mono)';
+  speedSel.className = 'sf-fig';
   for (const scale of LEGAL_TIME_SCALES) {
     const opt = document.createElement('option');
     opt.value = String(scale);
@@ -244,16 +285,14 @@ export function mountCrucibleLabControls(ctx, hostEl) {
   }
   speedSel.value = '1';
   const speedText = document.createElement('span');
+  speedText.className = 'sf-lab-speed-now sf-fig';
   speedText.setAttribute('aria-live', 'polite');
-  speedText.style.fontFamily = 'var(--mono)';
-  speedText.style.color = 'var(--ink, var(--sf-paper, #d3e6ff))';
   speedText.textContent = '1\u00d7';
   speedLabel.appendChild(speedSel);
   speedLabel.appendChild(speedText);
 
   const hint = document.createElement('div');
-  hint.className = 'sf-sandbox-lab-digest';
-  hint.style.fontSize = 'var(--t-sm, 12px)';
+  hint.className = 'sf-sandbox-lab-digest sf-apron';
   hint.setAttribute('role', 'status');
 
   row.appendChild(speedLabel);
@@ -285,11 +324,15 @@ export function mountCrucibleLabControls(ctx, hostEl) {
     const scale = Number(speedSel.value);
     const shown = LEGAL_TIME_SCALES.includes(scale) ? scale : 1;
     speedText.textContent = shown + '\u00d7';
+    const speedRole = labSpeedRole(shown);
+    speedText.className = 'sf-lab-speed-now sf-fig'
+      + (speedRole === 'you' ? ' is-you' : '')
+      + (speedRole === 'goal' ? ' is-goal' : '');
     const invuln = invulnOn();
     invulnBtn.textContent = invuln ? 'Invulnerable: on' : 'Invulnerable: off';
     invulnBtn.setAttribute('aria-label', invulnBtn.textContent);
     invulnBtn.setAttribute('aria-pressed', invuln ? 'true' : 'false');
-    invulnBtn.style.borderColor = invuln ? 'var(--accent, #39d0ff)' : '';
+    invulnBtn.className = 'sf-btn sf-lab-invuln' + (invuln ? ' is-you' : '');
 
     const launchReason = 'Launch a Combat Lab fight first.';
     const stepReason = !session
@@ -305,21 +348,21 @@ export function mountCrucibleLabControls(ctx, hostEl) {
 
     for (const el of [clearBtn, speedSel]) {
       el.disabled = !on;
-      el.title = on ? (el.getAttribute('data-title') || '') : launchReason;
+      el.setAttribute('data-why', on ? (el.getAttribute('data-why-ready') || '') : launchReason);
     }
     refillBtn.disabled = !session;
-    refillBtn.title = session ? (refillBtn.getAttribute('data-title') || '') : launchReason;
+    refillBtn.setAttribute('data-why', session ? (refillBtn.getAttribute('data-why-ready') || '') : launchReason);
     invulnBtn.disabled = !session;
-    invulnBtn.title = session ? (invulnBtn.getAttribute('data-title') || '') : launchReason;
+    invulnBtn.setAttribute('data-why', session ? (invulnBtn.getAttribute('data-why-ready') || '') : launchReason);
     const stepOn = session && held && !!stepFn;
     stepBtn.disabled = !stepOn;
-    stepBtn.title = stepOn ? (stepBtn.getAttribute('data-title') || '') : (stepReason || launchReason);
+    stepBtn.setAttribute('data-why', stepOn ? (stepBtn.getAttribute('data-why-ready') || '') : (stepReason || launchReason));
   }
 
-  stepBtn.setAttribute('data-title', 'Advance one 60 Hz tick while this screen holds the sim');
-  refillBtn.setAttribute('data-title', 'Restore hull, armor, shields, capacitor, and heat');
-  invulnBtn.setAttribute('data-title', 'Toggle player invulnerability');
-  clearBtn.setAttribute('data-title', 'Remove Lab-spawned enemies without scoring a kill');
+  stepBtn.setAttribute('data-why-ready', 'Advance one 60 Hz tick while this screen holds the sim');
+  refillBtn.setAttribute('data-why-ready', 'Restore hull, armor, shields, capacitor, and heat');
+  invulnBtn.setAttribute('data-why-ready', 'Toggle player invulnerability');
+  clearBtn.setAttribute('data-why-ready', 'Remove Lab-spawned enemies without scoring a kill');
 
   speedSel.addEventListener('change', () => {
     const scale = Number(speedSel.value);
@@ -361,13 +404,12 @@ export function mountCrucibleLabControls(ctx, hostEl) {
   return { refresh, dispose };
 }
 
-function makeButton(label, title) {
+function makeButton(label, why) {
   const btn = document.createElement('button');
   btn.className = 'sf-btn';
   btn.type = 'button';
   btn.textContent = label;
-  btn.title = title;
   btn.setAttribute('aria-label', label);
-  btn.style.fontSize = 'var(--t-sm, 12px)';
+  if (why) btn.setAttribute('data-why', why);
   return btn;
 }

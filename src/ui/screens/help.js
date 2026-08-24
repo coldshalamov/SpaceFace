@@ -37,31 +37,67 @@ function injectStyle() {
   // headings, tabs, slot rows, form primitives) lives in styles/menu.css — previously a
   // copy of that whole block was pasted here and into every other menu screen.
   s.textContent = `
-  .sf-codex-table { width:100%; border-collapse:collapse; font-size:12px; }
-  .sf-codex-table th { text-align:left; color:var(--ink-dim); font-family:var(--mono,monospace); font-size:12px;
-    letter-spacing:.08em; text-transform:uppercase; padding:6px 8px; border-bottom:1px solid var(--panel-edge);
-    position:sticky; top:0; background:var(--panel,#121518); }
-  .sf-codex-table td { padding:5px 8px; color:var(--ink,#f1ede2); border-bottom:1px solid rgba(150,140,120,.12); }
-  .sf-codex-table tr:hover td { background:rgba(219,152,56,.07); }
-  .sf-codex-table .num { text-align:right; font-family:var(--mono,monospace); }
-  .sf-codex-table .swatch { display:inline-block; width:14px; height:14px; border-radius:2px; vertical-align:middle; }
-  .sf-codex-faction { padding:12px 0; border-bottom:1px solid rgba(150,140,120,.12); }
-  .sf-codex-faction:last-child { border-bottom:none; }
-  .sf-codex-faction .fname { font-size:14px; color:var(--ink,#f1ede2); display:flex; align-items:center; gap:8px; }
-  .sf-codex-faction .fshort { font-family:var(--mono,monospace); font-size:12px; color:var(--ink-dim); letter-spacing:.06em; }
-  .sf-codex-faction .fdesc { font-size:12px; color:var(--ink-dim); margin-top:4px; line-height:1.5; }
-  .sf-codex-faction .fdisp { font-family:var(--mono,monospace); font-size:12px; margin-top:3px; }
+  .sf-help { color: var(--sf-paper); font-family: var(--sf-body-face); }
+  .sf-help.sf-menu h1 {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  }
+  .sf-help.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  .sf-help-now {
+    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+    color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0 0 var(--sp-2);
+  }
+  .sf-help .sf-fig, .sf-codex-table .num {
+    font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  .sf-codex-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sf-codex-table th {
+    text-align: left; color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; padding: var(--sp-2);
+    border-bottom: 1px solid var(--sf-edge); position: sticky; top: 0; background: var(--sf-surface);
+  }
+  .sf-codex-table td { padding: var(--sp-1) var(--sp-2); color: var(--sf-paper); border-bottom: 1px solid var(--sf-edge); }
+  .sf-codex-table tr:hover td { background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
+  .sf-codex-table .num { text-align: right; }
+  .sf-codex-table .is-foe { color: var(--sf-foe); }
+  .sf-codex-table .is-goal { color: var(--sf-goal); }
+  .sf-codex-table .is-you { color: var(--sf-you); }
+  .sf-codex-table .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; }
+  .sf-codex-faction { padding: var(--sp-3) 0; border-bottom: 1px solid var(--sf-edge); }
+  .sf-codex-faction:last-child { border-bottom: none; }
+  .sf-codex-faction .fname { font-size: 14px; color: var(--sf-paper); display: flex; align-items: center; gap: var(--sp-2); }
+  .sf-codex-faction .fshort {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; color: var(--sf-calm);
+    letter-spacing: var(--sf-track-micro);
+  }
+  .sf-codex-faction .fdesc { font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-1); line-height: 1.5; }
+  .sf-codex-faction .fdisp { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; margin-top: var(--sp-1); color: var(--sf-calm); }
+  @media (forced-colors: active) {
+    .sf-codex-table th, .sf-codex-table td { background: Canvas; color: CanvasText; border-color: CanvasText; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-help, .sf-help * { animation: none !important; transition: none !important; }
+  }
   `;
   document.head.appendChild(s);
 }
 function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu');
+  rootEl.classList.add('panel', 'sf-menu', 'sf-help');
   if (extraClass) rootEl.classList.add(extraClass);
   // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
   rootEl.dataset.stamp = 'MANUAL / CONTROLS';
-  const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
+  const crest = el('div', 'sf-crest');
+  const h = document.createElement('h1'); h.textContent = title; crest.appendChild(h);
+  crest.appendChild(el('div', 'sf-help-now', 'Controls'));
+  rootEl.appendChild(crest);
   return rootEl;
+}
+
+export function legalityRole(legality) {
+  if (legality === 'contraband') return 'foe';
+  if (legality === 'restricted') return 'goal';
+  return 'calm';
 }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
@@ -198,6 +234,7 @@ export const helpScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     shell(rootEl, 'Help', 'sf-menu-wide');
+    this._nowEl = rootEl.querySelector('.sf-help-now');
 
     // Tab bar
     const bar = el('div', 'sf-tabbar');
@@ -210,13 +247,13 @@ export const helpScreen = {
     });
     rootEl.appendChild(bar);
 
-    const body = el('div', 'sf-settings-pane');
+    const body = el('div', 'sf-settings-pane sf-stage');
     body.style.overflowY = 'auto';
     body.style.flex = '1';
     body.style.minHeight = '0';
     rootEl.appendChild(body);
 
-    const foot = el('div', 'sf-foot');
+    const foot = el('div', 'sf-foot sf-apron');
     const close = el('button', 'sf-btn'); close.textContent = 'Close'; close.style.width = 'auto';
     close.addEventListener('click', () => nav(ctx, 'popScreen'));
     foot.appendChild(close);
@@ -234,6 +271,7 @@ export const helpScreen = {
       ? { start: active.selectionStart, end: active.selectionEnd }
       : null;
     this._body.innerHTML = '';
+    if (this._nowEl) this._nowEl.textContent = this._activeTab;
 
     // Update tab active states
     if (this._tabBtns) {
@@ -326,12 +364,12 @@ export const helpScreen = {
       const vals = [
         [s.name, ''],
         [s.role.replace(/_/g, ' '), ''],
-        ['T' + s.tier, 'num'],
-        [s.hull, 'num'],
-        [s.shield, 'num'],
-        [s.handling != null ? s.handling.toFixed(1) : '-', 'num'],
-        [s.cargo, 'num'],
-        [fmtPrice(s.price), 'num'],
+        ['T' + s.tier, 'num sf-fig'],
+        [s.hull, 'num sf-fig'],
+        [s.shield, 'num sf-fig'],
+        [s.handling != null ? s.handling.toFixed(1) : '-', 'num sf-fig'],
+        [s.cargo, 'num sf-fig'],
+        [fmtPrice(s.price), 'num sf-fig'],
       ];
       vals.forEach(([v, cls]) => {
         const td = document.createElement('td');
@@ -365,19 +403,18 @@ export const helpScreen = {
     const tbody = document.createElement('tbody');
     for (const c of sorted) {
       const tr = document.createElement('tr');
-      const legalColor = c.legality === 'contraband' ? '#ff5470' : c.legality === 'restricted' ? '#ffb347' : '';
+      const legalRole = legalityRole(c.legality);
       const vals = [
         [c.name, ''],
         [c.category, ''],
-        [c.basePrice + ' cr', 'num'],
-        [c.volPerU != null ? c.volPerU.toFixed(1) : '-', 'num'],
-        [c.legality, ''],
+        [c.basePrice + ' cr', 'num sf-fig'],
+        [c.volPerU != null ? c.volPerU.toFixed(1) : '-', 'num sf-fig'],
+        [c.legality, legalRole === 'calm' ? '' : 'is-' + legalRole],
       ];
-      vals.forEach(([v, cls], i) => {
+      vals.forEach(([v, cls]) => {
         const td = document.createElement('td');
         td.textContent = v;
         if (cls) td.className = cls;
-        if (i === 4 && legalColor) td.style.color = legalColor;
         tr.appendChild(td);
       });
       tbody.appendChild(tr);
@@ -415,10 +452,10 @@ export const helpScreen = {
       const tr = document.createElement('tr');
       const vals = [
         [o.name, ''],
-        ['T' + o.tier, 'num'],
-        [o.baseValue + ' cr', 'num'],
-        [o.mass.toFixed(1), 'num'],
-        [o.vol.toFixed(1), 'num'],
+        ['T' + o.tier, 'num sf-fig'],
+        [o.baseValue + ' cr', 'num sf-fig'],
+        [o.mass.toFixed(1), 'num sf-fig'],
+        [o.vol.toFixed(1), 'num sf-fig'],
         [o.tags ? o.tags.join(', ') : '', ''],
       ];
       vals.forEach(([v, cls]) => {
@@ -455,8 +492,8 @@ export const helpScreen = {
       }).join(', ');
       const vals = [
         [a.id.replace('ast_', '').replace(/_/g, ' '), ''],
-        ['T' + a.tierCap, 'num'],
-        [a.spawnWeight, 'num'],
+        ['T' + a.tierCap, 'num sf-fig'],
+        [a.spawnWeight, 'num sf-fig'],
         [oreDrops, ''],
       ];
       vals.forEach(([v, cls]) => {
@@ -486,7 +523,6 @@ export const helpScreen = {
 
       if (f.personality) {
         const disp = el('div', 'fdisp');
-        disp.style.color = f.color;
         disp.textContent = f.personality.toUpperCase();
         card.appendChild(disp);
       }

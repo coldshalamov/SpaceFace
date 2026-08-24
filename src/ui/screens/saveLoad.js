@@ -29,68 +29,80 @@ function injectStyle() {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-  .sf-slot-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  .sf-saveload { color: var(--sf-paper); font-family: var(--sf-body-face); }
+  .sf-saveload.sf-menu h1 {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
   }
+  .sf-saveload.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  .sf-slot-list { display: flex; flex-direction: column; gap: var(--sp-2); }
   .screen.sf-menu .sf-slot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 16px;
-    background: rgba(9, 13, 18, .75);
-    border: 1px solid var(--mf-line-2);
-    border-radius: 4px;
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 56px;
-    transition: background-color .15s ease, border-color .15s ease;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+    border: 1px solid var(--sf-edge); border-radius: 2px;
+    box-sizing: border-box; width: 100%; min-height: 56px;
+    transition: background-color var(--sf-t-latch) var(--sf-ease), border-color var(--sf-t-latch) var(--sf-ease);
   }
   .screen.sf-menu .sf-slot:hover {
-    background: rgba(13, 19, 27, .9);
-    border-color: var(--mf-line-3);
+    background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
+    border-color: var(--sf-calm);
   }
   .screen.sf-menu .sf-slot.empty {
-    background: rgba(9, 13, 18, .35);
-    border-style: dashed;
-    border-color: var(--mf-line-1);
+    background: color-mix(in srgb, var(--sf-surface) 55%, transparent);
+    border-style: dashed; border-color: var(--sf-edge);
   }
   .screen.sf-menu .sf-slot.empty:hover {
-    background: rgba(13, 19, 27, .5);
-    border-color: var(--mf-line-2);
+    background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
+    border-color: var(--sf-calm);
   }
   .screen.sf-menu .sf-slot.sel {
-    border-color: rgba(78, 195, 230, .45);
-    background: rgba(14, 22, 32, .85);
-    box-shadow: inset 3px 0 0 var(--accent);
+    border-color: var(--sf-goal-edge);
+    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+    box-shadow: none;
+    border-left: var(--sf-rail-w) solid var(--sf-goal);
   }
-  .sf-slot .sf-slot-main {
-    flex: 1 1 auto;
-    min-width: 0;
+  .sf-slot .sf-slot-main { flex: 1 1 auto; min-width: 0; }
+  .sf-slot .sf-slot-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-1); }
+  .sf-slot .sf-slot-name {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; color: var(--sf-paper);
   }
-  .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:3px; }
-  .sf-slot .sf-slot-name { font-size:14px; font-weight:600; color:var(--ink); }
-  .sf-slot.empty .sf-slot-name { font-weight:normal; color:var(--ink-mute); font-style:italic; }
-  .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--accent); border:1px solid rgba(78,195,230,.35); border-radius:2px; padding:1px 6px;
-    background:rgba(78,195,230,.08); }
-  .sf-slot .sf-slot-context { font-size:12.5px; color:var(--ink-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sf-slot.empty .sf-slot-context { color:var(--ink-mute); }
-  .sf-slot .sf-slot-detail { font-size:12px; color:var(--ink-mute); font-family:var(--mono); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .sf-slot .sf-slot-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-  .sf-slot .sf-slot-actions button.sf-tab { min-width:68px; padding:6px 14px; cursor:pointer; }
+  .sf-slot.sel .sf-slot-name {
+    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+    letter-spacing: 0; text-transform: none; color: var(--sf-paper);
+  }
+  .sf-slot.empty .sf-slot-name { font-weight: 400; color: var(--sf-calm); font-style: italic; }
+  .sf-slot .sf-slot-badge {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+    color: var(--sf-calm); border: 1px solid var(--sf-edge); border-radius: 2px;
+    padding: 1px var(--sp-2); background: transparent;
+  }
+  .sf-slot-badge--you { color: var(--sf-you); border-color: color-mix(in srgb, var(--sf-you) 45%, transparent); }
+  .sf-slot-badge--goal { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
+  .sf-slot-badge--foe { color: var(--sf-foe); border-color: color-mix(in srgb, var(--sf-foe) 45%, transparent); }
+  .sf-slot .sf-slot-context { font-size: 13px; color: var(--sf-calm); margin-top: 2px; }
+  .sf-slot.empty .sf-slot-context { color: var(--sf-calm); }
+  .sf-slot .sf-slot-detail, .sf-slot .sf-fig {
+    font-size: 13px; color: var(--sf-calm); font-family: var(--sf-data-face);
+    font-weight: 500; font-variant-numeric: tabular-nums; margin-top: var(--sp-1);
+  }
+  .sf-slot .sf-slot-actions { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+  .sf-slot .sf-slot-actions button.sf-tab { min-width: 68px; padding: var(--sp-1) var(--sp-3); cursor: pointer; }
   .sf-slot .sf-slot-actions button.sf-tab--primary {
-    color: #04202b;
-    background: linear-gradient(180deg, #77d5ef, #45b7db);
-    border-color: #77d5ef;
-    font-weight: 600;
+    color: var(--sf-surface); background: var(--sf-you); border-color: var(--sf-you); font-weight: 600;
   }
   .sf-slot .sf-slot-actions button.sf-tab--primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, #9ae2f5, #5ac6e6);
-    border-color: #9ae2f5;
-    color: #02121a;
+    background: var(--sf-you); border-color: var(--sf-you); color: var(--sf-surface);
+  }
+  @media (forced-colors: active) {
+    .screen.sf-menu .sf-slot, .sf-slot .sf-slot-actions button.sf-tab--primary {
+      background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none;
+    }
+    .screen.sf-menu .sf-slot.sel { border-left-color: Highlight; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-saveload, .sf-saveload * { animation: none !important; transition: none !important; }
   }
   `;
   document.head.appendChild(s);
@@ -98,11 +110,13 @@ function injectStyle() {
 
 function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu');
+  rootEl.classList.add('panel', 'sf-menu', 'sf-saveload');
   if (extraClass) rootEl.classList.add(extraClass);
   // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
   rootEl.dataset.stamp = 'FLIGHT RECORDER / SAVE-LOAD';
-  const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
+  const crest = el('div', 'sf-crest');
+  const h = document.createElement('h1'); h.textContent = title; crest.appendChild(h);
+  rootEl.appendChild(crest);
   return rootEl;
 }
 
@@ -232,6 +246,13 @@ export function slotBadges(id, meta, currentSlot, latestSlot) {
   return badges;
 }
 
+export function slotBadgeRole(badge) {
+  if (badge === 'Recovery') return 'foe';
+  if (badge === 'Current') return 'you';
+  if (badge === 'Latest') return 'goal';
+  return 'calm';
+}
+
 function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
@@ -284,10 +305,10 @@ export const saveLoadScreen = {
     injectStyle();
     shell(rootEl, 'Save / Load', 'sf-menu-wide');
 
-    const list = el('div', 'sf-slot-list');
+    const list = el('div', 'sf-slot-list sf-stage');
     rootEl.appendChild(list);
 
-    const ioRow = el('div', 'sf-foot');
+    const ioRow = el('div', 'sf-foot sf-apron');
     ioRow.style.justifyContent = 'space-between';
     const left = el('div'); left.style.display = 'flex'; left.style.gap = '10px';
     const bExport = el('button', 'sf-btn'); bExport.textContent = 'Export'; bExport.style.width = 'auto';
@@ -334,11 +355,11 @@ export const saveLoadScreen = {
       const head = el('div', 'sf-slot-head');
       head.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
       for (const badge of slotBadges(id, meta, currentSlot, latestSlot)) {
-        head.appendChild(el('span', 'sf-slot-badge', badge));
+        head.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
       }
       main.appendChild(head);
       main.appendChild(el('div', 'sf-slot-context', summary.context));
-      main.appendChild(el('div', 'sf-slot-detail', summary.detail));
+      main.appendChild(el('div', 'sf-slot-detail sf-fig', summary.detail));
       row.appendChild(main);
 
       const actions = el('div', 'sf-slot-actions');
@@ -346,7 +367,7 @@ export const saveLoadScreen = {
       if (occupied) {
         const bSave = el('button', 'sf-tab', 'Save');
         bSave.disabled = !saveAllowed;
-        bSave.title = saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving';
+        bSave.setAttribute('data-why', saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving');
         bSave.addEventListener('click', async () => {
           if (!canSave(ctx)) {
             ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
@@ -369,7 +390,7 @@ export const saveLoadScreen = {
         });
 
         const bLoad = el('button', 'sf-tab sf-tab--primary', 'Load');
-        bLoad.title = 'Load ' + slotLabel(id);
+        bLoad.setAttribute('data-why', 'Load ' + slotLabel(id));
         bLoad.addEventListener('click', async () => {
           const ok = await confirm({
             title: 'Load this save?',
@@ -386,7 +407,7 @@ export const saveLoadScreen = {
       } else {
         if (saveAllowed) {
           const bSave = el('button', 'sf-tab sf-tab--primary', 'Save');
-          bSave.title = 'Save to ' + slotLabel(id);
+          bSave.setAttribute('data-why', 'Save to ' + slotLabel(id));
           bSave.addEventListener('click', async () => {
             if (!canSave(ctx)) {
               ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
@@ -401,7 +422,7 @@ export const saveLoadScreen = {
         } else if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
           const bNew = el('button', 'sf-tab sf-tab--primary', 'New Game');
           bNew.style.minWidth = '90px';
-          bNew.title = 'Start a new game in ' + slotLabel(id);
+          bNew.setAttribute('data-why', 'Start a new game in ' + slotLabel(id));
           bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
           actions.appendChild(bNew);
         }

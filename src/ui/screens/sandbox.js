@@ -54,78 +54,107 @@ function injectStyle() {
   // in styles/menu.css. We deliberately use the same .sf-menu tokens so the testing screen reads as
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
-  .screen.sf-sandbox { max-width: 760px; }
-  .sf-sandbox .sf-section-h { margin: 18px 0 8px; }
-  .sf-sandbox-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .sf-sandbox-card {
-    text-align: left; cursor: pointer; padding: 12px 14px; border-radius: var(--r-md, 6px);
-    background: linear-gradient(180deg, rgba(78,195,230,.05), transparent);
-    border: 1px solid var(--panel-edge, #1d3350); color: var(--ink, #d3e6ff);
-    font-family: var(--font); transition: border-color .15s var(--ease), background .15s var(--ease);
+  .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
+  .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
+  .sf-sandbox.sf-menu h1 {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
   }
-  .sf-sandbox-card:hover, .sf-sandbox-card:focus-visible {
-    border-color: var(--accent, #39d0ff);
-    background: linear-gradient(180deg, rgba(78,195,230,.10), transparent);
+  .sf-sandbox.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  .sf-sandbox-now {
+    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+    color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0 0 var(--sp-2);
   }
-  .sf-sandbox-card__title { font-weight: 600; letter-spacing: .04em; margin-bottom: 4px; }
-  .sf-sandbox-card__desc { font-size: var(--t-xs, 12px); color: var(--ink-dim, #84a0c8); line-height: 1.4; }
-  .sf-sandbox-finetune { display: grid; grid-template-columns: max-content 1fr; gap: 8px 12px; align-items: center; }
-  .sf-sandbox-finetune label { color: var(--ink-dim, #84a0c8); font-size: var(--t-xs, 12px); }
+  .sf-sandbox-now.is-you { color: var(--sf-you); }
+  .sf-sandbox-now.is-foe { color: var(--sf-foe); }
+  .sf-sandbox .sf-fig,
+  .sf-sandbox-finetune input[type=number],
+  .sf-sandbox-lab-form input[type=text],
+  .sf-sandbox-lab-form input[type=number] {
+    font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
+  }
+  .sf-sandbox-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+  .sf-sandbox-tile {
+    text-align: left; cursor: pointer; padding: var(--sp-3) var(--sp-4); border-radius: 2px;
+    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+    border: 1px solid var(--sf-edge); color: var(--sf-paper);
+    font-family: var(--sf-body-face); transition: border-color var(--sf-t-latch) var(--sf-ease);
+  }
+  .sf-sandbox-tile:hover, .sf-sandbox-tile:focus-visible {
+    border-color: var(--sf-goal);
+    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  }
+  .sf-sandbox-tile__title {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px;
+    letter-spacing: 0; margin-bottom: var(--sp-1); color: var(--sf-paper);
+  }
+  .sf-sandbox-tile__desc { font-size: 13px; color: var(--sf-calm); line-height: 1.4; }
+  .sf-sandbox-finetune { display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-2) var(--sp-3); align-items: center; }
+  .sf-sandbox-finetune label { color: var(--sf-calm); font-size: 12px; }
   .sf-sandbox-finetune select, .sf-sandbox-finetune input[type=number] {
-    background: var(--panel-2, #111d30); color: var(--ink, #d3e6ff); border: 1px solid var(--panel-edge, #1d3350);
-    border-radius: 4px; padding: 5px 7px; font-family: var(--mono); font-size: 13px; width: 100%;
+    background: color-mix(in srgb, var(--sf-surface) 72%, transparent); color: var(--sf-paper);
+    border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
+    font-family: var(--sf-data-face); font-size: 13px; width: 100%;
   }
-  .sf-sandbox-checks { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 4px 0 0; }
+  .sf-sandbox-checks { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-4); margin: var(--sp-1) 0 0; }
   .sf-sandbox-checks label {
-    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-    color: var(--ink, #d3e6ff); font-size: var(--t-sm, 13px);
+    display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer;
+    color: var(--sf-paper); font-size: 13px;
   }
-  .sf-sandbox-launch { margin-top: 16px; }
+  .sf-sandbox-launch { margin-top: var(--sp-4); }
   .sf-sandbox-livehint {
-    font-size: var(--t-xs, 12px); color: var(--ink-mute, #5a7aa0);
-    font-style: italic; margin-bottom: 8px;
+    font-size: 12px; color: var(--sf-calm);
+    font-style: italic; margin-bottom: var(--sp-2);
   }
-  .sf-sandbox-live { display: flex; flex-direction: column; gap: 8px; }
-  .sf-sandbox-picker { display: grid; grid-template-columns: 70px 1fr max-content; gap: 8px; align-items: center; }
-  .sf-sandbox-picker__label { color: var(--ink-dim, #84a0c8); font-size: var(--t-xs, 12px); }
+  .sf-sandbox-live { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .sf-sandbox-picker { display: grid; grid-template-columns: 70px 1fr max-content; gap: var(--sp-2); align-items: center; }
+  .sf-sandbox-picker__label { color: var(--sf-calm); font-size: 12px; }
   .sf-sandbox-picker select {
-    background: var(--panel-2, #111d30); color: var(--ink, #d3e6ff);
-    border: 1px solid var(--panel-edge, #1d3350); border-radius: 4px;
-    padding: 5px 7px; font-family: var(--mono); font-size: 12px; min-width: 0;
+    background: color-mix(in srgb, var(--sf-surface) 72%, transparent); color: var(--sf-paper);
+    border: 1px solid var(--sf-edge); border-radius: 2px;
+    padding: var(--sp-1) var(--sp-2); font-family: var(--sf-data-face); font-size: 13px; min-width: 0;
   }
   .sf-sandbox-picker button:disabled { opacity: .45; cursor: not-allowed; }
-  .sf-sandbox-lab { margin: 0 0 8px; padding: 12px 14px; }
+  .sf-sandbox-lab { margin: 0 0 var(--sp-2); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--sf-edge); }
   .sf-sandbox-lab-form {
-    display: grid; grid-template-columns: max-content 1fr; gap: 8px 12px; align-items: center;
+    display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-2) var(--sp-3); align-items: center;
   }
-  .sf-sandbox-lab-form label { color: var(--ink-dim, var(--sf-calm, #84a0c8)); font-size: var(--t-sm, 12px); }
+  .sf-sandbox-lab-form label { color: var(--sf-calm); font-size: 12px; }
   .sf-sandbox-lab-form select,
   .sf-sandbox-lab-form input[type=text],
   .sf-sandbox-lab-form input[type=number] {
-    background: var(--panel-2, #111d30); color: var(--ink, var(--sf-paper, #d3e6ff));
-    border: 1px solid var(--panel-edge, #1d3350); border-radius: 4px;
-    padding: 5px 7px; font-family: var(--mono); font-size: 13px; width: 100%;
+    background: color-mix(in srgb, var(--sf-surface) 72%, transparent); color: var(--sf-paper);
+    border: 1px solid var(--sf-edge); border-radius: 2px;
+    padding: var(--sp-1) var(--sp-2); font-family: var(--sf-data-face); font-size: 13px; width: 100%;
   }
-  .sf-sandbox-lab-seed { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  .sf-sandbox-lab-seed { display: flex; gap: var(--sp-2); align-items: center; min-width: 0; }
   .sf-sandbox-lab-seed input { flex: 1; min-width: 0; }
   .sf-sandbox-lab-status {
-    font-size: var(--t-sm, 12px); grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-size: 12px; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center;
   }
-  .sf-sandbox-lab-status .sf-chip { font-size: var(--t-sm, 12px); }
-  .sf-sandbox-lab-issues { font-size: var(--t-sm, 12px); color: var(--sf-foe); line-height: 1.4; }
+  .sf-sandbox-lab-status .sf-chip { font-size: 12px; }
+  .sf-sandbox-lab-issues { font-size: 12px; color: var(--sf-foe); line-height: 1.4; }
   .sf-sandbox-lab-digest {
-    font-size: var(--t-sm, 12px); color: var(--sf-calm); font-family: var(--mono);
+    font-size: 12px; color: var(--sf-calm); font-family: var(--sf-data-face);
     grid-column: 1 / -1; line-height: 1.4; word-break: break-all;
   }
   .sf-sandbox-lab-actions {
-    display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; margin-top: 4px;
+    display: flex; flex-wrap: wrap; gap: var(--sp-2); grid-column: 1 / -1; margin-top: var(--sp-1);
   }
   .sf-sandbox-lab-actions button:disabled { opacity: .45; cursor: not-allowed; }
   @media (max-width: 560px) {
-    .sf-sandbox-cards { grid-template-columns: 1fr; }
+    .sf-sandbox-tiles { grid-template-columns: 1fr; }
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
     .sf-sandbox-picker { grid-template-columns: 1fr; }
     .sf-sandbox-lab-form { grid-template-columns: 1fr; }
+  }
+  @media (forced-colors: active) {
+    .sf-sandbox-tile, .sf-sandbox-lab {
+      background: Canvas; color: CanvasText; border-color: CanvasText;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-sandbox, .sf-sandbox * { animation: none !important; transition: none !important; }
   }
   `;
   document.head.appendChild(s);
@@ -260,29 +289,37 @@ export const sandboxScreen = {
     rootEl.classList.add('panel', 'sf-menu', 'sf-menu-wide', 'sf-sandbox');
     rootEl.dataset.stamp = 'SANDBOX / TEST HARNESS';
 
-    rootEl.appendChild(el('h1', null, 'Sandbox'));
-    rootEl.appendChild(el('div', 'sf-menu-save-summary',
+    const crest = el('div', 'sf-crest');
+    crest.appendChild(el('h1', null, 'Sandbox'));
+    const nowEl = el('div', 'sf-sandbox-now', 'Ready');
+    nowEl.setAttribute('role', 'status');
+    crest.appendChild(nowEl);
+    crest.appendChild(el('div', 'sf-menu-save-summary',
       'Dev testing harness. Pick a scenario or fine-tune below, then launch.'));
+    rootEl.appendChild(crest);
 
-    // --- Quick-setup cards ---
+    const stage = el('div', 'sf-stage');
+    const apron = el('div', 'sf-apron');
+
+    // --- Quick-setup tiles ---
     const cardsHeader = el('div', 'sf-section-h', 'QUICK SETUPS');
-    rootEl.appendChild(cardsHeader);
-    const cardGrid = el('div', 'sf-sandbox-cards');
-    rootEl.appendChild(cardGrid);
+    stage.appendChild(cardsHeader);
+    const cardGrid = el('div', 'sf-sandbox-tiles');
+    stage.appendChild(cardGrid);
     let readOverrides = () => ({});
     for (const preset of SCENARIO_PRESETS) {
-      const card = el('button', 'sf-sandbox-card');
-      card.type = 'button';
-      card.appendChild(el('div', 'sf-sandbox-card__title', preset.title));
-      card.appendChild(el('div', 'sf-sandbox-card__desc', preset.description));
-      card.addEventListener('click', () => {
+      const tile = el('button', 'sf-sandbox-tile');
+      tile.type = 'button';
+      tile.appendChild(el('div', 'sf-sandbox-tile__title', preset.title));
+      tile.appendChild(el('div', 'sf-sandbox-tile__desc', preset.description));
+      tile.addEventListener('click', () => {
         requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(preset.config, readOverrides()));
       });
-      cardGrid.appendChild(card);
+      cardGrid.appendChild(tile);
     }
 
     // --- Combat Lab ---
-    rootEl.appendChild(el('div', 'sf-section-h', COMBAT_LAB_SURFACE.title.toUpperCase()));
+    stage.appendChild(el('div', 'sf-section-h', COMBAT_LAB_SURFACE.title.toUpperCase()));
     const labPanel = panel({ cut: true });
     labPanel.classList.add('sf-sandbox-lab');
     const labForm = el('div', 'sf-sandbox-lab-form');
@@ -338,6 +375,7 @@ export const sandboxScreen = {
     seedInput.autocomplete = 'off';
     seedInput.spellcheck = false;
     seedInput.value = '1';
+    seedInput.className = 'sf-fig';
     const rollBtn = el('button', 'sf-btn', COMBAT_LAB_SURFACE.rollLabel);
     rollBtn.type = 'button';
     rollBtn.setAttribute('aria-label', COMBAT_LAB_SURFACE.rollLabel + ' seed');
@@ -355,6 +393,7 @@ export const sandboxScreen = {
     waveInput.min = '1';
     waveInput.step = '1';
     waveInput.value = '1';
+    waveInput.className = 'sf-fig';
     labForm.appendChild(waveLabel);
     labForm.appendChild(waveInput);
 
@@ -373,7 +412,7 @@ export const sandboxScreen = {
     statusRow.appendChild(issueLine);
     labForm.appendChild(statusRow);
 
-    const digestLine = el('div', 'sf-sandbox-lab-digest', '');
+    const digestLine = el('div', 'sf-sandbox-lab-digest sf-fig', '');
     digestLine.setAttribute('aria-label', 'Combat Lab setup summary');
     labForm.appendChild(digestLine);
 
@@ -399,7 +438,7 @@ export const sandboxScreen = {
       sandboxScreen._telemetryDispose = null;
     }
     sandboxScreen._telemetryDispose = mountCrucibleLabTelemetry(ctx, labPanel);
-    rootEl.appendChild(labPanel);
+    stage.appendChild(labPanel);
 
     function readLabValues() {
       return {
@@ -432,6 +471,9 @@ export const sandboxScreen = {
       });
       statusChip.replaceWith(nextChip);
       statusChip = nextChip;
+      nowEl.textContent = result.ok ? 'Ready' : 'Invalid';
+      nowEl.classList.toggle('is-you', result.ok);
+      nowEl.classList.toggle('is-foe', !result.ok);
       issueLine.textContent = result.ok ? '' : formatCombatLabIssuePaths(result.issues);
       digestLine.textContent = result.ok ? formatCombatLabDigest(result.value) : 'Setup invalid';
       labLaunch.disabled = !result.ok;
@@ -470,8 +512,8 @@ export const sandboxScreen = {
 
     refreshLabSurface();
 
-    // --- Fine-tune panel ---
-    rootEl.appendChild(el('div', 'sf-section-h', 'FINE-TUNE (applies on launch)'));
+    // --- Fine-tune ---
+    stage.appendChild(el('div', 'sf-section-h', 'FINE-TUNE (applies on launch)'));
     const fine = el('div', 'sf-sandbox-finetune');
 
     const shipLabel = el('label', null, 'Starting ship');
@@ -575,9 +617,10 @@ export const sandboxScreen = {
     creditsInput.min = '0';
     creditsInput.step = '1000';
     creditsInput.value = '500000';
+    creditsInput.className = 'sf-fig';
     fine.appendChild(creditsLabel); fine.appendChild(creditsInput);
 
-    rootEl.appendChild(fine);
+    stage.appendChild(fine);
 
     // Toggles row
     const checks = el('div', 'sf-sandbox-checks');
@@ -598,7 +641,8 @@ export const sandboxScreen = {
       checks.appendChild(lbl);
       checkboxes[key] = cb;
     }
-    rootEl.appendChild(checks);
+    stage.appendChild(checks);
+    rootEl.appendChild(stage);
 
     readOverrides = () => {
       const enemyRaw = enemyCountInput.value.trim();
@@ -626,15 +670,15 @@ export const sandboxScreen = {
       };
       requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(config, readOverrides()));
     });
-    rootEl.appendChild(launch);
+    apron.appendChild(launch);
 
     // --- Live Tools (in-flight only) ---
     // These mutate the RUNNING game directly via system writers — they don't relaunch. Disabled
     // until a game is in flight; onShow() re-checks the mode and enables them.
-    rootEl.appendChild(el('div', 'sf-section-h', 'LIVE TOOLS (use during flight)'));
+    apron.appendChild(el('div', 'sf-section-h', 'LIVE TOOLS (use during flight)'));
     const liveHint = el('div', 'sf-sandbox-livehint',
       'Launch a game first, then re-open this screen (Esc → Sandbox) to use these.');
-    rootEl.appendChild(liveHint);
+    apron.appendChild(liveHint);
     sandboxScreen._liveHintEl = liveHint;
 
     const live = el('div', 'sf-sandbox-live');
@@ -693,7 +737,7 @@ export const sandboxScreen = {
     live.appendChild(pickerRow('Module', moduleSel, giveModuleBtn));
     live.appendChild(pickerRow('Enemy', enemySel, spawnEnemyBtn));
     live.appendChild(pickerRow('Targets', null, spawnTargetsBtn));
-    rootEl.appendChild(live);
+    apron.appendChild(live);
 
     // Stash refs for onShow to enable/disable based on flight mode.
     sandboxScreen._liveEls = [weaponSel, moduleSel, enemySel, giveWeaponBtn, giveModuleBtn, spawnEnemyBtn, spawnTargetsBtn];
@@ -705,7 +749,8 @@ export const sandboxScreen = {
       const mgr = getManager(ctx);
       if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
     });
-    rootEl.appendChild(back);
+    apron.appendChild(back);
+    rootEl.appendChild(apron);
 
     sandboxScreen._ctx = ctx;
   },
