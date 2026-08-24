@@ -1,0 +1,100 @@
+name: Adversarial priority hardening
+
+on:
+  push:
+    branches:
+      - integration/all-branches-20260824
+    paths:
+      - scripts/harden-consolidated-priority-work.mjs
+      - scripts/harden-priority-followup.mjs
+      - .github/workflows/branch-priority-hardening.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-consolidation-priority-hardening
+  cancel-in-progress: true
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/all-branches-20260824
+          fetch-depth: 1
+          filter: blob:none
+          persist-credentials: true
+
+      - name: Wait for priority ports and align with current master
+        run: |
+          git config remote.origin.promisor true
+          git config remote.origin.partialclonefilter blob:none
+          git config user.name "spaceface-integration-bot"
+          git config user.email "spaceface-integration-bot@users.noreply.github.com"
+          found=0
+          for attempt in $(seq 1 48); do
+            git fetch --filter=blob:none origin '+refs/heads/*:refs/remotes/origin/*' --prune --force
+            if git cat-file -e refs/remotes/origin/integration/all-branches-20260824:design/program/branch-consolidation/priority-ports.json 2>/dev/null; then
+              found=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$found" != "1" ]; then
+            echo "Priority port receipt did not appear; hardening cannot guess which donors landed." >&2
+            exit 1
+          fi
+          git checkout -B integration/all-branches-20260824 refs/remotes/origin/integration/all-branches-20260824
+          git rebase refs/remotes/origin/master
+
+      - name: Apply fail-closed product hardening
+        run: node scripts/harden-priority-followup.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate hardened map, loading presentation, and program authority
+        run: |
+          set -euo pipefail
+          if [ -f src/ui/map/tacticalMapGrammar.js ]; then
+            node --check src/ui/radar.js
+            node --check src/ui/map/tacticalMapGrammar.js
+            node --check src/ui/map/mapParityBridge.js
+            node --test \
+              test/tactical-map-second-generation.test.mjs \
+              test/tactical-map-range-control.test.mjs
+            node scripts/check-radar-perf.mjs
+          fi
+          if [ -f test/consolidated-boot-honesty.test.mjs ]; then
+            node --check src/ui/loadingTerminalArt.js
+            node --test \
+              test/consolidated-boot-honesty.test.mjs \
+              test/startup-loading-presentation.test.mjs \
+              test/loading-boot-resilience.test.mjs \
+              test/loading-terminal-art.test.mjs
+          fi
+          node scripts/check-type-floor.mjs
+          node scripts/check-program-docs.mjs
+          npm run build
+
+      - name: Commit hardened outcomes
+        run: |
+          git add --sparse -A
+          if git diff --cached --quiet; then
+            echo "No priority donor was present to harden."
+            exit 0
+          fi
+          git commit -m "refactor(integration): harden consolidated map boot and arcade-core outcomes [skip ci]"
+          git push --force-with-lease origin HEAD:integration/all-branches-20260824
+
+      - name: Upload hardening receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adversarial-priority-hardening-receipts
+          path: design/program/branch-consolidation/
+          retention-days: 30
