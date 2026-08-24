@@ -1134,6 +1134,12 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/repair_tender.glb',
   'wholeships/salvage_cutter.glb',
   'wholeships/survey_pin.glb',
+  // PQ-136.02: the four work-fleet hulls fielded with no recorded still-review defect.
+  // volatiles_tanker, yard_tug and inspection_cutter are deliberately absent — see 8257fd9e.
+  'wholeships/rescue_lifter.glb',
+  'wholeships/prospector_skiff.glb',
+  'wholeships/scrap_sweeper.glb',
+  'wholeships/apron_shuttle.glb',
 ]));
 
 export function isPackagedLiveWholeShipFile(file) {
@@ -1231,6 +1237,14 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   tender: 'wholeships/repair_tender.glb',
   salvor: 'wholeships/salvage_cutter.glb',
   surveyor: 'wholeships/survey_pin.glb',
+  // PQ-136.02: packaged work-fleet hulls with no recorded still-review defect. Additive
+  // keys only — existing role values above stay the accepted live bodies, and `express`
+  // deliberately keeps NO whole-ship binding (PQ-049 owns express liner identity; binding
+  // it here would silently re-skin already-shipping Express Liner traffic).
+  rescue: 'wholeships/rescue_lifter.glb',
+  prospector: 'wholeships/prospector_skiff.glb',
+  sweeper: 'wholeships/scrap_sweeper.glb',
+  shuttle: 'wholeships/apron_shuttle.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1243,6 +1257,10 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   tender: 'SF_WHOLESHIP_REPAIR_TENDER',
   salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
   surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
+  rescue: 'SF_WHOLESHIP_RESCUE_LIFTER',
+  prospector: 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
+  sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',
+  shuttle: 'SF_WHOLESHIP_APRON_SHUTTLE',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),

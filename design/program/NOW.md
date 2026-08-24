@@ -42,7 +42,8 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | PQ-135.00 speed governor | fable-campaign-20260824 lane FLIGHT | MUTATING | `src/combat/autoTargetMode.js`, `test/draw-to-fly-path-tracking.test.mjs` | review diff, commit, release row |
-| PQ-136.02 field npc craft | fable-campaign-20260824 lane NPC | MUTATING | `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/npcJobs.js` | review diff, commit, release row |
+| PQ-136.03 hull triage | fable-campaign-20260824 lane HULLTRIAGE | MUTATING | `design/graphics-sprints/VISUAL_ASSET_CATALOG.md`, new `design/graphics-sprints/HULL_TRIAGE_2026-08-24.md` | review, commit, release row |
+| FIX-B reset+module-ids | fable-campaign-20260824 lane FIXB | MUTATING | `src/core/runReset.js`, `src/systems/cargo.js`, `src/systems/ships.js`, new reset/id tests | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 

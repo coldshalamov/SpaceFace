@@ -9005,7 +9005,7 @@
       "priority": 391,
       "title": "Field the 6 unused npc_activity_pack craft as working NPCs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-fielding"
@@ -9019,7 +9019,9 @@
         "npm run check:asset-reachability",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-136-02-npc-craft-REPORT.md"
+      ],
       "brief": "The 6 unused npc_activity_pack occupational craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. Done when new occupational craft appear in traffic without a new AI path."
     },
     {

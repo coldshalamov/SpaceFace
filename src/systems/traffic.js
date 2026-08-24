@@ -47,6 +47,7 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { FACTION_KITS } from '../data/factions.js';
+import { OCCUPATIONAL_JOB_KIND_BY_ROLE } from '../data/occupationalTrafficCraft.js';
 import {
   PRIORITY_COURIER_ITINERARY_KIND,
   PRIORITY_COURIER_JOB_SCHEMA,
@@ -275,7 +276,28 @@ const TRAFFIC_ROLES = {
   // and settles it through freight/economy ownership.
   ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
               label: 'Ore Barge', docks: true, trades: true, seeks: 'asteroid' },
+  // PQ-136.02 — packaged work-fleet hulls on existing job kinds. Weights add variety
+  // inside the current ambient cap; they do not raise MAX_PER_SECTOR.
+  //
+  // Held back deliberately (no role here, so they never roll): `tanker`
+  // (volatiles_tanker), `tug` (yard_tug) and `customs` (inspection_cutter). Still reviews
+  // in 8257fd9e called the tanker and tug a missing-hull kit and sent customs back to the
+  // Hornet. They stay packaged candidates awaiting a fresh chase-camera still review.
+  prospector: { ship: 'ship_drifter',  team: 2, speed: 32, archetype: 'fleeing_trader', weight: 5,
+              label: 'Prospector', docks: true, trades: true, seeks: 'asteroid' },
+  sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 4,
+              label: 'Scrap Sweeper', docks: true, trades: true },
+  shuttle:    { ship: 'ship_mule',     team: 2, speed: 38, archetype: 'fleeing_trader', weight: 4,
+              label: 'Apron Shuttle', docks: true, trades: true },
 };
+
+function lawPresenceRole(role) {
+  return role === 'patrol' || role === 'escort';
+}
+
+function occupationalJobKind(role) {
+  return OCCUPATIONAL_JOB_KIND_BY_ROLE[role] || null;
+}
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
 // not a new write seam — runtime ownership of role resolution is unchanged.
@@ -294,6 +316,9 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'ore_carrier',
   'patrol',
   'escort',
+  'prospector',
+  'sweeper',
+  'shuttle',
 ]);
 
 function trafficHeaveToComplies(role, entity) {
@@ -807,7 +832,10 @@ export function trafficRoleMixForSector(sector, state = null) {
   // Industrial (mining/refinery) sectors: more miners + haulers. The ore barge plies the same
   // declared extraction economy (it is the heavy logistics end of the miner's trade, not a
   // contents-derived read — a sector that merely HAS rocks does not attract bulk carriers).
-  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5; }
+  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) {
+    out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5;
+    out.prospector *= 2.5; out.sweeper *= 1.7;
+  }
   // A sector with authored ROCK is a sector somebody cuts, whether or not an `industries` flag was
   // ever set on it. Read the contents, not only the label.
   //
@@ -1173,7 +1201,7 @@ export const traffic = {
         passive: true, // traffic never opens fire on a clean player
       };
       // Lawful patrol presence: WANTED gate is the only path to hostility (scanner/aiPorts).
-      if (role === 'patrol' || role === 'escort') {
+      if (lawPresenceRole(role)) {
         aiSpec.lawful = true;
         aiSpec.spawnContext = 'patrol';
       } else {
@@ -1484,7 +1512,7 @@ export const traffic = {
       const pos = service
         ? { x: CINDER_SLUICE_TRAFFIC_STAGING_POS.x, z: CINDER_SLUICE_TRAFFIC_STAGING_POS.z }
         : sectorLocalToGlobalForSector(localPos, CERES_ACTIVITY_SECTOR_ID);
-      const lawful = slot.lawful === true || role === 'patrol' || role === 'escort';
+      const lawful = slot.lawful === true || lawPresenceRole(role);
       const authoredLawResponseWasp = CERES_LAW_RESPONSE_SLOT_IDS.has(slot.id);
       const aiSpec = {
         archetype: def.archetype,
@@ -1853,7 +1881,7 @@ export const traffic = {
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (!spec) return;
     const jobId = assign(ent, spec);
-    if (jobId && (role === 'miner' || role === 'ore_carrier')) {
+    if (jobId && (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner')) {
       // A commissioned barge departs empty. Its real cargo is created only when a materialized work
       // stop completes, so scanners never show a miner carrying random market goods outbound.
       const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === ent.id);
@@ -1891,7 +1919,7 @@ export const traffic = {
         },
       };
     }
-    if (role === 'miner' || role === 'ore_carrier') {
+    if (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner') {
       // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit
       // sector. `spread` walks the nearest few faces so a shift's barges sit beside each other
       // instead of stacking on one; it is derived from the live job count, so it is deterministic
@@ -1910,7 +1938,7 @@ export const traffic = {
         ],
       };
     }
-    if (role === 'hauler') {
+    if (role === 'hauler' || occupationalJobKind(role) === 'hauler') {
       // The ambient stepper's target is deliberately random. Reusing it here can turn a local
       // terminal run into an express-scale crossing, so durable working freight chooses the nearest
       // other berth from its actual spawn/home station instead. Express liners keep their separate
@@ -1953,7 +1981,7 @@ export const traffic = {
       if (!target) return null;
       return this._buildSalvorJobSpec(home, target, sectorId);
     }
-    if (role === 'tender') {
+    if (role === 'tender' || occupationalJobKind(role) === 'tender') {
       // A call-out: berth to client hull and back. The client is another station rather than a
       // moving ship, because a tender's WORK phase holds station and welding onto something that
       // flies away mid-repair would contradict the "soft target by necessity" the Code promises.
@@ -1972,7 +2000,7 @@ export const traffic = {
         ],
       };
     }
-    if (role === 'patrol') {
+    if (role === 'patrol' || occupationalJobKind(role) === 'patrol') {
       const R = 200; const cx = home.pos.x; const cz = home.pos.z;
       return {
         kind: 'patrol', sectorId,
@@ -2811,9 +2839,9 @@ export const traffic = {
       const aiSpec = {
         archetype: def.archetype,
         passive: true,
-        spawnContext: (role === 'patrol' || role === 'escort') ? 'patrol' : 'convoy_civilian',
+        spawnContext: lawPresenceRole(role) ? 'patrol' : 'convoy_civilian',
       };
-      if (role === 'patrol' || role === 'escort') aiSpec.lawful = true;
+      if (lawPresenceRole(role)) aiSpec.lawful = true;
       // A named lane contact names its own hull; that identity outranks the faction fleet, so only
       // an unnamed contact falling back to the role default is eligible for substitution.
       const laneFaction = (sector && sector.factionId) || 'faction_free';
@@ -2859,7 +2887,7 @@ export const traffic = {
     if (ent.data.ai) {
       ent.data.ai.name = contact.name;
       // Named patrol keeps lawful; named freighter stays passive civilian.
-      if (contact.role === 'patrol' || contact.role === 'escort') {
+      if (lawPresenceRole(contact.role)) {
         ent.data.ai.lawful = true;
         ent.data.ai.spawnContext = 'patrol';
       }
@@ -2884,7 +2912,7 @@ export const traffic = {
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
     // AI readability tags (hostility still team/passive/lawful + WANTED gate — never factionId).
     if (!ent.data.ai) ent.data.ai = {};
-    if (role === 'patrol' || role === 'escort') {
+    if (lawPresenceRole(role)) {
       ent.data.ai.lawful = true;
       if (!ent.data.ai.spawnContext) ent.data.ai.spawnContext = 'patrol';
     } else if (!ent.data.ai.spawnContext) {
@@ -7262,7 +7290,7 @@ export const traffic = {
       // The Ore Barge and this exact transferred hauler lot both fall through to the ordinary
       // freight-loss path, which is the existing custody sink for a destroyed live manifest.
     }
-    const lawLoss = role === 'patrol' || role === 'escort';
+    const lawLoss = lawPresenceRole(role);
     if (role && !lawLoss && !FREIGHT_TRADING_ROLES.includes(role) && !(rec && rec.manifest && rec.manifest.totalQty)) {
       // Non-trading traffic without a law record — drop tracking only.
       if (idx >= 0) list.splice(idx, 1);
