@@ -1805,13 +1805,13 @@
       "kind": "part:wholeships",
       "source": "assets/ships/parts/wholeships/pelican_production_v1.glb",
       "release": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
-      "sourceSha256": "d26ce26879656637021a5e5ea24b55e3dd87ddc2cbd67abfee0b1265dcb0355c",
-      "releaseSha256": "e707c4e237cf6f8a3049671f3340451b4375f7e9065eaed1949431fcff0858cb",
-      "sourceBytes": 1006656,
-      "releaseBytes": 290528,
+      "sourceSha256": "d06f276d3cf9dd75d6960ed210224e2b4d3b0e688ef0ad1e2b6e8bfcd01a84d7",
+      "releaseSha256": "d06f276d3cf9dd75d6960ed210224e2b4d3b0e688ef0ad1e2b6e8bfcd01a84d7",
+      "sourceBytes": 1644940,
+      "releaseBytes": 1644940,
       "textures": 0,
       "ktx2Textures": 0,
-      "meshoptBufferViews": 39,
+      "meshoptBufferViews": 0,
       "contractNodeCount": 20
     },
     {

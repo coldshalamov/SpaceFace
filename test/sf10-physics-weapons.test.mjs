@@ -87,17 +87,31 @@ test('light-tier mass-response: the concussion cannon tumbles a light hull but a
   assert.ok(heavyDeltaV < COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV,
     `a heavy hull's Δv (${heavyDeltaV.toFixed(1)}) must stay below the stagger threshold (${COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV})`);
 
-  // And the payoff: the same momentum carried into terrain resolves to a tumble + real terrain damage
-  // for the light hull (the receipted wall impact), versus stagger-or-less for the heavy hull.
+  // 2026-08-21 (b9858f1d): environment contacts never steal the helm, even with a fresh
+  // weapon-impulse tag. Terrain still receipts damage; helm loss is craft-on-craft (and
+  // direct weapon torque), not the wall slam. Mass-response still distinguishes light/heavy.
   const exchanged = identity.magnitude; // p = m·Δv; the thrown hull dumps ~its full momentum into the wall
   const common = { other: { id: 9, type: 'asteroid' }, exchangedMomentum: exchanged, tick: 100,
     pos: { x: 0, z: 0 }, normal: { x: -1, z: 0 },
     provenance: { actorId: 1, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance, appliedTick: 98 } };
   const lightHit = resolveCollisionConsequence({ ...common, target: { id: 2, type: 'ship', mass: LIGHT_MASS, radius: 6 } });
   const heavyHit = resolveCollisionConsequence({ ...common, target: { id: 3, type: 'ship', mass: HEAVY_MASS, radius: 16 } });
-  assert.equal(lightHit.control, 'tumble', 'light hull thrown into terrain tumbles');
+  assert.equal(lightHit.control, 'none',
+    'a terrain slam must not tumble, even with concussion provenance on the victim');
   assert.ok(lightHit.impactDamage > 0, 'the light-hull wall impact is a receipted terrain-damage event');
-  assert.notEqual(heavyHit.control, 'tumble', 'a heavy hull is not tumbled by the same shove');
+  assert.equal(heavyHit.control, 'none', 'a heavy hull is not tumbled by the same terrain slam');
+
+  const craftCommon = { ...common, other: { id: 8, type: 'ship', mass: 20, radius: 6 } };
+  const lightCraft = resolveCollisionConsequence({
+    ...craftCommon, target: { id: 12, type: 'ship', mass: LIGHT_MASS, radius: 6 },
+  });
+  const heavyCraft = resolveCollisionConsequence({
+    ...craftCommon, target: { id: 13, type: 'ship', mass: HEAVY_MASS, radius: 16 },
+  });
+  assert.equal(lightCraft.control, 'tumble',
+    'the same concussion momentum still tumbles a light hull on craft contact');
+  assert.notEqual(heavyCraft.control, 'tumble',
+    'a heavy hull shrugs the same craft-contact shove');
 });
 
 // --- vector-mine DEPLOY lifecycle -------------------------------------------------------------
@@ -131,7 +145,12 @@ function makeWeaponsHost(entities, { seed = 47 } = {}) {
     },
     routeCombatDamage: (req) => { routed.push(req); return { ok: true }; },
   };
-  const bus = { emit: (name, payload) => emitted.push({ name, payload }) };
+  // weapons.init now subscribes (lab refill, attack-hit, sector enter). The host
+  // only needs on() to exist; this test records emit() receipts, not those events.
+  const bus = {
+    emit: (name, payload) => emitted.push({ name, payload }),
+    on: () => {},
+  };
   const host = Object.create(weapons);
   host.init({ state, bus, helpers, registry: { get: () => null } });
   return { host, state, emitted, applied, routed, helpers };
