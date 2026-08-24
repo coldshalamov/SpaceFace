@@ -9,7 +9,9 @@ import {
   resetFirstSessionAttackerOwnership,
 } from '../ai/engagementAuthority.js';
 import { hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
+import { recipeIdFromEntity } from '../ai/squadFrame.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import { ManeuverKind } from '../ai/contracts.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 
@@ -114,8 +116,10 @@ export function createTacticalAISystem({
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
     const entities = state && state.entities;
+    const frames = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
     for (const request of lastManeuverRequests) {
       const id = request && request.entityId;
+      if (frames && frames.has(id)) continue;
       const entity = entities && id != null && typeof entities.get === 'function'
         ? entities.get(id)
         : null;
@@ -143,10 +147,14 @@ export function createTacticalAISystem({
       ensureActivityClassified(state);
       const liveStack = ensureStack(state);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
+      const dt = Number.isFinite(_dt) && _dt > 0 ? _dt : 1 / 60;
+      stepSquadFrames(liveStack, state, tick, dt);
       if (tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
+        driveChoreographyMembers(liveStack, state, tick, null);
         revalidateCachedAIFiringIntents(liveStack, state);
+        applySquadTokenFireGate(liveStack, state);
         return;
       }
       const authored = typeof authoredEncounter === 'function'
@@ -187,8 +195,11 @@ export function createTacticalAISystem({
             tick,
           });
         }
+        applyChoreographyFireWindow(liveStack, decision);
         applyAIFiringIntent(decision, state);
       }
+      driveChoreographyMembers(liveStack, state, tick, result.decisions || []);
+      applySquadTokenFireGate(liveStack, state);
     },
 
     inspect(query = {}) {
@@ -250,4 +261,189 @@ function defaultTraceConfig() {
   return isNode
     ? { enabled: true, layers: ['behavior'], capacity: 512 }
     : { enabled: false };
+}
+
+function stepSquadFrames(liveStack, state, tick, dt) {
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (!director || typeof director.stepAll !== 'function') return;
+  const squads = gatherRecipeSquads(state);
+  if (!squads.length) return;
+  const entities = state && state.entities;
+  director.stepAll(tick, dt, squads, (id) => (
+    entities && typeof entities.get === 'function' ? entities.get(id) : null
+  ));
+}
+
+function gatherRecipeSquads(state) {
+  const list = state && state.entityList;
+  if (!list || !list.length) return [];
+  const byId = new Map();
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    const recipeId = recipeIdFromEntity(entity);
+    if (!recipeId) continue;
+    const ai = entity.data && entity.data.ai;
+    const squadId = String(ai.squadId || ai.wingId || recipeId);
+    let squad = byId.get(squadId);
+    if (!squad) {
+      squad = {
+        id: squadId,
+        recipeId,
+        members: [],
+        targetId: ai.forcePlayerTarget && state.playerId != null ? state.playerId : null,
+      };
+      byId.set(squadId, squad);
+    }
+    squad.members.push(entity);
+    if (squad.targetId == null) {
+      const combat = entity.data && entity.data.combat;
+      if (combat && combat.targetId != null) squad.targetId = combat.targetId;
+    }
+  }
+  return [...byId.values()];
+}
+
+function driveChoreographyMembers(liveStack, state, tick, decisions) {
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (!director || director.activeSquadCount() === 0) return;
+  const planned = new Set();
+  if (Array.isArray(decisions)) {
+    for (const decision of decisions) {
+      if (decision && decision.entityId != null) planned.add(decision.entityId);
+    }
+  }
+  const maneuverPort = liveStack.ports && liveStack.ports.maneuver;
+  const list = state && state.entityList;
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    if (!recipeIdFromEntity(entity)) continue;
+    stampChoreography(entity, director.planFor(entity.id), director);
+    if (planned.has(entity.id)) continue;
+    if (entityNeedsAiThink(entity, state) === false) continue;
+    const request = planChoreographyManeuver(liveStack, state, entity, tick);
+    if (request && maneuverPort && typeof maneuverPort.request === 'function') {
+      maneuverPort.request(request);
+    }
+  }
+}
+
+function planChoreographyManeuver(liveStack, state, entity, tick) {
+  const planner = liveStack.maneuver;
+  if (!planner || typeof planner.plan !== 'function') return null;
+  const prior = liveStack.lastDecisionByEntity && liveStack.lastDecisionByEntity.get(entity.id);
+  const perception = prior && prior.perception
+    || (liveStack.perceptionCache && liveStack.perceptionCache.get(entity.id))
+    || livePerceptionFromEntity(entity, tick);
+  const directive = prior && prior.directive || fallbackDirective(entity);
+  const behavior = prior && prior.action || { maneuver: directive && {
+    kind: ManeuverKind.FORMATION,
+    targetId: entity.data && entity.data.combat && entity.data.combat.targetId || null,
+    formationSlot: directive.formation.slot,
+    formationVelocity: directive.formation.velocity,
+    formationBound: directive.formation.bound,
+    breakFormation: false,
+    reason: 'squad_frame',
+  } };
+  return planner.plan({
+    tick,
+    entityId: entity.id,
+    perception,
+    behavior,
+    directive,
+  });
+}
+
+function livePerceptionFromEntity(entity, tick) {
+  const pos = entity.pos || { x: 0, z: 0 };
+  const vel = entity.vel || { x: 0, z: 0 };
+  return {
+    tick,
+    revision: tick,
+    self: {
+      id: entity.id,
+      team: entity.team,
+      pos: { x: pos.x || 0, z: pos.z || 0 },
+      vel: { x: vel.x || 0, z: vel.z || 0 },
+      rot: entity.rot || 0,
+      radius: entity.radius || 8,
+      hullFraction: 1,
+      energyFraction: 1,
+      heatFraction: 0,
+    },
+    contacts: [],
+    events: [],
+  };
+}
+
+function fallbackDirective(entity) {
+  const pos = entity.pos || { x: 0, z: 0 };
+  const slot = { x: pos.x || 0, z: pos.z || 0 };
+  const vel = { x: 0, z: 0 };
+  return {
+    squadId: entity.data && entity.data.ai && entity.data.ai.squadId,
+    formation: {
+      slot,
+      velocity: vel,
+      bound: 140,
+      breakFormation: false,
+    },
+    objective: { kind: 'focus', targetId: entity.data && entity.data.combat && entity.data.combat.targetId, reason: 'squad_frame' },
+  };
+}
+
+function stampChoreography(entity, plan, director) {
+  if (!entity || !entity.data) return;
+  const ai = entity.data.ai || (entity.data.ai = {});
+  const stamp = ai.squadFrame || (ai.squadFrame = {});
+  const inspect = plan && plan.squadId && director && typeof director.inspect === 'function'
+    ? director.inspect(plan.squadId)
+    : null;
+  stamp.phase = plan ? plan.phase : null;
+  stamp.integrity = plan ? plan.integrity : null;
+  stamp.token = plan ? plan.token : null;
+  stamp.role = plan ? plan.role : null;
+  stamp.socket = plan ? plan.socket : null;
+  stamp.laneId = plan ? plan.laneId : null;
+  stamp.slotError = plan ? plan.slotError : null;
+  stamp.disrupted = !!(plan && plan.disrupted);
+  stamp.coast = !!(plan && plan.coast);
+  stamp.fireAuthorized = !!(plan && plan.fireAuthorized);
+  stamp.morphAborted = !!(plan && plan.morphAborted);
+  stamp.committedPeak = inspect ? inspect.committedPeak : 0;
+  stamp.rejoinTick = plan && plan.rejoinTick != null ? plan.rejoinTick : null;
+  stamp.cycle = inspect ? inspect.cycle : 0;
+}
+
+function applyChoreographyFireWindow(liveStack, decision) {
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (!director || !decision) return;
+  const plan = director.planFor(decision.entityId);
+  if (!plan || !decision.combatDoctrine) return;
+  const doctrine = decision.combatDoctrine;
+  if (!Object.isFrozen(doctrine)) {
+    doctrine.fireWindow = !!plan.fireAuthorized;
+    return;
+  }
+  decision.combatDoctrine = { ...doctrine, fireWindow: !!plan.fireAuthorized };
+}
+
+function applySquadTokenFireGate(liveStack, state) {
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (!director || director.activeSquadCount() === 0) return;
+  const list = state && state.entityList;
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!recipeIdFromEntity(entity)) continue;
+    const plan = director.planFor(entity.id);
+    const intent = entity.data && entity.data.intent;
+    if (!intent) continue;
+    stampChoreography(entity, plan, director);
+    if (plan && plan.fireAuthorized === false && intent.fire) {
+      intent.fire = false;
+      intent.fireBlockReason = 'squad_token';
+    }
+  }
 }

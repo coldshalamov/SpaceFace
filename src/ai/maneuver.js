@@ -14,6 +14,7 @@ import {
   unit2,
   wrapAngle,
 } from './contracts.js';
+import { createSquadFrameDirector } from './squadFrame.js';
 
 export const MANEUVER_SPEED_CAPS = Object.freeze({
   interceptSpeed: 72,
@@ -106,6 +107,9 @@ export class ManeuverPlanner {
       ? { contactIndexBuilds: 0, indexedContactVisits: 0, legacyContactVisits: 0 }
       : null;
     this.resolveHull = typeof config.resolveHull === 'function' ? config.resolveHull : null;
+    this.squadFrames = config.squadFrames === false
+      ? null
+      : (config.squadFrames || createSquadFrameDirector({ seed: this.seed }));
   }
 
   plan({ tick, entityId, perception, behavior, directive }) {
@@ -127,7 +131,9 @@ export class ManeuverPlanner {
       this.byEntity.set(entityId, runtime);
     }
 
-    const intent = behavior && behavior.maneuver ? behavior.maneuver : {
+    const choreo = this.squadFrames ? this.squadFrames.planFor(entityId) : null;
+    const selfPose = choreo && choreo.live ? overlaySelf(self, choreo.live) : self;
+    const baseIntent = behavior && behavior.maneuver ? behavior.maneuver : {
       kind: ManeuverKind.HOLD,
       targetId: null,
       formationSlot: directive.formation.slot,
@@ -136,6 +142,7 @@ export class ManeuverPlanner {
       breakFormation: directive.formation.breakFormation,
       reason: 'no_behavior_intent',
     };
+    const intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
     const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
     const contactIndex = this.contactIndexing ? this._contactIndexFor(perception) : null;
     const target = intent.targetId == null
@@ -144,55 +151,74 @@ export class ManeuverPlanner {
         ? contactIndex.byId.get(intent.targetId) || null
         : findContactById(contacts, intent.targetId, this.workCounters);
     const contactSource = contactIndex || { ships: contacts, tethers: contacts, obstacles: contacts };
-    const formationDistance = distance2(self.pos, intent.formationSlot || self.pos);
+    const formationDistance = distance2(selfPose.pos, intent.formationSlot || selfPose.pos);
     const formationBound = Math.max(1, intent.formationBound || 0);
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
-    const mustRejoin = !intent.breakFormation && formationDistance > rejoinDistance;
+    const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
     const predictedFormationSlot = predictFormationSlot(intent, this.config.formationPredictionTicks);
-    const hullScale = hullScaleFor(self, entityId, this.resolveHull);
-    let desired = mustRejoin
-      ? trackPoint(self, predictedFormationSlot, intent.formationVelocity, 1)
-      : desiredForIntent(intent, self, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
+    const hullScale = hullScaleFor(selfPose, entityId, this.resolveHull);
+    let desired;
+    if (choreo && choreo.coast) {
+      desired = coastHold(selfPose);
+    } else if (choreo) {
+      const cap = this.config.interceptSpeed * (Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8);
+      desired = commitPoint(selfPose, intent.formationSlot, cap, intent.formationVelocity);
+      desired = separateDesiredFromFriends(desired, selfPose, contactSource.ships, 72);
+    } else if (mustRejoin) {
+      desired = trackPoint(selfPose, predictedFormationSlot, intent.formationVelocity, 1);
+    } else {
+      desired = desiredForIntent(intent, selfPose, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
+    }
 
-    desired = applyFriendlySeparation(desired, self, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
-    desired = applyShipCollisionAvoidance(desired, self, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
-    desired = applyObstacleAvoidance(desired, self, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
-    const speed = Math.hypot(self.vel.x, self.vel.z);
+    if (!(choreo && choreo.coast)) {
+      desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+      if (!choreo) {
+        desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+      }
+      desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    }
+    const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
-    if (!intentionalHold && commanded > 0.2 && speed < this.config.stationarySpeed) runtime.stationaryTicks++;
+    if (!intentionalHold && !choreo && commanded > 0.2 && speed < this.config.stationarySpeed) runtime.stationaryTicks++;
     else runtime.stationaryTicks = 0;
 
     let kind = mustRejoin ? ManeuverKind.FORMATION : intent.kind;
     let reason = mustRejoin ? 'formation_bound_exceeded' : intent.reason || 'action_intent';
-    if (runtime.stationaryTicks >= this.config.stationaryLimitTicks || runtime.clearUntilTick >= tick) {
+    if (!choreo && (runtime.stationaryTicks >= this.config.stationaryLimitTicks || runtime.clearUntilTick >= tick)) {
       if (runtime.clearUntilTick < tick) runtime.clearUntilTick = tick + this.config.deadlockClearTicks;
       const side = hashUnit(this.seed, entityId, 'deadlock') < 0.5 ? -1 : 1;
-      desired = unit2(Math.cos(self.rot) - Math.sin(self.rot) * side * 0.8, Math.sin(self.rot) + Math.cos(self.rot) * side * 0.8);
+      desired = unit2(Math.cos(selfPose.rot) - Math.sin(selfPose.rot) * side * 0.8, Math.sin(selfPose.rot) + Math.cos(selfPose.rot) * side * 0.8);
       kind = ManeuverKind.CLEAR_DEADLOCK;
       reason = 'stationary_watchdog';
       runtime.stationaryTicks = 0;
     }
 
-    const desiredUnit = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
+    const desiredUnit = unit2(desired.x, desired.z, Math.cos(selfPose.rot), Math.sin(selfPose.rot));
     // Some combat phases hold or return to a formation point while charging a fixed gun. Keep the
     // translational request pointed at that slot, but let the authored intent explicitly aim the
     // ship's nose at its target so HOLD does not turn a firing window into deterministic misses.
     const facingUnit = intent.faceTarget === true && target
-      ? unit2(target.pos.x - self.pos.x, target.pos.z - self.pos.z, desiredUnit.x, desiredUnit.z)
+      ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
       : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
-    const angleError = wrapAngle(heading - self.rot);
-    const forwardDot = Math.cos(self.rot) * desiredUnit.x + Math.sin(self.rot) * desiredUnit.z;
-    const rightDot = -Math.sin(self.rot) * desiredUnit.x + Math.cos(self.rot) * desiredUnit.z;
+    const angleError = wrapAngle(heading - selfPose.rot);
+    const forwardDot = Math.cos(selfPose.rot) * desiredUnit.x + Math.sin(selfPose.rot) * desiredUnit.z;
+    const rightDot = -Math.sin(selfPose.rot) * desiredUnit.x + Math.cos(selfPose.rot) * desiredUnit.z;
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
-    const slowRadius = approachSlowRadius(kind, formationBound, this.config);
+    const slowRadius = choreo && !choreo.coast
+      ? this.config.arrivalRadius
+      : approachSlowRadius(kind, formationBound, this.config);
     const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config, hullScale);
-    const closing = target ? closingSpeed(self, target) : 0;
+    if (choreo && !choreo.coast) {
+      const frac = Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8;
+      envelope.maxSpeed = this.config.interceptSpeed * (hullScale && hullScale.speed > 0 ? hullScale.speed : 1) * frac;
+    }
+    const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
-      ? closeApproachLimit(kind, intent, self, target, this.config, envelope.maxClosingSpeed)
+      ? closeApproachLimit(kind, intent, selfPose, target, this.config, envelope.maxClosingSpeed)
       : envelope.maxClosingSpeed;
-    const velocityAlongDesired = self.vel.x * desiredUnit.x + self.vel.z * desiredUnit.z;
+    const velocityAlongDesired = selfPose.vel.x * desiredUnit.x + selfPose.vel.z * desiredUnit.z;
     const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack;
     const closingLimited = target && closing > localClosingLimit + this.config.closingBrakeSlack;
     let throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
@@ -210,7 +236,7 @@ export class ManeuverPlanner {
     let rawForward;
     let rawRight;
     if (tracked) {
-      const axes = desiredAxes(self, desired, desiredUnit, hullScale, this.config);
+      const axes = desiredAxes(selfPose, desired, desiredUnit, hullScale, this.config);
       rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
       rawRight = axes.right * strafeAuthorityForKind(kind);
       if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
@@ -227,8 +253,12 @@ export class ManeuverPlanner {
       rawForward = 0;
       rawRight = 0;
     }
+    if (choreo && choreo.coast) {
+      rawForward = 0;
+      rawRight = 0;
+    }
 
-    const rawTorqueYaw = yawRequestFor(angleError, kind, this.config, hullScale);
+    const rawTorqueYaw = choreo && choreo.coast ? 0 : yawRequestFor(angleError, kind, this.config, hullScale);
     const emergencyManeuver = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
@@ -238,11 +268,16 @@ export class ManeuverPlanner {
 
     const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
-    const boost = boostWanted && self.energyFraction >= this.config.minBoostEnergyFraction && self.heatFraction <= this.config.maxBoostHeatFraction;
-    const brake = speedLimited || closingLimited || ((kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
-      arrival < slowRadius && speed > Math.max(4, arrival / 2));
+    const boost = boostWanted && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
+    const slotSpeed = choreo && choreo.slotVel
+      ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
+      : 0;
+    const brake = choreo && choreo.coast
+      ? false
+      : speedLimited || closingLimited || (!(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+        arrival < slowRadius && speed > Math.max(4, arrival / 2));
     const trajectory = this.includeTrajectory
-      ? buildTrajectory(self, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
+      ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
       : EMPTY_TRAJECTORY;
     const request = makeThrusterRequest(entityId, tick, {
       kind,
@@ -283,8 +318,8 @@ export class ManeuverPlanner {
           rawForward,
           rawRight,
           rawTorqueYaw,
-          energyFraction: self.energyFraction,
-          heatFraction: self.heatFraction,
+          energyFraction: selfPose.energyFraction,
+          heatFraction: selfPose.heatFraction,
           breakFormation: intent.breakFormation,
           faceTarget: intent.faceTarget === true && !!target,
         },
@@ -295,6 +330,7 @@ export class ManeuverPlanner {
 
   forget(entityId) {
     this.byEntity.delete(entityId);
+    if (this.squadFrames && typeof this.squadFrames.forget === 'function') this.squadFrames.forget(entityId);
   }
 
   getWorkCounters() {
@@ -828,4 +864,80 @@ function stampDesired(source, next) {
   next.desiredPos = source.desiredPos;
   next.desiredVel = source.desiredVel;
   return next;
+}
+
+function overlaySelf(self, live) {
+  const pos = live.pos || self.pos;
+  const vel = live.vel || self.vel;
+  return {
+    ...self,
+    pos: { x: Number.isFinite(pos.x) ? pos.x : 0, z: Number.isFinite(pos.z) ? pos.z : 0 },
+    vel: { x: Number.isFinite(vel.x) ? vel.x : 0, z: Number.isFinite(vel.z) ? vel.z : 0 },
+    rot: Number.isFinite(live.rot) ? live.rot : self.rot,
+    radius: Number.isFinite(live.radius) ? live.radius : self.radius,
+    hullFraction: Number.isFinite(live.hullFraction) ? live.hullFraction : self.hullFraction,
+  };
+}
+
+function applyChoreographyIntent(intent, choreo, self) {
+  const slot = choreo.slot || self.pos;
+  const vel = choreo.slotVel || ZERO_VEL;
+  if (choreo.coast) {
+    return {
+      ...intent,
+      kind: ManeuverKind.HOLD,
+      targetId: null,
+      formationSlot: { x: self.pos.x, z: self.pos.z },
+      formationVelocity: { x: self.vel.x, z: self.vel.z },
+      formationBound: choreo.bound || intent.formationBound,
+      breakFormation: true,
+      flightPoint: null,
+      faceTarget: false,
+      reason: choreo.reason || intent.reason,
+    };
+  }
+  return {
+    ...intent,
+    kind: ManeuverKind.FORMATION,
+    targetId: choreo.faceTarget ? (intent.targetId || choreo.targetId) : intent.targetId,
+    formationSlot: { x: slot.x, z: slot.z },
+    formationVelocity: { x: vel.x || 0, z: vel.z || 0 },
+    formationBound: choreo.bound || intent.formationBound || 120,
+    breakFormation: false,
+    flightPoint: null,
+    faceTarget: choreo.faceTarget === true,
+    reason: choreo.reason || intent.reason,
+  };
+}
+
+function coastHold(self) {
+  return {
+    x: 0,
+    z: 0,
+    arrivalDistance: 0,
+    desiredPos: self.pos,
+    desiredVel: self.vel || ZERO_VEL,
+    control: 'track',
+  };
+}
+
+function separateDesiredFromFriends(desired, self, ships, minDist) {
+  if (!desired || !desired.desiredPos || !self) return desired;
+  let x = desired.desiredPos.x;
+  let z = desired.desiredPos.z;
+  for (const contact of ships || []) {
+    if (!contact || contact.kind !== ContactKind.SHIP) continue;
+    if (contact.id === self.id || contact.team !== self.team) continue;
+    const dx = x - (contact.pos.x || 0);
+    const dz = z - (contact.pos.z || 0);
+    const dist = Math.hypot(dx, dz) || 1e-6;
+    const clearance = minDist + (self.radius || 0) + (contact.radius || 0) * 0.25;
+    if (dist >= clearance) continue;
+    const push = (clearance - dist) * 0.65;
+    x += dx / dist * push;
+    z += dz / dist * push;
+  }
+  desired.desiredPos = { x, z };
+  desired.arrivalDistance = Math.hypot(x - self.pos.x, z - self.pos.z);
+  return desired;
 }

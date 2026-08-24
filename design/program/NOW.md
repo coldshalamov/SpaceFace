@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-135.04 wing choreography | fable-campaign-20260824 lane WING | MUTATING | new `src/ai/squadFrame.js`, `src/systems/tacticalAI.js`, `src/ai/maneuver.js`, motion lab files | review, commit, release row |
+| PQ-136.00 pack promotion | fable-campaign-20260824 lane PROMOTION | MUTATING | new scripts/ builder, release tree + generated manifests, one loader test | review, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 

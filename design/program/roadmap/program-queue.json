@@ -8918,7 +8918,7 @@
       "priority": 387,
       "title": "One four-ship wing with real attack-lane choreography",
       "kind": "implementation",
-      "state": "planned",
+      "state": "done",
       "dependsOn": [
         "PQ-135.01",
         "PQ-135.03"
@@ -8933,7 +8933,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-135-04-wing-choreography-REPORT.md"
+      ],
       "brief": "One four-ship wing with real choreography: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors (21A.9-.13). Done when a player impulse can break the sequence and disrupted members do not instantly snap back."
     },
     {

@@ -7,6 +7,8 @@ import { wrapAngle } from '../core/rng.js';
 import { queuePhysicsImpulse, readPhysicsTelemetry } from '../core/physicsAuthority.js';
 import { ManeuverPlanner } from '../ai/maneuver.js';
 import { AI_CONTRACT_VERSION, ManeuverKind, makeThrusterRequest } from '../ai/contracts.js';
+import { hullClearanceBar } from '../data/squadChoreography.js';
+import { SQUAD_RECIPE_INTERCEPTOR_SCISSORS } from '../ai/squadFrame.js';
 import {
   forceSharedEnemyMotionEnvelope,
 } from '../data/flightFeelEnvelopes.js';
@@ -216,12 +218,7 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
   const host = await bootMotionLab({ seed, kind: 'ai' });
   try {
     const target = spawnPlayer(host, 'ship_kestrel', { x: 220, z: 0 }, 0);
-    const wing = [
-      spawnEnemy(host, 'corsair_raider', { x: 0, z: -110 }, { squadId: 'm6_wing' }),
-      spawnEnemy(host, 'corsair_raider', { x: 40, z: -150 }, { squadId: 'm6_wing' }),
-      spawnEnemy(host, 'corsair_raider', { x: 0, z: 110 }, { squadId: 'm6_wing' }),
-      spawnEnemy(host, 'corsair_raider', { x: 40, z: 150 }, { squadId: 'm6_wing' }),
-    ];
+    const wing = spawnScissorsWing(host, 'm6_wing', { x: -360, z: 0 });
     await host.ready();
     const ids = wing.map((e) => e.id);
     const trace = createMotionTrace({ scenarioId: 'M6', seed, extra: { wing: ids, targetId: target.id } });
@@ -232,8 +229,14 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
     const closestTick = new Array(wing.length).fill(null);
     const passed = new Array(wing.length).fill(false);
     const reverseAfterPass = new Array(wing.length).fill(false);
+    const passHeading = new Array(wing.length).fill(null);
     let minFriendly = Infinity;
     let laneConflicts = 0;
+    let maxSimultaneousAttackers = 0;
+    let committedPeak = 0;
+    let firstPassTick = null;
+    let reformDoneTick = null;
+    let lastPhase = null;
     const denseById = new Map(ids.map((id) => [id, []]));
     const ticks = 720;
     for (let i = 0; i < ticks; i++) {
@@ -242,6 +245,7 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
       const tick = host.state.tick | 0;
       const tpos = target.pos;
       const positions = [];
+      let simultaneous = 0;
       for (let w = 0; w < wing.length; w++) {
         const ship = wing[w];
         if (!ship || ship.alive === false) continue;
@@ -255,24 +259,44 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
           closestTick[w] = tick;
         }
         if (closestTick[w] != null && tick > closestTick[w] + 12 && dist > closest[w] + 18) passed[w] = true;
-        if (passed[w]) {
-          const away = ((ship.pos.x - tpos.x) * (ship.vel.x || 0)) + ((ship.pos.z - tpos.z) * (ship.vel.z || 0));
-          if (away < 0) reverseAfterPass[w] = true;
+        if (passed[w] && closestTick[w] != null && tick <= closestTick[w] + 78) {
+          const spd = Math.hypot(ship.vel.x || 0, ship.vel.z || 0);
+          if (passHeading[w] == null && spd > 8) {
+            passHeading[w] = Math.atan2(ship.vel.z || 0, ship.vel.x || 0);
+          } else if (passHeading[w] != null) {
+            const along = (ship.vel.x || 0) * Math.cos(passHeading[w]) + (ship.vel.z || 0) * Math.sin(passHeading[w]);
+            if (along < -12) reverseAfterPass[w] = true;
+          }
         }
         const intent = ship.data && ship.data.intent;
         if (firstShotTick[w] == null && intent && intent.fire) firstShotTick[w] = tick;
+        const stamp = ship.data && ship.data.ai && ship.data.ai.squadFrame;
+        const phase = stamp && stamp.phase || 'attack';
+        if (stamp && stamp.token === 'close_attack' && (phase === 'commit' || phase === 'strike' || phase === 'extend')) {
+          simultaneous++;
+        }
+        if (stamp && stamp.committedPeak > committedPeak) committedPeak = stamp.committedPeak;
+        if (phase !== lastPhase) {
+          pushPhase(trace, phase, tick);
+          lastPhase = phase;
+        }
         const sample = sampleBody(ship, {
           tick,
           t: host.state.simTime,
-          phase: 'attack',
+          phase,
           achievedAccel: telemetryAccel(ship),
         });
         denseById.get(ship.id).push(sample);
         maybePushSample(trace, sample, TRACE_STRIDE);
       }
+      if (simultaneous > maxSimultaneousAttackers) maxSimultaneousAttackers = simultaneous;
       const pairMin = minPairDistance(positions);
       if (pairMin != null && pairMin < minFriendly) minFriendly = pairMin;
       laneConflicts += countLaneConflicts(wing, target);
+      if (firstPassTick == null && passed.some(Boolean)) firstPassTick = tick;
+      if (firstPassTick != null && reformDoneTick == null && wingEnteredReform(wing)) {
+        reformDoneTick = tick;
+      }
       maybePushSample(trace, sampleBody(target, {
         tick,
         t: host.state.simTime,
@@ -283,11 +307,15 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
     contacts.unbind();
     const entries = entryTick.filter((v) => v != null);
     const shots = firstShotTick.filter((v) => v != null);
-    const reformTick = reformTickFrom(wing, host.state.tick | 0);
+    const reformTick = reformDoneTick == null || firstPassTick == null
+      ? null
+      : Math.max(0, reformDoneTick - firstPassTick);
     const quality = mergeDense(denseById);
+    const hullBar = hullClearanceBar(wing.map((e) => e && e.radius));
     const metrics = namedScenarioMetrics('M6', seed, {
       entryTimingSpreadS: spreadSeconds(entries, MOTION_LAB_DT),
       minFriendlySeparation: Number.isFinite(minFriendly) ? jsonNumber(minFriendly) : null,
+      hullClearanceBar: jsonNumber(hullBar),
       targetExposureBeforeFirstShotS: shots.length
         ? jsonNumber(Math.min(...shots) * MOTION_LAB_DT)
         : null,
@@ -296,6 +324,8 @@ export async function runM6({ seed = MOTION_LAB_SEED } = {}) {
       instantTurnbacks: reverseAfterPass.reduce((n, v) => n + (v ? 1 : 0), 0),
       reformTimeS: reformTick == null ? null : jsonNumber(reformTick * MOTION_LAB_DT),
       firstShotCount: shots.length,
+      maxSimultaneousAttackers,
+      committedAttackersPeak: committedPeak,
       collisions: trace.contacts.length,
       controlSignChangesPerS: controlSignChangesPerSecond(quality, MOTION_LAB_DT),
       headingOscillationRms: headingOscillationRms(quality),
@@ -310,20 +340,17 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
   const host = await bootMotionLab({ seed, kind: 'ai' });
   try {
     const target = spawnPlayer(host, 'ship_kestrel', { x: 240, z: 0 }, 0);
-    const group = [
-      spawnEnemy(host, 'wasp_swarmer', { x: 0, z: 0 }, { squadId: 'm8_wing' }),
-      spawnEnemy(host, 'wasp_swarmer', { x: -40, z: -55 }, { squadId: 'm8_wing' }),
-      spawnEnemy(host, 'wasp_swarmer', { x: -40, z: 55 }, { squadId: 'm8_wing' }),
-      spawnEnemy(host, 'wasp_swarmer', { x: -80, z: 0 }, { squadId: 'm8_wing' }),
-    ];
+    const group = spawnScissorsWing(host, 'm8_wing', { x: -340, z: 0 });
     const leader = group[0];
+    const disruptedMember = group[1];
+    const intact = group.filter((e) => e !== disruptedMember);
     const obstacle = spawnObstacle(host, { x: 90, z: -20 });
     await host.ready();
     const ids = group.map((e) => e.id);
     const trace = createMotionTrace({
       scenarioId: 'M8',
       seed,
-      extra: { leaderId: leader.id, obstacleId: obstacle.id },
+      extra: { leaderId: leader.id, obstacleId: obstacle.id, disruptedId: disruptedMember.id },
     });
     const contacts = bindContacts(host, trace, ids.concat(target.id, obstacle.id));
     const ticks = 720;
@@ -334,13 +361,17 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
     let preImpulseSpeed = 0;
     let postImpulseSpeed = 0;
     let recoveryTick = null;
+    let morphAborted = false;
+    let integrityMin = 1;
+    let intactReformTick = null;
+    let disruptedRejoinTick = null;
     const spacing0 = meanSpacing(group);
     for (let i = 0; i < ticks; i++) {
       writePlayerInput(host.state, { moveZ: 0.3 });
       const tick = host.state.tick | 0;
       if (tick === disruptTick) {
         preImpulseSpeed = meanSpeed(group);
-        applyStandardRepulsorImpulse(group, { x: -1, z: 0.15 });
+        applyStandardRepulsorImpulse([disruptedMember], { x: 1, z: 0.25 });
         impulseApplied = true;
       }
       if (tick === disableTick) {
@@ -350,17 +381,29 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
       host.runtime.step(MOTION_LAB_DT);
       if (tick === disruptTick) postImpulseSpeed = meanSpeed(group);
       const live = group.filter((e) => e && e.alive !== false);
-      const phase = tick < disruptTick ? 'form'
-        : tick < disableTick ? 'repulsor'
-          : 'recovery';
+      const stamp = live[0] && live[0].data && live[0].data.ai && live[0].data.ai.squadFrame;
+      const phase = stamp && stamp.phase
+        ? stamp.phase
+        : (tick < disruptTick ? 'form' : tick < disableTick ? 'repulsor' : 'recovery');
       if (tick === 0 || tick === disruptTick || tick === disableTick) pushPhase(trace, phase, tick);
       for (const ship of live) {
+        const shipStamp = ship.data && ship.data.ai && ship.data.ai.squadFrame;
+        if (shipStamp && shipStamp.morphAborted) morphAborted = true;
+        if (shipStamp && Number.isFinite(shipStamp.integrity) && shipStamp.integrity < integrityMin) {
+          integrityMin = shipStamp.integrity;
+        }
         maybePushSample(trace, sampleBody(ship, {
           tick: host.state.tick | 0,
           t: host.state.simTime,
           phase,
           achievedAccel: telemetryAccel(ship),
         }), TRACE_STRIDE);
+      }
+      if (tick > disruptTick + 24 && intactReformTick == null && wingReformed(intact.filter((e) => e && e.alive !== false))) {
+        intactReformTick = tick;
+      }
+      if (tick > disruptTick + 24 && disruptedRejoinTick == null && memberRejoined(disruptedMember)) {
+        disruptedRejoinTick = tick;
       }
       if (leaderDisabled && live.length >= 2) {
         const aligned = flowAlignment(live.map((e) => e.vel));
@@ -380,6 +423,12 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
     const disrupted = recoveryTick == null
       ? jsonNumber((host.state.tick | 0) * MOTION_LAB_DT)
       : jsonNumber((recoveryTick - disableTick) * MOTION_LAB_DT);
+    const intactReformTimeS = intactReformTick == null
+      ? jsonNumber(((host.state.tick | 0) - disruptTick) * MOTION_LAB_DT)
+      : jsonNumber((intactReformTick - disruptTick) * MOTION_LAB_DT);
+    const disruptedRejoinTimeS = disruptedRejoinTick == null
+      ? jsonNumber(((host.state.tick | 0) - disruptTick) * MOTION_LAB_DT)
+      : jsonNumber((disruptedRejoinTick - disruptTick) * MOTION_LAB_DT);
     const metrics = namedScenarioMetrics('M8', seed, {
       impulseApplied,
       leaderDisabled,
@@ -388,6 +437,12 @@ export async function runM8({ seed = MOTION_LAB_SEED } = {}) {
       postImpulseSpeed: jsonNumber(postImpulseSpeed, 0),
       timeDisruptedS: disrupted,
       recovered: recoveryTick != null,
+      morphAborted,
+      integrityMin: jsonNumber(integrityMin),
+      intactReformTimeS,
+      disruptedRejoinTimeS,
+      asymmetricRecovery: disruptedRejoinTimeS != null && intactReformTimeS != null
+        && disruptedRejoinTimeS > intactReformTimeS,
       collisions: trace.contacts.length,
       remainingAlive: group.filter((e) => e && e.alive !== false).length,
     });
@@ -540,6 +595,26 @@ export function formatM3Table(metrics) {
     'reversalCarryDistance',
     'postBurnSpeed',
   ]);
+}
+
+export function formatM6Table(metrics) {
+  const rows = [
+    ['metric', 'value'],
+    ['laneConflicts', num(metrics && metrics.laneConflicts)],
+    ['cleanExtensions', num(metrics && metrics.cleanExtensions)],
+    ['minFriendlySeparation', num(metrics && metrics.minFriendlySeparation)],
+    ['hullClearanceBar', num(metrics && metrics.hullClearanceBar)],
+    ['reformTimeS', num(metrics && metrics.reformTimeS)],
+    ['maxSimultaneousAttackers', num(metrics && metrics.maxSimultaneousAttackers)],
+    ['instantTurnbacks', num(metrics && metrics.instantTurnbacks)],
+    ['firstShotCount', num(metrics && metrics.firstShotCount)],
+  ];
+  const widths = [0, 0];
+  for (const row of rows) {
+    widths[0] = Math.max(widths[0], String(row[0]).length);
+    widths[1] = Math.max(widths[1], String(row[1]).length);
+  }
+  return rows.map((row) => `${String(row[0]).padEnd(widths[0])}  ${String(row[1]).padEnd(widths[1])}`).join('\n');
 }
 
 export function formatM4HullTable(metrics) {
@@ -999,6 +1074,9 @@ function spawnEnemy(host, typeId, pos, opts = {}) {
   spec.data = spec.data || {};
   spec.data.ai = spec.data.ai || {};
   spec.data.ai.squadId = opts.squadId || spec.data.ai.squadId || 'motion_lab';
+  if (opts.squadRecipe) spec.data.ai.squadRecipe = opts.squadRecipe;
+  if (opts.squadRole) spec.data.ai.squadRole = opts.squadRole;
+  if (opts.squadSocket) spec.data.ai.squadSocket = opts.squadSocket;
   spec.data.ai.activity = {
     ...(spec.data.ai.activity || {}),
     kind: 'attack_run',
@@ -1015,6 +1093,59 @@ function spawnEnemy(host, typeId, pos, opts = {}) {
   spec.data.combat = spec.data.combat || {};
   if (host.state.playerId) spec.data.combat.targetId = host.state.playerId;
   return host.runtime.spawn(spec);
+}
+
+function spawnScissorsWing(host, squadId, origin) {
+  const x = origin && Number.isFinite(origin.x) ? origin.x : -300;
+  const z = origin && Number.isFinite(origin.z) ? origin.z : 0;
+  const recipe = SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
+  return [
+    spawnEnemy(host, 'corsair_raider', { x, z }, {
+      squadId, squadRecipe: recipe, squadRole: 'lead', squadSocket: 'lead', rot: 0,
+    }),
+    spawnEnemy(host, 'corsair_raider', { x: x - 64, z: z - 90 }, {
+      squadId, squadRecipe: recipe, squadRole: 'left', squadSocket: 'left', rot: 0,
+    }),
+    spawnEnemy(host, 'corsair_raider', { x: x - 64, z: z + 90 }, {
+      squadId, squadRecipe: recipe, squadRole: 'right', squadSocket: 'right', rot: 0,
+    }),
+    spawnEnemy(host, 'corsair_raider', { x: x - 98, z }, {
+      squadId, squadRecipe: recipe, squadRole: 'rear', squadSocket: 'rear', rot: 0,
+    }),
+  ];
+}
+
+function wingEnteredReform(members) {
+  const live = (members || []).filter((e) => e && e.alive !== false);
+  for (const ship of live) {
+    const stamp = ship.data && ship.data.ai && ship.data.ai.squadFrame;
+    if (stamp && (stamp.phase === 'reform' || stamp.phase === 'recover')) return true;
+  }
+  return false;
+}
+
+function wingReformed(members) {
+  const live = (members || []).filter((e) => e && e.alive !== false);
+  if (live.length < 2) return false;
+  let inSlot = 0;
+  let reforming = 0;
+  for (const ship of live) {
+    const stamp = ship.data && ship.data.ai && ship.data.ai.squadFrame;
+    if (!stamp) continue;
+    if (stamp.phase === 'reform' || stamp.phase === 'recover') reforming++;
+    if (Number.isFinite(stamp.slotError) && stamp.slotError <= 120 && !stamp.coast) inSlot++;
+  }
+  const align = flowAlignment(live.map((e) => e.vel));
+  return reforming > 0 && inSlot >= Math.max(2, live.length - 1) && align > 0.38;
+}
+
+function memberRejoined(entity) {
+  if (!entity || entity.alive === false) return false;
+  const stamp = entity.data && entity.data.ai && entity.data.ai.squadFrame;
+  if (!stamp) return false;
+  if (stamp.coast || stamp.disrupted) return false;
+  if (stamp.rejoinTick != null) return true;
+  return Number.isFinite(stamp.slotError) && stamp.slotError <= 55;
 }
 
 function spawnObstacle(host, pos) {

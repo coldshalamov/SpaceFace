@@ -10,11 +10,15 @@ import {
   ENEMY_MOTION_IDENTITY_SCALE,
 } from '../src/data/flightFeelEnvelopes.js';
 import {
+  forceSquadFrameMutation,
+} from '../src/ai/squadFrame.js';
+import {
   MOTION_LAB_SEED,
   formatM1Table,
   formatM2Table,
   formatM3Table,
   formatM4HullTable,
+  formatM6Table,
   runM1,
   runM2,
   runM3,
@@ -219,6 +223,20 @@ test('M6 interceptor scissors is deterministic (bad numbers are the baseline)', 
   assert.ok('laneConflicts' in result.metrics);
   assert.ok('cleanExtensions' in result.metrics);
   assert.ok('reformTimeS' in result.metrics);
+
+  // Recorded M6 baseline was 428 lane conflicts, 0 clean extensions, min separation 2.3, no reform.
+  // Ceiling is one order of magnitude under that conflict count; remaining ticks are morph transients
+  // while two strikers occupy opposite radials and screen/reserve stay off the collision center.
+  assert.ok(result.metrics.cleanExtensions >= 2, 'a pass cycle must produce at least two clean extensions');
+  assert.ok(result.metrics.laneConflicts <= 50, 'lane conflicts must drop by an order of magnitude from 428');
+  assert.ok(
+    Number.isFinite(result.metrics.minFriendlySeparation)
+    && result.metrics.minFriendlySeparation > result.metrics.hullClearanceBar,
+    'friendly hulls must stay above a real hull-clearance bar',
+  );
+  assert.ok(result.metrics.reformTimeS != null && result.metrics.reformTimeS <= 6.5, 'reform after a pass is bounded');
+  assert.ok(result.metrics.maxSimultaneousAttackers <= 2, 'only two close-attack tokens may be committed at once');
+  console.log('\nM6 scissors\n' + formatM6Table(result.metrics) + '\n');
 });
 
 test('M8 formation break/recovery is deterministic', LONG, async () => {
@@ -229,6 +247,44 @@ test('M8 formation break/recovery is deterministic', LONG, async () => {
   assert.ok('physicsPreserved' in result.metrics);
   assert.ok('timeDisruptedS' in result.metrics);
   assert.ok('collisions' in result.metrics);
+  assert.equal(result.metrics.morphAborted, true, 'a mid-sequence impulse must abort the morph');
+  assert.ok(result.metrics.integrityMin < 0.95, 'integrity drops instead of resetting the wing');
+  assert.ok(result.metrics.intactReformTimeS != null && result.metrics.intactReformTimeS <= 5.5);
+  assert.ok(
+    result.metrics.disruptedRejoinTimeS > result.metrics.intactReformTimeS,
+    'the disrupted member rejoins late; intact members do not teleport-reset',
+  );
+  assert.equal(result.metrics.asymmetricRecovery, true);
+});
+
+test('mutation: deleting lane hysteresis explodes M6 lane conflicts', LONG, async () => {
+  const live = await runM6({ seed: SEED });
+  forceSquadFrameMutation({ laneHysteresis: false });
+  try {
+    const mutated = await runM6({ seed: SEED });
+    assert.ok(live.metrics.laneConflicts <= 50, 'live scissors must already be under the conflict ceiling');
+    assert.ok(
+      mutated.metrics.laneConflicts > 50,
+      'without lane hysteresis attackers side-flip and the conflict ceiling goes red',
+    );
+  } finally {
+    forceSquadFrameMutation(null);
+  }
+});
+
+test('mutation: four close-attack tokens break the simultaneous-attacker gate', LONG, async () => {
+  const live = await runM6({ seed: SEED });
+  forceSquadFrameMutation({ closeAttackTokens: 4 });
+  try {
+    const mutated = await runM6({ seed: SEED });
+    assert.ok(live.metrics.maxSimultaneousAttackers <= 2, 'live wing holds two close-attack tokens');
+    assert.ok(
+      mutated.metrics.maxSimultaneousAttackers > 2,
+      'granting four close-attack tokens must turn the simultaneous-attacker gate red',
+    );
+  } finally {
+    forceSquadFrameMutation(null);
+  }
 });
 
 test('M11 swarm river is deterministic and keeps wall-time out of the metrics', LONG, async () => {
