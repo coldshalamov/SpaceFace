@@ -3,6 +3,8 @@
 // faction rail + progressive-disclosure detail. Read-only: reflects state.factions[id].rep.
 //
 // Screen module shape (hosted by stationApp): create(ctx) -> { el, onShow, refresh, dispose }.
+// Instrument grammar: one DISPLAY (selected power's name), colour by meaning, 12px floor,
+// --sf-data-face on figures. Same tokens as mission log — not a second palette.
 import { FACTION_META } from '../../../data/factions.js';
 import { NEW_GAME } from '../../../data/newGameDefaults.js';
 import { SECTORS } from '../../../data/sectors.js';
@@ -16,32 +18,12 @@ import {
 import { escapeHtml } from '../../comms.js';
 import { icon, factionIcon } from '../icons.js';
 
-// Standing colour ramp — meaningful, ordered crimson→gold. Index-aligned to FACTION_TIERS
-// (9 tiers, Sworn Enemy … Hero). This is the STANDING colour (how they feel about you).
-const STANDING_RAMP = [
-  '#b3243f', // Sworn Enemy
-  '#d8433f', // Hated
-  '#ee6a3d', // Hostile
-  '#e0a24e', // Disliked (amber)
-  '#8ba0bd', // Neutral (cool grey-blue)
-  '#4aa8ff', // Accepted (azure)
-  '#35c2a6', // Trusted (teal)
-  '#3fd07f', // Allied (green)
-  '#ffcf5a', // Hero (gold)
-];
-
-// Faction identity tint (WHO they are) — distinct from standing colour. Keyed by id.
-const FACTION_TINT = {
-  faction_scn: '#5b8dd6',
-  faction_mts: '#d8b25a',
-  faction_dmc: '#d17a4b',
-  faction_reach: '#c1543f',
-  faction_quiet: '#9b8bd0',
-  faction_vael: '#cf5d86',
-  faction_free: '#46b4a4',
-  faction_choir: '#78c6d8',
-};
-const DEFAULT_TINT = '#4aa8ff';
+// Colour by MEANING. The tier WORD (Sworn Enemy … Hero) names the band; hue only says
+// against you / at rest / a gain. Azure and per-faction brand tints were decoration.
+const IDENTITY = 'var(--sf-calm)';
+const ALIGN = 'var(--sf-you)';
+const RIVAL = 'var(--sf-foe)';
+const STYLE_ID = 'sf-factions-style';
 const STATION_FACTION = new Map();
 for (const sector of SECTORS) {
   for (const station of (sector.stations || [])) STATION_FACTION.set(station.id, station.factionId || sector.factionId || null);
@@ -50,8 +32,6 @@ for (const sector of SECTORS) {
 const DIAL_MIN = -1000;
 const DIAL_MAX = 1000;
 const REP_SPAN = DIAL_MAX; // arc spans ±135° at ±1000
-
-function tintFor(id) { return FACTION_TINT[id] || DEFAULT_TINT; }
 
 // J05: every row, relation node and network core previously drew `icon('factions')` — ONE generic
 // shield repeated fourteen times, so the roster was a column of identical marks distinguishable
@@ -66,7 +46,16 @@ function tierIndex(rep) {
   const i = FACTION_TIERS.indexOf(t);
   return i < 0 ? 4 : i;
 }
-function standingColor(rep) { return STANDING_RAMP[tierIndex(rep)] || STANDING_RAMP[4]; }
+export function standingColorAt(i) {
+  if (i <= 3) return 'var(--sf-foe)';
+  if (i === 4) return 'var(--sf-calm)';
+  return 'var(--sf-you)';
+}
+export function standingColor(rep) { return standingColorAt(tierIndex(rep)); }
+
+function reduceMotion() {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 function repOf(state, id) {
   const live = state && state.factions && state.factions[id];
@@ -126,7 +115,7 @@ function buildDialSvg() {
   for (let i = 0; i < FACTION_TIERS.length; i++) {
     const rot0 = repToRot(mins[i]);
     const rot1 = repToRot(mins[i + 1]);
-    segs += `<path class="sx-dial-seg" d="${arcSeg(cx, cy, R, rot0, rot1)}" stroke="${STANDING_RAMP[i]}"/>`;
+    segs += `<path class="sx-dial-seg" style="stroke:${standingColorAt(i)}" d="${arcSeg(cx, cy, R, rot0, rot1)}"/>`;
   }
   // faint full track under the coloured arc
   const track = `<path class="sx-dial-track" d="${arcSeg(cx, cy, R, -135, 135)}"/>`;
@@ -146,10 +135,143 @@ function buildDialSvg() {
     `<circle cx="${cx}" cy="${my}" r="11" class="sx-dial-marker-halo"/>` +
     `<circle cx="${cx}" cy="${my}" r="6.5" class="sx-dial-marker-dot"/>` +
     `</g>`;
-  return `<svg class="sx-dial-svg" viewBox="0 0 ${S} ${S}" role="img" aria-label="Standing threshold instrument"><title>Standing threshold instrument</title>${track}${segs}${ticks}${marker}</svg>`;
+  return `<svg class="sx-dial-svg" viewBox="0 0 ${S} ${S}" role="img" aria-label="Standing threshold instrument">${track}${segs}${ticks}${marker}</svg>`;
 }
 
+function injectStyle() {
+  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = CSS;
+  document.head.appendChild(s);
+}
+
+const CSS = `
+.sx-fac { font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper); }
+.sx-fac .sf-fig, .sx-fac .sx-dial-rep, .sx-fac .sx-ladder__min {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.sx-fac .sx-fac-row { color: var(--sf-paper); background: transparent; border-left: var(--sf-rail-w) solid transparent; }
+.sx-fac .sx-fac-row.is-active {
+  border-left-color: var(--sf-you);
+  background: color-mix(in srgb, var(--sf-you) 8%, transparent);
+}
+.sx-fac .sx-fac-row__crest { color: var(--sf-calm); }
+.sx-fac .sx-fac-row__name { color: var(--sf-paper); font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0; }
+.sx-fac .sx-fac-row__bar { background: var(--sf-edge); }
+.sx-fac .sx-fac-row__tier {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+.sx-fac .sx-fac-standing {
+  position: absolute; z-index: 4; left: 0; top: 0; bottom: 0; width: 430px;
+  display: grid; grid-template-columns: 190px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 122px;
+  align-items: center; padding: var(--sp-3) var(--sp-4) 0; overflow: hidden;
+  min-width: 0; min-height: 0; border: 0; border-radius: 0;
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent); box-shadow: none;
+}
+.sx-fac .sx-fac-standing::before { content: none; }
+.sx-fac .sx-fac-ident h2 {
+  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+  letter-spacing: 0; text-transform: none; color: var(--sf-paper); margin: var(--sp-2) 0 var(--sp-1);
+}
+.sx-fac .sx-fac-ident__flag {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+.sx-fac .sx-fac-ident p { margin: 0; color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; }
+.sx-fac .sx-dial-tier {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; letter-spacing: 0; text-transform: uppercase;
+}
+.sx-fac .sx-dial-rep, .sx-fac .sx-dial--compact .sx-dial-rep { font-size: 20px; color: var(--sf-paper); }
+.sx-fac .sx-dial-next, .sx-fac .sx-dial--compact .sx-dial-next {
+  color: var(--sf-goal); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; text-align: center;
+}
+.sx-fac .sx-dial-marker { transition: transform var(--sf-t-settle) var(--sf-ease); }
+.sx-fac .sx-dial-marker-dot, .sx-fac .sx-dial-marker-halo { fill: var(--standing); }
+.sx-fac .sx-dial-track { stroke: var(--sf-edge); }
+.sx-fac .sx-fac-decisions { border-top-color: var(--sf-edge); background: color-mix(in srgb, var(--sf-surface) 92%, transparent); }
+.sx-fac .sx-fac-decisions > div { border-right-color: var(--sf-edge); }
+.sx-fac .sx-fac-decisions span {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+.sx-fac .sx-fac-decisions b { color: var(--sf-paper); font-family: var(--sf-body-face); font-weight: 600; font-size: 13px; }
+.sx-fac .sx-fac-decisions em { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; font-style: normal; }
+.sx-fac .sx-fac-network { background: color-mix(in srgb, var(--sf-surface) 80%, transparent); box-shadow: none; animation: none; }
+.sx-fac .sx-fac-network > svg line { animation: none !important; filter: none; stroke: var(--relation); }
+.sx-fac .sx-fac-network > header span {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+.sx-fac .sx-fac-network > header b { color: var(--sf-calm); font-family: var(--sf-body-face); font-weight: 400; font-size: 13px; }
+.sx-fac .sx-fac-network__core {
+  border-color: var(--sf-edge); background: color-mix(in srgb, var(--sf-surface) 94%, transparent);
+  box-shadow: none; border-radius: 0;
+}
+.sx-fac .sx-fac-network__core b { color: var(--sf-paper); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 13px; }
+.sx-fac .sx-fac-network__core em {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); font-style: normal;
+}
+.sx-fac .sx-fac-node {
+  border-color: var(--sf-edge); border-left: var(--sf-rail-w) solid var(--relation);
+  background: color-mix(in srgb, var(--sf-surface) 90%, transparent); box-shadow: none; border-radius: 0;
+}
+.sx-fac .sx-fac-node:hover {
+  z-index: 4; border-color: var(--relation);
+  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+  transform: translate(-50%, -50%);
+}
+.sx-fac .sx-fac-node__mark { color: var(--sf-calm); }
+.sx-fac .sx-fac-node__copy b { color: var(--sf-paper); font-family: var(--sf-body-face); font-weight: 500; font-size: 13px; }
+.sx-fac .sx-fac-node__copy em {
+  color: var(--relation); font-family: var(--sf-data-face); font-weight: 500; font-size: 12px;
+  font-style: normal; letter-spacing: 0;
+}
+.sx-fac .sx-fac-network > footer { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; }
+.sx-fac .sx-fac-network > footer i.is-aligned { color: var(--sf-you); }
+.sx-fac .sx-fac-network > footer i.is-rival { color: var(--sf-foe); }
+.sx-fac .sx-fac-network__empty { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; }
+.sx-fac .sx-fac-ladder__head > span, .sx-fac .sx-fac-intent span {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+}
+.sx-fac .sx-fac-ladder__head > b, .sx-fac .sx-fac-intent b {
+  color: var(--sf-paper); font-family: var(--sf-body-face); font-weight: 500; font-size: 13px;
+}
+.sx-fac .sx-fac-intent em { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; font-style: normal; }
+.sx-fac .sx-ladder__name {
+  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 500; font-size: 12px;
+  letter-spacing: var(--sf-track-micro);
+}
+.sx-fac .sx-ladder__min { font-size: 13px; color: var(--sf-calm); }
+.sx-fac .sx-ladder__step.is-current {
+  background: color-mix(in srgb, var(--standing, var(--sf-calm)) 12%, transparent);
+  box-shadow: none; border-bottom: var(--sf-rail-w) solid var(--standing, var(--sf-you));
+}
+@media (max-width: 1220px) {
+  .sx-fac .sx-fac-standing { grid-template-columns: 160px minmax(0, 1fr); padding-inline: var(--sp-3); width: 380px; }
+}
+@media (max-width: 1180px) {
+  .sx-fac .sx-fac-standing { width: 380px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-fac, .sx-fac * { animation: none !important; transition: none !important; }
+}
+@media (forced-colors: active) {
+  .sx-fac, .sx-fac .sx-fac-standing, .sx-fac .sx-fac-network, .sx-fac .sx-fac-node, .sx-fac .sx-fac-row {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
+  .sx-fac .sx-fac-row.is-active, .sx-fac .sx-ladder__step.is-current {
+    border-left-color: CanvasText; border-bottom-color: CanvasText;
+  }
+}
+`;
+
 export function createFactionsScreen(ctx) {
+  injectStyle();
   const el = document.createElement('div');
   el.className = 'sx-fac';
 
@@ -160,8 +282,8 @@ export function createFactionsScreen(ctx) {
   let lastRot = 0; // for smooth needle animation between selections
 
   el.innerHTML =
-    `<nav class="sx-fac__rail" aria-label="Factions"></nav>` +
-    `<section class="sx-fac__stage" aria-live="polite"></section>` +
+    `<nav class="sx-fac__rail sf-apron" aria-label="Factions"></nav>` +
+    `<section class="sx-fac__stage sf-stage" aria-live="polite"></section>` +
     `<aside class="sx-fac__detail"></aside>`;
 
   const railEl = el.querySelector('.sx-fac__rail');
@@ -175,7 +297,7 @@ export function createFactionsScreen(ctx) {
       const rep = repOf(state, f.id);
       const tier = tierFor(rep);
       const col = standingColor(rep);
-      const tint = tintFor(f.id);
+      const tint = IDENTITY;
       const frac = (clampRep(rep) - DIAL_MIN) / (DIAL_MAX - DIAL_MIN);
       const active = f.id === selectedId ? ' is-active' : '';
       return (
@@ -196,7 +318,7 @@ export function createFactionsScreen(ctx) {
     const rep = repOf(state, f.id);
     const tier = tierFor(rep);
     const col = standingColor(rep);
-    const tint = tintFor(f.id);
+    const tint = IDENTITY;
     const next = nextTierInfo(rep);
     const live = liveFaction(state, f.id);
     const guidance = factionStandingGuidance(rep, f.meta || {}, live && live.lastDelta, {
@@ -212,16 +334,16 @@ export function createFactionsScreen(ctx) {
       };
     });
     const lines = positions.map((relation) => {
-      const relationColor = relation.weight > 0 ? '#56c7a5' : '#d76550';
+      const relationColor = relation.weight > 0 ? ALIGN : RIVAL;
       return `<line x1="50" y1="50" x2="${relation.x.toFixed(2)}" y2="${relation.y.toFixed(2)}" ` +
         `style="--relation:${relationColor};--weight:${Math.abs(relation.weight).toFixed(2)}"/>`;
     }).join('');
     const nodes = positions.map((relation) => {
       const related = factions.find((candidate) => candidate.id === relation.id);
       const relatedRep = repOf(state, relation.id);
-      const relationColor = relation.weight > 0 ? '#56c7a5' : '#d76550';
+      const relationColor = relation.weight > 0 ? ALIGN : RIVAL;
       return `<button type="button" class="sx-fac-node" data-fac="${escapeHtml(relation.id)}" ` +
-        `style="--x:${relation.x.toFixed(2)}%;--y:${relation.y.toFixed(2)}%;--relation:${relationColor};--identity:${tintFor(relation.id)}" ` +
+        `style="--x:${relation.x.toFixed(2)}%;--y:${relation.y.toFixed(2)}%;--relation:${relationColor};--identity:${IDENTITY}" ` +
         `aria-label="Inspect ${escapeHtml(related ? related.name : relation.id)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
           `<span class="sx-fac-node__mark">${crest(relation.id, 15)}</span>` +
           `<span class="sx-fac-node__copy"><b>${escapeHtml(related ? related.name : relation.id)}</b>` +
@@ -232,24 +354,24 @@ export function createFactionsScreen(ctx) {
     const controls = (f.meta && f.meta.controls) || [];
     stageEl.innerHTML =
       `<div class="sx-fac-overview" style="--tint:${tint};--standing:${col}">` +
-        `<section class="sx-fac-pulse" aria-label="Standing with ${escapeHtml(f.name)}">` +
+        `<section class="sx-fac-standing" aria-label="Standing with ${escapeHtml(f.name)}">` +
           `<div class="sx-dial sx-dial--compact">` +
             buildDialSvg() +
             `<div class="sx-dial-core">` +
               `<span class="sx-dial-tier" style="color:${col}">${escapeHtml(tier.name)}</span>` +
-              `<span class="sx-dial-rep">${signed(rep)}</span>` +
+              `<span class="sx-dial-rep sf-fig">${signed(rep)}</span>` +
               `<span class="sx-dial-next">${next ? `${next.need} TO ${escapeHtml(next.name)}` : 'PEAK HELD'}</span>` +
             `</div>` +
           `</div>` +
-          `<div class="sx-fac-ident">` +
+          `<div class="sx-fac-ident sf-crest">` +
             `<span class="sx-fac-ident__flag">${f.id === authorityId ? 'CURRENT STATION AUTHORITY' : 'EXTERNAL POWER'}</span>` +
             `<h2>${escapeHtml(f.name)}</h2>` +
             `<p>${controls.length ? escapeHtml(controls.slice(0, 3).join(' · ')) : 'No confirmed jurisdiction at this berth'}</p>` +
           `</div>` +
           `<div class="sx-fac-decisions">` +
-            `<div><span>NOW</span><b style="color:${col}">${escapeHtml(tier.name)} ${signed(rep)}</b><em>${escapeHtml(guidance.last)}</em></div>` +
-            `<div><span>NEXT</span><b>${next ? escapeHtml(`${next.need} reputation`) : 'Standing cap'}</b><em>${escapeHtml(guidance.next)}</em></div>` +
-            `<div><span>HOSTILITY BUFFER</span><b>${Math.max(0, rep - FACTION_AGGRO_THRESHOLD)} rep</b><em>${escapeHtml(guidance.risk)}</em></div>` +
+            `<div><span>NOW</span><b class="sf-fig" style="color:${col}">${escapeHtml(tier.name)} ${signed(rep)}</b><em>${escapeHtml(guidance.last)}</em></div>` +
+            `<div><span>NEXT</span><b class="sf-fig">${next ? escapeHtml(`${next.need} reputation`) : 'Standing cap'}</b><em>${escapeHtml(guidance.next)}</em></div>` +
+            `<div><span>HOSTILITY BUFFER</span><b class="sf-fig">${Math.max(0, rep - FACTION_AGGRO_THRESHOLD)} rep</b><em>${escapeHtml(guidance.risk)}</em></div>` +
           `</div>` +
         `</section>` +
         `<section class="sx-fac-network" aria-label="Relationship field for ${escapeHtml(f.name)}">` +
@@ -265,15 +387,20 @@ export function createFactionsScreen(ctx) {
     // animate the marker from its previous rotation to the new value along the arc
     const marker = stageEl.querySelector('.sx-dial-marker');
     const target = repToRot(rep);
+    const motion = animate && !reduceMotion();
     if (marker) {
-      const start = animate ? lastRot : target;
+      const start = motion ? lastRot : target;
       marker.style.transition = 'none';
       marker.style.transform = `rotate(${start}deg)`;
-      void marker.getBoundingClientRect(); // force reflow, then transition to target
-      requestAnimationFrame(() => {
-        marker.style.transition = '';
+      void marker.getBoundingClientRect();
+      if (motion) {
+        requestAnimationFrame(() => {
+          marker.style.transition = '';
+          marker.style.transform = `rotate(${target}deg)`;
+        });
+      } else {
         marker.style.transform = `rotate(${target}deg)`;
-      });
+      }
     }
     lastRot = target;
   }
@@ -287,9 +414,9 @@ export function createFactionsScreen(ctx) {
       const here = i === curIdx ? ' is-current' : '';
       return (
         `<li class="sx-ladder__step${on}${here}">` +
-          `<span class="sx-ladder__dot" style="background:${i <= curIdx ? STANDING_RAMP[i] : 'transparent'};border-color:${STANDING_RAMP[i]}"></span>` +
+          `<span class="sx-ladder__dot" style="background:${i <= curIdx ? standingColorAt(i) : 'transparent'};border-color:${standingColorAt(i)}"></span>` +
           `<span class="sx-ladder__name">${escapeHtml(t.name)}</span>` +
-          `<span class="sx-ladder__min">${t.min > 0 ? '+' : ''}${t.min}</span>` +
+          `<span class="sx-ladder__min sf-fig">${t.min > 0 ? '+' : ''}${t.min}</span>` +
         `</li>`
       );
     }).join('');
@@ -300,7 +427,7 @@ export function createFactionsScreen(ctx) {
     const relations = relationEntries(meta);
 
     detailEl.innerHTML =
-      `<div class="sx-fac-ladder">` +
+      `<div class="sx-fac-ladder" style="--standing:${standingColor(rep)}">` +
         `<div class="sx-fac-ladder__head">${icon('spark', 15)}<span>Standing ladder</span><b>Each threshold changes access and contract consequence</b></div>` +
         `<ol class="sx-ladder">${ladder}</ol>` +
       `</div>` +
@@ -326,7 +453,7 @@ export function createFactionsScreen(ctx) {
     renderStage(state, true);
     renderDetail(state);
     const active = railEl.querySelector(`[data-fac="${CSS.escape(id)}"]`);
-    if (active && active.scrollIntoView) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (active && active.scrollIntoView) active.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 

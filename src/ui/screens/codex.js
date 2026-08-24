@@ -54,60 +54,125 @@ function injectStyle() {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   // Codex-specific entry/archive styles only. The shared menu fascia (plate, buttons,
-  // headings, tabs, form primitives) lives in styles/menu.css; under the .sf-menu scope the
-  // legacy token names below already resolve to the warm fascia palette.
+  // headings, tabs, form primitives) lives in styles/menu.css. This sheet is instrument
+  // grammar, same system as the mission log: colour by meaning (amber only on the current
+  // beat and replay verbs, mint on your counts, steel structure elsewhere), 12px floor,
+  // --sf-data-face on figures, spacing from the --sp rhythm.
   s.textContent = `
-  .sf-codex-entry { padding:12px 14px; border:1px solid var(--panel-edge, #3b403f);
-    border-radius:2px; background:rgba(12,14,15,.55); margin-bottom:10px; }
-  .sf-codex-entry h3 { margin:0 0 4px; font-size:14px; color:var(--accent, #db9838); letter-spacing:.04em; }
-  .sf-codex-entry .sf-codex-meta { font-size:12px; color:var(--ink-mute, #8a877d);
-    font-family:var(--mono, monospace); letter-spacing:.06em; margin-bottom:6px; text-transform:uppercase; }
-  .sf-codex-entry .sf-codex-body { font-size:13.5px; line-height:1.5; color:var(--ink, #f1ede2); }
-  .sf-codex-entry .sf-codex-note { font-size:12px; line-height:1.45; color:var(--ink-dim, #b3afa2);
-    font-style:italic; margin-top:8px; border-top:1px dashed rgba(150,140,120,.18); padding-top:6px; }
-  .sf-codex-entry:focus { outline:2px solid var(--accent-3, #ffc064); outline-offset:2px;
-    border-color:var(--accent, #db9838); }
-  .sf-codex-locked { opacity:.45; font-style:italic; color:var(--ink-mute, #8a877d); }
-  .sf-codex-graffiti { font-family:var(--mono, monospace); letter-spacing:.08em; text-transform:uppercase;
-    font-size:13px; color:var(--ink, #f1ede2); }
-  .sf-codex-empty { color:var(--ink-mute, #8a877d); font-style:italic; padding:24px; text-align:center; }
-  .sf-codex-beat { border-left:3px solid var(--accent, #db9838); }
-  .sf-codex-beat.current { box-shadow:0 0 12px rgba(219,152,56,.18); border-color:var(--accent-3, #ffc064); }
-  .sf-codex-section-h { font-size:12px; letter-spacing:.16em; text-transform:uppercase;
-    color:var(--ink-dim, #b3afa2); margin:14px 0 6px; }
-  .sf-codex-status { margin:0 0 12px; padding:10px 12px; border:1px solid rgba(219,152,56,.30);
-    border-radius:2px; background:linear-gradient(90deg, rgba(219,152,56,.10), rgba(12,14,15,.58)); }
-  .sf-codex-status-title { color:var(--accent, #db9838); font-family:var(--mono, monospace);
-    font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px; }
-  .sf-codex-status-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:7px; }
-  .sf-codex-status-item { border:1px solid rgba(150,140,120,.16); border-radius:2px; padding:7px 8px;
-    background:rgba(12,14,15,.38); }
-  .sf-codex-status-k { color:var(--ink-mute, #8a877d); font-family:var(--mono, monospace);
-    font-size:12px; letter-spacing:.10em; text-transform:uppercase; }
-  .sf-codex-status-v { color:var(--ink, #f1ede2); font-size:13px; margin-top:2px; }
-  .sf-codex-status-note { color:var(--ink-dim, #b3afa2); font-size:12px; line-height:1.35; margin-top:8px; }
-  .sf-codex-search { width:100%; box-sizing:border-box; margin:8px 0 2px; padding:9px 11px;
-    color:var(--ink, #f1ede2); background:rgba(12,14,15,.72);
-    border:1px solid var(--panel-edge, #3b403f); border-radius:2px;
-    font-family:var(--mono, monospace); font-size:12px; letter-spacing:.04em; pointer-events:auto; }
-  .sf-codex-search:focus { outline:none; border-color:var(--accent, #db9838);
-    box-shadow:0 0 0 2px rgba(219,152,56,.14); }
-  .sf-arch-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
-  .sf-arch-card { display:flex; flex-direction:column; padding:0; text-align:left; overflow:hidden;
-    border:1px solid var(--panel-edge, #3b403f); border-radius:3px; background:rgba(12,14,15,.55);
-    cursor:pointer; pointer-events:auto; transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
-  .sf-arch-card:hover, .sf-arch-card:focus-visible { border-color:var(--accent, #db9838);
-    box-shadow:0 0 16px rgba(219,152,56,.22); transform:translateY(-2px); outline:none; }
-  .sf-arch-thumb { position:relative; aspect-ratio:16/9; background-size:cover; background-position:center;
-    background-color:#070809; }
-  .sf-arch-play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:34px; color:#f1ede2; text-shadow:0 0 14px rgba(219,152,56,.8); opacity:.82;
-    background:radial-gradient(circle at center, rgba(5,6,7,.15), rgba(5,6,7,.55)); transition:opacity .16s ease; }
-  .sf-arch-card:hover .sf-arch-play, .sf-arch-card:focus-visible .sf-arch-play { opacity:1; }
-  .sf-arch-meta { padding:10px 12px; }
-  .sf-arch-title { font-size:13.5px; color:var(--accent, #db9838); letter-spacing:.06em;
-    text-transform:uppercase; font-family:var(--mono, monospace); }
-  .sf-arch-cap { font-size:12px; line-height:1.4; color:var(--ink-dim, #b3afa2); margin-top:4px; }
+  .sf-codex-entry {
+    padding: var(--sp-3) var(--sp-4); border: 1px solid var(--sf-edge); border-radius: 2px;
+    background: color-mix(in srgb, var(--sf-surface) 88%, transparent); margin-bottom: var(--sp-2);
+  }
+  .sf-codex-entry h3 {
+    margin: 0 0 var(--sp-1); font-family: var(--sf-subhead-face); font-weight: 600;
+    font-size: 15px; color: var(--sf-paper); letter-spacing: 0;
+  }
+  .sf-codex-entry .sf-codex-meta {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+    color: var(--sf-calm); margin-bottom: var(--sp-1);
+  }
+  .sf-codex-entry .sf-codex-body {
+    font-family: var(--sf-body-face); font-size: 14px; line-height: 1.5; color: var(--sf-paper);
+  }
+  .sf-codex-entry .sf-codex-note {
+    font-family: var(--sf-body-face); font-size: 12px; line-height: 1.45; color: var(--sf-calm);
+    font-style: italic; margin-top: var(--sp-2); border-top: 1px solid var(--sf-edge);
+    padding-top: var(--sp-1);
+  }
+  .sf-codex-note--cost { color: var(--sf-foe); }
+  .sf-codex-entry:focus {
+    outline: 2px solid var(--sf-goal); outline-offset: 2px; border-color: var(--sf-goal-edge);
+  }
+  .sf-codex-locked { opacity: .55; font-style: italic; color: var(--sf-calm); }
+  .sf-codex-graffiti {
+    font-family: var(--sf-subhead-face); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    font-size: 13px; color: var(--sf-paper);
+  }
+  .sf-codex-empty {
+    color: var(--sf-calm); font-style: italic; font-family: var(--sf-body-face);
+    padding: var(--sp-5); text-align: center;
+  }
+  .sf-codex .sf-fig,
+  .sf-codex-status-v {
+    font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+    font-size: 13px; letter-spacing: 0;
+  }
+  .sf-codex-beat { border-left: var(--sf-rail-w) solid var(--sf-calm); }
+  .sf-codex-beat.current {
+    border-color: var(--sf-goal-edge); border-left-color: var(--sf-goal);
+    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  }
+  .sf-codex-now {
+    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
+    color: var(--sf-paper); letter-spacing: 0;
+  }
+  .sf-codex-entry--filed { border-left: var(--sf-rail-w) solid var(--sf-you); }
+  .sf-codex-entry--filed .sf-codex-meta { color: var(--sf-you); }
+  .sf-codex-section-h {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+    color: var(--sf-calm); margin: var(--sp-3) 0 var(--sp-1);
+  }
+  .sf-codex-status {
+    margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--sf-edge);
+    border-radius: 2px; background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  }
+  .sf-codex-status-title {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+    margin-bottom: var(--sp-2);
+  }
+  .sf-codex-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--sp-2); }
+  .sf-codex-status-item {
+    border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
+    background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+  }
+  .sf-codex-status-k {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  }
+  .sf-codex-status-v { color: var(--sf-paper); margin-top: 2px; }
+  .sf-codex-status-note {
+    font-family: var(--sf-body-face); color: var(--sf-calm); font-size: 12px; line-height: 1.35;
+    margin-top: var(--sp-2);
+  }
+  .sf-codex-search {
+    width: 100%; box-sizing: border-box; margin: var(--sp-2) 0 var(--sp-1); padding: var(--sp-2) var(--sp-3);
+    color: var(--sf-paper); background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
+    border: 1px solid var(--sf-edge); border-radius: 2px;
+    font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0; pointer-events: auto;
+  }
+  .sf-codex-search:focus {
+    outline: none; border-color: var(--sf-goal);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sf-goal) 14%, transparent);
+  }
+  .sf-arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+  .sf-arch-signal {
+    display: flex; flex-direction: column; padding: 0; text-align: left; overflow: hidden;
+    border: 1px solid var(--sf-edge); border-radius: 2px;
+    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+    pointer-events: auto;
+  }
+  .sf-arch-signal:hover, .sf-arch-signal:focus-visible { border-color: var(--sf-goal); outline: none; }
+  .sf-arch-thumb { position: relative; aspect-ratio: 16/9; background-size: cover; background-position: center;
+    background-color: var(--sf-surface); }
+  .sf-arch-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: var(--sf-paper); opacity: .82;
+    background: radial-gradient(circle at center, transparent, color-mix(in srgb, var(--sf-surface) 55%, transparent)); }
+  .sf-arch-signal:hover .sf-arch-play, .sf-arch-signal:focus-visible .sf-arch-play { opacity: 1; }
+  .sf-arch-meta { padding: var(--sp-2) var(--sp-3); }
+  .sf-arch-title {
+    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-paper);
+  }
+  .sf-arch-cap { font-family: var(--sf-body-face); font-size: 12px; line-height: 1.4; color: var(--sf-calm); margin-top: var(--sp-1); }
+  @media (forced-colors: active) {
+    .sf-codex-entry, .sf-codex-status, .sf-arch-signal, .sf-arch-thumb {
+      background: Canvas; color: CanvasText; border-color: CanvasText;
+    }
+    .sf-codex-beat.current { border-left-color: Highlight; }
+  }
   `;
   document.head.appendChild(s);
 }
@@ -353,6 +418,7 @@ export const codexScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     shell(rootEl, 'Codex', 'sf-menu-wide');
+    rootEl.classList.add('sf-codex');
 
     const bar = el('div', 'sf-tabbar');
     this._tabBtns = {};
@@ -481,11 +547,11 @@ export const codexScreen = {
   _renderArchive() {
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Signal Archive'));
     const intro = el('div', 'sf-codex-body', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.');
-    intro.style.marginBottom = '12px';
+    intro.style.marginBottom = 'var(--sp-3)';
     this._body.appendChild(intro);
     const grid = el('div', 'sf-arch-grid');
     for (const c of SIGNAL_ARCHIVE) {
-      const card = el('button', 'sf-arch-card');
+      const card = el('button', 'sf-arch-signal');
       card.type = 'button';
       card.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
       const thumb = el('div', 'sf-arch-thumb');
@@ -533,17 +599,17 @@ export const codexScreen = {
 
     const item1 = el('div', 'sf-codex-status-item');
     item1.appendChild(el('div', 'sf-codex-status-k', 'Survey Completion'));
-    item1.appendChild(el('div', 'sf-codex-status-v', `${gal.overallPercent}% (${gal.foundPois}/${gal.totalPois} sites)`));
+    item1.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.overallPercent}% (${gal.foundPois}/${gal.totalPois} sites)`));
     summaryGrid.appendChild(item1);
 
     const item2 = el('div', 'sf-codex-status-item');
     item2.appendChild(el('div', 'sf-codex-status-k', 'Explored Sectors'));
-    item2.appendChild(el('div', 'sf-codex-status-v', `${gal.exploredSectors} / ${gal.totalSectors}`));
+    item2.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.exploredSectors} / ${gal.totalSectors}`));
     summaryGrid.appendChild(item2);
 
     const item3 = el('div', 'sf-codex-status-item');
     item3.appendChild(el('div', 'sf-codex-status-k', 'Recovered Artifacts'));
-    item3.appendChild(el('div', 'sf-codex-status-v', `${gal.trophies}`));
+    item3.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.trophies}`));
     summaryGrid.appendChild(item3);
 
     summaryCard.appendChild(summaryGrid);
@@ -579,7 +645,7 @@ export const codexScreen = {
       if (tethysCodexReturnIntent(state, plate)) {
         const returnToTethys = el('button', 'sf-btn', 'Show Tethys Trade Hub');
         returnToTethys.type = 'button';
-        returnToTethys.style.marginTop = '10px';
+        returnToTethys.style.marginTop = 'var(--sp-2)';
         returnToTethys.setAttribute('aria-label', 'Show Tethys Trade Hub on the map');
         returnToTethys.addEventListener('click', () => openTethysCodexReturn(ctx, plate));
         entry.appendChild(returnToTethys);
@@ -598,7 +664,7 @@ export const codexScreen = {
     for (const item of summary.items) {
       const row = el('div', 'sf-codex-status-item');
       row.appendChild(el('div', 'sf-codex-status-k', item.key));
-      row.appendChild(el('div', 'sf-codex-status-v', item.value));
+      row.appendChild(el('div', 'sf-codex-status-v sf-fig', item.value));
       grid.appendChild(row);
     }
     box.appendChild(grid);
@@ -667,11 +733,11 @@ export const codexScreen = {
     if (beat >= 7) {
       ENDGAME_CHOICES.forEach((c) => {
         const chosen = s.endgameChoice === c.id;
-        const entry = el('div', 'sf-codex-entry');
+        const entry = el('div', 'sf-codex-entry' + (chosen ? ' sf-codex-entry--filed' : ''));
         entry.appendChild(el('h3', null, (chosen ? '✓ ' : '') + 'Choice ' + c.id + ' — ' + c.title));
         entry.appendChild(el('div', 'sf-codex-meta', c.kind + (chosen ? ' · YOUR CHOICE' : '')));
         entry.appendChild(el('div', 'sf-codex-body', c.summary));
-        if (c.hiddenCost) entry.appendChild(el('div', 'sf-codex-note', 'Hidden cost: ' + c.hiddenCost));
+        if (c.hiddenCost) entry.appendChild(el('div', 'sf-codex-note sf-codex-note--cost', 'Hidden cost: ' + c.hiddenCost));
         this._body.appendChild(entry);
       });
     } else {
