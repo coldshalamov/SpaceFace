@@ -41,6 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-135.03 enemy envelopes | fable-campaign-20260824 lane ENEMYMOTION | MUTATING | `src/systems/tacticalAI.js`, `src/ai/maneuver.js`, `src/data/flightFeelEnvelopes.js` (additive), motion lab files | review, commit, release row |
+| PQ-129.19 continue bricks | fable-campaign-20260824 lane CONTINUEBRICK | MUTATING | `src/render/startupGpuResidency.js`, `src/render/openingGpuAdmission.js`, `src/render/renderer.js`, `src/render/partsLibrary.js` (admission scheduling) | review, GPU A/B, commit, release row |
 
 ## Uncommitted work without a confirmed live thread
 
