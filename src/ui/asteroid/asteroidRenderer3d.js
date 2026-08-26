@@ -55,7 +55,7 @@ import {
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
-import { createWorksPartLoader } from './worksPartLoader.js';
+import { createWorksPartLoader, recordWorksInstanceResources } from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -116,6 +116,49 @@ export function contactRingDivergence() {
     }
   }
   return null;
+}
+
+// PQ-131.01 — the standing-mount lifecycle, pure so it can be gated without WebGL.
+//
+// WHY THIS EXISTS. The authored rover swap is armed twice: once during renderer setup and again
+// from begin(). Both fired while the first load was still in the air, so the works loader took two
+// leases for one screen session (worksStats.loaded: 2, released: 0 in the PQ-131.00 receipt) and
+// the second arrival ran the renderer's disposeGroup() over the FIRST authored seat — whose
+// geometry and materials are the same shared blueprint instances the surviving seat draws with.
+//
+// The contract: while an attempt is in the air every caller joins it; once an attempt has STOOD
+// (resolved truthy) later callers get that settled result and nothing re-runs; a miss (null) or a
+// throw clears the latch so a later begin() is a real retry. reset() retires the latch on teardown.
+export function createSingleFlightMount(run) {
+  if (typeof run !== 'function') throw new TypeError('[singleFlightMount] run must be a function');
+  let inFlight = null;
+  return {
+    invoke() {
+      if (inFlight) return inFlight;
+      // Start immediately rather than on the next microtask: the caller is arming an asset fetch,
+      // and a deferred start widens the very window two callers used to race through.
+      let started;
+      try {
+        started = Promise.resolve(run());
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      const attempt = started.then(
+        (result) => {
+          if (!result && inFlight === attempt) inFlight = null;
+          return result;
+        },
+        (error) => {
+          if (inFlight === attempt) inFlight = null;
+          throw error;
+        },
+      );
+      inFlight = attempt;
+      return attempt;
+    },
+    reset() { inFlight = null; },
+    get armed() { return inFlight !== null; },
+  };
 }
 
 // Module load REPORTS a divergence; it must never throw. uiRoot.registerScreens() swallows a
@@ -607,6 +650,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       },
     };
   }
+  let zoomRegister = 'work';   // 'work' | 'site' — read by ensureWorksLoader below at setup time
   function ensureWorksLoader() {
     if (worksTearingDown || disposed || glTeardownDone) return null;
     if (!worksLoader) {
@@ -614,6 +658,153 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       worksLoader.setRegister(zoomRegister);
     }
     return worksLoader;
+  }
+  function collectNamedMeshes(root, test) {
+    const out = [];
+    root.traverse((obj) => {
+      if (obj.isMesh && test(obj.name || '')) out.push(obj);
+    });
+    return out;
+  }
+  function firstMaterial(meshes) {
+    for (let i = 0; i < meshes.length; i++) {
+      const mat = meshes[i].material;
+      if (mat) return mat;
+    }
+    return null;
+  }
+  function bindAuthoredRover(group) {
+    const hooks = group.userData.worksHooks || {};
+    const seat = new THREE.Group();
+    seat.name = 'rover_seat';
+    seat.rotation.x = Math.PI / 2;
+    seat.add(group);
+    const boom = hooks.boom_pivot || new THREE.Object3D();
+    const bit = hooks.bit_tip || new THREE.Object3D();
+    const lid = hooks.hopper_lid || new THREE.Object3D();
+    const lamp = hooks.lamp_socket || new THREE.Object3D();
+    const vent = hooks.vent_stack || new THREE.Object3D();
+    const fills = [];
+    for (let i = 0; i < 5; i++) {
+      const hook = hooks[`hopper_fill_${i}`];
+      const meshes = collectNamedMeshes(group, (n) => n === `hopper_fill_${i}` || n.endsWith(`_hopper_fill_${i}`));
+      if (hook) {
+        hook.visible = false;
+        fills.push(hook);
+      } else if (meshes.length) {
+        meshes.forEach((m) => { m.visible = false; });
+        fills.push(meshes[0]);
+      } else {
+        const dummy = new THREE.Object3D();
+        dummy.visible = false;
+        group.add(dummy);
+        fills.push(dummy);
+      }
+    }
+    const trackL = collectNamedMeshes(group, (n) => n === 'track_L' || n.endsWith('_track_L'));
+    const trackR = collectNamedMeshes(group, (n) => n === 'track_R' || n.endsWith('_track_R'));
+    const trackPhaseMaps = [];
+    // Every clone made below belongs to THIS instance, not to the blueprint the lease shares
+    // between clones. Hand each one to the loader so releaseWorksPart retires it — a clone the
+    // loader never sees survives the group it was made for.
+    const instanceOwned = [];
+    function prepareTrackScroll(meshes) {
+      for (let i = 0; i < meshes.length; i++) {
+        const mesh = meshes[i];
+        if (!mesh.material) continue;
+        const mat = mesh.material.clone();
+        mesh.material = mat;
+        instanceOwned.push(mat);
+        const maps = [mat.map, mat.normalMap, mat.aoMap, mat.metalnessMap, mat.roughnessMap];
+        for (let m = 0; m < maps.length; m++) {
+          const tex = maps[m];
+          if (!tex || trackPhaseMaps.indexOf(tex) >= 0) continue;
+          // Shared atlas — clone the sampler so a tread offset cannot drag the hull UVs.
+          const clone = tex.clone();
+          clone.wrapS = THREE.RepeatWrapping;
+          clone.wrapT = THREE.RepeatWrapping;
+          if (mat.map === tex) mat.map = clone;
+          if (mat.normalMap === tex) mat.normalMap = clone;
+          if (mat.aoMap === tex) mat.aoMap = clone;
+          if (mat.metalnessMap === tex) mat.metalnessMap = clone;
+          if (mat.roughnessMap === tex) mat.roughnessMap = clone;
+          trackPhaseMaps.push(clone);
+          instanceOwned.push(clone);
+        }
+      }
+    }
+    prepareTrackScroll(trackL);
+    prepareTrackScroll(trackR);
+    // THE CUTTER. The authored part carries one LOD<n>_Bit mesh per LOD, parented under bit_tip;
+    // the loader hands them back already bound. Two things have to be true for the bit to read as
+    // a working tool: it spins on its own axis (local +X is the cutter's length after the Y-up
+    // export), and it is the only thing that heats. The whole vehicle shares ONE atlas material,
+    // so heat MUST be driven on a per-mesh clone — writing emissive on the shared material lights
+    // the tub, the tracks, the glass and the boom orange every time the drill warms up.
+    const cutterMeshes = (group.userData.worksCutterMeshes || []).slice();
+    const cutterMats = [];
+    for (let i = 0; i < cutterMeshes.length; i++) {
+      const mesh = cutterMeshes[i];
+      if (!mesh.material || Array.isArray(mesh.material)) continue;
+      const mat = mesh.material.clone();
+      mesh.material = mat;
+      cutterMats.push(mat);
+      instanceOwned.push(mat);
+    }
+    const lampMeshes = collectNamedMeshes(group, (n) => /_Lamp\b|_Lamp$|Lamp/.test(n) && !/_Boom/.test(n));
+    const glassMeshes = collectNamedMeshes(group, (n) => /_Glass\b|_Glass$|Glass/.test(n));
+    const scarMeshes = collectNamedMeshes(group, (n) => n === 'scar_plate' || n.endsWith('_scar_plate'));
+    for (let i = 0; i < scarMeshes.length; i++) scarMeshes[i].visible = false;
+    const bitMat = cutterMats[0] || null;
+    const lampMat = firstMaterial(lampMeshes);
+    const glassMat = firstMaterial(glassMeshes);
+    const dummyMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    dummyMat.emissive.setHex(0x000000);
+    dummyMat.emissiveIntensity = 0;
+    instanceOwned.push(dummyMat);
+    recordWorksInstanceResources(group, instanceOwned);
+    const ventLocal = vent.position || new THREE.Vector3();
+    const dyn = {
+      body: seat,
+      arm: boom,
+      auger: bit,
+      augerSlide: boom,
+      augerRestX: boom.position.x,
+      augerBiteX: 0.22,
+      bitMat: bitMat || dummyMat,
+      bitMats: cutterMats.length ? cutterMats : null,
+      cutters: cutterMeshes,
+      hopperStages: fills,
+      hopperLid: lid,
+      lidOpenX: lid.position.x,
+      lidShutX: lid.position.x,
+      ventOffset: { x: ventLocal.x / S, y: ventLocal.y / S },
+      lampAnchor: lamp,
+      lampMat: lampMat || dummyMat,
+      cabGlass: glassMat || dummyMat,
+      beacon: lampMat || dummyMat,
+      wheels: [],
+      setTrackPhase(phase) {
+        for (let i = 0; i < trackPhaseMaps.length; i++) {
+          trackPhaseMaps[i].offset.x = phase;
+          trackPhaseMaps[i].needsUpdate = true;
+        }
+      },
+      // Local +X is the cutter's own length. Spinning bit_tip instead would swing the bit around
+      // the socket like a rotor: the exported socket sits off the cutter's centreline.
+      setBitSpin(theta) {
+        for (let i = 0; i < cutterMeshes.length; i++) cutterMeshes[i].rotation.x = theta;
+      },
+    };
+    return {
+      group: seat,
+      pulses: [],
+      dyn,
+      authored: true,
+      source: group,
+      scars: scarMeshes,
+      cutters: cutterMeshes,
+    };
   }
   function unmountWorksProof({ forget = false } = {}) {
     if (forget) worksProofWanted = false;
@@ -2125,11 +2316,80 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     skate.hex = hex;
   }
 
-  // rover — a vehicle, not a dot
-  const roverBuilt = makeRover(S, envMap);
-  const rover = roverBuilt.group;
+  // rover — a vehicle, not a dot. The container holds either the procedural fallback or the
+  // authored works part; pose (cell, facing) is applied here so a swap does not lose the seat.
+  const rover = new THREE.Group();
+  rover.name = 'rover';
   rover.visible = false;
   scene.add(rover);
+  let roverBuilt = makeRover(S, envMap);
+  rover.add(roverBuilt.group);
+  let authoredRoverGroup = null;
+  // ONE standing authored rover per screen session. Setup arms the swap and begin() re-arms it,
+  // and before this both fired while the first load was still in flight: the loader took two
+  // leases (worksStats.loaded: 2, released: 0 in the .00 receipt) and the second arrival ran
+  // disposeGroup() over the FIRST authored seat — whose geometry and materials are the same
+  // blueprint instances the surviving seat draws with. Single-flight at the mount, single-flight
+  // at the loader, and every superseded or retired group goes back through releaseWorksPart.
+  const authoredRoverMount = createSingleFlightMount(async () => {
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    const group = await loader.loadStandingPart('rover');
+    if (worksTearingDown || disposed || glTeardownDone) {
+      if (group) loader.releaseWorksPart(group);
+      return null;
+    }
+    if (!group) return null;
+    if (authoredRoverGroup === group) return group;
+    const authored = bindAuthoredRover(group);
+    const previous = roverBuilt;
+    const previousGroup = authoredRoverGroup;
+    if (previous && previous.group && previous.group.parent === rover) {
+      rover.remove(previous.group);
+      // A superseded AUTHORED seat draws with the lease's shared blueprint resources; only the
+      // procedural fallback owns geometry this renderer may dispose outright.
+      if (previous.authored) loader.releaseWorksPart(previousGroup);
+      else disposeGroup(previous.group);
+    } else if (previousGroup && previousGroup !== group) {
+      loader.releaseWorksPart(previousGroup);
+    }
+    if (headlight.parent) headlight.parent.remove(headlight);
+    if (headTarget.parent) headTarget.parent.remove(headTarget);
+    roverBuilt = authored;
+    authoredRoverGroup = group;
+    rover.add(authored.group);
+    const lamp = roverBuilt.dyn.lampAnchor;
+    headlight.position.copy(lamp.position);
+    roverBuilt.dyn.body.add(headlight, headTarget);
+    headlight.target = headTarget;
+    roverScars.length = 0;
+    roverScarsShown = 0;
+    for (let i = 0; i < authored.scars.length; i++) {
+      authored.scars[i].visible = false;
+      roverScars.push(authored.scars[i]);
+    }
+    roverAnim.hopStage = -1;
+    return group;
+  });
+  function mountAuthoredRover() {
+    if (worksTearingDown || disposed || glTeardownDone) return Promise.resolve(null);
+    return authoredRoverMount.invoke().catch((error) => {
+      // Loud, and the procedural rover stays on camera: the authored swap is not accepted yet.
+      console.error('[asteroidRenderer3d] authored rover swap failed; the procedural rover stands', error);
+      return null;
+    });
+  }
+  // Retiring the standing rover is a loader operation, never a bare disposeGroup: the seat draws
+  // with the lease's shared blueprint resources, and only releaseWorksPart knows which clones
+  // belong to this instance.
+  function releaseAuthoredRover() {
+    authoredRoverMount.reset();
+    const group = authoredRoverGroup;
+    authoredRoverGroup = null;
+    if (!group) return;
+    if (group.parent) group.parent.remove(group);
+    if (worksLoader) worksLoader.releaseWorksPart(group);
+  }
   // ONE headlamp, and it is a real light (law §4): a warm cone out of the lamp housings onto the
   // rock face the rig is working, with a modest shadow map so the boom and the auger throw their
   // own shadow into the cut. PQ-130.03 carried two overlapping spots for the same job; the second
@@ -2378,6 +2638,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       roverScars.push(m);
     }
   }
+  void mountAuthoredRover();
 
 
   // shared geometry that must survive per-cell group disposal
@@ -2415,7 +2676,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The board is sovereign: the canvas fills the stage box and the ortho box is derived from the
   // live aspect, so cells stay square at every window size. Two registers, only two (law §4):
   // work (WORK_COLS columns across) and site (the whole body), snapped with a 180ms ease.
-  let zoomRegister = 'work';   // 'work' | 'site'
+  // (zoomRegister is declared early, beside the works loader, because ensureWorksLoader reads it
+  // during setup — a later declaration here put it in the temporal dead zone at first load.)
   let zoomKCur = 1;            // 1 = work; <1 zoomed out toward site
   let zoomAnim = null;         // { from, to, t }
 
@@ -5663,6 +5925,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
     if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
     if (!field) { rover.visible = false; return; }
+    // Single-flight: joins the setup-time load if it is still in the air, no-ops once it stands,
+    // and only re-arms after a genuine miss.
+    void mountAuthoredRover();
 
     // ore capacity: survey can only reveal what the field already holds
     oreCaps = new Map();
@@ -5752,10 +6017,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const flipTarget = faceDir === 'left' ? Math.PI : 0;
     roverAnim.flipY += (flipTarget - roverAnim.flipY) * Math.min(1, 12 * dt);
     if (Math.abs(roverAnim.flipY - flipTarget) < 0.002) roverAnim.flipY = flipTarget;
-    rover.rotation.set(0, roverAnim.flipY, 0);
+    rover.rotation.set(0, roverBuilt.authored ? 0 : roverAnim.flipY, roverBuilt.authored ? roverAnim.flipY : 0);
     const aimTarget = faceDir === 'down' ? -Math.PI / 2 : (faceDir === 'up' ? Math.PI / 2 : 0);
     roverAnim.armAim += (aimTarget - roverAnim.armAim) * Math.min(1, 10 * dt);
-    roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
+    if (roverBuilt.authored) roverBuilt.dyn.arm.rotation.y = roverAnim.armAim;
+    else roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
     // the auger bites: fast attack, slow retract (asymmetric envelope). The slide runs the bit a
     // third of a cell past its rest stop, so a bore visibly drives INTO the target cell.
     const biteTarget = drilling ? 1 : 0;
@@ -5763,13 +6029,24 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     roverAnim.bite += (biteTarget - roverAnim.bite) * Math.min(1, biteRate * dt);
     roverBuilt.dyn.augerSlide.position.x = roverBuilt.dyn.augerRestX
       + roverBuilt.dyn.augerBiteX * roverAnim.bite;
-    roverBuilt.dyn.auger.rotation.y = drillTheta;
+    // The authored cutter turns on its own length (local +X); the procedural auger is a Y-axis
+    // spindle. Spinning the authored bit on Y would sweep it around the socket instead.
+    if (roverBuilt.dyn.setBitSpin) roverBuilt.dyn.setBitSpin(drillTheta);
+    else roverBuilt.dyn.auger.rotation.y = drillTheta;
     // THE BIT HEATS (law §4). Tool steel goes from a dull scorched brown toward a coral glow as
     // the drill temperature climbs. It is the one part of the rig allowed to emit brightly, and
     // its peak (1.5) stays above every lamp on the vehicle so HEAT reads as the hottest thing.
     const temp = Math.max(0, Math.min(100, d.drillTemp || 0));
-    if (roverBuilt.dyn.bitMat) {
-      const heat = temp / 100;
+    const heat = temp / 100;
+    const bitMats = roverBuilt.dyn.bitMats;
+    if (bitMats) {
+      // One clone per LOD cutter. These are per-instance clones on purpose — the authored rover
+      // draws every surface from one atlas material, so heating the shared one lights the vehicle.
+      for (let i = 0; i < bitMats.length; i++) {
+        bitMats[i].emissive.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
+        bitMats[i].emissiveIntensity = heat * heat * 1.5;
+      }
+    } else if (roverBuilt.dyn.bitMat) {
       roverBuilt.dyn.bitMat.emissive.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
       roverBuilt.dyn.bitMat.emissiveIntensity = heat * heat * 1.5;
     }
@@ -5811,8 +6088,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     const lidTarget = (cargoFullLatch || holdFrac >= 0.999) ? 1 : 0;
     roverAnim.lid += (lidTarget - roverAnim.lid) * Math.min(1, 7 * dt);
-    roverBuilt.dyn.hopperLid.position.x = roverBuilt.dyn.lidOpenX
-      + (roverBuilt.dyn.lidShutX - roverBuilt.dyn.lidOpenX) * roverAnim.lid;
+    if (roverBuilt.authored) {
+      roverBuilt.dyn.hopperLid.rotation.x = roverAnim.lid * -1.2;
+    } else {
+      roverBuilt.dyn.hopperLid.position.x = roverBuilt.dyn.lidOpenX
+        + (roverBuilt.dyn.lidShutX - roverBuilt.dyn.lidOpenX) * roverAnim.lid;
+    }
     // tracks, lean, bob
     const leanTarget = (moving && (faceDir === 'left' || faceDir === 'right')) ? -0.05 : 0;
     if (moving && !motionReduce) {
@@ -5822,8 +6103,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       roverAnim.bob *= Math.max(0, 1 - 6 * dt);
     }
     roverAnim.lean += (leanTarget - roverAnim.lean) * Math.min(1, 8 * dt);
-    roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
-    roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    if (roverBuilt.authored) {
+      roverBuilt.dyn.body.position.y = roverAnim.bob;
+      roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    } else {
+      roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
+      roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    }
     for (const w of roverBuilt.dyn.wheels) w.rotation.z = roverAnim.wheelSpin;
     // THE TREAD CRAWLS. The sprocket radius converts the wheel's angle into distance along the
     // loop, so the plates travel exactly as fast as the wheels turn — a spinning wheel inside a
@@ -5846,7 +6132,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const powered = !d.energyDepleted;
     headlight.intensity = powered ? 52 : 12;
     roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
-    roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
+    if (!roverBuilt.authored) {
+      roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
+    }
 
     // site: machines + overlays + umbilical
     syncMachines(site, projection, timeS);
@@ -5931,6 +6219,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       worksHostObs.disconnect();
       worksHostObs = null;
     }
+    // Before retireWorksAssets drops the loader reference — afterwards there is nothing left to
+    // release through, which is why the old teardown branch could never fire.
+    releaseAuthoredRover();
     Promise.resolve(retireWorksAssets('works-screen-exit')).then(finishDispose, finishDispose);
   }
   function finishDispose() {
@@ -6010,9 +6301,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     scene.remove(flashLight);
     if (podMesh) { scene.remove(podMesh); podMesh = null; }
     podMat.dispose();
-    for (const m of roverScars) { if (m.parent) m.parent.remove(m); }
+    for (const m of roverScars) { if (m.parent && !roverBuilt.authored) m.parent.remove(m); }
     roverScars.length = 0;
     scarMat.dispose();
+    releaseAuthoredRover();
     oreArcs.length = 0;
     vapors.length = 0;
     seamLineMat.dispose(); splitLineMat.dispose();

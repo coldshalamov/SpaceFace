@@ -1131,6 +1131,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "1cfdaa1808da4ce3ca8fe4103352f2457d65cb352caa69a0b03b1a05df6d1071",
     "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb"
+  },
+  {
+    "assetId": "sf.render.works-rover",
+    "expectedContentHash": "4d907ba5c87ffc46b70ecef01dbcc2e903105d2008dfd515c7f4a0316684d271",
+    "key": "works-rover",
+    "metadataUrl": "assets/ships/release/render-packages/works-rover/render-package.json",
+    "runtimeAssetId": "place_works_rover",
+    "slot": "place",
+    "sourceSha256": "e0d5b4b0cd96ca0b637c13d3dfb986fc73f67dd4045b380c737d91f0a0638e79",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_rover.glb"
   }
 ];
 

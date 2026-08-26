@@ -1732,6 +1732,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/whistle",
       "metadataUrl": "assets/ships/release/render-packages/whistle/render-package.json"
+    },
+    {
+      "key": "works-rover",
+      "assetId": "sf.render.works-rover",
+      "runtimeAssetId": "place_works_rover",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_rover",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_rover.glb",
+      "releaseSha256": "e0d5b4b0cd96ca0b637c13d3dfb986fc73f67dd4045b380c737d91f0a0638e79",
+      "releaseBytes": 2671640,
+      "rootNode": "place_works_rover",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-rover",
+      "metadataUrl": "assets/ships/release/render-packages/works-rover/render-package.json"
     }
   ]
 }
