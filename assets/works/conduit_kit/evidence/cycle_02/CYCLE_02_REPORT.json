@@ -1,0 +1,46 @@
+{
+  "packet": "PQ-131.06",
+  "cycle": 2,
+  "state": "design_candidate",
+  "gates": {
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "technical": "evidence_ready"
+  },
+  "note": "Cycle 02 lane correction. Power frozen at Cycle 01 KEEP. Source candidate only. Not wired, not released, not accepted.",
+  "powerVerdict": "KEEP \u2014 geometry, textures, ports and Cycle 01 evidence frozen exactly",
+  "laneReviewIn": [
+    "wide black ribbon / filled trough",
+    "weak rollers, drive and service lid",
+    "corner seam / doubled coincident straights"
+  ],
+  "laneRevision": [
+    "narrow raised belt on roller crowns with C-channel rails and under-belt hollow",
+    "removable service lid with restrained fasteners; rooted gearmotor on end/junction/T/cross",
+    "one-piece corner sweep; T/cross hollow centre with splice lobes, no filled slab",
+    "LOD1/2 keep the hollow gap and T/cross/junction lobes at 19 px/cell"
+  ],
+  "kitSheet": "kit_sheet_works_top.png + kit_sheet_works_site.png",
+  "siteFamiliesWithoutEmission": "kit_sheet_works_site.png: gold tray-cable row vs dark roller-lane row at 19 px/cell, no bloom identity.",
+  "snap": "join_lane_straight_corner_*.png: cell-face ports meet; INVENTORY.json port widths 0.48 power / 0.76 lane.",
+  "originalResolutionInspection": {
+    "resolution": "1920x1080 works camera originals inspected at 1:1",
+    "views": [
+      "kit_sheet_works_top.png",
+      "kit_sheet_works_site.png",
+      "lane_{straight,corner,t,cross,end,junction}_{works_top,works_edge,works_site}.png",
+      "join_lane_straight_corner_{works_top,works_edge}.png",
+      "diagnostics/lane_{straight,junction}_clay.png"
+    ],
+    "recoveryFix": "Raised formed service-lid handle and contrasting fastener caps now read on the junction at works_top; the works_edge inspection crop follows the supported off-centre pose instead of showing empty background.",
+    "defaultDistanceVerdict": "KEEP \u2014 narrow raised belt, roller crowns, twin C-rails and under-bed negative space read at 120 px/cell; the swept corner and straight join remain continuous.",
+    "siteDistanceVerdict": "KEEP \u2014 lane topology and dark conveyor section remain distinct from the frozen gold power family at 19 px/cell without glow or scale inflation.",
+    "largestVisibleRisk": "At 19 px/cell the removable-lid fasteners and gearmotor collapse into the junction mass; those details are supported by works_top/works_edge while the site view preserves only topology and family identity.",
+    "openP0P1": [],
+    "decision": "KEEP",
+    "scope": "Cycle 02 lane family only; evidence-ready source candidate, not whole-asset acceptance"
+  },
+  "cycle01Preserved": "assets/works/conduit_kit/evidence/cycle_01",
+  "inventory": "assets/works/conduit_kit/INVENTORY.json"
+}

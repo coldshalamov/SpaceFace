@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 1,
+  "cycle": 2,
   "tier": "C",
   "grouping": "one manufactured family per network (power tray/cable; lane conveyor). Repeated pieces share the family bill.",
   "componentReferenceDecision": "not_needed",
@@ -70,12 +70,12 @@
       ]
     },
     "lane": {
-      "oneSentenceRead": "A framed roller conveyor with a real belt on rooted rollers and a narrow smoked cover strip — not a neon ribbon.",
+      "oneSentenceRead": "A framed roller conveyor: two C-channel rails, a narrow belt on roller crowns, hollow under the bed, a smoked cover strip, and a real service lid / gearmotor where the fitting needs one.",
       "zones": [
         {
-          "zone": "side_rails_and_deck",
+          "zone": "side_rails_and_cross_sleepers",
           "disposition": "billed",
-          "substrate": "folded painted steel C-section rails, dark industrial enamel over zinc",
+          "substrate": "folded painted steel C-section rails with sparse bolted cross-sleepers, dark industrial enamel over zinc",
           "basecolor": [0.18, 0.16, 0.13],
           "roughness": [0.52, 0.68],
           "metallic": [0.18, 0.32],

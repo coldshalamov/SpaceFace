@@ -1,8 +1,11 @@
-"""PQ-131.06 Works conduit kit — Cycle 01 source candidate.
+"""PQ-131.06 Works conduit kit — Cycle 02 lane correction; power frozen.
 
 Two modular families (power cable, material lane), six topologies each,
 authored at works scale (1 cell = 2.2 wu), unique 1024² atlas per family,
 individual piece GLBs plus a master kit scene.
+
+Cycle 02 revises only the material-lane family. Power geometry, textures,
+ports, piece GLBs and Cycle 01 evidence stay exactly as Cycle 01 KEEP.
 
     blender --background --python tools/blender/build_works_conduit_kit.py
     blender --background --python tools/blender/build_works_conduit_kit.py -- --check
@@ -48,7 +51,8 @@ if str(TOOLS) not in sys.path:
 KIT = ROOT / "assets" / "works" / "conduit_kit"
 SOURCE = KIT / "source"
 TEX_DIR = SOURCE / "textures"
-EVIDENCE = KIT / "evidence" / "cycle_01"
+EVIDENCE_C01 = KIT / "evidence" / "cycle_01"
+EVIDENCE = KIT / "evidence" / "cycle_02"
 DIAG = EVIDENCE / "diagnostics"
 PARTS = ROOT / "assets" / "ships" / "parts" / "works"
 REF = KIT / "reference"
@@ -56,8 +60,9 @@ REF = KIT / "reference"
 CELL = 2.2
 HALF = 1.1
 ATLAS = 1024
-CYCLE = 1
+CYCLE = 2
 PACKET = "PQ-131.06"
+POWER_CYCLE = 1
 SHADE_ANGLE = 28.0
 TRI_LOD0_MAX = 2000
 TRI_LOD0_MIN = 700
@@ -82,16 +87,25 @@ P_CABLE_Z = 0.032 + 0.070
 P_BEND = 0.38
 P_TEE = 0.44
 
-# Lane framed roller conveyor
+# Lane framed roller conveyor — Cycle 02. Port envelope frozen (outer 0.76 x 0.26).
+# Belt is a raised narrow carcass on roller crowns, not a filled trough.
 L_W, L_H, L_T = 0.76, 0.26, 0.040
 L_RAIL_Y = L_W / 2 - L_T / 2
+L_FLANGE = 0.070
+L_FLANGE_T = 0.022
 L_ROLLER_R = 0.045
 L_ROLLER_Z = 0.028 + 0.045
-L_ROLLER_LEN = L_W - 2 * L_T - 0.02
-L_BELT_W = 0.50
-L_COVER_W = 0.22
-L_BEND = 0.46
+L_ROLLER_LEN = 0.64
+L_BELT_W = 0.28
+L_BELT_T = 0.012
+L_COVER_W = 0.12
+L_COVER_Z = L_ROLLER_Z + L_ROLLER_R + 0.040
+L_BEND = 0.52
 L_TEE = 0.50
+L_THROAT = 0.42
+L_JUNC = 0.56
+L_JUNC_STUB = 0.40
+L_SLEEPER = 0.40
 
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYS"}
 
@@ -107,11 +121,25 @@ ROLE_SPEC = {
     "belt": {"rgb": (0.10, 0.10, 0.09), "rough": 0.80, "metal": 0.04, "emit": 0.0},
     "cover": {"rgb": (0.12, 0.13, 0.14), "rough": 0.22, "metal": 0.04, "emit": 0.0},
     "bracket": {"rgb": (0.20, 0.19, 0.17), "rough": 0.48, "metal": 0.68, "emit": 0.0},
+    "lid": {"rgb": (0.26, 0.24, 0.20), "rough": 0.42, "metal": 0.58, "emit": 0.0},
 }
 
 POWER_ROLES = ("tray", "jacket", "armour", "clamp", "hardware", "contact", "bracket")
-LANE_ROLES = ("frame", "roller", "belt", "cover", "hardware", "bracket")
+LANE_ROLES = ("frame", "roller", "belt", "cover", "hardware", "bracket", "lid")
 BELT_TILE = (0.0, 0.86, 1.0, 0.985)
+
+# Cycle 01 KEEP — never rewrite these files.
+POWER_FREEZE = {
+    "place_works_conduit_power_straight": "CA4D71279F5480D878FAE99AA6A3EF4921A6C47F209D743749444808AA8AB74F",
+    "place_works_conduit_power_corner": "06C41E5A890935A049EDD6E42616123C96A66D7CB4432AC76C48281AC2BB8F11",
+    "place_works_conduit_power_t": "8F15CE7FE47E011CF6D9C6D52FFF4491FB49309ACEAB48473D30101D272348E8",
+    "place_works_conduit_power_cross": "8E3D35DDFDC7E91657E27A14562F767B232B94B1C019B183D71ABA5F7BEA649D",
+    "place_works_conduit_power_end": "BF514FE9D17CCF435D6D3CFCC677B682D584155B1E5DA8C19DA91C9A499D8F6D",
+    "place_works_conduit_power_junction": "7AA12DC794E9427DC3A4D87486AB10FDC773322D2F13FBBEA6C65E0C6C05785D",
+    "power_atlas_basecolor.png": "999171C54FA62C9F4FB92CD08344DF6981889ED923CF5DD3FA62ACEBC1D78F0B",
+    "power_atlas_orm.png": "B90AE799A4933BB910083FD7CC5001693399BDCAE14F0092A821895FD4479F21",
+    "power_atlas_normal.png": "E43519CAE553C7DBA53971C31B95DC9095EE85BF71377B96BA1CCE870BB5FE78",
+}
 
 LOD_BANDS = {
     0: (0.00, 0.70),
@@ -343,6 +371,8 @@ def validate_outputs(strict=True):
             hook = "powered" if family == "power" else "flow_mesh"
             if hook not in names:
                 rec["errors"].append(f"hook {hook} missing")
+            if kind == "junction" and "service_lid" not in names:
+                rec["errors"].append("service_lid missing")
             for lod in (0, 1, 2):
                 lod_ok = any(n.startswith(f"LOD{lod}_") for n in names)
                 if not lod_ok:
@@ -363,12 +393,22 @@ def validate_outputs(strict=True):
                 rec["errors"].append("LOD1 is not cheaper than LOD0")
             if lod_tri[2] > lod_tri[1] and lod_tri[1]:
                 rec["errors"].append("LOD2 is not cheaper than LOD1")
+            if family == "lane" and lod_tri[1] > TRI_LOD1_MAX:
+                rec["errors"].append(f"LOD1 tris {lod_tri[1]} > {TRI_LOD1_MAX}")
+            if family == "lane" and lod_tri[2] > TRI_LOD2_MAX:
+                rec["errors"].append(f"LOD2 tris {lod_tri[2]} > {TRI_LOD2_MAX}")
             ports = contract.get("ports") or []
             want = list(PORT_BITS[kind])
             got = [p.get("axis") for p in ports]
             if got != want and set(got) != set(want):
                 rec["errors"].append(f"ports {got} != {want}")
             rec["ports"] = ports
+            want_w = 0.48 if family == "power" else 0.76
+            for port in ports:
+                if port.get("ok") and abs(float(port.get("width") or 0) - want_w) > 0.08:
+                    rec["errors"].append(
+                        f"port {port.get('axis')} width {port.get('width')} off {want_w}"
+                    )
             rec["images"] = len(gltf.get("images") or [])
             if rec["images"] < 3:
                 rec["errors"].append("expected 3 atlas maps packed in GLB")
@@ -392,6 +432,13 @@ def validate_outputs(strict=True):
     ):
         if not req.exists():
             fail(f"missing {req.name}")
+
+    for err in assert_power_frozen():
+        fail(err)
+    if not EVIDENCE_C01.exists():
+        fail("Cycle 01 evidence missing")
+    if CYCLE >= 2 and not (KIT / "evidence" / "cycle_02").exists() and not strict:
+        pass
 
     report["errorCount"] = len(report["errors"])
     dump_json(KIT / "VALIDATION.json", report)
@@ -527,6 +574,67 @@ def bm_cyl(bm, center, radius, depth, axis="X", segs=8):
 def _euler_matrix(rx, ry, rz):
     from mathutils import Euler, Matrix
     return Euler((rx, ry, rz), "XYZ").to_matrix().to_4x4()
+
+
+def bm_cyl_aligned(bm, center, radius, depth, direction, segs=8):
+    from mathutils import Matrix, Vector
+    geom = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False,
+        radius1=radius, radius2=radius, depth=depth, segments=max(6, segs),
+    )
+    direction = Vector(direction)
+    if direction.length < 1e-8:
+        direction = Vector((1.0, 0.0, 0.0))
+    direction.normalize()
+    z = Vector((0.0, 0.0, 1.0))
+    dot = max(-1.0, min(1.0, direction.dot(z)))
+    if abs(dot) > 0.999:
+        rot = Matrix.Identity(4) if dot > 0 else Matrix.Rotation(math.pi, 4, "X")
+    else:
+        axis = z.cross(direction)
+        axis.normalize()
+        rot = Matrix.Rotation(math.acos(dot), 4, axis)
+    bmesh.ops.rotate(bm, verts=geom["verts"], cent=(0, 0, 0), matrix=rot)
+    bmesh.ops.translate(bm, verts=geom["verts"], vec=center)
+    return geom["verts"]
+
+
+def rail_c_profile(side):
+    """C-channel opening toward the belt. side +1 = +offset rail, -1 = -offset rail."""
+    w, h, fl, ft = L_T, L_H, L_FLANGE, L_FLANGE_T
+    outer = side * (w / 2.0)
+    inner = side * (-w / 2.0)
+    tip = inner - side * fl
+    return [
+        (outer, 0.0),
+        (outer, h),
+        (inner, h),
+        (tip, h),
+        (tip, h - ft),
+        (inner, h - ft),
+        (inner, ft),
+        (tip, ft),
+        (tip, 0.0),
+    ]
+
+
+def rail_box_profile():
+    w, h = L_T, L_H
+    return [(-w / 2.0, 0.0), (w / 2.0, 0.0), (w / 2.0, h), (-w / 2.0, h)]
+
+
+def belt_profile():
+    z0 = L_ROLLER_Z + L_ROLLER_R - 0.002
+    z1 = z0 + L_BELT_T
+    hw = L_BELT_W / 2.0
+    return [(-hw, z0), (hw, z0), (hw, z1), (-hw, z1)]
+
+
+def cover_profile():
+    z0 = L_COVER_Z
+    z1 = z0 + 0.008
+    hw = L_COVER_W / 2.0
+    return [(-hw, z0), (hw, z0), (hw, z1), (-hw, z1)]
 
 
 def bm_sweep(bm, centers, profile, closed=True):
@@ -880,19 +988,114 @@ def build_power(kind, lod, collection, tag):
     return objs, contact
 
 
-def lane_rail_boxes(bm, path, lod):
+def lane_paths(kind, lod):
+    n_s = 8 if lod == 0 else (5 if lod == 1 else 3)
+    n_arc = 10 if lod == 0 else (6 if lod == 1 else 4)
+    n_arm = 3 if lod == 0 else 2
+    if kind == "straight":
+        return [polyline_straight(0.0, n_s)]
+    if kind == "end":
+        return [polyline_arm("X", -0.26, HALF, 0.0, n_s)]
+    if kind == "corner":
+        return [polyline_corner(L_BEND, 0.0, n_arm, n_arc)]
+    if kind == "t":
+        return [
+            polyline_straight(0.0, n_s),
+            polyline_arm("Y", L_THROAT, HALF, 0.0, n_arm),
+        ]
+    if kind == "cross":
+        return [
+            polyline_arm("X", -HALF, -L_THROAT, 0.0, n_arm),
+            polyline_arm("X", L_THROAT, HALF, 0.0, n_arm),
+            polyline_arm("Y", -HALF, -L_THROAT, 0.0, n_arm),
+            polyline_arm("Y", L_THROAT, HALF, 0.0, n_arm),
+        ]
+    if kind == "junction":
+        return [
+            polyline_arm("X", -HALF, -L_JUNC_STUB, 0.0, 2),
+            polyline_arm("X", L_JUNC_STUB, HALF, 0.0, 2),
+            polyline_arm("Y", -HALF, -L_JUNC_STUB, 0.0, 2),
+            polyline_arm("Y", L_JUNC_STUB, HALF, 0.0, 2),
+        ]
+    raise ValueError(kind)
+
+
+def offset_path(path, y_off):
     frames = frames_of(path)
-    for origin, _t, b, nn in frames[:: max(1, len(frames) // 8)]:
-        for side in (-1, 1):
-            c = origin + b * (side * L_RAIL_Y) + nn * (L_H * 0.5)
-            # approximate rail segment as a box aligned to the frame
-            # skip: we'll sweep a C profile instead
-            pass
+    return [origin + b * y_off for origin, _t, b, _n in frames]
 
 
-def rail_profile():
-    # two rails encoded as one open frame: deck + two C's via separate sweeps
-    return None
+def lane_skip_detail(p, kind):
+    if kind == "junction":
+        return max(abs(p.x), abs(p.y)) < (L_JUNC_STUB + 0.04)
+    if kind == "cross":
+        return abs(p.x) < L_THROAT - 0.02 and abs(p.y) < L_THROAT - 0.02
+    if kind == "t":
+        return abs(p.x) < 0.16 and p.y > 0.12 and p.y < L_THROAT + 0.08
+    if kind == "end":
+        return p.x < -0.05
+    return False
+
+
+def add_gearmotor(hw_bm, origin, shaft_dir, lod):
+    """Rooted MDR gearmotor: gearbox, motor can, feet, output shaft. Not a brick."""
+    o = Vector(origin)
+    d = Vector(shaft_dir)
+    if d.length < 1e-8:
+        d = Vector((0.0, -1.0, 0.0))
+    d.normalize()
+    up = Vector((0.0, 0.0, 1.0))
+    side = d.cross(up)
+    if side.length < 1e-6:
+        side = Vector((1.0, 0.0, 0.0))
+    side.normalize()
+    gb = o + d * 0.02
+    motor = o - d * 0.11
+    shaft = o + d * 0.10
+    bm_box(hw_bm, (gb.x, gb.y, gb.z), (0.10, 0.09, 0.09))
+    bm_cyl_aligned(hw_bm, (motor.x, motor.y, motor.z), 0.038, 0.14, -d, segs=8 if lod == 0 else 5)
+    bm_cyl_aligned(hw_bm, (shaft.x, shaft.y, shaft.z), 0.014, 0.10, d, segs=6 if lod == 0 else 4)
+    foot = o + up * -0.04 + d * -0.02
+    bm_box(hw_bm, (foot.x, foot.y, 0.018), (0.12, 0.05, 0.016))
+    bm_box(hw_bm, (foot.x, foot.y, 0.05), (0.04, 0.04, 0.06))
+    if lod == 0:
+        term = motor + up * 0.04 + side * 0.03
+        bm_box(hw_bm, (term.x, term.y, term.z), (0.04, 0.03, 0.03))
+        bm_cyl(hw_bm, (foot.x + 0.04, foot.y, 0.032), 0.008, 0.02, axis="Z", segs=6)
+        bm_cyl(hw_bm, (foot.x - 0.04, foot.y, 0.032), 0.008, 0.02, axis="Z", segs=6)
+
+
+def add_service_lid_mesh(lid_bm, hw_bm, cx, cy, cz, sx, sy, lod):
+    """Removable lid with lip, reveal, fasteners and a formed handle."""
+    lip_z = cz - 0.012
+    bm_box(hw_bm, (cx, cy, lip_z), (sx + 0.04, sy + 0.04, 0.012))
+    bm_box(lid_bm, (cx, cy, cz), (sx, sy, 0.018))
+    # The Cycle 01 lid read as a featureless square at 120 px/cell. Keep the
+    # handle as separate dark hardware with two rooted feet and a raised bar so
+    # its service purpose survives the supported top camera instead of relying
+    # on a texture or object name.
+    handle_y = cy + sy * 0.20
+    handle_half = sx * 0.14
+    bm_box(hw_bm, (cx - handle_half, handle_y, cz + 0.030), (0.030, 0.036, 0.042))
+    bm_box(hw_bm, (cx + handle_half, handle_y, cz + 0.030), (0.030, 0.036, 0.042))
+    bm_box(hw_bm, (cx, handle_y, cz + 0.052), (sx * 0.34, 0.030, 0.018))
+    if lod == 0:
+        inset = 0.055
+        for dx in (-sx / 2 + inset, sx / 2 - inset):
+            for dy in (-sy / 2 + inset, sy / 2 - inset):
+                bm_cyl(hw_bm, (cx + dx, cy + dy, cz + 0.014), 0.014, 0.018, axis="Z", segs=6)
+                bm_cyl(hw_bm, (cx + dx, cy + dy, cz - 0.01), 0.008, 0.018, axis="Z", segs=6)
+
+
+def add_splice_lobe(frame_bm, x, y, along="X", lod=0):
+    if along == "X":
+        bm_box(frame_bm, (x, y, 0.04), (0.10, 0.08, 0.08))
+        if lod <= 1:
+            bm_box(frame_bm, (x, y, L_H * 0.5), (0.04, 0.08, L_H * 0.7))
+    else:
+        bm_box(frame_bm, (x, y, 0.04), (0.08, 0.10, 0.08))
+        if lod <= 1:
+            bm_box(frame_bm, (x, y, L_H * 0.5), (0.08, 0.04, L_H * 0.7))
 
 
 def build_lane(kind, lod, collection, tag):
@@ -903,114 +1106,129 @@ def build_lane(kind, lod, collection, tag):
     hw_bm, _ = bm_new()
     br_bm, _ = bm_new()
 
-    radius = L_BEND
-    if kind == "straight":
-        paths = [polyline_straight(0.0, 8 if lod == 0 else 4)]
-    elif kind == "end":
-        paths = [polyline_arm("X", -0.12, HALF, 0.0, 6 if lod == 0 else 3)]
-    elif kind == "corner":
-        paths = [corner_path(radius, 0.0, lod)]
-    elif kind == "t":
-        box = L_TEE
-        paths = [
-            polyline_arm("X", -HALF, -box * 0.5, 0.0, 3),
-            polyline_arm("X", box * 0.5, HALF, 0.0, 3),
-            polyline_arm("Y", box * 0.5, HALF, 0.0, 3),
-        ]
-    elif kind == "cross":
-        box = L_TEE
-        paths = [
-            polyline_arm("X", -HALF, -box * 0.5, 0.0, 3),
-            polyline_arm("X", box * 0.5, HALF, 0.0, 3),
-            polyline_arm("Y", -HALF, -box * 0.5, 0.0, 3),
-            polyline_arm("Y", box * 0.5, HALF, 0.0, 3),
-        ]
-    else:
-        stub = 0.78
-        paths = [
-            polyline_arm("X", -HALF, -stub, 0.0, 2),
-            polyline_arm("X", stub, HALF, 0.0, 2),
-            polyline_arm("Y", -HALF, -stub, 0.0, 2),
-            polyline_arm("Y", stub, HALF, 0.0, 2),
-        ]
+    lid_bm, _ = bm_new()
 
-    deck_h = 0.022
-    rail_prof_l = [(-L_T / 2, 0.0), (L_T / 2, 0.0), (L_T / 2, L_H), (-L_T / 2, L_H)]
-    cover_prof = [(-L_COVER_W / 2, L_H - 0.01), (L_COVER_W / 2, L_H - 0.01),
-                  (L_COVER_W / 2, L_H + 0.008), (-L_COVER_W / 2, L_H + 0.008)]
-    belt_prof = [(-L_BELT_W / 2, L_ROLLER_Z + L_ROLLER_R - 0.004),
-                 (L_BELT_W / 2, L_ROLLER_Z + L_ROLLER_R - 0.004),
-                 (L_BELT_W / 2, L_ROLLER_Z + L_ROLLER_R + 0.010),
-                 (-L_BELT_W / 2, L_ROLLER_Z + L_ROLLER_R + 0.010)]
-
-    def offset_path(path, y_off):
-        frames = frames_of(path)
-        return [origin + b * y_off for origin, _t, b, _n in frames]
+    paths = lane_paths(kind, lod)
+    rail_prof = rail_c_profile if lod <= 1 else (lambda _side: rail_box_profile())
+    b_prof = belt_profile()
+    c_prof = cover_profile()
+    segs = 8 if lod == 0 else (6 if lod == 1 else 5)
+    if kind == "cross" and lod == 0:
+        segs = 6
+    roll_space = 0.34 if lod == 0 else (0.52 if lod == 1 else 0.95)
+    sleeper_space = L_SLEEPER if lod == 0 else 0.70
 
     for path in paths:
-        # deck
-        deck_prof = [(-L_W / 2 + L_T, 0.0), (L_W / 2 - L_T, 0.0),
-                     (L_W / 2 - L_T, deck_h), (-L_W / 2 + L_T, deck_h)]
-        bm_sweep(frame_bm, path, deck_prof, closed=True)
-        bm_sweep(frame_bm, offset_path(path, -L_RAIL_Y), rail_prof_l, closed=True)
-        bm_sweep(frame_bm, offset_path(path, L_RAIL_Y), rail_prof_l, closed=True)
-        bm_sweep(cover_bm, path, cover_prof, closed=True)
-        bm_sweep(belt_bm, path, belt_prof, closed=True)
-
-        segs = 8 if lod == 0 else (6 if lod == 1 else 5)
-        spacing = 0.32 if lod == 0 else (0.50 if lod == 1 else 0.9)
+        # Two C-channel rails, hollow between them. No deck — that was the black trough.
+        bm_sweep(frame_bm, offset_path(path, L_RAIL_Y), rail_prof(1), closed=True)
+        bm_sweep(frame_bm, offset_path(path, -L_RAIL_Y), rail_prof(-1), closed=True)
+        bm_sweep(belt_bm, path, b_prof, closed=True)
         if lod <= 1:
-            for p in sample_along(path, spacing):
-                if not clamp_ok(p, kind) and kind != "end":
+            bm_sweep(cover_bm, path, c_prof, closed=True)
+
+        frames = frames_of(path)
+        if lod <= 1:
+            for p in sample_along(path, roll_space):
+                if lane_skip_detail(p, kind):
                     continue
-                ax = "Y" if abs(p.x) >= abs(p.y) else "X"
-                bm_cyl(roller_bm, (p.x, p.y, L_ROLLER_Z), L_ROLLER_R, L_ROLLER_LEN, axis=ax, segs=segs)
-                if lod == 0:
-                    # bearing bosses in the rails
-                    if ax == "Y":
-                        bm_cyl(hw_bm, (p.x, p.y + L_RAIL_Y, L_ROLLER_Z), 0.022, 0.05, axis="Y", segs=6)
-                        bm_cyl(hw_bm, (p.x, p.y - L_RAIL_Y, L_ROLLER_Z), 0.022, 0.05, axis="Y", segs=6)
+                if not clamp_ok(p, kind) and kind not in ("end", "t", "cross", "junction"):
+                    continue
+                nearest = min(frames, key=lambda fr: (fr[0] - p).length)
+                _o, _t, b, _n = nearest
+                bm_cyl_aligned(
+                    roller_bm, (p.x, p.y, L_ROLLER_Z), L_ROLLER_R, L_ROLLER_LEN, b, segs=segs,
+                )
+                if lod == 0 and kind != "cross":
+                    boss_r = 0.020
+                    bm_cyl_aligned(
+                        hw_bm, (p.x + b.x * L_RAIL_Y, p.y + b.y * L_RAIL_Y, L_ROLLER_Z),
+                        boss_r, 0.046, b, segs=6,
+                    )
+                    bm_cyl_aligned(
+                        hw_bm, (p.x - b.x * L_RAIL_Y, p.y - b.y * L_RAIL_Y, L_ROLLER_Z),
+                        boss_r, 0.046, b, segs=6,
+                    )
+            if lod == 0 and kind != "cross":
+                for p in sample_along(path, 0.24):
+                    if lane_skip_detail(p, kind):
+                        continue
+                    nearest = min(frames, key=lambda fr: (fr[0] - p).length)
+                    _o, t, b, _n = nearest
+                    cz = L_ROLLER_Z + L_ROLLER_R + L_BELT_T * 0.5 + 0.004
+                    if abs(t.x) >= abs(t.y):
+                        bm_box(belt_bm, (p.x, p.y, cz), (0.024, L_BELT_W * 0.90, 0.008))
                     else:
-                        bm_cyl(hw_bm, (p.x + L_RAIL_Y, p.y, L_ROLLER_Z), 0.022, 0.05, axis="X", segs=6)
-                        bm_cyl(hw_bm, (p.x - L_RAIL_Y, p.y, L_ROLLER_Z), 0.022, 0.05, axis="X", segs=6)
-        if lod == 0:
-            # belt cleats
-            for p in sample_along(path, 0.22):
-                if not clamp_ok(p, kind) and kind != "end":
-                    continue
-                ax = "X" if abs(p.x) >= abs(p.y) else "Y"
-                if ax == "X":
-                    bm_box(belt_bm, (p.x, p.y, L_ROLLER_Z + L_ROLLER_R + 0.012), (0.03, L_BELT_W * 0.92, 0.012))
-                else:
-                    bm_box(belt_bm, (p.x, p.y, L_ROLLER_Z + L_ROLLER_R + 0.012), (L_BELT_W * 0.92, 0.03, 0.012))
-
-    if kind in ("t", "cross"):
-        s = L_TEE
-        bm_box(frame_bm, (0.0, 0.0, L_H * 0.45), (s, s, L_H * 0.9))
+                        bm_box(belt_bm, (p.x, p.y, cz), (L_BELT_W * 0.90, 0.024, 0.008))
         if lod <= 1:
-            bm_box(hw_bm, (0.0, -s * 0.42, 0.10), (0.18, 0.12, 0.16))  # drive stub
-            bm_cyl(hw_bm, (0.0, -s * 0.52, 0.10), 0.04, 0.10, axis="Y", segs=8)
+            for p in sample_along(path, sleeper_space):
+                if lane_skip_detail(p, kind):
+                    continue
+                if not clamp_ok(p, kind) and kind not in ("end", "t", "cross"):
+                    continue
+                nearest = min(frames, key=lambda fr: (fr[0] - p).length)
+                _o, t, b, _n = nearest
+                span = L_W - 2 * L_T - 0.04
+                if abs(t.x) >= abs(t.y):
+                    bm_box(frame_bm, (p.x, p.y, 0.016), (0.040, span, 0.018))
+                else:
+                    bm_box(frame_bm, (p.x, p.y, 0.016), (span, 0.040, 0.018))
+
+    # T / cross: manufactured inner-corner splices, hollow centre, no filled slab.
+    if kind == "t":
+        add_splice_lobe(frame_bm, L_THROAT * 0.35, L_THROAT * 0.35, "Y", lod)
+        add_splice_lobe(frame_bm, -L_THROAT * 0.35, L_THROAT * 0.35, "Y", lod)
+        bm_box(hw_bm, (0.0, L_THROAT * 0.15, L_ROLLER_Z + L_ROLLER_R + 0.004), (0.22, 0.16, 0.010))
+        if lod <= 1:
+            add_gearmotor(hw_bm, (0.18, -L_W * 0.5 - 0.04, 0.11), (0.0, 1.0, 0.0), lod)
+        if lod == 2:
+            # Thicken the branch rails only; do not fill the throat.
+            bm_box(frame_bm, (L_RAIL_Y, (L_THROAT + HALF) * 0.5, L_H * 0.5), (L_T * 1.6, HALF - L_THROAT, L_H))
+            bm_box(frame_bm, (-L_RAIL_Y, (L_THROAT + HALF) * 0.5, L_H * 0.5), (L_T * 1.6, HALF - L_THROAT, L_H))
+    if kind == "cross":
+        for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+            add_splice_lobe(frame_bm, sx * L_THROAT * 0.38, sy * L_THROAT * 0.38, "X", lod)
+        if lod != 1:
+            bm_box(hw_bm, (0.0, 0.0, L_ROLLER_Z + L_ROLLER_R + 0.004), (0.18, 0.18, 0.010))
+        if lod <= 1:
+            add_gearmotor(hw_bm, (0.0, -L_W * 0.5 - 0.04, 0.11), (0.0, 1.0, 0.0), lod)
     if kind == "junction":
-        bm_box(frame_bm, (0.0, 0.0, 0.16), (1.16, 1.16, 0.32))
-        bm_box(hw_bm, (0.0, 0.0, 0.345), (1.04, 1.04, 0.03))  # lid
-        bm_box(hw_bm, (0.0, 0.38, 0.365), (0.24, 0.06, 0.02))
-        if lod == 0:
-            bm_box(hw_bm, (0.0, -0.42, 0.12), (0.22, 0.16, 0.18))  # roller drive
-            bm_cyl(hw_bm, (0.0, -0.55, 0.12), 0.045, 0.12, axis="Y", segs=8)
-            for dx, dy in ((0.46, 0.46), (0.46, -0.46), (-0.46, 0.46), (-0.46, -0.46)):
-                bm_cyl(hw_bm, (dx, dy, 0.365), 0.016, 0.04, axis="Z", segs=6)
+        bm_box(frame_bm, (0.0, 0.0, 0.12), (L_JUNC, L_JUNC, 0.22))
+        add_service_lid_mesh(lid_bm, hw_bm, 0.0, 0.0, 0.250, L_JUNC - 0.08, L_JUNC - 0.08, lod)
+        if lod <= 1:
+            add_gearmotor(hw_bm, (0.0, -L_JUNC * 0.5 - 0.02, 0.12), (0.0, 1.0, 0.0), lod)
+        if lod == 2:
+            bm_box(frame_bm, (0.0, 0.0, 0.14), (L_JUNC + 0.06, L_JUNC + 0.06, 0.26))
     if kind == "end":
-        bm_box(frame_bm, (-0.16, 0.0, L_H * 0.5), (0.05, L_W + 0.02, L_H))
-        bm_box(hw_bm, (-0.22, 0.0, L_ROLLER_Z), (0.08, L_BELT_W, 0.06))  # belt return
+        bm_cyl(hw_bm, (-0.30, 0.0, L_ROLLER_Z), L_ROLLER_R + 0.012, L_BELT_W + 0.04, axis="Y", segs=segs)
+        bm_box(frame_bm, (-0.42, 0.0, L_H * 0.5), (0.04, L_W + 0.02, L_H + 0.02))
+        bm_box(hw_bm, (-0.30, 0.0, L_H + 0.004), (0.16, 0.22, 0.012))
+        if lod == 0:
+            for dy in (-0.07, 0.07):
+                bm_cyl(hw_bm, (-0.24, dy, L_H + 0.012), 0.008, 0.014, axis="Z", segs=6)
+        if lod <= 1:
+            add_gearmotor(hw_bm, (-0.30, L_W * 0.5 + 0.02, L_ROLLER_Z), (0.0, -1.0, 0.0), lod)
 
     if lod <= 1:
-        for y in (-L_W * 0.42, L_W * 0.42):
-            xs = (-0.65, 0.65) if kind == "straight" else ((0.45,) if kind != "junction" else (0.0,))
+        for y in (-L_W * 0.48, L_W * 0.48):
+            if kind == "straight":
+                xs = (-0.70, 0.70)
+            elif kind == "end":
+                xs = (0.45,)
+            elif kind == "corner":
+                xs = (0.70,)
+            elif kind == "junction":
+                xs = ()
+            else:
+                xs = (0.70,)
             for x in xs:
                 bm_box(br_bm, (x, y, 0.012), (0.12, 0.045, 0.024))
                 bm_box(br_bm, (x, y, 0.05), (0.045, 0.045, 0.08))
+        if kind == "corner":
+            for x in (-L_W * 0.48, L_W * 0.48):
+                bm_box(br_bm, (x, 0.70, 0.012), (0.045, 0.12, 0.024))
 
     objs = {}
+
     def emit(bm, role):
         if not bm.verts:
             bm.free()
@@ -1025,7 +1243,10 @@ def build_lane(kind, lod, collection, tag):
     emit(cover_bm, "cover")
     emit(hw_bm, "hardware")
     emit(br_bm, "bracket")
-    return objs, belt
+    lid = emit(lid_bm, "lid")
+    if lid is not None:
+        objs.pop("lid", None)
+    return objs, belt, lid
 
 
 def measure_ports(objs, family, kind):
@@ -1641,7 +1862,7 @@ def export_hierarchy(root, path: Path, family=None, kind=None):
     return path
 
 
-def assemble_piece(family, kind, lod_objs, hook_objs, collection, atlas_mat):
+def assemble_piece(family, kind, lod_objs, hook_objs, collection, atlas_mat, lid_objs=None):
     aid = asset_id(family, kind)
     hook_name = "powered" if family == "power" else "flow_mesh"
     suffix = unique_suffix(family, kind)
@@ -1649,21 +1870,25 @@ def assemble_piece(family, kind, lod_objs, hook_objs, collection, atlas_mat):
     type_root = add_empty(type_root_name(family, kind), (0, 0, 0), collection, parent=root, size=0.08)
     hook = add_empty(hook_name + suffix, (0, 0, 0), collection, parent=type_root, size=0.05)
     stamp_socket(hook, "works_hook")
-    lid = None
+    lid_empty = None
     if kind == "junction":
-        lid = add_empty("service_lid" + suffix, (0, 0, 0.345), collection, parent=type_root, size=0.05)
-        stamp_socket(lid, "works_hook")
+        lid_empty = add_empty("service_lid" + suffix, (0, 0, 0.250), collection, parent=type_root, size=0.05)
+        stamp_socket(lid_empty, "works_hook")
 
     lod_tri = {0: 0, 1: 0, 2: 0}
     static_all = []
+    lid_objs = lid_objs or {}
     for lod in (0, 1, 2):
         objs = lod_objs[lod]
         hook_obj = hook_objs[lod]
-        static = [o for k, o in objs.items() if o is not None and o != hook_obj]
+        lid_obj = lid_objs.get(lod)
+        static = [o for k, o in objs.items() if o is not None and o != hook_obj and o != lid_obj]
         for obj in static:
             assign_atlas(obj, atlas_mat)
         if hook_obj is not None:
             assign_atlas(hook_obj, atlas_mat)
+        if lid_obj is not None:
+            assign_atlas(lid_obj, atlas_mat)
         merged = join_named(static, f"LOD{lod}_Merged_Material_Atlas{suffix}")
         if merged is not None:
             merged["spacefaceLod"] = f"lod{lod}"
@@ -1680,6 +1905,14 @@ def assemble_piece(family, kind, lod_objs, hook_objs, collection, atlas_mat):
             lod_tri[lod] += tri_count(hook_obj)
             if lod == 0:
                 hook.location = hook_obj.matrix_world.translation.copy()
+        if lid_obj is not None and lid_empty is not None:
+            lid_obj.name = f"LOD{lod}_service_lid{suffix}"
+            if lid_obj.data:
+                lid_obj.data.name = lid_obj.name
+            triangulate_object(lid_obj)
+            lid_obj["spacefaceLod"] = f"lod{lod}"
+            reparent(lid_obj, lid_empty)
+            lod_tri[lod] += tri_count(lid_obj)
     port_meshes = {}
     for ob in list(type_root.children) + list(hook.children):
         if ob.type == "MESH":
@@ -1847,6 +2080,91 @@ def render_framing(camera, path, framing, target, focus=(0, 0, 0), edge_dir=(1.0
     )
 
 
+def load_power_atlas_images():
+    maps = []
+    colorspaces = ("sRGB", "Non-Color", "Non-Color")
+    names = ("power_atlas_basecolor", "power_atlas_orm", "power_atlas_normal")
+    for name, cs in zip(names, colorspaces):
+        path = TEX_DIR / f"{name}.png"
+        if name in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images[name])
+        img = bpy.data.images.load(str(path))
+        img.name = name
+        img.colorspace_settings.name = cs
+        maps.append(img)
+    return tuple(maps)
+
+
+def frozen_power_piece(kind):
+    path = PARTS / f"{asset_id('power', kind)}.glb"
+    gltf, _rest = read_glb(path)
+    extras = (gltf.get("asset") or {}).get("extras") or {}
+    contract = extras.get("spacefaceAsset") or {}
+    return {
+        "id": asset_id("power", kind),
+        "family": "power",
+        "kind": kind,
+        "lodTriangles": contract.get("lodTriangles") or {},
+        "ports": contract.get("ports") or [],
+        "hooks": contract.get("hooks") or ["powered"],
+        "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+        "sha256": sha256(path),
+        "bytes": path.stat().st_size,
+        "frozen": True,
+        "freezeCycle": POWER_CYCLE,
+    }
+
+
+def import_frozen_power_root(kind, collection):
+    path = PARTS / f"{asset_id('power', kind)}.glb"
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    imported = [o for o in bpy.data.objects if o not in before]
+    imported_set = set(imported)
+    roots = [o for o in imported if o.parent not in imported_set]
+    aid = asset_id("power", kind)
+    root = None
+    for obj in imported:
+        if obj.name == aid or obj.name.startswith(aid):
+            root = obj
+            break
+    if root is None and roots:
+        root = roots[0]
+        root.name = aid
+    if root is None:
+        root = add_empty(aid, (0, 0, 0), collection, size=0.12)
+        for obj in imported:
+            reparent(obj, root)
+    for obj in imported:
+        try:
+            link_obj(obj, collection)
+        except Exception:
+            pass
+    return root
+
+
+def assert_power_frozen():
+    errors = []
+    for kind in KINDS:
+        aid = asset_id("power", kind)
+        for folder in (PARTS, SOURCE):
+            path = folder / f"{aid}.glb"
+            digest = sha256(path)
+            want = POWER_FREEZE[aid]
+            if digest != want:
+                errors.append(f"power freeze broken {path}: {digest} != {want}")
+    for name, want in (
+        ("power_atlas_basecolor.png", POWER_FREEZE["power_atlas_basecolor.png"]),
+        ("power_atlas_orm.png", POWER_FREEZE["power_atlas_orm.png"]),
+        ("power_atlas_normal.png", POWER_FREEZE["power_atlas_normal.png"]),
+    ):
+        path = TEX_DIR / name
+        digest = sha256(path)
+        if digest != want:
+            errors.append(f"power atlas freeze broken {path}: {digest} != {want}")
+    return errors
+
+
 # ----- main build --------------------------------------------------------
 
 def build_all(skip_evidence=False):
@@ -1866,121 +2184,137 @@ def build_all(skip_evidence=False):
     kit_coll = bpy.data.collections.new("CONDUIT_KIT")
     bpy.context.scene.collection.children.link(kit_coll)
 
+    freeze_errors = assert_power_frozen()
+    if freeze_errors:
+        raise SystemExit("power freeze already broken before build:\n  " + "\n  ".join(freeze_errors))
+
     built = {}
-    family_static = {f: {0: [], 1: [], 2: []} for f in FAMILIES}
-    family_hooks = {f: {0: [], 1: [], 2: []} for f in FAMILIES}
+    family_static = {0: [], 1: [], 2: []}
+    family_hooks = {0: [], 1: [], 2: []}
+    family_lids = {0: [], 1: [], 2: []}
 
-    for family in FAMILIES:
-        for kind in KINDS:
-            coll = bpy.data.collections.new(asset_id(family, kind))
-            kit_coll.children.link(coll)
-            lod_objs = {}
-            hook_objs = {}
-            for lod in (0, 1, 2):
-                tag = f"{family}_{kind}_L{lod}"
-                if family == "power":
-                    objs, hook = build_power(kind, lod, coll, tag)
-                else:
-                    objs, hook = build_lane(kind, lod, coll, tag)
-                lod_objs[lod] = objs
-                hook_objs[lod] = hook
-                for o in objs.values():
-                    if o is None:
-                        continue
-                    if o is hook and family == "lane":
-                        family_hooks[family][lod].append(o)
-                    elif o is hook and family == "power":
-                        family_static[family][lod].append(o)
-                    else:
-                        family_static[family][lod].append(o)
-            built[(family, kind)] = {"coll": coll, "lod_objs": lod_objs, "hook_objs": hook_objs}
+    # Lane family only. Power stays the Cycle 01 KEEP files.
+    for kind in KINDS:
+        coll = bpy.data.collections.new(asset_id("lane", kind))
+        kit_coll.children.link(coll)
+        lod_objs = {}
+        hook_objs = {}
+        lid_objs = {}
+        for lod in (0, 1, 2):
+            tag = f"lane_{kind}_L{lod}"
+            objs, hook, lid = build_lane(kind, lod, coll, tag)
+            lod_objs[lod] = objs
+            hook_objs[lod] = hook
+            lid_objs[lod] = lid
+            for o in objs.values():
+                if o is None:
+                    continue
+                family_static[lod].append(o)
+            if hook is not None:
+                family_hooks[lod].append(hook)
+            if lid is not None:
+                family_lids[lod].append(lid)
+                family_static[lod].append(lid)
+        built[kind] = {"coll": coll, "lod_objs": lod_objs, "hook_objs": hook_objs, "lid_objs": lid_objs}
 
-    # unique pack + atlas per family
     atlas_maps = {}
     atlas_mats = {}
     atlas_paths = {}
-    for family in FAMILIES:
-        albedo = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
-        orm = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
-        nrm = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
-        nrm[..., 0] = 0.5
-        nrm[..., 1] = 0.5
-        nrm[..., 2] = 1.0
-        nrm[..., 3] = 1.0
-        orm[..., 0] = 1.0
-        orm[..., 1] = 0.5
-        orm[..., 2] = 0.0
-        orm[..., 3] = 1.0
-        albedo[..., 0:3] = 0.12
-        if family == "lane":
-            paint_belt_strip(albedo, orm, nrm)
-            for obj in family_hooks[family][0] + family_hooks[family][1] + family_hooks[family][2]:
-                assign_belt_uv(obj, CELL)
-        for lod, rect_v in LOD_BANDS.items():
-            rect = (0.0, rect_v[0], 1.0, rect_v[1]) if family == "power" else (0.0, rect_v[0], 1.0, min(rect_v[1], BELT_TILE[1] - 0.005) if lod == 2 else rect_v[1])
-            pack_objects(family_static[family][lod], rect)
-            rasterize_family(family_static[family][lod], albedo, orm, nrm)
-            if family == "lane":
-                rasterize_family(family_hooks[family][lod], albedo, orm, nrm)
-        np.clip(albedo, 0, 1, out=albedo)
-        np.clip(orm, 0, 1, out=orm)
-        np.clip(nrm, 0, 1, out=nrm)
-        img_a, p_a = write_pixels(f"{family}_atlas_basecolor", albedo, ATLAS, "sRGB")
-        img_o, p_o = write_pixels(f"{family}_atlas_orm", orm, ATLAS, "Non-Color")
-        img_n, p_n = write_pixels(f"{family}_atlas_normal", nrm, ATLAS, "Non-Color")
-        maps = (img_a, img_o, img_n)
-        atlas_maps[family] = maps
-        atlas_mats[family] = make_atlas_material(family, maps)
-        atlas_paths[family] = [p_a, p_o, p_n]
+
+    albedo = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
+    orm = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
+    nrm = np.zeros((ATLAS, ATLAS, 4), dtype=np.float32)
+    nrm[..., 0] = 0.5
+    nrm[..., 1] = 0.5
+    nrm[..., 2] = 1.0
+    nrm[..., 3] = 1.0
+    orm[..., 0] = 1.0
+    orm[..., 1] = 0.5
+    orm[..., 2] = 0.0
+    orm[..., 3] = 1.0
+    albedo[..., 0:3] = 0.12
+    paint_belt_strip(albedo, orm, nrm)
+    for obj in family_hooks[0] + family_hooks[1] + family_hooks[2]:
+        assign_belt_uv(obj, CELL)
+    for lod, rect_v in LOD_BANDS.items():
+        rect = (0.0, rect_v[0], 1.0, min(rect_v[1], BELT_TILE[1] - 0.005) if lod == 2 else rect_v[1])
+        pack_objects(family_static[lod], rect)
+        rasterize_family(family_static[lod], albedo, orm, nrm)
+        rasterize_family(family_hooks[lod], albedo, orm, nrm)
+    np.clip(albedo, 0, 1, out=albedo)
+    np.clip(orm, 0, 1, out=orm)
+    np.clip(nrm, 0, 1, out=nrm)
+    img_a, p_a = write_pixels("lane_atlas_basecolor", albedo, ATLAS, "sRGB")
+    img_o, p_o = write_pixels("lane_atlas_orm", orm, ATLAS, "Non-Color")
+    img_n, p_n = write_pixels("lane_atlas_normal", nrm, ATLAS, "Non-Color")
+    atlas_maps["lane"] = (img_a, img_o, img_n)
+    atlas_mats["lane"] = make_atlas_material("lane", atlas_maps["lane"])
+    atlas_paths["lane"] = [p_a, p_o, p_n]
+    atlas_maps["power"] = load_power_atlas_images()
+    atlas_mats["power"] = make_atlas_material("power", atlas_maps["power"])
+    atlas_paths["power"] = [
+        TEX_DIR / "power_atlas_basecolor.png",
+        TEX_DIR / "power_atlas_orm.png",
+        TEX_DIR / "power_atlas_normal.png",
+    ]
 
     inventory = {
         "packet": PACKET,
         "cycle": CYCLE,
         "cellWu": CELL,
+        "powerFreeze": "cycle_01 KEEP",
         "pieces": [],
         "atlases": {},
         "master": {},
     }
     roots = []
-    for family in FAMILIES:
-        for kind in KINDS:
-            rec = built[(family, kind)]
-            root, contract, lod_tri = assemble_piece(
-                family, kind, rec["lod_objs"], rec["hook_objs"], rec["coll"], atlas_mats[family],
-            )
-            # offset in master kit grid
-            col = KINDS.index(kind)
-            row = 0 if family == "power" else 1
-            root.location = Vector(((col - 2.5) * CELL, (0.55 - row) * CELL * 1.2, 0.0))
-            roots.append(root)
-            glb_path = PARTS / f"{asset_id(family, kind)}.glb"
-            src_path = SOURCE / f"{asset_id(family, kind)}.glb"
-            # export at origin
-            stored = root.location.copy()
-            root.location = Vector((0, 0, 0))
-            bpy.context.view_layer.update()
-            export_hierarchy(root, glb_path, family=family, kind=kind)
-            hook = "powered" if family == "power" else "flow_mesh"
-            stamp_glb(glb_path, contract, hook)
-            shutil.copy2(glb_path, src_path)
-            root.location = stored
-            inventory["pieces"].append({
-                "id": asset_id(family, kind),
-                "family": family,
-                "kind": kind,
-                "lodTriangles": contract["lodTriangles"],
-                "ports": contract["ports"],
-                "hooks": contract["hooks"],
-                "path": str(glb_path.relative_to(ROOT)).replace("\\", "/"),
-                "sha256": sha256(glb_path),
-                "bytes": glb_path.stat().st_size,
-            })
+    for kind in KINDS:
+        rec = built[kind]
+        root, contract, lod_tri = assemble_piece(
+            "lane", kind, rec["lod_objs"], rec["hook_objs"], rec["coll"],
+            atlas_mats["lane"], lid_objs=rec["lid_objs"],
+        )
+        col = KINDS.index(kind)
+        root.location = Vector(((col - 2.5) * CELL, (0.55 - 1) * CELL * 1.2, 0.0))
+        roots.append(root)
+        glb_path = PARTS / f"{asset_id('lane', kind)}.glb"
+        src_path = SOURCE / f"{asset_id('lane', kind)}.glb"
+        stored = root.location.copy()
+        root.location = Vector((0, 0, 0))
+        bpy.context.view_layer.update()
+        export_hierarchy(root, glb_path, family="lane", kind=kind)
+        stamp_glb(glb_path, contract, "flow_mesh")
+        shutil.copy2(glb_path, src_path)
+        root.location = stored
+        inventory["pieces"].append({
+            "id": asset_id("lane", kind),
+            "family": "lane",
+            "kind": kind,
+            "lodTriangles": contract["lodTriangles"],
+            "ports": contract["ports"],
+            "hooks": contract["hooks"],
+            "path": str(glb_path.relative_to(ROOT)).replace("\\", "/"),
+            "sha256": sha256(glb_path),
+            "bytes": glb_path.stat().st_size,
+        })
 
-    for family, paths in atlas_paths.items():
-        inventory["atlases"][family] = [
-            {"path": str(p.relative_to(ROOT)).replace("\\", "/"), "sha256": sha256(p)}
-            for p in paths
-        ]
+    for kind in KINDS:
+        coll = bpy.data.collections.new(asset_id("power", kind))
+        kit_coll.children.link(coll)
+        root = import_frozen_power_root(kind, coll)
+        col = KINDS.index(kind)
+        root.location = Vector(((col - 2.5) * CELL, 0.55 * CELL * 1.2, 0.0))
+        roots.insert(KINDS.index(kind), root)
+        inventory["pieces"].insert(KINDS.index(kind), frozen_power_piece(kind))
+
+    inventory["atlases"]["power"] = [
+        {"path": str(p.relative_to(ROOT)).replace("\\", "/"), "sha256": sha256(p)}
+        for p in atlas_paths["power"]
+    ]
+    inventory["atlases"]["lane"] = [
+        {"path": str(p.relative_to(ROOT)).replace("\\", "/"), "sha256": sha256(p)}
+        for p in atlas_paths["lane"]
+    ]
 
     # master kit GLB + blend
     master_glb = SOURCE / "works_conduit_kit.glb"
@@ -2012,10 +2346,29 @@ def build_all(skip_evidence=False):
     }
     dump_json(KIT / "INVENTORY.json", inventory)
 
+    freeze_errors = assert_power_frozen()
+    if freeze_errors:
+        raise SystemExit("power freeze broken after build:\n  " + "\n  ".join(freeze_errors))
+
     if not skip_evidence:
         render_evidence(roots, atlas_maps, inventory)
+        freeze_errors = assert_power_frozen()
+        if freeze_errors:
+            raise SystemExit("power freeze broken after evidence:\n  " + "\n  ".join(freeze_errors))
 
     return inventory
+
+
+def set_lod_visibility(root, keep):
+    """Evidence cameras must show one LOD. Stacking LOD0+1+2 fills T/cross hollows."""
+    token = f"LOD{keep}_"
+    for obj in descendants(root):
+        name = obj.name or ""
+        if "LOD" not in name or obj.type != "MESH":
+            continue
+        show = token in name
+        obj.hide_set(not show)
+        obj.hide_render = not show
 
 
 def hide_all_roots(roots, except_root=None):
@@ -2037,41 +2390,82 @@ def piece_root(roots, family, kind):
     return None
 
 
+def crop_png_center(src: Path, dst: Path, cw, ch, center=(0.5, 0.5)):
+    img = bpy.data.images.load(str(src))
+    w, h = img.size
+    cw = min(int(cw), w)
+    ch = min(int(ch), h)
+    cx = max(0.0, min(1.0, float(center[0]))) * w
+    cy = max(0.0, min(1.0, float(center[1]))) * h
+    x0 = max(0, min(w - cw, int(round(cx - cw / 2))))
+    y0 = max(0, min(h - ch, int(round(cy - ch / 2))))
+    pixels = list(img.pixels)
+    out = bpy.data.images.new(dst.stem, width=cw, height=ch, alpha=True)
+    buf = [0.0] * (cw * ch * 4)
+    for y in range(ch):
+        src_y = y0 + y
+        src_off = src_y * w * 4 + x0 * 4
+        dst_off = y * cw * 4
+        buf[dst_off:dst_off + cw * 4] = pixels[src_off:src_off + cw * 4]
+    out.pixels.foreach_set(buf)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_suffix(".png.tmp")
+    out.filepath_raw = str(tmp)
+    out.file_format = "PNG"
+    out.save()
+    tmp.replace(dst)
+    sanitize_png(dst)
+    bpy.data.images.remove(out)
+    bpy.data.images.remove(img)
+
+
 def render_evidence(roots, atlas_maps, inventory):
     from spaceface_works_camera import apply_works_camera, render_works_still
+    if not EVIDENCE_C01.exists():
+        raise SystemExit("Cycle 01 evidence missing; refuse to continue")
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     DIAG.mkdir(parents=True, exist_ok=True)
+    crops = EVIDENCE / "crops"
+    crops.mkdir(parents=True, exist_ok=True)
     camera, pad = setup_works_world(pad_size=18.0)
 
     stills = []
-    # kit sheet — all pieces visible at works_top and works_site
     hide_all_roots(roots, except_root=None)
-    for framing, name in (("works_top", "kit_sheet_works_top.png"), ("works_site", "kit_sheet_works_site.png")):
+    for framing, name, lod in (
+        ("works_top", "kit_sheet_works_top.png", 0),
+        ("works_site", "kit_sheet_works_site.png", 1),
+    ):
+        for root in roots:
+            set_lod_visibility(root, lod)
         path = EVIDENCE / name
         render_works_still(camera, path, framing=framing, focus=(0, 0, 0.1), target=roots + [pad])
+        sanitize_png(path)
         stills.append({"name": name, "sha256": sha256(path), "bytes": path.stat().st_size})
 
-    compare = [("power", "straight"), ("power", "corner"), ("power", "junction"),
-               ("lane", "straight"), ("lane", "corner"), ("lane", "junction")]
+    compare = [("lane", kind) for kind in KINDS]
     clay = clay_material()
     for family, kind in compare:
         root = piece_root(roots, family, kind)
         hide_all_roots(roots, root)
-        # park at origin for comparison stills
         stored = root.location.copy()
         root.location = Vector((0, 0, 0))
         bpy.context.view_layer.update()
-        meshes = iter_meshes(root)
         for framing in ("works_top", "works_edge", "works_site"):
+            set_lod_visibility(root, 1 if framing == "works_site" else 0)
+            meshes = [m for m in iter_meshes(root) if not m.hide_render]
             path = EVIDENCE / f"{family}_{kind}_{framing}.png"
             render_works_still(
                 camera, path, framing=framing, focus=(0, 0, 0.12),
                 target=meshes + [pad], edge_dir=(1.0, 0.35),
             )
+            sanitize_png(path)
             stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
+        set_lod_visibility(root, 0)
+        meshes = [m for m in iter_meshes(root) if not m.hide_render]
         backups = override_mats(meshes, clay)
         path = DIAG / f"{family}_{kind}_clay.png"
         render_works_still(camera, path, framing="works_top", focus=(0, 0, 0.12), target=meshes + [pad])
+        sanitize_png(path)
         stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
         restore_mats(meshes, backups)
         maps = atlas_maps[family]
@@ -2085,9 +2479,9 @@ def render_evidence(roots, atlas_maps, inventory):
                 path = DIAG / f"{family}_{kind}_{channel}.png"
                 render_works_still(camera, path, framing="works_top", focus=(0, 0, 0.12), target=meshes + [pad])
                 restore_mats(meshes, b2)
+            sanitize_png(path)
             stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
-        # hook diagnostic: hide non-hook meshes
-        hook_token = "powered" if family == "power" else "flow_mesh"
+        hook_token = "flow_mesh"
         hidden = []
         for obj in meshes:
             if hook_token not in obj.name:
@@ -2095,56 +2489,82 @@ def render_evidence(roots, atlas_maps, inventory):
                 hidden.append(obj)
         path = DIAG / f"{family}_{kind}_hooks.png"
         render_works_still(camera, path, framing="works_top", focus=(0, 0, 0.12), target=meshes + [pad])
+        sanitize_png(path)
         stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
         for obj in hidden:
             obj.hide_render = False
         root.location = stored
 
-    # join proof: two power straights and two lane straights
     hide_all_roots(roots, None)
-    for family in FAMILIES:
-        a = piece_root(roots, family, "straight")
-        b = piece_root(roots, family, "corner")
-        for r in roots:
-            vis = r in (a, b)
-            stack = [r]
-            while stack:
-                n = stack.pop()
-                n.hide_set(not vis)
-                n.hide_render = not vis
-                stack.extend(list(n.children))
-        stored_a = a.location.copy()
-        stored_b = b.location.copy()
-        a.location = Vector((0, 0, 0))
-        # corner rotated 90° so local +Y port faces -X, meeting the straight at x=1.1
-        b.location = Vector((CELL, 0, 0))
-        b.rotation_euler = (0, 0, math.pi / 2)
-        bpy.context.view_layer.update()
-        meshes = iter_meshes(a) + iter_meshes(b)
-        path = EVIDENCE / f"join_{family}_straight_corner_works_top.png"
-        render_works_still(camera, path, framing="works_top", focus=(HALF, 0, 0.12), target=meshes + [pad])
-        stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
-        path = EVIDENCE / f"join_{family}_straight_corner_works_edge.png"
-        render_works_still(
-            camera, path, framing="works_edge", focus=(HALF, 0, 0.12),
-            target=meshes + [pad], edge_dir=(1.0, 0.2),
-        )
-        stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
-        a.location = stored_a
-        b.location = stored_b
-        b.rotation_euler = (0, 0, 0)
+    a = piece_root(roots, "lane", "straight")
+    b = piece_root(roots, "lane", "corner")
+    for r in roots:
+        vis = r in (a, b)
+        stack = [r]
+        while stack:
+            n = stack.pop()
+            n.hide_set(not vis)
+            n.hide_render = not vis
+            stack.extend(list(n.children))
+    stored_a = a.location.copy()
+    stored_b = b.location.copy()
+    a.location = Vector((0, 0, 0))
+    b.location = Vector((CELL, 0, 0))
+    b.rotation_euler = (0, 0, math.pi / 2)
+    set_lod_visibility(a, 0)
+    set_lod_visibility(b, 0)
+    bpy.context.view_layer.update()
+    meshes = [m for m in iter_meshes(a) + iter_meshes(b) if not m.hide_render]
+    path = EVIDENCE / "join_lane_straight_corner_works_top.png"
+    render_works_still(camera, path, framing="works_top", focus=(HALF, 0, 0.12), target=meshes + [pad])
+    sanitize_png(path)
+    stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
+    path = EVIDENCE / "join_lane_straight_corner_works_edge.png"
+    render_works_still(
+        camera, path, framing="works_edge", focus=(HALF, 0, 0.12),
+        target=meshes + [pad], edge_dir=(1.0, 0.2),
+    )
+    sanitize_png(path)
+    stills.append({"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size})
+    a.location = stored_a
+    b.location = stored_b
+    b.rotation_euler = (0, 0, 0)
+
+    crop_specs = {
+        "kit_sheet_works_top.png": (960, 324),
+        "kit_sheet_works_site.png": (231, 129),
+        "lane_straight_works_top.png": (307, 173),
+        # works_edge intentionally moves the object near the upper-right of the
+        # frame; crop that supported pose rather than emitting an empty centre.
+        "lane_straight_works_edge.png": (499, 324, 0.88, 0.65),
+        "lane_corner_works_top.png": (307, 173),
+        "lane_junction_works_top.png": (307, 173),
+        "lane_end_works_top.png": (307, 173),
+        "join_lane_straight_corner_works_top.png": (461, 216),
+        "lane_straight_clay.png": (307, 173),
+        "lane_junction_clay.png": (307, 173),
+    }
+    for name, size in crop_specs.items():
+        src = EVIDENCE / name
+        if not src.exists():
+            src = DIAG / name
+        if src.exists():
+            center = (size[2], size[3]) if len(size) == 4 else (0.5, 0.5)
+            crop_png_center(src, crops / (Path(name).stem + "_crop.png"), size[0], size[1], center)
 
     hide_all_roots(roots, None)
     hashes = {
         "packet": PACKET,
         "cycle": CYCLE,
+        "powerFreeze": {k: sha256(PARTS / f"{k}.glb") if k.startswith("place_") else sha256(TEX_DIR / k)
+                        for k in POWER_FREEZE},
         "stills": stills,
-        "pieces": [{k: p[k] for k in ("id", "sha256", "lodTriangles", "bytes")} for p in inventory["pieces"]],
+        "pieces": [{k: p[k] for k in ("id", "sha256", "lodTriangles", "bytes") if k in p} for p in inventory["pieces"]],
         "atlases": inventory["atlases"],
         "master": inventory["master"],
     }
     dump_json(EVIDENCE / "HASHES.json", hashes)
-    dump_json(EVIDENCE / "CYCLE_01_REPORT.json", {
+    dump_json(EVIDENCE / "CYCLE_02_REPORT.json", {
         "packet": PACKET,
         "cycle": CYCLE,
         "state": "design_candidate",
@@ -2154,10 +2574,40 @@ def render_evidence(roots, atlas_maps, inventory):
             "G4": "open",
             "technical": "evidence_ready",
         },
-        "note": "Source candidate only. Not wired, not released, not accepted.",
+        "note": "Cycle 02 lane correction. Power frozen at Cycle 01 KEEP. Source candidate only. Not wired, not released, not accepted.",
+        "powerVerdict": "KEEP — geometry, textures, ports and Cycle 01 evidence frozen exactly",
+        "laneReviewIn": [
+            "wide black ribbon / filled trough",
+            "weak rollers, drive and service lid",
+            "corner seam / doubled coincident straights",
+        ],
+        "laneRevision": [
+            "narrow raised belt on roller crowns with C-channel rails and under-belt hollow",
+            "removable service lid with restrained fasteners; rooted gearmotor on end/junction/T/cross",
+            "one-piece corner sweep; T/cross hollow centre with splice lobes, no filled slab",
+            "LOD1/2 keep the hollow gap and T/cross/junction lobes at 19 px/cell",
+        ],
         "kitSheet": "kit_sheet_works_top.png + kit_sheet_works_site.png",
-        "siteFamiliesWithoutEmission": "kit_sheet_works_site.png and *_works_site.png stills; identity is section + albedo, not bloom",
-        "snap": "join_*_straight_corner_*.png plus INVENTORY.json ports",
+        "siteFamiliesWithoutEmission": "kit_sheet_works_site.png: gold tray-cable row vs dark roller-lane row at 19 px/cell, no bloom identity.",
+        "snap": "join_lane_straight_corner_*.png: cell-face ports meet; INVENTORY.json port widths 0.48 power / 0.76 lane.",
+        "originalResolutionInspection": {
+            "resolution": "1920x1080 works camera originals inspected at 1:1",
+            "views": [
+                "kit_sheet_works_top.png",
+                "kit_sheet_works_site.png",
+                "lane_{straight,corner,t,cross,end,junction}_{works_top,works_edge,works_site}.png",
+                "join_lane_straight_corner_{works_top,works_edge}.png",
+                "diagnostics/lane_{straight,junction}_clay.png",
+            ],
+            "recoveryFix": "Raised formed service-lid handle and contrasting fastener caps now read on the junction at works_top; the works_edge inspection crop follows the supported off-centre pose instead of showing empty background.",
+            "defaultDistanceVerdict": "KEEP — narrow raised belt, roller crowns, twin C-rails and under-bed negative space read at 120 px/cell; the swept corner and straight join remain continuous.",
+            "siteDistanceVerdict": "KEEP — lane topology and dark conveyor section remain distinct from the frozen gold power family at 19 px/cell without glow or scale inflation.",
+            "largestVisibleRisk": "At 19 px/cell the removable-lid fasteners and gearmotor collapse into the junction mass; those details are supported by works_top/works_edge while the site view preserves only topology and family identity.",
+            "openP0P1": [],
+            "decision": "KEEP",
+            "scope": "Cycle 02 lane family only; evidence-ready source candidate, not whole-asset acceptance",
+        },
+        "cycle01Preserved": str(EVIDENCE_C01.relative_to(ROOT)).replace("\\", "/"),
         "inventory": str((KIT / "INVENTORY.json").relative_to(ROOT)).replace("\\", "/"),
     })
 
