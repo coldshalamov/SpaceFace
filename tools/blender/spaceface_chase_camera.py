@@ -28,14 +28,16 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
+from spaceface_chase_contract import (
+    DISTANCE_CLOSE,
+    DISTANCE_DEFAULT,
+    PLAY_CHASE_CLOSE_WIDTH_FRAC,
+    PLAY_CHASE_WIDTH_FRAC,
+    occupancy_in_band,
+)
+
 TILT_DEG = 60.0
 FOV_V_DEG = 50.0
-DISTANCE_DEFAULT = 144.0
-DISTANCE_CLOSE = 58.0
-
-# Occupancy bands at 1600-wide, from CAMERA_VISIBLE_BUBBLE.md + close-zoom scale.
-PLAY_CHASE_WIDTH_FRAC = (0.08, 0.22)
-PLAY_CHASE_CLOSE_WIDTH_FRAC = (0.20, 0.42)
 
 
 def chase_offset(distance=DISTANCE_DEFAULT, heading_deg=0.0):

@@ -46,6 +46,7 @@ from spaceface_chase_camera import (  # noqa: E402
     PLAY_CHASE_WIDTH_FRAC,
     TILT_DEG,
     apply_chase_camera,
+    occupancy_in_band,
     render_chase_still,
     render_cycle_chase_stills,
 )
@@ -1243,12 +1244,16 @@ def measure_supported_occupancy(camera, meshes, focus):
         apply_chase_camera(camera, distance=distance, heading_deg=heading, focus=focus)
         rec = projected_occupancy(scene, camera, meshes)
         rec["band"] = [band[0], band[1]]
-        rec["inBand"] = band[0] <= rec["widthFrac"] <= band[1]
+        rec["inBand"] = occupancy_in_band(
+            rec["widthFrac"],
+            close=name == "play_chase_close",
+            cropped=rec["cropped"],
+        )
         measured[name] = rec
         print(f"occupancy {name}: {rec['widthPx1600']:.1f}px ({rec['widthFrac']*100:.2f}%) crop={rec['cropped']}")
         if rec["cropped"]:
             failures.append(f"{name} crops the mesh (ndc x={rec['minX']:.3f}..{rec['maxX']:.3f} y={rec['minY']:.3f}..{rec['maxY']:.3f})")
-        if not rec["inBand"]:
+        if not (band[0] <= rec["widthFrac"] <= band[1]):
             failures.append(f"{name} width {rec['widthFrac']*100:.2f}% outside {band[0]*100:.0f}-{band[1]*100:.0f}%")
     return measured, failures
 
