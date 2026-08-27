@@ -5,8 +5,11 @@
 - Runtime identity: `ship_ironback`, Tier-2 `mining_barge`, `path_industrial_stripmine`. It works
   four seams at capital scale while a winch controls fragments; it is deliberately slow and does
   not chase raiders (`src/data/ships.js`, `src/data/shipRoleLattice.js`).
-- Canonical envelope: 56 m long, 32 m wide, 18 m high; broad barge, not a needle. The authored GLB
-  uses +X forward and its current exact mesh envelope is 16.26 x 6.04 x 2.75 authoring units.
+- The gameplay presentation profile records 56 x 32 x 18 m, but those palette values are not the
+  GLB's direct authoring scale. Freeze the established ~17 m GLB length/camera occupancy, +X forward,
+  socket transforms, and runtime scale. Its current exact mesh envelope is 16.26 x 6.04 x 2.75
+  authoring units; width/height massing may expand inside collision clearance because the current
+  spearhead contradicts the authoritative barge role. Generated-sheet measurements are rejected.
 - Frozen visible identity: wide burned-orange/brown working hull; one genuinely open central hopper;
   four mining/cutter arms; twin industrial drive houses; compact forward command cab. Not Hornet,
   Drifter, Ranger, Pelican, Atlas, or Hitch. Hitch remains untouched.
@@ -33,9 +36,11 @@ The following manufacture and service detail is **ART EXTRAPOLATION** consistent
 - Each arm is a serviceable heavy manipulator: bolted turntable, clevis/yoke, rotary and hydraulic
   joints, forged/folded boom sections, guarded cable/fluid route, and a distinct cutter or crusher
   head. Forbidden reads: thin stick, wing, gun barrel, floating box, mirrored toy claw.
-- Drive houses are hot industrial machinery bedded into the aft shoulders: formed case, load saddle,
-  clamps, collar, deep flared bell, refractory throat, internal vanes, and heat-stained hardware.
-  Forbidden reads: glowing disk/torus, detached nozzle, painted hole.
+- Drive houses are pulse-plate industrial machinery bedded into the aft shoulders: formed cases,
+  load saddles, clamps, recessed impulse chambers/plates, refractory throats, internal vanes, and
+  heat-stained hardware. They must not inherit fighter ion-bell grammar merely because the current
+  modular fallback and VFX say `engine_ion_twin`. Forbidden reads: glowing disk/torus, detached
+  nozzle, conventional fighter nozzle pasted on, or painted hole.
 - The cab is a compact armored greenhouse with separate black-blue panes recessed behind mullions,
   pressure tub, brow, sill, and rear bulkhead. Forbidden reads: one bubble, glossy black metal, seat
   detail that cannot read at the supported cameras.
@@ -59,7 +64,7 @@ stays `false` until an independent reviewer confirms coverage against the exact 
 | four arm roots/yokes | billed | all; dominant abeam/close | Turntables, saddles, clevis pins, gussets and shoulder load transfer; no stuck-on boxes. |
 | four booms, joints, cable runs, tool heads | billed | all; dominant play/abeam | Authored sections, joint gaps, actuators, protected hoses, distinct work heads, functional asymmetry. |
 | twin drive beds/houses | billed | all; dominant abeam/close | Pressure cases rooted into stern, saddles, clamps and heat-zone separation. |
-| twin bells/throats/vanes | billed | play/abeam/close; dominant close | Deep cavities, wall thickness, collars, internal vanes, refractory and heat-stained metal. |
+| twin pulse chambers/throats/vanes | billed | play/abeam/close; dominant close | Deep cavities, wall thickness, impulse-plate recesses, collars, internal vanes, refractory and heat-stained metal; no fighter-ion copy. |
 | command tub, cage and separate panes | billed | play/abeam/close; dominant close | Recessed multi-pane glazing, armored brow/sill/mullions and dark pressure tub. |
 | keel, landing skids, cargo hardpoints | billed | abeam/close | Broad load-bearing underside, replaceable skid shoes, gaps and attachment frames. |
 | radiator banks and thermal plumbing | billed | play/abeam/close | Protected cassettes tied to machinery, fine fins only where screen-space permits. |
@@ -74,7 +79,7 @@ The current candidate is a long pointed loft with thin rails, box heads, and sur
 play-size image reads as a spearhead; clay confirms that the hopper and arm identity do not carry the
 silhouette. The rewrite sequence is therefore: broad pressure frame and stepped armor shoulders ->
 deep open processing well -> four rooted turntable/yoke assemblies -> authored boom sections and
-work heads -> embedded drive beds and deep bells -> cab tub/cage -> underside/thermal/service systems
+work heads -> embedded pulse-plate drive beds and deep chambers -> cab tub/cage -> underside/thermal/service systems
 -> unique UV/bake/material response -> meaning-preserving LODs. If clay still reads as a dart with
 sticks after the arm/hopper stage, change the macro method rather than adding kit.
 
