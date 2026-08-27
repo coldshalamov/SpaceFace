@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0",
+  "identity": {
+    "assetId": "place_works_refinery",
+    "familyId": "asteroid_works",
+    "role": "one-cell ore-roast / matte-hold refinery",
+    "tier": "B",
+    "currentState": "design_candidate",
+    "targetState": "accepted",
+    "packet": "PQ-131.04",
+    "cycle": 1,
+    "disposition": "review_pending",
+    "sourcePaths": [
+      "assets/works/refinery/source/works_refinery.blend",
+      "tools/blender/build_works_refinery.py"
+    ],
+    "generatorPaths": ["tools/blender/build_works_refinery.py"],
+    "releasePaths": [],
+    "manifestPaths": [],
+    "runtimeSelectorPaths": [],
+    "activeLocksChecked": true
+  },
+  "candidateIdentity": {
+    "sourceHash": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+    "exportHash": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+    "releaseHash": null,
+    "blendHash": "534C2B4245137594EA083D99A71C85BCD9D6533B68612BB4B4A311763126079F"
+  },
+  "playerFacingUse": {
+    "normalRoutes": ["asteroid_works"],
+    "supportedViews": [
+      {"name": "works_top", "camera": "spaceface_works_camera.works_top", "projectedSizePx": [132, 132], "importance": "primary"},
+      {"name": "works_edge", "camera": "spaceface_works_camera.works_edge", "projectedSizePx": [132, 132], "importance": "primary"},
+      {"name": "works_site", "camera": "spaceface_works_camera.works_site", "projectedSizePx": [22, 22], "importance": "secondary"}
+    ],
+    "closeInspectionSupported": false,
+    "marketingVisible": false
+  },
+  "scaleAndInterfaces": {
+    "units": "metre",
+    "dimensionsM": {"length": 1.64, "width": 1.35, "height": 1.22},
+    "forwardAxis": "+X",
+    "upAxis": "+Z",
+    "originAndPivot": "cell centre; underside z=0",
+    "sockets": ["furnace_slit", "stack_vent", "lamp"],
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "lodRoots": ["LOD0_refinery", "LOD1_refinery", "LOD2_refinery"]
+  },
+  "artDirection": {
+    "oneSentenceRead": "A compact furnace-stack-tank process train with a dark recessed slit, not a beige cube with a glowing line.",
+    "forbiddenReads": [
+      "beige cube with a glowing line",
+      "chimney stuck on a box",
+      "sci-fi altar",
+      "generic tank farm",
+      "rover safety yellow",
+      "neon outline",
+      "halo lamp"
+    ]
+  },
+  "materialTruthPreflight": {
+    "applicability": "required_for_all_changed_camera_visible_3d",
+    "componentReferenceDecision": "not_needed",
+    "allSupportedViewZonesClassified": false,
+    "visibleZoneRegister": [
+      {"zone": "furnace_jacket", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true},
+      {"zone": "furnace_slit_well", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true},
+      {"zone": "burner_manifold", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false},
+      {"zone": "flue_stack", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true},
+      {"zone": "process_pipe", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false},
+      {"zone": "process_tank", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true},
+      {"zone": "feet", "disposition": "billed", "supportedViews": ["works_edge"], "dominatesSupportedView": false},
+      {"zone": "lamp", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false}
+    ],
+    "fictionDevelopmentAgreement": {
+      "components": [
+        {
+          "component": "furnace_jacket",
+          "fictionRoleAndOrigin": "Insulated roast box for crushed seam-feed. ART EXTRAPOLATION of Helix/MTS claim kit.",
+          "fictionMaterialAndManufacture": "Mild-steel jacket over ceramic-fibre blanket; dark alkyd over zinc phosphate.",
+          "agreementStatus": "authored_cycle_01"
+        },
+        {
+          "component": "furnace_slit",
+          "fictionRoleAndOrigin": "Charging / sight throat. Only emissive furnace surface, runtime 0-1.",
+          "fictionMaterialAndManufacture": "Cast refractory well; steel lip; ceramic-glass ember lens at the floor.",
+          "agreementStatus": "authored_cycle_01"
+        }
+      ]
+    }
+  },
+  "materialPlan": {
+    "runtimeModel": "glTF metallic-roughness",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "normalConvention": "OpenGL",
+    "roles": [
+      {"name": "structure", "substrate": "painted mild steel", "metallic": 0.04, "roughness": 0.58},
+      {"name": "refractory", "substrate": "dry ceramic", "metallic": 0.0, "roughness": 0.78},
+      {"name": "hotmetal", "substrate": "heat-stained steel", "metallic": 0.82, "roughness": 0.38},
+      {"name": "stack", "substrate": "oxidized steel", "metallic": 0.70, "roughness": 0.62},
+      {"name": "tank", "substrate": "oxide-red paint", "metallic": 0.06, "roughness": 0.52},
+      {"name": "pipe", "substrate": "heat-stained steel", "metallic": 0.78, "roughness": 0.42},
+      {"name": "lampmetal", "substrate": "painted steel hood", "metallic": 0.55, "roughness": 0.48},
+      {"name": "slit", "substrate": "ceramic-glass lens", "metallic": 0.0, "roughness": 0.55, "emission": "0 beauty / 1 diagnostic"},
+      {"name": "lamp", "substrate": "warm glass lens", "metallic": 0.02, "roughness": 0.18}
+    ]
+  },
+  "lodAndOptimizationPlan": {
+    "lods": [
+      {"id": "LOD0", "triangles": 4900, "budget": 8000, "visualPurpose": "works_top / works_edge construction"},
+      {"id": "LOD1", "triangles": 1304, "budget": 2000, "visualPurpose": "works_site; keep furnace/slit/stack/tank/pipe/hooks"},
+      {"id": "LOD2", "triangles": 536, "budget": 600, "visualPurpose": "silhouette of the same train"}
+    ]
+  },
+  "acceptance": {
+    "requiredGates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"],
+    "independentReviewRequired": true,
+    "independentReview": "not_launched",
+    "noP0P1": false,
+    "exactReviewedHashRequired": true,
+    "wiring": "source_candidate_unwired"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "cycle": 1,
+  "disposition": "review_pending",
+  "rootNode": "SF_WORKS_REFINERY_V1",
+  "hooks": [
+    "furnace_slit",
+    "stack_vent",
+    "lamp"
+  ],
+  "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
+  "partsSha256": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+  "sourceGlb": "assets/works/refinery/source/refinery.glb",
+  "sourceSha256": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+  "lods": {
+    "lod0": {
+      "path": "assets/works/refinery/source/refinery_lod0.glb",
+      "sha256": "86E6C3291638F64EDFBFCAE33C439A18B7861E6D2B6EA9AFF33135DCA01B3C2F",
+      "triangles": 4900
+    },
+    "lod1": {
+      "path": "assets/works/refinery/source/refinery_lod1.glb",
+      "sha256": "AD37E3C537E28A23C2534BE20498BBF2C860A3EDA369646CBF75770A3116272D",
+      "triangles": 1304
+    },
+    "lod2": {
+      "path": "assets/works/refinery/source/refinery_lod2.glb",
+      "sha256": "960DFCA3237DE70EA1F6B94A296F84EC43737B2DAC435BC2017EA94F2B90E748",
+      "triangles": 536
+    }
+  },
+  "textures": {
+    "lod0": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+    },
+    "lod1": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+    },
+    "lod2": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+    }
+  },
+  "blend": "assets/works/refinery/source/works_refinery.blend",
+  "blendSha256": "534C2B4245137594EA083D99A71C85BCD9D6533B68612BB4B4A311763126079F",
+  "builder": "tools/blender/build_works_refinery.py",
+  "builderSha256": "DC24581EF94C661F9810327AB53D380395122176AB1B9A2596D7208E7D5B354F",
+  "lod0Maps": {
+    "basecolor": "2A2EE4E522C6ACDA01CA8C726A6F3964781A2197BC60ECD36C21DF06A1B30C15",
+    "normal": "40409CB00C059C28547875262F477F7062D24D3C781C47EC2996E860C9AA3B7D",
+    "orm": "F822DFBA74612FEAF11E5164051C10B064DD9D1157314F5BFA4DBE557C0CA829"
+  }
+}
