@@ -1,0 +1,58 @@
+{
+  "assetId": "place_works_gas_tap",
+  "cycle": 1,
+  "supportedViews": ["works_top", "works_edge", "works_site"],
+  "allSupportedViewZonesClassified": false,
+  "componentReferenceDecision": "native_imagegen",
+  "zones": [
+    {
+      "zone": "painted_backplate_and_clamps",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge", "works_site"],
+      "dominatesSupportedView": true,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#paint"
+    },
+    {
+      "zone": "valve_body_yoke_stem_wheel",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge", "works_site"],
+      "dominatesSupportedView": true,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#steel"
+    },
+    {
+      "zone": "brass_unions_bezel_nuts",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge"],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#brass"
+    },
+    {
+      "zone": "protected_hose_and_lance",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge", "works_site"],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#rubber"
+    },
+    {
+      "zone": "gauge_face",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge"],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#face"
+    },
+    {
+      "zone": "gauge_glass",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge"],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#glass"
+    },
+    {
+      "zone": "hooded_lamp",
+      "disposition": "billed",
+      "supportedViews": ["works_top", "works_edge"],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "assets/works/gas_tap/MATERIAL_CONTRACT.json#lamp"
+    }
+  ]
+}

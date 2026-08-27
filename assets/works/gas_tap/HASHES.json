@@ -1,0 +1,373 @@
+{
+  "packet": "PQ-131.07",
+  "cycle": 1,
+  "state": "design_candidate",
+  "rootName": "SF_WORKS_GAS_TAP_V1",
+  "assetId": "place_works_gas_tap",
+  "builder": "tools/blender/build_works_gas_tap.py",
+  "inventory": {
+    "assetId": "place_works_gas_tap",
+    "rootName": "SF_WORKS_GAS_TAP_V1",
+    "combined": "assets/works/gas_tap/source/gas_tap.glb",
+    "partsSource": "assets/ships/parts/works/place_works_gas_tap.glb",
+    "lodTriangles": {
+      "lod0": 2180,
+      "lod1": 916,
+      "lod2": 456
+    },
+    "hooks": [
+      "valve_wheel",
+      "gauge_needle",
+      "lamp"
+    ],
+    "meshNames": [
+      "LOD0_gas_tap",
+      "LOD0_gauge_needle",
+      "LOD0_lamp",
+      "LOD0_valve_wheel",
+      "LOD1_gas_tap",
+      "LOD1_gauge_needle",
+      "LOD1_lamp",
+      "LOD1_valve_wheel",
+      "LOD2_gas_tap",
+      "LOD2_gauge_needle",
+      "LOD2_lamp",
+      "LOD2_valve_wheel"
+    ],
+    "bytes": 2556156,
+    "sha256": "4ED4D79DE48BAB98E70F30B6CDA94498357AD48817CAF21FCC813F81DC220724",
+    "cycle": 1,
+    "state": "design_candidate",
+    "lodReports": [
+      {
+        "lod": 0,
+        "triangles": 2180,
+        "budget": 6000,
+        "overBudget": false,
+        "draws": 4,
+        "bbox": {
+          "min": [
+            0.085,
+            -0.83,
+            0.0
+          ],
+          "max": [
+            1.14,
+            0.83,
+            0.9
+          ]
+        },
+        "hooks": {
+          "valve_wheel": [
+            0.48,
+            0.1,
+            0.8
+          ],
+          "gauge_needle": [
+            0.58,
+            -0.52,
+            0.745
+          ],
+          "lamp": [
+            0.8,
+            0.58,
+            0.86
+          ]
+        },
+        "undersideZ": 0.0,
+        "tapMaxX": 1.14,
+        "path": "assets/works/gas_tap/source/gas_tap_lod0.glb",
+        "bytes": 2390980,
+        "sha256": "B5BAA4921968068AD2FA06909869D950DBC0DC3C48C176BDB5C3854C086EF3E2"
+      },
+      {
+        "lod": 1,
+        "triangles": 916,
+        "budget": 1500,
+        "overBudget": false,
+        "draws": 4,
+        "bbox": {
+          "min": [
+            0.085,
+            -0.83,
+            0.0
+          ],
+          "max": [
+            1.14,
+            0.83,
+            0.9
+          ]
+        },
+        "hooks": {
+          "valve_wheel": [
+            0.48,
+            0.1,
+            0.8
+          ],
+          "gauge_needle": [
+            0.58,
+            -0.52,
+            0.745
+          ],
+          "lamp": [
+            0.8,
+            0.58,
+            0.86
+          ]
+        },
+        "undersideZ": 0.0,
+        "tapMaxX": 1.14,
+        "path": "assets/works/gas_tap/source/gas_tap_lod1.glb",
+        "bytes": 2279640,
+        "sha256": "0171A3328E651BC43A10BD616159B2BA84A541DE2EDE233E6670404B037ABA33"
+      },
+      {
+        "lod": 2,
+        "triangles": 456,
+        "budget": 500,
+        "overBudget": false,
+        "draws": 4,
+        "bbox": {
+          "min": [
+            0.12,
+            -0.83,
+            0.0
+          ],
+          "max": [
+            1.14,
+            0.83,
+            0.9
+          ]
+        },
+        "hooks": {
+          "valve_wheel": [
+            0.48,
+            0.1,
+            0.8
+          ],
+          "gauge_needle": [
+            0.58,
+            -0.52,
+            0.745
+          ],
+          "lamp": [
+            0.8,
+            0.58,
+            0.86
+          ]
+        },
+        "undersideZ": 0.0,
+        "tapMaxX": 1.14,
+        "path": "assets/works/gas_tap/source/gas_tap_lod2.glb",
+        "bytes": 2238088,
+        "sha256": "C345FFE8B6D4B9EF4FF2B114ED8D90BE01FD143F5D00959B2E00F01CAC29ACF7"
+      }
+    ]
+  },
+  "lodReports": [
+    {
+      "lod": 0,
+      "triangles": 2180,
+      "budget": 6000,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.085,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod0.glb",
+      "bytes": 2390980,
+      "sha256": "B5BAA4921968068AD2FA06909869D950DBC0DC3C48C176BDB5C3854C086EF3E2"
+    },
+    {
+      "lod": 1,
+      "triangles": 916,
+      "budget": 1500,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.085,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod1.glb",
+      "bytes": 2279640,
+      "sha256": "0171A3328E651BC43A10BD616159B2BA84A541DE2EDE233E6670404B037ABA33"
+    },
+    {
+      "lod": 2,
+      "triangles": 456,
+      "budget": 500,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.12,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod2.glb",
+      "bytes": 2238088,
+      "sha256": "C345FFE8B6D4B9EF4FF2B114ED8D90BE01FD143F5D00959B2E00F01CAC29ACF7"
+    }
+  ],
+  "stills": {
+    "grazing": "assets/works/gas_tap/evidence/cycle_001/grazing.png",
+    "hooks_identity": "assets/works/gas_tap/evidence/cycle_001/hooks_identity.png",
+    "material_id": "assets/works/gas_tap/evidence/cycle_001/material_id.png",
+    "normal_isolation": "assets/works/gas_tap/evidence/cycle_001/normal_isolation.png",
+    "orm_isolation": "assets/works/gas_tap/evidence/cycle_001/orm_isolation.png",
+    "works_edge": "assets/works/gas_tap/evidence/cycle_001/works_edge.png",
+    "works_edge_clay": "assets/works/gas_tap/evidence/cycle_001/works_edge_clay.png",
+    "works_site": "assets/works/gas_tap/evidence/cycle_001/works_site.png",
+    "works_site_clay": "assets/works/gas_tap/evidence/cycle_001/works_site_clay.png",
+    "works_top": "assets/works/gas_tap/evidence/cycle_001/works_top.png",
+    "works_top_clay": "assets/works/gas_tap/evidence/cycle_001/works_top_clay.png"
+  },
+  "inspect": {
+    "path": "assets/ships/parts/works/place_works_gas_tap.glb",
+    "sha256": "4ED4D79DE48BAB98E70F30B6CDA94498357AD48817CAF21FCC813F81DC220724",
+    "bytes": 2556156,
+    "rootPresent": true,
+    "rootName": "SF_WORKS_GAS_TAP_V1",
+    "hooks": {
+      "valve_wheel": true,
+      "gauge_needle": true,
+      "lamp": true
+    },
+    "lodRoots": {
+      "LOD0_gas_tap": true,
+      "LOD1_gas_tap": true,
+      "LOD2_gas_tap": true
+    },
+    "nodeCount": 17,
+    "nodeNames": [
+      "COLLISION_HULL",
+      "LOD0_gauge_needle",
+      "LOD1_gauge_needle",
+      "LOD2_gauge_needle",
+      "gauge_needle",
+      "LOD0_lamp",
+      "LOD1_lamp",
+      "LOD2_lamp",
+      "lamp",
+      "LOD0_gas_tap",
+      "LOD1_gas_tap",
+      "LOD2_gas_tap",
+      "LOD0_valve_wheel",
+      "LOD1_valve_wheel",
+      "LOD2_valve_wheel",
+      "valve_wheel",
+      "SF_WORKS_GAS_TAP_V1"
+    ],
+    "assetId": "place_works_gas_tap"
+  },
+  "textures": {
+    "gas_tap_atlas_basecolor.png": "B39C90311FA7E04CC7CA0A227383C3D141D62358E31B55AD6FF9E4C93CEF2D47",
+    "gas_tap_atlas_normal.png": "50BE76D5B8402A2F45E1BDDF0CDC3B8A8D5A5F6D04BC1DD2DDECBCC87EFB6B44",
+    "gas_tap_atlas_orm.png": "661385CF43FC07AF764E5F3F854651E911D62F3F598A139496BD39003DFF712A"
+  },
+  "maps": {
+    "basecolor": "assets/works/gas_tap/source/textures/gas_tap_atlas_basecolor.png",
+    "normal": "assets/works/gas_tap/source/textures/gas_tap_atlas_normal.png",
+    "orm": "assets/works/gas_tap/source/textures/gas_tap_atlas_orm.png",
+    "size": 1024
+  },
+  "shadeAngleDeg": 28.0,
+  "triBudget": {
+    "0": 6000,
+    "1": 1500,
+    "2": 500
+  },
+  "stillSha256": {
+    "grazing.png": "DF330186879416E9475628291892CD5F457147BC91CD3515523222315C5FE0F6",
+    "hooks_identity.png": "4007E5F39615B068AF91188ED9EA4AAA9922FA745466825C04832D5FB8D9662D",
+    "material_id.png": "DD71BF7C875E0790D7E1EC6C6B4D2B9ED0C4F4FEFDE3E6CC1F3BA3341C2CA472",
+    "normal_isolation.png": "FE5EE51185804D49C8357F4C2A10A3560E702E00B41C8E11BC0EED59217B5FE7",
+    "orm_isolation.png": "021704729E10FF30047302306EC729532A1A1C1A31D0072FE95D953FD28385E3",
+    "works_edge.png": "B1FF98A26C4F9FBE5B202A9798309A29EA193A8E020B7A94750575A9DFEC5C20",
+    "works_edge_clay.png": "D9F74E1A545C347FD7C09F360E0198379F22F0D9FC16BC61BCFADA3AE460AD0E",
+    "works_site.png": "17FB06F6CF078A9F26A0036863D38CF8B6608824D9A585DF383C654C588DC634",
+    "works_site_clay.png": "58FC845877B1A34F9A90827C8FBEAB4A74A41362D9EC59E990BE2A82A3E1638D",
+    "works_top.png": "34C16BF19C7927631D0FA3E39F851E7B44BA3981DCA59CC15586B4C7AE7BCE57",
+    "works_top_clay.png": "FC59AF12BF6FF9F290B09DD75D8AF3EB21D1696775FC65823EF812C56B1AF5CD"
+  }
+}
