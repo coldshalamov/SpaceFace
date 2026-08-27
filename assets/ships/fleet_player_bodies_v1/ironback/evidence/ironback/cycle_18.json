@@ -1,0 +1,112 @@
+{
+  "schema": "spaceface.ironbackMtx.cycle.v1",
+  "shipId": "ironback",
+  "cycle": 18,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 38558,
+      "hullTriangles": 1994,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod0.glb",
+      "bytes": 17033056,
+      "sha256": "F353C7DF709068AEE32A70AC4EEB0D2536F71C25C765FDBB08F81EEA3D8CCD09"
+    },
+    {
+      "lod": 1,
+      "triangles": 25690,
+      "hullTriangles": 1994,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod1.glb",
+      "bytes": 15773512,
+      "sha256": "8D925652FEFDC0904976E599465DF744FEFE39D7BBECCBCDCC991314A9EBF955"
+    },
+    {
+      "lod": 2,
+      "triangles": 16670,
+      "hullTriangles": 1994,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod2.glb",
+      "bytes": 14354804,
+      "sha256": "8F7944D6197AB527CA293E4FFD396A768CAB340E75C6C3C7D771B7A539DFF11B"
+    }
+  ],
+  "stills": "evidence/ironback/cycles/cycle_18",
+  "sourceSha256": "F353C7DF709068AEE32A70AC4EEB0D2536F71C25C765FDBB08F81EEA3D8CCD09",
+  "renderer": "tools/blender/build_ironback_mtx.py+spaceface_chase_camera.py",
+  "cameraContract": {
+    "module": "tools/blender/spaceface_chase_camera.py",
+    "fov_v_deg": 50.0,
+    "tilt_deg": 60.0,
+    "play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading_deg": 90.0
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading_deg": 0.0
+    },
+    "runtimeDisplayScale": 2.491499661719533,
+    "runtimeDisplayTargetWU": 41.28,
+    "clay_play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0,
+      "material": "neutral_clay"
+    },
+    "grazing_close": {
+      "distance": 58.0,
+      "heading_deg": 0.0
+    },
+    "diagnostics": [
+      "id_or_material_id.png",
+      "orm_isolation.png",
+      "normal_isolation.png"
+    ]
+  },
+  "stillSha256": {
+    "clay_play_chase.png": "D326285F06DDBEBC47B5E261DBF35D387982998075863200DDB186730DC30B60",
+    "grazing_close.png": "A8860FF3D1C9F6C39BBF24047028B3581B7FEB63F7CC3D14FEC9A2A75F02A501",
+    "id_or_material_id.png": "5C066475359D78D9DBA8A4F01BA8322DBB51507E4F4F6D62B5C754FD4843200F",
+    "normal_isolation.png": "C1CAEDDD2EBF696D0777F0AD51C4D7BC7D86AD1B1017C8882163F4499CD34946",
+    "orm_isolation.png": "AD02CEC0C49133BC4AD575A71BC919F4C7F758CF525CB13B4BA30FCEDDCE02B8",
+    "play_chase.png": "5173326427E7578731777D2729575C4D5DC0C366CD50FB13F5D03F73F5D2A481",
+    "play_chase_abeam.png": "A903BA6A7F5E35FC0ACE310541C6BBAD8A8BEC5893909EA9F87696C30BD7BE94",
+    "play_chase_close.png": "FF94A0B62A393D3CAA7841B5FD8F1EDF4FFEFDF09FF1A77162ED1EBEFB594608"
+  },
+  "disposition": "revise",
+  "method": "stepped_pressure_frame_barge"
+}
