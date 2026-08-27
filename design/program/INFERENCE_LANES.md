@@ -10,15 +10,28 @@ Continue one existing admitted queue unit.
 INFERENCE <N> [optional scope]
 Complete N independently useful production units, sequentially.
 
+JULES <N> [optional model/lane]
+Dispatch N directed candidate cloud tasks from the 1,000-task Jules bank; stronger local review remains merge authority.
+
 Examples:
 INFERENCE 1
 INFERENCE 5 NPCS
 INFERENCE 20 WORLD
 INFERENCE 8 GRAPHICS
 WF-12 3
+JULES 20 FLASH
+JULES 10 PRO
 ```
 
 This file is the authoritative execution contract for an `INFERENCE` request.
+
+## Jules cloud bank
+
+`JULES` is deliberately **not** another admitted queue and does not change the production-first meaning of `INFERENCE N`. It is the cloud-capacity door requested for expendable, directed external work: tests, bounded bug hunts, lifecycle/performance investigations, UI/UX audits, AI/flight/combat slices, world/economy/mining work, asset/VFX/audio integrity, tooling/data checks, and small creative expansions.
+
+Start at [`jules/README.md`](./jules/README.md). The bank contains 1,000 stable task identities (`JULES-0001`…`JULES-1000`) produced from 200 repository-specific collision domains and five directed facets each, with a fixed 700 Flash / 300 Pro model split. Render one exact prompt with `node scripts/jules-dispatch.mjs --id JULES-XXXX --format prompt`, or select non-colliding work with `--next --model flash|pro --count N`. Each Jules task may create at most one bounded cloud PR. A stronger local agent reviews/rebases/ports the useful delta and decides whether anything reaches master. A `NO_CHANGE` result is valid and preferable to filler.
+
+The Jules bank grants no priority, lease, PQ identity, acceptance, or permission to edit the canonical control surfaces. Its tasks explicitly forbid edits to `CANONICAL_BUILD_MAP.md`, `program-queue.json`, `NOW.md`, the Jules bank itself, and simulation goldens.
 
 ## 1. What `N` means
 

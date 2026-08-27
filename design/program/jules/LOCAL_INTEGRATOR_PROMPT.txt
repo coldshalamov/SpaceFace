@@ -1,0 +1,14 @@
+JULES LOCAL INTEGRATOR CONTRACT
+
+Use design/program/jules/README.md and scripts/jules-dispatch.mjs.
+
+For each returned Jules PR:
+1. Verify task ID, collision key, Jules base SHA, and current master. Do not merge a stale branch wholesale.
+2. Read the entire diff before test output. Reject unrelated refactors, new authorities, edits to protected control surfaces, golden pinning, quality cuts, or changes to legacy/default-off owners that do not affect the live route.
+3. Reproduce the claimed defect/result on current master or validate the new focused test actually goes red under a deliberate mutation.
+4. Rebase/port only the smallest valuable delta. Preserve current stronger work.
+5. Run the task's focused check and the nearest existing check once. Do not loop on an unchanged failure fingerprint.
+6. Merge only if the player/architecture result is independently useful, deterministic where required, save/single-writer safe, and evidence supports the claim. Otherwise close/reject and record the useful finding in the normal owning plan only when it merits future work.
+7. Immediately dispatch another non-colliding task; the throughput goal is merged independent value per local-review minute, not PR count.
+
+Suggested daily allocation: 210 Flash tasks + 90 Pro tasks, collision-capped to one active task per subject. If a lane begins producing low-value duplication, reduce that lane and spend requests on bug hunts, tests, lifecycle/disposal, mission/encounter variants, or asset-integrity reviews instead.
