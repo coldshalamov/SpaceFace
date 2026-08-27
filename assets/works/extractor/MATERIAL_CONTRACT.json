@@ -3,9 +3,9 @@
   "assetId": "place_works_extractor",
   "root": "SF_WORKS_EXTRACTOR_V1",
   "packet": "PQ-131.03",
-  "cycle": 2,
+  "cycle": 3,
   "currentState": "design_candidate",
-  "candidateHash": "83195A4138464004C6F80C7730EDFCEBAD0E2174A930CE22AEF51DCF6C203178",
+  "candidateHash": "3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -17,75 +17,66 @@
   "materials": {
     "structure": {
       "rgb": [
-        0.175,
-        0.16,
-        0.14
+        0.18,
+        0.165,
+        0.145
       ],
-      "rough": 0.6,
-      "metal": 0.1
+      "rough": 0.62,
+      "metal": 0.08
     },
     "cutting": {
       "rgb": [
-        0.6,
-        0.57,
-        0.52
+        0.7,
+        0.66,
+        0.58
       ],
-      "rough": 0.28,
-      "metal": 0.86
+      "rough": 0.26,
+      "metal": 0.9
     },
     "drive": {
       "rgb": [
-        0.28,
-        0.18,
+        0.26,
+        0.17,
         0.12
       ],
-      "rough": 0.42,
-      "metal": 0.74
+      "rough": 0.44,
+      "metal": 0.72
     },
     "ceramic": {
       "rgb": [
-        0.58,
-        0.5,
+        0.62,
+        0.52,
         0.38
       ],
-      "rough": 0.74,
-      "metal": 0.03
+      "rough": 0.78,
+      "metal": 0.02
     },
     "belt": {
       "rgb": [
-        0.055,
-        0.05,
-        0.046
+        0.06,
+        0.052,
+        0.048
       ],
-      "rough": 0.88,
-      "metal": 0.04
+      "rough": 0.9,
+      "metal": 0.03
     },
     "lamp": {
       "rgb": [
-        0.92,
-        0.82,
-        0.58
+        0.9,
+        0.8,
+        0.56
       ],
-      "rough": 0.18,
-      "metal": 0.04
+      "rough": 0.22,
+      "metal": 0.03
     },
     "accent": {
       "rgb": [
-        0.42,
-        0.24,
+        0.4,
+        0.23,
         0.1
       ],
-      "rough": 0.54,
-      "metal": 0.1
-    },
-    "well": {
-      "rgb": [
-        0.016,
-        0.014,
-        0.012
-      ],
-      "rough": 0.92,
-      "metal": 0.02
+      "rough": 0.56,
+      "metal": 0.08
     }
   },
   "ormChannels": "R=AO,G=Roughness,B=Metallic",
@@ -107,7 +98,10 @@
     "gun",
     "box-plus-cylinder",
     "closed grate",
-    "filled trough"
+    "filled trough",
+    "black vent",
+    "closed pit",
+    "vent grille"
   ],
   "allSupportedViewZonesClassified": false,
   "gatesOpen": [
