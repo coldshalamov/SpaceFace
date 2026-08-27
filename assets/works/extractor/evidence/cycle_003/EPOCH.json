@@ -20,8 +20,8 @@
     "partGlb": "assets/ships/parts/works/place_works_extractor.glb",
     "sourceGlb": "assets/works/extractor/source/extractor.glb",
     "blend": "assets/works/extractor/source/extractor.blend",
-    "sha256": "3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D",
-    "partsSha256": "3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D"
+    "sha256": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C",
+    "partsSha256": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C"
   },
   "hooks": {
     "required": [
@@ -35,6 +35,24 @@
       "lamp"
     ],
     "missing": [],
+    "exported_gltf_translations": {
+      "belt": [
+        0.03999999910593033,
+        0.1599999964237213,
+        0
+      ],
+      "head_face": [
+        0.41999998688697815,
+        0.27000001072883606,
+        0
+      ],
+      "lamp": [
+        0.3400000035762787,
+        0.47999998927116394,
+        -0.6800000071525574
+      ]
+    },
+    "invalid_exported_translations": [],
     "pivot_head_face_blender": [
       0.41999998688697815,
       0.0,
@@ -264,10 +282,10 @@
       ],
       "plus_x_dark_span_px": 0,
       "plus_x_dark_frac": 0.02169230769230769,
-      "plus_x_mean": 0.17526380717754364,
+      "plus_x_mean": 0.17526863515377045,
       "plus_x_dark_mean": 0.05821125954389572,
       "rail_mean": 0.21868890523910522,
-      "belt_inboard_mean": 0.11946061998605728,
+      "belt_inboard_mean": 0.11946319788694382,
       "well_darker_than_rails": true,
       "bite_px_in_band": null,
       "tan_bite_px": 10,
@@ -327,10 +345,10 @@
       ],
       "plus_x_dark_span_px": 0,
       "plus_x_dark_frac": 0.00015384615384615385,
-      "plus_x_mean": 0.29201388359069824,
+      "plus_x_mean": 0.2919634282588959,
       "plus_x_dark_mean": 0.08365412056446075,
       "rail_mean": 0.21868890523910522,
-      "belt_inboard_mean": 0.3703920841217041,
+      "belt_inboard_mean": 0.37041181325912476,
       "well_darker_than_rails": true,
       "bite_px_in_band": null,
       "tan_bite_px": 10,

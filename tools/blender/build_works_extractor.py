@@ -24,7 +24,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parents[1]
@@ -62,6 +62,11 @@ KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 PIVOT = Vector((0.42, 0.00, 0.27))
 LAMP_LOC = Vector((0.34, 0.68, 0.48))
 BELT_LOC = Vector((0.04, 0.00, 0.16))
+HOOK_GLTF_TRANSLATIONS = {
+    "head_face": (0.42, 0.27, 0.00),
+    "belt": (0.04, 0.16, 0.00),
+    "lamp": (0.34, 0.48, -0.68),
+}
 
 BELT_X0 = -0.22
 BELT_X1 = 0.28
@@ -405,10 +410,17 @@ def hat_beam_ring(x, y, z, w, h, t):
 
 
 def parent_keep(obj, parent):
+    # Fresh empties do not report their authored location through
+    # matrix_world until Blender evaluates the dependency graph.
+    bpy.context.view_layer.update()
     mw = obj.matrix_world.copy()
     obj.parent = parent
-    obj.matrix_parent_inverse = parent.matrix_world.inverted()
-    obj.matrix_world = mw
+    # Store an explicit parent-local basis.  The previous parent-inverse
+    # cancellation preserved Blender world placement but exported the hook
+    # empties at identity while leaving their mesh children at absolute
+    # coordinates.  Runtime animation then pivoted at the machine origin.
+    obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.matrix_basis = parent.matrix_world.inverted() @ mw
 
 
 def add_empty(name, loc, collection, size=0.08):
@@ -1546,17 +1558,43 @@ def inspect_glb(path: Path) -> dict:
     hooks = [n for n in names if n in HOOK_NAMES]
     missing_hooks = [h for h in HOOK_NAMES if h not in names]
     missing_lods = [n for n in LOD_ROOTS if n not in names]
+    hook_translations = {}
+    invalid_hook_translations = []
+    for node in nodes:
+        name = node.get("name") or ""
+        if name not in HOOK_GLTF_TRANSLATIONS:
+            continue
+        if "matrix" in node:
+            matrix = node["matrix"]
+            actual = [matrix[12], matrix[13], matrix[14]]
+        else:
+            actual = list(node.get("translation") or (0.0, 0.0, 0.0))
+        expected = HOOK_GLTF_TRANSLATIONS[name]
+        hook_translations[name] = actual
+        if len(actual) != 3 or any(abs(float(a) - e) > 1e-5 for a, e in zip(actual, expected)):
+            invalid_hook_translations.append({
+                "name": name,
+                "actual": actual,
+                "expected": list(expected),
+            })
     return {
         "nodes": names,
         "hooksFound": hooks,
         "missingHooks": missing_hooks,
+        "hookTranslations": hook_translations,
+        "invalidHookTranslations": invalid_hook_translations,
         "missingLodRoots": missing_lods,
         "rootPresent": ROOT_NAME in names,
         "meshCount": len(meshes),
         "materialCount": len(materials),
         "lodTriangles": lod_tris,
         "draws": len([n for n in nodes if n.get("mesh") is not None]),
-        "ok": (not missing_hooks) and (not missing_lods) and ROOT_NAME in names,
+        "ok": (
+            (not missing_hooks)
+            and (not invalid_hook_translations)
+            and (not missing_lods)
+            and ROOT_NAME in names
+        ),
     }
 
 
@@ -2052,6 +2090,8 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
             "required": list(HOOK_NAMES),
             "found": inspect["hooksFound"],
             "missing": inspect["missingHooks"],
+            "exported_gltf_translations": inspect["hookTranslations"],
+            "invalid_exported_translations": inspect["invalidHookTranslations"],
             "pivot_head_face_blender": [PIVOT.x, PIVOT.y, PIVOT.z],
             "lamp_blender": [LAMP_LOC.x, LAMP_LOC.y, LAMP_LOC.z],
             "belt_blender": [BELT_LOC.x, BELT_LOC.y, BELT_LOC.z],
@@ -2312,6 +2352,11 @@ def validate_inventory(inventory, inspect, lod_reports, pixels=None):
     for h in HOOK_NAMES:
         if h not in inspect["hooksFound"]:
             errors.append(f"missing hook {h}")
+    for invalid in inspect["invalidHookTranslations"]:
+        errors.append(
+            f"hook {invalid['name']} exported at {invalid['actual']}, "
+            f"expected {invalid['expected']}"
+        )
     top = (pixels or {}).get("works_top") or {}
     tan = top.get("tan_bite_px")
     if tan is not None and not (8 <= int(tan) <= 10):

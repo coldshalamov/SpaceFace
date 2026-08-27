@@ -5,7 +5,7 @@
   "packet": "PQ-131.03",
   "cycle": 3,
   "currentState": "design_candidate",
-  "candidateHash": "3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D",
+  "candidateHash": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",

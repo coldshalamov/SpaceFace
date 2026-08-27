@@ -2,7 +2,7 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "place_works_extractor",
   "shipId": "place_works_extractor",
-  "candidateHash": "3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D",
+  "candidateHash": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C",
   "exportGlb": "assets/ships/parts/works/place_works_extractor.glb",
   "class": "place",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
