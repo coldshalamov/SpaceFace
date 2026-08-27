@@ -1,18 +1,18 @@
 """PQ-050.04 Ironback MTX builder. Hitch untouched. --mtx-cycle N writes exact-GLB chase stills.
 
-Cycle 26 is the minimum shared correction from the three Cycle 25 visual reviews.
-It keeps Cycle 25's real ORM cavity AO, legal open well, framed cab direction and
-aft U-pockets. It replaces the slab-kit hull with one continuous barge skin,
-beds pulse hardware so abeam is not a black cylinder, makes four tool heads
-distinct in default and abeam, exposes a dark cab tub behind thin glass, spaces
-hopper process so it counts without captions, and raises signed normal/material
-response on the large surfaces. Cycle 18–25 source/evidence stay byte-for-byte
+Cycle 27 is the minimum shared correction from the three Cycle 26 visual reviews.
+It keeps the open-well salvage-barge identity, framed cab, four rooted arm
+stations, drill cone, four-tine grab, flank seam continuity, aft U-pockets, and
+exact-source evidence machinery. It replaces the catamaran sponson gap with one
+lofted barge shell and a real hopper cavity, builds chase-countable process,
+matches the pulse pair, rebuilds saw/crusher heads, and reclassifies oxide /
+ceramic / gunmetal maps. Cycle 18–26 source/evidence stay byte-for-byte
 untouched. Close occupancy is the locked +X length axis at 41.28 WU under the
 derived D=58 band; do not shorten, dolly, hide geometry, or fake width.
 
 Usage::
 
-  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 26
+  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 27
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ from spaceface_chase_camera import (  # noqa: E402
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "ironback"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX = 1024
-CYCLE = 26
+CYCLE = 27
 ASSEMBLY_HULL_UNITS = 1.72
 IRONBACK_COLLISION_RADIUS = 24.0
 for i, tok in enumerate(sys.argv):
@@ -125,26 +125,29 @@ def write_pixels(name, pixels, size, colorspace="sRGB"):
 
 
 def role_height(role, x, y, size):
-    """Pass 1: authored height with wide bevels that survive smart-project islands."""
+    """Pass 1: role-specific height. Plate bevels stay on paint; metal and ceramic do not share that grid."""
     u = x / max(1, size - 1)
     v = y / max(1, size - 1)
-    broad = 0.16 * math.sin(u * math.tau * 2.2) * math.sin(v * math.tau * 1.6)
     if role == "hull":
-        along = _ramped_plate(y, 220.0, 32.0, 56.0, 0.02, 0.96)
-        frame = _ramped_plate(x, 260.0, 24.0, 48.0, 0.04, 0.94)
-        return max(0.0, min(1.0, min(along, frame) + broad * 0.62))
+        along = _ramped_plate(y, 220.0, 32.0, 56.0, 0.04, 0.94)
+        frame = _ramped_plate(x, 260.0, 24.0, 48.0, 0.06, 0.92)
+        weld = 0.06 * math.sin(u * math.tau * 2.4) * math.sin(v * math.tau * 1.7)
+        return max(0.0, min(1.0, min(along, frame) + weld))
     if role == "armor":
-        plate = _ramped_plate(y, 180.0, 26.0, 48.0, 0.04, 0.90)
-        seam = _ramped_plate(x, 220.0, 20.0, 42.0, 0.06, 0.88)
-        return max(0.0, min(1.0, min(plate, seam) + broad * 0.50))
+        mill = ((x % 28) / 28.0)
+        land = 0.42 + 0.46 * _smoothstep(abs(mill - 0.5) * 2.0)
+        flute = 0.16 if (y % 64) < 6 else 0.0
+        return max(0.0, min(1.0, land - flute))
     if role == "mechanical":
-        mill = _ramped_plate(y, 120.0, 22.0, 36.0, 0.08, 0.82)
-        land = _ramped_plate(x, 150.0, 18.0, 32.0, 0.10, 0.62)
-        return max(0.0, min(1.0, max(mill, land) + broad * 0.38))
+        turn = _ramped_plate(x, 22.0, 3.0, 6.0, 0.18, 0.86)
+        heat = 0.22 * (1.0 - u)
+        return max(0.0, min(1.0, turn * 0.78 + heat))
     if role == "ceramic":
-        tile = _ramped_plate(y, 150.0, 26.0, 52.0, 0.04, 0.88)
-        joint = _ramped_plate(x, 180.0, 20.0, 44.0, 0.06, 0.84)
-        return max(0.0, min(1.0, min(tile, joint) + broad * 0.58))
+        g1 = h01(x // 3, y // 3, 11)
+        g2 = h01(x // 7, y // 5, 23)
+        g3 = h01(x, y, 41)
+        pit = 0.22 if h01(x // 13, y // 11, 7) < 0.10 else 0.0
+        return max(0.0, min(1.0, 0.38 + g1 * 0.32 + g2 * 0.18 + g3 * 0.16 - pit))
     if role == "radiator":
         louver = _ramped_plate(y, 88.0, 16.0, 24.0, 0.08, 0.76)
         header = _ramped_plate(x, 160.0, 14.0, 26.0, 0.10, 0.48)
@@ -154,10 +157,10 @@ def role_height(role, x, y, size):
     if role == "glass":
         return 0.03 * (0.5 + 0.5 * math.sin(u * math.tau * 2.0))
     if role == "thruster":
-        flow = 0.18 + 0.58 * (u ** 1.10)
-        channel = _ramped_plate(v * size, 96.0, 24.0, 40.0, 0.02, 0.62)
-        cavity = 0.28 * (1.0 - _smoothstep(min(u, v) * 1.4))
-        return max(0.0, min(1.0, max(flow * 0.48, channel) + cavity + broad * 0.42))
+        flow = 0.22 + 0.62 * (u ** 1.15)
+        channel = 0.55 * _smoothstep((math.sin(v * math.tau * 4.0) + 1.0) * 0.5)
+        cavity = 0.34 * (1.0 - _smoothstep(min(u, v) * 1.5))
+        return max(0.0, min(1.0, flow * 0.42 + channel * 0.28 + cavity))
     return 0.0
 
 
@@ -170,7 +173,16 @@ def role_maps(role, rgb, size=TEX, prefix=None):
         for x in range(size):
             height[y * size + x] = role_height(role, x, y, size)
     albedo, orm, nrm = [], [], []
-    slope = 30.0
+    slope = {
+        "hull": 22.0,
+        "armor": 26.0,
+        "mechanical": 28.0,
+        "ceramic": 16.0,
+        "radiator": 24.0,
+        "warning": 10.0,
+        "glass": 4.0,
+        "thruster": 20.0,
+    }.get(role, 18.0)
     for y in range(size):
         for x in range(size):
             h = height[y * size + x]
@@ -185,33 +197,33 @@ def role_maps(role, rgb, size=TEX, prefix=None):
             nx, ny, nz = nx * inv, ny * inv, nz * inv
             gf2 = h01(x // 8, y // 8, 29)
             if role == "hull":
-                dirt = min(1.0, (1.0 - h) * 0.35 + gf2 * 0.04)
-                r = max(0, min(1, br * (1.0 - dirt * 0.18)))
-                g = max(0, min(1, bg * (1.0 - dirt * 0.12)))
-                b = max(0, min(1, bb * (1.0 - dirt * 0.08)))
-                rough = 0.38 + dirt * 0.10
+                dirt = min(1.0, (1.0 - h) * 0.42 + gf2 * 0.03)
+                r = max(0, min(1, br * (0.88 + h * 0.08) * (1.0 - dirt * 0.28)))
+                g = max(0, min(1, bg * (0.90 + h * 0.06) * (1.0 - dirt * 0.18)))
+                b = max(0, min(1, bb * (0.92 + h * 0.04) * (1.0 - dirt * 0.10)))
+                rough = 0.72 + dirt * 0.10
                 metal = 0.0
             elif role == "armor":
-                dirt = min(1.0, (1.0 - h) * 0.22)
-                r = max(0, min(1, br * (0.92 + h * 0.08)))
-                g = max(0, min(1, bg * (0.92 + h * 0.06)))
-                b = max(0, min(1, bb * (0.94 + h * 0.04)))
-                rough = 0.24 + dirt * 0.10
+                mill = min(1.0, h)
+                r = max(0, min(1, br * (0.90 + mill * 0.10)))
+                g = max(0, min(1, bg * (0.90 + mill * 0.08)))
+                b = max(0, min(1, bb * (0.92 + mill * 0.06)))
+                rough = 0.34 + (1.0 - mill) * 0.10
                 metal = 1.0
             elif role == "mechanical":
                 mix = min(1.0, h)
-                heat = max(0.0, 0.62 - x / size) * 0.42
-                r = max(0, min(1, br * (0.88 + mix * 0.12) + heat * 0.38))
-                g = max(0, min(1, bg * (0.90 + mix * 0.08) + heat * 0.14))
-                b = max(0, min(1, bb * (0.92 + (1 - mix) * 0.04)))
-                rough = 0.24 + (1 - mix) * 0.08
+                heat = max(0.0, 0.70 - x / size) * 0.55
+                r = max(0, min(1, br * (0.82 + mix * 0.12) + heat * 0.42))
+                g = max(0, min(1, bg * (0.86 + mix * 0.08) + heat * 0.12))
+                b = max(0, min(1, bb * (0.90 + (1 - mix) * 0.04)))
+                rough = 0.28 + (1 - mix) * 0.10
                 metal = 1.0
             elif role == "ceramic":
                 grain = min(1.0, h)
-                r = max(0, min(1, br * (0.88 + grain * 0.10)))
-                g = max(0, min(1, bg * (0.86 + grain * 0.08)))
-                b = max(0, min(1, bb * (0.78 + grain * 0.06)))
-                rough = 0.64 + grain * 0.10
+                r = max(0, min(1, br * (0.78 + grain * 0.10)))
+                g = max(0, min(1, bg * (0.76 + grain * 0.08)))
+                b = max(0, min(1, bb * (0.70 + grain * 0.06)))
+                rough = 0.82 + (1.0 - grain) * 0.08
                 metal = 0.0
             elif role == "radiator":
                 louver = 1.0 if h > 0.30 else 0.0
@@ -225,20 +237,19 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 r = br * (0.40 + 0.60 * chev) * (1 - gf2 * 0.08)
                 g = bg * (0.32 + 0.50 * chev) * (1 - gf2 * 0.06)
                 b = bb * (0.16 + 0.18 * chev)
-                rough = 0.46
+                rough = 0.52
                 metal = 0.0
             elif role == "glass":
                 r, g, b = br, bg, bb
-                rough = 0.06
+                rough = 0.08
                 metal = 0.0
             elif role == "thruster":
-                soot = min(1.0, 0.28 + h * 0.72)
-                # Dark bronze-soot, not a black card and not bright garnish.
-                r = max(0, min(1, 0.16 * (1.15 - soot * 0.35)))
-                g = max(0, min(1, 0.075 * (1.08 - soot * 0.28)))
-                b = max(0, min(1, 0.032 * (1.00 - soot * 0.22)))
-                rough = 0.58 + soot * 0.12
-                metal = 0.0
+                soot = min(1.0, 0.22 + h * 0.78)
+                r = max(0, min(1, 0.22 * (1.05 - soot * 0.40) + 0.08 * (1.0 - soot)))
+                g = max(0, min(1, 0.10 * (1.02 - soot * 0.32)))
+                b = max(0, min(1, 0.045 * (1.00 - soot * 0.22)))
+                rough = 0.40 + soot * 0.22
+                metal = 0.78
             else:
                 r, g, b = br, bg, bb
                 rough, metal = 0.5, 0.0
@@ -276,7 +287,7 @@ def ensure_gltf_occlusion_group():
     return group
 
 
-def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
+def wire_maps(material, bsdf, maps, coat=0.0, emission=None, nrm_strength=1.28, coat_rough=0.55):
     nodes = material.node_tree.nodes
     links = material.node_tree.links
     uv0 = nodes.new("ShaderNodeUVMap")
@@ -304,12 +315,12 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
         links.new(sep.outputs["Red"], gltf_out.inputs["Occlusion"])
     nmap = nodes.new("ShaderNodeNormalMap")
     nmap.space = "TANGENT"
-    nmap.inputs["Strength"].default_value = 1.60
+    nmap.inputs["Strength"].default_value = nrm_strength
     links.new(tex_n.outputs["Color"], nmap.inputs["Color"])
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     if "Coat Weight" in bsdf.inputs and coat > 0:
         bsdf.inputs["Coat Weight"].default_value = coat
-        bsdf.inputs["Coat Roughness"].default_value = 0.18
+        bsdf.inputs["Coat Roughness"].default_value = coat_rough
     if emission:
         bsdf.inputs["Emission Color"].default_value = (*emission[0], 1)
         bsdf.inputs["Emission Strength"].default_value = emission[1]
@@ -317,24 +328,28 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.40, 0.21, 0.10), 0.00, 0.43, "hull", 0.12, None),
-        "Material_Armor": ((0.11, 0.12, 0.13), 1.00, 0.28, "armor", 0.0, None),
-        "Material_Mechanical": ((0.16, 0.17, 0.18), 1.00, 0.30, "mechanical", 0.0, None),
-        "Material_Warning": ((0.70, 0.30, 0.05), 0.00, 0.46, "warning", 0.0, None),
-        "Material_Ceramic": ((0.58, 0.50, 0.38), 0.00, 0.66, "ceramic", 0.0, None),
-        "Material_Radiator": ((0.14, 0.10, 0.07), 1.00, 0.48, "radiator", 0.0, None),
-        "Material_Canopy": ((0.028, 0.048, 0.072), 0.00, 0.08, "glass", 0.0, None),
-        "Material_Thruster": ((0.14, 0.068, 0.030), 0.00, 0.62, "thruster", 0.0, None),
+        "Material_Hull": ((0.28, 0.135, 0.062), 0.00, 0.74, "hull", 0.04, None, 1.22, 0.62, 0.16),
+        "Material_Armor": ((0.13, 0.14, 0.15), 1.00, 0.36, "armor", 0.0, None, 1.48, 0.40, 0.48),
+        "Material_Mechanical": ((0.17, 0.155, 0.145), 1.00, 0.32, "mechanical", 0.0, None, 1.52, 0.36, 0.50),
+        "Material_Warning": ((0.62, 0.28, 0.05), 0.00, 0.54, "warning", 0.0, None, 1.05, 0.50, 0.22),
+        "Material_Ceramic": ((0.36, 0.30, 0.22), 0.00, 0.84, "ceramic", 0.0, None, 1.18, 0.70, 0.12),
+        "Material_Radiator": ((0.14, 0.10, 0.07), 1.00, 0.48, "radiator", 0.0, None, 1.30, 0.48, 0.42),
+        "Material_Canopy": ((0.024, 0.042, 0.064), 0.00, 0.10, "glass", 0.0, None, 0.85, 0.08, 0.35),
+        "Material_Thruster": ((0.16, 0.072, 0.032), 0.78, 0.48, "thruster", 0.0, None, 1.32, 0.45, 0.42),
     }
     mats = {}
-    for name, (rgb, metal, rough, role, coat, emit) in specs.items():
+    for name, (rgb, metal, rough, role, coat, emit, nrm, coat_r, spec) in specs.items():
         material = bpy.data.materials.new(name)
         bsdf = principled(material)
         bsdf.inputs["Base Color"].default_value = (*rgb, 1)
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
+        if "Specular IOR Level" in bsdf.inputs:
+            bsdf.inputs["Specular IOR Level"].default_value = spec
+        elif "Specular" in bsdf.inputs:
+            bsdf.inputs["Specular"].default_value = spec
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
-        wire_maps(material, bsdf, maps, coat=coat, emission=emit)
+        wire_maps(material, bsdf, maps, coat=coat, emission=emit, nrm_strength=nrm, coat_rough=coat_r)
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
                 bsdf.inputs["Transmission Weight"].default_value = 0.42
@@ -534,6 +549,40 @@ def formed_hull_ring(x, hw, deck_z, keel_z, chamfer):
         (x, -hw, chine_z),
         (x, -hw * 0.90, deck_z - 0.10),
         (x, -deck_hw * 0.52, deck_z),
+    ]
+
+
+def barge_cavity_ring(x, hw, well_hy, deck_z, floor_z, keel_z, wall=0.10, chamfer=0.16):
+    """One barge section with a dorsal hopper cavity: outer shell, keel, floor, 8–12 cm walls.
+
+    The ring never opens the keel. Abeam cannot see studio through the hull.
+    """
+    yi = max(0.28, well_hy)
+    yo = yi + max(0.08, min(0.12, wall))
+    chine_z = keel_z + (deck_z - keel_z) * 0.34
+    rim_z = deck_z + 0.05
+    mid = floor_z + (rim_z - floor_z) * 0.46
+    return [
+        (x, -yo, deck_z),
+        (x, -hw * 0.52, deck_z),
+        (x, -hw * 0.90, deck_z - 0.08),
+        (x, -hw, chine_z),
+        (x, -hw * 0.68, keel_z + 0.08),
+        (x, 0.0, keel_z),
+        (x, hw * 0.68, keel_z + 0.08),
+        (x, hw, chine_z),
+        (x, hw * 0.90, deck_z - 0.08),
+        (x, hw * 0.52, deck_z),
+        (x, yo, deck_z),
+        (x, yo, rim_z),
+        (x, yi, rim_z),
+        (x, yi, mid),
+        (x, yi * 0.42, floor_z + 0.03),
+        (x, 0.0, floor_z),
+        (x, -yi * 0.42, floor_z + 0.03),
+        (x, -yi, mid),
+        (x, -yi, rim_z),
+        (x, -yo, rim_z),
     ]
 
 
@@ -813,7 +862,7 @@ def shade_and_uv(obj):
     obj.select_set(False)
 
 
-def bake_ao_into_orm(obj, samples=12, size=TEX):
+def bake_ao_into_orm(obj, samples=20, size=TEX):
     """Pack baked geometry AO into ORM red. Fail closed if the target cannot bind."""
     if obj.type != "MESH" or not obj.data.polygons:
         raise RuntimeError(f"ironback AO bake: {obj.name} has no mesh")
@@ -890,75 +939,114 @@ def bake_ao_into_orm(obj, samples=12, size=TEX):
 
 
 def add_processing_hopper(lod, mats, collection):
-    """Open well. Raised, spaced beats: ceramic apron, three drums, V-jaws, dark throat."""
-    armor, mech = mats["Material_Armor"], mats["Material_Mechanical"]
+    """Open well cavity process: ceramic apron, air, three Y-drums, proud V-jaws, dark throat."""
+    hull, armor, mech = mats["Material_Hull"], mats["Material_Armor"], mats["Material_Mechanical"]
     warning, ceramic, thruster = (mats["Material_Warning"], mats["Material_Ceramic"], mats["Material_Thruster"])
-    cx, hy, hx = -0.12, 1.12, 2.08
-    rim_z, wall = 1.02, 0.36
-    n_st = 6 if lod == 0 else (5 if lod == 1 else 4)
-    specs = [
-        (cx + hx, hy * 0.96, -0.08, rim_z + 0.02),
-        (cx + hx * 0.42, hy, -0.38, rim_z),
-        (cx + 0.08, hy, -0.58, rim_z),
-        (cx - hx * 0.38, hy * 0.96, -0.70, rim_z),
-        (cx - hx * 0.78, hy * 0.72, -0.78, rim_z + 0.02),
-        (cx - hx, hy * 0.52, -0.82, rim_z - 0.08),
-    ][:n_st]
-    trough = [hopper_trough_ring(x, hy_, fz, rz, wall) for x, hy_, fz, rz in specs]
-    add_section_mesh("Hopper_Trough", trough, thruster, collection, 0.010, cap=False)
-    add_cylinder("Hopper_RimRollP", (cx, -hy - 0.02, rim_z + 0.06), 0.14, hx * 1.55, armor, collection, 12, 0.005, (0, math.pi / 2, 0))
-    add_cylinder("Hopper_RimRollS", (cx, hy + 0.02, rim_z + 0.06), 0.14, hx * 1.55, armor, collection, 12, 0.005, (0, math.pi / 2, 0))
-    add_box("Hopper_RimFore", (cx + hx + 0.06, 0.0, rim_z + 0.08), (0.10, hy * 0.92, 0.08), armor, collection, 0.004)
-    add_box("Hopper_RimAft", (cx - hx - 0.04, 0.0, rim_z + 0.04), (0.10, hy * 0.62, 0.07), armor, collection, 0.004)
-    add_box("Hopper_HazardP", (cx, -hy - 0.06, rim_z + 0.16), (hx * 0.50, 0.05, 0.025), warning, collection, 0.002)
-    add_box("Hopper_HazardS", (cx, hy + 0.06, rim_z + 0.16), (hx * 0.50, 0.05, 0.025), warning, collection, 0.002)
+    cx, hy, hx = -0.07, 1.12, 2.16
+    rim_z, floor_z = 1.10, 0.08
+    add_cylinder("Hopper_RimRollP", (cx, -hy - 0.02, rim_z + 0.04), 0.11, hx * 1.72, armor, collection, 12, 0.004, (0, math.pi / 2, 0))
+    add_cylinder("Hopper_RimRollS", (cx, hy + 0.02, rim_z + 0.04), 0.11, hx * 1.72, armor, collection, 12, 0.004, (0, math.pi / 2, 0))
+    add_box("Hopper_RimFore", (cx + hx + 0.02, 0.0, rim_z + 0.06), (0.08, hy * 0.90, 0.07), armor, collection, 0.003)
+    add_box("Hopper_RimAft", (cx - hx - 0.02, 0.0, rim_z + 0.04), (0.08, hy * 0.62, 0.06), armor, collection, 0.003)
+    add_box("Hopper_HazardP", (cx + 0.55, -hy - 0.04, rim_z + 0.14), (0.42, 0.04, 0.02), warning, collection, 0.002)
+    add_box("Hopper_HazardS", (cx + 0.55, hy + 0.04, rim_z + 0.14), (0.42, 0.04, 0.02), warning, collection, 0.002)
     n_rib = 3 if lod <= 1 else 2
     for i in range(n_rib):
-        rx = cx - hx * 0.50 + i * 1.05
+        rx = cx - hx * 0.42 + i * 1.00
         rib = [
-            [(rx, -hy + 0.06, rim_z - 0.04), (rx, -hy + 0.20, rim_z - 0.04), (rx, -hy + 0.20, -0.42), (rx, -hy + 0.06, -0.42)],
-            [(rx + 0.10, -hy + 0.06, rim_z - 0.04), (rx + 0.10, -hy + 0.20, rim_z - 0.04), (rx + 0.10, -hy + 0.20, -0.42), (rx + 0.10, -hy + 0.06, -0.42)],
+            [(rx, -hy + 0.04, rim_z - 0.02), (rx, -hy + 0.16, rim_z - 0.02), (rx, -hy + 0.16, floor_z + 0.08), (rx, -hy + 0.04, floor_z + 0.08)],
+            [(rx + 0.08, -hy + 0.04, rim_z - 0.02), (rx + 0.08, -hy + 0.16, rim_z - 0.02), (rx + 0.08, -hy + 0.16, floor_z + 0.08), (rx + 0.08, -hy + 0.04, floor_z + 0.08)],
         ]
-        add_section_mesh(f"Hopper_RibP_{i}", rib, armor, collection, 0.004, cap=True)
+        add_section_mesh(f"Hopper_RibP_{i}", rib, armor, collection, 0.003, cap=True)
         rib_s = [[(px, -py, pz) for px, py, pz in ring] for ring in rib]
-        add_section_mesh(f"Hopper_RibS_{i}", rib_s, armor, collection, 0.004, cap=True)
-    # Beat 1 — warm ceramic apron high in the FORE third only, then air. No cream filler.
-    apron = [
-        [(cx + hx - 0.04, -hy + 0.18, rim_z + 0.10), (cx + hx - 0.04, hy - 0.18, rim_z + 0.10), (cx + hx - 0.04, hy - 0.18, rim_z - 0.08), (cx + hx - 0.04, -hy + 0.18, rim_z - 0.08)],
-        [(cx + 1.22, -hy + 0.26, rim_z - 0.04), (cx + 1.22, hy - 0.26, rim_z - 0.04), (cx + 1.22, hy - 0.26, rim_z - 0.22), (cx + 1.22, -hy + 0.26, rim_z - 0.22)],
-        [(cx + 0.78, -hy + 0.38, 0.52), (cx + 0.78, hy - 0.38, 0.52), (cx + 0.78, hy - 0.38, 0.34), (cx + 0.78, -hy + 0.38, 0.34)],
-    ]
-    add_section_mesh("Hopper_Apron", apron, ceramic, collection, 0.008, cap=True)
-    # Beat 2 — three raised gunmetal Y-drums with countable air gaps.
+        add_section_mesh(f"Hopper_RibS_{i}", rib_s, armor, collection, 0.003, cap=True)
+    add_folded_sheet(
+        "Hopper_RimLipP",
+        (cx + hx - 0.10, -hy + 0.02, rim_z + 0.02),
+        (cx - hx + 0.16, -hy + 0.02, rim_z + 0.02),
+        (cx - hx + 0.16, -hy + 0.20, rim_z - 0.04),
+        (cx + hx - 0.10, -hy + 0.20, rim_z - 0.04),
+        0.08, armor, collection, 0.003,
+    )
+    add_folded_sheet(
+        "Hopper_RimLipS",
+        (cx + hx - 0.10, hy - 0.02, rim_z + 0.02),
+        (cx + hx - 0.10, hy - 0.20, rim_z - 0.04),
+        (cx - hx + 0.16, hy - 0.20, rim_z - 0.04),
+        (cx - hx + 0.16, hy - 0.02, rim_z + 0.02),
+        0.08, armor, collection, 0.003,
+    )
+    add_folded_sheet(
+        "Hopper_LinerP",
+        (cx + hx - 0.12, -hy + 0.02, rim_z - 0.04),
+        (cx - hx + 0.18, -hy + 0.02, rim_z - 0.04),
+        (cx - hx + 0.18, -hy + 0.02, floor_z + 0.10),
+        (cx + hx - 0.12, -hy + 0.02, floor_z + 0.16),
+        0.09, ceramic, collection, 0.003,
+    )
+    add_folded_sheet(
+        "Hopper_LinerS",
+        (cx + hx - 0.12, hy - 0.02, rim_z - 0.04),
+        (cx + hx - 0.12, hy - 0.02, floor_z + 0.16),
+        (cx - hx + 0.18, hy - 0.02, floor_z + 0.10),
+        (cx - hx + 0.18, hy - 0.02, rim_z - 0.04),
+        0.09, ceramic, collection, 0.003,
+    )
+    # Hull floor courses live on the cavity shell so AO/normals are not a ceramic island.
+    n_floor = 4 if lod <= 1 else 3
+    for i in range(n_floor):
+        fx = cx + hx * 0.38 - i * (hx * 0.70 / max(1, n_floor - 1))
+        add_box(f"Hopper_FloorBar_{i}", (fx, 0.0, floor_z + 0.07), (0.10, hy * 0.72, 0.04), hull, collection, 0.003)
+    add_folded_sheet(
+        "Hopper_ApronP",
+        (cx + hx - 0.06, -hy + 0.20, rim_z - 0.10),
+        (cx + hx - 0.06, -0.10, rim_z - 0.10),
+        (cx + 0.72, -0.16, floor_z + 0.22),
+        (cx + 0.72, -hy + 0.28, floor_z + 0.22),
+        0.08, ceramic, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Hopper_ApronS",
+        (cx + hx - 0.06, 0.10, rim_z - 0.10),
+        (cx + hx - 0.06, hy - 0.20, rim_z - 0.10),
+        (cx + 0.72, hy - 0.28, floor_z + 0.22),
+        (cx + 0.72, 0.16, floor_z + 0.22),
+        0.08, ceramic, collection, 0.004,
+    )
     n_roll = 3 if lod <= 1 else 2
-    drum_span = 1.38 if n_roll == 3 else 1.50
-    for i in range(n_roll):
-        rx = (cx - 0.18) + (i - (n_roll - 1) * 0.5) * drum_span
-        add_cylinder(f"Hopper_Drum_{i}", (rx, 0.0, 0.42), 0.30, hy * 0.92, mech, collection, 14, 0.006, (math.pi / 2, 0, 0))
-        add_cylinder(f"Hopper_DrumHub_{i}", (rx, 0.0, 0.42), 0.11, hy * 1.08, armor, collection, 8, 0.003, (math.pi / 2, 0, 0))
-    # Beat 3 — proud V jaws above a near-black discharge throat, separately countable.
+    drum_xs = (0.18, -0.70, -1.52) if n_roll == 3 else (0.08, -1.24)
+    drum_r, drum_z = 0.38, 0.72
+    for i, rx in enumerate(drum_xs):
+        add_cylinder(f"Hopper_Drum_{i}", (rx, 0.0, drum_z), drum_r, hy * 1.62, mech, collection, 16, 0.006, (math.pi / 2, 0, 0))
+        add_cylinder(f"Hopper_DrumHub_{i}", (rx, 0.0, drum_z), 0.14, hy * 1.86, armor, collection, 10, 0.003, (math.pi / 2, 0, 0))
+        add_box(f"Hopper_DrumBrgP_{i}", (rx, -hy + 0.10, drum_z), (0.18, 0.11, 0.18), armor, collection, 0.003)
+        add_box(f"Hopper_DrumBrgS_{i}", (rx, hy - 0.10, drum_z), (0.18, 0.11, 0.18), armor, collection, 0.003)
+        add_cylinder(f"Hopper_DrumAxle_{i}", (rx, 0.0, drum_z), 0.055, hy * 1.96, mech, collection, 8, 0.002, (math.pi / 2, 0, 0))
     for tag, y_sign in (("P", -1.0), ("S", 1.0)):
         jaw = []
-        for t, xw in enumerate((cx - hx + 0.42, cx - hx - 0.08, cx - hx - 0.52)):
-            y_outer = y_sign * (hy * (0.82 - t * 0.22))
-            y_inner = y_sign * (0.10 + t * 0.04)
+        for t, xw in enumerate((-1.78, -2.00, -2.20)):
+            spread = 0.16 + t * 0.44
+            y_outer = y_sign * (0.12 + spread)
+            y_inner = y_sign * max(0.06, spread - 0.22)
             jaw.append([
-                (xw, y_outer, rim_z + 0.78),
-                (xw, y_inner, rim_z + 0.58),
-                (xw, y_inner, rim_z + 0.08),
-                (xw, y_outer, rim_z + 0.22),
+                (xw, y_outer, rim_z + 0.58),
+                (xw, y_inner, rim_z + 0.42),
+                (xw, y_inner, floor_z + 0.18),
+                (xw, y_outer, floor_z + 0.28),
             ])
-        add_section_mesh(f"Hopper_Jaw{tag}", jaw, armor, collection, 0.008, cap=True)
+        add_section_mesh(f"Hopper_Jaw{tag}", jaw, armor, collection, 0.006, cap=True)
         edge = [
-            [(cx - hx + 0.02, y_sign * 0.22, rim_z + 0.76), (cx - hx + 0.02, y_sign * 0.08, rim_z + 0.68), (cx - hx + 0.02, y_sign * 0.08, rim_z + 0.36), (cx - hx + 0.02, y_sign * 0.22, rim_z + 0.42)],
-            [(cx - hx - 0.42, y_sign * 0.28, rim_z + 0.66), (cx - hx - 0.42, y_sign * 0.10, rim_z + 0.58), (cx - hx - 0.42, y_sign * 0.10, rim_z + 0.28), (cx - hx - 0.42, y_sign * 0.28, rim_z + 0.34)],
+            [(-1.82, y_sign * 0.18, rim_z + 0.56), (-1.82, y_sign * 0.08, rim_z + 0.48), (-1.82, y_sign * 0.08, rim_z + 0.18), (-1.82, y_sign * 0.18, rim_z + 0.24)],
+            [(-2.18, y_sign * 0.54, rim_z + 0.52), (-2.18, y_sign * 0.34, rim_z + 0.44), (-2.18, y_sign * 0.34, rim_z + 0.16), (-2.18, y_sign * 0.54, rim_z + 0.22)],
         ]
-        add_section_mesh(f"Hopper_JawEdge{tag}", edge, ceramic, collection, 0.004, cap=True)
+        add_section_mesh(f"Hopper_JawEdge{tag}", edge, ceramic, collection, 0.003, cap=True)
+    add_cylinder("Hopper_JawHinge", (-1.70, 0.0, rim_z + 0.08), 0.10, 0.36, mech, collection, 10, 0.003, (math.pi / 2, 0, 0))
     throat = [
-        hopper_trough_ring(cx - hx - 0.18, 0.32, -0.68, 0.28, 0.14),
-        hopper_trough_ring(cx - hx - 0.82, 0.18, -0.42, 0.10, 0.10),
+        hopper_trough_ring(cx - hx + 0.06, 0.36, floor_z - 0.08, 0.42, 0.12),
+        hopper_trough_ring(cx - hx - 0.22, 0.22, floor_z + 0.02, 0.22, 0.10),
+        hopper_trough_ring(cx - hx - 0.48, 0.14, floor_z + 0.08, 0.12, 0.08),
     ]
-    add_section_mesh("Hopper_Throat", throat, thruster, collection, 0.006, cap=False)
+    add_section_mesh("Hopper_Throat", throat, thruster, collection, 0.005, cap=False)
 
 
 def add_command_cage(lod, mats, collection):
@@ -1075,59 +1163,69 @@ def add_command_cage(lod, mats, collection):
 
 
 def add_pulse_plate_drive(lod, mats, collection):
-    """Bedded rectangular house + saddle/clamp, recessed throat, rooted vanes, ceramic collar."""
+    """One manufactured U-section pulse house, mirrored. Gunmetal jacket, dry collar, dark throat."""
     armor, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     ceramic, thruster = mats["Material_Ceramic"], mats["Material_Thruster"]
-    y, x, z = 1.58, -6.55, 0.22
+    y, x, z = 1.62, -6.48, 0.18
     side = "Starboard"
     n_st = 4 if lod <= 1 else 3
-    xs = (-7.42, -6.92, -6.38, -5.88)[:n_st]
-    # Mechanical saddle beds the house into the aft shoulder — not a free cylinder.
+    xs = (-7.28, -6.82, -6.32, -5.88)[:n_st]
     saddle = [
-        plate_follow_ring(xs[0] + 0.08, y - 0.92, y + 0.92, z - 0.18, z + 0.08, 0.12),
-        plate_follow_ring(x, y - 0.98, y + 0.98, z - 0.22, z + 0.12, 0.14),
-        plate_follow_ring(xs[-1] - 0.04, y - 0.88, y + 0.88, z - 0.16, z + 0.06, 0.12),
+        plate_follow_ring(xs[0] + 0.10, y - 0.78, y + 0.78, z - 0.22, z + 0.06, 0.14),
+        plate_follow_ring(x, y - 0.86, y + 0.86, z - 0.26, z + 0.10, 0.16),
+        plate_follow_ring(xs[-1] - 0.04, y - 0.74, y + 0.74, z - 0.20, z + 0.04, 0.14),
     ]
     add_section_mesh(f"PulseSaddle_{side}", saddle, mech, collection, 0.006, cap=True)
-    casing = [pulse_house_ring(px, y, 0.46, z - 0.48, z + 0.58, 0.28) for px in xs]
+    casing = [pulse_u_ring(px, y, 0.40, z - 0.42, z + 0.52, 0.22) for px in xs]
     add_section_mesh(f"PulseCase_{side}", casing, armor, collection, 0.010, cap=False)
-    chamber = [pulse_u_ring(px, y, 0.38, z - 0.34, z + 0.48, 0.10) for px in xs]
-    add_section_mesh(f"PulseChamber_{side}", chamber, thruster, collection, 0.006, cap=False)
+    jacket = [
+        plate_follow_ring(xs[0] + 0.06, y + 0.44, y + 0.72, z - 0.18, z + 0.38, 0.08),
+        plate_follow_ring(xs[-1] - 0.04, y + 0.40, y + 0.68, z - 0.14, z + 0.34, 0.08),
+    ]
+    add_section_mesh(f"PulseJacketOut_{side}", jacket, mech, collection, 0.004, cap=True)
+    jacket_in = [
+        plate_follow_ring(xs[0] + 0.06, y - 0.72, y - 0.44, z - 0.18, z + 0.38, 0.08),
+        plate_follow_ring(xs[-1] - 0.04, y - 0.68, y - 0.40, z - 0.14, z + 0.34, 0.08),
+    ]
+    add_section_mesh(f"PulseJacketIn_{side}", jacket_in, mech, collection, 0.004, cap=True)
+    chamber = [pulse_u_ring(px, y, 0.28, z - 0.28, z + 0.22, 0.08) for px in xs]
+    add_section_mesh(f"PulseChamber_{side}", chamber, thruster, collection, 0.005, cap=False)
+    # Dry refractory collar INSIDE the U, below the rim — not a blown-white cap.
     add_section_mesh(
         f"PulseCollar_{side}",
         [
-            pulse_house_ring(xs[0] + 0.02, y, 0.40, z + 0.44, z + 0.70, 0.07),
-            pulse_house_ring(xs[0] + 0.16, y, 0.38, z + 0.44, z + 0.66, 0.07),
+            pulse_u_ring(xs[0] + 0.10, y, 0.30, z - 0.16, z + 0.08, 0.06),
+            pulse_u_ring(xs[0] + 0.28, y, 0.28, z - 0.14, z + 0.04, 0.06),
         ],
         ceramic, collection, 0.003, cap=True,
     )
     add_section_mesh(
         f"DriveClamp_{side}",
         [
-            [(x + 0.48, y - 0.88, z + 0.18), (x + 0.48, y + 0.88, z + 0.18), (x + 0.48, y + 0.88, z + 0.38), (x + 0.48, y - 0.88, z + 0.38)],
-            [(x + 0.68, y - 0.82, z + 0.16), (x + 0.68, y + 0.82, z + 0.16), (x + 0.68, y + 0.82, z + 0.36), (x + 0.68, y - 0.82, z + 0.36)],
+            [(x + 0.42, y - 0.78, z + 0.12), (x + 0.42, y + 0.78, z + 0.12), (x + 0.42, y + 0.78, z + 0.32), (x + 0.42, y - 0.78, z + 0.32)],
+            [(x + 0.62, y - 0.72, z + 0.10), (x + 0.62, y + 0.72, z + 0.10), (x + 0.62, y + 0.72, z + 0.30), (x + 0.62, y - 0.72, z + 0.30)],
         ],
         mech, collection, 0.004, cap=True,
     )
-    add_box(f"DriveClampPin_{side}", (x + 0.58, y, z + 0.42), (0.10, 0.72, 0.05), armor, collection, 0.003)
+    add_box(f"DriveClampPin_{side}", (x + 0.52, y, z + 0.36), (0.08, 0.64, 0.04), armor, collection, 0.003)
     n_vanes = 3 if lod <= 1 else 2
-    vane_span = 0.24 if n_vanes == 3 else 0.30
+    vane_span = 0.20 if n_vanes == 3 else 0.26
     for i in range(n_vanes):
         yy = y + (i - (n_vanes - 1) * 0.5) * vane_span
         rings = []
-        for hy in (-0.028, 0.028):
+        for hy in (-0.022, 0.022):
             rings.append([
-                (xs[-1] + 0.04, yy + hy, z - 0.26),
-                (xs[-1] + 0.04, yy + hy, z + 0.32),
-                (xs[0] + 0.12, yy + hy, z + 0.24),
-                (xs[0] + 0.12, yy + hy, z - 0.18),
+                (xs[-1] + 0.02, yy + hy, z - 0.18),
+                (xs[-1] + 0.02, yy + hy, z + 0.12),
+                (xs[0] + 0.16, yy + hy, z + 0.06),
+                (xs[0] + 0.16, yy + hy, z - 0.12),
             ])
-        add_section_mesh(f"PulseVane_{side}_{i}", rings, ceramic, collection, 0.002, cap=True)
+        add_section_mesh(f"PulseVane_{side}_{i}", rings, mech, collection, 0.002, cap=True)
     throat = [
-        pulse_u_ring(x - 0.92, y, 0.28, z - 0.32, z + 0.04, 0.12),
-        pulse_u_ring(x - 1.32, y, 0.18, z - 0.18, z - 0.06, 0.10),
+        pulse_u_ring(x - 0.86, y, 0.24, z - 0.24, z - 0.02, 0.12),
+        pulse_u_ring(x - 1.22, y, 0.16, z - 0.14, z - 0.08, 0.10),
     ]
-    add_section_mesh(f"PulseThroat_{side}", throat, thruster, collection, 0.005, cap=False)
+    add_section_mesh(f"PulseThroat_{side}", throat, thruster, collection, 0.004, cap=False)
     built = [
         obj for obj in collection.objects
         if "Starboard" in obj.name and obj.name.startswith(("Pulse", "DriveClamp"))
@@ -1172,57 +1270,60 @@ def add_cutter_arm(tag, root, out_sign, along, head, lod, mats, collection, repa
         add_oriented_box(f"Boom2_{tag}", p1, p2, (0.18, 0.14), mech, collection, 0.003)
     hx, hy, hz = p2[0], p2[1], p2[2]
     if head == "saw":
-        # Open arc + C-guard, then tilt around Y so neither heading collapses it to an edge.
-        n = 10 if lod == 0 else 8
-        r0, r1 = 0.14, 1.05
+        # Open gunmetal cutting disc with a C-guard and rooted hub. Hole keeps it from reading as a pad.
+        n = 16 if lod == 0 else 12
+        r0, r1 = 0.26, 1.02
         disk = []
-        for i in range(n):
-            ang = (i / max(1, n - 1)) * math.tau * 0.88
+        for i in range(n + 1):
+            ang = (i / n) * math.tau
             c, s = math.cos(ang), math.sin(ang)
             disk.append([
-                (hx + c * r0, hy + s * r0, hz - 0.04),
-                (hx + c * r0, hy + s * r0, hz + 0.04),
-                (hx + c * r1, hy + s * r1, hz + 0.03),
-                (hx + c * r1, hy + s * r1, hz - 0.03),
+                (hx + c * r0, hy + s * r0, hz - 0.045),
+                (hx + c * r0, hy + s * r0, hz + 0.045),
+                (hx + c * r1, hy + s * r1, hz + 0.032),
+                (hx + c * r1, hy + s * r1, hz - 0.032),
             ])
-        saw = add_section_mesh(f"SawArc_{tag}", disk, ceramic, collection, 0.003, cap=True)
-        hub = add_cylinder(f"SawHub_{tag}", (hx, hy, hz), 0.18, 0.12, armor, collection, 12, 0.004, (0, 0, 0))
+        saw = add_section_mesh(f"SawArc_{tag}", disk, armor, collection, 0.003, cap=False)
+        hub = add_cylinder(f"SawHub_{tag}", (hx, hy, hz), 0.20, 0.16, mech, collection, 12, 0.004, (0, 0, 0))
+        arbor = add_cylinder(f"SawArbor_{tag}", (hx, hy, hz), 0.08, 0.22, mech, collection, 8, 0.002, (0, 0, 0))
         guard = []
-        g0, g1 = math.radians(195.0), math.radians(345.0)
-        for i in range(5):
-            ang = g0 + (g1 - g0) * (i / 4)
+        g0, g1 = math.radians(200.0), math.radians(350.0)
+        gn = 6 if lod == 0 else 5
+        for i in range(gn):
+            ang = g0 + (g1 - g0) * (i / max(1, gn - 1))
             c, s = math.cos(ang), math.sin(ang)
             guard.append([
-                (hx + c * 0.38, hy + s * 0.38, hz - 0.14),
-                (hx + c * 0.98, hy + s * 0.98, hz - 0.08),
-                (hx + c * 0.98, hy + s * 0.98, hz + 0.10),
-                (hx + c * 0.38, hy + s * 0.38, hz + 0.14),
+                (hx + c * 0.42, hy + s * 0.42, hz - 0.16),
+                (hx + c * 1.08, hy + s * 1.08, hz - 0.10),
+                (hx + c * 1.08, hy + s * 1.08, hz + 0.12),
+                (hx + c * 0.42, hy + s * 0.42, hz + 0.16),
             ])
-        grd = add_section_mesh(f"SawGuard_{tag}", guard, armor, collection, 0.004, cap=True)
-        tilt = (0.0, 0.55 * out_sign, 0.22 * along)
-        for obj in (saw, hub, grd):
+        grd = add_section_mesh(f"SawGuard_{tag}", guard, mech, collection, 0.004, cap=True)
+        tilt = (0.18 * along, 0.32 * out_sign, 0.12 * along)
+        for obj in (saw, hub, arbor, grd):
             bpy.context.view_layer.objects.active = obj
             obj.select_set(True)
             bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY")
             obj.select_set(False)
             apply_euler(obj, tilt)
     elif head == "crusher":
-        # Two broad opposed wedges standing in XZ so both headings keep a V, not two prongs.
-        for jaw, z_dir in (("A", 1.0), ("B", -1.0)):
+        # Two opposed plan-view wedges forming a V in the legal camera plane. Gunmetal, not a beige pad.
+        add_cylinder(f"CrushPivot_{tag}", (hx, hy, hz + 0.08), 0.12, 0.22, mech, collection, 10, 0.003, (0, 0, 0))
+        for jaw, y_sign in (("A", -1.0), ("B", 1.0)):
             rings = []
-            for t, along_t in enumerate((0.0, 0.32, 0.82)):
-                spread = 0.10 + t * 0.48
-                w = 0.16
+            for t, along_t in enumerate((0.04, 0.38, 0.88)):
+                spread = 0.10 + t * 0.58
+                w = 0.12
                 rings.append([
-                    (hx + along_t * along, hy - w, hz + z_dir * max(0.06, spread - 0.08)),
-                    (hx + along_t * along, hy + w, hz + z_dir * max(0.06, spread - 0.08)),
-                    (hx + along_t * along, hy + w, hz + z_dir * (spread + 0.10)),
-                    (hx + along_t * along, hy - w, hz + z_dir * (spread + 0.10)),
+                    (hx + along_t * along, hy + y_sign * (spread - w), hz + 0.04),
+                    (hx + along_t * along, hy + y_sign * (spread + w), hz + 0.04),
+                    (hx + along_t * along, hy + y_sign * (spread + w), hz + 0.46),
+                    (hx + along_t * along, hy + y_sign * (spread - w), hz + 0.46),
                 ])
             add_section_mesh(f"CrushJaw_{jaw}_{tag}", rings, armor, collection, 0.006, cap=True)
             edge = [
-                [(hx + 0.28 * along, hy - 0.12, hz + z_dir * 0.28), (hx + 0.28 * along, hy + 0.12, hz + z_dir * 0.28), (hx + 0.28 * along, hy + 0.12, hz + z_dir * 0.42), (hx + 0.28 * along, hy - 0.12, hz + z_dir * 0.42)],
-                [(hx + 0.86 * along, hy - 0.10, hz + z_dir * 0.62), (hx + 0.86 * along, hy + 0.10, hz + z_dir * 0.62), (hx + 0.86 * along, hy + 0.10, hz + z_dir * 0.78), (hx + 0.86 * along, hy - 0.10, hz + z_dir * 0.78)],
+                [(hx + 0.22 * along, hy + y_sign * 0.18, hz + 0.20), (hx + 0.22 * along, hy + y_sign * 0.32, hz + 0.20), (hx + 0.22 * along, hy + y_sign * 0.32, hz + 0.38), (hx + 0.22 * along, hy + y_sign * 0.18, hz + 0.38)],
+                [(hx + 0.86 * along, hy + y_sign * 0.58, hz + 0.16), (hx + 0.86 * along, hy + y_sign * 0.74, hz + 0.16), (hx + 0.86 * along, hy + y_sign * 0.74, hz + 0.36), (hx + 0.86 * along, hy + y_sign * 0.58, hz + 0.36)],
             ]
             add_section_mesh(f"CrushEdge_{jaw}_{tag}", edge, ceramic, collection, 0.003, cap=True)
     elif head == "drill":
@@ -1300,92 +1401,83 @@ def build_lod(lod, mats):
         "embeddedPlume": False,
     }
 
-    # One continuous barge skin per flank. Stations carry silhouette through
-    # transom, drive bulkhead, hopper waist, cab shoulder, and bow. No extra
-    # orange load-path sheets sitting on the deck.
-    n_hull = 7 if lod == 0 else (6 if lod == 1 else 5)
-    spon_beam = [
-        (-7.48, 1.78, 1.22, 0.36, -0.26, 0.14),
-        (-6.22, 2.52, 1.28, 0.58, -0.64, 0.16),
-        (-4.55, 3.16, 1.36, 0.72, -0.76, 0.14),
-        (-2.35, 2.80, 1.34, 0.54, -0.66, 0.16),
-        (0.08, 2.50, 1.30, 0.42, -0.54, 0.20),
-        (2.18, 2.70, 1.34, 0.52, -0.62, 0.16),
-        (4.18, 3.12, 1.46, 0.74, -0.72, 0.12),
-        (5.72, 2.38, 1.36, 0.56, -0.40, 0.18),
-        (7.22, 1.52, 1.06, 0.36, -0.16, 0.14),
+    # One lofted barge shell. Hopper span is a real dorsal cavity with floor and
+    # 8–12 cm walls; bow/stern are solid formed closures. Abeam cannot see studio
+    # through the hull. Side armor is stepped plate on that shell, not twin boxes.
+    n_hull = 5 if lod == 0 else (4 if lod == 1 else 3)
+    hop_specs = [
+        (2.14, 2.62, 1.02, 1.12, 0.20, -0.86, 0.10, 0.14),
+        (0.92, 2.46, 1.14, 1.06, 0.10, -0.92, 0.11, 0.16),
+        (-0.18, 2.36, 1.18, 1.02, 0.04, -0.96, 0.12, 0.18),
+        (-1.32, 2.58, 1.08, 1.08, 0.08, -0.90, 0.11, 0.16),
+        (-2.24, 2.74, 0.88, 1.14, 0.16, -0.84, 0.10, 0.14),
     ]
-    if n_hull == 7:
-        spon_beam = [spon_beam[0], spon_beam[1], spon_beam[2], spon_beam[4], spon_beam[6], spon_beam[7], spon_beam[8]]
-    elif n_hull == 6:
-        spon_beam = [spon_beam[0], spon_beam[1], spon_beam[2], spon_beam[4], spon_beam[6], spon_beam[8]]
-    else:
-        spon_beam = [spon_beam[0], spon_beam[2], spon_beam[4], spon_beam[6], spon_beam[8]]
-    spon_p = add_section_mesh(
-        "Sponson_P",
-        [sponson_from_beam(x, yo, yi, dk, kl, ch, -1) for x, yo, yi, dk, kl, ch in spon_beam],
-        hull, collection, 0.018, cap=True,
+    if n_hull == 4:
+        hop_specs = [hop_specs[0], hop_specs[1], hop_specs[2], hop_specs[4]]
+    elif n_hull == 3:
+        hop_specs = [hop_specs[0], hop_specs[2], hop_specs[4]]
+    shell_hop = add_section_mesh(
+        "Shell_Hopper",
+        [barge_cavity_ring(x, hw, well, dk, fl, kl, wall, ch) for x, hw, well, dk, fl, kl, wall, ch in hop_specs],
+        hull, collection, 0.016, cap=True,
     )
-    spon_s = add_section_mesh(
-        "Sponson_S",
-        [sponson_from_beam(x, yo, yi, dk, kl, ch, 1) for x, yo, yi, dk, kl, ch in spon_beam],
-        hull, collection, 0.018, cap=True,
-    )
-    spon_y = 2.50
-    boolean_cut_cylinder(spon_p, "ArmWell_ForeP", (2.18, -spon_y, 0.62), 0.72, 0.46, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_p, "ArmWell_AftP", (-1.35, -spon_y, 0.62), 0.72, 0.46, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_s, "ArmWell_ForeS", (2.18, spon_y, 0.62), 0.72, 0.46, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_s, "ArmWell_AftS", (-1.35, spon_y, 0.62), 0.72, 0.46, (0, 0, 0), 16)
-    boolean_cut_box(spon_p, "Trench_P", (0.20, -2.52, 0.88), (3.05, 0.18, 0.26))
-    boolean_cut_box(spon_s, "Trench_S", (0.20, 2.52, 0.88), (3.05, 0.18, 0.26))
+    spon_y = 2.52
+    boolean_cut_cylinder(shell_hop, "ArmWell_ForeP", (2.08, -spon_y, 0.62), 0.68, 0.44, (0, 0, 0), 14)
+    boolean_cut_cylinder(shell_hop, "ArmWell_AftP", (-1.35, -spon_y, 0.62), 0.68, 0.44, (0, 0, 0), 14)
+    boolean_cut_cylinder(shell_hop, "ArmWell_ForeS", (2.08, spon_y, 0.62), 0.68, 0.44, (0, 0, 0), 14)
+    boolean_cut_cylinder(shell_hop, "ArmWell_AftS", (-1.35, spon_y, 0.62), 0.68, 0.44, (0, 0, 0), 14)
 
-    # Bow closure only — continues the sponson deck, not a second orange brick.
-    fore_specs = [
-        (5.05, 1.38, 0.72, -0.46, 0.18),
-        (6.15, 1.52, 0.82, -0.48, 0.22),
-        (7.18, 1.12, 0.48, -0.28, 0.20),
-        (8.06, 0.86, 0.30, -0.12, 0.14),
+    fore_all = [
+        (2.16, 2.62, 1.12, -0.86, 0.14),
+        (4.18, 2.92, 1.18, -0.70, 0.16),
+        (5.88, 2.16, 0.98, -0.48, 0.18),
+        (7.12, 1.28, 0.66, -0.26, 0.16),
+        (8.18, 0.90, 0.38, -0.10, 0.12),
     ]
-    if n_hull <= 5:
-        fore_specs = [fore_specs[0], fore_specs[1], fore_specs[3]]
+    if n_hull <= 3:
+        fore_specs = [fore_all[0], fore_all[2], fore_all[4]]
+    elif n_hull <= 4:
+        fore_specs = [fore_all[0], fore_all[1], fore_all[2], fore_all[4]]
+    else:
+        fore_specs = fore_all
     fore = add_section_mesh(
-        "Pressure_Fore",
+        "Shell_Fore",
         [formed_hull_ring(x, hw, dk, kl, ch) for x, hw, dk, kl, ch in fore_specs],
         hull, collection, 0.016, cap=True,
     )
     boolean_cut_box(fore, "CabWell", (6.42, 0.0, 0.92), (1.72, 1.18, 0.92))
-    # Aft closure wide enough to bed the pulse U-pockets inside the skin.
-    aft_specs = [
-        (-4.85, 1.36, 0.64, -0.58, 0.14),
-        (-6.18, 2.08, 0.78, -0.70, 0.18),
-        (-7.22, 1.52, 0.50, -0.46, 0.14),
-        (-8.16, 0.86, 0.30, -0.16, 0.12),
+
+    aft_all = [
+        (-2.26, 2.74, 1.14, -0.84, 0.14),
+        (-4.32, 3.08, 1.20, -0.76, 0.16),
+        (-6.12, 2.52, 0.92, -0.68, 0.14),
+        (-7.28, 1.62, 0.56, -0.38, 0.12),
+        (-8.18, 1.02, 0.34, -0.14, 0.10),
     ]
-    if n_hull <= 5:
-        aft_specs = [aft_specs[0], aft_specs[1], aft_specs[3]]
+    if n_hull <= 3:
+        aft_specs = [aft_all[0], aft_all[2], aft_all[4]]
+    elif n_hull <= 4:
+        aft_specs = [aft_all[0], aft_all[1], aft_all[2], aft_all[4]]
+    else:
+        aft_specs = aft_all
     aft = add_section_mesh(
-        "Pressure_Aft",
+        "Shell_Aft",
         [formed_hull_ring(x, hw, dk, kl, ch) for x, hw, dk, kl, ch in aft_specs],
         hull, collection, 0.014, cap=True,
     )
     print(f"lod{lod} aft pre-cut verts={len(aft.data.vertices)}")
     boolean_cut_box(aft, "AftTrench", (-5.55, 0.0, 0.78), (1.35, 0.16, 0.18))
-    boolean_cut_box(aft, "PulsePocketP", (-6.55, -1.58, 0.28), (1.05, 0.68, 0.62))
-    boolean_cut_box(aft, "PulsePocketS", (-6.55, 1.58, 0.28), (1.05, 0.68, 0.62))
+    boolean_cut_box(aft, "PulsePocketP", (-6.48, -1.62, 0.28), (1.00, 0.64, 0.58))
+    boolean_cut_box(aft, "PulsePocketS", (-6.48, 1.62, 0.28), (1.00, 0.64, 0.58))
     boolean_cut_box(aft, "AftCornerP", (-7.95, -1.08, 0.26), (0.26, 0.16, 0.24))
     boolean_cut_box(aft, "AftCornerS", (-7.95, 1.08, 0.26), (0.26, 0.16, 0.24))
-    # Keel under the hopper only — connects port/starboard below the floor, never a dorsal lid.
-    keel = [
-        formed_hull_ring(-2.35, 0.62, -0.92, -1.28, 0.12),
-        formed_hull_ring(-0.80, 0.72, -0.88, -1.32, 0.10),
-        formed_hull_ring(0.80, 0.72, -0.88, -1.32, 0.10),
-        formed_hull_ring(2.20, 0.58, -0.90, -1.24, 0.12),
-    ]
-    add_section_mesh("Keel_HopperSpan", keel, hull, collection, 0.010, cap=True)
-    print(f"lod{lod} perimeter verts: sponP={len(spon_p.data.vertices)} fore={len(fore.data.vertices)} aft={len(aft.data.vertices)}")
+    print(
+        f"lod{lod} shell verts: hop={len(shell_hop.data.vertices)} "
+        f"fore={len(fore.data.vertices)} aft={len(aft.data.vertices)}"
+    )
     if len(aft.data.vertices) < 40:
-        raise RuntimeError(f"ironback lod{lod} Pressure_Aft collapsed to {len(aft.data.vertices)} verts")
-    if len(spon_p.data.vertices) < 40 or len(fore.data.vertices) < 40:
+        raise RuntimeError(f"ironback lod{lod} Shell_Aft collapsed to {len(aft.data.vertices)} verts")
+    if len(shell_hop.data.vertices) < 40 or len(fore.data.vertices) < 40:
         raise RuntimeError(f"ironback lod{lod} formed host collapsed")
 
     add_hoop_frame("Frame_ForeStep", 2.15, 1.48, 0.82, 0.06, armor, collection, thick=0.040, half_w=0.06)
@@ -1395,8 +1487,30 @@ def build_lod(lod, mats):
     add_box("BowRam", (7.92, 0.0, -0.08), (0.22, 1.22, 0.32), armor, collection, 0.006)
     add_box("Transom", (-8.12, 0.0, 0.02), (0.10, 1.35, 0.42), armor, collection, 0.006)
 
-    add_box("TrenchFloor_P", (0.20, -2.46, 0.50), (2.70, 0.12, 0.04), mech, collection, 0.003)
-    add_box("TrenchFloor_S", (0.20, 2.46, 0.50), (2.70, 0.12, 0.04), mech, collection, 0.003)
+    # Stepped oxide armor on the shell: thickness, gaps, rooted shoulders, quiet waist.
+    plate_courses = (
+        ("ForeShoulder", 3.55, 5.15, 2.12, 2.88, 0.18, 1.02),
+        ("WaistQuiet", -0.35, 1.45, 2.02, 2.42, 0.28, 0.88),
+        ("AftShoulder", -4.85, -2.75, 2.18, 3.02, 0.14, 1.08),
+    )
+    for tag, x0, x1, yi, yo, z0, z1 in plate_courses:
+        add_section_mesh(
+            f"Armor_{tag}_S",
+            [
+                plate_follow_ring(x0, yi, yo, z0, z1, 0.10),
+                plate_follow_ring(x1, yi - 0.04, yo - 0.06, z0, z1 - 0.04, 0.10),
+            ],
+            hull, collection, 0.006, cap=True,
+        )
+        add_section_mesh(
+            f"Armor_{tag}_P",
+            [
+                plate_follow_ring(x0, -yo, -yi, z0, z1, 0.10),
+                plate_follow_ring(x1, -yo + 0.06, -yi + 0.04, z0, z1 - 0.04, 0.10),
+            ],
+            hull, collection, 0.006, cap=True,
+        )
+
     add_box("AftTrenchFloor", (-5.55, 0.0, 0.50), (1.45, 0.14, 0.05), mech, collection, 0.003)
     add_box("AftTrenchRailP", (-5.55, -0.20, 0.68), (1.35, 0.035, 0.05), armor, collection, 0.002)
     add_box("AftTrenchRailS", (-5.55, 0.20, 0.68), (1.35, 0.035, 0.05), armor, collection, 0.002)
@@ -1405,8 +1519,8 @@ def build_lod(lod, mats):
     add_command_cage(lod, mats, collection)
     add_pulse_plate_drive(lod, mats, collection)
 
-    add_cutter_arm("ForeP", (2.18, -spon_y, 0.54), -1, 1, "saw", lod, mats, collection)
-    add_cutter_arm("ForeS", (2.18, spon_y, 0.54), 1, 1, "crusher", lod, mats, collection)
+    add_cutter_arm("ForeP", (2.08, -spon_y, 0.54), -1, 1, "saw", lod, mats, collection)
+    add_cutter_arm("ForeS", (2.08, spon_y, 0.54), 1, 1, "crusher", lod, mats, collection)
     add_cutter_arm("AftP", (-1.35, -spon_y, 0.54), -1, -1, "drill", lod, mats, collection)
     add_cutter_arm("AftS", (-1.35, spon_y, 0.54), 1, -1, "grab", lod, mats, collection, repair=True)
 
@@ -1424,10 +1538,10 @@ def build_lod(lod, mats):
         add_section_mesh(
             "ThermalRest",
             [
-                plate_follow_ring(-5.85, -0.42, 0.42, 0.72, 0.92, 0.10),
-                plate_follow_ring(-6.45, -0.34, 0.34, 0.68, 0.88, 0.10),
+                plate_follow_ring(-5.72, -0.28, 0.28, 0.62, 0.78, 0.08),
+                plate_follow_ring(-6.18, -0.22, 0.22, 0.58, 0.74, 0.08),
             ],
-            ceramic, collection, 0.005, cap=True,
+            mech, collection, 0.004, cap=True,
         )
         add_section_mesh(
             "ThermalSponP",
@@ -1899,7 +2013,7 @@ def main():
         "occupancy": occupancy,
         "stillSha256": identity["stillSha256"],
         "disposition": "revise",
-        "method": "open_well_perimeter_barge",
+        "method": "formed_cavity_shell_barge",
     }
     (FAMILY / "evidence" / "ironback").mkdir(parents=True, exist_ok=True)
     (FAMILY / "evidence" / "ironback" / f"cycle_{CYCLE:02d}.json").write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
