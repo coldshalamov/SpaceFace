@@ -3,9 +3,9 @@
   "assetId": "place_works_derrick",
   "root": "SF_WORKS_DERRICK_V1",
   "packet": "PQ-131.05",
-  "cycle": 1,
+  "cycle": 2,
   "currentState": "design_candidate",
-  "candidateHash": "DA4DC92FEFFE3A63642E790411AEAD0A96ECB175A5EB881CB016FE409D191372",
+  "candidateHash": "DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -54,12 +54,12 @@
     },
     "marking": {
       "rgb": [
-        0.5,
-        0.24,
-        0.07
+        0.46,
+        0.17,
+        0.045
       ],
-      "rough": 0.56,
-      "metal": 0.06
+      "rough": 0.58,
+      "metal": 0.05
     },
     "cable": {
       "rgb": [
@@ -98,7 +98,13 @@
     "billboard",
     "halo",
     "soft card",
-    "generic grid"
+    "generic grid",
+    "X-grid A-frame",
+    "yellow-black shoe tape",
+    "filled rounded square",
+    "pumpjack",
+    "box on stilts",
+    "silhouette padding"
   ],
   "allSupportedViewZonesClassified": false,
   "gatesOpen": [

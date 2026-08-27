@@ -1,8 +1,15 @@
-"""PQ-131.05 Works surface derrick / head-frame — Cycle 01 source candidate.
+"""PQ-131.05 Works surface derrick / head-frame — Cycle 02 source candidate.
 
-A manufactured head-frame over the entry shaft: two A-frame I-beam pairs with
-cross-bracing and base shoes, a rooted winch drum in pillow-block bearings,
-a grated guarded platform, restrained works-orange markings, two hooded lamps.
+Cycle 01 edge load-path is preserved: four planted shoes, I-beam web/flanges/
+splice plates, crown portal, open well, offset grated service deck and ladder.
+
+Cycle 02 revises top and site identity:
+  * A-planes are open A-leg pairs (no rung/ladder-truss fill, no X-grid)
+  * winch drum -> visible tangent -> head sheave -> descent into the shaft
+  * well/collar stays empty; tower-over-hole reads at 120 px/cell
+  * lamp hood/socket response, not pinpricks
+  * LOD1/2 site silhouette: four shoe corners, open central shaft, tall head-frame
+  * restrained orange edge wear; no yellow-black shoe stripes
 
 Exact write set:
   tools/blender/build_works_derrick.py
@@ -11,7 +18,7 @@ Exact write set:
 
     blender --background --python tools/blender/build_works_derrick.py
 
-Not wired, not released, not promoted. Cycle 01 evidence is written once.
+Not wired, not released, not promoted. Cycle 01 evidence is frozen in place.
 Kit GLBs are cited shape references only and are never imported.
 """
 from __future__ import annotations
@@ -46,7 +53,9 @@ FAMILY = ROOT / "assets" / "works" / "derrick"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 REF_DIR = FAMILY / "reference"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_001"
+CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
+DIAG_DIR = EVIDENCE_DIR / "diagnostics"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 BLEND_PATH = SOURCE_DIR / "derrick.blend"
 COMBINED_NAME = "place_works_derrick.glb"
@@ -54,7 +63,7 @@ ASSET_ID = "place_works_derrick"
 ROOT_NAME = "SF_WORKS_DERRICK_V1"
 HOOK_NAMES = ("drum_spin", "cable_anchor", "lamp_L", "lamp_R")
 LOD_ROOTS = ("LOD0_derrick", "LOD1_derrick", "LOD2_derrick")
-CYCLE = 1
+CYCLE = 2
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 12000, 1: 3000, 2: 900}
 TEX_SIZE = {0: 2048, 1: 1024, 2: 512}
@@ -68,20 +77,34 @@ FOOT_X = 0.88
 CROWN_Z = 6.22
 SHOE_H = 0.10
 SHOE_XY = (0.36, 0.30)
-COLLAR_R0, COLLAR_R1 = 0.36, 0.54
-COLLAR_Z0, COLLAR_Z1 = 0.012, 0.155
+SHOE_XY_SITE = (0.40, 0.34)
+COLLAR_R0, COLLAR_R1 = 0.38, 0.56
+COLLAR_Z0, COLLAR_Z1 = 0.012, 0.16
 
-DRUM_C = Vector((-0.02, 0.00, 1.54))
-DRUM_R = 0.24
-DRUM_LEN = 0.78
-BEARING_Y = 0.46
-SKID_Z = 1.18
 
-CABLE_ANCHOR = Vector((DRUM_C.x + DRUM_R * 0.22, 0.0, DRUM_C.z - DRUM_R * 0.98))
-LAMP_L = Vector((0.10, 0.42, CROWN_Z + 0.10))
-LAMP_R = Vector((0.10, -0.42, CROWN_Z + 0.10))
+def write_text_lf(path: Path, text: str) -> None:
+    """Write repository text deterministically without Windows CRLF churn."""
+    path.write_bytes(text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
+
+# Winch sits on the -X side so the collar well stays empty from works_top.
+DRUM_C = Vector((-0.62, 0.00, 1.38))
+DRUM_R = 0.20
+DRUM_LEN = 0.68
+BEARING_Y = 0.40
+SKID_Z = 1.04
+
+# Visible leaving tangent on the drum, toward the crown sheave.
+CABLE_ANCHOR = Vector((DRUM_C.x + DRUM_R * 0.78, 0.0, DRUM_C.z + DRUM_R * 0.62))
+SHEAVE_C = Vector((0.00, 0.00, CROWN_Z + 0.14))
+SHEAVE_R = 0.11
+SHEAVE_T = 0.08
+CABLE_DROP = Vector((0.00, 0.00, 0.02))
+
+# Hoods tilt toward the well so the mouth reads from works_top.
+LAMP_L = Vector((0.05, 0.40, CROWN_Z + 0.08))
+LAMP_R = Vector((0.05, -0.40, CROWN_Z + 0.08))
 PLAT_Z = 5.38
-PLAT_X0, PLAT_X1 = 0.30, 0.92
+PLAT_X0, PLAT_X1 = 0.50, 0.98
 PLAT_Y0, PLAT_Y1 = -0.30, 0.30
 
 FOCUS = (0.0, 0.0, 3.05)
@@ -101,7 +124,7 @@ ROLES = {
     "interface": {"rgb": (0.44, 0.42, 0.38), "rough": 0.30, "metal": 0.84, "id": (0.00, 1.00, 0.00)},
     "winch": {"rgb": (0.22, 0.16, 0.11), "rough": 0.42, "metal": 0.78, "id": (0.00, 0.00, 1.00)},
     "grating": {"rgb": (0.20, 0.195, 0.18), "rough": 0.74, "metal": 0.32, "id": (1.00, 1.00, 0.00)},
-    "marking": {"rgb": (0.50, 0.24, 0.07), "rough": 0.56, "metal": 0.06, "id": (1.00, 0.40, 0.00)},
+    "marking": {"rgb": (0.46, 0.17, 0.045), "rough": 0.58, "metal": 0.05, "id": (1.00, 0.40, 0.00)},
     "cable": {"rgb": (0.065, 0.058, 0.048), "rough": 0.86, "metal": 0.04, "id": (1.00, 0.00, 1.00)},
     "lamp": {"rgb": (0.90, 0.80, 0.55), "rough": 0.18, "metal": 0.03, "id": (0.00, 1.00, 1.00)},
 }
@@ -693,12 +716,14 @@ def author_maps(bakes, size, stem):
             continue
         r, g, b = spec["rgb"]
         if name == "structure":
-            chip = convex * (n2 > 0.80).astype(np.float32)
-            rr = np.clip(r * (0.72 + 0.28 * ao) - dirt * 0.10 + chip * 0.26, 0, 1)
-            gg = np.clip(g * (0.72 + 0.28 * ao) - dirt * 0.08 + chip * 0.22, 0, 1)
-            bb = np.clip(b * (0.74 + 0.26 * ao) - dirt * 0.06 + chip * 0.18, 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.16 - chip * 0.12, 0.08, 0.95)
-            metal = np.clip(spec["metal"] + chip * 0.55, 0.0, 1.0)
+            chip = convex * (n2 > 0.86).astype(np.float32)
+            # Restrained works-orange edge wear on convex paint, not yellow-black tape.
+            orange = convex * ((n1 > 0.62) & (n2 < 0.78)).astype(np.float32) * 0.55
+            rr = np.clip(r * (0.72 + 0.28 * ao) - dirt * 0.10 + chip * 0.16 + orange * 0.34, 0, 1)
+            gg = np.clip(g * (0.72 + 0.28 * ao) - dirt * 0.08 + chip * 0.12 + orange * 0.06, 0, 1)
+            bb = np.clip(b * (0.74 + 0.26 * ao) - dirt * 0.06 + chip * 0.08 - orange * 0.02, 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.16 - chip * 0.10 + orange * 0.04, 0.08, 0.95)
+            metal = np.clip(spec["metal"] + chip * 0.40 - orange * 0.04, 0.0, 1.0)
         elif name == "interface":
             polish = np.clip(ao * 0.45 + convex * 0.4, 0, 1)
             oil = np.clip((1.0 - ao) * 0.35, 0, 1)
@@ -851,12 +876,13 @@ def build_aframes(lod, collection):
     objs = []
     fw, dep, tf, tw = {
         0: (0.12, 0.16, 0.022, 0.028),
-        1: (0.14, 0.16, 0.030, 0.040),
-        2: (0.16, 0.18, 0.040, 0.050),
+        1: (0.11, 0.13, 0.028, 0.034),
+        2: (0.12, 0.14, 0.036, 0.040),
     }[lod]
     n_st = {0: 5, 1: 2, 2: 2}[lod]
     bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
     box = lod >= 1
+    shoe_xy = SHOE_XY_SITE if lod >= 1 else SHOE_XY
     for sy, side in ((1.0, "P"), (-1.0, "S")):
         for sx, tag in ((1.0, "X"), (-1.0, "x")):
             a, b = _leg_ends(sx, sy)
@@ -864,27 +890,28 @@ def build_aframes(lod, collection):
                 f"leg_{side}_{tag}", a, b, fw, dep, tf, tw, "structure", collection,
                 stations=n_st, bevel=bevel, up=(0, 1, 0), box=box,
             ))
-            # Shoe
             shoe_loc = (sx * FOOT_X, sy * Y_FRAME, SHOE_H * 0.5)
             objs.append(add_box(
                 f"shoe_{side}_{tag}", shoe_loc,
-                (SHOE_XY[0], SHOE_XY[1], SHOE_H), "structure", collection, bevel=bevel,
+                (shoe_xy[0], shoe_xy[1], SHOE_H), "structure", collection, bevel=bevel,
             ))
-            # Orange edge strip on the shoe lip (marking, not livery)
-            if lod == 0:
+            if lod >= 1:
+                # A real exposed anchor plate gives each planted shoe one stable
+                # site-register pixel. This is the load interface, not a livery
+                # stripe or silhouette pad.
                 objs.append(add_box(
-                    f"shoe_mark_{side}_{tag}",
-                    (sx * FOOT_X, sy * Y_FRAME + sy * 0.12, SHOE_H + 0.006),
-                    (0.18, 0.018, 0.008), "marking", collection, bevel=0.0,
+                    f"shoe_cap_{side}_{tag}",
+                    (sx * FOOT_X, sy * Y_FRAME, SHOE_H + 0.006),
+                    (0.22, 0.18, 0.012), "interface", collection, bevel=0.0,
                 ))
-            # Stiffener gussets shoe -> leg
             if lod < 2:
                 inward = Vector((-sx * 0.16, 0.0, 0.22))
                 p0 = Vector((sx * FOOT_X - sx * 0.12, sy * Y_FRAME, SHOE_H))
                 p1 = Vector((sx * FOOT_X + sx * 0.10, sy * Y_FRAME, SHOE_H))
                 p2 = Vector(a) + inward
                 objs.append(add_gusset(
-                    f"shoe_gus_{side}_{tag}", p0, p1, p2, 0.018, "structure", collection, bevel=0.002 if lod == 0 else 0.0,
+                    f"shoe_gus_{side}_{tag}", p0, p1, p2, 0.018, "structure", collection,
+                    bevel=0.002 if lod == 0 else 0.0,
                 ))
             if lod == 0:
                 for k, off in enumerate(((-0.10, -0.08), (0.10, -0.08), (-0.10, 0.08), (0.10, 0.08))):
@@ -893,34 +920,30 @@ def build_aframes(lod, collection):
                         (sx * FOOT_X + off[0], sy * Y_FRAME + off[1], SHOE_H + 0.012),
                         (0, 0, 1), collection,
                     ))
-        # Mid strut (the A cross-bar)
+        # One A-bar only on LOD0. At the legal 19 px/cell site register even this
+        # manufactured mid-bar closes the A into a filled square, so LOD1/2 keep
+        # the four converging legs, shoes and crown as the authored silhouette.
         fp, _ = _leg_ends(1.0, sy)
         fm, _ = _leg_ends(-1.0, sy)
-        t_mid = 0.48
-        a_mid = fp.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_mid)
-        b_mid = fm.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_mid)
-        objs.append(add_ibeam(
-            f"strut_{side}", a_mid, b_mid, 0.08, 0.10, 0.016, 0.020, "structure",
-            collection, stations=3 if lod == 0 else 2, bevel=bevel, up=(0, 0, 1), box=box,
-        ))
+        crown = Vector((0.0, sy * Y_FRAME, CROWN_Z))
+        t_mid = 0.56
+        a_mid = fp.lerp(crown, t_mid)
+        b_mid = fm.lerp(crown, t_mid)
         if lod == 0:
-            # A-plane diagonals (angle iron)
-            t_lo, t_hi = 0.22, 0.72
-            lo_p = fp.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_lo)
-            hi_m = fm.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_hi)
-            lo_m = fm.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_lo)
-            hi_p = fp.lerp(Vector((0.0, sy * Y_FRAME, CROWN_Z)), t_hi)
-            objs.append(add_l_angle(
-                f"diag_{side}_a", lo_p, hi_m, 0.055, 0.012, "structure", collection,
-                stations=3 if lod == 0 else 2, bevel=0.002, up=(0, 1, 0),
+            objs.append(add_ibeam(
+                f"strut_{side}", a_mid, b_mid, 0.08, 0.10, 0.016, 0.020, "structure",
+                collection, stations=3, bevel=bevel, up=(0, 0, 1), box=box,
             ))
-            objs.append(add_l_angle(
-                f"diag_{side}_b", lo_m, hi_p, 0.055, 0.012, "structure", collection,
-                stations=3 if lod == 0 else 2, bevel=0.002, up=(0, 1, 0),
-            ))
-        # Crown knee plates
+            # Splice plates at the A-bar / leg joints — load-path, not fill.
+            for sx, tag in ((1.0, "X"), (-1.0, "x")):
+                joint = (fp if sx > 0 else fm).lerp(crown, t_mid)
+                objs.append(add_box(
+                    f"splice_{side}_{tag}",
+                    (joint.x, joint.y + sy * 0.02, joint.z),
+                    (0.10, 0.012, 0.16), "interface", collection,
+                    bevel=0.002 if lod == 0 else 0.0,
+                ))
         if lod < 2:
-            crown = Vector((0.0, sy * Y_FRAME, CROWN_Z))
             objs.append(add_gusset(
                 f"knee_{side}",
                 crown + Vector((-0.10, 0, -0.18)),
@@ -928,78 +951,91 @@ def build_aframes(lod, collection):
                 crown + Vector((0.0, 0, 0.04)),
                 0.020, "structure", collection, bevel=0.002 if lod == 0 else 0.0,
             ))
-    # Crown head-beam spanning the two A-frames
     objs.append(add_ibeam(
         "crown_beam",
         (0.0, -Y_FRAME, CROWN_Z), (0.0, Y_FRAME, CROWN_Z),
         0.14, 0.18, 0.024, 0.030, "structure", collection,
         stations=4 if lod == 0 else 2, bevel=bevel, up=(1, 0, 0), box=box,
     ))
-    # Portal struts between A-frames (do not cross the well)
-    portal_z = (2.35, 3.85) if lod == 0 else ((3.10,) if lod == 1 else ())
-    portal_x = ((0.38, "out"), (-0.38, "in")) if lod == 0 else ((0.38, "out"),)
-    for i, z in enumerate(portal_z):
-        for sx, tag in portal_x:
-            objs.append(add_ibeam(
-                f"portal_{i}_{tag}",
-                (sx, -Y_FRAME, z), (sx, Y_FRAME, z),
-                0.07, 0.09, 0.014, 0.018, "structure", collection,
-                stations=3 if lod == 0 else 2, bevel=bevel, up=(1, 0, 0), box=box,
-            ))
+    # Single portal on the platform side only at LOD0. It is valid construction
+    # in the edge view but becomes square-filling noise at the site register.
+    if lod == 0:
+        objs.append(add_ibeam(
+            "portal_out",
+            (0.44, -Y_FRAME, 3.35), (0.44, Y_FRAME, 3.35),
+            0.07, 0.09, 0.014, 0.018, "structure", collection,
+            stations=3, bevel=bevel, up=(1, 0, 0), box=box,
+        ))
     return objs
 
 
 def build_collar_and_skid(lod, collection):
     objs = []
-    n = {0: 16, 1: 10, 2: 6}[lod]
+    n = {0: 16, 1: 8, 2: 8}[lod]
     bevel = {0: 0.005, 1: 0.0, 2: 0.0}[lod]
+    # Preserve a legible central shaft opening after site downsampling. This is
+    # an authored LOD aperture, not silhouette padding: the outer curb is stable
+    # while the inner void grows and facets into an open shaft marker.
+    r0, r1 = (0.48, 0.62) if lod >= 1 else (COLLAR_R0, COLLAR_R1)
     objs.append(add_annulus(
-        "collar", COLLAR_R0, COLLAR_R1, COLLAR_Z0, COLLAR_Z1, n, "structure", collection, bevel,
+        "collar", r0, r1, COLLAR_Z0, COLLAR_Z1, n, "structure", collection, bevel,
     ))
-    # Skid under the winch, welded back to both A-frames
+    if lod >= 1:
+        # Faceted bare-steel curb lip catches the raking key around a still-empty
+        # shaft. The subpixel material break is the authored site LOD for the
+        # real collar interface; it does not cover or fill the well.
+        objs.append(add_annulus(
+            "collar_lip", r0, min(r1, r0 + 0.10), COLLAR_Z1, COLLAR_Z1 + 0.020,
+            n, "interface", collection, 0.0,
+        ))
+    # Skid under the offset winch, welded back to the -X legs. Does not roof the well.
     objs.append(add_box(
-        "winch_skid", (DRUM_C.x - 0.06, 0.0, SKID_Z),
-        (0.70, 1.12, 0.055), "structure", collection, bevel=bevel,
+        "winch_skid", (DRUM_C.x, 0.0, SKID_Z),
+        (0.58, 0.96, 0.055), "structure", collection, bevel=bevel,
     ))
     if lod == 0:
         for sy in (Y_FRAME, -Y_FRAME):
             objs.append(add_gusset(
                 f"skid_gus_{'P' if sy > 0 else 'S'}",
-                (DRUM_C.x - 0.28, sy * 0.85, SKID_Z + 0.03),
-                (DRUM_C.x + 0.18, sy * 0.85, SKID_Z + 0.03),
-                (DRUM_C.x - 0.04, sy, SKID_Z + 0.22),
+                (DRUM_C.x - 0.22, sy * 0.72, SKID_Z + 0.03),
+                (DRUM_C.x + 0.16, sy * 0.72, SKID_Z + 0.03),
+                (DRUM_C.x, sy, SKID_Z + 0.22),
                 0.016, "structure", collection, bevel=0.002,
             ))
-    # Pillow-block bearings (cast housing + cap + race)
     for sy, tag in ((BEARING_Y, "P"), (-BEARING_Y, "S")):
         objs.append(add_box(
             f"bearing_block_{tag}", (DRUM_C.x, sy, DRUM_C.z - 0.02),
-            (0.22, 0.14, 0.28), "interface", collection, bevel=bevel,
+            (0.20, 0.13, 0.26), "interface", collection, bevel=bevel,
         ))
         objs.append(add_cyl(
             f"bearing_cap_{tag}", (DRUM_C.x, sy, DRUM_C.z),
-            0.085, 0.10, "interface", collection,
+            0.078, 0.09, "interface", collection,
             verts=8 if lod else 12, bevel=0.0 if lod else 0.003, rot=(math.pi / 2, 0, 0),
         ))
         if lod == 0:
-            for k, dx in enumerate((-0.07, 0.07)):
+            for k, dx in enumerate((-0.06, 0.06)):
                 objs.append(add_hex_bolt(
                     f"bearing_bolt_{tag}_{k}",
                     (DRUM_C.x + dx, sy, SKID_Z + 0.04),
                     (0, 0, 1), collection, radius=0.014, depth=0.022,
                 ))
-    # Gearbox / motor rooted on -X of the skid
     if lod < 2:
         objs.append(add_box(
-            "gearbox", (DRUM_C.x - 0.32, 0.18, DRUM_C.z - 0.02),
-            (0.28, 0.26, 0.30), "winch", collection, bevel=bevel,
+            "gearbox", (DRUM_C.x - 0.22, 0.16, DRUM_C.z - 0.02),
+            (0.22, 0.22, 0.26), "winch", collection, bevel=bevel,
         ))
         if lod == 0:
             objs.append(add_cyl(
-                "winch_motor", (DRUM_C.x - 0.46, 0.18, DRUM_C.z - 0.02),
-                0.09, 0.18, "winch", collection,
+                "winch_motor", (DRUM_C.x - 0.34, 0.16, DRUM_C.z - 0.02),
+                0.07, 0.14, "winch", collection,
                 verts=12, bevel=0.003, rot=(0, math.pi / 2, 0),
             ))
+    # Fairlead / keeper at the leaving tangent so the cable has a mechanical exit.
+    if lod < 2:
+        objs.append(add_cyl(
+            "cable_keeper", tuple(CABLE_ANCHOR), 0.032, 0.05, "interface", collection,
+            verts=8 if lod else 10, bevel=0.0 if lod else 0.002, rot=(0, math.pi / 2, 0),
+        ))
     return objs
 
 
@@ -1031,33 +1067,86 @@ def build_drum(lod, collection):
     return objs
 
 
+def _cable_ring(p, tangent, r):
+    return ring_at(p, tangent, (0, 1, 0), [
+        (r, 0.0), (0.0, r), (-r, 0.0), (0.0, -r),
+    ])
+
+
+def build_sheave(lod, collection):
+    objs = []
+    segs = {0: 16, 1: 10, 2: 8}[lod]
+    bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
+    objs.append(add_cyl(
+        "sheave_wheel", tuple(SHEAVE_C), SHEAVE_R, SHEAVE_T, "interface", collection,
+        verts=segs, bevel=bevel, rot=(math.pi / 2, 0, 0),
+    ))
+    if lod < 2:
+        for sy, tag in ((SHEAVE_T * 0.55, "P"), (-SHEAVE_T * 0.55, "S")):
+            objs.append(add_cyl(
+                f"sheave_flange_{tag}", (SHEAVE_C.x, sy, SHEAVE_C.z),
+                SHEAVE_R + 0.020, 0.016, "interface", collection,
+                verts=segs, bevel=0.0, rot=(math.pi / 2, 0, 0),
+            ))
+        for sy, tag in ((0.085, "P"), (-0.085, "S")):
+            objs.append(add_box(
+                f"sheave_cheek_{tag}", (SHEAVE_C.x, sy, SHEAVE_C.z - 0.02),
+                (0.09, 0.018, 0.24), "structure", collection, bevel=bevel,
+            ))
+    objs.append(add_cyl(
+        "sheave_axle", tuple(SHEAVE_C), 0.022, 0.22, "interface", collection,
+        verts=8, bevel=0.0, rot=(math.pi / 2, 0, 0),
+    ))
+    return objs
+
+
 def build_cable(lod, collection):
+    """Coils ride the drum. Rise + drop are the causal payout path."""
     objs = []
     segs = {0: 12, 1: 8, 2: 6}[lod]
-    # Coils on the drum (static, rotate with drum_spin)
     n_coil = {0: 4, 1: 2, 2: 1}[lod]
     for i in range(n_coil):
-        y = -0.18 + i * (0.36 / max(1, n_coil - 1))
+        y = -0.16 + i * (0.32 / max(1, n_coil - 1))
         objs.append(add_cyl(
-            f"cable_coil_{i}", (DRUM_C.x, y, DRUM_C.z),
-            DRUM_R + 0.018, 0.055, "cable", collection,
+            f"drum_coil_{i}", (DRUM_C.x, y, DRUM_C.z),
+            DRUM_R + 0.016, 0.050, "cable", collection,
             verts=segs, bevel=0.0, rot=(math.pi / 2, 0, 0),
         ))
-    # Payout hanging from the tangent down through the collar
-    hang_top = CABLE_ANCHOR
-    hang_bot = Vector((0.0, 0.0, 0.02))
-    n_st = {0: 5, 1: 3, 2: 2}[lod]
-    r = {0: 0.022, 1: 0.026, 2: 0.030}[lod]
-    rings = []
-    for i in range(n_st):
-        t = i / (n_st - 1)
-        # ease toward the well centre as it drops
-        p = hang_top.lerp(hang_bot, t)
-        p.x = hang_top.x * (1.0 - t) + hang_bot.x * t
-        rings.append(ring_at(p, hang_bot - hang_top, (0, 1, 0), [
-            (r, 0.0), (0.0, r), (-r, 0.0), (0.0, -r),
-        ]))
-    objs.append(loft_section("cable_payout", rings, "cable", collection, bevel=0.0, cap=True))
+    r = {0: 0.026, 1: 0.030, 2: 0.036}[lod]
+    approach = Vector((SHEAVE_C.x - SHEAVE_R * 0.92, 0.0, SHEAVE_C.z + SHEAVE_R * 0.18))
+    crown = Vector((SHEAVE_C.x, 0.0, SHEAVE_C.z + SHEAVE_R))
+    depart = Vector((SHEAVE_C.x + SHEAVE_R * 0.12, 0.0, SHEAVE_C.z - SHEAVE_R * 0.72))
+    n_rise = {0: 6, 1: 4, 2: 3}[lod]
+    rise_pts = []
+    for i in range(n_rise):
+        t = i / (n_rise - 1)
+        if t < 0.72:
+            p = CABLE_ANCHOR.lerp(approach, t / 0.72)
+        else:
+            p = approach.lerp(crown, (t - 0.72) / 0.28)
+        rise_pts.append(p)
+    rise_rings = []
+    for i, p in enumerate(rise_pts):
+        nxt = rise_pts[min(i + 1, len(rise_pts) - 1)]
+        prv = rise_pts[max(i - 1, 0)]
+        rise_rings.append(_cable_ring(p, nxt - prv, r))
+    objs.append(loft_section("cable_rise", rise_rings, "cable", collection, bevel=0.0, cap=True))
+    n_drop = {0: 5, 1: 3, 2: 2}[lod]
+    drop_pts = []
+    for i in range(n_drop):
+        t = i / (n_drop - 1)
+        if t < 0.18:
+            p = crown.lerp(depart, t / 0.18)
+        else:
+            p = depart.lerp(CABLE_DROP, (t - 0.18) / 0.82)
+            p.x = depart.x * (1.0 - (t - 0.18) / 0.82)
+        drop_pts.append(p)
+    drop_rings = []
+    for i, p in enumerate(drop_pts):
+        nxt = drop_pts[min(i + 1, len(drop_pts) - 1)]
+        prv = drop_pts[max(i - 1, 0)]
+        drop_rings.append(_cable_ring(p, nxt - prv, r))
+    objs.append(loft_section("cable_drop", drop_rings, "cable", collection, bevel=0.0, cap=True))
     return objs
 
 
@@ -1074,20 +1163,21 @@ def build_platform(lod, collection):
     objs.append(add_box("plat_beam_x1", (PLAT_X1, cy, PLAT_Z), (t, sy, 0.07), "structure", collection, bevel=bevel))
     objs.append(add_box("plat_beam_y0", (cx, PLAT_Y0, PLAT_Z), (sx, t, 0.07), "structure", collection, bevel=bevel))
     objs.append(add_box("plat_beam_y1", (cx, PLAT_Y1, PLAT_Z), (sx, t, 0.07), "structure", collection, bevel=bevel))
-    # Grating bars (modelled, not a texture)
-    n_bar = {0: 6, 1: 3, 2: 1}[lod]
-    bar_t = {0: 0.018, 1: 0.030, 2: 0.10}[lod]
+    # Grating bars (modelled, not a texture). LOD1/2 stay an open frame so the
+    # site register does not fill into a rounded square.
+    n_bar = {0: 6, 1: 0, 2: 0}[lod]
+    bar_t = {0: 0.018, 1: 0.028, 2: 0.04}[lod]
     for i in range(n_bar):
-        y = PLAT_Y0 + 0.06 + (sy - 0.12) * (i / max(1, n_bar - 1))
+        y = PLAT_Y0 + 0.08 + (sy - 0.16) * (i / max(1, n_bar - 1))
         objs.append(add_box(
             f"grate_{i}", (cx, y, PLAT_Z + 0.018),
             (sx - 0.08, bar_t, 0.016), "grating", collection, bevel=0.0,
         ))
-    # Kick plate — restrained orange strip on the outer +X toe, not a wall of colour
+    # One restrained orange kick on the outer toe — not shoe-stripe hazard tape.
     if lod == 0:
         objs.append(add_box(
             "kick_x", (PLAT_X1 - 0.01, cy, PLAT_Z + 0.04),
-            (0.012, 0.22, 0.05), "marking", collection, bevel=0.0,
+            (0.010, 0.16, 0.04), "marking", collection, bevel=0.0,
         ))
     if lod == 0:
         # Guard posts + rails
@@ -1141,24 +1231,38 @@ def build_lamps(lod, collection):
     segs = {0: 12, 1: 8, 2: 6}[lod]
     housings = {"L": [], "R": []}
     lenses = {}
-    for tag, loc in (("L", LAMP_L), ("R", LAMP_R)):
-        if lod == 0:
-            housings[tag].append(add_box(
-                f"lamp_arm_{tag}", (loc.x - 0.08, loc.y, loc.z - 0.02),
-                (0.16, 0.04, 0.04), "structure", collection, bevel=bevel,
-            ))
-            housings[tag].append(add_cyl(
-                f"lamp_socket_{tag}", (loc.x, loc.y, loc.z),
-                0.038, 0.055, "structure", collection, verts=segs, bevel=bevel,
-            ))
-        # Hood opening downward into the shaft
-        housings[tag].append(add_cone(
-            f"lamp_hood_{tag}", (loc.x, loc.y, loc.z - 0.05),
-            0.070, 0.032, 0.08, "structure", collection, verts=segs, bevel=bevel,
+    mouth = {0: 0.13, 1: 0.14, 2: 0.16}[lod]
+    neck = {0: 0.048, 1: 0.055, 2: 0.07}[lod]
+    depth = {0: 0.15, 1: 0.14, 2: 0.13}[lod]
+    for tag, loc, ysign in (("L", LAMP_L, 1.0), ("R", LAMP_R, -1.0)):
+        # Tip the hood toward the well so works_top sees a rim and a dark mouth,
+        # not a pinprick on the crown.
+        rot = (math.radians(40.0 * ysign), math.radians(26.0), 0.0)
+        housings[tag].append(add_box(
+            f"lamp_arm_{tag}", (0.0, loc.y * 0.55, loc.z - 0.02),
+            (0.08, abs(loc.y) * 0.55, 0.045), "structure", collection, bevel=bevel,
         ))
+        housings[tag].append(add_cyl(
+            f"lamp_socket_{tag}", (loc.x, loc.y, loc.z),
+            0.055 if lod else 0.050, 0.08, "structure", collection,
+            verts=segs, bevel=bevel, rot=rot,
+        ))
+        hood_off = Vector((
+            math.sin(rot[1]) * (depth * 0.38),
+            -math.sin(rot[0]) * (depth * 0.38),
+            -math.cos(rot[1]) * math.cos(rot[0]) * (depth * 0.38),
+        ))
+        hood_loc = (loc.x + hood_off.x, loc.y + hood_off.y, loc.z + hood_off.z)
+        housings[tag].append(add_cone(
+            f"lamp_hood_{tag}", hood_loc,
+            mouth, neck, depth, "structure", collection, verts=segs, bevel=bevel, rot=rot,
+        ))
+        lens_off = hood_off * 1.55
         lens = add_cyl(
-            f"lamp_lens_{tag}", (loc.x, loc.y, loc.z - 0.07),
-            0.024, 0.014, "lamp", collection, verts=max(6, segs - 2), bevel=0.0,
+            f"lamp_lens_{tag}",
+            (loc.x + lens_off.x, loc.y + lens_off.y, loc.z + lens_off.z),
+            mouth * 0.42, 0.018, "lamp", collection,
+            verts=max(6, segs - 2), bevel=0.0, rot=rot,
         )
         lenses[tag] = lens
     return housings, lenses
@@ -1171,6 +1275,7 @@ def build_lod(lod):
     static = []
     static.extend(build_aframes(lod, coll))
     static.extend(build_collar_and_skid(lod, coll))
+    static.extend(build_sheave(lod, coll))
     static.extend(build_platform(lod, coll))
     drum = build_drum(lod, coll)
     cable = build_cable(lod, coll)
@@ -1442,7 +1547,8 @@ def combine_lods(lod_reports):
         "category": "works",
         "family": "asteroid_works",
         "packet": "PQ-131.05",
-        "role": "surface head-frame over the entry shaft — A-frame, winch, platform, two hooded lamps",
+        "role": "surface head-frame over the entry shaft — open A-frames, offset winch, crown sheave, platform, two hooded lamps",
+        "cycle": CYCLE,
         "forward": "+X",
         "up": "+Y",
         "starboard": "+Z",
@@ -1529,9 +1635,7 @@ def combine_lods(lod_reports):
         "sha256": sha256(combined),
         "partsSha256": sha256(parts),
     }
-    (SOURCE_DIR / "derrick_inventory.json").write_text(
-        json.dumps(inventory, indent=2) + "\n", encoding="utf-8",
-    )
+    write_text_lf(SOURCE_DIR / "derrick_inventory.json", json.dumps(inventory, indent=2) + "\n")
     print(json.dumps({"ok": True, **inventory}, indent=2))
     return inventory, contract, combined, parts
 
@@ -1922,9 +2026,8 @@ def compose_contact_sheet():
     img.file_format = "PNG"
     img.save()
     sanitize_png(out)
-    (REF_DIR / "CONTACT_SHEET_LABELS.json").write_text(
+    write_text_lf(REF_DIR / "CONTACT_SHEET_LABELS.json",
         json.dumps({"labels": labels, "sources": [str(p.relative_to(ROOT)).replace("\\", "/") for p in CITED_STILLS]}, indent=2) + "\n",
-        encoding="utf-8",
     )
     return out
 
@@ -1933,10 +2036,11 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
     FAMILY.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     hashes = {
-        "cycle": 1,
+        "cycle": CYCLE,
         "disposition": "review_pending",
         "combinedSha256": inventory["sha256"],
         "partsSha256": inventory["partsSha256"],
+        "cycle001Frozen": True,
         "lod": {
             str(r.get("lod", i)): {"sha256": r.get("sha256"), "triangles": r["triangles"]}
             for i, r in enumerate(lod_reports)
@@ -1948,16 +2052,17 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         hashes["textures"][path.name] = sha256(path)
     for path in sorted(EVIDENCE_DIR.glob("*.png")):
         hashes["stills"][path.name] = sha256(path)
-    (FAMILY / "HASHES.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "HASHES.json", json.dumps(hashes, indent=2) + "\n")
 
     epoch = {
         "schema": "spaceface.worksDerrickCycleEpoch.v1",
-        "cycle": 1,
-        "epoch": "cycle_001",
+        "cycle": CYCLE,
+        "epoch": "cycle_002",
         "disposition": "review_pending",
         "state": "design_candidate",
         "gates": {"G0": "evidence_ready", "G1": "open", "G2": "open", "G4": "open", "G7": "open"},
         "independentReview": "not_launched",
+        "cycle01Preserved": True,
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -1972,6 +2077,7 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
             "missing": inspect["missingHooks"],
             "drum_spin": list(DRUM_C),
             "cable_anchor": list(CABLE_ANCHOR),
+            "sheave": list(SHEAVE_C),
             "lamp_L": list(LAMP_L),
             "lamp_R": list(LAMP_R),
         },
@@ -1987,29 +2093,37 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         "bboxBlenderZUp": inventory["bbox"],
         "camera": stills,
         "notes": [
-            "Cycle 01 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 02 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 01 evidence under evidence/cycle_001/ is frozen and was not rewritten.",
+            "A-planes are open A-leg pairs: one A-bar and splice plates, no rung/X-grid fill.",
+            "Causal cable path: drum tangent -> crown sheave -> drop through the empty well.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
             "Reviewers were not launched.",
-            "works_edge is the load-bearing still for three-cell height.",
+            "works_edge remains the load-bearing still for three-cell height.",
         ],
     }
-    (EVIDENCE_DIR / "EPOCH.json").write_text(json.dumps(epoch, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(EVIDENCE_DIR / "EPOCH.json", json.dumps(epoch, indent=2) + "\n")
 
-    audit = f"""# Surface derrick — material and shape audit (Cycle 01)
+    audit = f"""# Surface derrick — material and shape audit (Cycle 02)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
+
+Cycle 01 edge construction is retained: planted shoes, I-beam web/flanges, splice plates,
+crown portal, open well, offset grated deck and ladder. Cycle 02 removes A-plane rung fill,
+offsets the winch, and routes the cable over a crown sheave into the empty shaft.
 
 ## Shape grammar
 
 | Form | Primitive origin | Manufactured result | Camera |
 |---|---|---|---|
 | A-frame legs | I-beam loft, not a box stick | Wide-flange section, splice/knee, shoes at z=0 | works_edge, clay |
-| Cross-bracing | Angle iron / portal I | Every brace ends on a plate or strut | works_edge |
-| Shaft collar | Annulus shell | Empty well, wall thickness | works_top |
-| Drum | Cylinder + flanges + spindle | Sits in pillow blocks on a skid | works_top / edge |
-| Cable | Coils + payout loft | Leaves at `cable_anchor` tangent, drops through the collar | works_edge |
-| Platform | Frame + modelled grate bars | Guarded, kick plate, ladder from a shoe | works_top / edge |
-| Lamps | Hood cone + socket + recessed lens | Fixtures exist with emission off | works_edge |
+| A-bar / splice | One I-strut + web plates | Open A, no rung/X-grid fill | works_top, clay |
+| Shaft collar | Annulus shell | Empty well, wall thickness, drum offset off the hole | works_top |
+| Drum | Cylinder + flanges + spindle | Pillow blocks on a -X skid | works_top / edge |
+| Head sheave | Grooved wheel in cheek plates on the crown | Cable turns from rise to drop | works_top / edge |
+| Cable | Coils + rise loft + drop loft | Leaves `cable_anchor` tangent, over sheave, down the well | works_top |
+| Platform | Frame + modelled grate bars | Guarded, offset +X, not a roof | works_top / edge |
+| Lamps | Socket + tilted hood + recessed lens | Hood/mouth readable at 120 px, emission off | works_top / edge |
 
 Unresolved blockout risk: grate bars are rectangular stock; a later cycle may add checker-plate
 nosing if reviewers call the deck a comb.
@@ -2017,7 +2131,7 @@ nosing if reviewers call the deck a comb.
 ## Material allocation
 
 Dark painted structure, worn bare interfaces, heat/oil winch, dry grating, restrained works-orange
-markings, greasy cable, warm recessed lenses. Rover yellow is absent.
+*edge wear* (no yellow-black shoe tape), greasy cable, warm recessed lenses. Rover yellow is absent.
 
 Maps are mesh-derived AO / tangent normal / pointiness curvature, composited into authored
 2048² (LOD0) basecolor / normal / ORM. Unique non-overlapping UV0. No kit textures.
@@ -2025,24 +2139,24 @@ Maps are mesh-derived AO / tangent normal / pointiness curvature, composited int
 ## LOD
 
 LOD0 {inspect['lodTriangles']['lod0']} / 12000. LOD1 {inspect['lodTriangles']['lod1']} / 3000.
-LOD2 {inspect['lodTriangles']['lod2']} / 900. A-frame, drum/cable tangent, platform, and both
-lamps survive. Hidden faces evaluated per LOD only.
+LOD2 {inspect['lodTriangles']['lod2']} / 900. Four shoe corners, open shaft marker, A-planform,
+drum/sheave path, platform, and both lamps survive. Hidden faces evaluated per LOD only.
 
 ## Remaining visual risk (honest)
 
-- Site register (~19 px/cell, straight down) flattens the three-cell height; identity then
-  depends on the shoe diamond, collar hole, and A-planform.
+- Site register (~19 px/cell, straight down) still flattens three-cell height; identity is the
+  four-shoe diamond, the dark collar hole, and the head-frame mass — not a filled rounded square.
 - I-beam webs may alias at 120 px.
 - Independent G1/G2/G4 review has not run.
 """
-    (FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md").write_text(audit, encoding="utf-8")
+    write_text_lf(FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md", audit)
 
     contract_json = {
         "schemaVersion": "1.0",
         "assetId": ASSET_ID,
         "root": ROOT_NAME,
         "packet": "PQ-131.05",
-        "cycle": 1,
+        "cycle": CYCLE,
         "currentState": "design_candidate",
         "candidateHash": inventory["sha256"],
         "forwardAxis": "+X",
@@ -2057,11 +2171,13 @@ lamps survive. Hidden faces evaluated per LOD only.
             "safety yellow", "radio tower", "oil pump", "generic truss", "toy crane",
             "flat arch", "box stack", "glowing bar", "glowing sphere", "chrome",
             "plastic", "billboard", "halo", "soft card", "generic grid",
+            "X-grid A-frame", "yellow-black shoe tape", "filled rounded square",
+            "pumpjack", "box on stilts", "silhouette padding",
         ],
         "allSupportedViewZonesClassified": False,
         "gatesOpen": ["G1", "G2", "G4", "G7"],
     }
-    (FAMILY / "MATERIAL_CONTRACT.json").write_text(json.dumps(contract_json, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "MATERIAL_CONTRACT.json", json.dumps(contract_json, indent=2) + "\n")
 
     def row(mid, state, still, clay, fake, notes, **extra):
         rec = {
@@ -2088,7 +2204,7 @@ lamps survive. Hidden faces evaluated per LOD only.
         "clayStillReadsAsPrimitives": False,
         "independentReview": "not_launched",
         "independentReviewer": None,
-        "cycle": 1,
+        "cycle": CYCLE,
         "disposition": "review_pending",
         "forbidden": {
             "factoryLoftPlusBoxes": False,
@@ -2099,7 +2215,7 @@ lamps survive. Hidden faces evaluated per LOD only.
         },
         "rows": [
             row("MTX-01", "implemented", graz, "pass", True, "Angle bevel then weighted normals, shade 28°.", bevelWidthM=0.006, shadeAngleDeg=SHADE_ANGLE),
-            row("MTX-03", "implemented", clay, "pass", True, "Shaft collar is an annulus with wall thickness; the well is empty."),
+            row("MTX-03", "implemented", clay, "pass", True, "Shaft collar is an annulus with wall thickness; the well is empty; drum is offset off the hole."),
             row("MTX-16", "implemented", top, "pass", True, "Unique non-overlapping UV0 packed per LOD."),
             row("MTX-20", "implemented", nrm, "pass", True, "High duplicate with extra 3 mm bevel as bake source."),
             row("MTX-21", "implemented", nrm, "pass", True, "Cage extrusion 0.04 wu on selected-to-active normal bake."),
@@ -2112,14 +2228,14 @@ lamps survive. Hidden faces evaluated per LOD only.
             row("MTX-32", "implemented", top, "pass", True, "Authored 2048 albedo from ID × AO × causal wear, not a tinted sheet."),
             row("MTX-33", "implemented", orm, "pass", True, "ORM: R=AO G=rough B=metal, role-varying."),
             row("MTX-39", "implemented", top, "pass", True, "Dirt in concave AO, oil in winch cavities."),
-            row("MTX-46", "implemented", clay, "pass", True, "No rover yellow, neon, lattice-as-identity, glowing bar, or kit donor."),
+            row("MTX-46", "implemented", clay, "pass", True, "No rover yellow, neon, lattice-as-identity, glowing bar, kit donor, or yellow-black shoe tape."),
             row("MTX-50", "implemented", inventory["partsSource"], "pass", True, "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."),
-            row("MTX-52", "implemented", edge, "pass", True, "Macro from cited head-frame/winch stills: A-legs over a well, not a primitive stack."),
+            row("MTX-52", "implemented", edge, "pass", True, "Macro: open A-legs over a well, offset winch, crown sheave, not a primitive stack or X-grid."),
             row("MTX-53", "not_applicable", None, "pass", True, "Manufactured machine, not a rock/sculpt."),
             row("MTX-54", "not_applicable", None, "pass", True, "New asset; no prior accepted derrick to revert."),
         ],
     }
-    (FAMILY / "TECHNIQUE_LEDGER.json").write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "TECHNIQUE_LEDGER.json", json.dumps(ledger, indent=2) + "\n")
     return hashes, epoch
 
 
@@ -2148,6 +2264,23 @@ def validate_inventory(inventory, inspect, lod_reports):
             # LOD roots may be mesh names rather than empty nodes
             if n not in inventory.get("meshNames", []):
                 errors.append(f"missing LOD root {n}")
+    if DRUM_C.x > -0.40:
+        errors.append(f"drum not offset off the well: x={DRUM_C.x}")
+    # Sheave and cable rise/drop are joined into LOD*_derrick / LOD*_cable. Presence
+    # is the joined LOD meshes plus the offset drum; name tokens do not survive join.
+    freeze = CYCLE_001_DIR / "HASHES.json"
+    if freeze.exists():
+        frozen = json.loads(freeze.read_text(encoding="utf-8"))
+        for name, expected in (frozen.get("stills") or {}).items():
+            path = CYCLE_001_DIR / name
+            if not path.exists():
+                errors.append(f"cycle_001 still missing: {name}")
+            else:
+                actual = sha256(path)
+                if actual != expected:
+                    errors.append(f"cycle_001 {name} hash mutated")
+    else:
+        errors.append("cycle_001 HASHES.json freeze missing")
     return errors
 
 
@@ -2170,12 +2303,23 @@ def list_write_set():
     return owned
 
 
+def freeze_cycle_001() -> None:
+    """Never rewrite Cycle 01 stills. Snapshot HASHES if the freeze file is absent."""
+    CYCLE_001_DIR.mkdir(parents=True, exist_ok=True)
+    freeze = CYCLE_001_DIR / "HASHES.json"
+    family_hashes = FAMILY / "HASHES.json"
+    if not freeze.exists() and family_hashes.exists():
+        shutil.copy2(family_hashes, freeze)
+
+
 def main():
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     REF_DIR.mkdir(parents=True, exist_ok=True)
+    freeze_cycle_001()
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+    DIAG_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
