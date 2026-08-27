@@ -13,6 +13,8 @@ import { wingMorale, wingMoraleState } from '../src/systems/wingMorale.js';
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/systems/wingMorale.js', import.meta.url)),
   'src/systems/wingMorale.js exists');
+assert.ok(existsSync(new URL('../src/combat/killCausality.js', import.meta.url)),
+  'src/combat/killCausality.js exists');
 
 let sections = 0;
 function ok(label) {
@@ -29,6 +31,7 @@ function guarded(fn) {
 }
 
 guarded(testLeaderKillScattersSurvivorsAndSpeaksOnce);
+guarded(testPhysicalLeaderKillExtendsMoraleShock);
 guarded(testFallbackLeaderUsesHighestMass);
 guarded(testEscortDeathEnragesWard);
 guarded(testCommsDisableBlocksReinforcement);
@@ -132,6 +135,7 @@ function kill(t, entity, overrides = {}) {
     type: entity.type,
     pos: { x: entity.pos.x, z: entity.pos.z },
     victimClass: overrides.victimClass || 'raider',
+    ...(overrides.presentation ? { presentation: overrides.presentation } : {}),
   });
 }
 
@@ -141,6 +145,8 @@ function testLeaderKillScattersSurvivorsAndSpeaksOnce() {
   kill(t, leader);
   assert.equal(t.log.formation.length, 1, 'leader kill emits one formation-broken event');
   assert.equal(t.log.broken.length, 1, 'leader kill emits one wing-morale receipt');
+  assert.equal(t.log.broken[0].shockMultiplier, 1, 'ordinary leader kill keeps the established window');
+  assert.equal(t.log.broken[0].duration, 6, 'ordinary scatter remains six seconds');
   assert.equal(t.log.flees.length, 2, 'both surviving wingmates emit ai:flee');
   for (const survivor of [left, right]) {
     assert.equal(survivor.data.ai.forceFlee, true, 'survivor gets forceFlee');
@@ -157,6 +163,51 @@ function testLeaderKillScattersSurvivorsAndSpeaksOnce() {
   assert.equal(left.data.morale, undefined, 'scatter morale clears after morale window');
   assert.equal(wingMoraleState(t.state).scatter[left.id], undefined, 'state scatter receipt clears');
   ok('leader kill scatters survivors and speaks once');
+}
+
+function testPhysicalLeaderKillExtendsMoraleShock() {
+  const t = boot(816);
+  const { leader, left, right } = spawnSquad(t, 'wm_impact');
+  kill(t, leader, {
+    presentation: Object.freeze({
+      version: 1,
+      cause: 'terrain_collision',
+      playerCaused: true,
+      surface: 'terrain',
+      position: Object.freeze({ x: 205, z: 2 }),
+      direction: Object.freeze({ x: 1, z: 0 }),
+      normal: Object.freeze({ x: -1, z: 0 }),
+      targetVelocity: Object.freeze({ x: 90, z: 0 }),
+      impact: Object.freeze({ deltaV: 30, exchangedMomentum: 1400, impactDamage: 120 }),
+    }),
+  });
+
+  const broken = t.log.broken[0];
+  assert.deepEqual(broken.destruction, {
+    version: 1,
+    cause: 'terrain_collision',
+    playerCaused: true,
+    surface: 'terrain',
+  }, 'formation break retains compact physical causality');
+  assert.equal(broken.shockMultiplier, 1.6, 'terrain execution applies maximum bounded morale shock');
+  assert.ok(Math.abs(broken.duration - 9.6) < 1e-12,
+    'terrain execution extends the base six-second scatter window');
+  assert.equal(t.log.formation[0].shockMultiplier, 1.6,
+    'formation-broken readers receive the shock strength');
+  assert.ok(t.log.flees.every((event) => event.destructionCause === 'terrain_collision'),
+    'flee intents preserve why the formation broke');
+  assert.ok(t.log.flees.every((event) => event.shockMultiplier === 1.6),
+    'each survivor receives the same deterministic shock strength');
+
+  t.sim.runTicks(400);
+  for (const survivor of [left, right]) {
+    assert.equal(survivor.data.ai.forceFlee, true,
+      'physical execution keeps survivors scattered after an ordinary kill would recover');
+  }
+  t.sim.runTicks(200);
+  assert.equal(left.data.ai.forceFlee, undefined, 'physical shock still expires and returns control to AI');
+  assert.equal(right.data.ai.forceFlee, undefined, 'all survivors recover after the bounded extension');
+  ok('terrain-killing a leader earns a longer but finite tactical morale collapse');
 }
 
 function testFallbackLeaderUsesHighestMass() {
@@ -242,8 +293,9 @@ function testPackageAndRegistryWiring() {
     'wingMorale remains before later gameplay readers');
 
   const source = readFileSync(new URL('../src/systems/wingMorale.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,
-    'wingMorale path uses no RNG, wall-clock time, or timers');
+  const causalitySource = readFileSync(new URL('../src/combat/killCausality.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(`${source}\n${causalitySource}`, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,
+    'wingMorale and causality paths use no RNG, wall-clock time, or timers');
   assert.doesNotMatch(source, /grantCredits|chargeCredits|addCargo|removeCargo|applyRep/,
     'wingMorale does not directly write economy, cargo, or reputation');
   ok('package, registry, determinism, and single-writer guards are pinned');

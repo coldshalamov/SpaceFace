@@ -1,0 +1,44 @@
+name: Targeted kill causality validation
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/pr-kill-causality-targeted.yml'
+      - 'src/combat/killCausality.js'
+      - 'src/systems/combatOutcome.js'
+      - 'src/systems/wingMorale.js'
+      - 'src/systems/survivalStyle.js'
+      - 'scripts/check-combat-outcome.mjs'
+      - 'scripts/check-wing-morale.mjs'
+      - 'test/physical-kill-causality.test.mjs'
+      - 'test/intentional-combat-outcomes.test.mjs'
+      - 'test/crucible-survival-style.test.mjs'
+
+jobs:
+  targeted:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            scripts
+            test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Syntax and focused contracts
+        run: |
+          node --check src/combat/killCausality.js
+          node --check src/systems/combatOutcome.js
+          node --check src/systems/wingMorale.js
+          node --check src/systems/survivalStyle.js
+          npm run check:combat-outcome
+          npm run check:wing-morale
+          node --test test/crucible-survival-style.test.mjs
+          node --test test/physical-kill-causality.test.mjs test/intentional-combat-outcomes.test.mjs

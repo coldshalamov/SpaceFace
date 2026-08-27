@@ -4,12 +4,26 @@
 // live AI roster shape already written on entities (`data.ai.squadId` / `preferredRole`) and writes
 // only short-lived morale intent flags on those same AI records.
 
+import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID } from '../data/titles.js';
 
 const STATE_VERSION = 1;
 const SCATTER_S = 6;
 const ROLE_LEADER = 'leader';
 const ROLE_ESCORT = 'escort';
+
+// Morale owns the gameplay tuning; the shared kill-causality layer owns only facts.
+const MORALE_SHOCK_BY_KILL_CAUSE = Object.freeze({
+  [KillCause.GENERIC]: 1,
+  [KillCause.KINETIC]: 1,
+  [KillCause.EXPLOSIVE]: 1.15,
+  [KillCause.SHIP_COLLISION]: 1.35,
+  [KillCause.TERRAIN_COLLISION]: 1.6,
+});
+
+function moraleShockMultiplierForKillCause(cause) {
+  return MORALE_SHOCK_BY_KILL_CAUSE[cause] || 1;
+}
 
 function ensureState(state) {
   if (!state) return null;
@@ -206,7 +220,10 @@ export const wingMorale = {
     if (own.brokenSquads[squadId]) return own.brokenSquads[squadId];
 
     const now = state.simTime || 0;
-    const until = now + SCATTER_S;
+    const destruction = compactKillCausality(payload, state.playerId);
+    const shockMultiplier = moraleShockMultiplierForKillCause(destruction.cause);
+    const duration = SCATTER_S * shockMultiplier;
+    const until = now + duration;
     const survivors = members.filter((entity) => entity && entity.id !== killed.id && entity.alive !== false);
     if (!survivors.length) return null;
     const rec = {
@@ -214,6 +231,9 @@ export const wingMorale = {
       leaderId: killed.id,
       survivorIds: survivors.map((entity) => entity.id),
       reason: 'leader_killed',
+      destruction,
+      shockMultiplier,
+      duration,
       tick: state.tick || 0,
       t: now,
       until,
@@ -221,7 +241,14 @@ export const wingMorale = {
     own.brokenSquads[squadId] = rec;
     for (const survivor of survivors) this._scatter(survivor, rec, payload);
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('ai:formationBroken', { groupId: squadId, squadId, leaderId: killed.id, reason: rec.reason });
+      this.bus.emit('ai:formationBroken', {
+        groupId: squadId,
+        squadId,
+        leaderId: killed.id,
+        reason: rec.reason,
+        destruction,
+        shockMultiplier,
+      });
       this.bus.emit('wingMorale:broken', { ...rec });
     }
     this._sayBroken(squadId);
@@ -235,7 +262,8 @@ export const wingMorale = {
     const ai = data.ai || (data.ai = {});
     const intent = data.intent || (data.intent = {});
     const auraActive = thunderchildAuraApplies(state, entity);
-    const until = rec.t + SCATTER_S * (auraActive ? 1 - THUNDERCHILD.aura.morale : 1);
+    const duration = Number.isFinite(rec.duration) && rec.duration > 0 ? rec.duration : SCATTER_S;
+    const until = rec.t + duration * (auraActive ? 1 - THUNDERCHILD.aura.morale : 1);
     ai.forceFlee = true;
     ai.fsm = 'flee';
     ai._wingMoraleUntil = until;
@@ -246,6 +274,8 @@ export const wingMorale = {
       reason: rec.reason,
       leaderId: rec.leaderId,
       until,
+      destructionCause: rec.destruction && rec.destruction.cause || 'generic',
+      shockMultiplier: rec.shockMultiplier || 1,
       auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
     };
     data.morale = 'scattered';
@@ -256,6 +286,8 @@ export const wingMorale = {
       squadId: rec.squadId,
       reason: rec.reason,
       until,
+      destructionCause: rec.destruction && rec.destruction.cause || 'generic',
+      shockMultiplier: rec.shockMultiplier || 1,
       auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
     };
     if (this.bus && typeof this.bus.emit === 'function') {
@@ -264,6 +296,8 @@ export const wingMorale = {
         squadId: rec.squadId,
         reason: 'wingMorale:leaderDown',
         until,
+        destructionCause: rec.destruction && rec.destruction.cause || 'generic',
+        shockMultiplier: rec.shockMultiplier || 1,
         auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
       });
     }
