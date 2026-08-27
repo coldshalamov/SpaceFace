@@ -1,0 +1,26 @@
+{
+  "packet": "PQ-131.06",
+  "cycle": 1,
+  "state": "design_candidate",
+  "gates": {
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "technical": "evidence_ready"
+  },
+  "note": "Source candidate only. Not wired, not released, not accepted.",
+  "kitSheet": "kit_sheet_works_top.png + kit_sheet_works_site.png",
+  "siteFamiliesWithoutEmission": "kit_sheet_works_site.png: gold tray-cable row vs dark roller-lane row at 19 px/cell, no bloom identity.",
+  "snap": "join_*_straight_corner_*.png: cell-face ports meet; INVENTORY.json port widths 0.48 power / 0.76 lane.",
+  "originalResolutionInspection": {
+    "stills": "1920x1080 works camera",
+    "crops": "evidence/cycle_01/crops/",
+    "brokenJoins": "none seen on straight-to-corner of either family",
+    "flatRibbons": "absent — power has tray walls and a jacket in the trough; lane has rails, side rollers, dark belt",
+    "floatingClamps": "absent — saddles sit on the tray floor",
+    "glowDependence": "absent — clay stills and site stills still separate the two families with emission off",
+    "remainingCycleNotes": "junction boxes still read as large lids with short stubs; T/cross centres are box fittings, not filleted weldments; some LOD0 counts sit under 1k"
+  },
+  "validation": "python tools/blender/build_works_conduit_kit.py --check -> ok, errorCount 0",
+  "inventory": "assets/works/conduit_kit/INVENTORY.json"
+}

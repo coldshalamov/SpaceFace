@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "packet": "PQ-131.06",
+  "cycle": 1,
+  "cellWu": 2.2,
+  "halfExtent": 1.1,
+  "authoring": {
+    "basis": "Blender Z-up, origin at cell centre",
+    "mountPlane": "z = 0 (bracket / tray feet sit on the mount)",
+    "awayFromMount": "+Z",
+    "primaryPort": "+X",
+    "branchPort": "+Y",
+    "export": "glTF Y-up (Blender +Z -> glTF +Y, Blender +Y -> glTF -Z, Blender +X -> glTF +X)",
+    "runtimeSeat": "works renderer rotates Y-up authored places +90 deg around X so the pad faces +Z"
+  },
+  "connectivityMask": {
+    "source": "src/systems/siteLogistics.js connectivityMask",
+    "bits": {
+      "1": { "name": "N", "sim": [0, -1], "blenderPort": "+Y", "note": "renderer dy = -dr so N draws toward +Y in three.js overlay space" },
+      "2": { "name": "E", "sim": [1, 0], "blenderPort": "+X" },
+      "4": { "name": "S", "sim": [0, 1], "blenderPort": "-Y" },
+      "8": { "name": "W", "sim": [-1, 0], "blenderPort": "-X" }
+    },
+    "topologyMap": {
+      "1-bit": "end",
+      "2-bit-opposite": "straight (rotate so ports match the axis)",
+      "2-bit-adjacent": "corner (rotate so the two ports match the bits)",
+      "3-bit": "t",
+      "4-bit": "cross",
+      "serviceNode": "junction (3+ meetings, or an explicit service box)"
+    }
+  },
+  "portsByKind": {
+    "straight": ["-X", "+X"],
+    "corner": ["+X", "+Y"],
+    "t": ["-X", "+X", "+Y"],
+    "cross": ["-X", "+X", "-Y", "+Y"],
+    "end": ["+X"],
+    "junction": ["-X", "+X", "-Y", "+Y"]
+  },
+  "portFace": {
+    "distance": 1.1,
+    "toleranceWu": 0.002,
+    "rule": "Every port of a family shares one YZ (or XZ) section at the cell face. Adjacent cells meet at the shared face; no overlap, no gap."
+  },
+  "sections": {
+    "power": {
+      "trayOuterWidth": 0.48,
+      "trayHeight": 0.20,
+      "trayWall": 0.032,
+      "cableRadius": 0.070,
+      "cableCenterZ": 0.134,
+      "mountClearanceZ": 0.020
+    },
+    "lane": {
+      "frameOuterWidth": 0.76,
+      "frameHeight": 0.26,
+      "railThickness": 0.040,
+      "rollerRadius": 0.045,
+      "rollerCenterZ": 0.088,
+      "beltTopZ": 0.139,
+      "mountClearanceZ": 0.018
+    }
+  },
+  "floorToWall": {
+    "rule": "Local +Z is always away from the mount. Identity is floor. Wall: rotate +90 deg around the run axis so +Z points into the tunnel.",
+    "xRunOnWallFacingPlusY": "rotate +90 deg around local +X (right-hand)"
+  },
+  "hooks": {
+    "power": "powered — recessed contact slot / gland window, never the jacket",
+    "lane": "flow_mesh — belt or chain riding the rollers; U along travel for UV scroll"
+  }
+}

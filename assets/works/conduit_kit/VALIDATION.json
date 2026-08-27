@@ -1,0 +1,1384 @@
+{
+  "ok": true,
+  "errors": [],
+  "pieces": [
+    {
+      "id": "place_works_conduit_power_straight",
+      "family": "power",
+      "kind": "straight",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
+      "bytes": 364936,
+      "sha256": "CA4D71279F5480D878FAE99AA6A3EF4921A6C47F209D743749444808AA8AB74F",
+      "contract": {
+        "assetId": "place_works_conduit_power_straight",
+        "family": "power",
+        "kind": "straight",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_straight",
+        "place_works_conduit_power_straight"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 780,
+        "LOD1_Merged_Material_Atlas": 328,
+        "LOD2_Merged_Material_Atlas": 90,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 792,
+        "1": 340,
+        "2": 102
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "family": "power",
+      "kind": "corner",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
+      "bytes": 368412,
+      "sha256": "06C41E5A890935A049EDD6E42616123C96A66D7CB4432AC76C48281AC2BB8F11",
+      "contract": {
+        "assetId": "place_works_conduit_power_corner",
+        "family": "power",
+        "kind": "corner",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_corner",
+        "place_works_conduit_power_corner"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 840,
+        "LOD1_Merged_Material_Atlas": 384,
+        "LOD2_Merged_Material_Atlas": 210,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 852,
+        "1": 396,
+        "2": 222
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "family": "power",
+      "kind": "t",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_t.glb",
+      "bytes": 419516,
+      "sha256": "8F15CE7FE47E011CF6D9C6D52FFF4491FB49309ACEAB48473D30101D272348E8",
+      "contract": {
+        "assetId": "place_works_conduit_power_t",
+        "family": "power",
+        "kind": "t",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_t",
+        "place_works_conduit_power_t"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 1148,
+        "LOD1_Merged_Material_Atlas": 384,
+        "LOD2_Merged_Material_Atlas": 204,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 1160,
+        "1": 396,
+        "2": 216
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "family": "power",
+      "kind": "cross",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
+      "bytes": 464920,
+      "sha256": "8E3D35DDFDC7E91657E27A14562F767B232B94B1C019B183D71ABA5F7BEA649D",
+      "contract": {
+        "assetId": "place_works_conduit_power_cross",
+        "family": "power",
+        "kind": "cross",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_cross",
+        "place_works_conduit_power_cross"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 1488,
+        "LOD1_Merged_Material_Atlas": 496,
+        "LOD2_Merged_Material_Atlas": 264,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 1500,
+        "1": 508,
+        "2": 276
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "family": "power",
+      "kind": "end",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_end.glb",
+      "bytes": 360168,
+      "sha256": "BF514FE9D17CCF435D6D3CFCC677B682D584155B1E5DA8C19DA91C9A499D8F6D",
+      "contract": {
+        "assetId": "place_works_conduit_power_end",
+        "family": "power",
+        "kind": "end",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_end",
+        "place_works_conduit_power_end"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 672,
+        "LOD1_Merged_Material_Atlas": 356,
+        "LOD2_Merged_Material_Atlas": 142,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 684,
+        "1": 368,
+        "2": 154
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "family": "power",
+      "kind": "junction",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
+      "bytes": 436528,
+      "sha256": "7AA12DC794E9427DC3A4D87486AB10FDC773322D2F13FBBEA6C65E0C6C05785D",
+      "contract": {
+        "assetId": "place_works_conduit_power_junction",
+        "family": "power",
+        "kind": "junction",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "service_lid",
+        "power_junction",
+        "place_works_conduit_power_junction"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 1116,
+        "LOD1_Merged_Material_Atlas": 508,
+        "LOD2_Merged_Material_Atlas": 276,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 1128,
+        "1": 520,
+        "2": 288
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.48,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.10200000000000001
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "family": "lane",
+      "kind": "straight",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
+      "bytes": 296424,
+      "sha256": "F13C562DA211BB2941FF5B54FC7A3DD7A96B6398747D8477B4B014D3315CBB8F",
+      "contract": {
+        "assetId": "place_works_conduit_lane_straight",
+        "family": "lane",
+        "kind": "straight",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_straight",
+        "place_works_conduit_lane_straight"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 148,
+        "LOD1_flow_mesh": 32,
+        "LOD2_flow_mesh": 32,
+        "LOD0_Merged_Material_Atlas": 556,
+        "LOD1_Merged_Material_Atlas": 284,
+        "LOD2_Merged_Material_Atlas": 128
+      },
+      "lodTriangles": {
+        "0": 704,
+        "1": 316,
+        "2": 160
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "family": "lane",
+      "kind": "corner",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
+      "bytes": 322488,
+      "sha256": "45296467C68148DCF1D888AE5E7BAFA5CFF81033051350E9E311A41A68D297B2",
+      "contract": {
+        "assetId": "place_works_conduit_lane_corner",
+        "family": "lane",
+        "kind": "corner",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_corner",
+        "place_works_conduit_lane_corner"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 172,
+        "LOD1_flow_mesh": 72,
+        "LOD2_flow_mesh": 56,
+        "LOD0_Merged_Material_Atlas": 768,
+        "LOD1_Merged_Material_Atlas": 376,
+        "LOD2_Merged_Material_Atlas": 224
+      },
+      "lodTriangles": {
+        "0": 940,
+        "1": 448,
+        "2": 280
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "family": "lane",
+      "kind": "t",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
+      "bytes": 360192,
+      "sha256": "536B49D03338CBE8DD28A852DF25290B893BD082C996815611C3077369D70E3C",
+      "contract": {
+        "assetId": "place_works_conduit_lane_t",
+        "family": "lane",
+        "kind": "t",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_t",
+        "place_works_conduit_lane_t"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 180,
+        "LOD1_flow_mesh": 72,
+        "LOD2_flow_mesh": 72,
+        "LOD0_Merged_Material_Atlas": 796,
+        "LOD1_Merged_Material_Atlas": 508,
+        "LOD2_Merged_Material_Atlas": 300
+      },
+      "lodTriangles": {
+        "0": 976,
+        "1": 580,
+        "2": 372
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "family": "lane",
+      "kind": "cross",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
+      "bytes": 406676,
+      "sha256": "9B1B9E1D3C7C518BB398ACDDC6AF2BDDE15CAFC061FD513A60F826F779B083C6",
+      "contract": {
+        "assetId": "place_works_conduit_lane_cross",
+        "family": "lane",
+        "kind": "cross",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_cross",
+        "place_works_conduit_lane_cross"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 240,
+        "LOD1_flow_mesh": 96,
+        "LOD2_flow_mesh": 96,
+        "LOD0_Merged_Material_Atlas": 1028,
+        "LOD1_Merged_Material_Atlas": 644,
+        "LOD2_Merged_Material_Atlas": 396
+      },
+      "lodTriangles": {
+        "0": 1268,
+        "1": 740,
+        "2": 492
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "family": "lane",
+      "kind": "end",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
+      "bytes": 286000,
+      "sha256": "82B164B679AAB1BF0155FD13A7788049866041FDD080B3B84679B688623E7A0E",
+      "contract": {
+        "assetId": "place_works_conduit_lane_end",
+        "family": "lane",
+        "kind": "end",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_end",
+        "place_works_conduit_lane_end"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 96,
+        "LOD1_flow_mesh": 24,
+        "LOD2_flow_mesh": 24,
+        "LOD0_Merged_Material_Atlas": 536,
+        "LOD1_Merged_Material_Atlas": 228,
+        "LOD2_Merged_Material_Atlas": 120
+      },
+      "lodTriangles": {
+        "0": 632,
+        "1": 252,
+        "2": 144
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.77,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "family": "lane",
+      "kind": "junction",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
+      "bytes": 350332,
+      "sha256": "3F52D89A2F2E3E71ADF168C3B521F7C5475ED7EB9E9EA398517ACEDCB67973FE",
+      "contract": {
+        "assetId": "place_works_conduit_lane_junction",
+        "family": "lane",
+        "kind": "junction",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "service_lid",
+        "lane_junction",
+        "place_works_conduit_lane_junction"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 112,
+        "LOD1_flow_mesh": 64,
+        "LOD2_flow_mesh": 64,
+        "LOD0_Merged_Material_Atlas": 732,
+        "LOD1_Merged_Material_Atlas": 420,
+        "LOD2_Merged_Material_Atlas": 292
+      },
+      "lodTriangles": {
+        "0": 844,
+        "1": 484,
+        "2": 356
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.76,
+          "height": 0.268,
+          "zMin": 0.0,
+          "zMax": 0.268,
+          "zRef": 0.073
+        }
+      ],
+      "images": 3
+    }
+  ],
+  "atlases": [
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_basecolor.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "999171C54FA62C9F4FB92CD08344DF6981889ED923CF5DD3FA62ACEBC1D78F0B"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_normal.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "E43519CAE553C7DBA53971C31B95DC9095EE85BF71377B96BA1CCE870BB5FE78"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_orm.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "B90AE799A4933BB910083FD7CC5001693399BDCAE14F0092A821895FD4479F21"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_basecolor.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "B71879EFBD02C9E0CA786CDA20B66725778E6EA2978A8DD8D441DB9F219BC10D"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_normal.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "2593C0C15E506A6735D9F642FD9F97573FF68EB8BA76C153E2A2138EF71EB218"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_orm.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "31F18204C461114F376AF61D8ECB4B192D2D021298E0EA95BB9ACC38BFC8F0E9"
+    }
+  ],
+  "master": {
+    "path": "assets/works/conduit_kit/source/works_conduit_kit.glb",
+    "bytes": 2181732,
+    "sha256": "9514F591E5EB1B18281E76C99B03CAA0876328927C2881C751009C48C5FEB85E"
+  },
+  "errorCount": 0
+}
