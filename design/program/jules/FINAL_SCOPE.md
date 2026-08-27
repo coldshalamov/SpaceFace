@@ -1,0 +1,1 @@
+Scope frozen: directed Jules task generation, local integration law, and validation only.
