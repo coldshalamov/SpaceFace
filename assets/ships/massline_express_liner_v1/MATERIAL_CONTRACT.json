@@ -5,7 +5,7 @@
   "scope": "PQ-049.01 source candidate; chase-camera evidence only; not wired",
   "componentReferenceDecision": "native_imagegen",
   "allSupportedViewZonesClassified": false,
-  "candidateHash": "4109ACADF65F755F1655A7667F14DA1A5746B1E5313650CDED1156FCCCED9574",
+  "candidateHash": "CC243E8499EBF2D6FA451CB30F9A369CFE9B1C8191737FF9B434633A3ADF4827",
   "supportedViews": [
     "play_chase",
     "play_chase_abeam",
@@ -92,10 +92,10 @@
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_ServicePrimer_Galvanized"],
       "functionOriginAndServiceContext": "formed cooling and service route from passenger systems to aft drive roots",
-      "substrateManufactureAndFinish": "folded hat-section covers with dark anodized roots and dull removable service plates",
-      "interfacesLoadAccessAndHeatPaths": "three broad covers bridge bulkhead stations and terminate inside drive-root housings",
+      "substrateManufactureAndFinish": "one hat-section equipment well with dark anodized roots, two differently sized radiator modules, and one offset repair plate",
+      "interfacesLoadAccessAndHeatPaths": "the well bridges bulkhead stations and feeds the aft load ring; radiators are recessed service masses, not a row of lids",
       "expectedOpticalResponse": "dry satiny dark frame and dull service plates; slot depth must read before any emission",
-      "forbiddenReads": ["fin forest", "floating greebles", "generic antenna spine", "toy ribs"]
+      "forbiddenReads": ["fin forest", "floating greebles", "generic antenna spine", "toy ribs", "repeated roof boxes"]
     },
     {
       "zone": "aft_drive_booms_and_recessed_throats",
@@ -116,10 +116,10 @@
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: equatorial passenger/service walkways rooted into the pressure-drum chine, carrying dock contacts without becoming wings.",
-      "substrateManufactureAndFinish": "formed ceramic-painted corridor shells with dark anodized frames and inset smoked glass",
-      "interfacesLoadAccessAndHeatPaths": "octagonal gallery section lofts into bulkhead collars; dock jambs sit on the outer face; stanchions return into the drum",
-      "expectedOpticalResponse": "same warm ceramic as the drum with dark frame and translucent glass, not a flat card or fin",
-      "forbiddenReads": ["flat wing", "disc flange", "fin card", "floating box"]
+      "substrateManufactureAndFinish": "hollow ceramic-painted corridor shells with visible wall thickness, dark anodized frames, and inset smoked dielectric glass over a dark cavity",
+      "interfacesLoadAccessAndHeatPaths": "octagonal corridor section returns into bulkhead collars; dock jambs sit on the outer face; load shoes return into the drum chine",
+      "expectedOpticalResponse": "same warm ceramic as the drum with dark frame and smoked glass over volume, not a flat card or fin",
+      "forbiddenReads": ["flat wing", "disc flange", "fin card", "floating box", "I-beam rail"]
     },
     {
       "zone": "wayfinding_fixtures_and_sparse_markings",
@@ -135,9 +135,9 @@
     }
   ],
   "knownOpenItems": [
-    "Cycle 30 source candidate and chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 4109ACADF65F755F1655A7667F14DA1A5746B1E5313650CDED1156FCCCED9574.",
+    "Cycle 31 source candidate and chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 CC243E8499EBF2D6FA451CB30F9A369CFE9B1C8191737FF9B434633A3ADF4827.",
     "G3 needs an independent checker/stretch review; unique UV0 is not a self-pass.",
     "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests.",
-    "Abeam width 8.28% is inside 8–22% after the manufactured 1.81:1 barrel correction. Independent review still owns the saucer/needle/readability call."
+    "Abeam width 9.77% is inside the cycle-31 9–12% margin and the legal 8–22% band. Independent review still owns the KEEP call. Remaining risk: hull can still read as a large warm painted volume at D=144; corridor glass is smoked dielectric, not transmissive; drive vanes are rooted but blocky."
   ]
 }
