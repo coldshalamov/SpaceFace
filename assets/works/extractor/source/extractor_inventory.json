@@ -5,9 +5,9 @@
   "partsSource": "assets/ships/parts/works/place_works_extractor.glb",
   "blend": "assets/works/extractor/source/extractor.blend",
   "lodTriangles": {
-    "lod0": 3580,
-    "lod1": 1736,
-    "lod2": 564
+    "lod0": 3192,
+    "lod1": 944,
+    "lod2": 436
   },
   "hooks": [
     "head_face",
@@ -33,22 +33,22 @@
   ],
   "bbox": {
     "min": [
-      -0.94,
-      -0.756,
+      -0.945,
+      -0.7976,
       0.0
     ],
     "max": [
-      0.975,
-      0.756,
+      0.92,
+      0.7976,
       0.78
     ],
     "size": [
-      1.915,
-      1.512,
+      1.865,
+      1.5952,
       0.78
     ]
   },
-  "bytes": 8189132,
-  "sha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0",
-  "partsSha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0"
+  "bytes": 7180688,
+  "sha256": "83195A4138464004C6F80C7730EDFCEBAD0E2174A930CE22AEF51DCF6C203178",
+  "partsSha256": "83195A4138464004C6F80C7730EDFCEBAD0E2174A930CE22AEF51DCF6C203178"
 }
