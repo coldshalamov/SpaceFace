@@ -1,0 +1,91 @@
+{
+  "schema": "spaceface.materialContract.v1",
+  "assetId": "place_works_massline_core",
+  "identity": "SF_WORKS_MASSLINE_CORE_V1",
+  "packet": "PQ-131.02",
+  "cycle": 1,
+  "state": "design_candidate",
+  "disposition": "review_pending",
+  "allSupportedViewZonesClassified": false,
+  "supportedViews": [
+    "works_top",
+    "works_edge",
+    "works_site"
+  ],
+  "zones": [
+    {
+      "id": "collar_paint",
+      "disposition": "billed",
+      "substrate": "formed steel plate",
+      "finish": "dark alkyd dielectric",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominatesView": true
+    },
+    {
+      "id": "wear_metal",
+      "disposition": "billed",
+      "substrate": "machined steel",
+      "finish": "bare / grease / abrasion",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesView": false
+    },
+    {
+      "id": "well_liner",
+      "disposition": "billed",
+      "substrate": "dry refractory mineral",
+      "finish": "dusty, unglazed",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesView": true
+    },
+    {
+      "id": "service_accent",
+      "disposition": "billed",
+      "substrate": "primed steel hatch",
+      "finish": "restrained warm oxide",
+      "supportedViews": [
+        "works_top"
+      ],
+      "dominatesView": false
+    },
+    {
+      "id": "lamp_lens",
+      "disposition": "billed",
+      "substrate": "recessed dielectric lens",
+      "finish": "small warm emissive",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesView": false
+    }
+  ],
+  "forbidden": [
+    "safety-yellow livery",
+    "emissive ring or paint",
+    "torus/coin/tire/halo silhouette",
+    "generic grid or noise recipe",
+    "shiny plastic",
+    "uniform edge wear",
+    "leather",
+    "billboard",
+    "decal-hole",
+    "flat AO"
+  ],
+  "componentReferenceDecision": "not_needed",
+  "citedReferences": [
+    "assets/concept/archetypes/concept_station_mining.jpg",
+    "assets/concept/landmarks/concept_landmark_driller.jpg",
+    "assets/works/rover/reference/ref_01_overhead_crawler.png",
+    "assets/works/rover/reference/ref_03_boom_bit.png"
+  ]
+}
