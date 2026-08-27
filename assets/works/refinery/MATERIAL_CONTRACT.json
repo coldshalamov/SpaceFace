@@ -8,7 +8,7 @@
     "currentState": "design_candidate",
     "targetState": "accepted",
     "packet": "PQ-131.04",
-    "cycle": 2,
+    "cycle": 3,
     "disposition": "review_pending",
     "sourcePaths": [
       "assets/works/refinery/source/works_refinery.blend",
@@ -21,10 +21,10 @@
     "activeLocksChecked": true
   },
   "candidateIdentity": {
-    "sourceHash": "7984CD679A1FC5A6259EA2BD232A8CB58834D214935D100D263E6A1222827733",
-    "exportHash": "7984CD679A1FC5A6259EA2BD232A8CB58834D214935D100D263E6A1222827733",
+    "sourceHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "exportHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
     "releaseHash": null,
-    "blendHash": "2DC265307506561E3CA06A04C91F4403C657C8F53DF662DE9F04B4C4FE6CF603"
+    "blendHash": "D19728AD0950CECE741670E36784A463761CC9F2484CE325D43B226413CD9BE1"
   },
   "playerFacingUse": {
     "normalRoutes": ["asteroid_works"],
@@ -38,7 +38,7 @@
   },
   "scaleAndInterfaces": {
     "units": "metre",
-    "dimensionsM": {"length": 1.74, "width": 1.52, "height": 1.20},
+    "dimensionsM": {"length": 1.72, "width": 1.55, "height": 1.20},
     "forwardAxis": "+X",
     "upAxis": "+Z",
     "originAndPivot": "cell centre; underside z=0",
@@ -66,8 +66,8 @@
     "componentReferenceDecision": "not_needed",
     "allSupportedViewZonesClassified": false,
     "visibleZoneRegister": [
-      {"zone": "furnace_jacket", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Mild-steel jacket over ceramic-fibre; dark cool alkyd; inset strap courses with clamp blocks; modest corners."},
-      {"zone": "furnace_slit_well", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Blind recessed charging well: formed steel lip, soot-dark dry refractory walls, small ceramic-glass ember floor owned by furnace_slit. Beauty emission 0."},
+      {"zone": "furnace_jacket", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Mild-steel jacket over ceramic-fibre; cool graphite alkyd; chamfered structural returns, flared skirt, deep waist, broad shoulder course, and stepped crown."},
+      {"zone": "furnace_slit_well", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Deep blind charging well: thin dark formed-steel lip, tapered soot-dark dry refractory walls, and smaller ceramic-glass ember floor owned by furnace_slit. Beauty emission 0."},
       {"zone": "burner_manifold", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Heat-stained bare steel plenum, nozzles, flange, access lid."},
       {"zone": "flue_stack", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Rect takeoff, rect-to-round, mitered elbow, oxidized stack with hoops, rain cap above the outlet."},
       {"zone": "process_pipe", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Heat-stained routed pipe with miters, flanges, clamp, tank nozzle."},
@@ -82,18 +82,18 @@
           "fictionRoleAndOrigin": "Insulated roast box for crushed seam-feed. ART EXTRAPOLATION of Helix/MTS claim kit.",
           "fictionMaterialAndManufacture": "Mild-steel jacket over ceramic-fibre blanket; rolled/welded courses; dark alkyd over zinc phosphate.",
           "fictionInterfacesAndServiceHistory": "Four gusseted feet on the gallery floor; inset insulation straps with clamp blocks; service door on +X.",
-          "developmentGeometryAndAttachment": "Lofted rectangular courses with modest 0.07 corners, three inset bands, readable wall thickness around the well.",
-          "developmentMaterialAndLodEvidence": "structure role, unique UV0, mesh AO/normal. LOD1/2 keep the rectangular mass and feet.",
-          "agreementStatus": "authored_cycle_02"
+          "developmentGeometryAndAttachment": "Eight-sided jacket sections form a flared skirt, deep waist, returned shoulder course, narrow crown, proud folded corner returns, and four tapered gusseted feet.",
+          "developmentMaterialAndLodEvidence": "Cool graphite structure role, unique UV0, mesh AO/normal. LOD1/2 preserve the stepped jacket and feet.",
+          "agreementStatus": "authored_cycle_03"
         },
         {
           "component": "furnace_slit",
           "fictionRoleAndOrigin": "Charging / sight throat. Only emissive furnace surface, runtime 0-1.",
           "fictionMaterialAndManufacture": "Cast refractory well; formed steel lip; ceramic-glass ember lens at the floor.",
-          "fictionInterfacesAndServiceHistory": "Blind well ~0.46 x 0.14, ~0.28 deep; lip overhangs to shadow the floor.",
-          "developmentGeometryAndAttachment": "Jacket opening + tapered soot liner + small recessed lens. Not a through-hole.",
+          "fictionInterfacesAndServiceHistory": "Blind well ~0.50 x 0.20, ~0.48 deep; thin lip overhangs to shadow the floor.",
+          "developmentGeometryAndAttachment": "Stepped jacket opening + aggressively tapered refractory liner + smaller recessed floor lens. Not a through-hole or painted stripe.",
           "developmentMaterialAndLodEvidence": "refractory soot + slit lens emission 0 beauty / 1 diagnostic. LOD2 jacket taper + ember.",
-          "agreementStatus": "authored_cycle_02"
+          "agreementStatus": "authored_cycle_03"
         },
         {
           "component": "flue_stack",
@@ -102,7 +102,7 @@
           "fictionInterfacesAndServiceHistory": "Rooted at the furnace +Y shoulder; stack_vent at the actual outlet under the cap.",
           "developmentGeometryAndAttachment": "Discrete pieces, not a bent hose. Cap OD smaller than stack so the outlet reads from above.",
           "developmentMaterialAndLodEvidence": "hotmetal + stack roles. LOD2 keeps elbow, tube, cap, hook.",
-          "agreementStatus": "authored_cycle_02"
+          "agreementStatus": "authored_cycle_03"
         },
         {
           "component": "process_tank_and_pipe",
@@ -111,7 +111,7 @@
           "fictionInterfacesAndServiceHistory": "Pipe bridges furnace +X to tank nozzle without filling the gallery.",
           "developmentGeometryAndAttachment": "Mitered pipe with flanges/clamp; saddles wider than the shell in plan.",
           "developmentMaterialAndLodEvidence": "tank roughness 0.86 metallic 0.02; pipe metallic 0.80. LOD2 keeps shell, saddles, pipe.",
-          "agreementStatus": "authored_cycle_02"
+          "agreementStatus": "authored_cycle_03"
         }
       ]
     },
@@ -119,12 +119,12 @@
       "cameraProminentForms": [
         {
           "component": "furnace_jacket",
-          "primitiveOrigin": "rounded_rect loft",
+          "primitiveOrigin": "eight-sided jacket-section loft",
           "functionAndLoad": "insulated roast box",
-          "manufacturedFinalProfile": "rectangular courses, inset straps, thick crown, feet",
+          "manufacturedFinalProfile": "flared skirt, deep waist belt, returned shoulder course, narrow crown, folded corner returns, tapered feet",
           "attachmentAndInterface": "gallery floor via four feet; flue takeoff; pipe nozzle",
-          "scaleEvidence": "plan ~1.10 x 0.80 wu at 120 px/cell",
-          "retainedPrimitiveRationale": "modest 0.07 corners are plate-bend, not a lozenge"
+          "scaleEvidence": "furnace plan ~1.16 x 0.91 wu within a 132 px whole-asset read",
+          "retainedPrimitiveRationale": "straight jacket courses and hard chamfer returns express folded insulated plate rather than a rounded lozenge"
         },
         {
           "component": "stack",
@@ -136,7 +136,7 @@
           "retainedPrimitiveRationale": "a flue is a tube; the takeoff/cap/outlet are the manufacture"
         }
       ],
-      "unresolvedBlockoutForms": ["furnace remains a formed rectangle, not a kettle/arch"]
+      "unresolvedBlockoutForms": []
     }
   },
   "materialPlan": {
@@ -157,9 +157,9 @@
   },
   "lodAndOptimizationPlan": {
     "lods": [
-      {"id": "LOD0", "triangles": 5488, "budget": 8000, "visualPurpose": "works_top / works_edge construction"},
-      {"id": "LOD1", "triangles": 1564, "budget": 2000, "visualPurpose": "works_site; keep furnace/slit/stack/tank/pipe/hooks"},
-      {"id": "LOD2", "triangles": 540, "budget": 600, "visualPurpose": "silhouette of the same train"}
+      {"id": "LOD0", "triangles": 7442, "budget": 8000, "visualPurpose": "works_top / works_edge construction"},
+      {"id": "LOD1", "triangles": 1840, "budget": 2000, "visualPurpose": "works_site; keep furnace/slit/stack/tank/pipe/hooks"},
+      {"id": "LOD2", "triangles": 560, "budget": 600, "visualPurpose": "silhouette of the same train"}
     ]
   },
   "acceptance": {

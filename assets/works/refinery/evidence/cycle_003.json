@@ -1,0 +1,639 @@
+{
+  "schema": "spaceface.worksRefinery.cycle.v1",
+  "assetId": "place_works_refinery",
+  "cycle": 3,
+  "disposition": "review_pending",
+  "immutable": true,
+  "rootNode": "SF_WORKS_REFINERY_V1",
+  "packet": "PQ-131.04",
+  "reviewersLaunched": false,
+  "targetCellWu": 2.2,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 7442,
+      "budget": 8000,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.8001000285148621,
+          -0.6000000238418579,
+          0.0
+        ],
+        "max": [
+          0.9213662147521973,
+          0.946225643157959,
+          1.2000000476837158
+        ],
+        "size": [
+          1.721466302871704,
+          1.546225666999817,
+          1.2000000476837158
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod0.glb",
+      "bytes": 3989552,
+      "sha256": "F5D1E2E37351159919F8A9614E1A0384DF06776C5F6A5714FD71E97BD91285A7",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+      }
+    },
+    {
+      "lod": 1,
+      "triangles": 1840,
+      "budget": 2000,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.7919999957084656,
+          -0.6000000238418579,
+          0.0
+        ],
+        "max": [
+          0.9202498197555542,
+          0.9539999961853027,
+          1.2000000476837158
+        ],
+        "size": [
+          1.712249755859375,
+          1.5540000200271606,
+          1.2000000476837158
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod1.glb",
+      "bytes": 3261116,
+      "sha256": "F87B0C95768002B7D62D06CBB1E64DB026E2679C7DB016B0F1FC1D2B22D66EF6",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+      }
+    },
+    {
+      "lod": 2,
+      "triangles": 560,
+      "budget": 600,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.7919999957084656,
+          -0.6000000238418579,
+          0.0
+        ],
+        "max": [
+          0.9079999923706055,
+          0.9212435483932495,
+          1.2000000476837158
+        ],
+        "size": [
+          1.7000000476837158,
+          1.5212435722351074,
+          1.2000000476837158
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod2.glb",
+      "bytes": 920008,
+      "sha256": "46DABCE9EDFC6504A135F2BD5ABD5F86F2FE849FA8074FAA96A50254C7770B1F",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+      }
+    }
+  ],
+  "hooks": {
+    "furnace_slit": "found",
+    "stack_vent": "found",
+    "lamp": "found"
+  },
+  "hookWorld": {
+    "furnace_slit": [
+      -0.2199999988079071,
+      0.03999999910593033,
+      0.2919999957084656
+    ],
+    "stack_vent": [
+      0.18000000715255737,
+      0.800000011920929,
+      1.1200000047683716
+    ],
+    "lamp": [
+      0.3100000023841858,
+      0.6499999761581421,
+      0.7400000095367432
+    ]
+  },
+  "inspection": {
+    "names": [
+      "COLLISION_HULL",
+      "LOD0_furnace_slit",
+      "LOD1_furnace_slit",
+      "LOD2_furnace_slit",
+      "furnace_slit",
+      "LOD0_lamp_lens",
+      "LOD1_lamp_lens",
+      "LOD2_lamp_lens",
+      "lamp",
+      "LOD0_refinery",
+      "LOD1_refinery",
+      "LOD2_refinery",
+      "stack_vent",
+      "SF_WORKS_REFINERY_V1"
+    ],
+    "hooks": {
+      "furnace_slit": "found",
+      "stack_vent": "found",
+      "lamp": "found"
+    },
+    "root": "SF_WORKS_REFINERY_V1",
+    "lodTriangles": {
+      "0": 7442,
+      "1": 1840,
+      "2": 560
+    },
+    "lodDraws": {
+      "0": 3,
+      "1": 3,
+      "2": 3
+    },
+    "materials": 9,
+    "nodes": 14
+  },
+  "inventory": {
+    "assetId": "place_works_refinery",
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "combined": "assets/works/refinery/source/refinery.glb",
+    "partsSource": "assets/ships/parts/works/place_works_refinery.glb",
+    "lodTriangles": {
+      "lod0": 7442,
+      "lod1": 1840,
+      "lod2": 560
+    },
+    "hooks": [
+      "furnace_slit",
+      "stack_vent",
+      "lamp"
+    ],
+    "meshNames": [
+      "LOD0_furnace_slit",
+      "LOD0_lamp_lens",
+      "LOD0_refinery",
+      "LOD1_furnace_slit",
+      "LOD1_lamp_lens",
+      "LOD1_refinery",
+      "LOD2_furnace_slit",
+      "LOD2_lamp_lens",
+      "LOD2_refinery"
+    ],
+    "bytes": 8294420,
+    "sha256": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "disposition": "review_pending",
+    "cycle": 3
+  },
+  "stills": {
+    "works_top.png": "assets/works/refinery/evidence/cycle_003/works_top.png",
+    "works_edge.png": "assets/works/refinery/evidence/cycle_003/works_edge.png",
+    "works_site.png": "assets/works/refinery/evidence/cycle_003/works_site.png",
+    "works_top_clay.png": "assets/works/refinery/evidence/cycle_003/works_top_clay.png",
+    "works_edge_grazing.png": "assets/works/refinery/evidence/cycle_003/works_edge_grazing.png",
+    "normal_isolation.png": "assets/works/refinery/evidence/cycle_003/normal_isolation.png",
+    "orm_isolation.png": "assets/works/refinery/evidence/cycle_003/orm_isolation.png",
+    "id_or_material_id.png": "assets/works/refinery/evidence/cycle_003/id_or_material_id.png",
+    "hook_identity.png": "assets/works/refinery/evidence/cycle_003/hook_identity.png",
+    "state_emission.png": "assets/works/refinery/evidence/cycle_003/state_emission.png"
+  },
+  "stillSha256": {
+    "hook_identity.png": "5B98AF1093E1B06F1B3F0EEC94524E3270C43D935CA5B6AFCCBA4D1092AB744A",
+    "hook_identity_1to1.png": "14C4AB930DCC152920401CAD7D450AF8D14B0ABEF774B1F15F31B30692DC18F7",
+    "id_or_material_id.png": "AD8D21D72070038212E265E554DFCD945242FF7B215E152D02A6F7119DFB110C",
+    "id_or_material_id_1to1.png": "B5B61AFCE616B74556C7B5A5D0F4E21F8BCDF1DD739C14A09618F160FE9231B2",
+    "normal_isolation.png": "4194B637D56810476513C54124737957CCE7B9D37CB762B88A28CD178DE041DB",
+    "normal_isolation_1to1.png": "6C454AA4EED1102CECFFDA03E5C5873E498ED77C38E7739FE78AE33E3919EEC6",
+    "orm_isolation.png": "7D0E2E126DADB7ECD45AFB96C1E32570AFD9C7E1D7674AB7C9CCF8CEA0E37ED9",
+    "orm_isolation_1to1.png": "974122CAC4275302980FD856BB07B3D139B05CD7E1C464EDFA9F9B4476897F42",
+    "state_emission.png": "44CC14B3DE03ABB66D68E60002C907ED0F18A153961D13186AB5CBCFC8E85B12",
+    "state_emission_1to1.png": "4027C63781B5A1FD621292795D31CE1896CA689D27CEE275D0519F3C875EE1BE",
+    "uv0_layout.png": "8C3363DF3A028C33361C01A98CCB502A39CE1BDE5355E29CD43CB9CE61B0A445",
+    "works_edge.png": "18B67CEC8EA1A322291C0F554A9F709128651C8769CBAE9F91EBB6AC9A1139EF",
+    "works_edge_1to1.png": "243454643CB680F95B021907BBC99048EF627886CFA0E04705E9D13311DD71EA",
+    "works_edge_grazing.png": "C9C124A4E2F1D7CB9959697FCE6FA5453637FC54328CF5C827FF700801A7B1F6",
+    "works_edge_grazing_1to1.png": "5056EB5913EBBD643B1FC29C9093DEF84E336DCA50F81D4E8121F5BE04E7A8C1",
+    "works_site.png": "05020F8D61BBBCA23636774CCE85A2135A4F8ACD6C185FA99A3FAAB3D07920A3",
+    "works_site_1to1.png": "E60A88AA8DBC26A5961393A053344D9CDB8BC67E7EBC8B288F56B56633D0D32B",
+    "works_top.png": "689DB6A64AF923C5D384E161FC3722E0E4F1E5FE8E0F2A39E95D7B3E08226227",
+    "works_top_1to1.png": "55EE591B833920223065380DF513A60364EB3EFAE3E0271265944DFBD3914E1D",
+    "works_top_clay.png": "A40C34F64F2B4C224CB68208E0A38885469800A2A74A30329E5F17420834184E",
+    "works_top_clay_1to1.png": "D0346940809BF41D9ED68F431E94444CA6E8C7F8A890F2508CC832C09CCA1EA1"
+  },
+  "pixelFacts": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fovV": 31.0,
+    "cellWu": 2.2,
+    "works_top": {
+      "distance": 35.698246736732656,
+      "pxPerCell": 120.0,
+      "objectPx": {
+        "px": 11735,
+        "bbox": [
+          894,
+          474,
+          1025,
+          605
+        ],
+        "width": 132,
+        "height": 132
+      }
+    },
+    "works_edge": {
+      "objectPx": {
+        "px": 13132,
+        "bbox": [
+          1710,
+          474,
+          1841,
+          605
+        ],
+        "width": 132,
+        "height": 132
+      },
+      "objectOffsetApplied": true
+    },
+    "works_site": {
+      "pxPerCell": 18.999999999999996,
+      "objectPx": {
+        "px": 359,
+        "bbox": [
+          949,
+          529,
+          970,
+          550
+        ],
+        "width": 22,
+        "height": 22
+      }
+    },
+    "crops1to1": {
+      "works_top.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_edge.png": {
+        "crop": [
+          1686,
+          450,
+          1866,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_site.png": {
+        "crop": [
+          925,
+          505,
+          995,
+          575
+        ],
+        "size": [
+          70,
+          70
+        ]
+      },
+      "works_top_clay.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_edge_grazing.png": {
+        "crop": [
+          1625,
+          625,
+          1804,
+          804
+        ],
+        "size": [
+          179,
+          179
+        ]
+      },
+      "normal_isolation.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "orm_isolation.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "id_or_material_id.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "hook_identity.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "state_emission.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      }
+    }
+  },
+  "visibleFaces": {
+    "glb": "C:\\sf-agents\\grok-pq13104-refinery-20260827\\assets\\ships\\parts\\works\\place_works_refinery.glb",
+    "fovV": 31.0,
+    "framings": [
+      "works_top",
+      "works_edge x8",
+      "works_site"
+    ],
+    "lodFramings": {
+      "0": [
+        "works_top",
+        "works_edge"
+      ],
+      "1": [
+        "works_site"
+      ],
+      "2": [
+        "works_site"
+      ]
+    },
+    "distances": [
+      35.698246736732656,
+      225.46261096883785
+    ],
+    "edgeDirs": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        -1.0
+      ],
+      [
+        1.0,
+        1.0
+      ],
+      [
+        1.0,
+        -1.0
+      ],
+      [
+        -1.0,
+        1.0
+      ],
+      [
+        -1.0,
+        -1.0
+      ]
+    ],
+    "grid": [
+      80,
+      45
+    ],
+    "deleted": false,
+    "objects": [
+      {
+        "object": "LOD0_furnace_slit",
+        "lod": 0,
+        "faces": 60,
+        "visible": 0,
+        "hidden": 60,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD1_furnace_slit",
+        "lod": 1,
+        "faces": 28,
+        "visible": 0,
+        "hidden": 28,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD2_furnace_slit",
+        "lod": 2,
+        "faces": 28,
+        "visible": 0,
+        "hidden": 28,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD0_lamp_lens",
+        "lod": 0,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD1_lamp_lens",
+        "lod": 1,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD2_lamp_lens",
+        "lod": 2,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD0_refinery",
+        "lod": 0,
+        "faces": 7362,
+        "visible": 59,
+        "hidden": 7303,
+        "hiddenFrac": 0.992
+      },
+      {
+        "object": "LOD1_refinery",
+        "lod": 1,
+        "faces": 1792,
+        "visible": 1,
+        "hidden": 1791,
+        "hiddenFrac": 0.9994
+      },
+      {
+        "object": "LOD2_refinery",
+        "lod": 2,
+        "faces": 512,
+        "visible": 1,
+        "hidden": 511,
+        "hiddenFrac": 0.998
+      }
+    ],
+    "hiddenFaces": 9781,
+    "faces": 9842,
+    "hiddenFrac": 0.9938,
+    "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+  },
+  "visibleFacesExit": 0,
+  "hashes": {
+    "cycle": 3,
+    "disposition": "review_pending",
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "hooks": [
+      "furnace_slit",
+      "stack_vent",
+      "lamp"
+    ],
+    "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
+    "partsSha256": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "sourceGlb": "assets/works/refinery/source/refinery.glb",
+    "sourceSha256": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "lods": {
+      "lod0": {
+        "path": "assets/works/refinery/source/refinery_lod0.glb",
+        "sha256": "F5D1E2E37351159919F8A9614E1A0384DF06776C5F6A5714FD71E97BD91285A7",
+        "triangles": 7442
+      },
+      "lod1": {
+        "path": "assets/works/refinery/source/refinery_lod1.glb",
+        "sha256": "F87B0C95768002B7D62D06CBB1E64DB026E2679C7DB016B0F1FC1D2B22D66EF6",
+        "triangles": 1840
+      },
+      "lod2": {
+        "path": "assets/works/refinery/source/refinery_lod2.glb",
+        "sha256": "46DABCE9EDFC6504A135F2BD5ABD5F86F2FE849FA8074FAA96A50254C7770B1F",
+        "triangles": 560
+      }
+    },
+    "textures": {
+      "lod0": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+      },
+      "lod1": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+      },
+      "lod2": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+      }
+    },
+    "blend": "assets/works/refinery/source/works_refinery.blend",
+    "blendSha256": "D19728AD0950CECE741670E36784A463761CC9F2484CE325D43B226413CD9BE1",
+    "builder": "tools/blender/build_works_refinery.py",
+    "builderSha256": "3CE46BA5BC6BF168807FDAF43812A101774C9C1B8AACEA42187AB610697A88E6",
+    "lod0Maps": {
+      "basecolor": "1597E7002955ED41A8957A8E6362699F6FC1FD96A2BD4951C5BAA008EB2E9452",
+      "normal": "160FBD102019CA1AE49156C83C0C6A3191C9A869E17F163672A2B1CC7490162D",
+      "orm": "554141CDAEE28EB4B25E214C00E087739BBB91E61880C91260F72C536F364052"
+    }
+  },
+  "blender": {
+    "version": "5.1.2",
+    "binary": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
+    "export": "ok",
+    "render": "ok"
+  },
+  "budgets": {
+    "triangles": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "texture": 1024
+  },
+  "notes": "Cycle 03 source candidate. Formed chamfered jacket with waist belt, courses, and corner returns; deeper blind refractory well with a thin dark lip; four gusseted feet with pad gap; stack rooted by elbow/union/banded transition; tank on two wrapped saddles with manway and nozzle. Beauty emission off. Cycle 01 and Cycle 02 evidence immutable."
+}
