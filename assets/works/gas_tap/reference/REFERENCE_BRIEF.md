@@ -1,7 +1,7 @@
-# Works gas tap — Cycle 01 reference brief
+# Works gas tap — Cycle 02 reference brief
 
 **Asset:** `gas_tap` (PQ-131.07). **Class:** place/prop, works camera only. **Tier:** C (supporting modular machine; one manufactured family).
-**State:** `design_candidate`. Cycle 1 of ≥5. This page is the contract for later cycles.
+**State:** `design_candidate`. Cycle 2 of ≥5. Cycle 01 evidence stays frozen under `evidence/cycle_001/`. This page is the contract for later cycles.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same, object at frame edge), `works_site`
 (19 px/cell). All 1920×1080, 31° perspective, +Z up, origin at cell centre, underside at z = 0.
@@ -145,11 +145,11 @@ Wheel mesh is parented to `valve_wheel` and must clear the yoke. Needle mesh is 
 Working scene: `tools/blender/build_works_gas_tap.py` →
 `assets/works/gas_tap/source/gas_tap_lod{0,1,2}.glb`.
 `allSupportedViewZonesClassified`: **false** until an independent reviewer confirms coverage.
-G0–G7: Cycle 01 is `evidence_ready` only. G1/G2/G4 whole-asset remain open.
+G0–G7: Cycle 02 is `evidence_ready` only. G1/G2/G4 whole-asset remain open.
 
 | Zone | Disp. | Base | Rough | Metal | Wear / why | Works light |
 |---|---|---|---|---|---|---|
-| Painted backplate / clamp shells | billed | `#2a2620` alkyd over steel | 0.58–0.78 | 0.04–0.14 | Chips to primer/steel at clamp lips and bolt bosses. Dirt in return flanges. | Dark bar against the pocket. Dielectric, not a light. |
+| Painted backplate / clamp shells | billed | `#131210` alkyd over steel | 0.58–0.78 | 0.04–0.14 | Chips to primer/steel at clamp lips and bolt bosses. Dirt in return flanges. | Dark bar against the pocket, not a cell-colored slab. Dielectric, not a light. |
 | Valve body, yoke, pipes, wheel | billed | `#6d7075` → worn `#8b9096` | 0.28–0.50 | 0.72–0.90 | Machined faces, grease at stem, edge polish on rim. | Brightest metal; key finds the rim and yoke. |
 | Brass / gold interfaces | billed | `#8a6b3a` restrained | 0.32–0.48 | 0.70–0.88 | Unions, bezel, packing nuts, stem nut. Not copper pipe. | Small warm catches, never a copper toy. |
 | Rubber hose + armor | billed | `#3a3530` | 0.78–0.92 | 0.02–0.10 | Helical armor is steel-ish at the ridges; tube stays dielectric. | Dark run, supported. |
@@ -173,5 +173,10 @@ World: dark. Key `0xffdcbc` raking, real shadows. Rim `0x9db8f0` weak. Fill `0xd
 6. **Material split** — paint / bare steel / brass / rubber / dry face / glass. No Rover yellow.
 7. **Hooks** — wheel clears yoke; needle inside glass; lamp hooded. Axes as the table.
 
-Cycle 01 weakest expected: hose armor vs triangle budget, and gauge ticks at 16 px — both are
-later-cycle density, not a reason to ship a tank or a torus.
+Cycle 01 kept the four-spoke wheel, offset gauge, dark plate and non-glow materials. Cycle 02
+corrects the remaining wheel-on-plate / site-collapse defects: hat-section clamp with returns
+and four corner blocks, coaxial valve/stem/yoke, cream face instead of a gold torus around a
+black hole, and a short lance through a gland into a top-open +X pocket. Site register must
+still read clamp-bar + wheel + offset cream disc without outlines, enlargement, labels or
+emission. Remaining later-cycle density: hose armor vs triangle budget, and gauge ticks at
+16 px.
