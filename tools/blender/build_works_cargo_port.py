@@ -1,7 +1,8 @@
-"""PQ-131.09 Works cargo port — Cycle 01 source candidate builder.
+"""PQ-131.09 Works cargo port — Cycle 02 source candidate builder.
 
-One logistics cell: octagonal skip-loading collar with an open shaft well,
-formed cradle, five additive unique crate modules, detachable courier pod.
+Cycle 02 repairs the shrine-like concentric collar/pod, equal cube jack pads,
+and 2x2 duplicated freight cabinet from cycle 01. Cycle 01 evidence stays
+untouched.
 
     blender --background --python tools/blender/build_works_cargo_port.py
     blender --background --python tools/blender/build_works_cargo_port.py -- --evidence-only
@@ -48,12 +49,15 @@ from spaceface_works_camera import (  # noqa: E402
 FAMILY = ROOT / "assets" / "works" / "cargo_port"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_001"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
+CYCLE01_DIR = FAMILY / "evidence" / "cycle_001"
+CYCLE01_HASHES_PATH = CYCLE01_DIR / "HASHES.json"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 COMBINED_NAME = "place_works_cargo_port.glb"
 ROOT_NAME = "SF_WORKS_CARGO_PORT_V1"
 ASSET_ID = "place_works_cargo_port"
-CYCLE = 1
+CYCLE = 2
+CYCLE01_CANDIDATE = "BF506A8937DFC5FE196841E6B061C04D48BE24258130B5BDD4342F3CC16D3A70"
 CELL_WU = 2.2
 TEX = 1024
 SHADE_ANGLE = 28.0
@@ -68,14 +72,19 @@ TRI_BUDGET = {
     "pod": {0: 4000, 1: 1000, 2: 350},
 }
 
-# Well / collar
+# Well / collar — inner octagon is the real hole. Outer radii vary so the
+# flange cannot read as a concentric torus. Loading throat opens toward +X.
 WELL_CX, WELL_CY = -0.28, 0.00
-WELL_R_IN, WELL_R_OUT = 0.40, 0.56
+WELL_R_IN = 0.42
+WELL_R_OUT_VAR = (0.70, 0.54, 0.66, 0.58, 0.74, 0.52, 0.62, 0.56)
 COLLAR_Z = 0.42
 WELL_FLOOR_Z = 0.03
 APRON_Z = 0.08
-POD_CX, POD_CY = WELL_CX, WELL_CY
+# Pod seats toward the loading throat so a dark liner crescent stays visible.
+POD_CX, POD_CY = WELL_CX + 0.06, WELL_CY - 0.04
 LAUNCH_CLEAR_Z = 1.55
+# Flange sectors 7 and 0 face +X and stay open as the skip-loading throat.
+LOADING_SECTORS = frozenset((7, 0))
 
 ATLAS_TILE = {
     "port": 0,
@@ -88,20 +97,21 @@ ROLE_RGB = {
     "port": (0.165, 0.149, 0.133),
     "cradle": (0.416, 0.384, 0.345),
     "crate": (0.361, 0.325, 0.267),
-    "pod": (0.557, 0.592, 0.612),
+    "pod": (0.420, 0.480, 0.520),
     "thruster": (0.165, 0.141, 0.110),
 }
 CRATE_BANDS = (
-    (0.00, 0.20, (0.361, 0.325, 0.267), 0.58, 0.08),   # olive trunk
-    (0.20, 0.40, (0.420, 0.353, 0.282), 0.55, 0.10),   # khaki cube
-    (0.40, 0.60, (0.290, 0.333, 0.282), 0.62, 0.06),   # slate long
-    (0.60, 0.80, (0.416, 0.369, 0.298), 0.50, 0.12),   # tan / polymer
+    (0.00, 0.16, (0.361, 0.325, 0.267), 0.58, 0.08),   # olive trunk
+    (0.16, 0.32, (0.430, 0.348, 0.250), 0.55, 0.10),   # khaki cube
+    (0.32, 0.48, (0.270, 0.340, 0.300), 0.62, 0.06),   # slate instrument
+    (0.48, 0.64, (0.380, 0.350, 0.300), 0.42, 0.38),   # tan frame / steel
+    (0.64, 0.80, (0.250, 0.245, 0.235), 0.48, 0.18),   # dark vented polymer
     (0.80, 1.01, (0.290, 0.275, 0.255), 0.40, 0.62),   # irons / straps
 )
 POD_BANDS = (
-    (0.00, 0.28, (0.420, 0.365, 0.298), 0.48, 0.22),   # heat-stained aft
-    (0.28, 0.78, (0.557, 0.592, 0.612), 0.38, 0.16),   # pressure coating
-    (0.78, 1.01, (0.620, 0.635, 0.650), 0.28, 0.55),   # docking machined
+    (0.00, 0.28, (0.380, 0.330, 0.270), 0.52, 0.22),   # heat-stained aft
+    (0.28, 0.72, (0.420, 0.480, 0.520), 0.40, 0.18),   # pressure coating
+    (0.72, 1.01, (0.520, 0.540, 0.560), 0.28, 0.62),   # docking machined, not pale
 )
 ROLE_V_DEFAULT = {
     "port": (0.02, 0.98),
@@ -111,19 +121,48 @@ ROLE_V_DEFAULT = {
     "thruster": (0.02, 0.98),
 }
 CRATE_V = {
-    0: (0.02, 0.18),
-    1: (0.22, 0.38),
-    2: (0.42, 0.58),
-    3: (0.62, 0.78),
-    4: (0.62, 0.78),
+    0: (0.02, 0.15),
+    1: (0.17, 0.31),
+    2: (0.33, 0.47),
+    3: (0.49, 0.63),
+    4: (0.65, 0.79),
+}
+CYCLE01_STILL_FREEZE = {
+    "works_top": "AD9BB5D1E01E116CCA62A6B078EDBE8E862557F5A67F4225B9FB3C8A92F66DBB",
+    "works_edge": "B55BE5F6D4726E4223578997C4B99E3ABCF9A27B6C3852FCF5BF3DD7DCA32C1C",
+    "works_top_clay": "D48F95D1E0FEE3E71E3FECBE76AB62CBF3B87CC371C0FF9C7AAAC464EC602D6B",
+    "works_edge_clay": "195C519B65470FE4C0F795CBF11736AFF279C6BF332E69ED0E29739BE9D20D4C",
+    "works_top_grazing": "D4476AEA33822B40345206C79543F6CC97205B5F79457159EC49D080FF344548",
+    "works_top_normal": "258DAE3365277CADACE64C5D4E70D0841E3C6F0B70DC89D076B44FFE12D5A95E",
+    "works_top_orm": "266D7A8E2A1ECCDD993A29D6B58CDF6FA5547CE74FDE7BEF1993FCE59FE09B8D",
+    "works_top_matid": "12E7D1F9518A72151D47602E6198B7A4D0B4A4F1D693A214C8662501DD4E62AD",
+    "works_top_hooks": "20C1F02475A5F94E8F8233826C458355556294619A23C39260A262484103D64B",
+    "crate_stage_01": "6AA3AB8251C93CDB260B7A647130F9043C62629DD2BA3F5FAE668B5451F43735",
+    "crate_stage_02": "A89BBB53E7F63B3F944B188A8AD1A4A2CF879F64D9320F3F2848884F58547551",
+    "crate_stage_03": "72EE15A0880932B317866C968326764E18F03DFF2E19E45D0082A80B5ABF66B7",
+    "crate_stage_04": "50C4BB5593A73C7E66F8826120D2ADBD9C92950BC8447855D1B5B81DF88105A4",
+    "crate_stage_05": "D4CE15102C09702811520B63A20EF1935251259DD87C8AED99FCD16A6034A8F7",
+    "crate_stage_sheet": "037C084505694AE2019D71310349ACB95D91199411A0894B01E5DC3170CB1809",
+    "pod_seated_top": "D4CE15102C09702811520B63A20EF1935251259DD87C8AED99FCD16A6034A8F7",
+    "pod_seated_edge": "60F018F7323C550923D8DE5323EE068BF939455CB93C583D40B93B964F072EB6",
+    "pod_launch_clear_top": "4D509290AE37B77E39340C01AD637A30D078CA611DF7EDBE7174621CAB125051",
+    "pod_launch_clear_edge": "BC66DE5ECFC822DC84FBD5E21E6D907FD072152F06E4DEEEBE0146F8089C25C2",
+    "works_site": "FA2D9779200570B56D46C71D5A7DF89A7F75BC9BBD83A0F12F03A6CF864C1F96",
+    "works_site_id": "C077CC38363C6709BFB1C885B2053D0CE871C5B6EE994F066AFE513828C4D5E5",
+}
+CYCLE01_REF_FREEZE = {
+    "ref_01": "67344F641C1E704549110EA624B69877FC781AB73CC864B73EDABE5DFCED7174",
+    "ref_02": "17FEF1588BEFBA68121AC34D0418057D3C0AEF4D8C3EBD3612DB957063C2D9F9",
+    "ref_03": "995864893A2035C6BAC71B8B33483F044E306EC70845337940EF688348136684",
+    "ref_04": "5E0BC217E1144D50EE80011F981ABA7CD86A9BD639EE1C68D059C85EF1D7993C",
 }
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 ROLE_FLAT = {
     "port": (0.18, 0.16, 0.14),
     "cradle": (0.55, 0.50, 0.42),
     "crate": (0.42, 0.38, 0.28),
-    "pod": (0.62, 0.68, 0.72),
-    "thruster": (0.85, 0.72, 0.42),
+    "pod": (0.40, 0.48, 0.54),
+    "thruster": (0.70, 0.58, 0.32),
 }
 
 
@@ -689,101 +728,280 @@ def loft_tube(name, stations, n, mat, coll, bevel, cx, cy, cap_bottom=True, cap_
     return add_mesh(name, verts, faces, mat, coll, bevel)
 
 
+def loft_oval(name, stations, n, mat, coll, bevel, cx, cy, rx_scale=1.0, ry_scale=0.88,
+              cap_bottom=True, cap_top=True):
+    """Faceted pressure shell. Slight Y squash breaks lathe-torus identity."""
+    verts = []
+    for z, r in stations:
+        for i in range(n):
+            a = 2.0 * math.pi * i / n + math.pi / n
+            verts.append((
+                cx + r * rx_scale * math.cos(a),
+                cy + r * ry_scale * math.sin(a),
+                z,
+            ))
+    faces = []
+    ns = len(stations)
+    for s in range(ns - 1):
+        for i in range(n):
+            a = s * n + i
+            b = s * n + (i + 1) % n
+            c = (s + 1) * n + (i + 1) % n
+            d = (s + 1) * n + i
+            faces.append((a, b, c, d))
+    if cap_bottom:
+        faces.append(tuple(range(n - 1, -1, -1)))
+    if cap_top:
+        base = (ns - 1) * n
+        faces.append(tuple(range(base, base + n)))
+    return add_mesh(name, verts, faces, mat, coll, bevel)
+
+
+def add_arc_shell(name, cx, cy, z0, z1, r_in, r_out, a0, a1, segs, mat, coll, bevel, cap_ends=True):
+    """Open C-section around +Z. Inclusive `segs` along the arc."""
+    segs = max(3, int(segs))
+    verts = []
+    rings = ((z0, r_out), (z0, r_in), (z1, r_in), (z1, r_out))
+    for z, r in rings:
+        for i in range(segs):
+            t = i / float(segs - 1)
+            a = a0 + (a1 - a0) * t
+            verts.append((cx + r * math.cos(a), cy + r * math.sin(a), z))
+    faces = []
+
+    def ring(ri, i):
+        return ri * segs + i
+
+    for i in range(segs - 1):
+        faces.append((ring(0, i), ring(0, i + 1), ring(1, i + 1), ring(1, i)))
+        faces.append((ring(1, i), ring(1, i + 1), ring(2, i + 1), ring(2, i)))
+        faces.append((ring(2, i), ring(2, i + 1), ring(3, i + 1), ring(3, i)))
+        faces.append((ring(3, i), ring(3, i + 1), ring(0, i + 1), ring(0, i)))
+    if cap_ends:
+        last = segs - 1
+        faces.append((ring(0, 0), ring(1, 0), ring(2, 0), ring(3, 0)))
+        faces.append((ring(0, last), ring(3, last), ring(2, last), ring(1, last)))
+    return add_mesh(name, verts, faces, mat, coll, bevel)
+
+
+def add_hat_pad(tag, cx, cy, sx, sy, mat, coll, bevel, rot_z=0.0, role="port"):
+    """Folded hat-section jack pad: base on z=0, two webs, top flanges."""
+    objs = []
+    ca, sa = math.cos(rot_z), math.sin(rot_z)
+
+    def local(lx, ly, z):
+        return (cx + lx * ca - ly * sa, cy + lx * sa + ly * ca, z)
+
+    base = add_box(
+        f"{tag}_Base", local(0, 0, 0.012), (sx * 0.50, sy * 0.50, 0.012),
+        mat, coll, bevel, rot=(0.0, 0.0, rot_z),
+    )
+    set_role(base, role)
+    objs.append(base)
+    for i, ly in enumerate((-sy * 0.38, sy * 0.38)):
+        web = add_box(
+            f"{tag}_Web{i}", local(0, ly, 0.055), (sx * 0.42, 0.016, 0.042),
+            mat, coll, bevel * 0.6, rot=(0.0, 0.0, rot_z),
+        )
+        set_role(web, role)
+        objs.append(web)
+        flange = add_box(
+            f"{tag}_Flange{i}", local(0, ly, 0.098), (sx * 0.46, 0.028, 0.010),
+            mat, coll, bevel * 0.5, rot=(0.0, 0.0, rot_z),
+        )
+        set_role(flange, role)
+        objs.append(flange)
+    return objs
+
+
+def add_c_channel(tag, loc, length, depth, thick, axis, mat, coll, bevel, role="port"):
+    """Load-bearing C-channel. axis='z' stands a well guide; axis='x'/'y' is a skid."""
+    objs = []
+    cx, cy, cz = loc
+    if axis == "z":
+        web = add_box(f"{tag}_Web", (cx, cy, cz), (thick, depth * 0.5, length * 0.5), mat, coll, bevel)
+        lip_a = add_box(
+            f"{tag}_LipA", (cx + depth * 0.35, cy, cz),
+            (depth * 0.28, thick, length * 0.46), mat, coll, bevel * 0.5,
+        )
+        lip_b = add_box(
+            f"{tag}_LipB", (cx, cy + depth * 0.35, cz),
+            (thick, depth * 0.28, length * 0.46), mat, coll, bevel * 0.5,
+        )
+        for obj in (web, lip_a, lip_b):
+            set_role(obj, role)
+            objs.append(obj)
+    elif axis == "x":
+        web = add_box(f"{tag}_Web", (cx, cy, cz), (length * 0.5, thick, depth * 0.5), mat, coll, bevel)
+        set_role(web, role)
+        objs.append(web)
+        for i, oy in enumerate((-depth * 0.35, depth * 0.35)):
+            lip = add_box(
+                f"{tag}_Lip{i}", (cx, cy + oy, cz + 0.012),
+                (length * 0.46, thick, 0.012), mat, coll, bevel * 0.5,
+            )
+            set_role(lip, role)
+            objs.append(lip)
+    else:
+        web = add_box(f"{tag}_Web", (cx, cy, cz), (thick, length * 0.5, depth * 0.5), mat, coll, bevel)
+        set_role(web, role)
+        objs.append(web)
+        for i, ox in enumerate((-depth * 0.35, depth * 0.35)):
+            lip = add_box(
+                f"{tag}_Lip{i}", (cx + ox, cy, cz + 0.012),
+                (thick, length * 0.46, 0.012), mat, coll, bevel * 0.5,
+            )
+            set_role(lip, role)
+            objs.append(lip)
+    return objs
+
+
 def crate_module(tag, cx, cy, sx, sy, sz, z0, mat_crate, mat_port, coll, lod, kind):
+    """Five unique manufactured modules. kind 0 trunk, 1 cube, 2 instrument, 3 frame, 4 vented."""
     tag = f"L{lod}_{tag}"
-    """kind: trunk, cube, long, framed, half — unique meso, never a duplicated cube."""
     objs = []
     bevel = 0.006 if lod == 0 else 0.0
-    body = add_box(f"{tag}_Body", (cx, cy, z0 + sz * 0.42), (sx * 0.48, sy * 0.48, sz * 0.42), mat_crate, coll, bevel)
-    set_role(body, "crate", *CRATE_V[kind])
-    objs.append(body)
-    lid_h = 0.045 if lod <= 1 else 0.03
-    lid = add_box(
-        f"{tag}_Lid", (cx, cy, z0 + sz * 0.84 + lid_h * 0.4),
-        (sx * 0.50, sy * 0.50, lid_h * 0.5), mat_crate, coll, bevel,
-    )
-    set_role(lid, "crate", *CRATE_V[kind])
-    objs.append(lid)
-    if lod <= 1:
-        # lid straps / hinge / lashing — different per kind
-        if kind == 0:
-            for i, oy in enumerate((-sy * 0.18, sy * 0.18)):
-                strap = add_box(
-                    f"{tag}_Strap{i}", (cx, cy + oy, z0 + sz * 0.90),
-                    (sx * 0.52, 0.018, 0.012), mat_port, coll, 0.002,
-                )
-                set_role(strap, "crate", 0.82, 0.98)
+    paint = CRATE_V[kind]
+    iron = (0.82, 0.98)
+    foot_z = z0 + 0.016
+
+    if kind == 0:
+        # Long lidded trunk — first load, along the apron lip.
+        body = add_box(f"{tag}_Body", (cx, cy, z0 + sz * 0.40), (sx * 0.48, sy * 0.42, sz * 0.38), mat_crate, coll, bevel)
+        set_role(body, "crate", *paint)
+        objs.append(body)
+        lid = add_box(f"{tag}_Lid", (cx, cy, z0 + sz * 0.86), (sx * 0.50, sy * 0.44, 0.022), mat_crate, coll, bevel)
+        set_role(lid, "crate", *paint)
+        objs.append(lid)
+        if lod <= 1:
+            for i, oy in enumerate((-sy * 0.14, sy * 0.14)):
+                strap = add_box(f"{tag}_Strap{i}", (cx, cy + oy, z0 + sz * 0.90), (sx * 0.52, 0.016, 0.010), mat_port, coll, 0.002)
+                set_role(strap, "crate", *iron)
                 objs.append(strap)
-        elif kind == 1:
-            for i, (ox, oy) in enumerate(((-0.01, -0.01), (0.01, 0.01))):
-                band = add_box(
-                    f"{tag}_Lash{i}", (cx + ox, cy + oy, z0 + sz * 0.55),
-                    (sx * 0.02, sy * 0.52, 0.012), mat_port, coll, 0.002,
-                )
-                set_role(band, "crate", 0.82, 0.98)
-                objs.append(band)
-        elif kind == 2:
-            hinge = add_box(
-                f"{tag}_Hinge", (cx, cy - sy * 0.46, z0 + sz * 0.84),
-                (sx * 0.40, 0.016, 0.016), mat_port, coll, 0.002,
-            )
-            set_role(hinge, "crate", 0.82, 0.98)
+            for i, ox in enumerate((-sx * 0.46, sx * 0.46)):
+                handle = add_box(f"{tag}_Handle{i}", (cx + ox, cy, z0 + sz * 0.48), (0.016, sy * 0.16, 0.018), mat_port, coll, 0.002)
+                set_role(handle, "crate", *iron)
+                objs.append(handle)
+            for i, (ox, oy) in enumerate(((-sx * 0.44, -sy * 0.38), (sx * 0.44, -sy * 0.38), (-sx * 0.44, sy * 0.38), (sx * 0.44, sy * 0.38))):
+                corner = add_box(f"{tag}_Iron{i}", (cx + ox, cy + oy, z0 + sz * 0.50), (0.024, 0.024, sz * 0.32), mat_port, coll, 0.002)
+                set_role(corner, "crate", *iron)
+                objs.append(corner)
+        for i, ox in enumerate((-sx * 0.30, 0.0, sx * 0.30)):
+            skid = add_box(f"{tag}_Skid{i}", (cx + ox, cy, foot_z), (0.030, sy * 0.36, 0.014), mat_port, coll, 0.001 if lod == 0 else 0.0)
+            set_role(skid, "crate", *iron)
+            objs.append(skid)
+
+    elif kind == 1:
+        # Tall strapped cube, inward of the trunk, not a recolor of it.
+        body = add_box(f"{tag}_Body", (cx, cy, z0 + sz * 0.46), (sx * 0.44, sy * 0.44, sz * 0.44), mat_crate, coll, bevel)
+        set_role(body, "crate", *paint)
+        objs.append(body)
+        lid = add_box(f"{tag}_Lid", (cx, cy, z0 + sz * 0.94), (sx * 0.40, sy * 0.40, 0.018), mat_crate, coll, bevel)
+        set_role(lid, "crate", *paint)
+        objs.append(lid)
+        if lod <= 1:
+            for i, (ox, oy) in enumerate(((-0.012, -0.012), (0.012, 0.012))):
+                lash = add_box(f"{tag}_Lash{i}", (cx + ox, cy + oy, z0 + sz * 0.52), (sx * 0.02, sy * 0.50, 0.010), mat_port, coll, 0.002)
+                set_role(lash, "crate", *iron)
+                objs.append(lash)
+            hasp = add_box(f"{tag}_Hasp", (cx + sx * 0.36, cy, z0 + sz * 0.86), (0.022, 0.030, 0.024), mat_port, coll, 0.002)
+            set_role(hasp, "crate", *iron)
+            objs.append(hasp)
+            for i, oy in enumerate((-sy * 0.46, sy * 0.46)):
+                handle = add_box(f"{tag}_Handle{i}", (cx, cy + oy, z0 + sz * 0.55), (sx * 0.14, 0.014, 0.016), mat_port, coll, 0.002)
+                set_role(handle, "crate", *iron)
+                objs.append(handle)
+        for i, (ox, oy) in enumerate(((-sx * 0.30, -sy * 0.30), (sx * 0.30, -sy * 0.30), (-sx * 0.30, sy * 0.30), (sx * 0.30, sy * 0.30))):
+            foot = add_box(f"{tag}_Foot{i}", (cx + ox, cy + oy, foot_z), (0.032, 0.032, 0.014), mat_port, coll, 0.001 if lod == 0 else 0.0)
+            set_role(foot, "crate", *iron)
+            objs.append(foot)
+
+    elif kind == 2:
+        # Long instrument case along +Y with hinge, latches, and top vents.
+        body = add_box(f"{tag}_Body", (cx, cy, z0 + sz * 0.40), (sx * 0.42, sy * 0.48, sz * 0.36), mat_crate, coll, bevel)
+        set_role(body, "crate", *paint)
+        objs.append(body)
+        lid = add_box(f"{tag}_Lid", (cx + 0.008, cy, z0 + sz * 0.82), (sx * 0.40, sy * 0.48, 0.016), mat_crate, coll, bevel)
+        set_role(lid, "crate", *paint)
+        objs.append(lid)
+        if lod <= 1:
+            hinge = add_box(f"{tag}_Hinge", (cx - sx * 0.40, cy, z0 + sz * 0.78), (0.014, sy * 0.40, 0.014), mat_port, coll, 0.002)
+            set_role(hinge, "crate", *iron)
             objs.append(hinge)
-            for i, ox in enumerate((-sx * 0.22, sx * 0.22)):
-                latch = add_box(
-                    f"{tag}_Latch{i}", (cx + ox, cy + sy * 0.44, z0 + sz * 0.78),
-                    (0.028, 0.018, 0.022), mat_port, coll, 0.002,
-                )
-                set_role(latch, "crate", 0.82, 0.98)
+            for i, oy in enumerate((-sy * 0.22, sy * 0.22)):
+                latch = add_box(f"{tag}_Latch{i}", (cx + sx * 0.40, cy + oy, z0 + sz * 0.72), (0.016, 0.022, 0.020), mat_port, coll, 0.002)
+                set_role(latch, "crate", *iron)
                 objs.append(latch)
-        elif kind == 3:
-            for sxn, syn in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                frame = add_box(
-                    f"{tag}_Frame_{sxn}_{syn}",
-                    (cx + sxn * sx * 0.46, cy + syn * sy * 0.46, z0 + sz * 0.45),
-                    (0.016 if sxn else sx * 0.46, 0.016 if syn else sy * 0.46, sz * 0.40),
-                    mat_port, coll, 0.002,
-                )
-                set_role(frame, "crate", 0.82, 0.98)
-                objs.append(frame)
-        else:
-            strap = add_box(
-                f"{tag}_Band", (cx, cy, z0 + sz * 0.70),
-                (sx * 0.52, sy * 0.12, 0.012), mat_port, coll, 0.002,
-            )
-            set_role(strap, "crate", 0.82, 0.98)
-            objs.append(strap)
-        # corner irons
-        for i, (ox, oy) in enumerate((
-            (-sx * 0.44, -sy * 0.44), (sx * 0.44, -sy * 0.44),
-            (-sx * 0.44, sy * 0.44), (sx * 0.44, sy * 0.44),
-        )):
-            iron = add_box(
-                f"{tag}_Iron{i}", (cx + ox, cy + oy, z0 + sz * 0.55),
-                (0.028, 0.028, sz * 0.38), mat_port, coll, 0.002,
-            )
-            set_role(iron, "crate", 0.82, 0.98)
-            objs.append(iron)
-        # recessed handles on long sides
-        for i, oy in enumerate((-sy * 0.50, sy * 0.50)):
-            handle = add_box(
-                f"{tag}_Handle{i}", (cx, cy + oy, z0 + sz * 0.48),
-                (sx * 0.16, 0.014, 0.018), mat_port, coll, 0.002,
-            )
-            set_role(handle, "crate", 0.82, 0.98)
+            n_vents = 4 if lod == 0 else 3
+            span = sy * 0.62
+            for i in range(n_vents):
+                t = (i + 0.5) / n_vents - 0.5
+                vent = add_box(f"{tag}_Vent{i}", (cx, cy + t * span, z0 + sz * 0.90), (sx * 0.28, 0.010, 0.008), mat_port, coll, 0.001)
+                set_role(vent, "crate", *iron)
+                objs.append(vent)
+            for i, oy in enumerate((-sy * 0.48, sy * 0.48)):
+                cap = add_box(f"{tag}_EndCap{i}", (cx, cy + oy, z0 + sz * 0.42), (sx * 0.44, 0.016, sz * 0.32), mat_port, coll, 0.002)
+                set_role(cap, "crate", *iron)
+                objs.append(cap)
+        for i, oy in enumerate((-sy * 0.28, sy * 0.28)):
+            skid = add_box(f"{tag}_Skid{i}", (cx, cy + oy, foot_z), (sx * 0.36, 0.022, 0.012), mat_port, coll, 0.001 if lod == 0 else 0.0)
+            set_role(skid, "crate", *iron)
+            objs.append(skid)
+
+    elif kind == 3:
+        # Open frame rack: pallet + posts + top rails + inner case. Not a solid cube.
+        pallet = add_box(f"{tag}_Pallet", (cx, cy, z0 + 0.018), (sx * 0.48, sy * 0.48, 0.014), mat_port, coll, bevel * 0.5)
+        set_role(pallet, "crate", *iron)
+        objs.append(pallet)
+        inner = add_box(f"{tag}_Inner", (cx, cy, z0 + sz * 0.42), (sx * 0.32, sy * 0.32, sz * 0.30), mat_crate, coll, bevel)
+        set_role(inner, "crate", *paint)
+        objs.append(inner)
+        if lod <= 1:
+            for i, (ox, oy) in enumerate(((-sx * 0.42, -sy * 0.42), (sx * 0.42, -sy * 0.42), (-sx * 0.42, sy * 0.42), (sx * 0.42, sy * 0.42))):
+                post = add_box(f"{tag}_Post{i}", (cx + ox, cy + oy, z0 + sz * 0.48), (0.018, 0.018, sz * 0.42), mat_port, coll, 0.002)
+                set_role(post, "crate", *iron)
+                objs.append(post)
+            for i, (hx, hy, px, py) in enumerate((
+                (sx * 0.42, 0.014, 0.0, sy * 0.42),
+                (sx * 0.42, 0.014, 0.0, -sy * 0.42),
+                (0.014, sy * 0.42, sx * 0.42, 0.0),
+                (0.014, sy * 0.42, -sx * 0.42, 0.0),
+            )):
+                rail = add_box(f"{tag}_Rail{i}", (cx + px, cy + py, z0 + sz * 0.88), (hx, hy, 0.012), mat_port, coll, 0.002)
+                set_role(rail, "crate", *iron)
+                objs.append(rail)
+            handle = add_box(f"{tag}_Handle", (cx, cy + sy * 0.50, z0 + sz * 0.55), (sx * 0.12, 0.012, 0.016), mat_port, coll, 0.002)
+            set_role(handle, "crate", *iron)
             objs.append(handle)
-    # skid feet
-    foot_z = z0 + 0.018
-    for i, (ox, oy) in enumerate((
-        (-sx * 0.32, -sy * 0.32), (sx * 0.32, -sy * 0.32),
-        (-sx * 0.32, sy * 0.32), (sx * 0.32, sy * 0.32),
-    )):
-        foot = add_box(
-            f"{tag}_Foot{i}", (cx + ox, cy + oy, foot_z),
-            (0.04, 0.04, 0.018), mat_port, coll, 0.001 if lod == 0 else 0.0,
-        )
-        set_role(foot, "crate", 0.82, 0.98)
-        objs.append(foot)
+        else:
+            # LOD2 keeps the hollow planform as a thinner inner + pallet only.
+            pass
+
+    else:
+        # Low vented module filling the remaining apron corner.
+        body = add_box(f"{tag}_Body", (cx, cy, z0 + sz * 0.42), (sx * 0.48, sy * 0.44, sz * 0.36), mat_crate, coll, bevel)
+        set_role(body, "crate", *paint)
+        objs.append(body)
+        if lod <= 1:
+            n_slots = 5 if lod == 0 else 3
+            span = sx * 0.64
+            for i in range(n_slots):
+                t = (i + 0.5) / n_slots - 0.5
+                slot = add_box(f"{tag}_Grill{i}", (cx + t * span, cy, z0 + sz * 0.82), (0.012, sy * 0.32, 0.010), mat_port, coll, 0.001)
+                set_role(slot, "crate", *iron)
+                objs.append(slot)
+            for i, ox in enumerate((-sx * 0.48, sx * 0.48)):
+                side = add_box(f"{tag}_SideVent{i}", (cx + ox, cy, z0 + sz * 0.48), (0.010, sy * 0.22, sz * 0.16), mat_port, coll, 0.001)
+                set_role(side, "crate", *iron)
+                objs.append(side)
+            handle = add_box(f"{tag}_Handle", (cx - sx * 0.10, cy + sy * 0.46, z0 + sz * 0.50), (sx * 0.16, 0.012, 0.014), mat_port, coll, 0.002)
+            set_role(handle, "crate", *iron)
+            objs.append(handle)
+        for i, oy in enumerate((-sy * 0.30, sy * 0.30)):
+            rail = add_box(f"{tag}_Rail{i}", (cx, cy + oy, foot_z), (sx * 0.42, 0.018, 0.012), mat_port, coll, 0.001 if lod == 0 else 0.0)
+            set_role(rail, "crate", *iron)
+            objs.append(rail)
+
     return objs
 
 
@@ -792,48 +1010,68 @@ def build_port(lod, mats, coll):
     pfx = f"L{lod}_"
     bevel = 0.008 if lod == 0 else 0.0
     n = 8
-    inner = oct_pts(WELL_CX, WELL_CY, WELL_R_IN, n)
-    outer = oct_pts(WELL_CX, WELL_CY, WELL_R_OUT, n)
-    mid = oct_pts(WELL_CX, WELL_CY, (WELL_R_IN + WELL_R_OUT) * 0.5, n)
+    rot = math.pi / 8.0
+    inner = oct_pts(WELL_CX, WELL_CY, WELL_R_IN, n, rot)
+    outer = [
+        (
+            WELL_CX + WELL_R_OUT_VAR[i] * math.cos(rot + 2.0 * math.pi * i / n),
+            WELL_CY + WELL_R_OUT_VAR[i] * math.sin(rot + 2.0 * math.pi * i / n),
+        )
+        for i in range(n)
+    ]
     z_top = COLLAR_Z
     z_bot = WELL_FLOOR_Z
-    # flange, liner, outer skirt as manufactured plates
+    # Folded octagonal flange with a loading throat toward +X. Liner stays closed.
     for i in range(n):
         j = (i + 1) % n
         p0, p1 = inner[i], inner[j]
         q0, q1 = outer[i], outer[j]
-        flange = add_plate(
-            f"{pfx}Flange_{i}",
-            (q0[0], q0[1], z_top), (q1[0], q1[1], z_top),
-            (p1[0], p1[1], z_top), (p0[0], p0[1], z_top),
-            0.036, mats["port"], coll, bevel, "port",
-        )
-        port.append(flange)
         liner = add_plate(
             f"{pfx}Liner_{i}",
             (p0[0], p0[1], z_top - 0.01), (p1[0], p1[1], z_top - 0.01),
             (p1[0], p1[1], z_bot), (p0[0], p0[1], z_bot),
-            0.028, mats["port"], coll, bevel * 0.6, "port",
+            0.030, mats["port"], coll, bevel * 0.6, "port",
         )
         port.append(liner)
+        if i in LOADING_SECTORS:
+            continue
+        z_flange = z_top + (0.010 if i % 2 else 0.0)
+        flange = add_plate(
+            f"{pfx}Flange_{i}",
+            (q0[0], q0[1], z_flange), (q1[0], q1[1], z_flange),
+            (p1[0], p1[1], z_flange), (p0[0], p0[1], z_flange),
+            0.038, mats["port"], coll, bevel, "port",
+        )
+        port.append(flange)
         if lod <= 1:
             skirt = add_plate(
                 f"{pfx}Skirt_{i}",
-                (q0[0], q0[1], z_top - 0.02), (q0[0], q0[1], 0.06),
-                (q1[0], q1[1], 0.06), (q1[0], q1[1], z_top - 0.02),
+                (q0[0], q0[1], z_flange - 0.02), (q0[0], q0[1], 0.06),
+                (q1[0], q1[1], 0.06), (q1[0], q1[1], z_flange - 0.02),
                 0.024, mats["port"], coll, bevel * 0.6, "port",
             )
             port.append(skirt)
-        if lod == 0:
+        if lod == 0 and i in (2, 4, 6):
+            mid0 = ((p0[0] + q0[0]) * 0.5, (p0[1] + q0[1]) * 0.5)
+            mid1 = ((p1[0] + q1[0]) * 0.5, (p1[1] + q1[1]) * 0.5)
             gusset = add_plate(
                 f"{pfx}Gusset_{i}",
-                (q0[0], q0[1], z_top + 0.01), (mid[i][0], mid[i][1], z_top + 0.018),
-                (mid[j][0], mid[j][1], z_top + 0.018), (q1[0], q1[1], z_top + 0.01),
+                (q0[0], q0[1], z_flange + 0.012), (mid0[0], mid0[1], z_flange + 0.020),
+                (mid1[0], mid1[1], z_flange + 0.020), (q1[0], q1[1], z_flange + 0.012),
                 0.016, mats["port"], coll, 0.003, "port",
             )
             port.append(gusset)
-    # well floor — a real deck, not a void
-    floor_pts = oct_pts(WELL_CX, WELL_CY, WELL_R_IN - 0.02, n)
+    # Loading cheeks close the throat sides without restoring a full ring.
+    for i, vi in enumerate((7, 1)):
+        p, q = inner[vi], outer[vi]
+        cheek = add_plate(
+            f"{pfx}LoadCheek_{i}",
+            (p[0], p[1], z_top), (q[0], q[1], z_top),
+            (q[0], q[1], 0.06), (p[0], p[1], 0.06),
+            0.028, mats["port"], coll, bevel * 0.6, "port",
+        )
+        port.append(cheek)
+    floor_pts = oct_pts(WELL_CX, WELL_CY, WELL_R_IN - 0.03, n, rot)
     floor = add_plate(
         f"{pfx}WellFloor",
         (floor_pts[0][0], floor_pts[0][1], z_bot),
@@ -843,135 +1081,135 @@ def build_port(lod, mats, coll):
         0.022, mats["port"], coll, bevel * 0.5, "port", (0.02, 0.40),
     )
     port.append(floor)
-    # four guide rails on cardinal flats
-    rail_r = WELL_R_IN - 0.03
-    for i, a in enumerate((math.pi / 8, math.pi / 8 + math.pi / 2, math.pi / 8 + math.pi, math.pi / 8 + 3 * math.pi / 2)):
-        x = WELL_CX + rail_r * math.cos(a)
-        y = WELL_CY + rail_r * math.sin(a)
-        hx, hy = abs(math.cos(a)) * 0.018 + 0.012, abs(math.sin(a)) * 0.018 + 0.012
-        rail = add_box(
-            f"{pfx}GuideRail_{i}", (x, y, 0.24),
-            (hx, hy, 0.20 if lod == 2 else 0.22),
-            mats["port"], coll, bevel * 0.5,
-        )
-        set_role(rail, "port", 0.55, 0.90)
-        port.append(rail)
-        if lod == 0:
-            shoe = add_box(
-                f"{pfx}RailShoe_{i}", (x, y, COLLAR_Z - 0.04),
-                (hx + 0.012, hy + 0.012, 0.03), mats["cradle"], coll, 0.003,
-            )
-            set_role(shoe, "cradle")
-            port.append(shoe)
-    # feet at four corners, grounded z=0
-    for i, (sx, sy) in enumerate(((-1, -1), (1, -1), (-1, 1), (1, 1))):
-        fx = WELL_CX + sx * 0.50
-        fy = WELL_CY + sy * 0.50
-        foot = add_box(
-            f"{pfx}Foot_{i}", (fx, fy, 0.025),
-            (0.11, 0.11, 0.025), mats["port"], coll, bevel,
-        )
-        set_role(foot, "port")
-        port.append(foot)
-        # radial tab so the foot is a flange continuation, not a floating cube
-        tab = add_box(
-            f"{pfx}FootTab_{i}",
-            ((WELL_CX + fx) * 0.5, (WELL_CY + fy) * 0.5, 0.05),
-            (0.14, 0.045, 0.018), mats["port"], coll, bevel * 0.5,
-            rot=(0.0, 0.0, math.atan2(fy - WELL_CY, fx - WELL_CX)),
-        )
-        set_role(tab, "port")
-        port.append(tab)
-        post = add_box(
-            f"{pfx}Post_{i}", (fx, fy, 0.16),
-            (0.045, 0.045, 0.12), mats["port"], coll, bevel * 0.5,
-        )
-        set_role(post, "port")
-        port.append(post)
-        if lod == 0:
-            port.append(add_hex_bolt(f"{pfx}FootBolt_{i}a", (fx + 0.06, fy + 0.06, 0.048), mats["port"], coll))
-            port.append(add_hex_bolt(f"{pfx}FootBolt_{i}b", (fx - 0.06, fy - 0.06, 0.048), mats["port"], coll))
-    # loading apron on +X
+    # Three C-channel guides; none on the loading throat.
+    for i, sector in enumerate((2, 4, 5)):
+        a = rot + 2.0 * math.pi * (sector + 0.5) / n
+        x = WELL_CX + (WELL_R_IN - 0.045) * math.cos(a)
+        y = WELL_CY + (WELL_R_IN - 0.045) * math.sin(a)
+        port.extend(add_c_channel(
+            f"{pfx}Guide_{i}", (x, y, 0.24),
+            length=0.38 if lod == 2 else 0.42, depth=0.055, thick=0.014,
+            axis="z", mat=mats["port"], coll=coll, bevel=bevel * 0.5, role="port",
+        ))
+    # Three folded hat-section jack pads — unequal, load-bearing, not cube pucks.
+    port.extend(add_hat_pad(
+        f"{pfx}JackSW", WELL_CX - 0.58, WELL_CY - 0.50, 0.26, 0.14,
+        mats["port"], coll, bevel, rot_z=math.radians(35),
+    ))
+    port.extend(add_hat_pad(
+        f"{pfx}JackNW", WELL_CX - 0.62, WELL_CY + 0.40, 0.16, 0.18,
+        mats["port"], coll, bevel, rot_z=math.radians(-22),
+    ))
+    port.extend(add_hat_pad(
+        f"{pfx}JackS", WELL_CX + 0.08, WELL_CY - 0.72, 0.32, 0.11,
+        mats["port"], coll, bevel, rot_z=0.0,
+    ))
+    if lod == 0:
+        for i, (bx, by) in enumerate((
+            (WELL_CX - 0.50, WELL_CY - 0.44),
+            (WELL_CX - 0.54, WELL_CY + 0.34),
+            (WELL_CX + 0.16, WELL_CY - 0.66),
+        )):
+            port.append(add_hex_bolt(f"{pfx}JackBolt_{i}", (bx, by, 0.108), mats["port"], coll))
     apron = add_plate(
         f"{pfx}ApronDeck",
-        (0.36, -0.95, APRON_Z), (1.08, -0.95, APRON_Z),
-        (1.08, 0.95, APRON_Z), (0.36, 0.95, APRON_Z),
+        (0.36, -0.88, APRON_Z), (1.08, -0.88, APRON_Z),
+        (1.08, 0.70, APRON_Z), (0.36, 0.70, APRON_Z),
         0.028, mats["port"], coll, bevel, "port",
     )
     port.append(apron)
     if lod <= 1:
         lip = add_plate(
             f"{pfx}ApronLip",
-            (0.36, -0.95, APRON_Z + 0.03), (0.40, -0.95, APRON_Z + 0.03),
-            (0.40, 0.95, APRON_Z + 0.03), (0.36, 0.95, APRON_Z + 0.03),
+            (0.36, -0.88, APRON_Z + 0.03), (0.40, -0.88, APRON_Z + 0.03),
+            (0.40, 0.70, APRON_Z + 0.03), (0.36, 0.70, APRON_Z + 0.03),
             0.02, mats["port"], coll, bevel * 0.5, "port",
         )
         port.append(lip)
-        # cable tray along the collar/apron join
         tray = add_box(
-            f"{pfx}CableTray", (0.34, 0.0, COLLAR_Z * 0.55),
-            (0.04, 0.42, 0.03), mats["port"], coll, bevel * 0.4,
+            f"{pfx}CableTray", (0.32, -0.18, COLLAR_Z * 0.55),
+            (0.04, 0.28, 0.03), mats["port"], coll, bevel * 0.4,
         )
         set_role(tray, "port", 0.50, 0.90)
         port.append(tray)
     if lod == 0:
+        # Service hatch sits on the -Y flange plate, a real door, not a glow.
+        hx = outer[5][0] * 0.55 + inner[5][0] * 0.45
+        hy = outer[5][1] * 0.55 + inner[5][1] * 0.45
         hatch = add_box(
-            f"{pfx}ServiceHatch", (WELL_CX + 0.62, WELL_CY + 0.52, COLLAR_Z + 0.012),
-            (0.10, 0.08, 0.012), mats["port"], coll, 0.003,
+            f"{pfx}ServiceHatch", (hx, hy, COLLAR_Z + 0.022),
+            (0.09, 0.07, 0.012), mats["port"], coll, 0.003,
         )
         set_role(hatch, "port")
         port.append(hatch)
-        for i, (hx, hy) in enumerate((
-            (WELL_CX + 0.54, WELL_CY + 0.46), (WELL_CX + 0.70, WELL_CY + 0.46),
-            (WELL_CX + 0.54, WELL_CY + 0.58), (WELL_CX + 0.70, WELL_CY + 0.58),
-        )):
-            port.append(add_hex_bolt(f"{pfx}HatchBolt_{i}", (hx, hy, COLLAR_Z + 0.022), mats["port"], coll))
+        port.append(add_hex_bolt(f"{pfx}HatchBolt_0", (hx + 0.05, hy + 0.03, COLLAR_Z + 0.034), mats["port"], coll))
+        port.append(add_hex_bolt(f"{pfx}HatchBolt_1", (hx - 0.05, hy - 0.03, COLLAR_Z + 0.034), mats["port"], coll))
     return port
 
 
 def build_cradle(lod, mats, coll):
+    """One asymmetric C-clamp + load beam. Open toward the +X loading throat."""
     objs = []
     pfx = f"L{lod}_"
     bevel = 0.007 if lod == 0 else 0.0
-    # load beam spanning the well along X
-    beam = add_box(
-        f"{pfx}CradleBeam", (WELL_CX + 0.02, WELL_CY, COLLAR_Z + 0.04),
-        (0.46 if lod == 2 else 0.50, 0.045, 0.035), mats["cradle"], coll, bevel,
+    # Saddle cups the far (-X) side and opens toward the +X loading throat.
+    a0, a1 = math.radians(110.0), math.radians(250.0)
+    segs = 8 if lod == 0 else (6 if lod == 1 else 4)
+    saddle = add_arc_shell(
+        f"{pfx}CradleSaddle",
+        POD_CX, POD_CY, COLLAR_Z - 0.02, COLLAR_Z + 0.18,
+        r_in=0.205, r_out=0.275, a0=a0, a1=a1, segs=segs,
+        mat=mats["cradle"], coll=coll, bevel=bevel, cap_ends=True,
     )
-    set_role(beam, "cradle")
-    objs.append(beam)
-    # formed saddles at ±Y
-    for i, sy in enumerate((-1.0, 1.0)):
-        y = WELL_CY + sy * 0.22
-        saddle = loft_tube(
-            f"{pfx}Saddle_{i}",
-            ((COLLAR_Z - 0.02, 0.10), (COLLAR_Z + 0.02, 0.12), (COLLAR_Z + 0.10, 0.11), (COLLAR_Z + 0.16, 0.09)),
-            8 if lod == 0 else 6, mats["cradle"], coll, bevel,
-            WELL_CX, y, cap_bottom=True, cap_top=True,
-        )
-        set_role(saddle, "cradle")
-        objs.append(saddle)
+    set_role(saddle, "cradle")
+    objs.append(saddle)
+    for i, a in enumerate((a0, a1)):
+        jx = POD_CX + 0.250 * math.cos(a)
+        jy = POD_CY + 0.250 * math.sin(a)
         jaw = add_box(
-            f"{pfx}ClampJaw_{i}", (WELL_CX + 0.16, y, COLLAR_Z + 0.12),
-            (0.06, 0.045, 0.05), mats["cradle"], coll, bevel,
+            f"{pfx}ClampJaw_{i}", (jx, jy, COLLAR_Z + 0.10),
+            (0.055, 0.038, 0.055), mats["cradle"], coll, bevel,
+            rot=(0.0, 0.0, a),
         )
         set_role(jaw, "cradle")
         objs.append(jaw)
-        if lod <= 1:
-            dog = add_box(
-                f"{pfx}LockDog_{i}", (WELL_CX - 0.16, y, COLLAR_Z + 0.10),
-                (0.05, 0.03, 0.04), mats["cradle"], coll, bevel * 0.6,
-            )
-            set_role(dog, "cradle")
-            objs.append(dog)
         if lod == 0:
-            pad = add_box(
-                f"{pfx}ContactPad_{i}", (WELL_CX, y + sy * 0.06, COLLAR_Z + 0.14),
-                (0.08, 0.018, 0.022), mats["cradle"], coll, 0.002,
+            tooth = add_box(
+                f"{pfx}JawTooth_{i}",
+                (POD_CX + 0.215 * math.cos(a), POD_CY + 0.215 * math.sin(a), COLLAR_Z + 0.12),
+                (0.018, 0.028, 0.030), mats["cradle"], coll, 0.002,
+                rot=(0.0, 0.0, a),
             )
-            set_role(pad, "cradle", 0.70, 0.98)
-            objs.append(pad)
-            objs.append(add_hex_bolt(f"{pfx}CradleBolt_{i}", (WELL_CX + 0.22, y, COLLAR_Z + 0.08), mats["cradle"], coll, "cradle"))
+            set_role(tooth, "cradle", 0.70, 0.98)
+            objs.append(tooth)
+    # Folded C-channel carries the saddle reaction into the apron. The open
+    # flanges remain readable in top/clay instead of a generic box bar.
+    objs.extend(add_c_channel(
+        f"{pfx}LoadBeam", (POD_CX + 0.30, POD_CY + 0.16, COLLAR_Z + 0.06),
+        length=0.52 if lod == 2 else 0.60,
+        depth=0.10 if lod == 2 else 0.12,
+        thick=0.018,
+        axis="x",
+        mat=mats["cradle"], coll=coll, bevel=bevel, role="cradle",
+    ))
+    if lod <= 1:
+        ram = add_box(
+            f"{pfx}RamBox", (POD_CX + 0.18, POD_CY + 0.28, COLLAR_Z + 0.09),
+            (0.07, 0.05, 0.045), mats["cradle"], coll, bevel * 0.6,
+        )
+        set_role(ram, "cradle")
+        objs.append(ram)
+        pad = add_box(
+            f"{pfx}ContactPad", (POD_CX - 0.18, POD_CY, COLLAR_Z + 0.10),
+            (0.016, 0.070, 0.040), mats["cradle"], coll, 0.002,
+        )
+        set_role(pad, "cradle", 0.70, 0.98)
+        objs.append(pad)
+    if lod == 0:
+        objs.append(add_hex_bolt(
+            f"{pfx}CradleBolt", (POD_CX + 0.36, POD_CY + 0.16, COLLAR_Z + 0.10),
+            mats["cradle"], coll, "cradle",
+        ))
     return objs
 
 
@@ -980,100 +1218,105 @@ def build_pod(lod, mats, coll):
     thruster = []
     pfx = f"L{lod}_"
     bevel = 0.006 if lod == 0 else 0.0
-    n = 12 if lod == 0 else (8 if lod == 1 else 6)
-    # pressure vessel along +Z, nose/docking at top, aft at bottom
+    n = 8
     stations = (
-        (0.18, 0.18),
-        (0.24, 0.24),
-        (0.40, 0.26),
-        (0.62, 0.255),
-        (0.82, 0.22),
-        (0.96, 0.17),
-        (1.08, 0.155),
+        (0.18, 0.14),
+        (0.26, 0.19),
+        (0.46, 0.20),
+        (0.68, 0.195),
+        (0.88, 0.15),
+        (1.00, 0.095),
     )
     if lod == 2:
-        stations = ((0.18, 0.20), (0.50, 0.26), (0.90, 0.20), (1.06, 0.15))
-    barrel = loft_tube(f"{pfx}PodBarrel", stations, n, mats["pod"], coll, bevel, POD_CX, POD_CY, True, True)
-    set_role(barrel, "pod", 0.30, 0.74)
-    body.append(barrel)
-    # docking ring with visible thickness (open face)
-    ring = loft_tube(
-        f"{pfx}DockRing",
-        ((1.08, 0.155), (1.12, 0.16), (1.14, 0.13), (1.10, 0.11)),
-        n, mats["pod"], coll, bevel * 0.7, POD_CX, POD_CY, False, False,
+        stations = ((0.18, 0.16), (0.55, 0.19), (0.98, 0.095))
+    barrel = loft_oval(
+        f"{pfx}PodBarrel", stations, n, mats["pod"], coll, bevel,
+        POD_CX, POD_CY, rx_scale=1.0, ry_scale=0.88, cap_bottom=True, cap_top=True,
     )
-    set_role(ring, "pod", 0.80, 0.98)
-    body.append(ring)
+    set_role(barrel, "pod", 0.30, 0.70)
+    body.append(barrel)
+    # Manufactured rectangular docking face with wall thickness. Not a circular badge.
+    rim = add_box(
+        f"{pfx}DockRim", (POD_CX, POD_CY, 1.015),
+        (0.155, 0.095, 0.012), mats["pod"], coll, bevel * 0.5,
+    )
+    set_role(rim, "pod", 0.74, 0.98)
+    body.append(rim)
+    plate = add_box(
+        f"{pfx}DockPlate", (POD_CX, POD_CY, 1.038),
+        (0.138, 0.082, 0.014), mats["pod"], coll, bevel * 0.4,
+    )
+    set_role(plate, "pod", 0.74, 0.98)
+    body.append(plate)
+    key = add_box(
+        f"{pfx}DockKey", (POD_CX + 0.018, POD_CY, 1.054),
+        (0.058, 0.024, 0.010), mats["pod"], coll, 0.001,
+    )
+    set_role(key, "pod", 0.02, 0.22)
+    body.append(key)
     if lod <= 1:
-        well = loft_tube(
-            f"{pfx}DockWell",
-            ((1.12, 0.095), (0.96, 0.085), (0.94, 0.00)),
-            max(6, n - 2), mats["pod"], coll, 0.0, POD_CX, POD_CY, False, True,
-        )
-        set_role(well, "pod", 0.02, 0.22)
-        body.append(well)
-        # Keyed docking face: three alignment petals that break the disc at 120 px.
-        for i in range(3):
-            a = i * (2.0 * math.pi / 3.0) + math.pi / 6
-            px = POD_CX + 0.205 * math.cos(a)
-            py = POD_CY + 0.205 * math.sin(a)
-            ca, sa = math.cos(a), math.sin(a)
-            petal = add_box(
-                f"{pfx}DockPetal_{i}", (px, py, 1.145),
-                (0.085, 0.032, 0.018), mats["pod"], coll, 0.002,
+        for i, sy in enumerate((-1.0, 1.0)):
+            lug = add_box(
+                f"{pfx}DockLug_{i}", (POD_CX - 0.04, POD_CY + sy * 0.100, 1.042),
+                (0.036, 0.020, 0.016), mats["pod"], coll, 0.002,
+            )
+            set_role(lug, "pod", 0.74, 0.98)
+            body.append(lug)
+        if lod == 0:
+            for i, (ox, oy) in enumerate(((-0.09, -0.05), (0.09, -0.05), (-0.09, 0.05), (0.09, 0.05))):
+                boss = add_box(
+                    f"{pfx}DockBoss_{i}", (POD_CX + ox, POD_CY + oy, 1.050),
+                    (0.016, 0.016, 0.008), mats["pod"], coll, 0.001,
+                )
+                set_role(boss, "pod", 0.74, 0.98)
+                body.append(boss)
+        # Shoes only at the three remaining guide stations.
+        for i, sector in enumerate((2, 4, 5)):
+            a = math.pi / 8.0 + 2.0 * math.pi * (sector + 0.5) / 8.0
+            sx = POD_CX + 0.215 * math.cos(a)
+            sy = POD_CY + 0.190 * math.sin(a)
+            shoe = add_box(
+                f"{pfx}GuideShoe_{i}", (sx, sy, 0.44),
+                (0.030, 0.024, 0.045), mats["pod"], coll, bevel * 0.5,
                 rot=(0.0, 0.0, a),
             )
-            set_role(petal, "pod", 0.80, 0.98)
-            body.append(petal)
-        key = add_box(
-            f"{pfx}DockKey", (POD_CX, POD_CY, 1.148),
-            (0.11, 0.028, 0.012), mats["pod"], coll, 0.001,
-        )
-        set_role(key, "pod", 0.02, 0.22)
-        body.append(key)
-        for i in range(4):
-            a = math.pi / 4 + i * math.pi / 2
-            sx = POD_CX + 0.27 * math.cos(a)
-            sy = POD_CY + 0.27 * math.sin(a)
-            shoe = add_box(
-                f"{pfx}GuideShoe_{i}", (sx, sy, 0.42),
-                (0.035, 0.028, 0.05), mats["pod"], coll, bevel * 0.5,
-            )
-            set_role(shoe, "pod", 0.80, 0.98)
+            set_role(shoe, "pod", 0.74, 0.98)
             body.append(shoe)
         if lod == 0:
-            for i, z in enumerate((0.36, 0.58, 0.78)):
-                rib = loft_tube(
+            for i, z in enumerate((0.38, 0.62, 0.82)):
+                rib = loft_oval(
                     f"{pfx}PodRib_{i}",
-                    ((z - 0.012, 0.262), (z, 0.270), (z + 0.012, 0.262)),
-                    n, mats["pod"], coll, 0.002, POD_CX, POD_CY, False, False,
+                    ((z - 0.010, 0.202), (z, 0.210), (z + 0.010, 0.202)),
+                    n, mats["pod"], coll, 0.002, POD_CX, POD_CY,
+                    rx_scale=1.0, ry_scale=0.88, cap_bottom=False, cap_top=False,
                 )
-                set_role(rib, "pod", 0.80, 0.98)
+                set_role(rib, "pod", 0.74, 0.98)
                 body.append(rib)
             blister = add_cylinder(
-                f"{pfx}SensorBlister", (POD_CX + 0.22, POD_CY, 0.72),
-                0.028, 0.04, mats["pod"], coll, vertices=8, bevel=0.002, rot=(0, math.pi / 2, 0),
+                f"{pfx}SensorBlister", (POD_CX + 0.18, POD_CY, 0.70),
+                0.024, 0.036, mats["pod"], coll, vertices=8, bevel=0.002, rot=(0, math.pi / 2, 0),
             )
-            set_role(blister, "pod", 0.80, 0.98)
+            set_role(blister, "pod", 0.74, 0.98)
             body.append(blister)
-    # recessed aft thruster — fixture, not a glow card
-    skirt = loft_tube(
+    skirt = loft_oval(
         f"{pfx}AftSkirt",
-        ((0.16, 0.14), (0.18, 0.18), (0.22, 0.20)),
-        n, mats["thruster"], coll, bevel * 0.5, POD_CX, POD_CY, True, False,
+        ((0.16, 0.11), (0.18, 0.15), (0.22, 0.17)),
+        n, mats["thruster"], coll, bevel * 0.5, POD_CX, POD_CY,
+        rx_scale=1.0, ry_scale=0.88, cap_bottom=True, cap_top=False,
     )
     set_role(skirt, "thruster", 0.02, 0.55)
     thruster.append(skirt)
-    throat = loft_tube(
+    throat = loft_oval(
         f"{pfx}ThrusterThroat",
-        ((0.17, 0.09), (0.28, 0.07), (0.34, 0.05), (0.36, 0.00)),
-        max(6, n - 2), mats["thruster"], coll, 0.0, POD_CX, POD_CY, False, True,
+        ((0.17, 0.08), (0.28, 0.06), (0.34, 0.04), (0.36, 0.00)),
+        6, mats["thruster"], coll, 0.0, POD_CX, POD_CY,
+        rx_scale=1.0, ry_scale=0.88, cap_bottom=False, cap_top=True,
     )
     set_role(throat, "thruster", 0.40, 0.80)
     thruster.append(throat)
     lamp = add_cylinder(
         f"{pfx}ThrusterLamp", (POD_CX, POD_CY, 0.33),
-        0.028 if lod == 0 else 0.024, 0.012, mats["thruster"], coll,
+        0.024 if lod == 0 else 0.020, 0.010, mats["thruster"], coll,
         vertices=8 if lod == 0 else 6, bevel=0.0, rot=(0, 0, 0),
     )
     set_role(lamp, "thruster", 0.84, 0.99)
@@ -1081,7 +1324,7 @@ def build_pod(lod, mats, coll):
     if lod == 0:
         hood = add_cylinder(
             f"{pfx}ThrusterHood", (POD_CX, POD_CY, 0.31),
-            0.038, 0.010, mats["thruster"], coll, vertices=8, bevel=0.001, rot=(0, 0, 0),
+            0.034, 0.010, mats["thruster"], coll, vertices=8, bevel=0.001, rot=(0, 0, 0),
         )
         set_role(hood, "thruster", 0.02, 0.40)
         thruster.append(hood)
@@ -1089,14 +1332,14 @@ def build_pod(lod, mats, coll):
 
 
 def crate_layout():
-    # footprint-first additive pile on the +X apron. z0 is apron top.
+    # Footprint-first load order on the +X apron. Distinct XY, no 2x2 cabinet.
     z0 = APRON_Z + 0.01
     return [
-        dict(kind=0, cx=0.58, cy=-0.40, sx=0.36, sy=0.32, sz=0.26, z0=z0),
-        dict(kind=1, cx=0.94, cy=-0.40, sx=0.30, sy=0.30, sz=0.38, z0=z0),
-        dict(kind=2, cx=0.58, cy=0.02, sx=0.38, sy=0.26, sz=0.22, z0=z0),
-        dict(kind=3, cx=0.94, cy=0.02, sx=0.28, sy=0.28, sz=0.30, z0=z0),
-        dict(kind=4, cx=0.76, cy=0.42, sx=0.50, sy=0.24, sz=0.20, z0=z0),
+        dict(kind=0, cx=0.72, cy=-0.62, sx=0.62, sy=0.30, sz=0.24, z0=z0),
+        dict(kind=1, cx=0.50, cy=-0.22, sx=0.28, sy=0.30, sz=0.36, z0=z0),
+        dict(kind=2, cx=0.92, cy=-0.08, sx=0.22, sy=0.56, sz=0.20, z0=z0),
+        dict(kind=3, cx=0.52, cy=0.28, sx=0.32, sy=0.28, sz=0.28, z0=z0),
+        dict(kind=4, cx=0.88, cy=0.48, sx=0.38, sy=0.26, sz=0.18, z0=z0),
     ]
 
 
@@ -1476,10 +1719,10 @@ def role_of_mesh(obj):
 def family_of_mesh(obj):
     name = obj.name.lower()
     if "crate" in name:
-        return (0.45, 0.36, 0.22)
+        return (0.48, 0.36, 0.20)
     if "pod" in name or "thruster" in name or "dock" in name:
-        return (0.55, 0.62, 0.70)
-    return (0.16, 0.14, 0.12)
+        return (0.38, 0.48, 0.56)
+    return (0.14, 0.12, 0.11)
 
 
 def isolation_material(kind):
@@ -1633,13 +1876,17 @@ def render_evidence(camera, pad, still_dir: Path):
         pod_root.location.z -= LAUNCH_CLEAR_Z
         bpy.context.view_layer.update()
 
-    # site from LOD1
+    # site from LOD1 (legal 19 px/cell) and LOD2 family separation
     hide_lods(1)
     set_crate_stage(5)
+    paths["works_top_lod1"] = snap(camera, still_dir / "works_top_lod1.png", "works_top")
     paths["works_site"] = snap(camera, still_dir / "works_site.png", "works_site")
     bak = override_flat(meshes, family_of_mesh)
     paths["works_site_id"] = snap(camera, still_dir / "works_site_id.png", "works_site", samples=4)
     restore_mats(meshes, bak)
+    hide_lods(2)
+    paths["works_top_lod2"] = snap(camera, still_dir / "works_top_lod2.png", "works_top")
+    paths["works_site_lod2"] = snap(camera, still_dir / "works_site_lod2.png", "works_site")
     hide_lods(0)
     return paths
 
@@ -1688,7 +1935,7 @@ def validate_candidate(path: Path, reports, bbox):
         errors.append(f"footprint {fx:.3f}x{fy:.3f} exceeds 1 cell")
     if bbox["zMin"] < -0.02:
         errors.append(f"not grounded, zMin={bbox['zMin']}")
-    pod_size = max(abs(v) for v in (0.26 * 2, 1.14 - 0.16))
+    pod_size = max(abs(v) for v in (0.20 * 2, 1.05 - 0.16))
     if pod_size > 0.6 * CELL_WU + 0.02:
         errors.append(f"pod axis {pod_size:.3f} exceeds 0.6 cell")
     for rep in reports:
@@ -1710,6 +1957,10 @@ def write_json(path: Path, payload):
 
 def write_contracts(reports, bbox, hashes, stills, errors):
     FAMILY.mkdir(parents=True, exist_ok=True)
+    stills_rel = {
+        key: str(Path(value).relative_to(ROOT)).replace("\\", "/")
+        for key, value in stills.items()
+    }
     ledger = {
         "assetId": ASSET_ID,
         "root": ROOT_NAME,
@@ -1728,9 +1979,11 @@ def write_contracts(reports, bbox, hashes, stills, errors):
         "triangles": reports,
         "bbox": bbox,
         "hashes": hashes,
-        "stills": stills,
+        "stills": stills_rel,
         "errors": errors,
         "g1g2g4": "open",
+        "g3": "blocked:no_mesh_derived_high_cage_bakes",
+        "technicalEvidence": "evidence_ready",
         "wired": False,
         "released": False,
     }
@@ -1741,63 +1994,63 @@ def write_contracts(reports, bbox, hashes, stills, errors):
         "cycle": CYCLE,
         "candidateHash": hashes.get("combined"),
         "rows": [
-            {"id": "MTX-01", "state": "implemented", "still": "evidence/cycle_001/works_top_grazing.png",
+            {"id": "MTX-01", "state": "implemented", "still": "evidence/cycle_002/works_top_grazing.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "Bevelled game mesh, shade_smooth_by_angle 28, weighted normals."},
-            {"id": "MTX-03", "state": "implemented", "still": "evidence/cycle_001/works_top_clay.png",
+            {"id": "MTX-03", "state": "implemented", "still": "evidence/cycle_002/works_top_clay.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Constructed well liner and docking well with wall thickness, not a painted ring."},
-            {"id": "MTX-16", "state": "implemented", "still": "evidence/cycle_001/works_top_orm.png",
+             "notes": "Horseshoe flange and liner with a real well; loading throat not a closed torus."},
+            {"id": "MTX-16", "state": "implemented", "still": "evidence/cycle_002/works_top_orm.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "Smart-project UV0 per part, remapped into unique atlas tiles."},
-            {"id": "MTX-20", "state": "implemented", "still": "evidence/cycle_001/works_top_grazing.png",
+            {"id": "MTX-20", "state": "blocked", "still": "evidence/cycle_002/works_top_grazing.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Bevelled-high on the game mesh; no separate sculpt high."},
-            {"id": "MTX-21", "state": "not_applicable", "still": "evidence/cycle_001/works_top.png",
+             "notes": "No distinct higher source exists; the bevelled game mesh cannot close MTX-20."},
+            {"id": "MTX-21", "state": "blocked", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "No cage bake this cycle; maps are mesh-authored."},
-            {"id": "MTX-22", "state": "implemented", "still": "evidence/cycle_001/works_top_normal.png",
+             "notes": "No selected-to-active cage bake exists in this design-candidate cycle."},
+            {"id": "MTX-22", "state": "blocked", "still": "evidence/cycle_002/works_top_normal.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "OpenGL tangent normals from authored atlas, not a generated projection."},
-            {"id": "MTX-23", "state": "implemented", "still": "evidence/cycle_001/works_top_orm.png",
+             "notes": "The OpenGL atlas normal is procedural response, not a tangent bake from the exact mesh."},
+            {"id": "MTX-23", "state": "blocked", "still": "evidence/cycle_002/works_top_orm.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "AO authored into ORM.R and multiplied into albedo."},
-            {"id": "MTX-24", "state": "implemented", "still": "evidence/cycle_001/works_top_normal.png",
+             "notes": "ORM.R is an authored cavity approximation, not AO baked from the exact mesh."},
+            {"id": "MTX-24", "state": "blocked", "still": "evidence/cycle_002/works_top_normal.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Curvature implied by bevel + atlas edge slopes, not a sculpt bake."},
-            {"id": "MTX-25", "state": "implemented", "still": "evidence/cycle_001/works_top_orm.png",
+             "notes": "No exact-mesh curvature bake exists; atlas edge slopes are not a substitute."},
+            {"id": "MTX-25", "state": "blocked", "still": "evidence/cycle_002/works_top_orm.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Cavity darkening in atlas AO at seams and well."},
-            {"id": "MTX-30", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+             "notes": "No exact-mesh concavity bake exists; atlas cavity darkening remains provisional."},
+            {"id": "MTX-30", "state": "blocked", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Maps derived from mesh UVs and authored generators, not from imagegen pixels."},
-            {"id": "MTX-31", "state": "implemented", "still": "evidence/cycle_001/works_top_matid.png",
+             "notes": "Imagegen pixels are absent, but normal/AO/curvature are not yet mesh-derived."},
+            {"id": "MTX-31", "state": "implemented", "still": "evidence/cycle_002/works_top_matid.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "Five billed substances: port oxide, cradle wear, crate paint, pod skin, thruster."},
-            {"id": "MTX-32", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+            {"id": "MTX-32", "state": "implemented", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "One 1024 atlas with per-role generators, not a tinted shared sheet."},
-            {"id": "MTX-33", "state": "implemented", "still": "evidence/cycle_001/works_top_orm.png",
+            {"id": "MTX-33", "state": "blocked", "still": "evidence/cycle_002/works_top_orm.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Authored ORM: AO/rough/metal per role with crate and pod v-bands."},
-            {"id": "MTX-39", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+             "notes": "Roughness and metallic vary by role, but ORM.R cannot close until mesh AO exists."},
+            {"id": "MTX-39", "state": "blocked", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Seam dirt in atlas; no generic leather bump."},
-            {"id": "MTX-46", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+             "notes": "Seam dirt is provisional until driven by the exact-mesh cavity bake."},
+            {"id": "MTX-46", "state": "implemented", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "No rover yellow, no glow outline, no toy rocket ogive, no cube pile."},
-            {"id": "MTX-50", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+             "notes": "No rover yellow, no glow hatch, no cube pucks, no 2x2 cabinet."},
+            {"id": "MTX-50", "state": "implemented", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "Exported GLB retains exact root, LOD roots, and hook names."},
-            {"id": "MTX-52", "state": "implemented", "still": "evidence/cycle_001/works_top_clay.png",
+            {"id": "MTX-52", "state": "implemented", "still": "evidence/cycle_002/works_top_clay.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "Macro from shaft-collar / cradle / crate / capsule references, not a torus+capsule."},
-            {"id": "MTX-53", "state": "not_applicable", "still": "evidence/cycle_001/works_top.png",
+             "notes": "Asymmetric C-cradle, folded C-channel load beam, horseshoe flange, and five freight footprints."},
+            {"id": "MTX-53", "state": "not_applicable", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
              "notes": "Place candidate is manufactured sections, not photogrammetry."},
-            {"id": "MTX-54", "state": "implemented", "still": "evidence/cycle_001/works_top.png",
+            {"id": "MTX-54", "state": "implemented", "still": "evidence/cycle_002/works_top.png",
              "clayConfirm": "pass", "forbiddenFakeAbsent": True,
-             "notes": "New asset; no silent revert of a prior accepted candidate."},
+             "notes": "Cycle 02 revises cycle 01 form; cycle 01 evidence remains frozen."},
         ],
     })
     write_json(FAMILY / "MATERIAL_CONTRACT.json", {
@@ -1813,9 +2066,55 @@ def write_contracts(reports, bbox, hashes, stills, errors):
     })
     write_json(FAMILY / "source" / "cargo_port_inventory.json", ledger)
     write_json(FAMILY / "HASHES.json", hashes)
+    write_json(EVIDENCE_DIR / "EPOCH.json", {
+        "schema": "spaceface.worksCargoPortCycleEpoch.v1",
+        "assetId": ASSET_ID,
+        "cycle": CYCLE,
+        "state": "design_candidate",
+        "disposition": "review_pending",
+        "candidate": {
+            "root": ROOT_NAME,
+            "sourceGlb": "assets/works/cargo_port/source/cargo_port.glb",
+            "partGlb": "assets/ships/parts/works/place_works_cargo_port.glb",
+            "sha256": hashes.get("combined"),
+            "partsSha256": hashes.get("parts"),
+        },
+        "cycle01": {
+            "candidateSha256": CYCLE01_CANDIDATE,
+            "hashes": "assets/works/cargo_port/evidence/cycle_001/HASHES.json",
+            "frozen": True,
+        },
+        "supportedViews": {
+            "works_top": {"pxPerCell": 120, "resolution": [1920, 1080]},
+            "works_edge": {"pxPerCell": 120, "resolution": [1920, 1080]},
+            "works_site": {"pxPerCell": 19, "resolution": [1920, 1080]},
+        },
+        "gates": {
+            "G0": "evidence_ready",
+            "G1": "open",
+            "G2": "open",
+            "G3": "blocked:no_mesh_derived_high_cage_bakes",
+            "G4": "open",
+            "G5": "evidence_ready",
+            "G6": "open",
+            "G7": "open",
+        },
+        "materialTruth": {
+            "preflight": "assets/works/cargo_port/reference/REFERENCE_BRIEF.md",
+            "allSupportedViewZonesClassified": False,
+        },
+        "hooks": list(HOOK_NAMES),
+        "lodTriangles": reports,
+        "stills": hashes.get("stills", {}),
+        "paths": stills_rel,
+        "authorInspection": "pending",
+        "independentReview": "not_launched",
+        "wired": False,
+        "released": False,
+    })
     audit = FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md"
     lines = [
-        "# Cargo port cycle 01 — material and shape audit",
+        "# Cargo port cycle 02 — material and shape audit",
         "",
         f"Root `{ROOT_NAME}`. Launch axis Blender +Z through the well.",
         "",
@@ -1825,9 +2124,16 @@ def write_contracts(reports, bbox, hashes, stills, errors):
             f"zMin {bbox['zMin']}."
         ),
         "",
-        "Stand-in failure: torus collar + capsule + cube pile. Replacement: folded octagonal",
-        "flange and liner, formed cradle saddle, five unique crate modules, pressure-vessel",
-        "pod with docking cut and recessed aft throat.",
+        "Cycle 01 defect: concentric shrine collar/pod, equal cube jack pads, 2x2 cube freight.",
+        "Cycle 02 replacement: folded octagonal flange with +X loading throat, one asymmetric",
+        "C-cradle with saddle, clamp jaws, and a folded C-channel load beam; three folded",
+        "hat-section jack pads; five unique",
+        "freight footprints (trunk/cube/instrument/frame/vented), faceted pressure shell with",
+        "rectangular keyed docking face. Dark liner crescent remains around the seated pod.",
+        "",
+        "Visible zones billed: flange, liner, loading cheeks, jack pads, guides, apron,",
+        "cradle saddle/jaws/beam, crate family, pod shell, docking face, aft thruster.",
+        "allSupportedViewZonesClassified remains false until independent review.",
         "",
         f"LOD0 port {reports[0]['port_tris']} / pod {reports[0]['pod_tris']} / crates {' '.join(str(t) for t in reports[0]['crate_tris'])}.",
         "",
@@ -1837,7 +2143,11 @@ def write_contracts(reports, bbox, hashes, stills, errors):
         "",
         f"Validation errors: {errors or 'none'}.",
         "",
-        "G1/G2/G4 whole-asset remain open. Cycle 01 is evidence_ready only.",
+        "G3 is blocked: the authored atlas remains provisional until exact-mesh high/cage",
+        "normal, AO, curvature, and cavity bakes exist.",
+        "",
+        "G1/G2/G4 whole-asset remain open. Cycle 02 is evidence_ready only.",
+        "Cycle 01 evidence under evidence/cycle_001 is frozen.",
         "",
     ]
     audit.write_bytes(("\n".join(lines)).encode("utf-8"))
@@ -1947,6 +2257,7 @@ def build_all():
     pod_cell = max(pod_bbox["sizeWu"]) / CELL_WU
     if pod_cell > 0.60 + 0.02:
         errors.append(f"pod envelope {pod_cell:.3f} cells > 0.6")
+    errors.extend(assert_cycle01_frozen())
 
     camera, pad = setup_mine_lights()
     stills = render_evidence(camera, pad, EVIDENCE_DIR)
@@ -1971,15 +2282,175 @@ def build_all():
     return ledger
 
 
+def assert_cycle01_frozen():
+    errors = []
+    if not CYCLE01_HASHES_PATH.exists():
+        errors.append("cycle01 missing HASHES.json")
+    else:
+        try:
+            freeze = json.loads(CYCLE01_HASHES_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append(f"cycle01 HASHES.json invalid: {exc}")
+            freeze = {}
+        if freeze.get("combined") != CYCLE01_CANDIDATE or freeze.get("parts") != CYCLE01_CANDIDATE:
+            errors.append("cycle01 candidate hash manifest drifted")
+        if freeze.get("stills") != CYCLE01_STILL_FREEZE:
+            errors.append("cycle01 still hash manifest drifted")
+    for stem, expected in CYCLE01_STILL_FREEZE.items():
+        path = CYCLE01_DIR / f"{stem}.png"
+        if not path.exists():
+            errors.append(f"cycle01 missing {path.name}")
+            continue
+        got = sha256(path)
+        if got != expected:
+            errors.append(f"cycle01 mutated {path.name}: {got} != {expected}")
+    refs = {
+        "ref_01": FAMILY / "reference" / "ref_01_shaft_collar.jpg",
+        "ref_02": FAMILY / "reference" / "ref_02_launch_cradle.jpg",
+        "ref_03": FAMILY / "reference" / "ref_03_cargo_modules.jpg",
+        "ref_04": FAMILY / "reference" / "ref_04_courier_capsule.jpg",
+    }
+    for key, path in refs.items():
+        got = sha256(path)
+        if got != CYCLE01_REF_FREEZE[key]:
+            errors.append(f"reference mutated {path.name}: {got}")
+    return errors
+
+
+def check_json_files():
+    errors = []
+    for rel in (
+        "HASHES.json",
+        "MATERIAL_CONTRACT.json",
+        "TECHNIQUE_LEDGER.json",
+        "source/cargo_port_inventory.json",
+        "evidence/cycle_001/HASHES.json",
+        "evidence/cycle_002/EPOCH.json",
+        "evidence/cycle_002/VISUAL_REVIEW.json",
+    ):
+        path = FAMILY / rel
+        if not path.exists():
+            errors.append(f"missing json {rel}")
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append(f"json {rel}: {exc}")
+            continue
+        if not isinstance(payload, dict):
+            errors.append(f"json {rel} is not an object")
+    return errors
+
+
 def check_only():
+    errors = []
+    errors.extend(check_json_files())
+    errors.extend(assert_cycle01_frozen())
     path = PARTS_DIR / COMBINED_NAME
     if not path.exists():
-        raise SystemExit(f"missing {path}")
+        errors.append(f"missing {path}")
+        print(json.dumps({"errors": errors}, indent=2))
+        raise SystemExit("check-only failed")
     names = glb_node_names(path)
-    missing = [n for n in (ROOT_NAME, *HOOK_NAMES, "LOD0_cargo_port", "LOD1_cargo_port", "LOD2_cargo_port") if n not in names]
-    print(json.dumps({"path": str(path), "sha256": sha256(path), "nodes": names, "missing": missing}, indent=2))
+    required = (ROOT_NAME, *HOOK_NAMES, "LOD0_cargo_port", "LOD1_cargo_port", "LOD2_cargo_port")
+    missing = [n for n in required if n not in names]
     if missing:
-        raise SystemExit(f"missing nodes: {missing}")
+        errors.append(f"missing nodes: {missing}")
+    inventory = json.loads((SOURCE_DIR / "cargo_port_inventory.json").read_text(encoding="utf-8"))
+    if inventory.get("root") != ROOT_NAME:
+        errors.append(f"inventory root {inventory.get('root')!r}")
+    if inventory.get("hooks") != list(HOOK_NAMES):
+        errors.append("inventory hooks drifted")
+    if inventory.get("lodRoots") != ["LOD0_cargo_port", "LOD1_cargo_port", "LOD2_cargo_port"]:
+        errors.append("inventory lodRoots drifted")
+    if inventory.get("cycle") != CYCLE:
+        errors.append(f"inventory cycle {inventory.get('cycle')} != {CYCLE}")
+    hashes = json.loads((FAMILY / "HASHES.json").read_text(encoding="utf-8"))
+    hash_paths = {
+        "combined": SOURCE_DIR / "cargo_port.glb",
+        "parts": path,
+        "lod0": SOURCE_DIR / "cargo_port_lod0.glb",
+        "lod1": SOURCE_DIR / "cargo_port_lod1.glb",
+        "lod2": SOURCE_DIR / "cargo_port_lod2.glb",
+        "atlas_basecolor": TEX_DIR / "cargo_port_atlas_basecolor.png",
+        "atlas_orm": TEX_DIR / "cargo_port_atlas_orm.png",
+        "atlas_normal": TEX_DIR / "cargo_port_atlas_normal.png",
+    }
+    for key, owned_path in hash_paths.items():
+        if not owned_path.exists():
+            errors.append(f"missing hashed artifact {owned_path.relative_to(ROOT)}")
+        elif hashes.get(key) != sha256(owned_path):
+            errors.append(f"HASHES {key} drifted from {owned_path.name}")
+    if hashes.get("combined") != hashes.get("parts"):
+        errors.append("combined/parts hash mismatch")
+    still_hashes = hashes.get("stills") or {}
+    for stem, expected in still_hashes.items():
+        still_path = EVIDENCE_DIR / f"{stem}.png"
+        if not still_path.exists():
+            errors.append(f"missing cycle02 still {still_path.name}")
+        elif sha256(still_path) != expected:
+            errors.append(f"cycle02 still hash drifted: {still_path.name}")
+    reports = inventory.get("triangles") or []
+    if len(reports) != 3:
+        errors.append(f"expected three LOD reports, found {len(reports)}")
+    for rep in reports:
+        lod = int(rep.get("lod", -1))
+        if lod not in (0, 1, 2):
+            errors.append(f"invalid LOD report {lod}")
+            continue
+        if int(rep.get("port_tris", 0)) > TRI_BUDGET["port"][lod]:
+            errors.append(f"port LOD{lod} budget exceeded")
+        if int(rep.get("pod_tris", 0)) > TRI_BUDGET["pod"][lod]:
+            errors.append(f"pod LOD{lod} budget exceeded")
+        crate_tris = rep.get("crate_tris") or []
+        if len(crate_tris) != 5:
+            errors.append(f"LOD{lod} expected five crate reports")
+        for i, tris in enumerate(crate_tris):
+            if int(tris) > TRI_BUDGET["crate_delta"]:
+                errors.append(f"crate_{i} LOD{lod} budget exceeded")
+    bbox = inventory.get("bbox") or {}
+    size_wu = bbox.get("sizeWu") or [999, 999, 999]
+    if size_wu[0] > CELL_WU + 0.02 or size_wu[1] > CELL_WU + 0.02:
+        errors.append(f"inventory footprint exceeds one cell: {size_wu[:2]}")
+    pod_bbox = inventory.get("podBbox") or {}
+    pod_size = pod_bbox.get("sizeWu") or [999, 999, 999]
+    if max(pod_size) / CELL_WU > 0.62:
+        errors.append(f"inventory pod envelope exceeds 0.62 cell: {pod_size}")
+    epoch_path = EVIDENCE_DIR / "EPOCH.json"
+    if epoch_path.exists():
+        epoch = json.loads(epoch_path.read_text(encoding="utf-8"))
+        if epoch.get("candidate", {}).get("sha256") != hashes.get("combined"):
+            errors.append("cycle02 EPOCH candidate hash drifted")
+        if epoch.get("stills") != still_hashes:
+            errors.append("cycle02 EPOCH still hashes drifted")
+    review_path = EVIDENCE_DIR / "VISUAL_REVIEW.json"
+    review = {}
+    if review_path.exists():
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+        if review.get("candidateSha256") != hashes.get("combined"):
+            errors.append("cycle02 visual review candidate hash drifted")
+        if review.get("originalResolutionInspection") is not True:
+            errors.append("cycle02 visual review lacks original-resolution inspection")
+        required_views = {"works_top", "works_edge", "works_top_clay", "works_site"}
+        if not required_views.issubset(set(review.get("viewsInspected") or [])):
+            errors.append("cycle02 visual review lacks required supported views")
+    report = {
+        "path": str(path),
+        "sha256": sha256(path),
+        "root": ROOT_NAME in names,
+        "hooks": [n for n in HOOK_NAMES if n in names],
+        "lods": [n for n in ("LOD0_cargo_port", "LOD1_cargo_port", "LOD2_cargo_port") if n in names],
+        "lodTriangles": reports,
+        "bbox": bbox,
+        "podBbox": pod_bbox,
+        "cycle02StillCount": len(still_hashes),
+        "cycle01Frozen": not any("cycle01" in e or "reference mutated" in e for e in errors),
+        "visualDecision": review.get("decision"),
+        "errors": errors,
+    }
+    print(json.dumps(report, indent=2))
+    if errors:
+        raise SystemExit("check-only failed:\n  " + "\n  ".join(errors))
     return 0
 
 
