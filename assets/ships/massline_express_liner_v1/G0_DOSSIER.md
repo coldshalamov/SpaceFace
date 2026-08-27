@@ -111,6 +111,11 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the source candidate exists. Whole-asset G1/G2/G4 require an independent hash-bound
-review of the chase stills; this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
+G0 is written and the cycle-29 source candidate exists. LOD0 hash
+`8A9FA97A97EA40019ADA07D59920E6EF735E853596F9145B50AE6E2349B17C09`.
+Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_29/`.
+Whole-asset G1/G2/G4 require an independent hash-bound review of those stills;
+this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
 until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
+Abeam occupancy is 4.60% width (beam-on); it is recorded as a failure and was
+not widened.

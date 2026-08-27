@@ -1,12 +1,14 @@
-"""PQ-049.01 Massline express-liner source builder.
+"""PQ-049.01 Massline express-liner source builder — cycle 29.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
+Cycle 29 method change: do not union drives into the ivory hull; open-aft
+manufactured cases; unique-UV cage bake; stills from the exported LOD0 GLB.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=28
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=29
 """
 from __future__ import annotations
 
@@ -36,29 +38,33 @@ from fleet_construction import (  # noqa: E402
     add_tapered_vane,
     apply_modifiers,
     boolean_cut_box,
-    boolean_cut_cylinder,
-    boolean_union,
     cut_open_bay,
 )
 from spaceface_chase_camera import (  # noqa: E402
     DISTANCE_CLOSE,
     DISTANCE_DEFAULT,
+    FOV_V_DEG,
+    PLAY_CHASE_CLOSE_WIDTH_FRAC,
+    PLAY_CHASE_WIDTH_FRAC,
+    TILT_DEG,
+    apply_chase_camera,
+    occupancy_in_band,
     render_chase_still,
     render_cycle_chase_stills,
 )
 
 TEX_DIR = FAMILY / "source" / "textures"
-TEX_BY_LOD = {0: 512, 1: 256, 2: 128}
-TEX = 512
-CYCLE = 1
+TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
+TEX = 1024
+CYCLE = 29
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--cycle="):
         CYCLE = int(tok.split("=", 1)[1])
-    elif tok == "--cycle" and i + 1 < sys.argv:
+    elif tok == "--cycle" and i + 1 < len(sys.argv):
         CYCLE = int(sys.argv[i + 1])
     elif tok.startswith("--mtx-cycle="):
         CYCLE = int(tok.split("=", 1)[1])
-    elif tok == "--mtx-cycle" and i + 1 < sys.argv:
+    elif tok == "--mtx-cycle" and i + 1 < len(sys.argv):
         CYCLE = int(sys.argv[i + 1])
 
 ASSET_ID = "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1"
@@ -66,6 +72,21 @@ PART_ID = "massline_express_liner_v1"
 SHADE_ANGLE = 28.0
 BEVEL_HULL = 0.018
 BEVEL_FRAME = 0.008
+BEVEL_HIGH = 0.006
+CAGE_INFLATE = 0.055
+BAKE_AO_SAMPLES = 8
+
+ROLE_RGB = {
+    "ceramic": (0.82, 0.74, 0.62),
+    "frame": (0.30, 0.31, 0.34),
+    "keel": (0.070, 0.074, 0.080),
+    "glass": (0.14, 0.22, 0.26),
+    "primer": (0.38, 0.40, 0.34),
+    "refractory": (0.58, 0.42, 0.26),
+    "cyan": (0.10, 0.58, 0.62),
+    "amber": (0.74, 0.44, 0.12),
+    "throat": (0.085, 0.090, 0.098),
+}
 
 
 def sha256(path: Path) -> str:
@@ -127,7 +148,7 @@ def write_pixels(name, pixels, size, colorspace="sRGB"):
 
 
 def role_maps(role, rgb, size=TEX, prefix=None):
-    """Unique civic maps. Not a Lark/Mule/Wasp tint."""
+    """Unique civic maps. Not a Lark/Mule/Wasp tint. Fallback until unique bake."""
     prefix = prefix or role
     br, bg, bb = rgb
     albedo, orm, nrm = [], [], []
@@ -141,8 +162,6 @@ def role_maps(role, rgb, size=TEX, prefix=None):
         pw, ph = 22, 10
     elif role == "refractory":
         pw, ph = 48, 48
-    elif role == "glass":
-        pw, ph = 0, 0
     else:
         pw, ph = 0, 0
     for y in range(size):
@@ -159,24 +178,11 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 soft = max(0.0, 1.0 - min(dx, dy) / 3.0) if min(dx, dy) <= 3 else 0.0
             edge = 1.0 if pw and (dx <= 2 or dy <= 2) else 0.0
             dirt = min(1.0, soft * 0.22 + seam * 0.12 + gf2 * 0.06)
-            stencil = 0.0
-            if role == "ceramic" and 70 <= x <= 210 and 180 <= y <= 300:
-                col, row = x - 70, y - 180
-                if 20 <= col <= 48 and abs(row - 60) <= 7:
-                    stencil = 0.62
-                if 52 <= col <= 88 and abs((row - 60) - (col - 52) * 0.7) <= 6:
-                    stencil = 0.55
-                if gf > 0.92:
-                    stencil *= 0.28
             if role == "ceramic":
                 chip = 1.0 if gf > 0.955 and (x < 90 or y > size - 70) else 0.0
                 r = max(0, min(1, br * (1.0 - dirt * 0.10) + chip * 0.10))
                 g = max(0, min(1, bg * (1.0 - dirt * 0.08) + chip * 0.06))
                 b = max(0, min(1, bb * (1.0 - dirt * 0.06) + chip * 0.04))
-                if stencil:
-                    r = r * (1 - stencil) + 0.12 * stencil
-                    g = g * (1 - stencil) + 0.13 * stencil
-                    b = b * (1 - stencil) + 0.15 * stencil
                 rough = 0.46 + dirt * 0.12 - edge * 0.03
                 metal = 0.02 + chip * 0.42
             elif role == "frame":
@@ -222,8 +228,8 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 r, g, b = br, bg, bb
                 rough, metal = 0.48, 0.12
             ao = max(0.22, 1.0 - seam * 0.28 - dirt * 0.16 - soft * 0.10)
-            nx = 0.5 + (0.08 if edge else 0.02) * (0.5 - (dx / max(1, pw)))
-            ny = 0.5 + (0.08 if edge else 0.02) * (0.5 - (dy / max(1, ph)))
+            nx = 0.5 + (0.10 if edge else 0.02) * (0.5 - (dx / max(1, pw)))
+            ny = 0.5 + (0.10 if edge else 0.02) * (0.5 - (dy / max(1, ph)))
             albedo.extend((r, g, b, 1.0))
             orm.extend((ao, max(0.05, min(0.94, rough)), max(0.0, min(1.0, metal)), 1.0))
             nrm.extend((nx, ny, 1.0, 1.0))
@@ -263,7 +269,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, transmission=0.0):
     links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
     nmap = nodes.new("ShaderNodeNormalMap")
     nmap.space = "TANGENT"
-    nmap.inputs["Strength"].default_value = 0.22
+    nmap.inputs["Strength"].default_value = 1.0
     links.new(tex_n.outputs["Color"], nmap.inputs["Color"])
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     if "Coat Weight" in bsdf.inputs and coat > 0:
@@ -281,31 +287,23 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, transmission=0.0):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.96, 0.90, 0.78), "ceramic", 0.08, None, 0.0, "ceramic"),
-        "Material_Armor": ((0.12, 0.13, 0.14), "frame", 0.04, None, 0.0, "frame"),
-        "Material_Mechanical": ((0.055, 0.058, 0.062), "keel", 0.0, None, 0.0, "keel"),
-        "Material_Canopy": ((0.16, 0.20, 0.22), "glass", 0.10, None, 0.0, "glass"),
-        "Material_Radiator": ((0.40, 0.42, 0.38), "primer", 0.0, None, 0.0, "primer"),
-        "Material_Ceramic": ((0.30, 0.24, 0.18), "refractory", 0.0, None, 0.0, "refractory"),
-        "Material_Accent": ((0.08, 0.52, 0.56), "cyan", 0.0, ((0.10, 0.62, 0.66), 0.55), 0.0, "cyan"),
-        "Material_Warning": ((0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.35), 0.0, "amber"),
-        "Material_Thruster": ((0.04, 0.05, 0.06), "keel", 0.0, None, 0.0, "throat"),
+        "Material_Hull": ((0.82, 0.74, 0.62), "ceramic", 0.18, None, 0.0, "ceramic"),
+        "Material_Armor": ((0.30, 0.31, 0.34), "frame", 0.04, None, 0.0, "frame"),
+        "Material_Mechanical": ((0.070, 0.074, 0.080), "keel", 0.0, None, 0.0, "keel"),
+        "Material_Canopy": ((0.14, 0.22, 0.26), "glass", 0.22, None, 0.0, "glass"),
+        "Material_Radiator": ((0.38, 0.40, 0.34), "primer", 0.0, None, 0.0, "primer"),
+        "Material_Ceramic": ((0.58, 0.42, 0.26), "refractory", 0.0, None, 0.0, "refractory"),
+        "Material_Accent": ((0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.35), 0.0, "cyan"),
+        "Material_Warning": ((0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.28), 0.0, "amber"),
+        "Material_Thruster": ((0.085, 0.090, 0.098), "throat", 0.0, None, 0.0, "throat"),
     }
     mats = {}
     for name, (rgb, role, coat, emit, trans, prefix) in specs.items():
         material = bpy.data.materials.new(name)
         bsdf = principled(material)
         bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-        if name == "Material_Hull":
-            if "Roughness" in bsdf.inputs:
-                bsdf.inputs["Roughness"].default_value = 0.50
-            if "Metallic" in bsdf.inputs:
-                bsdf.inputs["Metallic"].default_value = 0.03
-            if "Coat Weight" in bsdf.inputs and coat > 0:
-                bsdf.inputs["Coat Weight"].default_value = coat
-        else:
-            maps = role_maps(role, rgb, prefix=prefix)
-            wire_maps(material, bsdf, maps, coat=coat, emission=emit, transmission=trans)
+        maps = role_maps(role, rgb, prefix=prefix)
+        wire_maps(material, bsdf, maps, coat=coat, emission=emit, transmission=trans)
         material["spacefaceRole"] = role
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
@@ -397,11 +395,43 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     return finish_mesh(obj, material, bevel)
 
 
-def civic_pressure_ring(x, yc, zc, hw, hh, crown=0.55, wall=0.72, belly=0.35):
-    """12-point civic pressure station with a flat deck the chase camera can see.
+def loft_hollow(name, outer_rings, inner_rings, material, collection, bevel, close_front=True):
+    """Thick-walled open tube. Front may close with an inner bulkhead; the aft mouth stays open."""
+    sides = len(outer_rings[0])
+    stations = len(outer_rings)
+    if len(inner_rings) != stations or len(inner_rings[0]) != sides:
+        raise ValueError("loft_hollow rings must match")
+    verts = [vert for ring in outer_rings for vert in ring]
+    verts.extend(vert for ring in inner_rings for vert in ring)
+    inner0 = stations * sides
+    faces = []
+    for station in range(stations - 1):
+        a = station * sides
+        b = (station + 1) * sides
+        ia = inner0 + a
+        ib = inner0 + b
+        for i in range(sides):
+            j = (i + 1) % sides
+            faces.append((a + i, a + j, b + j, b + i))
+            faces.append((ia + j, ia + i, ib + i, ib + j))
+    last = (stations - 1) * sides
+    inn_last = inner0 + last
+    for i in range(sides):
+        j = (i + 1) % sides
+        faces.append((last + i, last + j, inn_last + j, inn_last + i))
+        faces.append((j, i, inner0 + i, inner0 + j))
+    if close_front:
+        faces.append(tuple(range(inner0 + sides - 1, inner0 - 1, -1)))
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    return finish_mesh(obj, material, bevel)
 
-    Mid station must change crown/wall/belly, not just hw/hh. Not a regular pipe.
-    """
+
+def civic_pressure_ring(x, yc, zc, hw, hh, crown=0.55, wall=0.72, belly=0.35):
+    """12-point civic pressure station with a flat deck the chase camera can see."""
     crown = max(0.0, min(1.0, float(crown)))
     wall = max(0.0, min(1.0, float(wall)))
     belly = max(0.0, min(1.0, float(belly)))
@@ -435,7 +465,7 @@ def civic_pressure_ring(x, yc, zc, hw, hh, crown=0.55, wall=0.72, belly=0.35):
     ]
 
 
-def regular_ring(x, y, z, radius, sides=8):
+def regular_ring(x, y, z, radius, sides=10):
     return [
         (x, y + math.cos(math.tau * i / sides) * radius, z + math.sin(math.tau * i / sides) * radius)
         for i in range(sides)
@@ -482,66 +512,88 @@ def add_curve_hose(name, points, material, collection, radius=0.022):
 
 def try_cut_bay(hull, tag, surface, length, width, depth, outward, mats, collection, kit="empty"):
     try:
-        cut_open_bay(hull, tag, surface, length, width, depth, outward, mats, collection, kit=kit, liner=False)
+        cut_open_bay(hull, tag, surface, length, width, depth, outward, mats, collection, kit=kit, liner=True)
         return True
     except Exception as exc:
         print(f"bay skip {tag}: {exc}")
         return False
 
 
-def add_boarding_glass(mats, collection):
-    """Open deck well. Ivory coaming + dark inner frame so the well reads at D=144. No glass roof."""
-    glass, frame, pit, hull, cyan = (
+def add_boarding_well(hull, lod, mats, collection):
+    """Framed open embarkation pit. Chase must see a dark well with rim thickness."""
+    glass, frame, cyan, hull_mat = (
         mats["Material_Canopy"], mats["Material_Armor"],
-        mats["Material_Mechanical"], mats["Material_Hull"],
-        mats["Material_Accent"],
+        mats["Material_Accent"], mats["Material_Hull"],
     )
-    add_box("Board_WellFloor", (12.70, 0.0, 1.50), (2.20, 1.18, 0.04), pit, collection, 0.002)
-    add_box("Board_WellStep", (12.70, 0.0, 1.68), (2.00, 0.95, 0.03), frame, collection, 0.002)
-    add_box("Board_RimFore", (15.45, 0.0, 2.58), (0.58, 1.85, 0.36), hull, collection, 0.004)
-    add_box("Board_RimAft", (9.95, 0.0, 2.64), (0.58, 1.88, 0.36), hull, collection, 0.004)
-    add_box("Board_RimP", (12.70, -1.82, 2.60), (2.75, 0.58, 0.34), hull, collection, 0.004)
-    add_box("Board_RimS", (12.70, 1.82, 2.60), (2.75, 0.58, 0.34), hull, collection, 0.004)
-    add_box("Board_FrameFore", (15.02, 0.0, 2.22), (0.10, 1.42, 0.24), frame, collection, 0.002)
-    add_box("Board_FrameAft", (10.38, 0.0, 2.26), (0.10, 1.45, 0.24), frame, collection, 0.002)
-    add_box("Board_FrameP", (12.70, -1.42, 2.24), (2.28, 0.10, 0.22), frame, collection, 0.002)
-    add_box("Board_FrameS", (12.70, 1.42, 2.24), (2.28, 0.10, 0.22), frame, collection, 0.002)
-    add_box("Board_CyanP", (12.70, -1.30, 2.32), (2.05, 0.040, 0.045), cyan, collection, 0.001)
-    add_box("Board_CyanS", (12.70, 1.30, 2.32), (2.05, 0.040, 0.045), cyan, collection, 0.001)
-    add_box("Board_Mullion", (12.70, 0.0, 2.08), (0.12, 1.18, 0.14), frame, collection, 0.002)
-    add_box("Board_MullionX", (12.70, 0.0, 1.98), (2.05, 0.08, 0.08), frame, collection, 0.002)
-    add_box("Board_GlassP", (12.70, -1.20, 1.88), (2.10, 0.018, 0.30), glass, collection, 0.001)
-    add_box("Board_GlassS", (12.70, 1.20, 1.88), (2.10, 0.018, 0.30), glass, collection, 0.001)
-    add_box("Board_GlassFore", (14.88, 0.0, 1.85), (0.018, 1.12, 0.26), glass, collection, 0.001)
+    surface = (12.55, 0.0, 2.42)
+    try_cut_bay(hull, "BoardWell", surface, 4.35, 2.55, 1.12, (0.0, 0.0, 1.0), mats, collection, "empty")
+    add_box("Board_CoamingFore", (14.62, 0.0, 2.58), (0.28, 1.62, 0.16), hull_mat, collection, 0.004)
+    add_box("Board_CoamingAft", (10.48, 0.0, 2.58), (0.28, 1.62, 0.16), hull_mat, collection, 0.004)
+    add_box("Board_CoamingP", (12.55, -1.42, 2.58), (2.15, 0.20, 0.16), hull_mat, collection, 0.004)
+    add_box("Board_CoamingS", (12.55, 1.42, 2.58), (2.15, 0.20, 0.16), hull_mat, collection, 0.004)
+    add_box("Board_FrameFore", (14.38, 0.0, 2.18), (0.08, 1.22, 0.28), frame, collection, 0.002)
+    add_box("Board_FrameAft", (10.72, 0.0, 2.18), (0.08, 1.22, 0.28), frame, collection, 0.002)
+    add_box("Board_FrameP", (12.55, -1.18, 2.18), (1.85, 0.08, 0.28), frame, collection, 0.002)
+    add_box("Board_FrameS", (12.55, 1.18, 2.18), (1.85, 0.08, 0.28), frame, collection, 0.002)
+    add_box("Board_GlassP", (12.55, -1.08, 1.95), (1.72, 0.018, 0.42), glass, collection, 0.001)
+    add_box("Board_GlassS", (12.55, 1.08, 1.95), (1.72, 0.018, 0.42), glass, collection, 0.001)
+    add_box("Board_GlassFore", (14.28, 0.0, 1.92), (0.018, 1.05, 0.38), glass, collection, 0.001)
+    add_box("Board_CyanP", (12.55, -1.12, 2.32), (1.55, 0.035, 0.04), cyan, collection, 0.001)
+    add_box("Board_CyanS", (12.55, 1.12, 2.32), (1.55, 0.035, 0.04), cyan, collection, 0.001)
+    if lod == 0:
+        add_box("Board_Mullion", (12.55, 0.0, 2.05), (0.07, 1.05, 0.10), frame, collection, 0.002)
+
+
+def add_ops_wedge(hull, mats, collection):
+    """Framed operations glass at the bow. Direction, not a black nose cap."""
+    glass, frame, hull_mat = mats["Material_Canopy"], mats["Material_Armor"], mats["Material_Hull"]
+    try:
+        boolean_cut_box(hull, "OpsCut", (15.55, 0.0, 0.72), (1.15, 0.95, 0.72))
+    except Exception as exc:
+        print(f"ops cut skip: {exc}")
+    add_box("Ops_FrameCrown", (15.72, 0.0, 1.18), (0.55, 0.82, 0.06), frame, collection, 0.002)
+    add_box("Ops_FrameP", (15.72, -0.72, 0.62), (0.55, 0.06, 0.48), frame, collection, 0.002)
+    add_box("Ops_FrameS", (15.72, 0.72, 0.62), (0.55, 0.06, 0.48), frame, collection, 0.002)
+    add_box("Ops_Glass", (15.78, 0.0, 0.68), (0.04, 0.68, 0.42), glass, collection, 0.001)
+    add_box("Ops_Brow", (15.95, 0.0, 1.28), (0.22, 0.55, 0.08), hull_mat, collection, 0.003)
+
+
+def add_observation_belt(hull, lod, mats, collection):
+    """Dorsal-shoulder glass trenches so the chase camera sees a passenger belt."""
+    glass, frame = mats["Material_Canopy"], mats["Material_Armor"]
+    for tag, y in (("P", -2.85), ("S", 2.85)):
+        try:
+            boolean_cut_box(hull, f"ObsCut_{tag}", (3.20, y, 2.68), (7.60, 0.92, 0.42))
+        except Exception as exc:
+            print(f"obs cut skip {tag}: {exc}")
+        add_box(f"ObsGlass_{tag}", (3.20, y, 2.52), (7.20, 0.78, 0.045), glass, collection, 0.001)
+        add_box(f"ObsRailOut_{tag}", (3.20, y + (0.44 if y > 0 else -0.44), 2.68), (7.35, 0.06, 0.07), frame, collection, 0.002)
+        add_box(f"ObsRailIn_{tag}", (3.20, y - (0.44 if y > 0 else -0.44), 2.68), (7.35, 0.06, 0.07), frame, collection, 0.002)
+        if lod == 0:
+            for i in range(5):
+                add_box(
+                    f"ObsMull_{tag}_{i}",
+                    (0.20 + i * 1.50, y, 2.52),
+                    (0.05, 0.62, 0.06),
+                    frame, collection, 0.001,
+                )
 
 
 def add_bulkhead_collar(name, x, hw, hh, mats, collection, crown=0.55, wall=0.78, belly=0.32):
-    """Slightly proud mid-grey join ring. Breaks the sausage without becoming a black hoop."""
-    primer = mats["Material_Radiator"]
+    """Dark anodized join ring. Breaks the sausage in clay."""
+    frame = mats["Material_Armor"]
     loft_from_rings(name, [
-        civic_pressure_ring(x - 0.18, 0, 0.22, hw * 1.05, hh * 1.04, crown, wall, belly),
-        civic_pressure_ring(x + 0.18, 0, 0.22, hw * 1.05, hh * 1.04, crown, wall, belly),
-    ], primer, collection, 0.008, cap="both")
-
-
-def add_drive_well_hardware(y, tag, mats, collection):
-    """Ivory coaming around a stepped well. Dark liner fills the inner floor so chase sees a hole."""
-    hull, throat = mats["Material_Hull"], mats["Material_Thruster"]
-    sign = 1.0 if y > 0 else -1.0
-    add_box(f"WellLiner_{tag}", (-16.15, y, 1.22), (1.85, 0.65, 0.05), throat, collection, 0.002)
-    add_box(f"WellRimFore_{tag}", (-13.82, y, 2.02), (0.24, 1.05, 0.16), hull, collection, 0.003)
-    add_box(f"WellRimAft_{tag}", (-18.48, y, 1.96), (0.24, 0.98, 0.14), hull, collection, 0.003)
-    add_box(f"WellRimOut_{tag}", (-16.15, y + sign * 1.12, 2.00), (2.20, 0.22, 0.16), hull, collection, 0.003)
-    add_box(f"WellRimIn_{tag}", (-16.15, y - sign * 1.12, 2.00), (2.20, 0.22, 0.16), hull, collection, 0.003)
+        civic_pressure_ring(x - 0.16, 0, 0.22, hw * 1.045, hh * 1.035, crown, wall, belly),
+        civic_pressure_ring(x + 0.16, 0, 0.22, hw * 1.045, hh * 1.035, crown, wall, belly),
+    ], frame, collection, 0.006, cap="both")
 
 
 def add_dorsal_spine(lod, mats, collection):
-    """Three low formed hat covers. Darkness is slot liners, not a painted stripe."""
     hull, primer, mech = mats["Material_Hull"], mats["Material_Radiator"], mats["Material_Mechanical"]
     covers = (
-        ((6.50, 1.55, 3.18, 3.52), (3.10, 1.68, 3.38, 3.72)),
-        ((2.30, 1.75, 3.42, 3.76), (-1.20, 1.62, 3.28, 3.58)),
-        ((-2.50, 1.48, 3.12, 3.42), (-6.90, 1.22, 2.62, 2.92)),
+        ((6.80, 1.45, 3.05, 3.42), (3.20, 1.58, 3.22, 3.58)),
+        ((2.40, 1.62, 3.28, 3.64), (-1.10, 1.48, 3.12, 3.42)),
+        ((-2.40, 1.38, 2.95, 3.22), (-6.60, 1.12, 2.48, 2.78)),
     )
     for index, ((x0, h0, d0, t0), (x1, h1, d1, t1)) in enumerate(covers):
         hat = loft_from_rings(f"Spine_Hat_{index}", [
@@ -552,20 +604,28 @@ def add_dorsal_spine(lod, mats, collection):
             boolean_cut_box(
                 hat, f"SpineSlot_{index}",
                 ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 + 0.02),
-                (1.15, 0.32, 0.16),
+                (1.35, 0.38, 0.18),
             )
         except Exception as exc:
             print(f"spine slot skip {index}: {exc}")
         add_box(
             f"SpineSlotLiner_{index}",
-            ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 - 0.04),
-            (0.95, 0.22, 0.05),
+            ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 - 0.05),
+            (1.15, 0.26, 0.045),
             mech, collection, 0.001,
         )
-    add_box("Spine_FeedAft", (-10.4, 0.0, 1.85), (1.65, 0.22, 0.14), mech, collection, 0.004)
+        if lod <= 1:
+            for i in range(4):
+                add_box(
+                    f"SpineFin_{index}_{i}",
+                    ((x0 + x1) * 0.5 - 0.45 + i * 0.30, 0.0, (t0 + t1) * 0.5 - 0.02),
+                    (0.018, 0.22, 0.09),
+                    primer, collection, 0.001,
+                )
+    add_box("Spine_FeedAft", (-10.2, 0.0, 1.78), (1.85, 0.24, 0.14), mech, collection, 0.004)
     if lod == 0:
-        add_box("Spine_RootFore", (4.8, 0.0, 3.05), (0.32, 0.24, 0.10), mech, collection, 0.003)
-        add_box("Spine_RootAft", (-4.6, 0.0, 2.85), (0.32, 0.22, 0.10), mech, collection, 0.003)
+        add_box("Spine_RootFore", (4.9, 0.0, 3.02), (0.32, 0.24, 0.10), mech, collection, 0.003)
+        add_box("Spine_RootAft", (-4.4, 0.0, 2.78), (0.32, 0.22, 0.10), mech, collection, 0.003)
 
 
 def add_service_cassette(lod, mats, collection):
@@ -623,16 +683,15 @@ def add_keel_and_saddle(lod, mats, collection):
         add_corner_fasteners("Saddle", (0.35, 0.0, -3.52), (0.62, 0.40, 0.025), frame, collection)
 
 
-def add_drive_root_cheek(tag, y, mats, collection):
-    """Solid cheek from the wide aft drum into the boom. Same ceramic as the drum."""
+def add_drive_root_fairing(tag, y, mats, collection):
+    """Ceramic shoulder from the wide aft drum toward the dark drive case. Not a union."""
     sign = 1.0 if y > 0 else -1.0
     hull = mats["Material_Hull"]
     rings = []
     for x, inner, outer, z0, z1 in (
-        (-10.20, 1.05, 4.55, -0.95, 1.72),
-        (-12.80, 1.35, 4.45, -0.78, 1.58),
-        (-15.40, 1.65, 4.15, -0.48, 1.28),
-        (-16.80, 1.85, 3.85, -0.28, 1.05),
+        (-11.20, 1.55, 2.45, -0.55, 1.25),
+        (-12.60, 1.68, 2.15, -0.35, 1.05),
+        (-13.70, 1.78, 1.95, -0.18, 0.88),
     ):
         rings.append([
             (x, sign * inner, z0),
@@ -640,65 +699,112 @@ def add_drive_root_cheek(tag, y, mats, collection):
             (x, sign * outer, z1),
             (x, sign * inner, z1),
         ])
-    return loft_from_rings(f"DriveCheek_{tag}", rings, hull, collection, 0.010, cap="both")
+    return loft_from_rings(f"DriveFairing_{tag}", rings, hull, collection, 0.010, cap="both")
 
 
 def add_civic_drive(tag, y, lod, mats, collection):
-    """Octagonal civic boom buried in the wide aft drum. Hull ceramic, dark throat only."""
-    hull, frame, mech = mats["Material_Hull"], mats["Material_Armor"], mats["Material_Mechanical"]
+    """Open-aft manufactured case with a real cavity. Never a capped disc. Never unioned into the drum."""
+    frame, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     refractory, core = mats["Material_Ceramic"], mats["Material_Accent"]
+    throat = mats["Material_Thruster"]
     z = 0.42
-    x0 = -13.20
-    boom = loft_from_rings(f"Boom_{tag}", [
-        regular_ring(x0 + 2.40, y, z, 1.95, 8),
-        regular_ring(x0 + 0.40, y, z, 1.72, 8),
-        regular_ring(x0 - 1.40, y, z, 1.48, 8),
-        regular_ring(x0 - 3.20, y, z, 1.28, 8),
-        regular_ring(x0 - 5.10, y, z, 1.08, 8),
-    ], hull, collection, 0.010, cap="both")
-    loft_from_rings(f"Liner_{tag}", [
-        regular_ring(x0 - 4.35, y, z, 0.40, 12),
-        regular_ring(x0 - 4.85, y, z, 0.52, 12),
-        regular_ring(x0 - 5.25, y, z, 0.64, 12),
-    ], refractory, collection, 0.003, cap=False)
-    add_cylinder(f"ThroatRim_{tag}", (x0 - 5.15, y, z), 0.82, 0.10, mech, collection, 16, 0.003)
-    add_cylinder(f"Core_{tag}", (x0 - 4.55, y, z), 0.11, 0.14, core, collection, 12, 0.002)
-    add_cylinder(f"Flange_{tag}", (x0 + 0.55, y, z), 1.62, 0.22, mech, collection, 16, 0.006)
-    add_box(f"BoomRoot_{tag}", (x0 + 1.35, y * 0.48, z - 0.06), (1.15, 0.55, 0.38), mech, collection, 0.004)
-    add_box(f"BoomSaddle_{tag}", (x0 + 0.85, y, z - 0.85), (0.85, 0.32, 0.24), frame, collection, 0.003)
+    sides = 10
+    case = loft_hollow(
+        f"Boom_{tag}",
+        [
+            regular_ring(-12.40, y, z, 1.72, sides),
+            regular_ring(-14.20, y, z, 1.48, sides),
+            regular_ring(-16.10, y, z, 1.28, sides),
+            regular_ring(-17.80, y, z, 1.14, sides),
+            regular_ring(-19.05, y, z, 1.08, sides),
+        ],
+        [
+            regular_ring(-12.40, y, z, 1.18, sides),
+            regular_ring(-14.20, y, z, 1.02, sides),
+            regular_ring(-16.10, y, z, 0.92, sides),
+            regular_ring(-17.80, y, z, 0.84, sides),
+            regular_ring(-19.05, y, z, 0.78, sides),
+        ],
+        frame, collection, 0.010, close_front=True,
+    )
+    loft_hollow(
+        f"Liner_{tag}",
+        [
+            regular_ring(-15.35, y, z, 0.90, 12),
+            regular_ring(-17.15, y, z, 0.82, 12),
+            regular_ring(-18.88, y, z, 0.74, 12),
+        ],
+        [
+            regular_ring(-15.35, y, z, 0.66, 12),
+            regular_ring(-17.15, y, z, 0.56, 12),
+            regular_ring(-18.88, y, z, 0.50, 12),
+        ],
+        refractory, collection, 0.003, close_front=True,
+    )
+    loft_hollow(
+        f"Collar_{tag}",
+        [
+            regular_ring(-18.78, y, z, 1.16, 12),
+            regular_ring(-19.22, y, z, 1.24, 12),
+        ],
+        [
+            regular_ring(-18.78, y, z, 0.80, 12),
+            regular_ring(-19.22, y, z, 0.82, 12),
+        ],
+        refractory, collection, 0.004, close_front=False,
+    )
+    loft_hollow(
+        f"Flange_{tag}",
+        [
+            regular_ring(-14.35, y, z, 1.58, 12),
+            regular_ring(-14.70, y, z, 1.68, 12),
+        ],
+        [
+            regular_ring(-14.35, y, z, 1.08, 12),
+            regular_ring(-14.70, y, z, 1.10, 12),
+        ],
+        mech, collection, 0.005, close_front=False,
+    )
+    add_cylinder(f"ThroatFloor_{tag}", (-15.20, y, z), 0.58, 0.10, throat, collection, 12, 0.002)
+    add_cylinder(f"Hub_{tag}", (-16.55, y, z), 0.20, 0.55, throat, collection, 12, 0.002)
+    add_cylinder(f"Core_{tag}", (-16.35, y, z), 0.08, 0.14, core, collection, 12, 0.001)
+    add_box(f"BoomSaddle_{tag}", (-13.55, y * 0.42, z - 0.72), (1.15, 0.42, 0.28), mech, collection, 0.004)
+    add_box(f"BoomShoe_{tag}", (-13.85, y, z - 1.05), (0.85, 0.38, 0.18), frame, collection, 0.003)
     if lod <= 1:
         for index in range(8):
             ang = math.tau * index / 8
             add_box(
                 f"Clamp_{tag}_{index}",
-                (x0 - 0.10, y + math.cos(ang) * 1.38, z + math.sin(ang) * 1.38),
-                (0.060, 0.045, 0.032),
+                (-14.55, y + math.cos(ang) * 1.52, z + math.sin(ang) * 1.52),
+                (0.070, 0.048, 0.034),
                 mech, collection, 0.002, (0, 0, ang),
             )
     if lod == 0:
         for index in range(10):
             add_tapered_vane(
-                f"Vane_{tag}_{index}", (x0 - 3.05, y, z), refractory, collection,
-                math.tau * index / 10, scale=0.88,
+                f"Vane_{tag}_{index}", (-18.55, y, z), refractory, collection,
+                math.tau * index / 10, scale=1.95,
             )
-    return boom
+        add_service_pipe(f"Feed_{tag}", (-10.2, y * 0.12, 1.78), (-14.70, y, z + 0.85), mech, collection, 0.028)
+        add_cylinder(f"FeedFitting_{tag}", (-14.70, y, z + 0.85), 0.045, 0.08, mech, collection, 8, 0.001, (0, 0, 0))
+    return case
 
 
 def add_dock_hardware(tag, loc, mats, collection, lod, cyan=True):
-    frame, hull, accent = mats["Material_Armor"], mats["Material_Hull"], (
+    frame, accent = mats["Material_Armor"], (
         mats["Material_Accent"] if cyan else mats["Material_Warning"]
     )
     x, y, z = loc
     sign = 1.0 if y > 0 else -1.0
-    add_box(f"Dock_Jamb_{tag}", (x, y, z), (1.05, 0.055, 0.72), frame, collection, 0.003)
-    add_box(f"Dock_Frame_{tag}", (x, y + 0.04 * sign, z), (1.18, 0.032, 0.82), frame, collection, 0.002)
-    add_box(f"Dock_Plate_{tag}", (x + 0.52, y + 0.02 * sign, z - 0.04), (0.16, 0.032, 0.22), mats["Material_Radiator"], collection, 0.002)
-    add_cylinder(f"Dock_Lamp_{tag}", (x, y + 0.06 * sign, z + 0.22), 0.028, 0.04, accent, collection, 10, 0.001, (math.pi / 2, 0, 0))
+    add_box(f"Dock_Jamb_{tag}", (x, y, z), (1.15, 0.055, 0.78), frame, collection, 0.003)
+    add_box(f"Dock_Frame_{tag}", (x, y + 0.05 * sign, z), (1.28, 0.034, 0.88), frame, collection, 0.002)
+    add_box(f"Dock_Plate_{tag}", (x + 0.52, y + 0.03 * sign, z - 0.04), (0.16, 0.032, 0.22), mats["Material_Radiator"], collection, 0.002)
+    add_cylinder(f"Dock_Lamp_{tag}", (x, y + 0.07 * sign, z + 0.22), 0.028, 0.04, accent, collection, 10, 0.001, (math.pi / 2, 0, 0))
     if lod == 0:
-        for i, (ox, oz) in enumerate(((-0.72, -0.48), (-0.72, 0.48), (0.72, -0.48), (0.72, 0.48))):
+        for i, (ox, oz) in enumerate(((-0.78, -0.52), (-0.78, 0.52), (0.78, -0.52), (0.78, 0.52))):
             add_cylinder(
                 f"Dock_Bolt_{tag}_{i}",
-                (x + ox, y + 0.08 * sign, z + oz),
+                (x + ox, y + 0.09 * sign, z + oz),
                 0.016, 0.034, mats["Material_Mechanical"], collection, 6, 0.001, (math.pi / 2, 0, 0),
             )
 
@@ -706,10 +812,10 @@ def add_dock_hardware(tag, loc, mats, collection, lod, cyan=True):
 def sockets():
     return {
         "SOCKET_Weapon_Front": (15.2, 0.0, 0.35),
-        "SOCKET_Engine_Main": (-17.8, 0.0, 0.35),
-        "SOCKET_Trail_Main": (-18.0, 0.0, 0.35),
-        "SOCKET_Trail_Port": (-18.6, -2.65, 0.42),
-        "SOCKET_Trail_Starboard": (-18.6, 2.65, 0.42),
+        "SOCKET_Engine_Main": (-18.4, 0.0, 0.42),
+        "SOCKET_Trail_Main": (-19.15, 0.0, 0.42),
+        "SOCKET_Trail_Port": (-19.20, -2.85, 0.42),
+        "SOCKET_Trail_Starboard": (-19.20, 2.85, 0.42),
         "SOCKET_Utility_Dorsal": (0.4, 0.0, 3.82),
         "SOCKET_Cargo_Ventral": (0.35, 0.0, -3.62),
         "SOCKET_Camera_Focus": (0.4, 0.0, 0.30),
@@ -732,10 +838,7 @@ def shade_and_uv(obj):
             poly.use_smooth = True
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    try:
-        bpy.ops.uv.cube_project(cube_size=6.0, correct_aspect=True, scale_to_bounds=True)
-    except Exception:
-        bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.016, scale_to_bounds=True)
+    bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.014, scale_to_bounds=True)
     bpy.ops.object.mode_set(mode="OBJECT")
     if "UV1" in obj.data.uv_layers:
         obj.data.uv_layers.remove(obj.data.uv_layers["UV1"])
@@ -747,134 +850,334 @@ def shade_and_uv(obj):
 
 
 def drum_stations(lod):
-    """Stepped civic drum. Aft stays as wide as the drive roots so they cannot float."""
+    """Stepped civic drum. Mid station is not a scaled bow."""
     if lod >= 2:
         return [
-            civic_pressure_ring(16.55, 0, 0.10, 0.95, 0.78, crown=0.10, wall=0.16, belly=0.10),
-            civic_pressure_ring(12.40, 0, 0.22, 3.85, 2.28, crown=0.70, wall=0.50, belly=0.28),
-            civic_pressure_ring(1.20, 0, 0.28, 5.25, 2.95, crown=0.94, wall=0.88, belly=0.55),
-            civic_pressure_ring(-5.20, 0, 0.20, 3.35, 2.15, crown=0.42, wall=0.78, belly=0.32),
-            civic_pressure_ring(-16.40, 0, 0.18, 4.80, 2.42, crown=0.34, wall=0.82, belly=0.26),
+            civic_pressure_ring(16.55, 0, 0.10, 0.88, 0.72, crown=0.08, wall=0.14, belly=0.10),
+            civic_pressure_ring(12.40, 0, 0.22, 3.65, 2.18, crown=0.72, wall=0.50, belly=0.28),
+            civic_pressure_ring(1.40, 0, 0.30, 5.45, 3.12, crown=0.96, wall=0.90, belly=0.55),
+            civic_pressure_ring(-4.80, 0, 0.20, 3.15, 2.02, crown=0.40, wall=0.78, belly=0.30),
+            civic_pressure_ring(-12.20, 0, 0.16, 1.65, 1.25, crown=0.18, wall=0.62, belly=0.14),
         ]
     return [
-        civic_pressure_ring(16.55, 0, 0.08, 0.88, 0.72, crown=0.06, wall=0.12, belly=0.08),
-        civic_pressure_ring(14.80, 0, 0.14, 1.72, 1.12, crown=0.18, wall=0.22, belly=0.14),
-        civic_pressure_ring(12.40, 0, 0.22, 3.85, 2.28, crown=0.70, wall=0.48, belly=0.28),
-        civic_pressure_ring(7.20, 0, 0.26, 4.45, 2.52, crown=0.78, wall=0.80, belly=0.42),
-        civic_pressure_ring(1.20, 0, 0.30, 5.35, 3.05, crown=0.96, wall=0.90, belly=0.55),
-        civic_pressure_ring(-0.20, 0, 0.24, 4.10, 2.42, crown=0.62, wall=0.82, belly=0.38),
-        civic_pressure_ring(-2.40, 0, 0.22, 3.35, 2.12, crown=0.42, wall=0.78, belly=0.32),
-        civic_pressure_ring(-6.80, 0, 0.20, 3.25, 2.05, crown=0.40, wall=0.76, belly=0.30),
-        civic_pressure_ring(-12.40, 0, 0.20, 4.95, 2.55, crown=0.38, wall=0.84, belly=0.28),
-        civic_pressure_ring(-16.40, 0, 0.18, 4.80, 2.42, crown=0.32, wall=0.82, belly=0.24),
+        civic_pressure_ring(16.55, 0, 0.08, 0.82, 0.66, crown=0.05, wall=0.10, belly=0.08),
+        civic_pressure_ring(14.95, 0, 0.14, 1.55, 1.02, crown=0.16, wall=0.20, belly=0.12),
+        civic_pressure_ring(12.40, 0, 0.22, 3.65, 2.18, crown=0.72, wall=0.48, belly=0.28),
+        civic_pressure_ring(7.35, 0, 0.26, 4.55, 2.55, crown=0.80, wall=0.82, belly=0.42),
+        civic_pressure_ring(1.40, 0, 0.30, 5.45, 3.12, crown=0.96, wall=0.90, belly=0.55),
+        civic_pressure_ring(-0.80, 0, 0.24, 3.85, 2.28, crown=0.55, wall=0.80, belly=0.36),
+        civic_pressure_ring(-3.60, 0, 0.20, 3.15, 2.02, crown=0.40, wall=0.78, belly=0.30),
+        civic_pressure_ring(-7.40, 0, 0.20, 3.05, 1.95, crown=0.38, wall=0.76, belly=0.28),
+        civic_pressure_ring(-11.80, 0, 0.16, 1.85, 1.42, crown=0.22, wall=0.70, belly=0.18),
+        civic_pressure_ring(-14.90, 0, 0.12, 1.35, 1.05, crown=0.14, wall=0.64, belly=0.12),
     ]
+
+
+def duplicate_object(obj, name, collection):
+    dup = obj.copy()
+    dup.data = obj.data.copy()
+    dup.name = name
+    collection.objects.link(dup)
+    return dup
+
+
+def inflate_mesh(obj, distance):
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.normal_update()
+    for vert in bm.verts:
+        vert.co += vert.normal * distance
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+
+
+def raise_high_source(obj):
+    """Genuinely higher than the game mesh: tighter bevels and extra panel steps."""
+    try:
+        inset_large_faces(obj, thickness=0.022, depth=0.010, min_area=0.28)
+    except Exception as exc:
+        print(f"high inset skip {obj.name}: {exc}")
+    mod = obj.modifiers.new("HighBevel", "BEVEL")
+    mod.width = BEVEL_HIGH
+    mod.segments = 3
+    mod.limit_method = "ANGLE"
+    mod.angle_limit = math.radians(28)
+    apply_modifiers(obj)
+
+
+def ensure_cycles():
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = BAKE_AO_SAMPLES
+    scene.cycles.use_denoising = False
+    if hasattr(scene.cycles, "preview_samples"):
+        scene.cycles.preview_samples = 4
+
+
+def bake_pass(low, highs, cage, img, bake_type):
+    mat = low.data.materials[0]
+    nodes = mat.node_tree.nodes
+    tex = nodes.new("ShaderNodeTexImage")
+    tex.image = img
+    tex.name = "SF_BAKE_TARGET"
+    nodes.active = tex
+    tex.select = True
+    bpy.ops.object.select_all(action="DESELECT")
+    for high in highs:
+        high.hide_render = False
+        high.hide_set(False)
+        high.select_set(True)
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
+    scene = bpy.context.scene
+    scene.cycles.bake_type = bake_type
+    scene.render.bake.use_selected_to_active = True
+    scene.render.bake.use_cage = True
+    try:
+        scene.render.bake.cage_object = cage.name
+    except TypeError:
+        scene.render.bake.cage_object = cage
+    scene.render.bake.cage_extrusion = 0.0
+    scene.render.bake.margin = 8
+    if bake_type == "NORMAL":
+        scene.render.bake.normal_space = "TANGENT"
+        try:
+            scene.render.bake.normal_r = "POS_X"
+            scene.render.bake.normal_g = "POS_Y"
+            scene.render.bake.normal_b = "POS_Z"
+        except Exception:
+            pass
+    bpy.ops.object.bake(type=bake_type, use_clear=True, margin=8)
+    for node in [n for n in nodes if n.name == "SF_BAKE_TARGET"]:
+        nodes.remove(node)
+    img.pack()
+    return img
+
+
+def pointiness_material(name):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    out = nodes.new("ShaderNodeOutputMaterial")
+    emit = nodes.new("ShaderNodeEmission")
+    geom = nodes.new("ShaderNodeNewGeometry")
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.42
+    ramp.color_ramp.elements[0].color = (0.08, 0.08, 0.08, 1)
+    ramp.color_ramp.elements[1].position = 0.62
+    ramp.color_ramp.elements[1].color = (0.92, 0.92, 0.92, 1)
+    links.new(geom.outputs["Pointiness"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], emit.inputs["Color"])
+    links.new(emit.outputs["Emission"], out.inputs["Surface"])
+    return mat
+
+
+def bake_curvature(high, low, cage, img):
+    backup = [slot.material for slot in high.material_slots]
+    mat = pointiness_material(f"CURV_{high.name}")
+    if high.material_slots:
+        high.material_slots[0].material = mat
+    else:
+        high.data.materials.append(mat)
+    try:
+        bake_pass(low, [high], cage, img, "EMIT")
+    finally:
+        if backup and high.material_slots:
+            high.material_slots[0].material = backup[0]
+
+
+def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
+    ao = list(ao_img.pixels) if ao_img else []
+    curv = list(curv_img.pixels) if curv_img else []
+    nrm = list(nrm_img.pixels) if nrm_img else []
+    albedo, orm = [], []
+    br, bg, bb = rgb
+    metal_base = {
+        "ceramic": 0.03, "frame": 0.88, "keel": 0.92, "primer": 0.16,
+        "refractory": 0.04, "glass": 0.02, "cyan": 0.06, "amber": 0.04, "throat": 0.70,
+    }.get(role, 0.12)
+    rough_base = {
+        "ceramic": 0.48, "frame": 0.32, "keel": 0.28, "primer": 0.58,
+        "refractory": 0.66, "glass": 0.08, "cyan": 0.22, "amber": 0.36, "throat": 0.42,
+    }.get(role, 0.45)
+    count = size * size
+    for i in range(count):
+        a = ao[i * 4] if ao else 0.85
+        if role in ("glass", "cyan", "amber"):
+            a = max(0.55, a)
+        elif role == "refractory":
+            a = max(0.32, a)
+        elif role == "throat":
+            a = max(0.28, a)
+        c = curv[i * 4] if curv else 0.5
+        cavity = max(0.0, 0.45 - c) * 2.0
+        edge = max(0.0, c - 0.62) * 2.2
+        r = max(0, min(1, br * (0.55 + 0.45 * a) * (1.0 - cavity * 0.22) + edge * 0.08))
+        g = max(0, min(1, bg * (0.55 + 0.45 * a) * (1.0 - cavity * 0.18) + edge * 0.06))
+        b = max(0, min(1, bb * (0.55 + 0.45 * a) * (1.0 - cavity * 0.14) + edge * 0.04))
+        rough = max(0.05, min(0.94, rough_base + cavity * 0.16 - edge * 0.10))
+        metal = max(0.0, min(1.0, metal_base + edge * (0.55 if role == "ceramic" else 0.08)))
+        albedo.extend((r, g, b, 1.0))
+        orm.extend((max(0.12, min(1.0, a)), rough, metal, 1.0))
+        if not nrm:
+            continue
+    base = write_pixels(f"liner_{prefix}_{size}_basecolor", albedo, size, "sRGB")
+    orm_img = write_pixels(f"liner_{prefix}_{size}_orm", orm, size, "Non-Color")
+    if nrm:
+        nrm_out = write_pixels(f"liner_{prefix}_{size}_normal", nrm, size, "Non-Color")
+    else:
+        nrm_out = write_pixels(
+            f"liner_{prefix}_{size}_normal",
+            [0.5, 0.5, 1.0, 1.0] * count,
+            size, "Non-Color",
+        )
+    return base, orm_img, nrm_out
+
+
+def extra_high_bolts(low, collection, material):
+    extras = []
+    bbox = [Vector(c) for c in low.bound_box]
+    center = sum(bbox, Vector((0, 0, 0))) / 8.0
+    size = (max(v.x for v in bbox) - min(v.x for v in bbox),
+            max(v.y for v in bbox) - min(v.y for v in bbox),
+            max(v.z for v in bbox) - min(v.z for v in bbox))
+    world = low.matrix_world @ center
+    for i, (ox, oy) in enumerate(((-0.32, -0.28), (-0.32, 0.28), (0.32, -0.28), (0.32, 0.28))):
+        loc = (world.x + ox * size[0], world.y + oy * size[1], world.z + size[2] * 0.42)
+        extras.append(add_cylinder(
+            f"{low.name}_HighBolt_{i}", loc, 0.012, 0.018, material, collection, 6, 0.0, (0, 0, 0),
+        ))
+    return extras
+
+
+def bake_lod0_unique(merged, collection, mats):
+    """High-to-low cage bake onto unique UV0. MTX-20/21/22/23/24/25."""
+    ensure_cycles()
+    bake_roles = {
+        "Hull": ("ceramic", ROLE_RGB["ceramic"], mats["Material_Hull"], 1024),
+        "Armor": ("frame", ROLE_RGB["frame"], mats["Material_Armor"], 512),
+        "Mechanical": ("keel", ROLE_RGB["keel"], mats["Material_Mechanical"], 512),
+        "Ceramic": ("refractory", ROLE_RGB["refractory"], mats["Material_Ceramic"], 512),
+        "Radiator": ("primer", ROLE_RGB["primer"], mats["Material_Radiator"], 512),
+        "Thruster": ("throat", ROLE_RGB["throat"], mats["Material_Thruster"], 512),
+        "Canopy": ("glass", ROLE_RGB["glass"], mats["Material_Canopy"], 512),
+    }
+    report = {"baked": [], "failed": []}
+    leftovers = []
+    for obj in list(merged):
+        key = next((name for name in bake_roles if name in obj.name), None)
+        if key is None:
+            continue
+        role, rgb, material, size = bake_roles[key]
+        prefix = f"lod0_{key.lower()}"
+        high = duplicate_object(obj, f"{obj.name}_HIGH", collection)
+        raise_high_source(high)
+        extras = extra_high_bolts(high, collection, material)
+        if extras:
+            bpy.ops.object.select_all(action="DESELECT")
+            for extra in extras:
+                apply_modifiers(extra)
+                extra.select_set(True)
+            high.select_set(True)
+            bpy.context.view_layer.objects.active = high
+            bpy.ops.object.join()
+            high = bpy.context.object
+            high.name = f"{obj.name}_HIGH"
+        cage = duplicate_object(obj, f"{obj.name}_CAGE", collection)
+        inflate_mesh(cage, CAGE_INFLATE)
+        cage.hide_render = True
+        ao = bpy.data.images.new(f"BAKE_AO_{obj.name}", width=size, height=size, alpha=True)
+        ao.colorspace_settings.name = "Non-Color"
+        nrm = bpy.data.images.new(f"BAKE_NRM_{obj.name}", width=size, height=size, alpha=True)
+        nrm.colorspace_settings.name = "Non-Color"
+        curv = bpy.data.images.new(f"BAKE_CURV_{obj.name}", width=size, height=size, alpha=True)
+        curv.colorspace_settings.name = "Non-Color"
+        try:
+            bake_pass(obj, [high], cage, nrm, "NORMAL")
+            bake_pass(obj, [high], cage, ao, "AO")
+            bake_curvature(high, obj, cage, curv)
+            maps = composite_unique(role, rgb, ao, curv, nrm, size, prefix)
+            bsdf = next((n for n in obj.data.materials[0].node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+            if bsdf is None:
+                bsdf = principled(obj.data.materials[0])
+            else:
+                for node in list(obj.data.materials[0].node_tree.nodes):
+                    if node.type != "OUTPUT_MATERIAL" and node != bsdf:
+                        obj.data.materials[0].node_tree.nodes.remove(node)
+            coat = 0.18 if key == "Hull" else (0.22 if key == "Canopy" else 0.04 if key == "Armor" else 0.0)
+            wire_maps(obj.data.materials[0], bsdf, maps, coat=coat)
+            report["baked"].append(obj.name)
+            print(f"baked {obj.name} size={size}")
+        except Exception as exc:
+            report["failed"].append(f"{obj.name}: {exc}")
+            print(f"bake fail {obj.name}: {exc}")
+        leftovers.extend((high, cage))
+    for victim in leftovers:
+        try:
+            bpy.data.objects.remove(victim, do_unlink=True)
+        except Exception:
+            pass
+    return report
 
 
 def build_lod(lod, mats):
     collection = bpy.data.collections.new(f"LINER_LOD{lod}")
     bpy.context.scene.collection.children.link(collection)
-    hull, frame, mech = mats["Material_Hull"], mats["Material_Armor"], mats["Material_Mechanical"]
+    hull_mat = mats["Material_Hull"]
     root = add_empty(f"LINER_LOD{lod}_ROOT", (0, 0, 0), collection)
     root["spacefaceAsset"] = {
         "assetId": ASSET_ID, "partId": PART_ID, "lod": f"lod{lod}",
         "slot": "hull", "category": "wholeships", "forward": "+X", "embeddedPlume": False,
         "role": "civic_pressure_drum_liner",
     }
-    hull_obj = loft_from_rings("Pressure_Drum", drum_stations(lod), hull, collection, BEVEL_HULL, cap="both")
+    hull_obj = loft_from_rings("Pressure_Drum", drum_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
     if lod <= 1:
-        try_cut_bay(hull_obj, "PortDock", (3.20, -4.55, 0.22), 2.85, 1.55, 0.58, (0, -1, 0), mats, collection, "empty")
-        try_cut_bay(hull_obj, "StbdService", (-2.40, 4.35, 0.22), 2.55, 1.42, 0.55, (0, 1, 0), mats, collection, "empty")
-        add_dock_hardware("Port", (3.20, -4.62, 0.22), mats, collection, lod, cyan=True)
-        add_dock_hardware("Stbd", (-2.40, 4.42, 0.22), mats, collection, lod, cyan=False)
+        add_ops_wedge(hull_obj, mats, collection)
+        add_boarding_well(hull_obj, lod, mats, collection)
+        add_observation_belt(hull_obj, lod, mats, collection)
+        try_cut_bay(hull_obj, "PortDock", (3.20, -4.55, 0.22), 2.95, 1.62, 0.62, (0, -1, 0), mats, collection, "empty")
+        try_cut_bay(hull_obj, "StbdService", (-2.40, 4.35, 0.22), 2.65, 1.48, 0.58, (0, 1, 0), mats, collection, "empty")
+        add_dock_hardware("Port", (3.20, -4.72, 0.22), mats, collection, lod, cyan=True)
+        add_dock_hardware("Stbd", (-2.40, 4.52, 0.22), mats, collection, lod, cyan=False)
         hull_obj.data.materials.clear()
-        hull_obj.data.materials.append(hull)
-        add_boarding_glass(mats, collection)
+        hull_obj.data.materials.append(hull_mat)
         add_dorsal_spine(lod, mats, collection)
-        add_bulkhead_collar("Collar_Shoulder", 7.20, 4.45, 2.52, mats, collection, 0.78, 0.80, 0.42)
-        add_bulkhead_collar("Collar_Waist", -2.40, 3.35, 2.12, mats, collection, 0.42, 0.78, 0.32)
-        add_bulkhead_collar("Collar_Drive", -12.40, 4.95, 2.55, mats, collection, 0.38, 0.84, 0.28)
-        loft_from_rings("Bulk_Fore", [
-            civic_pressure_ring(11.28, 0, 0.22, 3.95, 2.38, crown=0.62, wall=0.52, belly=0.32),
-            civic_pressure_ring(11.42, 0, 0.22, 3.95, 2.38, crown=0.62, wall=0.52, belly=0.32),
-        ], hull, collection, 0.006, cap="both")
-        loft_from_rings("Bulk_Aft", [
-            civic_pressure_ring(-9.12, 0, 0.20, 3.55, 2.22, crown=0.48, wall=0.78, belly=0.34),
-            civic_pressure_ring(-9.28, 0, 0.20, 3.55, 2.22, crown=0.48, wall=0.78, belly=0.34),
-        ], hull, collection, 0.006, cap="both")
-        loft_from_rings("Bulk_Drive", [
-            civic_pressure_ring(-12.72, 0, 0.20, 4.90, 2.52, crown=0.40, wall=0.84, belly=0.30),
-            civic_pressure_ring(-12.86, 0, 0.20, 4.90, 2.52, crown=0.40, wall=0.84, belly=0.30),
-        ], hull, collection, 0.006, cap="both")
-    add_service_cassette(lod, mats, collection)
-    add_keel_and_saddle(lod, mats, collection)
-    boom_p = add_civic_drive("Port", -2.65, lod, mats, collection)
-    boom_s = add_civic_drive("Stbd", 2.65, lod, mats, collection)
-    cheek_p = add_drive_root_cheek("Port", -2.65, mats, collection)
-    cheek_s = add_drive_root_cheek("Stbd", 2.65, mats, collection)
-    fair_p = add_box("BoomFairing_Port", (-13.4, -1.85, 0.38), (3.15, 1.15, 0.85), hull, collection, 0.010)
-    fair_s = add_box("BoomFairing_Stbd", (-13.4, 1.85, 0.38), (3.15, 1.15, 0.85), hull, collection, 0.010)
-    transom = add_box("Transom", (-16.52, 0.0, 0.18), (0.12, 3.85, 1.55), hull, collection, 0.004)
-    nose = add_box("NoseCap", (16.68, 0.0, 0.22), (0.14, 0.72, 0.55), hull, collection, 0.003)
-    for donor in (cheek_p, cheek_s, boom_p, boom_s, fair_p, fair_s, transom, nose):
-        boolean_union(hull_obj, donor)
-    throat = mats["Material_Thruster"]
-    for tag, y in (("Port", -2.65), ("Stbd", 2.65)):
+        add_bulkhead_collar("Collar_Shoulder", 7.35, 4.55, 2.55, mats, collection, 0.80, 0.82, 0.42)
+        add_bulkhead_collar("Collar_Waist", -3.60, 3.15, 2.02, mats, collection, 0.40, 0.78, 0.30)
+        add_bulkhead_collar("Collar_Drive", -11.80, 1.85, 1.42, mats, collection, 0.22, 0.70, 0.18)
         try:
-            boolean_cut_cylinder(hull_obj, f"ThroatCut_{tag}", (-17.95, y, 0.42), 0.62, 1.20, vertices=16)
-        except Exception as exc:
-            print(f"throat cut skip {tag}: {exc}")
-        try:
-            boolean_cut_box(hull_obj, f"BoomWell_{tag}", (-16.15, y, 1.82), (2.55, 1.08, 0.52))
-        except Exception as exc:
-            print(f"boom well skip {tag}: {exc}")
-        try:
-            boolean_cut_box(hull_obj, f"BoomWellInner_{tag}", (-16.15, y, 1.50), (1.95, 0.72, 0.40))
-        except Exception as exc:
-            print(f"boom well inner skip {tag}: {exc}")
-        add_drive_well_hardware(y, tag, mats, collection)
-    if lod <= 1:
-        try:
-            boolean_cut_box(hull_obj, "BoardTub", (12.70, 0.0, 2.28), (2.60, 1.42, 0.46))
-        except Exception as exc:
-            print(f"board tub skip: {exc}")
-        glass, frame = mats["Material_Canopy"], mats["Material_Armor"]
-        for tag, y, x, z, sx, sz in (
-            ("BeltP", -3.85, 12.85, 1.18, 2.35, 0.48),
-            ("BeltS", 3.85, 12.85, 1.18, 2.35, 0.48),
-            ("CabinP", -5.30, 4.10, 1.35, 2.70, 0.40),
-            ("CabinS", 5.30, 4.10, 1.35, 2.70, 0.40),
-        ):
-            try:
-                boolean_cut_box(hull_obj, f"WinCut_{tag}", (x, y, z), (sx, 0.28, sz))
-            except Exception as exc:
-                print(f"window cut skip {tag}: {exc}")
-            sign = 1.0 if y > 0 else -1.0
-            add_box(f"WinGlass_{tag}", (x, y - 0.04 * sign, z), (sx - 0.18, 0.02, sz - 0.10), glass, collection, 0.001)
-            add_box(f"WinMull_{tag}", (x, y - 0.02 * sign, z), (0.06, 0.04, sz - 0.08), frame, collection, 0.001)
-        try:
-            boolean_cut_box(hull_obj, "RadFore", (1.60, 0.0, 2.88), (1.15, 0.48, 0.18))
+            boolean_cut_box(hull_obj, "RadFore", (1.70, 0.0, 3.05), (1.25, 0.52, 0.20))
         except Exception as exc:
             print(f"rad fore skip: {exc}")
         try:
-            boolean_cut_box(hull_obj, "RadAft", (-5.00, 0.0, 2.62), (1.05, 0.42, 0.16))
+            boolean_cut_box(hull_obj, "RadAft", (-4.80, 0.0, 2.72), (1.15, 0.46, 0.18))
         except Exception as exc:
             print(f"rad aft skip: {exc}")
         rad = mats["Material_Radiator"]
-        for i in range(4):
-            add_box(f"RadFin_Fore_{i}", (0.70 + i * 0.58, 0.0, 2.78), (0.018, 0.36, 0.12), rad, collection, 0.001)
-            add_box(f"RadFin_Aft_{i}", (-5.75 + i * 0.50, 0.0, 2.52), (0.016, 0.30, 0.10), rad, collection, 0.001)
+        for i in range(5):
+            add_box(f"RadFin_Fore_{i}", (0.70 + i * 0.50, 0.0, 2.92), (0.016, 0.38, 0.12), rad, collection, 0.001)
+            add_box(f"RadFin_Aft_{i}", (-5.55 + i * 0.42, 0.0, 2.58), (0.014, 0.32, 0.10), rad, collection, 0.001)
         try:
-            inset_large_faces(hull_obj, thickness=0.080, depth=0.022, min_area=1.8)
+            inset_large_faces(hull_obj, thickness=0.085, depth=0.024, min_area=1.6)
         except Exception as exc:
             print(f"inset skip: {exc}")
+    add_service_cassette(lod, mats, collection)
+    add_keel_and_saddle(lod, mats, collection)
+    add_civic_drive("Port", -2.85, lod, mats, collection)
+    add_civic_drive("Stbd", 2.85, lod, mats, collection)
+    add_drive_root_fairing("Port", -2.85, mats, collection)
+    add_drive_root_fairing("Stbd", 2.85, mats, collection)
+    add_box("NoseCap", (16.72, 0.0, 0.22), (0.12, 0.62, 0.48), hull_mat, collection, 0.003)
     if lod == 0:
         add_curve_hose(
             "Service_Hose",
-            [(6.4, 0.95, -2.35), (1.2, 1.05, -1.35), (-9.2, 0.72, 0.35), (-16.2, 2.85, 0.42)],
-            mech, collection, 0.024,
+            [(6.4, 0.95, -2.35), (1.2, 1.05, -1.35), (-9.2, 0.72, 0.35), (-16.4, 2.85, 0.42)],
+            mats["Material_Mechanical"], collection, 0.024,
         )
-        add_service_pipe("Feed_P", (-10.2, -0.32, 2.05), (-16.2, -2.65, 0.42), mech, collection, 0.026)
-        add_service_pipe("Feed_S", (-10.2, 0.32, 2.05), (-16.2, 2.65, 0.42), mech, collection, 0.026)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
@@ -898,12 +1201,17 @@ def build_lod(lod, mats):
         active.name = f"LOD{lod}_{material_name.replace('Material_', '')}"
         active.parent = root
         shade_and_uv(active)
+        merged.append(active)
+    bake_report = {"baked": [], "failed": []}
+    if lod == 0:
+        bake_report = bake_lod0_unique(merged, collection, mats)
+    for active in merged:
         tri = active.modifiers.new("ExportTriangulate", "TRIANGULATE")
         tri.quad_method = "BEAUTY"
         bpy.context.view_layer.objects.active = active
         active.select_set(True)
         bpy.ops.object.modifier_apply(modifier=tri.name)
-        merged.append(active)
+        active.select_set(False)
     for name, loc in sockets().items():
         add_empty(name, loc, collection, root)
     bm = bmesh.new()
@@ -911,7 +1219,7 @@ def build_lod(lod, mats):
         (17.2, 0, 0.2), (11.2, -2.9, 1.6), (11.2, 2.9, 1.6),
         (0.8, -5.3, 0.3), (0.8, 5.3, 0.3),
         (-16.4, -4.2, 0.2), (-16.4, 4.2, 0.2),
-        (-18.6, -2.7, 0.4), (-18.6, 2.7, 0.4),
+        (-19.4, -2.9, 0.4), (-19.4, 2.9, 0.4),
         (0.35, 0, -3.6), (0.8, 0, 3.3),
     ):
         bm.verts.new(point)
@@ -936,6 +1244,7 @@ def build_lod(lod, mats):
         "hullTriangles": hull_tris,
         "draws": len(merged),
         "materials": sorted(groups),
+        "bake": bake_report,
     }
 
 
@@ -944,6 +1253,9 @@ def export_lod(collection, lod):
     out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in collection.all_objects:
+        if obj.name.endswith("_HIGH") or obj.name.endswith("_CAGE"):
+            obj.select_set(False)
+            continue
         obj.hide_viewport = False
         obj.hide_set(False)
         obj.select_set(True)
@@ -980,11 +1292,8 @@ def setup_studio():
     scene.render.resolution_x = 1600
     scene.render.resolution_y = 900
     scene.render.image_settings.file_format = "PNG"
-    try:
-        scene.view_settings.look = "AgX - Medium Contrast"
-    except TypeError:
-        scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 1.30
+    scene.render.film_transparent = False
+    set_view(standard=False, exposure=0.85)
     eevee = getattr(scene, "eevee", None)
     if eevee:
         for attr, val in (
@@ -1000,19 +1309,22 @@ def setup_studio():
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = (0.070, 0.074, 0.080, 1)
-    bg.inputs["Strength"].default_value = 2.00
+    bg.inputs["Color"].default_value = (0.048, 0.052, 0.058, 1)
+    bg.inputs["Strength"].default_value = 1.55
+    for obj in list(scene.objects):
+        if obj.type in {"CAMERA", "LIGHT"}:
+            bpy.data.objects.remove(obj, do_unlink=True)
     cam_data = bpy.data.cameras.new("CycleCam")
     camera = bpy.data.objects.new("CycleCam", cam_data)
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (6, 52, 34), 4300, (0.97, 0.98, 1.00), 32),
-        ("Fill", (2, 40, 18), 2400, (0.86, 0.90, 0.94), 26),
-        ("Top", (10, 20, 40), 700, (0.92, 0.93, 0.96), 10),
-        ("Rim", (-22, -12, 14), 850, (0.78, 0.84, 0.92), 18),
-        ("Kick", (-10, 18, -6), 480, (0.74, 0.78, 0.84), 14),
-        ("AftFill", (-18, 22, 12), 900, (0.80, 0.84, 0.90), 16),
+        ("Key", (18, -22, 16), 720, (0.96, 0.97, 1.00), 24),
+        ("Fill", (4, 18, 10), 1100, (0.78, 0.82, 0.86), 22),
+        ("Top", (2, 4, 22), 780, (0.90, 0.92, 0.96), 18),
+        ("Rim", (-16, -8, 8), 640, (0.78, 0.84, 0.92), 16),
+        ("Kick", (-8, 12, -5), 320, (0.74, 0.78, 0.84), 12),
+        ("AftFill", (-14, -14, 9), 520, (0.80, 0.84, 0.90), 16),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
@@ -1025,13 +1337,131 @@ def setup_studio():
     return camera
 
 
-def snap(camera, path, loc, target, lens):
-    camera.location = loc
-    camera.data.lens_unit = "MILLIMETERS"
-    camera.data.lens = lens
-    look_at(camera, target)
-    bpy.context.scene.render.filepath = str(path)
-    bpy.ops.render.render(write_still=True)
+def visible_imported_meshes():
+    meshes = []
+    for obj in bpy.context.scene.objects:
+        if obj.type != "MESH":
+            continue
+        name = obj.name.upper()
+        if "COLLISION" in name or obj.get("collision") or obj.get("nonRender"):
+            obj.hide_render = True
+            continue
+        if name.startswith("LOD1_") or name.startswith("LOD2_"):
+            obj.hide_render = True
+            continue
+        meshes.append(obj)
+    has_lod0 = any(obj.name.upper().startswith("LOD0_") for obj in meshes)
+    if has_lod0:
+        for obj in list(meshes):
+            if not obj.name.upper().startswith("LOD0_"):
+                obj.hide_render = True
+        meshes = [obj for obj in meshes if obj.name.upper().startswith("LOD0_")]
+    return meshes
+
+
+def mesh_center(meshes):
+    low = Vector((1e12, 1e12, 1e12))
+    high = Vector((-1e12, -1e12, -1e12))
+    for obj in meshes:
+        for corner in obj.bound_box:
+            point = obj.matrix_world @ Vector(corner)
+            for axis in range(3):
+                low[axis] = min(low[axis], point[axis])
+                high[axis] = max(high[axis], point[axis])
+    return (low + high) * 0.5, high - low
+
+
+def projected_occupancy(scene, camera, meshes):
+    from bpy_extras.object_utils import world_to_camera_view
+    bpy.context.view_layer.update()
+    xs, ys = [], []
+    for obj in meshes:
+        mesh = obj.data
+        if not mesh or not mesh.vertices:
+            continue
+        mw = obj.matrix_world
+        step = max(1, len(mesh.vertices) // 6000)
+        for index, vert in enumerate(mesh.vertices):
+            if index % step:
+                continue
+            ndc = world_to_camera_view(scene, camera, mw @ vert.co)
+            if ndc.z < 0.0:
+                continue
+            xs.append(ndc.x)
+            ys.append(ndc.y)
+    if not xs:
+        raise RuntimeError("occupancy: no projected vertices")
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    return {
+        "minX": round(min_x, 5),
+        "maxX": round(max_x, 5),
+        "minY": round(min_y, 5),
+        "maxY": round(max_y, 5),
+        "widthFrac": round(max_x - min_x, 5),
+        "heightFrac": round(max_y - min_y, 5),
+        "widthPx1600": round((max_x - min_x) * 1600.0, 1),
+        "cropped": bool(min_x < 0.0 or max_x > 1.0 or min_y < 0.0 or max_y > 1.0),
+    }
+
+
+def measure_supported_occupancy(camera, meshes, focus):
+    scene = bpy.context.scene
+    poses = {
+        "play_chase": (DISTANCE_DEFAULT, 0.0, PLAY_CHASE_WIDTH_FRAC),
+        "play_chase_abeam": (DISTANCE_DEFAULT, 90.0, PLAY_CHASE_WIDTH_FRAC),
+        "play_chase_close": (DISTANCE_CLOSE, 0.0, PLAY_CHASE_CLOSE_WIDTH_FRAC),
+    }
+    measured = {}
+    failures = []
+    for name, (distance, heading, band) in poses.items():
+        apply_chase_camera(camera, distance=distance, heading_deg=heading, focus=focus)
+        rec = projected_occupancy(scene, camera, meshes)
+        rec["band"] = [band[0], band[1]]
+        rec["inBand"] = occupancy_in_band(
+            rec["widthFrac"], close=name == "play_chase_close", cropped=rec["cropped"],
+        )
+        measured[name] = rec
+        print(f"occupancy {name}: {rec['widthPx1600']:.1f}px ({rec['widthFrac']*100:.2f}%) crop={rec['cropped']}")
+        if rec["cropped"]:
+            failures.append(f"{name} crops")
+        if not (band[0] <= rec["widthFrac"] <= band[1]):
+            failures.append(f"{name} width {rec['widthFrac']*100:.2f}% outside band")
+    return measured, failures
+
+
+def assign_all_slots(obj, mat):
+    if not obj.material_slots:
+        obj.data.materials.append(mat)
+        return
+    for slot in obj.material_slots:
+        slot.material = mat
+
+
+def set_view(standard=False, exposure=0.85):
+    scene = bpy.context.scene
+    if standard:
+        scene.view_settings.view_transform = "Standard"
+        try:
+            scene.view_settings.look = "None"
+        except TypeError:
+            pass
+        scene.view_settings.exposure = 0.0
+        scene.view_settings.gamma = 1.0
+        return
+    try:
+        scene.view_settings.view_transform = "AgX"
+    except TypeError:
+        pass
+    try:
+        scene.view_settings.look = "AgX - Medium Contrast"
+    except TypeError:
+        try:
+            scene.view_settings.look = "AgX - Medium High Contrast"
+        except TypeError:
+            pass
+    scene.view_settings.exposure = exposure
+    scene.view_settings.gamma = 1.0
 
 
 def override_emission(meshes, color_fn, clay=False):
@@ -1042,20 +1472,57 @@ def override_emission(meshes, color_fn, clay=False):
         mat.use_nodes = True
         mat.node_tree.nodes.clear()
         out = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
-        color, strength = color_fn(obj)
         if clay:
             bsdf = mat.node_tree.nodes.new("ShaderNodeBsdfPrincipled")
-            bsdf.inputs["Base Color"].default_value = (0.46, 0.46, 0.47, 1)
+            bsdf.inputs["Base Color"].default_value = (0.70, 0.70, 0.71, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.58
+            bsdf.inputs["Roughness"].default_value = 0.52
             mat.node_tree.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
         else:
             emit = mat.node_tree.nodes.new("ShaderNodeEmission")
+            color, strength = color_fn(obj)
             emit.inputs["Color"].default_value = (*color, 1)
             emit.inputs["Strength"].default_value = strength
             mat.node_tree.links.new(emit.outputs["Emission"], out.inputs["Surface"])
-        if obj.material_slots:
-            obj.material_slots[0].material = mat
+        assign_all_slots(obj, mat)
+    return backups
+
+
+def override_map_isolation(meshes, suffix):
+    backups = {}
+    for obj in meshes:
+        backups[obj.name] = [slot.material for slot in obj.material_slots]
+        src = None
+        for slot in obj.material_slots:
+            if slot.material and slot.material.use_nodes:
+                src = slot.material
+                break
+        if src is None and obj.data.materials:
+            src = obj.data.materials[0]
+        img = None
+        if src and src.use_nodes:
+            img = next(
+                (n.image for n in src.node_tree.nodes if n.type == "TEX_IMAGE" and n.image and suffix in n.image.name.lower()),
+                None,
+            )
+        mat = bpy.data.materials.new(f"ISO_{suffix}_{obj.name}")
+        mat.use_nodes = True
+        mat.node_tree.nodes.clear()
+        out = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
+        emit = mat.node_tree.nodes.new("ShaderNodeEmission")
+        emit.inputs["Strength"].default_value = 1.0
+        if img:
+            tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+            tex.image = img
+            tex.image.colorspace_settings.name = "Non-Color"
+            uv = mat.node_tree.nodes.new("ShaderNodeUVMap")
+            uv.uv_map = obj.data.uv_layers[0].name if obj.data.uv_layers else "UVMap"
+            mat.node_tree.links.new(uv.outputs["UV"], tex.inputs["Vector"])
+            mat.node_tree.links.new(tex.outputs["Color"], emit.inputs["Color"])
+        else:
+            emit.inputs["Color"].default_value = (0.18, 0.18, 0.18, 1)
+        mat.node_tree.links.new(emit.outputs["Emission"], out.inputs["Surface"])
+        assign_all_slots(obj, mat)
     return backups
 
 
@@ -1067,63 +1534,126 @@ def restore_mats(meshes, backups):
                 obj.material_slots[index].material = material
 
 
-def collection_meshes(collection):
-    return [obj for obj in collection.all_objects if obj.type == "MESH" and not obj.get("collision")]
-
-
-def render_cycle(collection):
-    for other in bpy.data.collections:
-        other.hide_render = other is not collection
+def render_cycle_from_glb(glb_path):
+    reset_scene()
+    bpy.ops.import_scene.gltf(filepath=str(glb_path))
+    meshes = visible_imported_meshes()
+    if not meshes:
+        raise RuntimeError(f"no visible meshes imported from {glb_path}")
+    center, size = mesh_center(meshes)
+    focus = (float(center.x), float(center.y), float(center.z))
     camera = setup_studio()
+    for lamp in [obj for obj in bpy.context.scene.objects if obj.type == "LIGHT"]:
+        lamp.location = Vector(focus) + (lamp.location - Vector((0.4, 0.0, 0.3)))
+        look_at(lamp, focus)
     out = FAMILY / "evidence" / "massline_express_liner_v1" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
-    focus = (0.4, 0.0, 0.30)
+    occupancy, occupancy_failures = measure_supported_occupancy(camera, meshes, focus)
     render_cycle_chase_stills(camera, out, focus=focus)
-    snap(camera, out / "grazing_close.png", (11.2, -9.4, 3.2), (1.6, 0.0, 0.45), 48)
-    snap(camera, out / "drive_rear.png", (-24.8, -6.2, 2.8), (-16.4, 0.0, 0.18), 42)
-    meshes = collection_meshes(collection)
-    backups = override_emission(meshes, lambda _o: ((0.46, 0.46, 0.47), 1.0), clay=True)
+
+    world_bg = bpy.context.scene.world.node_tree.nodes.get("Background")
+    prior_strength = world_bg.inputs["Strength"].default_value
+    prior_color = tuple(world_bg.inputs["Color"].default_value)
+    world_bg.inputs["Color"].default_value = (0.030, 0.032, 0.036, 1)
+    world_bg.inputs["Strength"].default_value = 1.15
+    clay_sun = bpy.data.lights.new("ClayKey", "SUN")
+    clay_sun.energy = 4.2
+    clay_sun.color = (1.0, 0.98, 0.96)
+    clay_sun_obj = bpy.data.objects.new("ClayKey", clay_sun)
+    bpy.context.scene.collection.objects.link(clay_sun_obj)
+    clay_sun_obj.location = Vector(focus) + Vector((12.0, -16.0, 18.0))
+    look_at(clay_sun_obj, focus)
+    backups = override_emission(meshes, lambda _o: ((0.70, 0.70, 0.71), 1.0), clay=True)
     render_chase_still(camera, out / "clay_play_chase.png", distance=DISTANCE_DEFAULT, heading_deg=0.0, focus=focus)
-    render_chase_still(camera, out / "clay_play_chase_close.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=focus)
     restore_mats(meshes, backups)
+    bpy.data.objects.remove(clay_sun_obj, do_unlink=True)
+    bpy.data.lights.remove(clay_sun)
+    world_bg.inputs["Color"].default_value = prior_color
+    world_bg.inputs["Strength"].default_value = prior_strength
+
+    camera.location = Vector(focus) + Vector((8.5, -11.2, 2.4))
+    camera.data.lens_unit = "MILLIMETERS"
+    camera.data.lens = 48
+    look_at(camera, focus)
+    bpy.context.scene.render.filepath = str(out / "grazing_close.png")
+    bpy.ops.render.render(write_still=True)
+
+    bore = bpy.data.lights.new("BoreFill", "AREA")
+    bore.energy = 1400
+    bore.color = (1.0, 0.90, 0.78)
+    bore.size = 3.2
+    bore_obj = bpy.data.objects.new("BoreFill", bore)
+    bpy.context.scene.collection.objects.link(bore_obj)
+    bore_obj.location = Vector(focus) + Vector((-22.5, 0.0, 0.4))
+    look_at(bore_obj, (focus[0] - 18.2, focus[1], focus[2] + 0.4))
+    camera.location = Vector(focus) + Vector((-24.8, -3.6, 1.8))
+    camera.data.lens = 55
+    look_at(camera, (focus[0] - 18.6, focus[1], focus[2] + 0.42))
+    bpy.context.scene.render.filepath = str(out / "drive_rear.png")
+    bpy.ops.render.render(write_still=True)
 
     ids = {
-        "Hull": (0.76, 0.70, 0.60), "Armor": (0.16, 0.17, 0.20), "Mechanical": (0.10, 0.11, 0.12),
-        "Canopy": (0.04, 0.10, 0.12), "Accent": (0.08, 0.55, 0.58), "Warning": (0.78, 0.42, 0.10),
-        "Ceramic": (0.42, 0.30, 0.20), "Thruster": (0.08, 0.08, 0.10), "Radiator": (0.40, 0.42, 0.36),
+        "Hull": (0.78, 0.70, 0.56), "Armor": (0.16, 0.17, 0.20), "Mechanical": (0.08, 0.09, 0.10),
+        "Canopy": (0.18, 0.38, 0.44), "Accent": (0.08, 0.72, 0.76), "Warning": (0.78, 0.42, 0.10),
+        "Ceramic": (0.62, 0.38, 0.18), "Thruster": (0.06, 0.06, 0.08), "Radiator": (0.40, 0.42, 0.34),
     }
 
     def id_color(obj):
+        names = [obj.name] + [slot.material.name for slot in obj.material_slots if slot.material]
+        blob = " ".join(names).lower()
         for key, color in ids.items():
-            if key.lower() in obj.name.lower():
+            if key.lower() in blob:
                 return color, 1.0
         return (0.4, 0.4, 0.4), 1.0
 
+    set_view(standard=True)
     backups = override_emission(meshes, id_color)
     render_chase_still(camera, out / "id_or_material_id.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=focus)
     restore_mats(meshes, backups)
-
-    def map_emit(suffix):
-        def fn(obj):
-            mat = obj.data.materials[0] if obj.data.materials else None
-            if not mat or not mat.use_nodes:
-                return (0.5, 0.5, 0.5), 1.0
-            img = next(
-                (n.image for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image and suffix in n.image.name),
-                None,
-            )
-            if img is None:
-                return (0.3, 0.3, 0.3), 1.0
-            return (0.55, 0.55, 0.55) if suffix == "orm" else (0.5, 0.5, 1.0), 1.0
-        return fn
-
-    backups = override_emission(meshes, map_emit("orm"))
+    backups = override_map_isolation(meshes, "orm")
     render_chase_still(camera, out / "orm_isolation.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=focus)
     restore_mats(meshes, backups)
-    backups = override_emission(meshes, map_emit("normal"))
+    backups = override_map_isolation(meshes, "normal")
     render_chase_still(camera, out / "normal_isolation.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=focus)
     restore_mats(meshes, backups)
-    return out
+    set_view(standard=False, exposure=0.85)
+
+    still_hashes = {path.name: sha256(path) for path in sorted(out.glob("*.png"))}
+    identity = {
+        "schema": "spaceface.exactSourceEvidence.v1",
+        "assetId": ASSET_ID,
+        "shipId": PART_ID,
+        "cycle": CYCLE,
+        "source": str(glb_path.relative_to(ROOT)).replace("\\", "/"),
+        "sourceSha256": sha256(glb_path),
+        "renderer": "assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py+tools/blender/spaceface_chase_camera.py",
+        "cameraContract": {
+            "module": "tools/blender/spaceface_chase_camera.py",
+            "fov_v_deg": FOV_V_DEG,
+            "tilt_deg": TILT_DEG,
+            "play_chase": {"distance": DISTANCE_DEFAULT, "heading_deg": 0.0},
+            "play_chase_abeam": {"distance": DISTANCE_DEFAULT, "heading_deg": 90.0},
+            "play_chase_close": {"distance": DISTANCE_CLOSE, "heading_deg": 0.0},
+            "clay_play_chase": {"distance": DISTANCE_DEFAULT, "heading_deg": 0.0, "material": "neutral_clay"},
+            "grazing_close": {"kind": "diagnostic", "lens_mm": 48},
+            "drive_rear": {"kind": "diagnostic", "lens_mm": 55},
+            "diagnostics": ["id_or_material_id.png", "orm_isolation.png", "normal_isolation.png"],
+        },
+        "boundsSizeM": [round(float(size.x), 4), round(float(size.y), 4), round(float(size.z), 4)],
+        "occupancy": occupancy,
+        "occupancyFailures": occupancy_failures,
+        "views": [
+            "play_chase.png", "play_chase_abeam.png", "play_chase_close.png",
+            "clay_play_chase.png", "grazing_close.png", "drive_rear.png",
+            "orm_isolation.png", "normal_isolation.png", "id_or_material_id.png",
+        ],
+        "stillSha256": still_hashes,
+        "producer": "build_massline_express_liner_v1.py",
+        "verdict": "review_pending",
+        "gateState": "evidence_ready",
+    }
+    (out / "EVIDENCE_IDENTITY.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+    return out, identity
 
 
 def save_blend():
@@ -1140,6 +1670,7 @@ def main():
     reports = []
     collections = []
     global TEX
+    outputs = []
     for lod in (0, 1, 2):
         TEX = TEX_BY_LOD[lod]
         mats = create_materials()
@@ -1151,29 +1682,35 @@ def main():
             "sha256": sha256(output),
         })
         collections.append(collection)
+        outputs.append(output)
         reports.append(report)
         print(f"lod{lod} tris={report['triangles']} hull={report['hullTriangles']} draws={report['draws']}")
     blend = save_blend()
-    stills = render_cycle(collections[0])
+    stills, identity = render_cycle_from_glb(outputs[0])
     evidence = FAMILY / "evidence" / "massline_express_liner_v1"
     evidence.mkdir(parents=True, exist_ok=True)
     report = {
         "schema": "spaceface.masslineExpressLiner.cycle.v1",
         "assetId": ASSET_ID,
-        "shipId": "massline_express_liner_v1",
+        "shipId": PART_ID,
         "cycle": CYCLE,
         "blend": str(blend.relative_to(FAMILY)).replace("\\", "/"),
         "lods": reports,
         "stills": str(stills.relative_to(FAMILY)).replace("\\", "/"),
+        "sourceSha256": identity["sourceSha256"],
+        "occupancy": identity["occupancy"],
+        "occupancyFailures": identity["occupancyFailures"],
         "cameras": {
             "play_chase": {"distance": DISTANCE_DEFAULT, "heading": 0, "fov": 50, "tilt": 60},
             "play_chase_abeam": {"distance": DISTANCE_DEFAULT, "heading": 90, "fov": 50, "tilt": 60},
             "play_chase_close": {"distance": DISTANCE_CLOSE, "heading": 0, "fov": 50, "tilt": 60},
         },
         "notes": "Source candidate only. Not wired to traffic, manifests, or partsLibrary.",
+        "implementingAgentVerdict": "review_pending",
+        "evidenceState": "evidence_ready",
     }
     (evidence / f"cycle_{CYCLE:02d}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({k: report[k] for k in ("assetId", "cycle", "stills")}, indent=2))
+    print(json.dumps({k: report[k] for k in ("assetId", "cycle", "stills", "sourceSha256")}, indent=2))
 
 
 if __name__ == "__main__":

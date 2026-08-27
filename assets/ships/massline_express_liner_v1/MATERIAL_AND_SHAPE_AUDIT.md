@@ -1,15 +1,15 @@
-# Pre-authoring material and shape audit — Massline Express Liner v1
+# Material and shape audit — Massline Express Liner v1
 
 Planned asset identity: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
 Scope: PQ-049.01 source candidate, chase-camera evidence
-Whole-asset G1/G2/G4 status: **open — cycle 18 source candidate; independent review required; authoring decision is revise**
+Whole-asset G1/G2/G4 status: **open — cycle 29 source candidate; independent review required; implementing verdict is review_pending / evidence_ready**
+Candidate LOD0: `8A9FA97A97EA40019ADA07D59920E6EF735E853596F9145B50AE6E2349B17C09`
 
 ## Visible-zone preflight
 
-`MATERIAL_CONTRACT.json` is the pre-authoring visible-zone register. Every planned candidate-visible zone
-is `billed`; the future source may not inherit donor/default surfaces or use an
-`outside_supported_view` shortcut. The register remains `allSupportedViewZonesClassified: false` until an
-independent reviewer confirms matched-camera coverage of an exact candidate hash.
+`MATERIAL_CONTRACT.json` is the visible-zone register. Every candidate-visible zone is `billed`.
+The register remains `allSupportedViewZonesClassified: false` until an independent reviewer
+confirms matched-camera coverage of the exact cycle-29 candidate hash.
 
 ## Shape grammar
 
@@ -56,11 +56,11 @@ render remains required because node names and modifier presence are not visual 
 | LOD1 | 90–220 px, ordinary traffic | Must retain wedge/frame hierarchy, stepped drum, cassette/keel relation, dock recess blocks, dorsal spine, and twin cavities. | May merge latch/bolt and narrow cooling repetition into broader construction planes. |
 | LOD2 | ≤90 px, including `probe_32px` far traffic | Must retain wedge, stepped pressure drum, lower dark keel/cassette line, and two aft drive masses. | May collapse internal throat facets and small docking fixture detail while drive separation remains. |
 
-## Defect posture before authoring
+## Defect posture after cycle 29
 
-No candidate exists to judge yet. Once authoring begins, the earliest judgeable risks are G1 (the
-drum/wedge/drive silhouette could still read too generic) and G2 (the apparent roots and recesses could
-collapse under grazing light). The future build and evidence route must produce exact-hash clay, neutral,
-grazing, dark-space, material-ID, size-probe, and authored-LOD captures before an independent reviewer
-can decide those gates. No technical build report is treated as a G1/G2/G4 pass, and those gates remain
-pending until a hash-bound whole-asset review is recorded.
+Cycle 29 rebuilt the method that kept failing: solid drive collars, a wide aft drum that
+swallowed the cases, generator maps with no high/cage, and isolation stills crushed by AgX.
+The new stills show a stepped ivory drum, a framed boarding well, dorsal glass trenches,
+outboard hollow drive cases with refractory collars and vanes, and unique-UV isolation
+channels that are not flat. Whole-asset G1/G2/G4 stay open until an independent hash-bound
+review of those chase stills. No technical build report is treated as a pass.
