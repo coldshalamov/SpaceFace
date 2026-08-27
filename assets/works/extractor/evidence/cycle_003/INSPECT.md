@@ -1,6 +1,6 @@
 # Extractor Cycle 03 — original-resolution inspect
 
-Candidate `3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D`.
+Candidate `D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C`.
 Disposition **`review_pending`**. Independent reviewers were not launched.
 G1/G2/G4/G7 remain open.
 

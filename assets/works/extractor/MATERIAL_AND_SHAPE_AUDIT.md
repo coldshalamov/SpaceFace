@@ -1,6 +1,6 @@
 # Extractor — material and shape audit (Cycle 03)
 
-Candidate `3321E047FB1D4158FB805C733D31C167BE337D406EB6AF7B791F5D011E6AFB0D` · root `SF_WORKS_EXTRACTOR_V1` · disposition `review_pending`.
+Candidate `D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C` · root `SF_WORKS_EXTRACTOR_V1` · disposition `review_pending`.
 
 Cycle 02 site still at legal 19 px/cell is a KEEP and is frozen. Top, edge and
 material reviews returned REVISE: the mouth was still a black pit, the drum
