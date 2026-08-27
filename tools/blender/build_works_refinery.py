@@ -1,11 +1,13 @@
-"""PQ-131.04 Works refinery — Cycle 02 source-candidate builder.
+"""PQ-131.04 Works refinery — Cycle 03 source-candidate builder.
 
-Cycle 02 corrects the real throat and separated process train:
-blind recessed charging well, thick insulated jacket with inset courses,
-rooted rect takeoff / rect-to-round / mitered elbow / rain-capped stack,
-routed process pipe, saddle tank, hooded lamp at the flue neck.
+Cycle 03 is the formed-jacket / deep-throat / site-gallery correction:
+chamfered insulated jacket with waist belt, courses, and corner returns;
+deeper blind refractory well with a thin dark lip; four gusseted feet
+with a pad gap; stack rooted by elbow, flange/union, and banded
+transition; tank on two wrapped saddles with manway and nozzle;
+LOD1/2 and site values keep three separated masses and an empty slit.
 
-Cycle 01 evidence under assets/works/refinery/evidence/cycle_001/ is immutable.
+Preserve Cycle 01 and Cycle 02 evidence. Do not write into those folders.
 
     blender --background --python tools/blender/build_works_refinery.py
 
@@ -44,14 +46,15 @@ FAMILY = ROOT / "assets" / "works" / "refinery"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 REF_DIR = FAMILY / "reference"
-EVID_DIR = FAMILY / "evidence" / "cycle_002"
+EVID_DIR = FAMILY / "evidence" / "cycle_003"
 CYCLE01_DIR = FAMILY / "evidence" / "cycle_001"
+CYCLE02_DIR = FAMILY / "evidence" / "cycle_002"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 COMBINED_NAME = "place_works_refinery.glb"
 ASSET_ID = "place_works_refinery"
 ROOT_NAME = "SF_WORKS_REFINERY_V1"
 HOOK_NAMES = ("furnace_slit", "stack_vent", "lamp")
-CYCLE = 2
+CYCLE = 3
 TEX = 1024
 SHADE_ANGLE = 28.0
 BEVEL_LOW = {0: 0.010, 1: 0.0, 2: 0.0}
@@ -63,18 +66,18 @@ _GLTF_NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 
 # Plan layout (wu). Origin at cell centre, +Z up, feet on z=0.
 # Process-train keep-set: furnace, offset stack, offset tank, empty gallery.
-FX, FY = -0.22, 0.05
-FHX, FHY = 0.55, 0.40
-F_Z0, F_CROWN = 0.12, 0.72
-WELL_FLOOR = 0.44
-SLIT_HX, SLIT_HY = 0.23, 0.07
-SX, SY = 0.16, 0.78
-STACK_R = 0.145
+FX, FY = -0.22, 0.04
+FHX, FHY = 0.52, 0.38
+F_Z0, F_CROWN = 0.15, 0.76
+WELL_FLOOR = 0.28
+SLIT_HX, SLIT_HY = 0.248, 0.098
+SX, SY = 0.18, 0.80
+STACK_R = 0.138
 STACK_TOP = 1.12
-TX, TY = 0.74, -0.26
-TANK_R, TANK_HALF = 0.155, 0.33
-PIPE_R = 0.022
-LAMP_LOC = (SX + 0.14, SY - 0.16, 0.72)
+TX, TY = 0.76, -0.28
+TANK_R, TANK_HALF = 0.148, 0.32
+PIPE_R = 0.020
+LAMP_LOC = (SX + 0.13, SY - 0.15, 0.74)
 
 ROLES = (
     "structure",
@@ -97,16 +100,17 @@ ROLE_ID_RGB = {
     "lamp": (0.70, 0.58, 0.38),
 }
 # Authored albedo bases. Jacket is cooler/darker than stack rust and tank oxide-red.
+# Hotmetal is heat-stained steel, not copper.
 ROLE_ALBEDO = {
-    "structure": (0.105, 0.112, 0.118),
-    "refractory": (0.085, 0.068, 0.052),
-    "hotmetal": (0.36, 0.24, 0.13),
-    "stack": (0.27, 0.11, 0.055),
-    "tank": (0.235, 0.072, 0.048),
-    "pipe": (0.30, 0.22, 0.14),
-    "lampmetal": (0.14, 0.145, 0.15),
-    "slit": (0.045, 0.032, 0.024),
-    "lamp": (0.42, 0.34, 0.20),
+    "structure": (0.082, 0.090, 0.102),
+    "refractory": (0.102, 0.080, 0.060),
+    "hotmetal": (0.165, 0.140, 0.118),
+    "stack": (0.255, 0.105, 0.052),
+    "tank": (0.220, 0.068, 0.046),
+    "pipe": (0.22, 0.175, 0.135),
+    "lampmetal": (0.13, 0.135, 0.142),
+    "slit": (0.028, 0.020, 0.016),
+    "lamp": (0.40, 0.32, 0.18),
 }
 ROLE_ROUGH = {
     "structure": 0.66, "refractory": 0.86, "hotmetal": 0.42,
@@ -144,6 +148,32 @@ CYCLE01_LOCK = {
     "assets/works/refinery/evidence/cycle_001/works_top_clay_1to1.png": "D0A45B24A191C54282AE91CC7A4CF6C7B1F5F9D003EC184729336E839CE92477",
     "assets/works/refinery/evidence/cycle_001/works_visible_faces.json": "F02C60AD8ED292C5BA49082DB0758530DE14764F5523936967B17664672C1E59",
 }
+CYCLE02_LOCK = {
+    "assets/works/refinery/evidence/cycle_002.json": "A2BF5A403889FDA4CA5163907644984DB4BC9A03F24D4E1E5FE338B93897AF2E",
+    "assets/works/refinery/evidence/cycle_002.md": "4CBF63742A9A8E7D78ABFBADEAB03D5745270ABDCB0655E6E2BB097BA6733E39",
+    "assets/works/refinery/evidence/cycle_002/hook_identity.png": "3F356B543EB65BDAAC2CB971474DEEA573461ADC3D28E65172204CEDC5B5E42B",
+    "assets/works/refinery/evidence/cycle_002/hook_identity_1to1.png": "E9CFDFAD9C162AE4DE455B95C316F76796EE415D7412E19A255A7C72FAA2C759",
+    "assets/works/refinery/evidence/cycle_002/id_or_material_id.png": "B952DBA2780CB901EE4C4334618E0E15F38A4D97C137BA2F70352D81BB40076F",
+    "assets/works/refinery/evidence/cycle_002/id_or_material_id_1to1.png": "6981412A6DC7C1A866F2B72C987FD8132943EB65714FD3C68E0B48DC79847F8A",
+    "assets/works/refinery/evidence/cycle_002/normal_isolation.png": "F090074946DA82EB46E559329F4148034CC420D93209B41C8054BB03748687C9",
+    "assets/works/refinery/evidence/cycle_002/normal_isolation_1to1.png": "4CC7F0A48A265B93E31732F1E67853139F5889DB8DF05AF09D91F1731B68E2B7",
+    "assets/works/refinery/evidence/cycle_002/orm_isolation.png": "4591432E86329FDA814ADFB8AA5F27FD0B8E563EB3A06C9E687191E1FD1BD409",
+    "assets/works/refinery/evidence/cycle_002/orm_isolation_1to1.png": "011056DFECD8148B790A9123D982D42E54EFF1E26185640BAD05DD18D833CFFF",
+    "assets/works/refinery/evidence/cycle_002/state_emission.png": "A46CE77296FED212A14CE460A6FC524702D8DC0A702FF52BC9669F8858736057",
+    "assets/works/refinery/evidence/cycle_002/state_emission_1to1.png": "919DB16C7BD718464D5E5FC5886A36D2C806179CCC01CDB3D40532CFD1A90333",
+    "assets/works/refinery/evidence/cycle_002/uv0_layout.png": "1CAF0AB54EA9B2EF64412964742E49871156EAEAFF1059EC7FE99E561FBDB8B2",
+    "assets/works/refinery/evidence/cycle_002/works_edge.png": "9E2854421DF28352DE6029F24A0A5FC9441C9B74A2ECAE49B4FB171E63FA72AA",
+    "assets/works/refinery/evidence/cycle_002/works_edge_1to1.png": "E194E3F2D2E391344FD70FFE9DF37FD13F4FD609C8478EC489B2BA48CE3B8543",
+    "assets/works/refinery/evidence/cycle_002/works_edge_grazing.png": "1AB105DAF305542E1ADEAF5F80CE7F6AB9A4AB54CCC4DAFEF98B73EE25907D07",
+    "assets/works/refinery/evidence/cycle_002/works_edge_grazing_1to1.png": "F65876896C14D55FA1DEC317B770458D4D5F4A2CCFAC6ACC0B684038BF42ED11",
+    "assets/works/refinery/evidence/cycle_002/works_site.png": "D42EA99C15165F53DE1D1C4F9108EEA3A90C291616785355413776521DC336DA",
+    "assets/works/refinery/evidence/cycle_002/works_site_1to1.png": "0E5759FC7E5479379B29540E0D933FCF73CA454618B2B489FFCBAD47F40B5C57",
+    "assets/works/refinery/evidence/cycle_002/works_top.png": "82F5A13B92F93FA5CEBE98E7130150A9B066F0BB55901EE39AC2B564AFCB0EEC",
+    "assets/works/refinery/evidence/cycle_002/works_top_1to1.png": "52100BC50CFD3B7F11DD006858282BAF31A08C8B6A42D0B0A4789D2CFD057E52",
+    "assets/works/refinery/evidence/cycle_002/works_top_clay.png": "86FEBBB61924124E3D8EF1294B1CBEC42131F80295893273CE01B882F91E643F",
+    "assets/works/refinery/evidence/cycle_002/works_top_clay_1to1.png": "B86A37BC8373A73D68C68AE9458F582A6660F0B2F83BD2C5295051F5ED1B80DC",
+    "assets/works/refinery/evidence/cycle_002/works_visible_faces.json": "2BB7A06C91ABCCACDED501AEE47C8930DC75229608B7C3B0467BCB18662E102C",
+}
 REF_IMAGES = (
     ROOT / "assets" / "concept" / "archetypes" / "concept_station_refinery.jpg",
     ROOT / "assets" / "concept" / "archetypes" / "concept_station_mining.jpg",
@@ -157,6 +187,13 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest().upper()
+
+
+def write_text_lf(path: Path, text: str) -> None:
+    """Write tracked receipts deterministically on Windows without CRLF churn."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(text)
 
 
 def argv_after():
@@ -368,6 +405,36 @@ def rounded_rect(cx, cy, hx, hy, corner, z, n_arc):
     return pts
 
 
+def jacket_plan(cx, cy, hx, hy, chamfer, z, n_side=1):
+    """Formed insulated-jacket plan: straight courses and hard corner returns.
+
+    An 8-sided chamfered rectangle, not a rounded box. n_side subdivides each
+    course/return so LODs can share the same silhouette.
+    """
+    ch = min(max(chamfer, 0.012), hx * 0.42, hy * 0.42)
+    pts = [
+        (cx + hx, cy + hy - ch, z),
+        (cx + hx - ch, cy + hy, z),
+        (cx - hx + ch, cy + hy, z),
+        (cx - hx, cy + hy - ch, z),
+        (cx - hx, cy - hy + ch, z),
+        (cx - hx + ch, cy - hy, z),
+        (cx + hx - ch, cy - hy, z),
+        (cx + hx, cy - hy + ch, z),
+    ]
+    n_side = max(1, int(n_side))
+    if n_side == 1:
+        return pts
+    out = []
+    for i in range(8):
+        ax, ay, az = pts[i]
+        bx, by, bz = pts[(i + 1) % 8]
+        for k in range(n_side):
+            t = k / float(n_side)
+            out.append((ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t))
+    return out
+
+
 def circle_ring(cx, cy, radius, z, n, twist=0.0):
     return [
         (
@@ -477,10 +544,10 @@ def box_mesh(name, cx, cy, cz, hx, hy, hz, material, collection, bevel, role):
     return add_mesh(name, verts, faces, material, collection, bevel, role)
 
 
-def freeze_cycle01():
+def freeze_lock(lock, label):
     missing = []
     mismatched = []
-    for rel, expected in CYCLE01_LOCK.items():
+    for rel, expected in lock.items():
         path = ROOT / rel
         if not path.exists():
             missing.append(rel)
@@ -489,13 +556,22 @@ def freeze_cycle01():
         if actual != expected:
             mismatched.append((rel, expected, actual))
     if missing or mismatched:
-        raise RuntimeError(f"Cycle 01 evidence mutated before build: missing={missing} mismatched={mismatched}")
+        raise RuntimeError(f"{label} evidence mutated: missing={missing} mismatched={mismatched}")
 
 
-def assert_cycle01_untouched():
+def freeze_cycle01():
+    freeze_lock(CYCLE01_LOCK, "Cycle 01")
+
+
+def freeze_cycle02():
+    freeze_lock(CYCLE02_LOCK, "Cycle 02")
+
+
+def assert_prior_cycles_untouched():
     freeze_cycle01()
-    if EVID_DIR.resolve() == CYCLE01_DIR.resolve():
-        raise RuntimeError("Cycle 02 builder must not write into cycle_001")
+    freeze_cycle02()
+    if EVID_DIR.resolve() in {CYCLE01_DIR.resolve(), CYCLE02_DIR.resolve()}:
+        raise RuntimeError("Cycle 03 builder must not write into cycle_001 or cycle_002")
 
 
 def flange_at(name, center, tangent, radius, thick, material, collection, bevel, role, n=10):
@@ -787,109 +863,117 @@ def add_empty(name, loc, collection, parent=None, size=0.08):
 
 def lod_res(lod):
     if lod == 0:
-        return dict(n_arc=3, n_circ=10, n_pipe=8, straps=True, bolts=True, baffles=True, door=True, gussets=4)
+        return dict(n_side=2, n_circ=10, n_pipe=8, straps=True, bolts=True, baffles=True, door=True, gussets=4, corners=True)
     if lod == 1:
-        return dict(n_arc=2, n_circ=8, n_pipe=6, straps=True, bolts=False, baffles=True, door=True, gussets=2)
-    return dict(n_arc=2, n_circ=6, n_pipe=5, straps=False, bolts=False, baffles=False, door=False, gussets=0)
+        return dict(n_side=1, n_circ=8, n_pipe=6, straps=True, bolts=False, baffles=True, door=True, gussets=2, corners=False)
+    return dict(n_side=1, n_circ=6, n_pipe=5, straps=False, bolts=False, baffles=False, door=False, gussets=0, corners=False)
 
 
 def build_furnace(lod, mats, collection, bevel):
-    """Thick insulated jacket + blind recessed charging well. Modest corners, not a lozenge."""
+    """Formed insulated jacket: waist belt, courses, corner returns, deep blind throat."""
     res = lod_res(lod)
-    n_arc = res["n_arc"]
+    n_side = res["n_side"]
     body_parts = []
-    cr_body, cr_crown = 0.07, 0.05
+    ch_skirt, ch_body, ch_crown, ch_mouth = 0.070, 0.055, 0.048, 0.028
 
-    # Solid lower jacket: skirt flare, inset course, mid body. Caps the well (blind).
+    def jplan(hx, hy, ch, z):
+        return jacket_plan(FX, FY, hx, hy, ch, z, n_side)
+
+    # Solid lower jacket: flared skirt, then a hold that caps the well (blind).
     if lod == 0:
         lower_stations = (
-            (F_Z0, FHX * 1.05, FHY * 1.06, cr_body + 0.01),
-            (0.20, FHX * 1.00, FHY * 1.00, cr_body),
-            (0.26, FHX * 0.965, FHY * 0.965, cr_body),  # inset course 1
-            (0.32, FHX * 0.965, FHY * 0.965, cr_body),
-            (WELL_FLOOR, FHX * 1.01, FHY * 1.00, cr_body),
+            (F_Z0, FHX * 1.12, FHY * 1.14, ch_skirt),
+            (0.20, FHX * 1.04, FHY * 1.05, ch_body),
+            (0.24, FHX * 1.00, FHY * 1.00, ch_body),
+            (WELL_FLOOR, FHX * 0.98, FHY * 0.97, ch_body),
         )
     else:
         lower_stations = (
-            (F_Z0, FHX * 1.04, FHY * 1.05, cr_body),
-            (0.28, FHX * 0.97, FHY * 0.97, cr_body),
-            (WELL_FLOOR, FHX * 1.00, FHY * 0.99, cr_body),
+            (F_Z0, FHX * 1.10, FHY * 1.12, ch_skirt),
+            (0.22, FHX * 1.00, FHY * 1.00, ch_body),
+            (WELL_FLOOR, FHX * 0.98, FHY * 0.97, ch_body),
         )
     body_parts.append(loft_rings(
         "Furnace_Lower",
-        [rounded_rect(FX, FY, hx, hy, cr, z, n_arc) for z, hx, hy, cr in lower_stations],
+        [jplan(hx, hy, ch, z) for z, hx, hy, ch in lower_stations],
         mats["structure"], collection, bevel, True, "structure",
     ))
 
-    # Upper jacket is a thick shell. Inner opening is the mouth; walls stay in plan
-    # because the refractory liner tapers to a smaller floor.
+    # Upper jacket: waist inset belt, two courses, stepped crown. Inner opening is the mouth.
     if lod == 0:
         wall_stations = (
-            (WELL_FLOOR, FHX * 1.01, FHY * 1.00, cr_body),
-            (0.52, FHX * 0.965, FHY * 0.965, cr_body),  # inset course 2
-            (0.58, FHX * 0.965, FHY * 0.965, cr_body),
-            (0.66, FHX * 0.98, FHY * 0.97, cr_crown + 0.01),  # inset course 3 / shoulder
-            (F_CROWN, FHX * 0.94, FHY * 0.92, cr_crown),
+            (WELL_FLOOR, FHX * 0.98, FHY * 0.97, ch_body),
+            (0.34, FHX * 0.78, FHY * 0.76, ch_body),   # waist inset
+            (0.42, FHX * 0.78, FHY * 0.76, ch_body),   # waist hold
+            (0.50, FHX * 1.00, FHY * 0.98, ch_body),   # course 2 return
+            (0.62, FHX * 0.98, FHY * 0.94, ch_crown),  # broad shoulder course
+            (F_CROWN, FHX * 0.78, FHY * 0.72, ch_crown),
+        )
+    elif lod == 1:
+        wall_stations = (
+            (WELL_FLOOR, FHX * 0.98, FHY * 0.97, ch_body),
+            (0.38, FHX * 0.79, FHY * 0.77, ch_body),
+            (0.50, FHX * 1.00, FHY * 0.98, ch_body),
+            (F_CROWN, FHX * 0.80, FHY * 0.74, ch_crown),
         )
     else:
         wall_stations = (
-            (WELL_FLOOR, FHX * 1.00, FHY * 0.99, cr_body),
-            (0.58, FHX * 0.97, FHY * 0.96, cr_body),
-            (F_CROWN, FHX * 0.94, FHY * 0.92, cr_crown),
+            (WELL_FLOOR, FHX * 0.98, FHY * 0.97, ch_body),
+            (0.40, FHX * 0.82, FHY * 0.80, ch_body),
+            (F_CROWN, FHX * 0.80, FHY * 0.74, ch_crown),
         )
-    mouth_hx, mouth_hy = SLIT_HX + 0.012, SLIT_HY + 0.010
-    outer = [rounded_rect(FX, FY, hx, hy, cr, z, n_arc) for z, hx, hy, cr in wall_stations]
+    mouth_hx, mouth_hy = SLIT_HX + 0.010, SLIT_HY + 0.010
+    floor_hx, floor_hy = SLIT_HX * 0.40, SLIT_HY * 0.38
+    outer = [jplan(hx, hy, ch, z) for z, hx, hy, ch in wall_stations]
     inner = []
     n_wall = len(wall_stations)
-    for i, (z, hx, hy, cr) in enumerate(wall_stations):
+    for i, (z, hx, hy, ch) in enumerate(wall_stations):
         t = i / max(1, n_wall - 1)
-        if lod == 2:
-            ihx = mouth_hx * (0.55 + 0.45 * t)
-            ihy = mouth_hy * (0.52 + 0.48 * t)
-        else:
-            ihx, ihy = mouth_hx, mouth_hy
-        inner.append(rounded_rect(FX, FY, ihx, ihy, 0.028, z, n_arc))
+        # Taper the jacket inner so walls and floor separate in plan.
+        ihx = floor_hx + (mouth_hx - floor_hx) * t
+        ihy = floor_hy + (mouth_hy - floor_hy) * t
+        inner.append(jacket_plan(FX, FY, ihx, ihy, ch_mouth, z, n_side))
     body_parts.append(loft_shell("Furnace_Jacket", outer, inner, mats["structure"], collection, bevel, "structure"))
 
-    # Formed steel lip with readable thickness. Inner edge overhangs to shadow the well.
+    # Thin dark steel lip — not a copper picture-frame.
     if lod < 2:
-        lip_z0, lip_z1 = F_CROWN - 0.008, F_CROWN + 0.022
-        lip_out_h, lip_out_v = SLIT_HX + 0.042, SLIT_HY + 0.034
-        lip_in_h, lip_in_v = SLIT_HX - 0.010, SLIT_HY - 0.008
+        lip_z0, lip_z1 = F_CROWN - 0.004, F_CROWN + 0.010
+        lip_out_h, lip_out_v = SLIT_HX + 0.016, SLIT_HY + 0.014
+        lip_in_h, lip_in_v = SLIT_HX - 0.002, SLIT_HY - 0.002
         lip_outer = [
-            rounded_rect(FX, FY, lip_out_h, lip_out_v, 0.030, lip_z0, n_arc),
-            rounded_rect(FX, FY, lip_out_h, lip_out_v, 0.030, lip_z1, n_arc),
+            jacket_plan(FX, FY, lip_out_h, lip_out_v, 0.022, lip_z0, n_side),
+            jacket_plan(FX, FY, lip_out_h, lip_out_v, 0.022, lip_z1, n_side),
         ]
         lip_inner = [
-            rounded_rect(FX, FY, lip_in_h, lip_in_v, 0.022, lip_z0, n_arc),
-            rounded_rect(FX, FY, lip_in_h * 0.98, lip_in_v * 0.98, 0.020, lip_z1, n_arc),
+            jacket_plan(FX, FY, lip_in_h, lip_in_v, 0.018, lip_z0, n_side),
+            jacket_plan(FX, FY, lip_in_h * 0.99, lip_in_v * 0.99, 0.016, lip_z1, n_side),
         ]
-        body_parts.append(loft_shell("Furnace_Lip", lip_outer, lip_inner, mats["hotmetal"], collection, bevel * 0.5, "hotmetal"))
+        body_parts.append(loft_shell("Furnace_Lip", lip_outer, lip_inner, mats["structure"], collection, bevel * 0.4, "structure"))
 
-    # Soot-dark refractory liner: tapers so the top camera sees a dark wall band, not a floor stripe.
-    well_cr = 0.024
+    # Soot-dark refractory liner: aggressive taper so inner walls and floor both read at 120 px.
     if lod == 0:
-        well_z = (WELL_FLOOR + 0.006, 0.54, F_CROWN - 0.012)
-        scales = (0.52, 0.78, 0.96)
+        well_z = (WELL_FLOOR + 0.008, 0.46, 0.62, F_CROWN - 0.010)
+        scales = (0.40, 0.62, 0.84, 0.97)
     elif lod == 1:
-        well_z = (WELL_FLOOR + 0.006, F_CROWN - 0.012)
-        scales = (0.52, 0.96)
+        well_z = (WELL_FLOOR + 0.008, 0.50, F_CROWN - 0.010)
+        scales = (0.40, 0.72, 0.97)
     else:
         well_z = ()
         scales = ()
     well_outer = []
     well_inner = []
     for z, scale in zip(well_z, scales):
-        well_outer.append(rounded_rect(FX, FY, SLIT_HX * 0.98, SLIT_HY * 0.96, well_cr, z, n_arc))
-        well_inner.append(rounded_rect(FX, FY, SLIT_HX * scale, SLIT_HY * scale * 0.88, 0.018, z, n_arc))
+        well_outer.append(jacket_plan(FX, FY, SLIT_HX * 0.98, SLIT_HY * 0.96, 0.022, z, n_side))
+        well_inner.append(jacket_plan(FX, FY, SLIT_HX * scale, SLIT_HY * scale * 0.90, 0.016, z, n_side))
     if well_outer:
-        body_parts.append(loft_shell("Furnace_Well", well_outer, well_inner, mats["refractory"], collection, bevel * 0.4, "refractory"))
+        body_parts.append(loft_shell("Furnace_Well", well_outer, well_inner, mats["refractory"], collection, bevel * 0.3, "refractory"))
 
     if lod < 2:
-        floor_outer = rounded_rect(FX, FY, SLIT_HX * 0.54, SLIT_HY * 0.50, 0.016, WELL_FLOOR + 0.010, n_arc)
-        floor_inner = rounded_rect(FX, FY, SLIT_HX * 0.34, SLIT_HY * 0.30, 0.012, WELL_FLOOR + 0.010, n_arc)
-        floor_outer_b = rounded_rect(FX, FY, SLIT_HX * 0.54, SLIT_HY * 0.50, 0.016, WELL_FLOOR + 0.004, n_arc)
-        floor_inner_b = rounded_rect(FX, FY, SLIT_HX * 0.34, SLIT_HY * 0.30, 0.012, WELL_FLOOR + 0.004, n_arc)
+        floor_scale_o, floor_scale_i = 0.42, 0.26
+        floor_outer = jacket_plan(FX, FY, SLIT_HX * floor_scale_o, SLIT_HY * floor_scale_o * 0.92, 0.014, WELL_FLOOR + 0.012, n_side)
+        floor_inner = jacket_plan(FX, FY, SLIT_HX * floor_scale_i, SLIT_HY * floor_scale_i * 0.90, 0.010, WELL_FLOOR + 0.012, n_side)
+        floor_outer_b = jacket_plan(FX, FY, SLIT_HX * floor_scale_o, SLIT_HY * floor_scale_o * 0.92, 0.014, WELL_FLOOR + 0.004, n_side)
+        floor_inner_b = jacket_plan(FX, FY, SLIT_HX * floor_scale_i, SLIT_HY * floor_scale_i * 0.90, 0.010, WELL_FLOOR + 0.004, n_side)
         body_parts.append(loft_shell(
             "Furnace_WellFloor",
             [floor_outer_b, floor_outer], [floor_inner_b, floor_inner],
@@ -898,80 +982,111 @@ def build_furnace(lod, mats, collection, bevel):
     ember = loft_rings(
         "Furnace_SlitLens",
         [
-            rounded_rect(FX, FY, SLIT_HX * 0.32, SLIT_HY * 0.28, 0.012, WELL_FLOOR + 0.006, n_arc),
-            rounded_rect(FX, FY, SLIT_HX * 0.28, SLIT_HY * 0.24, 0.010, WELL_FLOOR + 0.016, n_arc),
+            jacket_plan(FX, FY, SLIT_HX * 0.24, SLIT_HY * 0.22, 0.010, WELL_FLOOR + 0.006, n_side),
+            jacket_plan(FX, FY, SLIT_HX * 0.20, SLIT_HY * 0.18, 0.008, WELL_FLOOR + 0.014, n_side),
         ],
         mats["slit"], collection, 0.0, True, "slit",
     )
 
-    # Clamp blocks sit in the inset courses (straps are the inset stations themselves).
+    # Course straps sit in the waist and shoulder insets.
     if res["straps"]:
-        clamp_zs = (0.29, 0.55, 0.66) if lod == 0 else ((0.29, 0.55) if lod == 1 else ())
+        clamp_zs = (0.38, 0.50, 0.62) if lod == 0 else ((0.38, 0.58) if lod == 1 else ())
         for i, z in enumerate(clamp_zs):
-            hx = FHX * (0.965 if i < 2 else 0.98)
+            hx = FHX * (0.78 if i == 0 else 0.98)
+            hy = FHY * (0.76 if i == 0 else 0.94)
             body_parts.append(box_mesh(
                 f"Furnace_ClampX_{i}",
-                FX + hx + 0.018, FY, z, 0.016, 0.042, 0.022,
+                FX + hx + 0.016, FY, z, 0.014, 0.038, 0.018,
                 mats["hotmetal"], collection, bevel * 0.3, "hotmetal",
             ))
             if lod == 0:
                 body_parts.append(box_mesh(
                     f"Furnace_ClampY_{i}",
-                    FX, FY - FHY * (0.965 if i < 2 else 0.97) - 0.016, z,
-                    0.042, 0.014, 0.022,
+                    FX, FY - hy - 0.014, z,
+                    0.038, 0.012, 0.018,
                     mats["hotmetal"], collection, bevel * 0.3, "hotmetal",
                 ))
 
-    # Four tapered gusseted feet with a visible gap under the jacket.
+    # Structural corner returns — folded plate at each chamfer, proud of the body.
+    if res.get("corners"):
+        ch = ch_body
+        corners = (
+            (FX + FHX * 0.98 - ch * 0.10, FY + FHY * 0.94 - ch * 0.10, 1, 1),
+            (FX - FHX * 0.98 + ch * 0.10, FY + FHY * 0.94 - ch * 0.10, -1, 1),
+            (FX - FHX * 0.98 + ch * 0.10, FY - FHY * 0.94 + ch * 0.10, -1, -1),
+            (FX + FHX * 0.98 - ch * 0.10, FY - FHY * 0.94 + ch * 0.10, 1, -1),
+        )
+        z0, z1 = F_Z0 + 0.02, F_CROWN - 0.015
+        for i, (px, py, sx, sy) in enumerate(corners):
+            body_parts.append(box_mesh(
+                f"Furnace_CornerReturnX_{i}",
+                px + sx * 0.036, py, (z0 + z1) * 0.5,
+                0.040, 0.014, (z1 - z0) * 0.5,
+                mats["structure"], collection, bevel * 0.2, "structure",
+            ))
+            body_parts.append(box_mesh(
+                f"Furnace_CornerReturnY_{i}",
+                px, py + sy * 0.036, (z0 + z1) * 0.5,
+                0.014, 0.040, (z1 - z0) * 0.5,
+                mats["structure"], collection, bevel * 0.2, "structure",
+            ))
+
+    # Four tapered gusseted feet with a visible pad gap under the jacket.
     foot_pts = (
-        (FX - FHX * 0.78, FY - FHY * 0.78),
-        (FX + FHX * 0.78, FY - FHY * 0.78),
-        (FX - FHX * 0.78, FY + FHY * 0.74),
-        (FX + FHX * 0.62, FY + FHY * 0.74),
+        (FX - FHX * 0.82, FY - FHY * 0.82),
+        (FX + FHX * 0.82, FY - FHY * 0.82),
+        (FX - FHX * 0.82, FY + FHY * 0.76),
+        (FX + FHX * 0.62, FY + FHY * 0.76),
     )
     for i, (px, py) in enumerate(foot_pts):
-        n_foot = max(1, n_arc - 1)
         if lod == 0:
             rings = [
-                rounded_rect(px, py, 0.058, 0.046, 0.008, 0.0, n_foot),
-                rounded_rect(px, py, 0.040, 0.032, 0.006, 0.06, n_foot),
-                rounded_rect(px, py, 0.028, 0.022, 0.005, F_Z0 + 0.008, n_foot),
+                jacket_plan(px, py, 0.062, 0.050, 0.010, 0.0, 1),
+                jacket_plan(px, py, 0.058, 0.046, 0.009, 0.018, 1),
+                jacket_plan(px, py, 0.038, 0.030, 0.007, 0.08, 1),
+                jacket_plan(px, py, 0.026, 0.020, 0.005, F_Z0 - 0.004, 1),
+            ]
+        elif lod == 1:
+            rings = [
+                jacket_plan(px, py, 0.056, 0.044, 0.008, 0.0, 1),
+                jacket_plan(px, py, 0.026, 0.020, 0.005, F_Z0 - 0.004, 1),
             ]
         else:
             rings = [
-                rounded_rect(px, py, 0.052, 0.040, 0.006, 0.0, n_foot),
-                rounded_rect(px, py, 0.028, 0.022, 0.005, F_Z0 + 0.008, n_foot),
+                rounded_rect(px, py, 0.050, 0.038, 0.008, 0.0, 1),
+                rounded_rect(px, py, 0.024, 0.018, 0.005, F_Z0 - 0.004, 1),
             ]
-        body_parts.append(loft_rings(f"Furnace_Foot_{i}", rings, mats["structure"], collection, bevel * 0.4, True, "structure"))
+        body_parts.append(loft_rings(f"Furnace_Foot_{i}", rings, mats["structure"], collection, bevel * 0.35, True, "structure"))
         if i < res.get("gussets", 0):
-            inward_x = math.copysign(0.10, FX - px + 0.001)
+            inward_x = math.copysign(0.11, FX - px + 0.001)
+            inward_y = math.copysign(0.04, FY - py + 0.001)
             body_parts.append(add_mesh(
                 f"Furnace_Gusset_{i}",
                 [
-                    (px, py + 0.010, 0.03),
-                    (px + inward_x, py + 0.010, 0.03),
-                    (px + inward_x, py + 0.010, 0.08),
-                    (px, py + 0.010, F_Z0 + 0.04),
-                    (px, py - 0.010, 0.03),
-                    (px + inward_x, py - 0.010, 0.03),
-                    (px + inward_x, py - 0.010, 0.08),
-                    (px, py - 0.010, F_Z0 + 0.04),
+                    (px, py + 0.010, 0.020),
+                    (px + inward_x, py + inward_y + 0.010, 0.020),
+                    (px + inward_x, py + inward_y + 0.010, 0.07),
+                    (px, py + 0.010, F_Z0 + 0.02),
+                    (px, py - 0.010, 0.020),
+                    (px + inward_x, py + inward_y - 0.010, 0.020),
+                    (px + inward_x, py + inward_y - 0.010, 0.07),
+                    (px, py - 0.010, F_Z0 + 0.02),
                 ],
                 [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)],
-                mats["structure"], collection, bevel * 0.25, "structure",
+                mats["structure"], collection, bevel * 0.2, "structure",
             ))
 
     if res["door"]:
-        dx = FX + FHX * 0.94
+        dx = FX + FHX * 0.92
         body_parts.append(box_mesh(
-            "Furnace_Door", dx + 0.004, FY, 0.36, 0.016, 0.11, 0.13,
-            mats["structure"], collection, bevel * 0.35, "structure",
+            "Furnace_Door", dx + 0.006, FY, 0.40, 0.014, 0.10, 0.12,
+            mats["structure"], collection, bevel * 0.3, "structure",
         ))
         body_parts.append(loft_rings(
             "Furnace_Hinge",
             [
-                circle_ring(dx + 0.004, FY - 0.12, 0.011, 0.26, max(6, res["n_circ"] // 2)),
-                circle_ring(dx + 0.004, FY - 0.12, 0.011, 0.46, max(6, res["n_circ"] // 2)),
+                circle_ring(dx + 0.006, FY - 0.11, 0.010, 0.30, max(6, res["n_circ"] // 2)),
+                circle_ring(dx + 0.006, FY - 0.11, 0.010, 0.50, max(6, res["n_circ"] // 2)),
             ],
             mats["hotmetal"], collection, 0.0, True, "hotmetal",
         ))
@@ -985,10 +1100,11 @@ def build_burner(lod, mats, collection, bevel):
     res = lod_res(lod)
     parts = []
     y0 = FY - FHY * 0.98
+    n_arc = max(1, res["n_side"])
     rings = [
-        rounded_rect(FX - 0.06, y0 - 0.018, 0.20, 0.048, 0.016, 0.20, res["n_arc"]),
-        rounded_rect(FX - 0.06, y0 - 0.055, 0.185, 0.052, 0.016, 0.32, res["n_arc"]),
-        rounded_rect(FX - 0.06, y0 - 0.042, 0.17, 0.040, 0.014, 0.46, res["n_arc"]),
+        rounded_rect(FX - 0.06, y0 - 0.018, 0.18, 0.044, 0.016, 0.22, n_arc),
+        rounded_rect(FX - 0.06, y0 - 0.050, 0.168, 0.048, 0.016, 0.34, n_arc),
+        rounded_rect(FX - 0.06, y0 - 0.038, 0.155, 0.036, 0.014, 0.48, n_arc),
     ]
     parts.append(loft_rings("Burner_Plenum", rings, mats["hotmetal"], collection, bevel, True, "hotmetal"))
     n = max(6, res["n_circ"] // 2)
@@ -1022,74 +1138,111 @@ def build_burner(lod, mats, collection, bevel):
 
 
 def build_stack(lod, mats, collection, bevel):
-    """Rectangular takeoff, rect-to-round collar, mitered elbow, neck/hoops, rain cap above the outlet."""
+    """Rooted flue: rect takeoff, banded rect-to-round, mitered elbow with unions, rain-capped stack."""
     res = lod_res(lod)
     n = res["n_circ"]
     parts = []
-    face_y = FY + FHY * 0.94
-    take_z = 0.58
-    hx, hy = 0.070, 0.048
-    # 1. Rectangular takeoff stub from the furnace +Y shoulder (not a hose growing out of the body).
+    face_y = FY + FHY * 0.88
+    take_z = 0.56
+    hx, hy = 0.062, 0.042
+    n_fl = max(6, n)
+    spool_r = 0.038
+
+    # 1. Rectangular takeoff stub from the furnace +Y shoulder.
     take_pts = [
-        Vector((FX, face_y - 0.02, take_z)),
-        Vector((FX, face_y + 0.10, take_z)),
+        Vector((FX, face_y - 0.01, take_z)),
+        Vector((FX, face_y + 0.08, take_z)),
     ]
     if lod < 2:
         take_outer = [rect_in_plane(p, (0, 1, 0), hx, hy) for p in take_pts]
-        take_inner = [rect_in_plane(p, (0, 1, 0), hx - 0.014, hy - 0.012) for p in take_pts]
-        parts.append(loft_shell("Flue_Takeoff", take_outer, take_inner, mats["hotmetal"], collection, bevel * 0.4, "hotmetal"))
-    # 2. Rect-to-round transition / collar at the takeoff end.
-    trans_y = face_y + 0.10
+        take_inner = [rect_in_plane(p, (0, 1, 0), hx - 0.012, hy - 0.010) for p in take_pts]
+        parts.append(loft_shell("Flue_Takeoff", take_outer, take_inner, mats["hotmetal"], collection, bevel * 0.35, "hotmetal"))
+        parts.append(flange_at(
+            "Flue_TakeoffFlange", (FX, face_y + 0.02, take_z), (0, 1, 0),
+            0.072, 0.014, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
+        ))
+    else:
+        parts.append(pipe_along(
+            "Flue_Takeoff",
+            [(FX, face_y - 0.01, take_z), (FX, face_y + 0.08, take_z)],
+            spool_r, max(5, n // 2), mats["hotmetal"], collection, 0.0, "hotmetal", cut=0.01,
+        ))
+
+    # 2. Banded rect-to-round transition (not a copper bar).
+    trans_y = face_y + 0.08
     n_trans = max(8, (n // 4) * 4)
+    elbow_y = trans_y + 0.16
     if lod < 2:
         parts.append(loft_rings(
             "Flue_Transition",
             [
-                rect_n_in_plane((FX, trans_y, take_z), (0, 1, 0), hx * 0.92, hy * 0.92, n_trans),
-                circle_in_plane((FX, trans_y + 0.04, take_z), (0, 1, 0), 0.052, n_trans),
-                circle_in_plane((FX, trans_y + 0.07, take_z), (0, 1, 0), 0.048, n_trans),
+                rect_n_in_plane((FX, trans_y, take_z), (0, 1, 0), hx * 0.90, hy * 0.90, n_trans),
+                circle_in_plane((FX, trans_y + 0.035, take_z), (0, 1, 0), 0.046, n_trans),
+                circle_in_plane((FX, trans_y + 0.070, take_z), (0, 1, 0), 0.040, n_trans),
             ],
-            mats["hotmetal"], collection, bevel * 0.3, True, "hotmetal",
+            mats["hotmetal"], collection, bevel * 0.25, True, "hotmetal",
+        ))
+        for i, dy in enumerate((0.018, 0.048)):
+            parts.append(loft_rings(
+                f"Flue_Band_{i}",
+                [
+                    circle_in_plane((FX, trans_y + dy, take_z), (0, 1, 0), 0.052, n_trans),
+                    circle_in_plane((FX, trans_y + dy + 0.012, take_z), (0, 1, 0), 0.052, n_trans),
+                ],
+                mats["hotmetal"], collection, 0.0, True, "hotmetal",
+            ))
+        parts.append(flange_at(
+            "Flue_Union", (FX, trans_y + 0.074, take_z), (0, 1, 0),
+            0.058, 0.016, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
+        ))
+        # 3. Discrete mitered elbow: +Y spool, corner union, +X spool, stack inlet flange.
+        parts.append(pipe_along(
+            "Flue_SpoolY",
+            [(FX, trans_y + 0.074, take_z), (FX, elbow_y, take_z)],
+            spool_r, max(5, n // 2), mats["hotmetal"], collection, bevel * 0.15, "hotmetal", cut=0.01,
         ))
         parts.append(flange_at(
-            "Flue_Flange", (FX, trans_y + 0.02, take_z), (0, 1, 0),
-            0.062, 0.014, mats["hotmetal"], collection, 0.0, "hotmetal", n=max(6, n),
+            "Flue_ElbowUnion", (FX + 0.01, elbow_y, take_z), (1, 0, 0),
+            spool_r + 0.018, 0.018, mats["hotmetal"], collection, 0.0, "hotmetal", n=max(6, n // 2),
         ))
-    # 3. Mitered elbow: +Y then +X then +Y into the stack neck. Thin so the gallery stays empty.
-    elbow_r = 0.046
-    elbow_pts = [
-        (FX, trans_y + 0.07, take_z),
-        (FX, trans_y + 0.16, take_z),
-        (SX, trans_y + 0.16, take_z),
-        (SX, SY - STACK_R - 0.02, take_z),
-        (SX, SY, take_z + 0.02),
-    ]
-    parts.append(pipe_along(
-        "Flue_Elbow", elbow_pts, elbow_r, max(5, n // 2),
-        mats["hotmetal"], collection, bevel * 0.2, "hotmetal", cut=0.018,
-    ))
-    if lod < 2:
+        parts.append(pipe_along(
+            "Flue_SpoolX",
+            [(FX + 0.02, elbow_y, take_z), (SX, elbow_y, take_z), (SX, SY - STACK_R * 0.15, take_z), (SX, SY, take_z + 0.04)],
+            spool_r, max(5, n // 2), mats["hotmetal"], collection, bevel * 0.15, "hotmetal", cut=0.016,
+        ))
         parts.append(flange_at(
-            "Flue_ElbowFlange", (SX, trans_y + 0.16, take_z), (1, 0, 0),
-            elbow_r + 0.016, 0.012, mats["hotmetal"], collection, 0.0, "hotmetal", n=max(6, n // 2),
+            "Flue_StackInlet", (SX, SY, take_z + 0.05), (0, 0, 1),
+            spool_r + 0.020, 0.016, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
         ))
+    else:
+        parts.append(pipe_along(
+            "Flue_Elbow",
+            [
+                (FX, trans_y, take_z),
+                (FX, elbow_y, take_z),
+                (SX, elbow_y, take_z),
+                (SX, SY, take_z + 0.04),
+            ],
+            spool_r, max(4, n // 2), mats["hotmetal"], collection, 0.0, "hotmetal", cut=0.016,
+        ))
+
     # 4. Stack neck then tapered tube. Open at STACK_TOP; rain cap sits above.
-    neck_z0, neck_z1 = 0.62, 0.74
+    neck_z0, neck_z1 = 0.64, 0.76
     if lod < 2:
         parts.append(loft_rings(
             "Stack_Neck",
             [
-                circle_ring(SX, SY, STACK_R + 0.018, neck_z0, n),
-                circle_ring(SX, SY, STACK_R + 0.008, neck_z1, n),
+                circle_ring(SX, SY, STACK_R + 0.016, neck_z0, n),
+                circle_ring(SX, SY, STACK_R + 0.006, neck_z1, n),
             ],
             mats["stack"], collection, bevel * 0.3, True, "stack",
         ))
     else:
-        neck_z1 = 0.66
+        neck_z1 = 0.68
     if lod == 0:
         stack_rings = [
             circle_ring(SX, SY, STACK_R + 0.004, neck_z1, n),
-            circle_ring(SX, SY, STACK_R, 0.88, n),
+            circle_ring(SX, SY, STACK_R, 0.90, n),
             circle_ring(SX, SY, STACK_R * 0.94, 1.00, n),
             circle_ring(SX, SY, STACK_R * 0.90, STACK_TOP, n),
         ]
@@ -1107,7 +1260,7 @@ def build_stack(lod, mats, collection, bevel):
             for ring in stack_rings
         ]
         parts.append(loft_shell("Stack_Tube", stack_rings, inner_stack, mats["stack"], collection, bevel, "stack"))
-    hoop_zs = (0.82, 0.98) if lod == 0 else ((0.90,) if lod == 1 else ())
+    hoop_zs = (0.84, 1.00) if lod == 0 else ((0.92,) if lod == 1 else ())
     for i, z in enumerate(hoop_zs):
         parts.append(loft_rings(
             f"Stack_Hoop_{i}",
@@ -1118,7 +1271,6 @@ def build_stack(lod, mats, collection, bevel):
             mats["stack"], collection, 0.0, True, "stack",
         ))
     vent_z = STACK_TOP
-    # Rain cap smaller than stack OD so the top camera sees a dark outlet ring under the hat.
     cap_z = STACK_TOP + 0.048
     parts.append(loft_rings(
         "Stack_Cap",
@@ -1165,34 +1317,34 @@ def build_stack(lod, mats, collection, bevel):
 
 
 def build_tank(lod, mats, collection, bevel):
-    """Formed vessel on two saddles/base plates with end closures, manway, and access lid."""
+    """Rolled vessel on two wrapped saddles, manway, and nozzle connection. Not a rectangular block."""
     res = lod_res(lod)
     n = res["n_circ"]
     parts = []
     axis = Vector((0, 1, 0))
-    zc = 0.30
+    zc = 0.28
     if lod == 0:
         stations = (
-            (-TANK_HALF, TANK_R * 0.22),
-            (-TANK_HALF + 0.028, TANK_R * 0.78),
-            (-TANK_HALF + 0.070, TANK_R * 0.98),
+            (-TANK_HALF, TANK_R * 0.20),
+            (-TANK_HALF + 0.030, TANK_R * 0.78),
+            (-TANK_HALF + 0.072, TANK_R * 0.98),
             (0.0, TANK_R),
-            (TANK_HALF - 0.070, TANK_R * 0.98),
-            (TANK_HALF - 0.028, TANK_R * 0.78),
-            (TANK_HALF, TANK_R * 0.22),
+            (TANK_HALF - 0.072, TANK_R * 0.98),
+            (TANK_HALF - 0.030, TANK_R * 0.78),
+            (TANK_HALF, TANK_R * 0.20),
         )
     elif lod == 1:
         stations = (
-            (-TANK_HALF, TANK_R * 0.28),
-            (-TANK_HALF + 0.06, TANK_R * 0.96),
-            (TANK_HALF - 0.06, TANK_R * 0.96),
-            (TANK_HALF, TANK_R * 0.28),
+            (-TANK_HALF, TANK_R * 0.24),
+            (-TANK_HALF + 0.055, TANK_R * 0.96),
+            (TANK_HALF - 0.055, TANK_R * 0.96),
+            (TANK_HALF, TANK_R * 0.24),
         )
     else:
         stations = (
-            (-TANK_HALF, TANK_R * 0.30),
+            (-TANK_HALF, TANK_R * 0.26),
             (0.0, TANK_R),
-            (TANK_HALF, TANK_R * 0.30),
+            (TANK_HALF, TANK_R * 0.26),
         )
     rings = [circle_in_plane((TX, TY + y, zc), axis, r, n) for y, r in stations]
     parts.append(loft_rings("Tank_Shell", rings, mats["tank"], collection, bevel, True, "tank"))
@@ -1206,50 +1358,57 @@ def build_tank(lod, mats, collection, bevel):
                 ],
                 mats["tank"], collection, 0.0, True, "tank",
             ))
-    saddle_ys = (TY - TANK_HALF * 0.42, TY + TANK_HALF * 0.40)
+    saddle_ys = (TY - TANK_HALF * 0.44, TY + TANK_HALF * 0.42)
+    wrap_n = 5 if lod == 0 else 4
     for i, sy in enumerate(saddle_ys):
+        # Pad sits on the gallery; visible gap under the wrap.
         parts.append(box_mesh(
-            f"Tank_SaddleBase_{i}",
-            TX, sy, 0.018, TANK_R + 0.055, 0.038, 0.018,
-            mats["tank"], collection, bevel * 0.35, "tank",
+            f"Tank_SaddlePad_{i}",
+            TX, sy, 0.010, TANK_R * 0.72, 0.032, 0.010,
+            mats["tank"], collection, bevel * 0.3, "tank",
         ))
         if lod < 2:
-            for sign in (-1, 1):
-                parts.append(add_mesh(
-                    f"Tank_SaddleCheek_{i}_{sign}",
-                    [
-                        (TX + sign * (TANK_R * 0.18), sy - 0.032, 0.034),
-                        (TX + sign * (TANK_R + 0.04), sy - 0.032, 0.034),
-                        (TX + sign * (TANK_R + 0.04), sy + 0.032, 0.034),
-                        (TX + sign * (TANK_R * 0.18), sy + 0.032, 0.034),
-                        (TX + sign * (TANK_R * 0.28), sy - 0.032, zc - 0.02),
-                        (TX + sign * (TANK_R * 0.94), sy - 0.032, zc - 0.05),
-                        (TX + sign * (TANK_R * 0.94), sy + 0.032, zc - 0.05),
-                        (TX + sign * (TANK_R * 0.28), sy + 0.032, zc - 0.02),
-                    ],
-                    [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)],
-                    mats["tank"], collection, bevel * 0.25, "tank",
-                ))
-    if lod == 2:
-        return parts
+            angs = [(-1.15 + 2.30 * k / (wrap_n - 1)) for k in range(wrap_n)]
+            r_s = TANK_R + 0.016
+            path = [(TX + math.sin(a) * r_s, sy, zc - math.cos(a) * r_s) for a in angs]
+            parts.append(pipe_along(
+                f"Tank_SaddleWrap_{i}", path, 0.018 if lod == 0 else 0.016,
+                max(5, n // 2), mats["tank"], collection, bevel * 0.15, "tank", cut=0.008,
+            ))
+        if lod == 0:
+            parts.append(box_mesh(
+                f"Tank_SaddleClip_{i}",
+                TX, sy, zc - TANK_R - 0.004, 0.022, 0.028, 0.010,
+                mats["hotmetal"], collection, 0.0, "hotmetal",
+            ))
     n_man = max(6, n // 2)
-    parts.append(loft_rings(
-        "Tank_Manway",
-        [
-            circle_ring(TX, TY + 0.02, 0.048, zc + TANK_R * 0.70, n_man),
-            circle_ring(TX, TY + 0.02, 0.048, zc + TANK_R * 0.92, n_man),
-            circle_ring(TX, TY + 0.02, 0.034, zc + TANK_R * 1.04, n_man),
-        ],
-        mats["tank"], collection, bevel * 0.25, True, "tank",
-    ))
-    parts.append(loft_rings(
-        "Tank_AccessLid",
-        [
-            circle_ring(TX, TY + 0.02, 0.040, zc + TANK_R * 1.02, n_man),
-            circle_ring(TX, TY + 0.02, 0.026, zc + TANK_R * 1.10, n_man),
-        ],
-        mats["hotmetal"], collection, 0.0, True, "hotmetal",
-    ))
+    if lod < 2:
+        parts.append(loft_rings(
+            "Tank_Manway",
+            [
+                circle_ring(TX, TY + 0.02, 0.050, zc + TANK_R * 0.68, n_man),
+                circle_ring(TX, TY + 0.02, 0.050, zc + TANK_R * 0.92, n_man),
+                circle_ring(TX, TY + 0.02, 0.034, zc + TANK_R * 1.06, n_man),
+            ],
+            mats["tank"], collection, bevel * 0.2, True, "tank",
+        ))
+        parts.append(loft_rings(
+            "Tank_AccessLid",
+            [
+                circle_ring(TX, TY + 0.02, 0.042, zc + TANK_R * 1.04, n_man),
+                circle_ring(TX, TY + 0.02, 0.026, zc + TANK_R * 1.12, n_man),
+            ],
+            mats["hotmetal"], collection, 0.0, True, "hotmetal",
+        ))
+    else:
+        parts.append(loft_rings(
+            "Tank_Manway",
+            [
+                circle_ring(TX, TY + 0.02, 0.042, zc + TANK_R * 0.72, n_man),
+                circle_ring(TX, TY + 0.02, 0.028, zc + TANK_R * 1.02, n_man),
+            ],
+            mats["tank"], collection, 0.0, True, "tank",
+        ))
     return parts
 
 
@@ -1258,47 +1417,47 @@ def build_pipe(lod, mats, collection, bevel):
     res = lod_res(lod)
     n = res["n_pipe"]
     parts = []
-    start = (FX + FHX * 0.96, FY - 0.08, 0.34)
-    nozzle = (TX - TANK_R * 0.12, TY + TANK_HALF * 0.62, 0.34)
+    start = (FX + FHX * 0.92, FY - 0.06, 0.36)
+    nozzle = (TX - TANK_R * 0.18, TY + TANK_HALF * 0.55, 0.36)
     pts = [
         start,
-        (start[0] + 0.08, start[1], 0.34),
-        (start[0] + 0.08, start[1], 0.48),
-        (nozzle[0], start[1], 0.48),
-        (nozzle[0], start[1], 0.34),
+        (start[0] + 0.07, start[1], 0.36),
+        (start[0] + 0.07, start[1], 0.50),
+        (nozzle[0], start[1], 0.50),
+        (nozzle[0], start[1], 0.36),
         nozzle,
     ]
     parts.append(pipe_along(
-        "Process_Pipe", pts, PIPE_R, n, mats["pipe"], collection, bevel * 0.3, "pipe", cut=0.015,
+        "Process_Pipe", pts, PIPE_R, n, mats["pipe"], collection, bevel * 0.3, "pipe", cut=0.014,
     ))
     n_fl = max(6, n)
+    parts.append(loft_rings(
+        "Pipe_TankNozzle",
+        [
+            circle_in_plane((nozzle[0], nozzle[1] - 0.01, nozzle[2]), (0, 1, 0), PIPE_R + 0.010, n),
+            circle_in_plane((nozzle[0], nozzle[1] + 0.05, nozzle[2]), (0, 1, 0), PIPE_R + 0.006, n),
+        ],
+        mats["pipe"], collection, 0.0, True, "pipe",
+    ))
     if lod < 2:
         parts.append(flange_at(
             "Pipe_Flange_A", start, (1, 0, 0), PIPE_R + 0.016, 0.014,
             mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
         ))
-        parts.append(loft_rings(
-            "Pipe_TankNozzle",
-            [
-                circle_in_plane(nozzle, (0, 1, 0), PIPE_R + 0.006, n),
-                circle_in_plane((nozzle[0], nozzle[1] + 0.04, nozzle[2]), (0, 1, 0), PIPE_R + 0.004, n),
-            ],
-            mats["pipe"], collection, 0.0, True, "pipe",
-        ))
         parts.append(flange_at(
             "Pipe_Flange_B", (nozzle[0], nozzle[1] + 0.02, nozzle[2]), (0, 1, 0),
-            PIPE_R + 0.016, 0.014, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
+            PIPE_R + 0.018, 0.014, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
         ))
     if lod == 2:
         return parts
-    mid = ((start[0] + nozzle[0]) * 0.5, start[1], 0.48)
+    mid = ((start[0] + nozzle[0]) * 0.5, start[1], 0.50)
     parts.append(box_mesh(
-        "Pipe_Clamp", mid[0], mid[1], mid[2], 0.018, 0.014, 0.016,
+        "Pipe_Clamp", mid[0], mid[1], mid[2], 0.016, 0.012, 0.014,
         mats["structure"], collection, bevel * 0.2, "structure",
     ))
     if lod == 0:
         parts.append(flange_at(
-            "Pipe_Flange_Mid", (mid[0] - 0.08, mid[1], mid[2]), (1, 0, 0),
+            "Pipe_Flange_Mid", (mid[0] - 0.06, mid[1], mid[2]), (1, 0, 0),
             PIPE_R + 0.014, 0.012, mats["hotmetal"], collection, 0.0, "hotmetal", n=n_fl,
         ))
     return parts
@@ -1595,33 +1754,44 @@ def author_maps(lod, id_img, ao_img, curv_img, nrm_img, size):
         g = np.clip(bg * (1.0 - dirt * 0.24) * (0.62 + 0.38 * ao) + edge * 0.03 + heat * 0.01, 0, 1)
         b = np.clip(bb * (1.0 - dirt * 0.20) * (0.62 + 0.38 * ao) + edge * 0.02 - heat * 0.04, 0, 1)
         if key == "hotmetal":
-            r = np.clip(r + heat * 0.08, 0, 1)
-            b = np.clip(b + (1.0 - heat) * 0.03, 0, 1)
+            r = np.clip(r + heat * 0.03, 0, 1)
+            b = np.clip(b + (1.0 - heat) * 0.04, 0, 1)
         if key == "refractory":
-            soot = np.clip((1.0 - ao) * 0.55 + 0.06 * gf, 0, 1)
-            grain = 0.03 * gf
-            r = np.clip(br * (0.40 + 0.60 * ao) + grain - soot * 0.03, 0, 1)
-            g = np.clip(bg * (0.40 + 0.60 * ao) + grain * 0.5 - soot * 0.02, 0, 1)
-            b = np.clip(bb * (0.45 + 0.55 * ao) + grain * 0.3 - soot * 0.01, 0, 1)
+            soot = np.clip((1.0 - ao) * 0.50 + 0.05 * gf, 0, 1)
+            grain = 0.025 * gf
+            r = np.clip(br * (0.62 + 0.38 * ao) + grain - soot * 0.04, 0, 1)
+            g = np.clip(bg * (0.62 + 0.38 * ao) + grain * 0.5 - soot * 0.03, 0, 1)
+            b = np.clip(bb * (0.66 + 0.34 * ao) + grain * 0.3 - soot * 0.02, 0, 1)
         if key == "tank":
             # Matte oxide-red: no peach edge lift, no metal from curvature.
             r = np.clip(br * (0.78 + 0.18 * ao) - dirt * 0.03, 0, 1)
             g = np.clip(bg * (0.80 + 0.16 * ao) - dirt * 0.015, 0, 1)
             b = np.clip(bb * (0.82 + 0.14 * ao), 0, 1)
         if key == "structure":
-            r = np.clip(br * (0.70 + 0.30 * ao) - dirt * 0.03, 0, 1)
-            g = np.clip(bg * (0.70 + 0.30 * ao) - dirt * 0.02, 0, 1)
-            b = np.clip(bb * (0.72 + 0.28 * ao), 0, 1)
+            # Segment jacket value: waist/course AO goes darker; LOD1/2 stay cool so the
+            # site register does not paint the whole cell warm.
+            cool = 0.76 if lod >= 1 else 0.98
+            r = np.clip(br * (0.48 + 0.52 * ao) * cool - dirt * 0.025 - edge * 0.010, 0, 1)
+            g = np.clip(bg * (0.50 + 0.50 * ao) * cool - dirt * 0.020, 0, 1)
+            b = np.clip(bb * (0.54 + 0.46 * ao) * cool, 0, 1)
+        if key == "hotmetal" and lod >= 1:
+            r = np.clip(r * 0.78, 0, 1)
+            g = np.clip(g * 0.82, 0, 1)
+            b = np.clip(b * 0.88, 0, 1)
+        if key == "tank" and lod >= 1:
+            r = np.clip(r * 1.06, 0, 1)
+        if key == "stack" and lod >= 1:
+            r = np.clip(r * 1.04, 0, 1)
         rough = np.clip(ROLE_ROUGH[key] + dirt * 0.12 - edge * 0.04 + (1.0 - ao) * 0.06, 0.08, 0.95)
         metal = np.clip(ROLE_METAL[key] - dirt * 0.04, 0, 1)
         if key == "tank":
             rough = np.clip(0.84 + dirt * 0.06 + (1.0 - ao) * 0.04, 0.78, 0.95)
             metal = np.full_like(rough, 0.015)
         if key == "refractory":
-            rough = np.clip(0.84 + (1.0 - ao) * 0.08, 0.76, 0.95)
+            rough = np.clip(0.86 + (1.0 - ao) * 0.08, 0.78, 0.96)
             metal = np.zeros_like(rough)
         if key == "structure":
-            metal = np.clip(0.03 + edge * 0.04, 0, 0.12)
+            metal = np.clip(0.02 + edge * 0.03, 0, 0.10)
         albedo[mask, 0] = r[mask]
         albedo[mask, 1] = g[mask]
         albedo[mask, 2] = b[mask]
@@ -2582,7 +2752,7 @@ def combine_lods(lod_paths, hook_locs, lod_reports):
         "disposition": "review_pending",
         "cycle": CYCLE,
     }
-    (SOURCE_DIR / "refinery_inventory.json").write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(SOURCE_DIR / "refinery_inventory.json", json.dumps(inventory, indent=2) + "\n")
     save_blend(SOURCE_DIR / "works_refinery.blend")
     return inventory, contract, combined_works, combined_parts
 
@@ -2600,11 +2770,13 @@ def run_visible_faces(glb: Path, json_out: Path):
     print(proc.stdout[-4000:] if proc.stdout else "")
     if proc.returncode != 0:
         print(proc.stderr[-2000:] if proc.stderr else "")
+    if json_out.exists():
+        json_out.write_bytes(json_out.read_bytes().replace(b"\r\n", b"\n"))
     return proc.returncode, json_out if json_out.exists() else None
 
 
 def build_all():
-    assert_cycle01_untouched()
+    assert_prior_cycles_untouched()
     FAMILY.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     REF_DIR.mkdir(parents=True, exist_ok=True)
@@ -2673,6 +2845,10 @@ def build_all():
 
     inventory, contract, combined, parts = combine_lods(lod_paths, hook_locs, lod_reports)
     stills, pixel_facts = capture_stills(combined)
+    still_hashes = {
+        path.name: sha256(path)
+        for path in sorted(EVID_DIR.glob("*.png"), key=lambda item: item.name)
+    }
     vf_json = EVID_DIR / "works_visible_faces.json"
     vf_code, vf_path = run_visible_faces(parts, vf_json)
     inspection = inspect_glb(parts)
@@ -2698,7 +2874,7 @@ def build_all():
             "orm": sha256(TEX_DIR / "refinery_lod0_orm.png"),
         },
     }
-    (FAMILY / "HASHES.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "HASHES.json", json.dumps(hashes, indent=2) + "\n")
 
     vf = {}
     if vf_path and vf_path.exists():
@@ -2723,6 +2899,7 @@ def build_all():
         "inspection": inspection,
         "inventory": inventory,
         "stills": stills,
+        "stillSha256": still_hashes,
         "pixelFacts": pixel_facts,
         "visibleFaces": vf,
         "visibleFacesExit": vf_code,
@@ -2735,14 +2912,16 @@ def build_all():
         },
         "budgets": {"triangles": TRI_BUDGET, "texture": TEX},
         "notes": (
-            "Cycle 02 source candidate. Blind recessed charging well; inset-course jacket; "
-            "rooted rect/round/miter flue; routed pipe; saddle tank; hooded lamp. "
-            "Beauty emission off. Independent review not launched. Cycle 01 evidence immutable."
+            "Cycle 03 source candidate. Formed chamfered jacket with waist belt, courses, "
+            "and corner returns; deeper blind refractory well with a thin dark lip; four "
+            "gusseted feet with pad gap; stack rooted by elbow/union/banded transition; "
+            "tank on two wrapped saddles with manway and nozzle. Beauty emission off. "
+            "Cycle 01 and Cycle 02 evidence immutable."
         ),
     }
-    epoch_path = FAMILY / "evidence" / "cycle_002.json"
-    epoch_path.write_text(json.dumps(epoch, indent=2) + "\n", encoding="utf-8")
-    assert_cycle01_untouched()
+    epoch_path = FAMILY / "evidence" / "cycle_003.json"
+    write_text_lf(epoch_path, json.dumps(epoch, indent=2) + "\n")
+    assert_prior_cycles_untouched()
     print(json.dumps({"ok": True, "sha256": hashes["partsSha256"], "lodTriangles": inspection["lodTriangles"], "hooks": inspection["hooks"]}, indent=2))
     return epoch
 

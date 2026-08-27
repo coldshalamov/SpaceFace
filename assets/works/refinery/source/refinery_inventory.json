@@ -4,9 +4,9 @@
   "combined": "assets/works/refinery/source/refinery.glb",
   "partsSource": "assets/ships/parts/works/place_works_refinery.glb",
   "lodTriangles": {
-    "lod0": 5488,
-    "lod1": 1564,
-    "lod2": 540
+    "lod0": 7442,
+    "lod1": 1840,
+    "lod2": 560
   },
   "hooks": [
     "furnace_slit",
@@ -24,8 +24,8 @@
     "LOD2_lamp_lens",
     "LOD2_refinery"
   ],
-  "bytes": 7961484,
-  "sha256": "7984CD679A1FC5A6259EA2BD232A8CB58834D214935D100D263E6A1222827733",
+  "bytes": 8294420,
+  "sha256": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
   "disposition": "review_pending",
-  "cycle": 2
+  "cycle": 3
 }

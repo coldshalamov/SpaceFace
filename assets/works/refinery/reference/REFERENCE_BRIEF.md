@@ -1,9 +1,9 @@
-# Works refinery — Cycle 02 reference brief
+# Works refinery — Cycle 03 reference brief
 
 **Asset:** `place_works_refinery` (PQ-131.04). **Class:** place / station module, works camera only.
-**Tier:** B (one-cell process machine). **State:** `design_candidate`. Cycle 02 of ≥5.
+**Tier:** B (one-cell process machine). **State:** `design_candidate`. Cycle 03 of ≥5.
 G1/G2/G4 whole-asset stay open; this cycle records `review_pending` and does not launch reviewers.
-Cycle 01 evidence under `evidence/cycle_001/` is immutable.
+Cycle 01 and Cycle 02 evidence under their exact evidence folders are immutable.
 
 Supported cameras (live `spaceface_works_camera.py`, never a studio three-quarter):
 
@@ -99,11 +99,11 @@ The lamp is a small hooded fixture, readable at edge, not a planform mass.
 | Part | wu (approx) |
 |---|---|
 | Envelope L × W × H | ≤ 2.10 × 2.10 × 1.20 |
-| Furnace jacket (plan) | ~1.12 × 0.82, crown ~0.72 tall |
-| Slit mouth (plan) | ~0.46 × 0.14, well depth ~0.28 |
+| Furnace jacket (plan) | ~1.16 × 0.91, crown ~0.76 tall |
+| Slit mouth (plan) | ~0.50 × 0.20, well depth ~0.48 |
 | Stack | Ø ~0.28, outlet ~1.12 above floor |
-| Tank | Ø ~0.34, length ~0.70 on saddles |
-| Pipe OD | ~0.055 |
+| Tank | Ø ~0.30, length ~0.64 on saddles |
+| Pipe OD | ~0.04 |
 | Feet bearing | z = 0 |
 
 Root node: `SF_WORKS_REFINERY_V1`.
@@ -157,11 +157,11 @@ together.
 
 ---
 
-## Cycle 02 completion (this packet)
+## Cycle 03 completion (this packet)
 
 Source candidate only. Do not wire, release, promote, push, or mark PQ-131.04 complete.
 Disposition: `review_pending`. Independent reviewers are **not** launched from this cycle.
 
-Cycle 02 is the real-throat / separated-process correction. Keep-set from Cycle 01: `SF_WORKS_REFINERY_V1`, origin on z=0, one-cell envelope, furnace / offset stack / offset tank, exact `furnace_slit` `stack_vent` `lamp` hooks, legal works cameras, beauty emission off, LOD ceilings 8k/2k/600.
+Cycle 03 preserves Cycle 02's real throat and separated process train. Keep-set: `SF_WORKS_REFINERY_V1`, origin on z=0, one-cell envelope, furnace / offset stack / offset tank, exact `furnace_slit` `stack_vent` `lamp` hooks, legal works cameras, beauty emission off, LOD ceilings 8k/2k/600.
 
-What changed: blind recessed charging well with a formed lip and soot walls; rectangular insulated jacket with inset courses; rooted rect takeoff / transition / mitered elbow / rain-capped stack; routed pipe; saddle tank in matte oxide-red; hooded lamp at the flue neck. Site register must read as three values, not one warm-brown square.
+What changed: the rounded-box furnace became a hard-chamfered formed jacket with a flared skirt, deep waist, broad returned shoulder course, narrow crown, proud corner returns, and four tapered gusseted feet. The blind refractory throat is deeper with a thin dark lip and separated walls/floor. The rooted elbow/flange/banded stack, routed process pipe, two-saddle oxide tank with manway/nozzle, and hooded flue-neck lamp remain. LOD1/2 preserve three separated masses and an empty gallery slit; the jacket stays cool graphite rather than painting the site warm.
