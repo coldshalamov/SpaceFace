@@ -1,0 +1,159 @@
+{
+  "schema": "spaceface.ironbackMtx.cycle.v1",
+  "shipId": "ironback",
+  "cycle": 20,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 49942,
+      "hullTriangles": 2634,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod0.glb",
+      "bytes": 19117288,
+      "sha256": "AFB64F21423A28B11AE8573E90D73B8E90F1C8137DACCAA2E853A3DBF7F43FB4"
+    },
+    {
+      "lod": 1,
+      "triangles": 36310,
+      "hullTriangles": 2634,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod1.glb",
+      "bytes": 17726792,
+      "sha256": "CFD8AFF3ADFD680D1BE4CF18CB7354192ED8F40755E49856C1D3141D4ECA5F66"
+    },
+    {
+      "lod": 2,
+      "triangles": 24282,
+      "hullTriangles": 2586,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod2.glb",
+      "bytes": 15831088,
+      "sha256": "88CEEAA0AAD3199AB9CC679943B4D954A3A6E49B12E8001B7EC212730B8D718B"
+    }
+  ],
+  "stills": "evidence/ironback/cycles/cycle_20",
+  "sourceSha256": "AFB64F21423A28B11AE8573E90D73B8E90F1C8137DACCAA2E853A3DBF7F43FB4",
+  "renderer": "tools/blender/build_ironback_mtx.py+spaceface_chase_camera.py",
+  "cameraContract": {
+    "module": "tools/blender/spaceface_chase_camera.py",
+    "fov_v_deg": 50.0,
+    "tilt_deg": 60.0,
+    "play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading_deg": 90.0
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading_deg": 0.0
+    },
+    "runtimeDisplayScale": 2.5050887034811673,
+    "runtimeDisplayTargetWU": 41.28,
+    "clay_play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0,
+      "material": "neutral_clay"
+    },
+    "grazing_close": {
+      "distance": 58.0,
+      "heading_deg": 0.0
+    },
+    "diagnostics": [
+      "id_or_material_id.png",
+      "orm_isolation.png",
+      "normal_isolation.png"
+    ]
+  },
+  "occupancy": {
+    "play_chase": {
+      "minX": 0.41274,
+      "maxX": 0.58865,
+      "minY": 0.43306,
+      "maxY": 0.56944,
+      "widthFrac": 0.17591,
+      "heightFrac": 0.13638,
+      "widthPx1600": 281.5,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_abeam": {
+      "minX": 0.45493,
+      "maxX": 0.54444,
+      "minY": 0.351,
+      "maxY": 0.63025,
+      "widthFrac": 0.08951,
+      "heightFrac": 0.27924,
+      "widthPx1600": 143.2,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_close": {
+      "minX": 0.27441,
+      "maxX": 0.72782,
+      "minY": 0.32372,
+      "maxY": 0.66613,
+      "widthFrac": 0.45341,
+      "heightFrac": 0.34241,
+      "widthPx1600": 725.5,
+      "cropped": false,
+      "band": [
+        0.2,
+        0.42
+      ],
+      "inBand": false
+    }
+  },
+  "stillSha256": {
+    "clay_play_chase.png": "C8F2BCE6E2E29E3656A9B4B4BAA1F1FDA2C0AC527874C0EE791B2E28069A8079",
+    "grazing_close.png": "75C6CDA005985823858980BD7D516F34BD962DDF2321F11DC05F3B05BB17A89E",
+    "id_or_material_id.png": "313F29F8C36CC95BFD1488CE0F303E26BD9559AB12600445646D3F4116FDB752",
+    "normal_isolation.png": "57C7AA3103E6DBC3EE066A6E8EE4556962E15FC10CE4F3A3C128E715D16B99E0",
+    "orm_isolation.png": "166AFE3DB33F2FFA3F440E7B480E75E414523ED4A653C7B3BEF1736556B6C5C0",
+    "play_chase.png": "6C54DFB632AD1098585A01B98763EFBC6043305E8752F2A447F29AFF0E3D8AAB",
+    "play_chase_abeam.png": "5EEDAD2FF59DF2E772F41B3BED878A9BADAB87A66AFF5EFA6A6A4E79E1E369F7",
+    "play_chase_close.png": "8534819C30B9D900795ED6C1A99C1B63BC60D02CE76D1577A773958E34B03C23"
+  },
+  "disposition": "revise",
+  "method": "open_well_perimeter_barge"
+}
