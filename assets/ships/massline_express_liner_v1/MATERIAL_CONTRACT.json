@@ -5,6 +5,7 @@
   "scope": "PQ-049.01 source candidate; chase-camera evidence only; not wired",
   "componentReferenceDecision": "native_imagegen",
   "allSupportedViewZonesClassified": false,
+  "candidateHash": "8A9FA97A97EA40019ADA07D59920E6EF735E853596F9145B50AE6E2349B17C09",
   "supportedViews": [
     "play_chase",
     "play_chase_abeam",
@@ -17,10 +18,10 @@
     "drive_rear"
   ],
   "textureStrategy": {
-    "format": "planned portable embedded PNG in source GLB plus editable PNGs in textures/ after source implementation",
+    "format": "portable embedded PNG in source GLB plus editable PNGs under source/textures/",
     "roles": ["baseColor_sRGB", "orm_noncolor", "normal_noncolor"],
-    "uvStrategy": "The future builder must give each render mesh a deterministic, per-object UVMap projection. It is a planned way to bind portable role maps, not a G3 pass; checker/stretch review remains pending.",
-    "materialModel": "planned glTF metallic-roughness with per-role response rather than a recolored common shader",
+    "uvStrategy": "Each render mesh has unique UV0 from smart project plus a scaled UV1. LOD0 unique albedo/ORM/normal maps are cage-baked (high duplicate, inflate 0.055 m, Cycles selected-to-active). Checker/stretch review remains G3 and is not a self-pass.",
+    "materialModel": "glTF metallic-roughness with per-role unique maps rather than a recolored common shader",
     "wearRule": "Wear is restricted to dock contact, tether contact, cassette latch, heat-throat, and service-handling regions; there is no global dirt layer."
   },
   "visibleZoneRegister": [
@@ -122,8 +123,9 @@
     }
   ],
   "knownOpenItems": [
-    "Source candidate and chase-camera evidence exist in this folder. Whole-asset G1/G2/G4 stay open until an independent hash-bound review.",
-    "G3 needs an independent checker/stretch review; builder UVs are not a self-pass.",
-    "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests."
+    "Cycle 29 source candidate and chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 8A9FA97A97EA40019ADA07D59920E6EF735E853596F9145B50AE6E2349B17C09.",
+    "G3 needs an independent checker/stretch review; unique UV0 is not a self-pass.",
+    "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests.",
+    "Abeam width 4.60% is outside the 8–22% band because heading 90 is beam-on; widening it previously made a saucer."
   ]
 }

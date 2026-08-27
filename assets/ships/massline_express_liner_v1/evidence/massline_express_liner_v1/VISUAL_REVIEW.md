@@ -2,12 +2,12 @@
 
 - Asset: Massline express liner source candidate
 - Scope: whole asset
-- Candidate: cycle 28 LOD0
-- Reviewer: three still reviews on cycle 28 (chase, abeam, close)
-- Cameras: play chase, abeam, close (60° / 50° / D=144 and D=58)
-- Original-resolution inspection: yes
-- Dominant zones: ivory pressure drum, dark keel/cassette, open boarding pit with ivory rim, rooted twin drives with dark top throats, three dorsal covers
-- Decision: keep on the three chase cameras
+- Candidate: cycle 29 LOD0 `8A9FA97A97EA40019ADA07D59920E6EF735E853596F9145B50AE6E2349B17C09`
+- Reviewer: **not yet** — implementing agent must not self-close G1/G2/G4
+- Cameras: play chase, abeam, close (60° / 50° / D=144 and D=58) plus clay, grazing, drive-rear, and isolation diagnostics from the exported GLB
+- Original-resolution inspection: implementing pass only
+- Dominant zones: warm ivory pressure drum, dark keel/cassette/saddle, framed boarding well, dorsal observation glass, outboard twin gunmetal cases with refractory collars
+- Decision: `review_pending`
 
 Independent G1/G2/G4 are not closed.
 
