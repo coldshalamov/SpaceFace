@@ -8,7 +8,7 @@
   "category": "works",
   "family": "asteroid_works",
   "packet": "PQ-131.08",
-  "cycle": 1,
+  "cycle": 2,
   "role": "one-cell open gantry fabricator \u2014 head position is progress",
   "forward": "+X",
   "up": "+Y",
@@ -31,11 +31,11 @@
     "lod2"
   ],
   "lodTriangles": {
-    "lod0": 8140,
-    "lod1": 940,
-    "lod2": 616
+    "lod0": 8580,
+    "lod1": 836,
+    "lod2": 432
   },
-  "triangleCount": 8140,
+  "triangleCount": 8580,
   "sockets": [
     "gantry_head",
     "lamp"

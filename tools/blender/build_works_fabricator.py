@@ -1,7 +1,9 @@
-"""PQ-131.08 Works fabricator — cycle 01 authored gantry source candidate.
+"""PQ-131.08 Works fabricator — cycle 02 authored gantry source candidate.
 
-A compact one-cell open gantry: worn fixture bed, two rooted side frames,
-profile rails, a travelling bridge/ram, rooted energy chain, one hooded lamp.
+Cycle 01 travel (one rigid assembly, 0 / 0.5 / 1 over the bed) is preserved.
+Cycle 02 rebuilds the moving hook into a visible carriage/tool, clarifies
+bridge/column load paths, authors LOD1/2 as an open H at 19 px/cell, and
+corrects G4 (no quilt, no chrome rods, dry ceramic, isolated polymer).
 
     blender --background --python tools/blender/build_works_fabricator.py
     blender --background --python tools/blender/build_works_fabricator.py -- --validate-only
@@ -36,7 +38,7 @@ from spaceface_works_camera import apply_works_camera  # noqa: E402
 FAMILY = ROOT / "assets" / "works" / "fabricator"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_001"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
 AUDIT_DIR = FAMILY / "audits"
 CONTRACT_DIR = FAMILY / "contracts"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
@@ -49,7 +51,7 @@ RAIL_NAME = "rail"
 CELL_WU = 2.2
 ENVELOPE = (2.08, 2.08, 0.90)
 TEX = 1024
-CYCLE = 1
+CYCLE = 2
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 10000, 1: 2500, 2: 800}
 
@@ -71,16 +73,26 @@ ROLE_ID = {"frame": 0.0, "bed": 0.2, "rail": 0.4, "ceramic": 0.6, "polymer": 0.8
 ROLE_FROM_ID = {v: k for k, v in ROLE_ID.items()}
 
 # sRGB bases. Paint is dielectric; bed/rail are metal; ceramic/polymer/lamp are not.
+# Cycle 02: darker alkyd frame, brighter worn bed, ground steel (not chrome),
+# dry ceramic, isolated polymer, recessed lamp glass (not a warm bead).
 ROLE_RGB = {
-    "frame": (0.145, 0.122, 0.094),
-    "bed": (0.62, 0.575, 0.50),
-    "rail": (0.71, 0.74, 0.76),
-    "ceramic": (0.72, 0.64, 0.52),
-    "polymer": (0.145, 0.130, 0.118),
-    "lamp": (0.92, 0.84, 0.62),
+    "frame": (0.100, 0.082, 0.062),
+    "bed": (0.76, 0.70, 0.56),
+    "rail": (0.48, 0.50, 0.52),
+    "ceramic": (0.62, 0.53, 0.40),
+    "polymer": (0.155, 0.138, 0.122),
+    "lamp": (0.38, 0.32, 0.22),
 }
-ROLE_ROUGH = {"frame": 0.58, "bed": 0.38, "rail": 0.24, "ceramic": 0.72, "polymer": 0.62, "lamp": 0.24}
-ROLE_METAL = {"frame": 0.10, "bed": 0.72, "rail": 0.88, "ceramic": 0.03, "polymer": 0.04, "lamp": 0.04}
+ROLE_ROUGH = {"frame": 0.64, "bed": 0.34, "rail": 0.42, "ceramic": 0.80, "polymer": 0.66, "lamp": 0.46}
+ROLE_METAL = {"frame": 0.07, "bed": 0.68, "rail": 0.78, "ceramic": 0.02, "polymer": 0.03, "lamp": 0.03}
+ROLE_ID_RGB = {
+    "frame": (0.22, 0.16, 0.10),
+    "bed": (0.82, 0.72, 0.48),
+    "rail": (0.52, 0.56, 0.60),
+    "ceramic": (0.74, 0.58, 0.36),
+    "polymer": (0.18, 0.16, 0.14),
+    "lamp": (0.58, 0.46, 0.28),
+}
 
 _GLTF_FLOAT = 5126
 _GLTF_NCOMP = {
@@ -417,7 +429,8 @@ def join_group(objects, name):
     return joined
 
 
-def bake_vertex_ao(obj, distance=0.07, rays=6):
+def bake_vertex_ao(obj, distance=0.028, rays=8):
+    """Contact-only AO. Open plate stays bright; cavities and joints darken."""
     mesh = obj.data
     try:
         mesh.calc_normals()
@@ -432,7 +445,8 @@ def bake_vertex_ao(obj, distance=0.07, rays=6):
     dirs = []
     for i in range(rays):
         a = (math.pi * 2.0 * i) / rays
-        dirs.append(Vector((math.cos(a) * 0.45, math.sin(a) * 0.45, 0.75)).normalized())
+        # Hemisphere mixed with a grazing ring so only nearby occluders score.
+        dirs.append(Vector((math.cos(a) * 0.72, math.sin(a) * 0.72, 0.42)).normalized())
     for vi, vert in enumerate(mesh.vertices):
         world = mw @ vert.co
         wn = (mw.to_3x3() @ vert.normal).normalized()
@@ -440,12 +454,12 @@ def bake_vertex_ao(obj, distance=0.07, rays=6):
             continue
         hit = 0.0
         for extra in dirs:
-            direction = (wn * 0.65 + extra * 0.35).normalized()
-            origin = world + direction * 0.002
+            direction = (wn * 0.35 + extra * 0.65).normalized()
+            origin = world + direction * 0.0015
             loc, *_rest = bvh.ray_cast(imw @ origin, (imw.to_3x3() @ direction).normalized(), distance)
             if loc is not None:
                 hit += 1.0
-        accum[vi] = 1.0 - 0.72 * (hit / float(rays))
+        accum[vi] = 1.0 - 0.48 * (hit / float(rays))
     col = mesh.vertex_colors.get("Role") or mesh.vertex_colors.new(name="Role")
     for loop in mesh.loops:
         rgba = list(col.data[loop.index].color)
@@ -581,11 +595,8 @@ def add_tslot_bed(prefix, collection, lod):
                 (0.58, 0.04, 0.035),
                 collection, "bed", bevel=0.0, segments=1,
             ))
-    if lod == 2:
-        parts.append(add_box(
-            f"{prefix}BedWell", (0.0, 0.0, 0.185),
-            (0.42, 0.32, 0.018), collection, "bed", bevel=0.0, segments=1,
-        ))
+    # LOD2 keeps the raised bed plate as the bright mass. A filled well
+    # collapses the site icon into a nested square.
     return parts
 
 
@@ -639,11 +650,22 @@ def add_base(prefix, collection, lod):
             (0.10, 0.08, 0.025), collection, "frame",
             bevel=0.004 if lod == 0 else 0.0, segments=1,
         ))
-    parts.append(add_box(
-        f"{prefix}Plinth", (0.0, 0.0, 0.04),
-        (0.96, 0.88, 0.03), collection, "frame",
-        bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
-    ))
+    if lod < 2:
+        parts.append(add_box(
+            f"{prefix}Plinth", (0.0, 0.0, 0.04),
+            (0.96, 0.88, 0.03), collection, "frame",
+            bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
+        ))
+    else:
+        # Preserve two rooted longitudinal sills at site LOD, but leave the
+        # center open. A full rectangular plinth survived as a filled-square
+        # icon even after the obsolete LOD2 bed well was removed.
+        for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
+            parts.append(add_box(
+                f"{prefix}Sill{tag}", (0.0, sign * 0.78, 0.04),
+                (0.92, 0.08, 0.03), collection, "frame",
+                bevel=0.0, segments=1,
+            ))
     if lod == 0:
         parts.append(add_box(
             f"{prefix}Spine", (0.0, 0.0, 0.07),
@@ -661,10 +683,12 @@ def add_side_frame(prefix, sign, collection, lod):
     parts = []
     y = sign * 0.94
     tag = "Port" if sign > 0 else "Stbd"
-    # Continuous C-section wall: web + inner return flanges. Rooted to the plinth.
+    # C-section wall rooted to the plinth. LOD1/2 keep the H uprights but drop
+    # the wide bright top-cap that collapsed the site icon into a picture frame.
+    web_hy = 0.026 if lod == 0 else 0.022
     parts.append(add_box(
         f"{prefix}Web{tag}", (0.0, y, 0.34),
-        (0.98, 0.028, 0.28), collection, "frame",
+        (0.98 if lod == 0 else 0.92, web_hy, 0.28 if lod == 0 else 0.24), collection, "frame",
         bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
     ))
     inner = y - sign * 0.055
@@ -679,14 +703,16 @@ def add_side_frame(prefix, sign, collection, lod):
         ))
     elif lod == 1:
         parts.append(add_box(
-            f"{prefix}FlangeHigh{tag}", (0.0, inner, 0.58),
-            (0.94, 0.028, 0.014), collection, "frame", bevel=0.0, segments=1,
+            f"{prefix}FlangeHigh{tag}", (0.0, inner, 0.56),
+            (0.70, 0.022, 0.012), collection, "frame", bevel=0.0, segments=1,
         ))
-    # End posts take the rail seat load into the feet.
+    # End posts: column load path, rail seat → gusset → foot.
+    post_hx = 0.085 if lod == 0 else 0.070
+    post_hy = 0.055 if lod == 0 else 0.042
     for x, end in ((-0.90, "Aft"), (0.90, "Fore")):
         parts.append(add_box(
             f"{prefix}Post{tag}{end}", (x, y, 0.34),
-            (0.08, 0.055, 0.30), collection, "frame",
+            (post_hx, post_hy, 0.30 if lod == 0 else 0.26), collection, "frame",
             bevel=0.004 if lod == 0 else 0.0, segments=1,
         ))
         if lod == 0:
@@ -694,15 +720,25 @@ def add_side_frame(prefix, sign, collection, lod):
                 f"{prefix}Gusset{tag}{end}", (x, y - sign * 0.08, 0.14),
                 (0.05, 0.06, 0.08), collection, "frame", bevel=0.002, segments=1,
             ))
-            parts.append(add_hex_bolt(
-                f"{prefix}PostBolt{tag}{end}", (x, y, 0.62), collection, "rail", 0.014, 0.016,
+            parts.append(add_box(
+                f"{prefix}Cap{tag}{end}", (x, y, 0.66),
+                (0.07, 0.048, 0.018), collection, "frame", bevel=0.002, segments=1,
             ))
-    # Top cap / rail seat.
-    parts.append(add_box(
-        f"{prefix}Seat{tag}", (0.0, y, 0.625),
-        (0.96, 0.05, 0.022), collection, "frame",
-        bevel=0.003 if lod == 0 else 0.0, segments=1,
-    ))
+            parts.append(add_hex_bolt(
+                f"{prefix}PostBolt{tag}{end}", (x, y, 0.68), collection, "rail", 0.014, 0.016,
+            ))
+        elif lod == 1:
+            parts.append(add_box(
+                f"{prefix}Cap{tag}{end}", (x, y, 0.64),
+                (0.06, 0.038, 0.016), collection, "frame", bevel=0.0, segments=1,
+            ))
+    if lod == 0:
+        # Narrow rail seat, not a continuous bright picture-frame bar.
+        parts.append(add_box(
+            f"{prefix}Seat{tag}", (0.0, y, 0.625),
+            (0.88, 0.032, 0.016), collection, "frame",
+            bevel=0.003, segments=1,
+        ))
     return parts
 
 
@@ -725,80 +761,90 @@ def add_profile_rail(prefix, sign, collection, lod):
             f"{prefix}RailBase{tag}", (0.0, y, RAIL_Z - 0.016),
             (0.92, 0.028, 0.006), collection, "rail", bevel=0.001, segments=1,
         ))
-    for x, end in ((-0.92, "Aft"), (0.92, "Fore")):
-        parts.append(add_box(
-            f"{prefix}Limit{tag}{end}", (x, y, RAIL_Z + 0.01),
-            (0.018, 0.028, 0.022), collection, "frame", bevel=0.002, segments=1,
-        ))
+    if lod == 0:
+        for x, end in ((-0.92, "Aft"), (0.92, "Fore")):
+            parts.append(add_box(
+                f"{prefix}Limit{tag}{end}", (x, y, RAIL_Z + 0.01),
+                (0.016, 0.024, 0.018), collection, "frame", bevel=0.002, segments=1,
+            ))
     return parts
 
 
 def add_drive(prefix, collection, lod):
     parts = []
-    # Servo / belt drive on the +Y −X corner. This is the progress-0 end.
+    # Drive blister on the +Y −X column. Progress-0 end. Does not roof the bed.
     parts.append(add_box(
         f"{prefix}DriveHouse", (-0.90, RAIL_Y, 0.50),
-        (0.07, 0.065, 0.12), collection, "frame",
-        bevel=0.004 if lod == 0 else 0.0, segments=1 if lod else 2,
+        (0.075, 0.070, 0.11), collection, "frame",
+        bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
     ))
     parts.append(add_cylinder(
-        f"{prefix}DrivePulley", (-0.90, RAIL_Y, RAIL_Z + 0.01), 0.034, 0.036,
+        f"{prefix}DrivePulley", (-0.90, RAIL_Y, RAIL_Z + 0.01), 0.032, 0.034,
         collection, "rail", vertices=10 if lod == 0 else 6, bevel=0.002 if lod == 0 else 0.0, axis="Y",
     ))
     if lod == 0:
         parts.append(add_box(
-            f"{prefix}DriveCover", (-0.90, RAIL_Y + 0.055, 0.50),
-            (0.055, 0.012, 0.09), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}DriveCover", (-0.90, RAIL_Y + 0.058, 0.50),
+            (0.058, 0.014, 0.085), collection, "frame", bevel=0.002, segments=1,
         ))
         parts.append(add_box(
-            f"{prefix}Belt", (0.0, RAIL_Y + 0.034, RAIL_Z + 0.028),
-            (0.90, 0.006, 0.004), collection, "polymer", bevel=0.0, segments=1,
+            f"{prefix}DriveBlister", (-0.90, RAIL_Y - 0.02, 0.40),
+            (0.06, 0.055, 0.05), collection, "frame", bevel=0.004, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}Belt", (0.0, RAIL_Y + 0.034, RAIL_Z + 0.026),
+            (0.86, 0.005, 0.003), collection, "polymer", bevel=0.0, segments=1,
         ))
         parts.append(add_cylinder(
             f"{prefix}LimitSwitch", (-0.84, RAIL_Y + 0.05, RAIL_Z + 0.03), 0.012, 0.03,
             collection, "frame", vertices=6, bevel=0.001, axis="Y",
         ))
+    elif lod == 1:
+        parts.append(add_box(
+            f"{prefix}DriveBlister", (-0.90, RAIL_Y, 0.42),
+            (0.055, 0.05, 0.045), collection, "frame", bevel=0.0, segments=1,
+        ))
     return parts
 
 
 def add_energy_chain(prefix, collection, lod):
-    """Rooted trough run on +Y. Not parented to the head. Not a floating noodle."""
+    """Rooted U-trough on +Y. Not parented to the head. Not a floating noodle."""
     parts = []
-    y = RAIL_Y - 0.10
+    y = RAIL_Y - 0.12
+    # Floor of the trough — stays on the column/drive side of the open bed.
     parts.append(add_box(
-        f"{prefix}ChainTrough", (0.0, y, 0.48),
-        (0.90, 0.040, 0.018), collection, "frame",
+        f"{prefix}ChainTrough", (0.0, y, 0.455),
+        (0.86 if lod == 0 else 0.78, 0.038, 0.010), collection, "frame",
         bevel=0.002 if lod == 0 else 0.0, segments=1,
     ))
     if lod == 0:
+        for sign, wall in ((-1.0, "In"), (1.0, "Out")):
+            parts.append(add_box(
+                f"{prefix}ChainWall{wall}", (0.0, y + sign * 0.032, 0.478),
+                (0.84, 0.008, 0.022), collection, "frame", bevel=0.001, segments=1,
+            ))
         n = 11
         for i in range(n):
             t = i / float(n - 1)
-            x = -0.82 + 1.64 * t
-            # Alternating link height so the chain reads as hinged, not a bar.
-            z = 0.505 + (0.01 if i % 2 else 0.0)
+            x = -0.78 + 1.56 * t
+            z = 0.488 + (0.008 if i % 2 else 0.0)
             parts.append(add_box(
                 f"{prefix}ChainLink{i}", (x, y, z),
-                (0.055, 0.028, 0.016), collection, "polymer", bevel=0.002, segments=1,
+                (0.048, 0.022, 0.014), collection, "polymer", bevel=0.002, segments=1,
             ))
             if i % 2 == 0:
                 parts.append(add_box(
-                    f"{prefix}ChainPin{i}", (x + 0.05, y, z),
-                    (0.008, 0.032, 0.012), collection, "rail", bevel=0.0, segments=1,
+                    f"{prefix}ChainPin{i}", (x + 0.046, y, z),
+                    (0.007, 0.026, 0.010), collection, "polymer", bevel=0.0, segments=1,
                 ))
         parts.append(add_box(
-            f"{prefix}ChainAnchor", (-0.92, y, 0.50),
-            (0.04, 0.035, 0.025), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}ChainAnchor", (-0.90, y, 0.49),
+            (0.04, 0.032, 0.024), collection, "frame", bevel=0.002, segments=1,
         ))
     elif lod == 1:
         parts.append(add_box(
-            f"{prefix}ChainRun", (0.0, y, 0.505),
-            (0.86, 0.024, 0.014), collection, "polymer", bevel=0.0, segments=1,
-        ))
-    else:
-        parts.append(add_box(
-            f"{prefix}ChainRun", (0.0, y, 0.50),
-            (0.80, 0.02, 0.012), collection, "polymer", bevel=0.0, segments=1,
+            f"{prefix}ChainRun", (0.0, y, 0.478),
+            (0.78, 0.020, 0.012), collection, "polymer", bevel=0.0, segments=1,
         ))
     return parts
 
@@ -806,162 +852,179 @@ def add_energy_chain(prefix, collection, lod):
 def add_lamp(prefix, collection, lod):
     parts = []
     loc = (0.62, 0.92, 0.80)
-    # Hooded can, glass recessed. The lamp hook sits at the glass.
+    # Hooded can rooted to the +Y frame. Glass recessed inside the hood so
+    # the lamp cannot read as a warm bead or as the site identity.
+    hood_r = 0.036 if lod == 0 else 0.026
     parts.append(add_cylinder(
-        f"{prefix}LampHood", (loc[0], loc[1], loc[2] + 0.01), 0.045, 0.05,
-        collection, "frame", vertices=10 if lod == 0 else 6, bevel=0.003 if lod == 0 else 0.0, axis="Z",
+        f"{prefix}LampHood", (loc[0], loc[1], loc[2] + 0.006), hood_r, 0.040,
+        collection, "frame", vertices=10 if lod == 0 else 6, bevel=0.002 if lod == 0 else 0.0, axis="Z",
     ))
     parts.append(add_cylinder(
-        f"{prefix}LampGlass", loc, 0.028, 0.018,
-        collection, "lamp", vertices=10 if lod == 0 else 6, bevel=0.001 if lod == 0 else 0.0, axis="Z",
+        f"{prefix}LampGlass", (loc[0], loc[1], loc[2] - 0.008), hood_r * 0.42, 0.008,
+        collection, "lamp", vertices=8 if lod == 0 else 6, bevel=0.0, axis="Z",
     ))
     if lod == 0:
         parts.append(add_box(
-            f"{prefix}LampArm", (0.62, 0.90, 0.72),
-            (0.016, 0.04, 0.06), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}LampArm", (0.62, 0.90, 0.70),
+            (0.014, 0.034, 0.052), collection, "frame", bevel=0.002, segments=1,
         ))
         parts.append(add_box(
-            f"{prefix}LampBracket", (0.62, 0.94, 0.64),
-            (0.03, 0.02, 0.03), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}LampBracket", (0.62, 0.94, 0.62),
+            (0.026, 0.016, 0.026), collection, "frame", bevel=0.002, segments=1,
         ))
-    if lod == 0:
         parts.append(add_hex_bolt(
-            f"{prefix}LampBolt", (0.62, 0.94, 0.67), collection, "rail", 0.010, 0.012,
+            f"{prefix}LampBolt", (0.62, 0.94, 0.65), collection, "rail", 0.010, 0.012,
         ))
     return parts, loc
 
 
 def add_gantry(prefix, collection, lod):
-    """Moving assembly, built in WORLD at progress 0, later parented to gantry_head."""
+    """Moving carriage/tool. World at progress 0, later parented to gantry_head.
+
+    Play register (120 px/cell ≈ 54.5 px/wu): two rail saddles, a manufactured
+    cross-carriage, a drive pickup, and an 8–14 px hanging ram/shroud.
+    """
     parts = []
     hx = TRAVEL_X0
-    # Box-section bridge spanning the two rails.
+    # Cross-carriage: box-section beam, ~12 px in X, spanning Y but not a roof.
+    beam_hx = 0.110 if lod == 0 else (0.100 if lod == 1 else 0.090)
+    beam_hy = 0.76
+    beam_hz = 0.046 if lod == 0 else 0.042
     parts.append(add_box(
         f"{prefix}Bridge", (hx, 0.0, TRAVEL_Z),
-        (0.075, 0.90, 0.055), collection, "frame",
+        (beam_hx, beam_hy, beam_hz), collection, "frame",
         bevel=0.004 if lod == 0 else 0.0, segments=1 if lod else 2,
     ))
     if lod == 0:
         parts.append(add_box(
-            f"{prefix}BridgeRib", (hx, 0.0, TRAVEL_Z),
-            (0.018, 0.86, 0.062), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}BridgeWeb", (hx, 0.0, TRAVEL_Z),
+            (0.030, 0.72, 0.056), collection, "frame", bevel=0.002, segments=1,
         ))
         parts.append(add_box(
-            f"{prefix}CableTray", (hx, 0.10, TRAVEL_Z + 0.07),
-            (0.04, 0.40, 0.012), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}ServiceDeck", (hx, 0.0, TRAVEL_Z + 0.060),
+            (0.100, 0.34, 0.010), collection, "frame", bevel=0.002, segments=1,
         ))
-    # Bearing blocks: saddles that wrap the profile rail.
+        parts.append(add_box(
+            f"{prefix}CableTray", (hx, 0.10, TRAVEL_Z + 0.076),
+            (0.040, 0.26, 0.010), collection, "frame", bevel=0.002, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}DrivePickup", (hx, 0.60, TRAVEL_Z + 0.008),
+            (0.052, 0.042, 0.038), collection, "frame", bevel=0.003, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}PickupHorn", (hx, RAIL_Y - 0.14, 0.545),
+            (0.032, 0.026, 0.026), collection, "frame", bevel=0.002, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}DriveFlag", (hx - 0.09, RAIL_Y + 0.036, RAIL_Z + 0.036),
+            (0.010, 0.014, 0.016), collection, "rail", bevel=0.001, segments=1,
+        ))
+    elif lod == 1:
+        parts.append(add_box(
+            f"{prefix}ServiceDeck", (hx, 0.0, TRAVEL_Z + 0.052),
+            (0.088, 0.26, 0.010), collection, "frame", bevel=0.0, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}DrivePickup", (hx, 0.56, TRAVEL_Z),
+            (0.046, 0.036, 0.032), collection, "frame", bevel=0.0, segments=1,
+        ))
+
+    # Two bearing saddles wrapping the hat-section rails.
     for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
         y = sign * RAIL_Y
         parts.append(add_box(
-            f"{prefix}Block{tag}", (hx, y, RAIL_Z + 0.028),
-            (0.09, 0.045, 0.032), collection, "rail",
+            f"{prefix}Block{tag}", (hx, y, RAIL_Z + 0.034),
+            (0.112, 0.052, 0.028), collection, "rail",
             bevel=0.003 if lod == 0 else 0.0, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}BlockInner{tag}", (hx, y - sign * 0.044, RAIL_Z + 0.004),
+            (0.100, 0.018, 0.026), collection, "rail",
+            bevel=0.002 if lod == 0 else 0.0, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}BlockOuter{tag}", (hx, y + sign * 0.036, RAIL_Z + 0.004),
+            (0.100, 0.015, 0.024), collection, "rail",
+            bevel=0.002 if lod == 0 else 0.0, segments=1,
         ))
         if lod == 0:
             parts.append(add_box(
-                f"{prefix}BlockLip{tag}", (hx, y, RAIL_Z),
-                (0.085, 0.032, 0.016), collection, "rail", bevel=0.002, segments=1,
+                f"{prefix}BlockLip{tag}", (hx, y, RAIL_Z - 0.014),
+                (0.094, 0.028, 0.008), collection, "rail", bevel=0.001, segments=1,
             ))
-            for dx in (-0.06, 0.06):
+            for dx, seal in ((-0.078, "A"), (0.078, "B")):
                 parts.append(add_box(
-                    f"{prefix}BlockSeal{tag}{dx}", (hx + dx, y, RAIL_Z + 0.01),
-                    (0.012, 0.038, 0.022), collection, "polymer", bevel=0.001, segments=1,
+                    f"{prefix}BlockSeal{tag}{seal}", (hx + dx, y, RAIL_Z + 0.006),
+                    (0.014, 0.046, 0.022), collection, "polymer", bevel=0.001, segments=1,
                 ))
             parts.append(add_hex_bolt(
-                f"{prefix}BlockBolt{tag}A", (hx - 0.04, y, RAIL_Z + 0.055), collection, "rail",
+                f"{prefix}BlockBolt{tag}A", (hx - 0.05, y, RAIL_Z + 0.060), collection, "rail",
             ))
             parts.append(add_hex_bolt(
-                f"{prefix}BlockBolt{tag}B", (hx + 0.04, y, RAIL_Z + 0.055), collection, "rail",
-            ))
-            parts.append(add_cylinder(
-                f"{prefix}Grease{tag}", (hx, y + sign * 0.04, RAIL_Z + 0.03), 0.008, 0.02,
-                collection, "rail", vertices=6, bevel=0.0, axis="Y",
+                f"{prefix}BlockBolt{tag}B", (hx + 0.05, y, RAIL_Z + 0.060), collection, "rail",
             ))
         elif lod == 1:
             parts.append(add_box(
-                f"{prefix}BlockLip{tag}", (hx, y, RAIL_Z),
-                (0.08, 0.028, 0.014), collection, "rail", bevel=0.0, segments=1,
+                f"{prefix}BlockLip{tag}", (hx, y, RAIL_Z - 0.010),
+                (0.090, 0.024, 0.008), collection, "rail", bevel=0.0, segments=1,
             ))
-    if lod == 0:
-        parts.append(add_box(
-            f"{prefix}DriveFlag", (hx - 0.08, RAIL_Y + 0.05, RAIL_Z + 0.04),
-            (0.012, 0.018, 0.02), collection, "rail", bevel=0.001, segments=1,
-        ))
-        parts.append(add_box(
-            f"{prefix}PickupHorn", (hx, RAIL_Y - 0.10, 0.58),
-            (0.03, 0.025, 0.03), collection, "frame", bevel=0.002, segments=1,
-        ))
-    # U-saddle wrapping the bridge so the ram cannot read as a floating nozzle.
-    parts.append(add_box(
-        f"{prefix}SaddleTop", (hx, 0.0, TRAVEL_Z + 0.075),
-        (0.10, 0.16, 0.018), collection, "frame",
-        bevel=0.003 if lod == 0 else 0.0, segments=1,
-    ))
-    if lod < 2:
-        for sign, tag in ((-1.0, "A"), (1.0, "B")):
-            parts.append(add_box(
-                f"{prefix}SaddleCheek{tag}", (hx, sign * 0.12, TRAVEL_Z),
-                (0.09, 0.018, 0.07), collection, "frame", bevel=0.002 if lod == 0 else 0.0, segments=1,
-            ))
-        parts.append(add_box(
-            f"{prefix}SaddleBelly", (hx, 0.0, TRAVEL_Z - 0.075),
-            (0.10, 0.13, 0.016), collection, "frame", bevel=0.002 if lod == 0 else 0.0, segments=1,
-        ))
-    # Multi-process ram: spindle cartridge + ceramic shroud + side nozzle.
-    spindle_z = TRAVEL_Z - 0.22
+
+    # Hanging ram / spindle / dry ceramic shroud. 8–14 px planform at play size.
+    # 11 px ≈ 0.202 wu diameter. Tool clearance over bed ≥ 0.10 wu.
+    shroud_r = 0.100 if lod == 0 else (0.090 if lod == 1 else 0.084)
+    spindle_r = 0.054 if lod == 0 else 0.046
+    ram_z = TRAVEL_Z - 0.20
+    shroud_z = ram_z - 0.078
     parts.append(add_cylinder(
-        f"{prefix}Spindle", (hx, 0.0, spindle_z), 0.048, 0.16,
+        f"{prefix}Spindle", (hx, 0.0, ram_z), spindle_r, 0.13 if lod == 0 else 0.11,
         collection, "rail", vertices=12 if lod == 0 else (8 if lod == 1 else 6),
         bevel=0.002 if lod == 0 else 0.0,
     ))
     parts.append(add_cylinder(
-        f"{prefix}Shroud", (hx, 0.0, spindle_z - 0.06), 0.062, 0.07,
+        f"{prefix}Shroud", (hx, 0.0, shroud_z), shroud_r, 0.072 if lod == 0 else 0.060,
         collection, "ceramic", vertices=12 if lod == 0 else 8, bevel=0.002 if lod == 0 else 0.0,
     ))
+    parts.append(add_box(
+        f"{prefix}RamPlate", (hx, 0.0, TRAVEL_Z - 0.10),
+        (0.078, 0.078, 0.014), collection, "frame",
+        bevel=0.002 if lod == 0 else 0.0, segments=1,
+    ))
+    if lod < 2:
+        parts.append(add_cylinder(
+            f"{prefix}Collet", (hx, 0.0, shroud_z - 0.038), 0.026 if lod == 0 else 0.022, 0.032,
+            collection, "rail", vertices=10 if lod == 0 else 8, bevel=0.001 if lod == 0 else 0.0,
+        ))
+        parts.append(add_cylinder(
+            f"{prefix}Nozzle", (hx + 0.108, 0.0, shroud_z), 0.015 if lod == 0 else 0.013, 0.048,
+            collection, "ceramic", vertices=8, bevel=0.001 if lod == 0 else 0.0, axis="X",
+        ))
     if lod == 0:
         parts.append(add_cylinder(
-            f"{prefix}Collet", (hx, 0.0, spindle_z - 0.10), 0.028, 0.04,
-            collection, "rail", vertices=10, bevel=0.001,
-        ))
-        parts.append(add_cylinder(
-            f"{prefix}NozzleCollar", (hx + 0.07, 0.0, spindle_z - 0.02), 0.018, 0.05,
+            f"{prefix}NozzleCollar", (hx + 0.068, 0.0, shroud_z + 0.008), 0.019, 0.036,
             collection, "rail", vertices=8, bevel=0.001, axis="X",
         ))
-        parts.append(add_cylinder(
-            f"{prefix}Nozzle", (hx + 0.12, 0.0, spindle_z - 0.02), 0.012, 0.055,
-            collection, "ceramic", vertices=8, bevel=0.001, axis="X",
-        ))
         parts.append(add_box(
-            f"{prefix}RamPlate", (hx, 0.0, TRAVEL_Z - 0.12),
-            (0.07, 0.08, 0.012), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}SaddleTop", (hx, 0.0, TRAVEL_Z + 0.078),
+            (0.118, 0.130, 0.014), collection, "frame", bevel=0.003, segments=1,
         ))
+        for sign, tag in ((-1.0, "A"), (1.0, "B")):
+            parts.append(add_box(
+                f"{prefix}SaddleCheek{tag}", (hx, sign * 0.105, TRAVEL_Z - 0.018),
+                (0.096, 0.015, 0.050), collection, "frame", bevel=0.002, segments=1,
+            ))
         for i in range(4):
-            a = i * math.pi * 0.5
+            a = i * math.pi * 0.5 + 0.35
             parts.append(add_box(
                 f"{prefix}Fin{i}",
-                (hx + math.cos(a) * 0.05, math.sin(a) * 0.05, spindle_z + 0.04),
-                (0.018, 0.006, 0.035), collection, "rail", bevel=0.0, segments=1,
+                (hx + math.cos(a) * 0.058, math.sin(a) * 0.058, ram_z + 0.028),
+                (0.015, 0.006, 0.026), collection, "rail", bevel=0.0, segments=1,
             ))
         parts.append(add_hex_bolt(
-            f"{prefix}RamBoltA", (hx - 0.06, 0.05, TRAVEL_Z + 0.09), collection, "rail", 0.012, 0.014,
+            f"{prefix}RamBoltA", (hx - 0.07, 0.05, TRAVEL_Z + 0.090), collection, "rail", 0.012, 0.014,
         ))
         parts.append(add_hex_bolt(
-            f"{prefix}RamBoltB", (hx + 0.06, -0.05, TRAVEL_Z + 0.09), collection, "rail", 0.012, 0.014,
-        ))
-    elif lod == 1:
-        parts.append(add_cylinder(
-            f"{prefix}Nozzle", (hx + 0.09, 0.0, spindle_z - 0.02), 0.014, 0.05,
-            collection, "ceramic", vertices=8, bevel=0.0, axis="X",
-        ))
-        parts.append(add_cylinder(
-            f"{prefix}Collet", (hx, 0.0, spindle_z - 0.09), 0.024, 0.03,
-            collection, "rail", vertices=8, bevel=0.0,
-        ))
-    else:
-        parts.append(add_cylinder(
-            f"{prefix}Nozzle", (hx + 0.07, 0.0, spindle_z), 0.016, 0.04,
-            collection, "ceramic", vertices=6, bevel=0.0, axis="X",
+            f"{prefix}RamBoltB", (hx + 0.07, -0.05, TRAVEL_Z + 0.090), collection, "rail", 0.012, 0.014,
         ))
     return parts
 
@@ -989,6 +1052,12 @@ def _barycentric(p, a, b, c):
     return u, v, w
 
 
+def _hash01(x, y, z, seed=0.0):
+    """Low-frequency 0–1 hash. Must not produce a visible quilt/grid."""
+    n = np.sin((x * 2.17 + y * 1.63 + z * 2.91 + seed) * 12.9898)
+    return n - np.floor(n)
+
+
 def rasterize_atlas(objects, size=TEX):
     albedo = np.zeros((size, size, 4), dtype=np.float32)
     orm = np.zeros((size, size, 4), dtype=np.float32)
@@ -997,6 +1066,7 @@ def rasterize_atlas(objects, size=TEX):
     nrm[..., 1] = 0.5
     nrm[..., 2] = 1.0
     nrm[..., 3] = 1.0
+    idmap = np.zeros((size, size, 4), dtype=np.float32)
     coverage = np.zeros((size, size), dtype=np.float32)
     uv_layout = np.zeros((size, size, 4), dtype=np.float32)
     uv_layout[..., 3] = 1.0
@@ -1026,66 +1096,75 @@ def rasterize_atlas(objects, size=TEX):
             return
         attr = a0[None, None, :] * u[..., None] + a1[None, None, :] * v[..., None] + a2[None, None, :] * w[..., None]
         role_id = attr[..., 0]
-        ao = np.clip(attr[..., 1], 0.18, 1.0)
+        ao = np.clip(attr[..., 1], 0.35, 1.0)
         wx = attr[..., 2]
         wy = attr[..., 3]
         wz = attr[..., 4]
-        noise = np.sin((wx * 40.0 * 12.9898 + wy * 40.0 * 78.233 + wz * 18.0 * 37.719) * 0.1)
-        noise = noise - np.floor(noise)
-        noise2 = np.sin((wx * 9.0 * 12.9898 + wy * 9.0 * 78.233 + 4.0 * 37.719) * 0.1)
-        noise2 = noise2 - np.floor(noise2)
+        h_slow = _hash01(wx, wy, wz, 0.7)
+        h_edge = _hash01(wx, wy, wz, 4.2)
+        h_grain = _hash01(wx * 0.55, wy * 0.55, wz, 9.1)
         rgb = np.zeros(attr.shape[:2] + (3,), dtype=np.float64)
         rough = np.zeros(attr.shape[:2], dtype=np.float64)
         metal = np.zeros(attr.shape[:2], dtype=np.float64)
         nx = np.full(attr.shape[:2], 0.5, dtype=np.float64)
         ny = np.full(attr.shape[:2], 0.5, dtype=np.float64)
         emit = np.ones(attr.shape[:2], dtype=np.float64)
+        id_rgb = np.zeros(attr.shape[:2] + (3,), dtype=np.float64)
         for rid, role in ROLE_FROM_ID.items():
             sel = mask & (np.abs(role_id - rid) < 0.09)
             if not sel.any():
                 continue
             base = np.array(ROLE_RGB[role], dtype=np.float64)
+            id_rgb[sel] = np.array(ROLE_ID_RGB[role], dtype=np.float64)
             if role == "frame":
-                chip = (noise > 0.93) & (wz < 0.20)
-                local = base * (0.90 + 0.10 * noise2[..., None]) * (1.0 - 0.18 * (1.0 - ao[..., None]))
-                local = local * (1.0 - chip[..., None].astype(np.float64)) + np.array((0.42, 0.43, 0.45)) * chip[..., None]
+                # Dielectric alkyd. Chips only at feet / contact edges. No quilt.
+                chip = ((wz < 0.13) | (ao < 0.62)) & (h_edge > 0.91)
+                local = base * (0.96 + 0.04 * h_slow[..., None]) * (0.88 + 0.12 * ao[..., None])
+                steel = np.array((0.40, 0.41, 0.43), dtype=np.float64)
+                local = local * (1.0 - chip[..., None].astype(np.float64)) + steel * chip[..., None]
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] + (1.0 - ao[sel]) * 0.12 + noise[sel] * 0.04
-                metal[sel] = ROLE_METAL[role] + chip[sel].astype(np.float64) * 0.55
-                nx[sel] = 0.5 + (noise[sel] - 0.5) * 0.06
-                ny[sel] = 0.5 + (noise2[sel] - 0.5) * 0.06
+                rough[sel] = ROLE_ROUGH[role] + (1.0 - ao[sel]) * 0.08
+                metal[sel] = ROLE_METAL[role] + chip[sel].astype(np.float64) * 0.62
+                nx[sel] = 0.5 + (h_grain[sel] - 0.5) * 0.018
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.014
             elif role == "bed":
+                # Worn plate. Geometry carries T-slots; albedo is scrape, not a UV grid.
                 lip = (wz > 0.205).astype(np.float64)
                 gutter = (wz < 0.17).astype(np.float64)
-                local = base * (0.78 + 0.28 * lip[..., None]) * (0.72 + 0.10 * noise[..., None]) * (1.0 - 0.22 * gutter[..., None])
-                local = local * (0.82 + 0.18 * ao[..., None])
+                scrape = 0.97 + 0.03 * np.sin(wx * 6.5)
+                local = base * scrape[..., None]
+                local = local * (0.90 + 0.18 * lip[..., None]) * (0.78 + 0.08 * gutter[..., None])
+                local = local * (0.90 + 0.10 * ao[..., None])
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] - lip[sel] * 0.10 + gutter[sel] * 0.18 + (1.0 - ao[sel]) * 0.10
-                metal[sel] = ROLE_METAL[role] + lip[sel] * 0.10 - gutter[sel] * 0.20
-                nx[sel] = 0.5 + np.sin(wx[sel] * 55.0) * 0.08
-                ny[sel] = 0.5 + (noise[sel] - 0.5) * 0.08
+                rough[sel] = ROLE_ROUGH[role] - lip[sel] * 0.08 + gutter[sel] * 0.16 + (1.0 - ao[sel]) * 0.08
+                metal[sel] = ROLE_METAL[role] + lip[sel] * 0.08 - gutter[sel] * 0.18
+                # Signed surface-scale grind along +X only. Amplitude stays below quilt.
+                nx[sel] = 0.5 + 0.028 * np.sin(wx[sel] * 8.0)
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.016
             elif role == "rail":
-                grind = np.sin(wx * 70.0) * 0.5 + 0.5
-                local = base * (0.88 + 0.14 * grind[..., None]) * (0.90 + 0.10 * ao[..., None])
+                # Ground bearing steel: directional grind, not chrome rods.
+                grind = 0.5 + 0.5 * np.sin(wx * 9.0)
+                local = base * (0.96 + 0.04 * grind[..., None]) * (0.94 + 0.06 * ao[..., None])
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] - grind[sel] * 0.06 + (1.0 - ao[sel]) * 0.08
+                rough[sel] = ROLE_ROUGH[role] - grind[sel] * 0.05 + (1.0 - ao[sel]) * 0.06
                 metal[sel] = ROLE_METAL[role]
-                nx[sel] = 0.5 + np.sin(wx[sel] * 70.0) * 0.12
-                ny[sel] = 0.5 + (noise[sel] - 0.5) * 0.04
+                nx[sel] = 0.5 + 0.036 * np.sin(wx[sel] * 9.0)
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.012
             elif role == "ceramic":
-                local = base * (0.90 + 0.10 * noise2[..., None]) * (0.88 + 0.12 * ao[..., None])
+                grain = 0.94 + 0.06 * h_grain
+                local = base * grain[..., None] * (0.92 + 0.08 * ao[..., None])
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] + noise[sel] * 0.08
+                rough[sel] = ROLE_ROUGH[role] + h_grain[sel] * 0.05
                 metal[sel] = ROLE_METAL[role]
-                nx[sel] = 0.5 + (noise[sel] - 0.5) * 0.10
-                ny[sel] = 0.5 + (noise2[sel] - 0.5) * 0.10
+                nx[sel] = 0.5 + (h_grain[sel] - 0.5) * 0.030
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.028
             elif role == "polymer":
-                local = base * (0.92 + 0.08 * noise[..., None]) * (0.85 + 0.15 * ao[..., None])
+                local = base * (0.94 + 0.06 * ao[..., None])
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] + (1.0 - ao[sel]) * 0.10
+                rough[sel] = ROLE_ROUGH[role] + (1.0 - ao[sel]) * 0.08
                 metal[sel] = ROLE_METAL[role]
-                nx[sel] = 0.5 + (noise[sel] - 0.5) * 0.05
-                ny[sel] = 0.5 + (noise2[sel] - 0.5) * 0.05
+                nx[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.010
+                ny[sel] = 0.5 + (h_grain[sel] - 0.5) * 0.010
             else:
                 local = base * (0.92 + 0.08 * ao[..., None])
                 rgb[sel] = local[sel]
