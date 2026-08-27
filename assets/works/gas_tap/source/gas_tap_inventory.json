@@ -1,0 +1,159 @@
+{
+  "assetId": "place_works_gas_tap",
+  "rootName": "SF_WORKS_GAS_TAP_V1",
+  "combined": "assets/works/gas_tap/source/gas_tap.glb",
+  "partsSource": "assets/ships/parts/works/place_works_gas_tap.glb",
+  "lodTriangles": {
+    "lod0": 2180,
+    "lod1": 916,
+    "lod2": 456
+  },
+  "hooks": [
+    "valve_wheel",
+    "gauge_needle",
+    "lamp"
+  ],
+  "meshNames": [
+    "LOD0_gas_tap",
+    "LOD0_gauge_needle",
+    "LOD0_lamp",
+    "LOD0_valve_wheel",
+    "LOD1_gas_tap",
+    "LOD1_gauge_needle",
+    "LOD1_lamp",
+    "LOD1_valve_wheel",
+    "LOD2_gas_tap",
+    "LOD2_gauge_needle",
+    "LOD2_lamp",
+    "LOD2_valve_wheel"
+  ],
+  "bytes": 2556156,
+  "sha256": "4ED4D79DE48BAB98E70F30B6CDA94498357AD48817CAF21FCC813F81DC220724",
+  "cycle": 1,
+  "state": "design_candidate",
+  "lodReports": [
+    {
+      "lod": 0,
+      "triangles": 2180,
+      "budget": 6000,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.085,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod0.glb",
+      "bytes": 2390980,
+      "sha256": "B5BAA4921968068AD2FA06909869D950DBC0DC3C48C176BDB5C3854C086EF3E2"
+    },
+    {
+      "lod": 1,
+      "triangles": 916,
+      "budget": 1500,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.085,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod1.glb",
+      "bytes": 2279640,
+      "sha256": "0171A3328E651BC43A10BD616159B2BA84A541DE2EDE233E6670404B037ABA33"
+    },
+    {
+      "lod": 2,
+      "triangles": 456,
+      "budget": 500,
+      "overBudget": false,
+      "draws": 4,
+      "bbox": {
+        "min": [
+          0.12,
+          -0.83,
+          0.0
+        ],
+        "max": [
+          1.14,
+          0.83,
+          0.9
+        ]
+      },
+      "hooks": {
+        "valve_wheel": [
+          0.48,
+          0.1,
+          0.8
+        ],
+        "gauge_needle": [
+          0.58,
+          -0.52,
+          0.745
+        ],
+        "lamp": [
+          0.8,
+          0.58,
+          0.86
+        ]
+      },
+      "undersideZ": 0.0,
+      "tapMaxX": 1.14,
+      "path": "assets/works/gas_tap/source/gas_tap_lod2.glb",
+      "bytes": 2238088,
+      "sha256": "C345FFE8B6D4B9EF4FF2B114ED8D90BE01FD143F5D00959B2E00F01CAC29ACF7"
+    }
+  ]
+}
