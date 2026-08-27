@@ -1,14 +1,16 @@
 """PQ-050.04 Ironback MTX builder. Hitch untouched. --mtx-cycle N writes exact-GLB chase stills.
 
-Cycle 21 retains Cycle 20's open-well perimeter barge and corrects remaining
-default-camera identity failures: large hopper conveyor/breaker/gates, a broad
-armored greenhouse (not a grille), twin stepped pulse beds, heavier tool heads,
-and directional dorsal plate relief. Cycle 18–20 source/evidence stay untouched.
-Close occupancy remains the locked +X length axis at 41.28 WU; do not fake it.
+Cycle 22 is the fifth legal post-spearhead source cycle. It keeps Cycle 21's
+open-well perimeter barge and closes remaining default-camera identity failures:
+a hopper ore path of two or three large beats, a wide glazed command greenhouse,
+matched dorsal pulse-plate stacks, chunky tool silhouettes, and authored deck
+construction. Cycle 18–21 source/evidence stay byte-for-byte untouched. Close
+occupancy is the locked +X length axis at 41.28 WU under the derived D=58 band;
+do not shorten, dolly, hide geometry, or fake width.
 
 Usage::
 
-  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 21
+  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 22
 """
 
 from __future__ import annotations
@@ -54,7 +56,7 @@ from spaceface_chase_camera import (  # noqa: E402
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "ironback"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX = 1024
-CYCLE = 21
+CYCLE = 22
 ASSEMBLY_HULL_UNITS = 1.72
 IRONBACK_COLLISION_RADIUS = 24.0
 for i, tok in enumerate(sys.argv):
@@ -116,46 +118,43 @@ def role_maps(role, rgb, size=TEX, prefix=None):
             gf3 = h01(x // 7, y // 7, 47)
             nx, ny = 0.5, 0.5
             if role == "hull":
-                # Irregular welded oxide plates, not a cartesian waffle.
-                row = y // 96
-                stagger = 28 if row % 2 else 0
-                col = (x + stagger) // 124
-                pid = h01(col, row, 3)
-                n_row = (y + 1) // 96
-                n_col = (x + 1 + (28 if n_row % 2 else 0)) // 124
-                seam = 1.0 if (col != n_col or row != n_row) else 0.0
-                if x % 124 < 2 or y % 96 < 2:
-                    seam = max(seam, 0.85)
-                chip = 1.0 if gf > 0.93 and seam > 0.4 else 0.0
-                streak = max(0.0, 0.55 - abs(((x + y * 0.35) % 180) / 180.0 - 0.5) * 2.0) * (0.18 + 0.22 * gf3)
-                dirt = min(1.0, seam * 0.45 + gf2 * 0.12 + streak * 0.55 + chip * 0.4)
-                r = max(0, min(1, br * (1.0 - dirt * 0.28) + chip * 0.10))
-                g = max(0, min(1, bg * (1.0 - dirt * 0.22) + chip * 0.04))
-                b = max(0, min(1, bb * (1.0 - dirt * 0.16)))
+                # Longitudinal strakes and rare frames. Not a cartesian waffle.
+                strake_w, frame_w = 168, 248
+                sy, sx = y % strake_w, x % frame_w
+                long_seam = 1.0 if sy < 5 else 0.0
+                frame_seam = 1.0 if sx < 3 else 0.0
+                overlap = 1.0 if 5 <= sy < 18 else 0.0
+                chip = 1.0 if gf > 0.945 and long_seam else 0.0
+                streak = max(0.0, 0.5 - abs(((x + y * 0.12) % 220) / 220.0 - 0.5) * 2.0) * (0.12 + 0.16 * gf3)
+                dirt = min(1.0, long_seam * 0.42 + frame_seam * 0.22 + overlap * 0.14 + streak * 0.35 + gf2 * 0.08)
+                r = max(0, min(1, br * (1.0 - dirt * 0.26) + chip * 0.10))
+                g = max(0, min(1, bg * (1.0 - dirt * 0.20) + chip * 0.04))
+                b = max(0, min(1, bb * (1.0 - dirt * 0.14)))
                 if chip:
                     r, g, b = r * 0.45 + 0.22, g * 0.45 + 0.16, b * 0.45 + 0.10
-                rough = 0.46 + dirt * 0.28 - seam * 0.06
-                metal = 0.04 + chip * 0.55 + seam * 0.12
-                nx = 0.5 + (0.10 if seam else 0.0) * (0.5 - (x % 124) / 124)
-                ny = 0.5 + (0.08 if seam else 0.0) * (0.5 - (y % 96) / 96)
-                ao = max(0.22, 1.0 - seam * 0.35 - dirt * 0.18)
+                rough = 0.46 + dirt * 0.26 - long_seam * 0.05
+                metal = 0.04 + chip * 0.55 + long_seam * 0.10
+                nx = 0.5 + (0.18 if frame_seam else 0.0) * (0.5 - sx / frame_w)
+                ny = 0.5 + (0.32 if (long_seam or overlap) else 0.0) * (0.5 - sy / strake_w)
+                ao = max(0.22, 1.0 - long_seam * 0.32 - frame_seam * 0.18 - dirt * 0.14)
             elif role == "armor":
-                row = y // 42
-                stagger = 22 if row % 2 else 0
-                pw, ph = 58, 42
+                pw, ph = 110, 78
+                row = y // ph
+                stagger = 36 if row % 2 else 0
                 dx = min((x + stagger) % pw, pw - ((x + stagger) % pw))
                 dy = min(y % ph, ph - (y % ph))
-                seam = 1.0 if (dx <= 1 or dy <= 1) else 0.0
-                bolt = 1.0 if (dx <= 3 and dy <= 3 and gf > 0.55) else 0.0
-                dirt = seam * 0.3 + gf2 * 0.08
+                seam = 1.0 if (dx <= 2 or dy <= 2) else 0.0
+                lip = 1.0 if (3 <= dy <= 10) else 0.0
+                bolt = 1.0 if (dx <= 5 and dy <= 5 and gf > 0.58) else 0.0
+                dirt = seam * 0.28 + lip * 0.10 + gf2 * 0.06
                 r = max(0, min(1, br * (1.0 - dirt * 0.2) + bolt * 0.08))
                 g = max(0, min(1, bg * (1.0 - dirt * 0.16) + bolt * 0.08))
                 b = max(0, min(1, bb * (1.0 - dirt * 0.12) + bolt * 0.06))
                 rough = 0.28 + dirt * 0.2 - bolt * 0.08
                 metal = 0.72 + bolt * 0.12
-                nx = 0.5 + (0.12 if seam else 0.0) * (0.5 - dx / max(1, pw))
-                ny = 0.5 + (0.10 if seam else 0.0) * (0.5 - dy / max(1, ph))
-                ao = max(0.28, 1.0 - seam * 0.28 - bolt * 0.12)
+                nx = 0.5 + (0.20 if seam else 0.0) * (0.5 - dx / max(1, pw))
+                ny = 0.5 + (0.24 if (seam or lip) else 0.0) * (0.5 - dy / max(1, ph))
+                ao = max(0.28, 1.0 - seam * 0.30 - bolt * 0.10)
             elif role == "mechanical":
                 rad = math.hypot(x - half, y - half)
                 groove = 0.5 + 0.5 * math.sin(rad * 0.42 + gf * 0.4)
@@ -281,7 +280,7 @@ def create_materials():
         "Material_Warning": ((0.68, 0.32, 0.05), 0.04, 0.48, "warning", 0.08, None),
         "Material_Ceramic": ((0.56, 0.48, 0.36), 0.0, 0.66, "ceramic", 0.0, None),
         "Material_Radiator": ((0.14, 0.10, 0.07), 0.64, 0.52, "radiator", 0.0, None),
-        "Material_Canopy": ((0.05, 0.13, 0.17), 0.00, 0.08, "glass", 0.22, ((0.03, 0.09, 0.13), 0.08)),
+        "Material_Canopy": ((0.04, 0.15, 0.21), 0.00, 0.07, "glass", 0.16, ((0.02, 0.07, 0.11), 0.05)),
         "Material_Thruster": ((0.12, 0.05, 0.03), 0.48, 0.38, "thruster", 0.0, ((0.28, 0.10, 0.04), 0.06)),
     }
     mats = {}
@@ -295,12 +294,12 @@ def create_materials():
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.22
+                bsdf.inputs["Transmission Weight"].default_value = 0.10
             elif "Transmission" in bsdf.inputs:
-                bsdf.inputs["Transmission"].default_value = 0.22
+                bsdf.inputs["Transmission"].default_value = 0.10
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.45
-            bsdf.inputs["Alpha"].default_value = 0.78
+            bsdf.inputs["Alpha"].default_value = 0.90
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -360,6 +359,15 @@ def add_subdivided_box(name, loc, scale, material, collection, cuts=3, bevel=0.0
 
 def add_cylinder(name, loc, radius, depth, material, collection, vertices=18, bevel=0.02, rot=(0, math.pi / 2, 0)):
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=loc, rotation=rot)
+    obj = link_object(bpy.context.object, collection)
+    obj.name = name
+    return finish_mesh(obj, material, bevel)
+
+
+def add_cone(name, loc, radius1, radius2, depth, material, collection, vertices=12, bevel=0.003, rot=(0, math.pi / 2, 0)):
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=vertices, radius1=radius1, radius2=radius2, depth=depth, location=loc, rotation=rot,
+    )
     obj = link_object(bpy.context.object, collection)
     obj.name = name
     return finish_mesh(obj, material, bevel)
@@ -593,7 +601,7 @@ def add_open_rect_well(prefix, cx, cy, floor_z, rim_z, inner_hx, inner_hy, wall,
 
 
 def add_processing_hopper(lod, mats, collection):
-    """Open receiving well. Chase-size ore path: dump deck -> broad conveyor -> breaker -> gates."""
+    """Open well. Three D=144 ore-path beats: dump apron, full-width conveyor/rollers, breaker+chute."""
     armor, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     warning, ceramic, thruster = (mats["Material_Warning"], mats["Material_Ceramic"], mats["Material_Thruster"])
     cx, hy, hx = -0.12, 1.12, 2.08
@@ -605,163 +613,122 @@ def add_processing_hopper(lod, mats, collection):
     add_cylinder("Hopper_RimRollS", (cx, hy, rim_z + 0.02), 0.08, hx * 1.55, armor, collection, 12, 0.004, (0, math.pi / 2, 0))
     add_cylinder("Hopper_RimRollF", (cx + hx, 0.0, rim_z + 0.02), 0.08, hy * 1.45, armor, collection, 12, 0.004, (math.pi / 2, 0, 0))
     add_cylinder("Hopper_RimRollA", (cx - hx, 0.0, rim_z + 0.02), 0.08, hy * 1.45, armor, collection, 12, 0.004, (math.pi / 2, 0, 0))
-    # Forward dump / impact deck — first large color mass in the well.
-    add_box("Hopper_DumpDeck", (cx + hx - 0.62, 0.0, floor_z + 0.22), (0.52, hy - 0.22, 0.10), ceramic, collection, 0.006)
-    add_box("Hopper_DumpLip", (cx + hx - 0.22, 0.0, floor_z + 0.16), (0.14, hy - 0.30, 0.06), armor, collection, 0.004)
-    # Broad conveyor: one manufactured bed, not a row of tiny rollers.
-    add_box("Hopper_ConveyorBed", (cx + 0.18, 0.0, floor_z + 0.16), (hx * 0.58, 0.52, 0.08), mech, collection, 0.005)
-    add_box("Hopper_Belt", (cx + 0.18, 0.0, floor_z + 0.26), (hx * 0.54, 0.38, 0.04), armor, collection, 0.003)
-    n_flight = 3 if lod == 0 else (2 if lod == 1 else 1)
-    for i in range(n_flight):
-        fx = cx - 0.55 + i * 0.72
-        add_box(f"Hopper_Flight_{i}", (fx, 0.0, floor_z + 0.32), (0.16, 0.34, 0.05), warning if i == 1 else mech, collection, 0.003)
-    # Breaker / crusher house: the dominant aft mass inside the well.
-    add_box("Hopper_BreakerHouse", (cx - hx + 0.72, 0.0, floor_z + 0.52), (0.58, 0.92, 0.40), armor, collection, 0.008)
-    add_cylinder("Hopper_BreakerDrum", (cx - hx + 0.72, 0.0, floor_z + 0.62), 0.34, 0.88, mech, collection, 14, 0.004, (math.pi / 2, 0, 0))
-    add_box("Hopper_BreakerAnvil", (cx - hx + 0.72, 0.0, floor_z + 0.28), (0.40, 0.70, 0.10), ceramic, collection, 0.004)
-    add_box("Hopper_FeedThroat", (cx - hx + 0.22, 0.0, floor_z + 0.22), (0.22, 0.52, 0.16), thruster, collection, 0.004)
-    # Two large gate leaves spanning the well — readable at D=144.
-    add_box("Hopper_GateP", (cx - hx + 0.52, -0.52, floor_z + 0.48), (0.12, 0.38, 0.38), mech, collection, 0.005)
-    add_box("Hopper_GateS", (cx - hx + 0.52, 0.52, floor_z + 0.48), (0.12, 0.38, 0.38), mech, collection, 0.005)
-    add_box("Hopper_GateBar", (cx - hx + 0.52, 0.0, floor_z + 0.78), (0.10, 0.92, 0.06), armor, collection, 0.003)
-    n_rib = 4 if lod == 0 else (3 if lod == 1 else 2)
-    rib_span = 2.40
+    # Beat 1 — ceramic dump apron filling the forward well, raised into chase light.
+    add_box("Hopper_DumpDeck", (cx + hx - 0.58, 0.0, 0.22), (0.62, hy - 0.18, 0.16), ceramic, collection, 0.008)
+    add_box("Hopper_DumpShoulder", (cx + hx - 0.22, 0.0, 0.42), (0.20, hy - 0.28, 0.12), armor, collection, 0.005)
+    # Beat 2 — full-width conveyor bed + Y-axis drums (circle faces toward the default chase).
+    add_box("Hopper_ConveyorBed", (cx + 0.28, 0.0, 0.08), (1.05, hy - 0.16, 0.12), mech, collection, 0.006)
+    add_box("Hopper_Belt", (cx + 0.28, 0.0, 0.24), (0.98, hy - 0.28, 0.05), armor, collection, 0.003)
+    n_roll = 3 if lod == 0 else (2 if lod == 1 else 1)
+    for i in range(n_roll):
+        rx = cx - 0.35 + i * 0.70
+        add_cylinder(f"Hopper_Roller_{i}", (rx, 0.0, 0.40), 0.30, hy * 1.55, ceramic if i == 1 else mech, collection, 14, 0.004, (math.pi / 2, 0, 0))
+    # Beat 3 — breaker house proud of the rim + one discharge chute/gate spanning the well.
+    add_box("Hopper_BreakerHouse", (cx - hx + 0.78, 0.0, 0.58), (0.70, hy - 0.14, 0.55), armor, collection, 0.010)
+    add_cylinder("Hopper_BreakerDrum", (cx - hx + 0.78, 0.0, 0.70), 0.42, hy * 1.50, ceramic, collection, 16, 0.005, (math.pi / 2, 0, 0))
+    add_box("Hopper_BreakerAnvil", (cx - hx + 0.78, 0.0, 0.18), (0.50, hy - 0.28, 0.12), mech, collection, 0.005)
+    add_box("Hopper_Chute", (cx - hx + 0.18, 0.0, 0.28), (0.32, 0.72, 0.28), warning, collection, 0.006)
+    add_box("Hopper_ChuteMouth", (cx - hx - 0.06, 0.0, 0.08), (0.16, 0.50, 0.18), thruster, collection, 0.004)
+    add_box("Hopper_GateLeaf", (cx - hx + 0.42, 0.0, 0.62), (0.10, hy - 0.20, 0.42), mech, collection, 0.005)
+    add_box("Hopper_GateBar", (cx - hx + 0.42, 0.0, 1.02), (0.12, hy - 0.12, 0.08), armor, collection, 0.004)
+    n_rib = 3 if lod == 0 else 2
     for i in range(n_rib):
-        ox = -rib_span * 0.5 + (rib_span / max(1, n_rib - 1)) * i
-        add_box(f"Hopper_RibP_{i}", (cx + ox, -hy + 0.14, 0.08), (0.10, 0.08, 0.74), mech, collection, 0.003)
-        add_box(f"Hopper_RibS_{i}", (cx + ox, hy - 0.14, 0.08), (0.10, 0.08, 0.74), mech, collection, 0.003)
-    if lod <= 1:
-        add_box("Hopper_LinerCapP", (cx, -hy + 0.10, 0.55), (hx * 0.72, 0.04, 0.06), ceramic, collection, 0.002)
-        add_box("Hopper_LinerCapS", (cx, hy - 0.10, 0.55), (hx * 0.72, 0.04, 0.06), ceramic, collection, 0.002)
+        ox = -1.15 + i * 1.15
+        add_box(f"Hopper_RibP_{i}", (cx + ox, -hy + 0.14, 0.12), (0.12, 0.09, 0.78), mech, collection, 0.003)
+        add_box(f"Hopper_RibS_{i}", (cx + ox, hy - 0.14, 0.12), (0.12, 0.09, 0.78), mech, collection, 0.003)
 
 
 def add_command_cage(lod, mats, collection):
-    """Armored greenhouse: two/three broad dark-cyan panes, thick brow, side glass, pressure neck."""
+    """Wide armored greenhouse: glazed roof + side panes, thick brow, obvious pressure neck."""
     canopy, armor, mech = (mats["Material_Canopy"], mats["Material_Armor"], mats["Material_Mechanical"])
     hull = mats["Material_Hull"]
-    x, y, z = 6.35, 0.0, 1.35
-    # Structural pressure neck — reads as the cab's root, not a service box.
-    add_box("Cab_Neck", (x - 1.55, y, z - 0.42), (0.88, 1.55, 0.38), hull, collection, 0.014)
-    add_box("Cab_NeckRing", (x - 1.12, y, z - 0.08), (0.22, 1.38, 0.16), armor, collection, 0.008)
-    add_box("Cab_Tub", (x - 0.08, y, z - 0.22), (1.32, 1.28, 0.16), armor, collection, 0.010)
-    add_box("Cab_Sill", (x + 0.22, y, z + 0.02), (1.18, 1.18, 0.06), armor, collection, 0.004)
-    # Vertical relief: roof sits well above the bow deck so abeam/chase can see a cab mass.
-    add_box("Cab_AftBulk", (x - 1.22, y, z + 0.38), (0.12, 1.22, 0.48), armor, collection, 0.006)
-    add_box("Cab_CheekP", (x + 0.05, y - 1.32, z + 0.28), (1.15, 0.14, 0.48), armor, collection, 0.006)
-    add_box("Cab_CheekS", (x + 0.05, y + 1.32, z + 0.28), (1.15, 0.14, 0.48), armor, collection, 0.006)
-    add_box("Cab_ShoulderP", (x - 0.55, y - 1.72, z - 0.08), (0.78, 0.22, 0.28), hull, collection, 0.006)
-    add_box("Cab_ShoulderS", (x - 0.55, y + 1.72, z - 0.08), (0.78, 0.22, 0.28), hull, collection, 0.006)
-    # Bridge wings: wheelhouse armor stepping out to the sponson shoulders. Adds useful
-    # near-camera beam in the abeam view without lengthening the cutter booms.
-    add_box("Cab_BridgeP", (x - 0.20, y - 2.15, z + 0.16), (0.88, 0.42, 0.20), armor, collection, 0.006)
-    add_box("Cab_BridgeS", (x - 0.20, y + 2.15, z + 0.16), (0.88, 0.42, 0.20), armor, collection, 0.006)
-    add_box("Cab_BridgeCapP", (x + 0.25, y - 2.42, z + 0.34), (0.38, 0.22, 0.08), hull, collection, 0.004)
-    add_box("Cab_BridgeCapS", (x + 0.25, y + 2.42, z + 0.34), (0.38, 0.22, 0.08), hull, collection, 0.004)
-    # Thick brow visor — the D=144 cab identifier.
-    add_box("Cab_Brow", (x + 1.28, y, z + 0.62), (0.22, 1.38, 0.22), armor, collection, 0.008)
-    add_box("Cab_BrowCap", (x + 0.92, y, z + 0.82), (0.55, 1.28, 0.07), armor, collection, 0.004)
-    add_box("Cab_BrowWingP", (x + 1.05, y - 1.55, z + 0.58), (0.32, 0.22, 0.16), armor, collection, 0.004)
-    add_box("Cab_BrowWingS", (x + 1.05, y + 1.55, z + 0.58), (0.32, 0.22, 0.16), armor, collection, 0.004)
-    add_box("Cab_RoofFrameP", (x + 0.05, y - 0.92, z + 0.78), (1.05, 0.08, 0.06), armor, collection, 0.003)
-    add_box("Cab_RoofFrameS", (x + 0.05, y + 0.92, z + 0.78), (1.05, 0.08, 0.06), armor, collection, 0.003)
-    add_box("Cab_RoofFrameA", (x - 1.05, y, z + 0.78), (0.08, 0.92, 0.06), armor, collection, 0.003)
-    add_box("Cab_RoofFrameF", (x + 1.08, y, z + 0.78), (0.08, 0.92, 0.06), armor, collection, 0.003)
-    pane_h = 0.045
+    x, y, z = 6.28, 0.0, 1.22
+    # Pressure neck — smaller than the greenhouse, the cab's root into the bow.
+    add_box("Cab_Neck", (x - 1.72, y, z - 0.38), (0.92, 1.72, 0.42), hull, collection, 0.016)
+    add_box("Cab_NeckRing", (x - 1.18, y, z - 0.02), (0.24, 1.85, 0.18), armor, collection, 0.010)
+    add_box("Cab_Tub", (x - 0.05, y, z - 0.18), (1.48, 2.35, 0.18), armor, collection, 0.012)
+    add_box("Cab_Sill", (x + 0.12, y, z + 0.08), (1.38, 2.22, 0.07), armor, collection, 0.005)
+    add_box("Cab_AftBulk", (x - 1.38, y, z + 0.42), (0.14, 2.18, 0.55), armor, collection, 0.007)
+    # Useful beam: greenhouse sides are the outer faces, not decorative tabs.
+    add_box("Cab_CheekP", (x + 0.08, y - 2.42, z + 0.38), (1.28, 0.16, 0.55), armor, collection, 0.007)
+    add_box("Cab_CheekS", (x + 0.08, y + 2.42, z + 0.38), (1.28, 0.16, 0.55), armor, collection, 0.007)
+    add_box("Cab_ShoulderP", (x - 0.62, y - 2.05, z - 0.12), (0.88, 0.28, 0.32), hull, collection, 0.007)
+    add_box("Cab_ShoulderS", (x - 0.62, y + 2.05, z - 0.12), (0.88, 0.28, 0.32), hull, collection, 0.007)
+    # Heavy brow visor — the D=144 hood over the windshield.
+    add_box("Cab_Brow", (x + 1.48, y, z + 0.78), (0.26, 2.28, 0.24), armor, collection, 0.010)
+    add_box("Cab_BrowCap", (x + 0.95, y, z + 1.02), (0.72, 2.12, 0.08), armor, collection, 0.005)
+    add_box("Cab_RoofRailP", (x + 0.05, y - 1.55, z + 0.98), (1.22, 0.10, 0.07), armor, collection, 0.003)
+    add_box("Cab_RoofRailS", (x + 0.05, y + 1.55, z + 0.98), (1.22, 0.10, 0.07), armor, collection, 0.003)
+    add_box("Cab_RoofRailA", (x - 1.18, y, z + 0.98), (0.10, 1.55, 0.07), armor, collection, 0.003)
+    add_box("Cab_RoofRailF", (x + 1.22, y, z + 0.98), (0.10, 1.55, 0.07), armor, collection, 0.003)
+    pane_h = 0.07
     if lod <= 1:
-        # Three broad roof panes (port / center / starboard), not a radiator mullion grid.
-        add_box("Cab_RoofPane_P", (x + 0.08, y - 0.62, z + 0.72), (0.88, 0.42, pane_h), canopy, collection, 0.002)
-        add_box("Cab_RoofPane_C", (x + 0.08, y, z + 0.72), (0.88, 0.42, pane_h), canopy, collection, 0.002)
-        add_box("Cab_RoofPane_S", (x + 0.08, y + 0.62, z + 0.72), (0.88, 0.42, pane_h), canopy, collection, 0.002)
-        add_box("Cab_Mullion_P", (x + 0.08, y - 0.32, z + 0.78), (0.92, 0.07, 0.05), armor, collection, 0.002)
-        add_box("Cab_Mullion_S", (x + 0.08, y + 0.32, z + 0.78), (0.92, 0.07, 0.05), armor, collection, 0.002)
-        # Forward windshield under the brow — two broad panes.
-        add_box("Cab_FwdPane_P", (x + 1.32, y - 0.55, z + 0.38), (0.05, 0.48, 0.28), canopy, collection, 0.002)
-        add_box("Cab_FwdPane_S", (x + 1.32, y + 0.55, z + 0.38), (0.05, 0.48, 0.28), canopy, collection, 0.002)
-        add_box("Cab_FwdMullion", (x + 1.32, y, z + 0.38), (0.06, 0.08, 0.28), armor, collection, 0.002)
-        # Side glazing — large vertical panes, not slit vents.
-        add_box("Cab_SidePaneP", (x + 0.12, y - 1.42, z + 0.38), (0.72, 0.05, 0.32), canopy, collection, 0.002)
-        add_box("Cab_SidePaneS", (x + 0.12, y + 1.42, z + 0.38), (0.72, 0.05, 0.32), canopy, collection, 0.002)
-        add_box("Cab_AftPane", (x - 1.28, y, z + 0.42), (0.05, 0.72, 0.28), canopy, collection, 0.002)
+        # Three broad roof panes — the dorsal cab identity, not a mullion grille.
+        add_box("Cab_RoofPane_P", (x + 0.08, y - 1.12, z + 0.90), (1.12, 0.72, pane_h), canopy, collection, 0.002)
+        add_box("Cab_RoofPane_C", (x + 0.08, y, z + 0.90), (1.12, 0.72, pane_h), canopy, collection, 0.002)
+        add_box("Cab_RoofPane_S", (x + 0.08, y + 1.12, z + 0.90), (1.12, 0.72, pane_h), canopy, collection, 0.002)
+        add_box("Cab_Mullion_P", (x + 0.08, y - 0.52, z + 0.98), (1.18, 0.10, 0.06), armor, collection, 0.002)
+        add_box("Cab_Mullion_S", (x + 0.08, y + 0.52, z + 0.98), (1.18, 0.10, 0.06), armor, collection, 0.002)
+        # Forward windshield under the brow.
+        add_box("Cab_FwdPane_P", (x + 1.55, y - 0.95, z + 0.42), (0.06, 0.78, 0.38), canopy, collection, 0.002)
+        add_box("Cab_FwdPane_S", (x + 1.55, y + 0.95, z + 0.42), (0.06, 0.78, 0.38), canopy, collection, 0.002)
+        add_box("Cab_FwdMullion", (x + 1.55, y, z + 0.42), (0.08, 0.10, 0.38), armor, collection, 0.002)
+        # Side glazing — camera-facing walls of the greenhouse (default chase looks from +Y).
+        add_box("Cab_SidePaneP", (x + 0.10, y - 2.55, z + 0.46), (1.05, 0.06, 0.42), canopy, collection, 0.002)
+        add_box("Cab_SidePaneS", (x + 0.10, y + 2.55, z + 0.46), (1.05, 0.06, 0.42), canopy, collection, 0.002)
+        add_box("Cab_AftPane", (x - 1.48, y, z + 0.48), (0.06, 1.35, 0.36), canopy, collection, 0.002)
     else:
-        add_box("Cab_GlassMass", (x + 0.08, y, z + 0.70), (0.92, 1.05, 0.10), canopy, collection, 0.003)
-        add_box("Cab_FwdGlass", (x + 1.30, y, z + 0.36), (0.06, 0.95, 0.28), canopy, collection, 0.003)
-        add_box("Cab_SideGlassP", (x + 0.10, y - 1.40, z + 0.36), (0.65, 0.05, 0.26), canopy, collection, 0.003)
-        add_box("Cab_SideGlassS", (x + 0.10, y + 1.40, z + 0.36), (0.65, 0.05, 0.26), canopy, collection, 0.003)
+        add_box("Cab_GlassMass", (x + 0.08, y, z + 0.88), (1.15, 2.05, 0.12), canopy, collection, 0.004)
+        add_box("Cab_FwdGlass", (x + 1.52, y, z + 0.42), (0.07, 1.55, 0.36), canopy, collection, 0.003)
+        add_box("Cab_SideGlassP", (x + 0.08, y - 2.52, z + 0.44), (0.95, 0.06, 0.36), canopy, collection, 0.003)
+        add_box("Cab_SideGlassS", (x + 0.08, y + 2.52, z + 0.44), (0.95, 0.06, 0.36), canopy, collection, 0.003)
     if lod == 0:
-        add_box("Cab_Wiper", (x + 1.22, y - 0.22, z + 0.48), (0.03, 0.28, 0.02), mech, collection, 0.001)
-        add_box("Cab_GuardBar", (x + 1.42, y, z + 0.18), (0.03, 0.85, 0.03), mech, collection, 0.001)
-        add_box("Cab_LoadTieP", (x - 0.95, y - 0.95, z + 0.28), (0.28, 0.05, 0.05), mech, collection, 0.002)
-        add_box("Cab_LoadTieS", (x - 0.95, y + 0.95, z + 0.28), (0.28, 0.05, 0.05), mech, collection, 0.002)
+        add_box("Cab_Wiper", (x + 1.42, y - 0.35, z + 0.55), (0.03, 0.42, 0.02), mech, collection, 0.001)
 
 
 def add_pulse_plate_drive(side, y, lod, mats, collection):
-    """Open dorsal pulse bed: stepped chamber, broad gapped plates, collar, vanes. Not a black square."""
+    """Matched dorsal pulse bed: horizontal refractory stacks, real gaps, collar. Not a black square."""
     armor, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     ceramic, thruster, hull = (mats["Material_Ceramic"], mats["Material_Thruster"], mats["Material_Hull"])
     radiator = mats["Material_Radiator"]
-    x, z = -6.42, 0.22
-    add_box(f"DriveBed_{side}", (x + 1.15, y, z - 0.08), (0.70, 0.82, 0.48), hull, collection, 0.012)
-    add_box(f"DriveSaddle_{side}", (x + 1.42, y, z + 0.02), (0.20, 0.98, 0.42), armor, collection, 0.008)
-    # Outer well — large enough that the chase camera sees an industrial bed, not a pit.
-    add_open_rect_well(f"Pulse_{side}", x - 0.18, y, z - 0.42, z + 0.68, 0.78, 0.52, 0.16, mats, collection, thruster)
-    # Stepped refractory WALLS (open frames, never a lid slab).
-    add_box(f"PulseStep1P_{side}", (x - 0.18, y - 0.40, z + 0.12), (0.68, 0.07, 0.12), ceramic, collection, 0.003)
-    add_box(f"PulseStep1S_{side}", (x - 0.18, y + 0.40, z + 0.12), (0.68, 0.07, 0.12), ceramic, collection, 0.003)
-    add_box(f"PulseStep1F_{side}", (x + 0.42, y, z + 0.12), (0.08, 0.38, 0.12), ceramic, collection, 0.003)
-    add_box(f"PulseStep1A_{side}", (x - 0.78, y, z + 0.12), (0.08, 0.38, 0.12), ceramic, collection, 0.003)
-    add_box(f"PulseStep2P_{side}", (x - 0.18, y - 0.28, z + 0.28), (0.50, 0.06, 0.10), armor, collection, 0.003)
-    add_box(f"PulseStep2S_{side}", (x - 0.18, y + 0.28, z + 0.28), (0.50, 0.06, 0.10), armor, collection, 0.003)
-    add_box(f"PulseCollarP_{side}", (x - 0.18, y - 0.56, z + 0.74), (0.86, 0.07, 0.055), armor, collection, 0.004)
-    add_box(f"PulseCollarS_{side}", (x - 0.18, y + 0.56, z + 0.74), (0.86, 0.07, 0.055), armor, collection, 0.004)
-    add_box(f"PulseCollarF_{side}", (x + 0.56, y, z + 0.74), (0.08, 0.52, 0.055), armor, collection, 0.004)
-    add_box(f"PulseCollarA_{side}", (x - 0.92, y, z + 0.74), (0.08, 0.52, 0.055), armor, collection, 0.004)
-    add_box(f"PulseHeatSkirt_{side}", (x - 0.78, y, z + 0.52), (0.22, 0.50, 0.04), radiator, collection, 0.002)
-    # Broad alternating plates with visible gaps — the dorsal bed read.
-    n_plates = 5 if lod == 0 else (4 if lod == 1 else 3)
-    plate_pitch = 0.22
+    x, z = -6.48, 0.28
+    add_box(f"DriveBed_{side}", (x + 1.22, y, z - 0.06), (0.74, 0.92, 0.50), hull, collection, 0.012)
+    add_box(f"DriveSaddle_{side}", (x + 1.50, y, z + 0.06), (0.22, 1.08, 0.44), armor, collection, 0.008)
+    add_open_rect_well(f"Pulse_{side}", x - 0.12, y, z - 0.36, z + 0.80, 0.92, 0.64, 0.18, mats, collection, thruster)
+    add_box(f"PulseCollarP_{side}", (x - 0.12, y - 0.72, z + 0.84), (1.00, 0.09, 0.07), armor, collection, 0.004)
+    add_box(f"PulseCollarS_{side}", (x - 0.12, y + 0.72, z + 0.84), (1.00, 0.09, 0.07), armor, collection, 0.004)
+    add_box(f"PulseCollarF_{side}", (x + 0.74, y, z + 0.84), (0.10, 0.66, 0.07), armor, collection, 0.004)
+    add_box(f"PulseCollarA_{side}", (x - 0.98, y, z + 0.84), (0.10, 0.66, 0.07), armor, collection, 0.004)
+    # Horizontal plates with a real center gap. Both beds face +Z so dorsal light hits the pair.
+    n_plates = 4 if lod == 0 else (3 if lod == 1 else 2)
     for i in range(n_plates):
-        px = x - 0.62 + i * plate_pitch
-        add_box(
-            f"ImpulsePlate_{side}_{i}",
-            (px, y, z + 0.18),
-            (0.07, 0.36 - i * 0.012, 0.28),
-            ceramic if i % 2 == 0 else armor,
-            collection,
-            0.002,
-        )
-    add_box(f"ChamberVaneP_{side}", (x - 0.18, y - 0.18, z + 0.20), (0.58, 0.04, 0.22), mech, collection, 0.002)
-    add_box(f"ChamberVaneS_{side}", (x - 0.18, y + 0.18, z + 0.20), (0.58, 0.04, 0.22), mech, collection, 0.002)
-    add_box(f"CollarFrame_{side}", (x - 0.88, y, z + 0.08), (0.06, 0.56, 0.38), ceramic, collection, 0.003)
+        pz = z + 0.72 - i * 0.14
+        add_box(f"ImpulsePlateP_{side}_{i}", (x - 0.12, y - 0.24, pz), (0.70, 0.22, 0.040), ceramic if i % 2 == 0 else armor, collection, 0.002)
+        add_box(f"ImpulsePlateS_{side}_{i}", (x - 0.12, y + 0.24, pz), (0.70, 0.22, 0.040), ceramic if i % 2 == 0 else armor, collection, 0.002)
+    add_box(f"PulseGap_{side}", (x - 0.12, y, z + 0.48), (0.62, 0.08, 0.28), thruster, collection, 0.003)
+    add_box(f"ChamberFrame_{side}", (x - 0.12, y, z + 0.18), (0.78, 0.52, 0.06), mech, collection, 0.003)
+    add_box(f"CollarFrame_{side}", (x - 0.92, y, z + 0.12), (0.07, 0.58, 0.40), ceramic, collection, 0.003)
     if lod <= 1:
-        add_box(f"DriveClampP_{side}", (x + 0.42, y - 0.82, z + 0.12), (0.48, 0.09, 0.14), mech, collection, 0.003)
-        add_box(f"DriveClampS_{side}", (x + 0.42, y + 0.82, z + 0.12), (0.48, 0.09, 0.14), mech, collection, 0.003)
-        add_folded_sheet(
-            f"ChamberVaneA_{side}",
-            (x - 0.62, y - 0.22, z + 0.12),
-            (x + 0.12, y - 0.22, z + 0.12),
-            (x + 0.12, y + 0.22, z + 0.12),
-            (x - 0.62, y + 0.22, z + 0.12),
-            0.025,
-            mech,
-            collection,
-            0.002,
-        )
-        add_box(f"AftTransition_{side}", (x + 0.95, y + (0.62 if y > 0 else -0.62), z + 0.26), (0.42, 0.20, 0.10), hull, collection, 0.005)
+        add_box(f"DriveClampP_{side}", (x + 0.48, y - 0.90, z + 0.16), (0.50, 0.10, 0.16), mech, collection, 0.003)
+        add_box(f"DriveClampS_{side}", (x + 0.48, y + 0.90, z + 0.16), (0.50, 0.10, 0.16), mech, collection, 0.003)
+        add_box(f"AftTransition_{side}", (x + 0.98, y + (0.68 if y > 0 else -0.68), z + 0.28), (0.44, 0.22, 0.12), hull, collection, 0.005)
+        add_box(f"PulseHeatSkirt_{side}", (x - 0.72, y, z + 0.58), (0.24, 0.52, 0.04), radiator, collection, 0.002)
     if lod == 0:
-        add_box(f"HeatSkirt_{side}", (x - 0.28, y, z - 0.48), (0.48, 0.62, 0.04), radiator, collection, 0.003)
+        add_box(f"HeatSkirt_{side}", (x - 0.28, y, z - 0.46), (0.50, 0.64, 0.04), radiator, collection, 0.003)
 
 
 def add_cutter_arm(tag, root, out_sign, along, head, lod, mats, collection, repair=False):
-    """Heavy compact manipulator. Bigger tool silhouettes and turntable wells; booms stay short."""
+    """Compact heavy manipulator. One chunky tool beat per station, facing the default chase."""
     armor, mech = mats["Material_Armor"], mats["Material_Mechanical"]
-    ceramic, warning = mats["Material_Ceramic"], mats["Material_Warning"]
+    ceramic, warning, thruster = mats["Material_Ceramic"], mats["Material_Warning"], mats["Material_Thruster"]
     x, y, z = root
-    add_cylinder(f"Turntable_{tag}", (x, y, z - 0.04), 0.92, 0.24, armor, collection, 18, 0.010, (0, 0, 0))
-    add_cylinder(f"TurntableRing_{tag}", (x, y, z + 0.12), 0.76, 0.08, mech, collection, 14, 0.003, (0, 0, 0))
-    add_cylinder(f"TurntablePin_{tag}", (x, y, z + 0.22), 0.22, 0.20, mech, collection, 10, 0.003, (0, 0, 0))
-    add_box(f"WellLip_{tag}", (x, y, z + 0.28), (0.55, 0.55, 0.04), armor, collection, 0.004)
-    add_box(f"YokeBase_{tag}", (x + 0.06 * along, y + 0.02 * out_sign, z + 0.34), (0.64, 0.50, 0.18), armor, collection, 0.008)
-    add_box(f"YokeGusset_{tag}", (x - 0.12 * along, y + 0.02 * out_sign, z + 0.18), (0.24, 0.32, 0.16), armor, collection, 0.005)
+    add_cylinder(f"Turntable_{tag}", (x, y, z - 0.04), 0.98, 0.26, armor, collection, 18, 0.010, (0, 0, 0))
+    add_cylinder(f"WellFloor_{tag}", (x, y, z - 0.12), 0.86, 0.08, thruster, collection, 16, 0.003, (0, 0, 0))
+    add_cylinder(f"TurntableRing_{tag}", (x, y, z + 0.14), 0.80, 0.10, mech, collection, 14, 0.004, (0, 0, 0))
+    add_cylinder(f"TurntablePin_{tag}", (x, y, z + 0.24), 0.24, 0.18, mech, collection, 10, 0.003, (0, 0, 0))
+    add_box(f"WellLip_{tag}", (x, y, z + 0.30), (0.62, 0.62, 0.05), armor, collection, 0.004)
+    add_box(f"YokeBase_{tag}", (x + 0.06 * along, y + 0.02 * out_sign, z + 0.36), (0.66, 0.52, 0.18), armor, collection, 0.008)
+    add_box(f"YokeGusset_{tag}", (x - 0.12 * along, y + 0.02 * out_sign, z + 0.18), (0.24, 0.34, 0.16), armor, collection, 0.005)
     add_box(f"YokeCheekA_{tag}", (x + 0.12 * along, y - 0.24 * out_sign, z + 0.56), (0.36, 0.13, 0.30), mech, collection, 0.005)
     add_box(f"YokeCheekB_{tag}", (x + 0.12 * along, y + 0.22 * out_sign, z + 0.56), (0.36, 0.13, 0.30), mech, collection, 0.005)
     add_cylinder(f"YokePin_{tag}", (x + 0.14 * along, y + 0.02 * out_sign, z + 0.56), 0.09, 0.52, mech, collection, 8, 0.002, (math.pi / 2, 0, 0))
@@ -776,36 +743,28 @@ def add_cutter_arm(tag, root, out_sign, along, head, lod, mats, collection, repa
         add_hydraulic(f"Piston_{tag}", (x + 0.10 * along, y + 0.04 * out_sign, z + 0.12), (p1[0], p1[1], p1[2] - 0.10), mats, collection)
     else:
         add_oriented_box(f"Boom2_{tag}", p1, p2, (0.30, 0.24), mech, collection, 0.005)
-    # Broader heads, biased inward from the boom tip so jaws/guards grow toward the hull.
-    hx, hy, hz = p2[0] + 0.26 * along, p2[1] + 0.04 * out_sign, p2[2] - 0.02
-    add_box(f"HeadBlock_{tag}", (hx, hy, hz), (0.46, 0.42, 0.30), armor, collection, 0.008)
-    add_box(f"HeadCollar_{tag}", (hx - 0.12 * along, hy, hz), (0.12, 0.40, 0.26), mech, collection, 0.003)
+    hx, hy, hz = p2[0] + 0.18 * along, p2[1] + 0.02 * out_sign, p2[2]
+    add_box(f"HeadBlock_{tag}", (hx, hy, hz), (0.42, 0.38, 0.28), armor, collection, 0.008)
     if head == "saw":
-        add_cylinder(f"SawDisk_{tag}", (hx + 0.20 * along, hy, hz), 0.60, 0.10, ceramic, collection, 16, 0.002, (0, math.pi / 2, 0))
-        add_box(f"SawGuard_{tag}", (hx + 0.04 * along, hy - 0.02 * out_sign, hz + 0.32), (0.42, 0.50, 0.08), armor, collection, 0.003)
-        add_box(f"SawHub_{tag}", (hx + 0.12 * along, hy, hz), (0.10, 0.14, 0.12), mech, collection, 0.002)
+        add_cylinder(f"SawDisk_{tag}", (hx + 0.06 * along, hy, hz), 0.70, 0.14, ceramic, collection, 16, 0.002, (math.pi / 2, 0, 0))
+        add_box(f"SawGuard_{tag}", (hx, hy - 0.06 * out_sign, hz + 0.38), (0.52, 0.40, 0.12), armor, collection, 0.004)
+        add_cylinder(f"SawHub_{tag}", (hx, hy, hz), 0.16, 0.20, mech, collection, 10, 0.002, (math.pi / 2, 0, 0))
     elif head == "crusher":
-        add_box(f"JawA_{tag}", (hx + 0.28 * along, hy - 0.20, hz), (0.40, 0.16, 0.24), armor, collection, 0.004)
-        add_box(f"JawB_{tag}", (hx + 0.28 * along, hy + 0.20, hz), (0.40, 0.16, 0.24), armor, collection, 0.004)
-        add_cylinder(f"JawPin_{tag}", (hx + 0.10 * along, hy, hz), 0.08, 0.46, mech, collection, 8, 0.002, (math.pi / 2, 0, 0))
-        add_box(f"JawToothA_{tag}", (hx + 0.52 * along, hy - 0.20, hz), (0.10, 0.10, 0.10), ceramic, collection, 0.002)
-        add_box(f"JawToothB_{tag}", (hx + 0.52 * along, hy + 0.20, hz), (0.10, 0.10, 0.10), ceramic, collection, 0.002)
+        add_box(f"JawUpper_{tag}", (hx + 0.10 * along, hy, hz + 0.24), (0.50, 0.34, 0.14), armor, collection, 0.005)
+        add_box(f"JawLower_{tag}", (hx + 0.10 * along, hy, hz - 0.24), (0.50, 0.34, 0.14), armor, collection, 0.005)
+        add_cylinder(f"JawPin_{tag}", (hx - 0.08 * along, hy, hz), 0.12, 0.52, mech, collection, 8, 0.002, (math.pi / 2, 0, 0))
+        add_box(f"JawCheek_{tag}", (hx - 0.18 * along, hy, hz), (0.14, 0.30, 0.32), armor, collection, 0.004)
     elif head == "drill":
-        add_cylinder(f"DrillCollar_{tag}", (hx + 0.10 * along, hy, hz), 0.24, 0.22, armor, collection, 12, 0.003)
-        add_cylinder(f"DrillBit_{tag}", (hx + 0.42 * along, hy, hz), 0.13, 0.58, ceramic, collection, 10, 0.003)
-        add_box(f"DrillFlute_{tag}", (hx + 0.42 * along, hy, hz + 0.10), (0.26, 0.05, 0.05), mech, collection, 0.002)
+        add_cylinder(f"DrillCollar_{tag}", (hx, hy, hz), 0.34, 0.30, armor, collection, 12, 0.004)
+        add_cone(f"DrillCone_{tag}", (hx + 0.40 * along, hy, hz), 0.30, 0.045, 0.70, ceramic, collection, 12, 0.003)
+        add_cylinder(f"DrillHub_{tag}", (hx - 0.10 * along, hy, hz), 0.22, 0.22, mech, collection, 10, 0.003)
     else:
-        add_box(f"GrabA_{tag}", (hx + 0.36 * along, hy - 0.22, hz), (0.40, 0.10, 0.10), mech, collection, 0.003)
-        add_box(f"GrabB_{tag}", (hx + 0.36 * along, hy + 0.22, hz), (0.40, 0.10, 0.10), mech, collection, 0.003)
-        add_box(f"GrabC_{tag}", (hx + 0.36 * along, hy, hz - 0.16), (0.40, 0.10, 0.10), mech, collection, 0.003)
-        add_cylinder(f"GrabHub_{tag}", (hx + 0.10 * along, hy, hz), 0.20, 0.22, armor, collection, 12, 0.003, (math.pi / 2, 0, 0))
+        add_cylinder(f"GrabHub_{tag}", (hx, hy, hz), 0.40, 0.30, armor, collection, 14, 0.004, (math.pi / 2, 0, 0))
+        add_box(f"GrabPadA_{tag}", (hx + 0.18 * along, hy, hz + 0.30), (0.30, 0.24, 0.10), mech, collection, 0.003)
+        add_box(f"GrabPadB_{tag}", (hx + 0.18 * along, hy, hz - 0.30), (0.30, 0.24, 0.10), mech, collection, 0.003)
+        add_box(f"GrabPadC_{tag}", (hx + 0.34 * along, hy, hz), (0.16, 0.24, 0.24), mech, collection, 0.003)
     if repair:
         add_box(f"ArmRepair_{tag}", ((p0[0] + p1[0]) * 0.5, (p0[1] + p1[1]) * 0.5, p1[2] + 0.14), (0.26, 0.10, 0.03), warning, collection, 0.002)
-    if lod == 0:
-        hose_mid = ((p0[0] + p1[0]) * 0.5, (p0[1] + p1[1]) * 0.5, p1[2] + 0.18)
-        add_curve_hose(f"ArmHose_{tag}", [p0, hose_mid, p1, p2], mech, collection, 0.018)
-        add_box(f"HoseGuard_{tag}", hose_mid, (0.18, 0.08, 0.05), armor, collection, 0.002)
-        add_box(f"ServiceRun_{tag}", ((p0[0] + p1[0]) * 0.5, (p0[1] + p1[1]) * 0.5 + 0.10 * out_sign, (p0[2] + p1[2]) * 0.5), (0.14, 0.05, 0.05), armor, collection, 0.002)
 
 
 def add_winch_cluster(mats, collection):
@@ -837,29 +796,38 @@ def build_lod(lod, mats):
 
     # Four structural pieces around an OPEN hopper. No centerline dorsal wrap, no solid hold lid.
     # Hopper inner opening is x=-2.20..+1.96, y=-1.12..+1.12 — keep all connecting decks outside that rectangle.
-    spon_y, spon_hy, deck_z = 2.58, 0.54, 0.72
+    spon_y, spon_hy, deck_z = 2.62, 0.58, 0.72
     spon_p = add_subdivided_box("Sponson_P", (0.15, -spon_y, 0.02), (4.55, spon_hy, 0.78), hull, collection, cuts=3, bevel=0.018)
     spon_s = add_subdivided_box("Sponson_S", (0.15, spon_y, 0.02), (4.55, spon_hy, 0.78), hull, collection, cuts=3, bevel=0.018)
-    boolean_cut_cylinder(spon_p, "ArmWell_ForeP", (2.05, -spon_y, 0.72), 0.88, 0.55, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_p, "ArmWell_AftP", (-1.35, -spon_y, 0.72), 0.88, 0.55, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_s, "ArmWell_ForeS", (2.05, spon_y, 0.72), 0.88, 0.55, (0, 0, 0), 16)
-    boolean_cut_cylinder(spon_s, "ArmWell_AftS", (-1.35, spon_y, 0.72), 0.88, 0.55, (0, 0, 0), 16)
-    boolean_cut_box(spon_p, "SponCorner_ForeP", (4.40, -spon_y - 0.42, 0.42), (0.50, 0.28, 0.48))
-    boolean_cut_box(spon_p, "SponCorner_AftP", (-4.10, -spon_y - 0.42, 0.42), (0.46, 0.28, 0.48))
-    boolean_cut_box(spon_s, "SponCorner_ForeS", (4.40, spon_y + 0.42, 0.42), (0.50, 0.28, 0.48))
-    boolean_cut_box(spon_s, "SponCorner_AftS", (-4.10, spon_y + 0.42, 0.42), (0.46, 0.28, 0.48))
-    boolean_cut_box(spon_p, "Trench_P", (0.20, -spon_y + 0.06, 0.88), (3.35, 0.18, 0.22))
-    boolean_cut_box(spon_s, "Trench_S", (0.20, spon_y - 0.06, 0.88), (3.35, 0.18, 0.22))
+    boolean_cut_cylinder(spon_p, "ArmWell_ForeP", (2.05, -spon_y, 0.72), 0.92, 0.58, (0, 0, 0), 16)
+    boolean_cut_cylinder(spon_p, "ArmWell_AftP", (-1.35, -spon_y, 0.72), 0.92, 0.58, (0, 0, 0), 16)
+    boolean_cut_cylinder(spon_s, "ArmWell_ForeS", (2.05, spon_y, 0.72), 0.92, 0.58, (0, 0, 0), 16)
+    boolean_cut_cylinder(spon_s, "ArmWell_AftS", (-1.35, spon_y, 0.72), 0.92, 0.58, (0, 0, 0), 16)
+    boolean_cut_box(spon_p, "SponCorner_ForeP", (4.40, -spon_y - 0.46, 0.38), (0.55, 0.32, 0.52))
+    boolean_cut_box(spon_p, "SponStep_ForeP", (4.58, -spon_y - 0.30, 0.78), (0.40, 0.24, 0.30))
+    boolean_cut_box(spon_p, "SponCorner_AftP", (-4.10, -spon_y - 0.46, 0.38), (0.50, 0.32, 0.52))
+    boolean_cut_box(spon_p, "SponStep_AftP", (-4.28, -spon_y - 0.30, 0.78), (0.36, 0.24, 0.30))
+    boolean_cut_box(spon_s, "SponCorner_ForeS", (4.40, spon_y + 0.46, 0.38), (0.55, 0.32, 0.52))
+    boolean_cut_box(spon_s, "SponStep_ForeS", (4.58, spon_y + 0.30, 0.78), (0.40, 0.24, 0.30))
+    boolean_cut_box(spon_s, "SponCorner_AftS", (-4.10, spon_y + 0.46, 0.38), (0.50, 0.32, 0.52))
+    boolean_cut_box(spon_s, "SponStep_AftS", (-4.28, spon_y + 0.30, 0.78), (0.36, 0.24, 0.30))
+    boolean_cut_box(spon_p, "Trench_P", (0.20, -spon_y + 0.08, 0.96), (3.50, 0.26, 0.40))
+    boolean_cut_box(spon_p, "TrenchX_P", (0.20, -spon_y, 0.92), (0.32, 0.46, 0.34))
+    boolean_cut_box(spon_s, "Trench_S", (0.20, spon_y - 0.08, 0.96), (3.50, 0.26, 0.40))
+    boolean_cut_box(spon_s, "TrenchX_S", (0.20, spon_y, 0.92), (0.32, 0.46, 0.34))
 
-    fore = add_subdivided_box("Pressure_Fore", (5.15, 0.0, 0.16), (2.95, 1.62, 1.12), hull, collection, cuts=3, bevel=0.020)
-    boolean_cut_box(fore, "CabWell", (6.40, 0.0, 1.42), (1.40, 1.22, 0.72))
-    boolean_cut_box(fore, "ForeCornerP", (7.85, -1.42, 0.50), (0.36, 0.26, 0.42))
-    boolean_cut_box(fore, "ForeCornerS", (7.85, 1.42, 0.50), (0.36, 0.26, 0.42))
-    aft = add_subdivided_box("Pressure_Aft", (-5.35, 0.0, 0.04), (2.85, 1.55, 0.86), hull, collection, cuts=3, bevel=0.020)
-    boolean_cut_box(aft, "PulseCut_P", (-6.55, -1.48, 0.62), (0.95, 0.62, 0.78))
-    boolean_cut_box(aft, "PulseCut_S", (-6.55, 1.48, 0.62), (0.95, 0.62, 0.78))
-    boolean_cut_box(aft, "AftCornerP", (-7.95, -1.28, 0.42), (0.34, 0.22, 0.40))
-    boolean_cut_box(aft, "AftCornerS", (-7.95, 1.28, 0.42), (0.34, 0.22, 0.40))
+    fore = add_subdivided_box("Pressure_Fore", (5.15, 0.0, 0.16), (2.95, 1.72, 1.12), hull, collection, cuts=3, bevel=0.020)
+    boolean_cut_box(fore, "CabWell", (6.35, 0.0, 1.55), (1.55, 1.85, 0.88))
+    boolean_cut_box(fore, "ForeCornerP", (7.85, -1.52, 0.50), (0.40, 0.30, 0.46))
+    boolean_cut_box(fore, "ForeCornerS", (7.85, 1.52, 0.50), (0.40, 0.30, 0.46))
+    boolean_cut_box(fore, "ForeStepP", (7.55, -1.20, 0.92), (0.32, 0.22, 0.28))
+    boolean_cut_box(fore, "ForeStepS", (7.55, 1.20, 0.92), (0.32, 0.22, 0.28))
+    aft = add_subdivided_box("Pressure_Aft", (-5.35, 0.0, 0.04), (2.85, 1.62, 0.86), hull, collection, cuts=3, bevel=0.020)
+    boolean_cut_box(aft, "PulseCut_P", (-6.60, -1.48, 0.88), (1.18, 0.80, 0.95))
+    boolean_cut_box(aft, "PulseCut_S", (-6.60, 1.48, 0.88), (1.18, 0.80, 0.95))
+    boolean_cut_box(aft, "AftTrench", (-5.35, 0.0, 0.82), (1.85, 0.24, 0.32))
+    boolean_cut_box(aft, "AftCornerP", (-7.95, -1.35, 0.42), (0.36, 0.26, 0.42))
+    boolean_cut_box(aft, "AftCornerS", (-7.95, 1.35, 0.42), (0.36, 0.26, 0.42))
     # Keel under the hopper only — connects port/starboard below the floor, never a dorsal lid.
     add_subdivided_box("Keel_HopperSpan", (-0.12, 0.0, -1.12), (2.35, 0.72, 0.12), hull, collection, cuts=2, bevel=0.010)
     print(f"lod{lod} perimeter verts: sponP={len(spon_p.data.vertices)} fore={len(fore.data.vertices)} aft={len(aft.data.vertices)}")
@@ -875,34 +843,42 @@ def build_lod(lod, mats):
     add_folded_sheet("StepDeck_AftP", (-2.20, -1.65, 0.96), (-2.95, -1.65, 0.80), (-2.95, -0.55, 0.80), (-2.20, -0.55, 0.96), 0.055, armor, collection, 0.003)
     add_folded_sheet("StepDeck_AftS", (-2.20, 0.55, 0.96), (-2.95, 0.55, 0.80), (-2.95, 1.65, 0.80), (-2.20, 1.65, 0.96), 0.055, armor, collection, 0.003)
 
-    add_box("TrenchFloor_P", (0.20, -spon_y + 0.06, 0.68), (3.25, 0.14, 0.04), mech, collection, 0.003)
-    add_box("TrenchFloor_S", (0.20, spon_y - 0.06, 0.68), (3.25, 0.14, 0.04), mech, collection, 0.003)
-    add_box("TrenchRail_P", (0.20, -spon_y + 0.22, 0.82), (3.15, 0.04, 0.05), armor, collection, 0.002)
-    add_box("TrenchRail_S", (0.20, spon_y - 0.22, 0.82), (3.15, 0.04, 0.05), armor, collection, 0.002)
+    add_box("TrenchFloor_P", (0.20, -spon_y + 0.08, 0.58), (3.40, 0.18, 0.05), mech, collection, 0.003)
+    add_box("TrenchFloor_S", (0.20, spon_y - 0.08, 0.58), (3.40, 0.18, 0.05), mech, collection, 0.003)
+    add_box("TrenchRail_P", (0.20, -spon_y + 0.28, 0.84), (3.30, 0.05, 0.08), armor, collection, 0.002)
+    add_box("TrenchRail_S", (0.20, spon_y - 0.28, 0.84), (3.30, 0.05, 0.08), armor, collection, 0.002)
+    add_box("AftTrenchFloor", (-5.35, 0.0, 0.52), (1.75, 0.16, 0.05), mech, collection, 0.003)
+    add_box("AftTrenchRailP", (-5.35, -0.22, 0.72), (1.65, 0.04, 0.06), armor, collection, 0.002)
+    add_box("AftTrenchRailS", (-5.35, 0.22, 0.72), (1.65, 0.04, 0.06), armor, collection, 0.002)
 
     n_plates = 4 if lod == 0 else (3 if lod == 1 else 2)
     for i in range(n_plates):
         px = -2.65 + i * 1.70
-        lift = 0.055 if i % 2 else 0.0
-        add_overlap_plate(f"SponPlate_P_{i}", (px, -spon_y, deck_z + 0.16 + lift), (0.92, 0.46, 0.07), hull if i % 2 else armor, collection, 0.006)
-        add_overlap_plate(f"SponPlate_S_{i}", (px, spon_y, deck_z + 0.16 + lift), (0.92, 0.46, 0.07), hull if i % 2 else armor, collection, 0.006)
-    add_overlap_plate("ForePlate_P", (4.05, -1.22, 1.12), (0.95, 0.42, 0.07), armor, collection, 0.005)
-    add_overlap_plate("ForePlate_S", (4.05, 1.22, 1.12), (0.95, 0.42, 0.07), armor, collection, 0.005)
-    add_overlap_plate("ForePlate_C", (4.55, 0.0, 1.18), (0.62, 0.55, 0.06), hull, collection, 0.005)
-    add_overlap_plate("AftPlate_P", (-3.65, -1.35, 1.02), (0.88, 0.40, 0.07), armor, collection, 0.005)
-    add_overlap_plate("AftPlate_S", (-3.65, 1.35, 1.02), (0.88, 0.40, 0.07), armor, collection, 0.005)
-    add_box("LoadRib_P", (0.10, -1.78, 0.68), (3.15, 0.10, 0.32), mech, collection, 0.005)
-    add_box("LoadRib_S", (0.10, 1.78, 0.68), (3.15, 0.10, 0.32), mech, collection, 0.005)
-    add_box("LoadRib_ForeP", (4.35, -0.72, 0.92), (1.05, 0.08, 0.22), mech, collection, 0.004)
-    add_box("LoadRib_ForeS", (4.35, 0.72, 0.92), (1.05, 0.08, 0.22), mech, collection, 0.004)
-    add_box("LoadRib_Aft", (-4.55, 0.0, 0.72), (1.15, 0.10, 0.20), mech, collection, 0.004)
-    add_box("PulseSpine", (-5.15, 0.0, 0.88), (1.35, 0.14, 0.12), armor, collection, 0.005)
-    add_box("Stringer_P", (0.15, -spon_y + 0.22, deck_z + 0.24), (3.65, 0.07, 0.07), mech, collection, 0.003)
-    add_box("Stringer_S", (0.15, spon_y - 0.22, deck_z + 0.24), (3.65, 0.07, 0.07), mech, collection, 0.003)
-    add_box("Chine_P", (0.20, -2.95, -0.48), (3.85, 0.09, 0.18), armor, collection, 0.005)
-    add_box("Chine_S", (0.20, 2.95, -0.48), (3.85, 0.09, 0.18), armor, collection, 0.005)
-    add_box("ShoulderCap_P", (0.15, -spon_y, 0.90), (1.65, 0.36, 0.08), armor, collection, 0.005)
-    add_box("ShoulderCap_S", (0.15, spon_y, 0.90), (1.65, 0.36, 0.08), armor, collection, 0.005)
+        lift = 0.12 if i % 2 else 0.0
+        add_overlap_plate(f"SponPlate_P_{i}", (px, -spon_y, deck_z + 0.22 + lift), (0.95, 0.48, 0.10), hull if i % 2 else armor, collection, 0.007)
+        add_overlap_plate(f"SponPlate_S_{i}", (px, spon_y, deck_z + 0.22 + lift), (0.95, 0.48, 0.10), hull if i % 2 else armor, collection, 0.007)
+    add_overlap_plate("ForePlate_P", (4.05, -1.35, 1.18), (0.98, 0.46, 0.10), armor, collection, 0.006)
+    add_overlap_plate("ForePlate_S", (4.05, 1.35, 1.18), (0.98, 0.46, 0.10), armor, collection, 0.006)
+    add_overlap_plate("ForePlate_C", (4.55, 0.0, 1.28), (0.68, 0.58, 0.09), hull, collection, 0.006)
+    add_overlap_plate("AftPlate_P", (-3.65, -1.42, 1.08), (0.92, 0.44, 0.10), armor, collection, 0.006)
+    add_overlap_plate("AftPlate_S", (-3.65, 1.42, 1.08), (0.92, 0.44, 0.10), armor, collection, 0.006)
+    add_box("LoadRib_P", (0.10, -1.72, 0.72), (3.25, 0.12, 0.42), mech, collection, 0.006)
+    add_box("LoadRib_S", (0.10, 1.72, 0.72), (3.25, 0.12, 0.42), mech, collection, 0.006)
+    add_box("LoadRib_P2", (0.10, -2.18, 0.58), (2.85, 0.08, 0.28), armor, collection, 0.005)
+    add_box("LoadRib_S2", (0.10, 2.18, 0.58), (2.85, 0.08, 0.28), armor, collection, 0.005)
+    add_box("LoadRib_ForeP", (4.35, -0.78, 0.98), (1.10, 0.10, 0.28), mech, collection, 0.005)
+    add_box("LoadRib_ForeS", (4.35, 0.78, 0.98), (1.10, 0.10, 0.28), mech, collection, 0.005)
+    add_box("LoadRib_Aft", (-4.55, 0.0, 0.78), (1.20, 0.12, 0.26), mech, collection, 0.005)
+    add_box("PulseSpine", (-5.15, 0.0, 0.92), (1.40, 0.16, 0.14), armor, collection, 0.005)
+    add_box("Stringer_P", (0.15, -spon_y + 0.26, deck_z + 0.32), (3.70, 0.08, 0.09), mech, collection, 0.003)
+    add_box("Stringer_S", (0.15, spon_y - 0.26, deck_z + 0.32), (3.70, 0.08, 0.09), mech, collection, 0.003)
+    add_box("Chine_P", (0.20, -3.12, -0.48), (3.90, 0.10, 0.18), armor, collection, 0.005)
+    add_box("Chine_S", (0.20, 3.12, -0.48), (3.90, 0.10, 0.18), armor, collection, 0.005)
+    add_box("ShoulderCap_P", (0.15, -spon_y, 0.98), (1.70, 0.38, 0.10), armor, collection, 0.005)
+    add_box("ShoulderCap_S", (0.15, spon_y, 0.98), (1.70, 0.38, 0.10), armor, collection, 0.005)
+    add_box("BowStep", (6.90, 0.0, 0.48), (1.05, 1.28, 0.16), armor, collection, 0.006)
+    add_box("ForeGunwaleP", (4.20, -1.48, 1.08), (0.92, 0.12, 0.30), armor, collection, 0.005)
+    add_box("ForeGunwaleS", (4.20, 1.48, 1.08), (0.92, 0.12, 0.30), armor, collection, 0.005)
 
     add_processing_hopper(lod, mats, collection)
     add_command_cage(lod, mats, collection)
