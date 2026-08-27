@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_derrick",
+  "root": "SF_WORKS_DERRICK_V1",
+  "packet": "PQ-131.05",
+  "cycle": 1,
+  "currentState": "design_candidate",
+  "candidateHash": "DA4DC92FEFFE3A63642E790411AEAD0A96ECB175A5EB881CB016FE409D191372",
+  "forwardAxis": "+X",
+  "upAxisBlender": "+Z",
+  "upAxisGltf": "+Y",
+  "hooks": [
+    "drum_spin",
+    "cable_anchor",
+    "lamp_L",
+    "lamp_R"
+  ],
+  "materials": {
+    "structure": {
+      "rgb": [
+        0.112,
+        0.108,
+        0.1
+      ],
+      "rough": 0.64,
+      "metal": 0.08
+    },
+    "interface": {
+      "rgb": [
+        0.44,
+        0.42,
+        0.38
+      ],
+      "rough": 0.3,
+      "metal": 0.84
+    },
+    "winch": {
+      "rgb": [
+        0.22,
+        0.16,
+        0.11
+      ],
+      "rough": 0.42,
+      "metal": 0.78
+    },
+    "grating": {
+      "rgb": [
+        0.2,
+        0.195,
+        0.18
+      ],
+      "rough": 0.74,
+      "metal": 0.32
+    },
+    "marking": {
+      "rgb": [
+        0.5,
+        0.24,
+        0.07
+      ],
+      "rough": 0.56,
+      "metal": 0.06
+    },
+    "cable": {
+      "rgb": [
+        0.065,
+        0.058,
+        0.048
+      ],
+      "rough": 0.86,
+      "metal": 0.04
+    },
+    "lamp": {
+      "rgb": [
+        0.9,
+        0.8,
+        0.55
+      ],
+      "rough": 0.18,
+      "metal": 0.03
+    }
+  },
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL",
+  "textureSize": 2048,
+  "forbiddenReads": [
+    "safety yellow",
+    "radio tower",
+    "oil pump",
+    "generic truss",
+    "toy crane",
+    "flat arch",
+    "box stack",
+    "glowing bar",
+    "glowing sphere",
+    "chrome",
+    "plastic",
+    "billboard",
+    "halo",
+    "soft card",
+    "generic grid"
+  ],
+  "allSupportedViewZonesClassified": false,
+  "gatesOpen": [
+    "G1",
+    "G2",
+    "G4",
+    "G7"
+  ]
+}
