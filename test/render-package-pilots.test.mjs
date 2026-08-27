@@ -406,6 +406,67 @@ test('production package build rejects runtime asset identity drift', async () =
   );
 });
 
+test('production package build accepts runtime identity on the exact authored root', async () => {
+  const semantic = await derivePilotSemanticManifest({
+    key: 'drifter-production-v1',
+    assetId: 'sf.render.drifter-production-v1',
+    runtimeAssetId: 'SF_DRIFTER_PRODUCTION_V1',
+    kind: 'ship',
+    rootNode: 'DRIFTER_LOD0_ROOT',
+    dynamicNameIncludes: [],
+  }, 'assets/ships/release/parts/wholeships/drifter_production_v1.glb');
+
+  assert.equal(semantic.assetId, 'sf.render.drifter-production-v1');
+  assert.equal(semantic.semanticNodes[0].node, 'DRIFTER_LOD0_ROOT');
+});
+
+test('shipping package binds runtime identity from one exact authored scene root', () => {
+  const assetContract = {
+    assetId: 'SF_SINGLE_AUTHORED_ROOT',
+    contractVersion: 2,
+    slot: 'hull',
+  };
+  const json = {
+    asset: { version: '2.0' },
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{
+      name: 'AUTHORED_ROOT',
+      extras: { spacefaceAsset: assetContract },
+      mesh: 0,
+    }],
+    meshes: [{
+      name: 'AUTHORED_ROOT',
+      primitives: [{ attributes: { POSITION: 0 }, material: 0 }],
+    }],
+    materials: [{ name: 'Material_Hull' }],
+  };
+  const scene = sceneFromGlbJson(json);
+  const sourceUrl = 'assets/ships/release/parts/wholeships/single_authored_root.glb';
+  const table = deriveAuthoredRuntimeTable(scene, {
+    url: sourceUrl,
+    slot: 'hull',
+    assetId: assetContract.assetId,
+  });
+  const entries = [];
+  const appendPlan = (source, parentIndex = -1) => {
+    const planIndex = entries.length;
+    entries.push({ source, parentIndex });
+    for (const child of source.children) appendPlan(child, planIndex);
+  };
+  appendPlan(scene);
+
+  const blueprint = prepareRenderPackageBlueprint({
+    assetId: 'sf.render.single-authored-root',
+    runtimeAssetId: assetContract.assetId,
+    sourceUrl,
+    slot: 'hull',
+  }, { scene, asset: json.asset }, { runtime: table }, { plan: { entries } });
+
+  assert.equal(blueprint.assetId, assetContract.assetId);
+  assert.equal(blueprint.metadata.slot, 'hull');
+});
+
 test('production manifest packages every live whole-ship family and admitted authored place', async () => {
   // Coverage is derived from the release manifest by scripts/generate-render-package-pilots.mjs, so
   // a frozen key list would defeat the point — it could only prove that someone remembered to add an

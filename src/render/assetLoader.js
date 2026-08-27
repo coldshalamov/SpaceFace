@@ -1475,9 +1475,18 @@ function validateRootTransform(scene, errors) {
 }
 
 function readAssetMetadata(gltf, scene, expectedSlot) {
+  // GLTFLoader wraps every default scene in a synthetic Group. Some production whole ships carry
+  // their canonical contract on the single authored root below that wrapper rather than duplicating
+  // it onto glTF asset/scene extras. Only admit this exact, unambiguous shape; scanning arbitrary
+  // descendants could select a nested component contract from a multi-root asset.
+  const authoredRoot = Array.isArray(scene.children) && scene.children.length === 1
+    ? scene.children[0]
+    : null;
   const sources = [
     scene.userData && scene.userData.spacefaceAsset,
     scene.userData && scene.userData.spaceface,
+    authoredRoot && authoredRoot.userData && authoredRoot.userData.spacefaceAsset,
+    authoredRoot && authoredRoot.userData && authoredRoot.userData.spaceface,
     gltf.userData && gltf.userData.spacefaceAsset,
     gltf.asset && gltf.asset.extras && (gltf.asset.extras.spacefaceAsset || gltf.asset.extras.spaceface),
     gltf.asset && gltf.asset.extras,

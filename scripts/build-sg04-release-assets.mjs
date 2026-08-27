@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { meshopt } from '@gltf-transform/functions';
-import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
@@ -16,6 +15,7 @@ import {
   inspectGlbReleaseCompression,
   inspectReleaseAssetPair,
 } from '../src/contracts/assetReleaseValidation.js';
+import { ktx2Serial } from './lib/ktx2SerialTransform.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -172,7 +172,7 @@ for (let index = 0; index < assets.length; index++) {
       && sourceInspection.metrics.ktx2TextureCount === sourceInspection.metrics.textureCount;
     if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
       transforms.push(
-        ktx2({
+        ktx2Serial({
           slots: /^(baseColorTexture|emissiveTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
@@ -182,7 +182,7 @@ for (let index = 0; index < assets.length; index++) {
           isPerceptual: true,
           isSetKTX2SRGBTransferFunc: true,
         }),
-        ktx2({
+        ktx2Serial({
           slots: /^(normalTexture|clearcoatNormalTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
@@ -193,7 +193,7 @@ for (let index = 0; index < assets.length; index++) {
           isPerceptual: false,
           isSetKTX2SRGBTransferFunc: false,
         }),
-        ktx2({
+        ktx2Serial({
           slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture|clearcoatTexture|clearcoatRoughnessTexture|anisotropyTexture|transmissionTexture)$/,
           imageDecoder: decodeImage,
           isUASTC: true,
