@@ -1,26 +1,27 @@
-"""PQ-049.01 Massline express-liner source builder — cycle 32.
+"""PQ-049.01 Massline express-liner source builder — cycle 33.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
 
-Cycle 32 form correction: Cycle 31 still read as a tan egg with hanging
-corridor cards, black hoop tape, a black cockpit bite and stick-mounted
-drive boxes. Rebuild as three mechanically explicit inhabited stations
-inside the same envelope: operations/boarding shoulder, passenger pressure
-course, aft machinery bulkhead. Hat-section rings, integrated corridor
-shells, port boarding cut, rooted drive housings, and maps without
-wood-grain or baked-AO albedo.
+Cycle 33 form correction: Cycle 32 kept the three-station civic body but
+the passenger course still read as a blank rectangular card, hat rings as
+black hoop tape, boarding glass as opaque cards, and drive bores as
+plywood/chrome with shelf baffles. Rebuild the mid-course as a hollow
+manufactured corridor shell with recessed pane bays, true hat-section
+rings, dark-blue dielectric glass over inner volume, and matched dry
+refractory throats. Same envelope. Cylinder UVs on drums/rings/housings.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=32
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=33
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import math
+import re
 import shutil
 import sys
 import time
@@ -60,7 +61,7 @@ from spaceface_chase_camera import (  # noqa: E402
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
 TEX = 1024
-CYCLE = 32
+CYCLE = 33
 PROBE_OCCUPANCY = False
 RENDER_ONLY = False
 for i, tok in enumerate(sys.argv):
@@ -77,8 +78,8 @@ for i, tok in enumerate(sys.argv):
     elif tok in ("--render-only", "--stills-only"):
         RENDER_ONLY = True
 
-# Cycle 32 manufactured envelope. Metres, +X forward.
-# Keep 40.67 x 22.41 x 11.05 m, L/B 1.81. Width from the passenger
+# Cycle 33 manufactured envelope. Metres, +X forward.
+# Keep 40.67 x 22.45 x 10.99 m, L/B 1.81. Width from the passenger
 # station's inhabited equator, not hanging cards or occupancy padding.
 DRIVE_Y = 8.55
 DRIVE_Z = 0.38
@@ -90,7 +91,8 @@ PASS_HW, PASS_HH = 10.48, 4.55
 AFT_HW, AFT_HH = 6.55, 3.75
 MID_HW, MID_HH = PASS_HW, PASS_HH
 CORR_Y = 10.48
-CORR_HW, CORR_HH = 0.58, 1.22
+CORR_HW, CORR_HH = 0.62, 1.38
+PASS_WALL = 0.22
 BELT_OUTER = 11.07
 HAT_FORE_X = 10.20
 HAT_AFT_X = -1.55
@@ -109,12 +111,12 @@ ROLE_RGB = {
     "ceramic": (0.70, 0.68, 0.63),
     "frame": (0.36, 0.38, 0.42),
     "keel": (0.22, 0.23, 0.25),
-    "glass": (0.10, 0.16, 0.22),
+    "glass": (0.035, 0.065, 0.110),
     "primer": (0.40, 0.42, 0.36),
-    "refractory": (0.32, 0.28, 0.24),
+    "refractory": (0.16, 0.145, 0.130),
     "cyan": (0.10, 0.58, 0.62),
     "amber": (0.74, 0.44, 0.12),
-    "throat": (0.16, 0.16, 0.17),
+    "throat": (0.11, 0.11, 0.12),
 }
 
 
@@ -190,16 +192,16 @@ def role_maps(role, rgb, size=TEX, prefix=None):
             gf3 = h01(x // 17, y // 13, 91)
             nx, ny = 0.5, 0.5
             if role == "ceramic":
-                speckle = (gf - 0.5) * 0.025
-                chalk = (gf2 - 0.5) * 0.018
-                r = max(0, min(1, br + speckle + chalk * 0.4))
-                g = max(0, min(1, bg + speckle * 0.8 + chalk * 0.3))
-                b = max(0, min(1, bb + speckle * 0.5 + chalk * 0.2))
-                rough = 0.54 + 0.06 * gf2
+                speckle = (gf - 0.5) * 0.016
+                chalk = (gf3 - 0.5) * 0.010
+                r = max(0, min(1, br + speckle + chalk * 0.3))
+                g = max(0, min(1, bg + speckle * 0.8 + chalk * 0.2))
+                b = max(0, min(1, bb + speckle * 0.5 + chalk * 0.15))
+                rough = 0.56 + 0.04 * gf
                 metal = 0.02
-                ao = 0.96
-                nx = 0.5 + (gf - 0.5) * 0.018
-                ny = 0.5 + (gf3 - 0.5) * 0.016
+                ao = 0.97
+                nx = 0.5 + (gf - 0.5) * 0.010
+                ny = 0.5 + (gf3 - 0.5) * 0.010
             elif role == "frame":
                 machine = abs(math.sin(x * 0.42 + y * 0.03))
                 r = max(0, min(1, br * (0.96 + gf * 0.04) + machine * 0.02))
@@ -231,18 +233,18 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 nx = 0.5 + (0.5 - forge) * 0.07
                 ny = 0.5 + (gf - 0.5) * 0.02
             elif role == "refractory":
-                grain = gf2 * 0.10 + gf * 0.04
-                r = max(0, min(1, br * (0.94 + grain)))
-                g = max(0, min(1, bg * (0.92 + grain * 0.6)))
-                b = max(0, min(1, bb * (0.90 + grain * 0.3)))
-                rough = 0.76 + grain * 0.08
-                metal = 0.03
+                grain = (gf - 0.5) * 0.05 + (h01(x, y, 73) - 0.5) * 0.04
+                r = max(0, min(1, br + grain * 0.35))
+                g = max(0, min(1, bg + grain * 0.22))
+                b = max(0, min(1, bb + grain * 0.12))
+                rough = 0.78 + grain * 0.10
+                metal = 0.02
                 ao = 0.90
-                nx = 0.5 + (gf - 0.5) * 0.05
-                ny = 0.5 + (gf3 - 0.5) * 0.05
+                nx = 0.5 + (gf - 0.5) * 0.035
+                ny = 0.5 + (gf3 - 0.5) * 0.035
             elif role == "glass":
                 r, g, b = br, bg, bb
-                rough, metal, ao = 0.045, 0.0, 0.96
+                rough, metal, ao = 0.035, 0.0, 0.97
                 nx, ny = 0.5, 0.5
             elif role == "cyan":
                 pulse = 0.78 + 0.22 * math.sin(x * 0.04)
@@ -252,15 +254,16 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 r, g, b = br, bg, bb
                 rough, metal, ao = 0.36, 0.04, 0.90
             else:
-                bore = abs(math.sin(u * math.pi))
-                r = max(0, min(1, br * (0.94 + bore * 0.04)))
-                g = max(0, min(1, bg * (0.95 + bore * 0.03)))
-                b = max(0, min(1, bb * (0.96 + bore * 0.02)))
-                rough = 0.34 + (1.0 - bore) * 0.06
-                metal = 0.78
-                ao = 0.88
-                nx = 0.5 + (gf - 0.5) * 0.03
-                ny = 0.5 + (0.5 - bore) * 0.04
+                # Dark oxidized throat rim. Not chrome, not directional wood.
+                grit = (gf - 0.5) * 0.03
+                r = max(0, min(1, br + grit))
+                g = max(0, min(1, bg + grit * 0.8))
+                b = max(0, min(1, bb + grit * 0.6))
+                rough = 0.54 + gf2 * 0.08
+                metal = 0.16
+                ao = 0.90
+                nx = 0.5 + (gf - 0.5) * 0.02
+                ny = 0.5 + (gf3 - 0.5) * 0.02
             albedo.extend((r, g, b, 1.0))
             orm.extend((max(0.12, min(1.0, ao)), max(0.05, min(0.94, rough)), max(0.0, min(1.0, metal)), 1.0))
             nrm.extend((max(0.05, min(0.95, nx)), max(0.05, min(0.95, ny)), 1.0, 1.0))
@@ -321,7 +324,7 @@ def create_materials():
         "Material_Hull": ((0.70, 0.68, 0.63), "ceramic", 0.0, None, 0.0, "ceramic"),
         "Material_Armor": ((0.36, 0.38, 0.42), "frame", 0.05, None, 0.0, "frame"),
         "Material_Mechanical": ((0.22, 0.23, 0.25), "keel", 0.0, None, 0.0, "keel"),
-        "Material_Canopy": ((0.10, 0.16, 0.22), "glass", 0.18, None, 0.62, "glass"),
+        "Material_Canopy": ((0.035, 0.065, 0.110), "glass", 0.04, None, 0.78, "glass"),
         "Material_Radiator": ((0.40, 0.42, 0.36), "primer", 0.0, None, 0.0, "primer"),
         "Material_Ceramic": ((0.32, 0.28, 0.24), "refractory", 0.0, None, 0.0, "refractory"),
         "Material_Accent": ((0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.18), 0.0, "cyan"),
@@ -342,15 +345,17 @@ def create_materials():
         material["spacefaceRole"] = role
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.62
+                bsdf.inputs["Transmission Weight"].default_value = 0.78
             if "Alpha" in bsdf.inputs:
-                bsdf.inputs["Alpha"].default_value = 1.0
+                bsdf.inputs["Alpha"].default_value = 0.88
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Specular IOR Level" in bsdf.inputs:
-                bsdf.inputs["Specular IOR Level"].default_value = 0.50
+                bsdf.inputs["Specular IOR Level"].default_value = 0.42
             if "Roughness" in bsdf.inputs:
-                bsdf.inputs["Roughness"].default_value = 0.045
+                bsdf.inputs["Roughness"].default_value = 0.035
+            if "Metallic" in bsdf.inputs:
+                bsdf.inputs["Metallic"].default_value = 0.0
             try:
                 material.blend_method = "HASHED"
             except Exception:
@@ -364,6 +369,8 @@ def create_materials():
                 material.refraction_depth = 0.42
             if hasattr(material, "use_raytrace_refraction"):
                 material.use_raytrace_refraction = True
+            if hasattr(material, "use_backface_culling"):
+                material.use_backface_culling = False
         mats[name] = material
     return mats
 
@@ -443,8 +450,8 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     return finish_mesh(obj, material, bevel)
 
 
-def loft_hollow(name, outer_rings, inner_rings, material, collection, bevel, close_front=True):
-    """Thick-walled open tube. Front may close with an inner bulkhead; the aft mouth stays open."""
+def loft_hollow(name, outer_rings, inner_rings, material, collection, bevel, close_front=True, close_aft=False):
+    """Thick-walled tube. Rims join outer to inner; optional inner bulkhead caps."""
     sides = len(outer_rings[0])
     stations = len(outer_rings)
     if len(inner_rings) != stations or len(inner_rings[0]) != sides:
@@ -470,6 +477,9 @@ def loft_hollow(name, outer_rings, inner_rings, material, collection, bevel, clo
         faces.append((j, i, inner0 + i, inner0 + j))
     if close_front:
         faces.append(tuple(range(inner0 + sides - 1, inner0 - 1, -1)))
+    if close_aft:
+        aft0 = inner0 + last
+        faces.append(tuple(range(aft0, aft0 + sides)))
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata(verts, [], faces)
     mesh.update()
@@ -583,11 +593,11 @@ def add_boarding_vestibule(hull, lod, mats, collection):
     add_box("Board_Sill", (x, y_face - 0.02, z - 0.82), (1.42, 0.18, 0.10), frame, collection, 0.003)
     add_box("Board_Header", (x, y_face - 0.02, z + 0.82), (1.42, 0.18, 0.10), frame, collection, 0.003)
     add_box("Board_DoorLeaf", (x - 0.22, y_face - 0.10, z - 0.08), (0.55, 0.06, 0.72), frame, collection, 0.002)
-    add_box("Board_DoorLite", (x - 0.22, y_face - 0.14, z + 0.18), (0.28, 0.03, 0.22), glass, collection, 0.001)
-    add_box("Board_VestPaneFore", (x + 0.72, y_face - 0.12, z + 0.12), (0.48, 0.035, 0.52), glass, collection, 0.001)
-    add_box("Board_VestPaneAft", (x - 0.82, y_face - 0.12, z + 0.12), (0.32, 0.035, 0.52), glass, collection, 0.001)
-    add_box("Board_Mull", (x + 0.18, y_face - 0.08, z + 0.08), (0.07, 0.10, 0.78), frame, collection, 0.002)
-    add_box("Board_InnerWall", (x, y_face + 0.62, z), (1.15, 0.06, 0.78), hull_mat, collection, 0.003)
+    add_box("Board_DoorLite", (x - 0.22, y_face - 0.18, z + 0.18), (0.28, 0.022, 0.22), glass, collection, 0.001)
+    add_box("Board_VestPaneFore", (x + 0.72, y_face - 0.20, z + 0.12), (0.48, 0.022, 0.52), glass, collection, 0.001)
+    add_box("Board_VestPaneAft", (x - 0.82, y_face - 0.20, z + 0.12), (0.32, 0.022, 0.52), glass, collection, 0.001)
+    add_box("Board_Mull", (x + 0.18, y_face - 0.08, z + 0.08), (0.07, 0.12, 0.78), frame, collection, 0.002)
+    add_box("Board_InnerWall", (x, y_face + 0.78, z), (1.15, 0.06, 0.78), mech, collection, 0.003)
     add_box("Board_Threshold", (x, y_face - 0.38, z - 0.92), (1.05, 0.32, 0.08), hull_mat, collection, 0.003)
     add_box("Board_ReturnFore", (x + 1.55, y_face + 0.22, z), (0.10, 0.55, 0.85), frame, collection, 0.003)
     add_box("Board_ReturnAft", (x - 1.55, y_face + 0.22, z), (0.10, 0.55, 0.85), frame, collection, 0.003)
@@ -609,50 +619,85 @@ def add_boarding_necks(lod, mats, collection):
         add_box("BoardNeckReturn_P", (10.28, -PASS_HW + 0.05, 0.42), (0.14, 0.72, 1.15), frame, collection, 0.003)
 
 
-def add_hat_station_ring(name, x, hw, hh, mats, collection, deck, wall, chine, belly, inner_hw=None, inner_hh=None):
-    """Inset hat-section pressure-station ring: standing flange, web, inner channel.
+def offset_ring_outward(ring, distance, cy=0.0, cz=0.28):
+    """Push a YZ station ring along its local outward so a hat web can stand proud."""
+    out = []
+    for x, y, z in ring:
+        vy, vz = y - cy, z - cz
+        length = math.hypot(vy, vz) or 1.0
+        out.append((x, y + vy / length * distance, z + vz / length * distance))
+    return out
 
-    Dark satin anodized metal. Not a crushed-black hoop solid.
+
+def add_hat_station_ring(name, x, hw, hh, mats, collection, deck, wall, chine, belly, inner_hw=None, inner_hh=None):
+    """True hat-section pressure ring: standing flange, web, inner return, directional laps.
+
+    Dark satin anodized metal. Not a crushed-black hoop or spacer tape.
     """
     frame = mats["Material_Armor"]
     inner_hw = hw * 0.94 if inner_hw is None else inner_hw
     inner_hh = hh * 0.94 if inner_hh is None else inner_hh
+    skin = pressure_ring(x, 0, 0.28, hw, hh, deck, wall, chine, belly)
+    stand = 0.16
+    axial = 0.28
+    # Outer standing flange + web. Radial gap is the visible hat height.
     loft_hollow(
         f"{name}_Flange",
         [
-            pressure_ring(x - 0.18, 0, 0.28, hw * 1.028, hh * 1.018, deck, wall, chine, belly),
-            pressure_ring(x + 0.18, 0, 0.28, hw * 1.028, hh * 1.018, deck, wall, chine, belly),
+            offset_ring_outward(pressure_ring(x - axial, 0, 0.28, hw, hh, deck, wall, chine, belly), stand),
+            offset_ring_outward(pressure_ring(x + axial, 0, 0.28, hw, hh, deck, wall, chine, belly), stand),
         ],
         [
-            pressure_ring(x - 0.18, 0, 0.28, hw * 0.992, hh * 0.992, deck, wall, chine, belly),
-            pressure_ring(x + 0.18, 0, 0.28, hw * 0.992, hh * 0.992, deck, wall, chine, belly),
+            offset_ring_outward(pressure_ring(x - axial, 0, 0.28, hw, hh, deck, wall, chine, belly), 0.02),
+            offset_ring_outward(pressure_ring(x + axial, 0, 0.28, hw, hh, deck, wall, chine, belly), 0.02),
         ],
-        frame, collection, 0.005, close_front=True,
+        frame, collection, 0.004, close_front=True, close_aft=True,
     )
+    # Inner return lip onto the shell.
     loft_hollow(
-        f"{name}_Web",
+        f"{name}_Return",
         [
-            pressure_ring(x - 0.10, 0, 0.28, hw * 0.995, hh * 0.995, deck, wall, chine, belly),
-            pressure_ring(x + 0.10, 0, 0.28, hw * 0.995, hh * 0.995, deck, wall, chine, belly),
+            offset_ring_outward(pressure_ring(x - axial * 0.72, 0, 0.28, hw, hh, deck, wall, chine, belly), 0.03),
+            offset_ring_outward(pressure_ring(x + axial * 0.72, 0, 0.28, hw, hh, deck, wall, chine, belly), 0.03),
         ],
         [
-            pressure_ring(x - 0.10, 0, 0.28, inner_hw, inner_hh, deck, wall, chine, belly),
-            pressure_ring(x + 0.10, 0, 0.28, inner_hw, inner_hh, deck, wall, chine, belly),
+            pressure_ring(x - axial * 0.72, 0, 0.28, inner_hw, inner_hh, deck, wall, chine, belly),
+            pressure_ring(x + axial * 0.72, 0, 0.28, inner_hw, inner_hh, deck, wall, chine, belly),
         ],
-        frame, collection, 0.004, close_front=True,
+        frame, collection, 0.003, close_front=True, close_aft=True,
     )
-    loft_hollow(
-        f"{name}_Channel",
-        [
-            pressure_ring(x - 0.24, 0, 0.28, hw * 0.988, hh * 0.988, deck, wall, chine, belly),
-            pressure_ring(x + 0.24, 0, 0.28, hw * 0.988, hh * 0.988, deck, wall, chine, belly),
-        ],
-        [
-            pressure_ring(x - 0.24, 0, 0.28, hw * 0.962, hh * 0.962, deck, wall, chine, belly),
-            pressure_ring(x + 0.24, 0, 0.28, hw * 0.962, hh * 0.962, deck, wall, chine, belly),
-        ],
-        frame, collection, 0.003, close_front=True,
-    )
+    # Directional lap plates at four pitch breaks; skip equatorial corridor collars.
+    sides = len(skin)
+    for i in (0, 3, 4, 7):
+        a = Vector(skin[i])
+        b = Vector(skin[(i + 1) % sides])
+        mid = (a + b) * 0.5
+        lap_x = 0.10 if i % 2 == 0 else -0.10
+        along = (b - a)
+        if along.length < 1e-4:
+            continue
+        along.normalize()
+        outward = Vector((0.0, mid.y, mid.z - 0.28))
+        if outward.length < 1e-4:
+            outward = Vector((0.0, 0.0, 1.0))
+        else:
+            outward.normalize()
+        width = min(1.15, (b - a).length * 0.42)
+        add_box(
+            f"{name}_Lap_{i}",
+            (x + lap_x, mid.y + outward.y * 0.09, mid.z + outward.z * 0.09),
+            (0.07, max(0.12, abs(along.y) * width + 0.10), max(0.12, abs(along.z) * width + 0.10)),
+            frame, collection, 0.002,
+        )
+    # Corridor collars only on the passenger-span rings; gallery roofs root here.
+    if hw >= 8.0:
+        for tag, sign in (("P", -1.0), ("S", 1.0)):
+            add_box(
+                f"{name}_Collar_{tag}",
+                (x, sign * (hw - 0.04), 0.48),
+                (0.22, 0.38, 1.28),
+                frame, collection, 0.003,
+            )
 
 
 def add_dorsal_spine(lod, mats, collection):
@@ -751,19 +796,23 @@ def add_keel_and_saddle(lod, mats, collection):
 
 
 def add_passenger_corridors(lod, mats, collection, passenger_hull=None):
-    """Hollow framed corridor shells grown from the passenger equator, not hanging cards."""
+    """Hollow manufactured passenger gallery: recessed pane bays, mullions, inner dark volume.
+
+    Roof has real thickness and roots into the hat-section collars. Glass sits
+    behind the frame over a dark interior, not as an opaque card.
+    """
     hull = mats["Material_Hull"]
     frame = mats["Material_Armor"]
     glass = mats["Material_Canopy"]
     mech = mats["Material_Mechanical"]
-    wall = 0.14
-    outer_hw = 0.58
+    wall = 0.18
+    outer_hw = CORR_HW
     inner_hw = outer_hw - wall
     zc = 0.48
     x0, x1 = 9.55, -1.05
     pane_xs = (7.85, 5.15, 2.45, -0.25)
     for tag, sign in (("P", -1.0), ("S", 1.0)):
-        y = sign * (PASS_HW - 0.08)
+        y = sign * (PASS_HW - 0.06)
         corr = loft_hollow(
             f"Corridor_{tag}",
             [
@@ -772,43 +821,123 @@ def add_passenger_corridors(lod, mats, collection, passenger_hull=None):
                 corridor_ring(x1, y, zc, outer_hw, CORR_HH),
             ],
             [
-                corridor_ring(x0, y - sign * 0.02, zc, inner_hw, CORR_HH - wall),
-                corridor_ring(4.20, y - sign * 0.02, zc, inner_hw, CORR_HH - wall),
-                corridor_ring(x1, y - sign * 0.02, zc, inner_hw, CORR_HH - wall),
+                corridor_ring(x0, y - sign * 0.04, zc, inner_hw, CORR_HH - wall),
+                corridor_ring(4.20, y - sign * 0.04, zc, inner_hw, CORR_HH - wall),
+                corridor_ring(x1, y - sign * 0.04, zc, inner_hw, CORR_HH - wall),
             ],
-            hull, collection, 0.005, close_front=True,
+            hull, collection, 0.005, close_front=True, close_aft=True,
         )
+        # Dark inner volume, set back so pane bays read as occupied space.
         loft_from_rings(f"CorridorInner_{tag}", [
-            corridor_ring(x0 - 0.15, y - sign * 0.22, zc, inner_hw - 0.08, CORR_HH - wall - 0.10),
-            corridor_ring(4.20, y - sign * 0.22, zc, inner_hw - 0.08, CORR_HH - wall - 0.10),
-            corridor_ring(x1 + 0.15, y - sign * 0.22, zc, inner_hw - 0.08, CORR_HH - wall - 0.10),
+            corridor_ring(x0 - 0.12, y - sign * 0.28, zc, inner_hw - 0.10, CORR_HH - wall - 0.14),
+            corridor_ring(4.20, y - sign * 0.28, zc, inner_hw - 0.10, CORR_HH - wall - 0.14),
+            corridor_ring(x1 + 0.12, y - sign * 0.28, zc, inner_hw - 0.10, CORR_HH - wall - 0.14),
         ], mech, collection, 0.002, cap="both")
-        add_box(f"CorrSill_{tag}", (4.20, y + sign * (outer_hw - 0.02), zc - CORR_HH + 0.10), (5.15, 0.10, 0.10), frame, collection, 0.002)
-        add_box(f"CorrHead_{tag}", (4.20, y + sign * (outer_hw - 0.02), zc + CORR_HH - 0.10), (5.15, 0.10, 0.10), frame, collection, 0.002)
-        add_box(f"CorrReturnFore_{tag}", (HAT_FORE_X - 0.12, y - sign * 0.08, zc), (0.16, 0.72, 1.18), frame, collection, 0.004)
-        add_box(f"CorrReturnAft_{tag}", (HAT_AFT_X + 0.12, y - sign * 0.08, zc), (0.16, 0.72, 1.18), frame, collection, 0.004)
+        # Gallery roof with thickness and hat-collar roots — not a pancake or knife card.
+        add_box(
+            f"CorrRoof_{tag}",
+            (4.20, y + sign * 0.04, zc + CORR_HH - 0.02),
+            (5.20, 0.46, 0.10),
+            hull, collection, 0.003,
+        )
+        add_box(
+            f"CorrRoofReturnFore_{tag}",
+            (HAT_FORE_X - 0.06, y - sign * 0.02, zc + CORR_HH - 0.04),
+            (0.20, 0.62, 0.14),
+            frame, collection, 0.003,
+        )
+        add_box(
+            f"CorrRoofReturnAft_{tag}",
+            (HAT_AFT_X + 0.06, y - sign * 0.02, zc + CORR_HH - 0.04),
+            (0.20, 0.62, 0.14),
+            frame, collection, 0.003,
+        )
+        add_box(
+            f"CorrSill_{tag}",
+            (4.20, y + sign * (outer_hw - 0.01), zc - CORR_HH + 0.14),
+            (5.15, 0.12, 0.14),
+            frame, collection, 0.003,
+        )
+        add_box(
+            f"CorrHead_{tag}",
+            (4.20, y + sign * (outer_hw - 0.01), zc + CORR_HH - 0.16),
+            (5.15, 0.14, 0.16),
+            frame, collection, 0.003,
+        )
+        add_box(f"CorrReturnFore_{tag}", (HAT_FORE_X - 0.10, y - sign * 0.06, zc), (0.18, 0.78, 1.28), frame, collection, 0.004)
+        add_box(f"CorrReturnAft_{tag}", (HAT_AFT_X + 0.10, y - sign * 0.06, zc), (0.18, 0.78, 1.28), frame, collection, 0.004)
         door_index = 1 if sign < 0 else 2
         if lod >= 2:
-            face_y = y + sign * (outer_hw - 0.04)
-            add_box(f"CorrGlass_{tag}_0", (4.20, face_y, zc + 0.04), (3.15, 0.03, 0.48), glass, collection, 0.001)
+            face_y = y + sign * (outer_hw - 0.10)
+            add_box(f"CorrGlass_{tag}_0", (4.20, face_y, zc + 0.06), (3.05, 0.04, 0.55), glass, collection, 0.001)
+            continue
         for i, px in enumerate(pane_xs):
-            if lod >= 2:
-                break
             face_y = y + sign * (outer_hw + 0.01)
+            cut_y = y + sign * (outer_hw - 0.04)
             if lod <= 1:
                 boolean_cut_box(
                     corr, f"CorrCut_{tag}_{i}",
-                    (px, y + sign * (outer_hw - 0.02), zc + 0.04),
-                    (0.82, 0.20, 0.58),
+                    (px, cut_y, zc + 0.06),
+                    (0.92, 0.28, 0.72),
                 )
-            add_box(f"CorrMull_{tag}_{i}", (px + 1.22, face_y, zc), (0.08, 0.10, 1.05), frame, collection, 0.002)
+            add_box(f"CorrMull_{tag}_{i}", (px + 1.28, face_y - sign * 0.04, zc), (0.10, 0.14, 1.18), frame, collection, 0.002)
+            add_box(f"CorrJambFore_{tag}_{i}", (px + 0.78, face_y - sign * 0.05, zc + 0.04), (0.06, 0.12, 0.78), frame, collection, 0.002)
+            add_box(f"CorrJambAft_{tag}_{i}", (px - 0.78, face_y - sign * 0.05, zc + 0.04), (0.06, 0.12, 0.78), frame, collection, 0.002)
+            glass_y = y + sign * (outer_hw - 0.14)
+            if passenger_hull is not None and lod <= 1:
+                boolean_cut_box(
+                    passenger_hull, f"PassBay_{tag}_{i}",
+                    (px, sign * (PASS_HW - 0.08), zc + 0.06),
+                    (0.88, 0.32, 0.68),
+                )
             if i == door_index:
-                add_box(f"CorrDoor_{tag}", (px, face_y, zc - 0.08), (0.72, 0.07, 0.95), frame, collection, 0.003)
-                add_box(f"CorrDoorLite_{tag}", (px, face_y + sign * 0.04, zc + 0.22), (0.32, 0.03, 0.24), glass, collection, 0.001)
+                add_box(f"CorrDoor_{tag}", (px, face_y - sign * 0.02, zc - 0.10), (0.70, 0.08, 1.02), frame, collection, 0.003)
+                add_box(f"CorrDoorLite_{tag}", (px, glass_y, zc + 0.26), (0.36, 0.028, 0.28), glass, collection, 0.001)
                 continue
-            add_box(f"CorrGlass_{tag}_{i}", (px, face_y - sign * 0.06, zc + 0.06), (0.78, 0.028, 0.52), glass, collection, 0.001)
+            add_box(f"CorrGlass_{tag}_{i}", (px, glass_y, zc + 0.08), (0.72, 0.022, 0.58), glass, collection, 0.001)
         if lod == 0:
-            add_box(f"CorrPlate_{tag}", (3.15, y - sign * 0.05, zc - CORR_HH - 0.12), (1.15, 0.16, 0.04), mats["Material_Radiator"], collection, 0.002)
+            add_box(f"CorrPlate_{tag}", (3.15, y - sign * 0.08, zc - CORR_HH - 0.14), (1.15, 0.18, 0.05), mats["Material_Radiator"], collection, 0.002)
+
+
+def add_passenger_clerestory(lod, mats, collection, passenger_hull):
+    """Three recessed observation bays on the legal chase-visible deck.
+
+    The first Cycle 33 build put credible side galleries below the dominant
+    60-degree sightline, so the passenger course still presented as a blank
+    slab.  These are real cut wells with set-back dielectric panes and load
+    frames, not decals or emissive window cards.
+    """
+    if lod >= 2 or passenger_hull is None:
+        return
+    frame = mats["Material_Armor"]
+    glass = mats["Material_Canopy"]
+    inner = mats["Material_Mechanical"]
+    deck_z = 0.38 + PASS_HH
+    for i, px in enumerate((7.55, 4.20, 0.85)):
+        cy = -0.42
+        hx, hy = 1.18, 1.62
+        boolean_cut_box(
+            passenger_hull, f"ClerestoryCut_{i}",
+            (px, cy, deck_z + 0.02),
+            (hx, hy, 0.34),
+        )
+        add_box(
+            f"ClerestoryWell_{i}",
+            (px, cy, deck_z - 0.18),
+            (hx - 0.13, hy - 0.13, 0.07),
+            inner, collection, 0.002,
+        )
+        add_box(
+            f"ClerestoryGlass_{i}",
+            (px, cy, deck_z - 0.075),
+            (hx - 0.18, hy - 0.18, 0.025),
+            glass, collection, 0.001,
+        )
+        add_box(f"ClerestoryFrameFore_{i}", (px + hx - 0.07, cy, deck_z + 0.01), (0.07, hy, 0.08), frame, collection, 0.002)
+        add_box(f"ClerestoryFrameAft_{i}", (px - hx + 0.07, cy, deck_z + 0.01), (0.07, hy, 0.08), frame, collection, 0.002)
+        add_box(f"ClerestoryFramePort_{i}", (px, cy - hy + 0.07, deck_z + 0.01), (hx, 0.07, 0.08), frame, collection, 0.002)
+        add_box(f"ClerestoryFrameStbd_{i}", (px, cy + hy - 0.07, deck_z + 0.01), (hx, 0.07, 0.08), frame, collection, 0.002)
+        add_box(f"ClerestoryMull_{i}", (px, cy, deck_z + 0.005), (0.055, hy - 0.12, 0.07), frame, collection, 0.001)
 
 
 def add_drive_saddle(tag, y, lod, mats, collection):
@@ -853,38 +982,42 @@ def add_drive_saddle(tag, y, lod, mats, collection):
         add_box(f"DriveClampBolt_{tag}", (HAT_LOAD_X - 1.25, y - sign * 0.12, z + 1.30), (0.06, 0.05, 0.05), mech, collection, 0.001)
 
 
-def add_rooted_vane(name, origin, material, collection, angle, inner=0.42, outer=0.92):
-    """Thin stator blade rooted into the liner wall. Not a pizza slice or box."""
+def add_rooted_vane(name, origin, material, collection, angle, inner=0.22, outer=0.68):
+    """Thin stator blade rooted into the liner wall and the hub. Not a shelf or pizza slice."""
     cx, cy, cz = origin
     ca, sa = math.cos(angle), math.sin(angle)
 
     def p(x, r, v):
         return (cx + x, cy + ca * r - sa * v, cz + sa * r + ca * v)
 
-    ht, tt = 0.012, 0.007
+    ht, tt = 0.008, 0.005
     verts = [
-        p(0.06, inner, -ht), p(0.06, inner, ht), p(0.06, outer, ht * 0.7), p(0.06, outer, -ht * 0.7),
-        p(-0.62, inner * 1.02, -tt), p(-0.62, inner * 1.02, tt),
-        p(-0.58, outer * 0.96, tt * 0.7), p(-0.58, outer * 0.96, -tt * 0.7),
-        p(0.08, inner - 0.06, -ht * 1.6), p(0.08, inner - 0.06, ht * 1.6),
-        p(-0.10, inner - 0.06, ht * 1.6), p(-0.10, inner - 0.06, -ht * 1.6),
+        p(0.18, inner, -ht), p(0.18, inner, ht), p(0.18, outer, ht * 0.55), p(0.18, outer, -ht * 0.55),
+        p(-0.72, inner * 1.04, -tt), p(-0.72, inner * 1.04, tt),
+        p(-0.68, outer * 0.94, tt * 0.55), p(-0.68, outer * 0.94, -tt * 0.55),
+        p(0.22, inner - 0.05, -ht * 1.8), p(0.22, inner - 0.05, ht * 1.8),
+        p(-0.08, inner - 0.05, ht * 1.8), p(-0.08, inner - 0.05, -ht * 1.8),
+        p(0.20, outer + 0.04, -ht * 1.3), p(0.20, outer + 0.04, ht * 1.3),
+        p(0.02, outer + 0.04, ht * 1.3), p(0.02, outer + 0.04, -ht * 1.3),
     ]
     faces = [
         (0, 1, 2, 3), (4, 7, 6, 5),
         (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
         (0, 1, 9, 8), (8, 9, 10, 11),
         (0, 8, 11, 3), (1, 2, 10, 9),
+        (2, 3, 12, 13), (13, 12, 15, 14),
+        (2, 13, 14, 6), (3, 7, 15, 12),
     ]
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata(verts, [], faces)
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
-    return finish_mesh(obj, material, bevel=0.002)
+    return finish_mesh(obj, material, bevel=0.001)
 
 
 def add_civic_drive(tag, y, lod, mats, collection):
-    """Short tapered housing grown from the aft bulkhead. Thick dark-metal throat, dry liner."""
+    """Short tapered housing grown from the aft bulkhead. Dry refractory bore, dark hub."""
     frame = mats["Material_Armor"]
     mech = mats["Material_Mechanical"]
     refractory = mats["Material_Ceramic"]
@@ -908,45 +1041,49 @@ def add_civic_drive(tag, y, lod, mats, collection):
             drive_case_ring(x1, sign * 7.15, z, 1.12, 0.96, 8),
             drive_case_ring(x2, y, z, 0.94, 0.82, 8),
             drive_case_ring(x3, y, z, 0.86, 0.76, 8),
-            drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.32, DRIVE_R_AFT * 0.92 - 0.30, 8),
+            drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.28, DRIVE_R_AFT * 0.92 - 0.26, 8),
         ],
-        frame, collection, 0.007, close_front=True,
+        frame, collection, 0.006, close_front=True,
     )
+    # Dry refractory inner wall. Same 8-sided family as the housing, not a 10-gon chrome sleeve.
     loft_hollow(
         f"Liner_{tag}",
         [
-            regular_ring(-16.55, y, z, 0.82, 10),
-            regular_ring(-18.45, y, z, 0.78, 10),
-            regular_ring(-20.55, y, z, 0.88, 10),
+            drive_case_ring(-16.85, y, z, 0.86, 0.78, 8),
+            drive_case_ring(-18.65, y, z, 0.80, 0.72, 8),
+            drive_case_ring(-20.55, y, z, 0.84, 0.76, 8),
         ],
         [
-            regular_ring(-16.55, y, z, 0.62, 10),
-            regular_ring(-18.45, y, z, 0.56, 10),
-            regular_ring(-20.55, y, z, 0.66, 10),
+            drive_case_ring(-16.85, y, z, 0.62, 0.56, 8),
+            drive_case_ring(-18.65, y, z, 0.54, 0.48, 8),
+            drive_case_ring(-20.55, y, z, 0.58, 0.52, 8),
         ],
         refractory, collection, 0.002, close_front=True,
     )
+    # Dark oxidized rim, flush with the housing mouth. No chrome lip, no oversize ring.
     loft_hollow(
         f"Throat_{tag}",
         [
-            regular_ring(-20.15, y, z, 1.08, 10),
-            regular_ring(-20.78, y, z, 1.14, 10),
+            drive_case_ring(-20.35, y, z, DRIVE_R_AFT - 0.04, DRIVE_R_AFT * 0.92 - 0.04, 8),
+            drive_case_ring(-20.82, y, z, DRIVE_R_AFT - 0.06, DRIVE_R_AFT * 0.92 - 0.06, 8),
         ],
         [
-            regular_ring(-20.15, y, z, 0.72, 10),
-            regular_ring(-20.78, y, z, 0.76, 10),
+            drive_case_ring(-20.35, y, z, 0.78, 0.70, 8),
+            drive_case_ring(-20.82, y, z, 0.80, 0.72, 8),
         ],
-        throat, collection, 0.003, close_front=False,
+        throat, collection, 0.002, close_front=False,
     )
-    add_cylinder(f"ThroatFloor_{tag}", (-16.65, y, z), 0.50, 0.12, throat, collection, 10, 0.002)
-    add_cylinder(f"Hub_{tag}", (-18.25, y, z), 0.14, 0.42, throat, collection, 10, 0.002)
-    add_cylinder(f"Core_{tag}", (-18.05, y, z), 0.055, 0.10, core, collection, 10, 0.001)
+    add_cylinder(f"ThroatFloor_{tag}", (-16.85, y, z), 0.48, 0.10, throat, collection, 8, 0.002)
+    add_cylinder(f"Hub_{tag}", (-18.55, y, z), 0.22, 0.85, throat, collection, 8, 0.002)
+    add_cylinder(f"HubCap_{tag}", (-18.95, y, z), 0.16, 0.12, mech, collection, 8, 0.001)
+    add_cylinder(f"Core_{tag}", (-18.35, y, z), 0.045, 0.08, core, collection, 8, 0.001)
     add_drive_saddle(tag, y, lod, mats, collection)
     if lod == 0:
         for index in range(6):
             add_rooted_vane(
-                f"Vane_{tag}_{index}", (-19.65, y, z), refractory, collection,
-                math.tau * index / 6, inner=0.34, outer=0.72,
+                f"Vane_{tag}_{index}", (-19.15, y, z), throat, collection,
+                math.tau * index / 6,
+                inner=0.20, outer=0.66,
             )
     return case
 
@@ -988,7 +1125,7 @@ def sockets():
     }
 
 
-def shade_and_uv(obj):
+def apply_shade(obj):
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
     apply_modifiers(obj)
@@ -997,27 +1134,95 @@ def shade_and_uv(obj):
     except Exception:
         for poly in obj.data.polygons:
             poly.use_smooth = True
+    obj.select_set(False)
+
+
+def _ensure_uv(mesh):
+    if mesh.uv_layers.get("UVMap") is None:
+        mesh.uv_layers.new(name="UVMap")
+    mesh.uv_layers.active = mesh.uv_layers["UVMap"]
+    return mesh.uv_layers["UVMap"].data
+
+
+def uv_cylinder_axis(obj, origin, axis=(1.0, 0.0, 0.0), length=42.0):
+    """Cylindrical UV around an axis. Caps get a planar YZ/radial map so they cannot box-unwrap."""
+    mesh = obj.data
+    uv = _ensure_uv(mesh)
+    origin = Vector(origin)
+    axis = Vector(axis)
+    if axis.length < 1e-8:
+        axis = Vector((1.0, 0.0, 0.0))
+    axis.normalize()
+    helper = Vector((0.0, 0.0, 1.0)) if abs(axis.z) < 0.9 else Vector((0.0, 1.0, 0.0))
+    u_axis = axis.cross(helper)
+    if u_axis.length < 1e-8:
+        u_axis = Vector((0.0, 1.0, 0.0))
+    u_axis.normalize()
+    v_radial = axis.cross(u_axis)
+    v_radial.normalize()
+    for poly in mesh.polygons:
+        n = poly.normal
+        cap = abs(n.dot(axis)) > 0.72
+        for li in poly.loop_indices:
+            co = Vector(mesh.vertices[mesh.loops[li].vertex_index].co) - origin
+            along = co.dot(axis)
+            radial = co - axis * along
+            if cap:
+                uu = co.dot(u_axis) / 12.0 + 0.5
+                vv = co.dot(v_radial) / 12.0 + 0.5
+            else:
+                uu = (math.atan2(radial.dot(u_axis), radial.dot(v_radial)) / math.tau) + 0.5
+                vv = (along / max(1e-4, length)) + 0.5
+            uv[li].uv = (uu, vv)
+
+
+def uv_box_project(obj, cube_size=6.0):
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     try:
-        bpy.ops.uv.cube_project(cube_size=6.0, correct_aspect=True, scale_to_bounds=True)
+        bpy.ops.uv.cube_project(cube_size=cube_size, correct_aspect=True, scale_to_bounds=True)
     except Exception:
         try:
             bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.018)
         except Exception:
             bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.018, scale_to_bounds=True)
     bpy.ops.object.mode_set(mode="OBJECT")
-    if "UV1" in obj.data.uv_layers:
-        obj.data.uv_layers.remove(obj.data.uv_layers["UV1"])
-    uv1 = obj.data.uv_layers.new(name="UV1")
-    uv0 = obj.data.uv_layers.active
-    for loop in obj.data.loops:
-        uv1.data[loop.index].uv = uv0.data[loop.index].uv * 7.0
     obj.select_set(False)
 
 
+def uv_for_object(obj):
+    """Role-aware unwrap. Drums/rings/housings get cylinder UVs so they cannot wood-grain."""
+    name = obj.name.lower()
+    apply_shade(obj)
+    if any(token in name for token in (
+        "drivehouse", "liner_", "throat_", "hub_", "vane_", "core_", "hubcap", "throatfloor",
+    )):
+        bbox = [Vector(corner) for corner in obj.bound_box]
+        center = sum(bbox, Vector((0.0, 0.0, 0.0))) / 8.0
+        uv_cylinder_axis(obj, (center.x, center.y, center.z), (1.0, 0.0, 0.0), 12.0)
+    elif any(token in name for token in ("station_", "hat_", "corridor", "passliner", "boardneck", "spine_well")):
+        uv_cylinder_axis(obj, (0.0, 0.0, 0.28), (1.0, 0.0, 0.0), 42.0)
+    else:
+        uv_box_project(obj)
+
+
+def shade_and_uv(obj):
+    """Post-join shade only. Per-part UVs are authored before join."""
+    apply_shade(obj)
+    mesh = obj.data
+    _ensure_uv(mesh)
+    if "UV1" in mesh.uv_layers:
+        mesh.uv_layers.remove(mesh.uv_layers["UV1"])
+    uv1 = mesh.uv_layers.new(name="UV1")
+    uv0 = mesh.uv_layers["UVMap"]
+    for loop in mesh.loops:
+        uv1.data[loop.index].uv = uv0.data[loop.index].uv * 7.0
+
+
 OPS = dict(deck=0.62, wall=0.70, chine=0.16, belly=0.28)
-PASS = dict(deck=0.50, wall=0.74, chine=0.14, belly=0.36)
+PASS = dict(deck=0.32, wall=0.78, chine=0.14, belly=0.36)
 MAC = dict(deck=0.28, wall=0.88, chine=0.22, belly=0.32)
 
 
@@ -1052,6 +1257,25 @@ def passenger_stations(lod):
         pressure_ring(4.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
         pressure_ring(1.10, 0, 0.38, PASS_HW, PASS_HH, **PASS),
         pressure_ring(-1.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
+    ]
+
+
+def passenger_inner_stations(lod):
+    """Inner wall of the hollow passenger course. Same vertex grammar, thinner section."""
+    hw = PASS_HW - PASS_WALL
+    hh = PASS_HH - PASS_WALL
+    if lod >= 2:
+        return [
+            pressure_ring(9.70, 0, 0.38, hw, hh, **PASS),
+            pressure_ring(4.20, 0, 0.38, hw, hh, **PASS),
+            pressure_ring(-1.05, 0, 0.38, hw, hh, **PASS),
+        ]
+    return [
+        pressure_ring(9.70, 0, 0.38, hw, hh, **PASS),
+        pressure_ring(6.40, 0, 0.38, hw, hh, **PASS),
+        pressure_ring(4.20, 0, 0.38, hw, hh, **PASS),
+        pressure_ring(1.10, 0, 0.38, hw, hh, **PASS),
+        pressure_ring(-1.05, 0, 0.38, hw, hh, **PASS),
     ]
 
 
@@ -1211,11 +1435,11 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
     br, bg, bb = rgb
     metal_base = {
         "ceramic": 0.02, "frame": 0.82, "keel": 0.88, "primer": 0.14,
-        "refractory": 0.03, "glass": 0.0, "cyan": 0.06, "amber": 0.04, "throat": 0.78,
+        "refractory": 0.02, "glass": 0.0, "cyan": 0.06, "amber": 0.04, "throat": 0.16,
     }.get(role, 0.12)
     rough_base = {
-        "ceramic": 0.54, "frame": 0.30, "keel": 0.28, "primer": 0.58,
-        "refractory": 0.76, "glass": 0.045, "cyan": 0.22, "amber": 0.36, "throat": 0.34,
+        "ceramic": 0.56, "frame": 0.30, "keel": 0.28, "primer": 0.58,
+        "refractory": 0.78, "glass": 0.035, "cyan": 0.22, "amber": 0.36, "throat": 0.54,
     }.get(role, 0.45)
     count = size * size
     for i in range(count):
@@ -1227,18 +1451,18 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
         y = i // size
         gf = h01(x, y, 19)
         if role == "glass":
-            a = max(0.82, a)
+            a = max(0.86, a)
             r, g, b = br, bg, bb
-            rough = 0.045 + cavity * 0.02
+            rough = 0.035 + cavity * 0.02
             metal = 0.0
         elif role == "ceramic":
-            a = max(0.55, min(1.0, a))
-            wear = edge * 0.04 + (gf - 0.5) * 0.02
+            a = max(0.72, min(1.0, a))
+            wear = edge * 0.025 + (gf - 0.5) * 0.012
             r = max(0, min(1, br + wear))
             g = max(0, min(1, bg + wear * 0.7))
             b = max(0, min(1, bb + wear * 0.4))
-            rough = max(0.46, min(0.64, rough_base + cavity * 0.08 - edge * 0.04))
-            metal = metal_base + edge * 0.06
+            rough = max(0.50, min(0.64, rough_base + cavity * 0.05 - edge * 0.03))
+            metal = metal_base + edge * 0.03
         elif role == "frame":
             a = max(0.40, a)
             r = max(0, min(1, br + edge * 0.04 + (gf - 0.5) * 0.02))
@@ -1247,19 +1471,19 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
             rough = max(0.22, min(0.42, rough_base + cavity * 0.08 - edge * 0.06))
             metal = min(1.0, metal_base + edge * 0.04)
         elif role == "refractory":
-            a = max(0.45, a)
-            grain = (gf - 0.5) * 0.03
-            r = max(0, min(1, br + grain + cavity * 0.02))
+            a = max(0.50, a)
+            grain = (gf - 0.5) * 0.025
+            r = max(0, min(1, br + grain))
             g = max(0, min(1, bg + grain * 0.6))
             b = max(0, min(1, bb + grain * 0.3))
-            rough = max(0.66, min(0.86, rough_base + cavity * 0.06))
+            rough = max(0.70, min(0.88, rough_base + cavity * 0.05))
             metal = metal_base
         elif role == "throat":
-            a = max(0.40, a)
-            r = max(0, min(1, br + edge * 0.03))
-            g = max(0, min(1, bg + edge * 0.02))
-            b = max(0, min(1, bb + edge * 0.02))
-            rough = max(0.26, min(0.46, rough_base + cavity * 0.06))
+            a = max(0.48, a)
+            r = max(0, min(1, br + edge * 0.02))
+            g = max(0, min(1, bg + edge * 0.015))
+            b = max(0, min(1, bb + edge * 0.01))
+            rough = max(0.46, min(0.66, rough_base + cavity * 0.05))
             metal = metal_base
         else:
             a = max(0.45, a)
@@ -1359,8 +1583,8 @@ def bake_lod0_unique(merged, collection, mats):
                 for node in list(obj.data.materials[0].node_tree.nodes):
                     if node.type != "OUTPUT_MATERIAL" and node != bsdf:
                         obj.data.materials[0].node_tree.nodes.remove(node)
-            coat = 0.0 if key == "Hull" else (0.18 if key == "Canopy" else 0.05 if key == "Armor" else 0.0)
-            trans = 0.62 if key == "Canopy" else 0.0
+            coat = 0.0 if key == "Hull" else (0.04 if key == "Canopy" else 0.05 if key == "Armor" else 0.0)
+            trans = 0.78 if key == "Canopy" else 0.0
             wire_maps(obj.data.materials[0], bsdf, maps, coat=coat, transmission=trans)
             if key == "Canopy":
                 mat = obj.data.materials[0]
@@ -1397,7 +1621,20 @@ def build_lod(lod, mats):
         "role": "civic_pressure_drum_liner",
     }
     hull_fore = loft_from_rings("Station_Ops", forward_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
-    hull_pass = loft_from_rings("Station_Passenger", passenger_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
+    hull_pass = loft_hollow(
+        "Station_Passenger",
+        passenger_stations(lod),
+        passenger_inner_stations(lod),
+        hull_mat, collection, BEVEL_HULL, close_front=True, close_aft=True,
+    )
+    loft_from_rings(
+        "PassLiner",
+        [
+            pressure_ring(ring[0][0], 0, 0.38, PASS_HW - PASS_WALL - 0.10, PASS_HH - PASS_WALL - 0.10, **PASS)
+            for ring in passenger_inner_stations(lod)
+        ],
+        mats["Material_Mechanical"], collection, 0.002, cap="both",
+    )
     hull_aft = loft_from_rings("Station_Machinery", aft_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
     hull_obj = hull_fore
     if lod <= 1:
@@ -1409,6 +1646,7 @@ def build_lod(lod, mats):
         add_dock_hardware("Stbd", (-1.80, 11.12, 0.42), mats, collection, lod, cyan=False)
         add_dorsal_spine(lod, mats, collection)
         add_passenger_corridors(lod, mats, collection, passenger_hull=hull_pass)
+        add_passenger_clerestory(lod, mats, collection, hull_pass)
         add_hat_station_ring(
             "Hat_Shoulder", HAT_FORE_X, PASS_HW, PASS_HH, mats, collection,
             PASS["deck"], PASS["wall"], PASS["chine"], PASS["belly"],
@@ -1423,6 +1661,22 @@ def build_lod(lod, mats):
             "Hat_Load", HAT_LOAD_X, 5.15, 2.55, mats, collection,
             0.20, 0.80, 0.16, 0.22, inner_hw=3.85, inner_hh=1.85,
         )
+        roof_z = 0.38 + PASS_HH + 0.05
+        for i, rx in enumerate((7.15, 4.20, 1.25)):
+            add_box(
+                f"PassRoofRib_{i}",
+                (rx, 0.0, roof_z),
+                (0.09, PASS_HW * PASS["deck"] * 0.90, 0.07),
+                mats["Material_Armor"], collection, 0.002,
+            )
+            try:
+                boolean_cut_box(
+                    hull_pass, f"PassRoofRecess_{i}",
+                    (rx, 0.0, roof_z - 0.04),
+                    (1.15, PASS_HW * PASS["deck"] * 0.58, 0.09),
+                )
+            except Exception as exc:
+                print(f"roof recess skip {i}: {exc}")
         for station in (hull_fore, hull_pass, hull_aft):
             try:
                 inset_large_faces(station, thickness=0.055, depth=0.014, min_area=2.2)
@@ -1455,6 +1709,10 @@ def build_lod(lod, mats):
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
         obj.parent = root
+        try:
+            uv_for_object(obj)
+        except Exception as exc:
+            print(f"uv skip {obj.name}: {exc}")
     groups = {}
     for obj in mesh_objects:
         name = obj.data.materials[0].name if obj.data.materials else "Material_Hull"
@@ -1525,30 +1783,84 @@ def export_lod(collection, lod):
     out = FAMILY / "source" / "wholeships" / f"{PART_ID}_lod{lod}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
+    export_objects = []
     for obj in collection.all_objects:
         if obj.name.endswith("_HIGH") or obj.name.endswith("_CAGE"):
             obj.select_set(False)
             continue
         obj.hide_viewport = False
         obj.hide_set(False)
+        export_objects.append(obj)
+
+    # Blender globally suffixes later LOD object/material names even though
+    # every GLB is a separate package.  Temporarily reserve the unsuffixed
+    # names during export so every LOD keeps the exact socket and semantic
+    # node contract instead of leaking .001/.002 into the package.
+    def canonical_name(name):
+        return re.sub(r"\.\d{3}$", "", name)
+
+    target_object_names = {canonical_name(obj.name) for obj in export_objects}
+    if len(target_object_names) != len(export_objects):
+        raise RuntimeError(f"LOD{lod} export contains duplicate canonical object names")
+    held_objects = []
+    for obj in bpy.data.objects:
+        if obj in export_objects or obj.name not in target_object_names:
+            continue
+        held_objects.append((obj, obj.name))
+        obj.name = f"__SF_EXPORT_HOLD_OBJECT_{lod}_{len(held_objects):03d}"
+    original_object_names = [(obj, obj.name) for obj in export_objects]
+    for obj, original in original_object_names:
+        obj.name = canonical_name(original)
+
+    export_materials = []
+    for obj in export_objects:
+        if obj.type != "MESH":
+            continue
+        for slot in obj.material_slots:
+            if slot.material and slot.material not in export_materials:
+                export_materials.append(slot.material)
+    target_material_names = {canonical_name(mat.name) for mat in export_materials}
+    if len(target_material_names) != len(export_materials):
+        raise RuntimeError(f"LOD{lod} export contains duplicate canonical material names")
+    held_materials = []
+    for mat in bpy.data.materials:
+        if mat in export_materials or mat.name not in target_material_names:
+            continue
+        held_materials.append((mat, mat.name))
+        mat.name = f"__SF_EXPORT_HOLD_MATERIAL_{lod}_{len(held_materials):03d}"
+    original_material_names = [(mat, mat.name) for mat in export_materials]
+    for mat, original in original_material_names:
+        mat.name = canonical_name(original)
+
+    for obj in export_objects:
         obj.select_set(True)
     tmp = out.with_suffix(".tmp.glb")
-    bpy.ops.export_scene.gltf(
-        filepath=str(tmp), export_format="GLB", use_selection=True, export_apply=True,
-        export_yup=True, export_extras=True, export_animations=False,
-        export_materials="EXPORT", export_texcoords=True, export_normals=True,
-        export_tangents=True, export_image_format="AUTO",
-    )
-    for attempt in range(6):
-        try:
-            if out.exists():
-                out.unlink()
-            shutil.move(str(tmp), str(out))
-            break
-        except OSError:
-            if attempt == 5:
-                raise
-            time.sleep(0.35 * (attempt + 1))
+    try:
+        bpy.ops.export_scene.gltf(
+            filepath=str(tmp), export_format="GLB", use_selection=True, export_apply=True,
+            export_yup=True, export_extras=True, export_animations=False,
+            export_materials="EXPORT", export_texcoords=True, export_normals=True,
+            export_tangents=True, export_image_format="AUTO",
+        )
+        for attempt in range(6):
+            try:
+                if out.exists():
+                    out.unlink()
+                shutil.move(str(tmp), str(out))
+                break
+            except OSError:
+                if attempt == 5:
+                    raise
+                time.sleep(0.35 * (attempt + 1))
+    finally:
+        for obj, original in original_object_names:
+            obj.name = original
+        for obj, original in held_objects:
+            obj.name = original
+        for mat, original in original_material_names:
+            mat.name = original
+        for mat, original in held_materials:
+            mat.name = original
     return out
 
 
@@ -1925,7 +2237,7 @@ def render_cycle_from_glb(glb_path):
         ],
         "stillSha256": still_hashes,
         "producer": "build_massline_express_liner_v1.py",
-        "verdict": "review_pending",
+        "verdict": "revise",
         "gateState": "evidence_ready",
     }
     (out / "EVIDENCE_IDENTITY.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
@@ -2029,7 +2341,7 @@ def main():
             "play_chase_close": {"distance": DISTANCE_CLOSE, "heading": 0, "fov": 50, "tilt": 60},
         },
         "notes": "Source candidate only. Not wired to traffic, manifests, or partsLibrary.",
-        "implementingAgentVerdict": "review_pending",
+        "implementingAgentVerdict": "revise",
         "evidenceState": "evidence_ready",
     }
     (evidence / f"cycle_{CYCLE:02d}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

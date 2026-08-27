@@ -112,11 +112,12 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the cycle-32 source candidate exists. LOD0 hash
-`00F2DCAB9A2F24506E4A5576B48237D7EB74295CBFCCF0A1E4AB71F64EF35C60`.
-Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_32/`.
-Whole-asset G1/G2/G4 require an independent hash-bound review of those stills;
-this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
+G0 is written and the cycle-33 source candidate exists. LOD0 hash
+`74F9B8DA216010D1AACC9FA50B548255BA0683B540D633F50BB836C9A7875055`.
+Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_33/`.
+Controller original-resolution review is `REVISE`: the recessed observation bays now survive the legal
+chase view, but the passenger course remains too slab-like and the drives detach into fork appendages.
+Whole-asset G1/G2/G4 remain open. G3, G5, G6, and G7 stay open
 until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
 Source bounds 40.67 x 22.45 x 10.99 m (length-to-beam 1.81). Default occupancy
-17.45%, abeam 9.75%, close 44.97%, all uncropped.
+17.45%, abeam 9.80%, close 44.96%, all uncropped.
