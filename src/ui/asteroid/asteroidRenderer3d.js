@@ -511,6 +511,32 @@ function makeCrackDecalTexture(stage) {
   return tex;
 }
 
+// Atlas materials belong to the loader blueprint and are shared by every instantiated rover.
+// Any authored mesh whose material changes at runtime must receive an instance-owned clone first,
+// otherwise a lamp or cutter update repaints the hull, glass, and every other atlas consumer.
+export function isolateWorksMeshMaterials(meshes, instanceOwned = []) {
+  const isolated = [];
+  for (let i = 0; i < meshes.length; i++) {
+    const mesh = meshes[i];
+    const source = Array.isArray(mesh.material)
+      ? mesh.material
+      : (mesh.material ? [mesh.material] : []);
+    if (!source.length) continue;
+    const clones = [];
+    for (let m = 0; m < source.length; m++) {
+      const material = source[m];
+      if (!material || typeof material.clone !== 'function') continue;
+      const clone = material.clone();
+      clones.push(clone);
+      isolated.push(clone);
+      instanceOwned.push(clone);
+    }
+    if (!clones.length) continue;
+    mesh.material = Array.isArray(mesh.material) ? clones : clones[0];
+  }
+  return isolated;
+}
+
 export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection }) {
   injectOverlayStyle();
 
@@ -751,12 +777,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       cutterMats.push(mat);
       instanceOwned.push(mat);
     }
-    const lampMeshes = collectNamedMeshes(group, (n) => /_Lamp\b|_Lamp$|Lamp/.test(n) && !/_Boom/.test(n));
+    // Cycle 79 still exports its physical lamp and beacon lens as one merged Lamp mesh per LOD.
+    // Isolate that atlas region so its steady power state cannot repaint the rover. When a later
+    // artifact preserves a separately named BeaconLens, it receives its own clones and strobe;
+    // until then there is deliberately no fake independent beacon animation.
+    const beaconMeshes = collectNamedMeshes(group, (n) => /BeaconLens|_Beacon\b|Beacon/.test(n));
+    const lampMeshes = collectNamedMeshes(
+      group,
+      (n) => /_Lamp\b|_Lamp$|Lamp/.test(n) && !/_Boom/.test(n) && !/Beacon/.test(n),
+    );
+    const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+    const beaconMats = isolateWorksMeshMaterials(beaconMeshes, instanceOwned);
     const glassMeshes = collectNamedMeshes(group, (n) => /_Glass\b|_Glass$|Glass/.test(n));
     const scarMeshes = collectNamedMeshes(group, (n) => n === 'scar_plate' || n.endsWith('_scar_plate'));
     for (let i = 0; i < scarMeshes.length; i++) scarMeshes[i].visible = false;
     const bitMat = cutterMats[0] || null;
-    const lampMat = firstMaterial(lampMeshes);
     const glassMat = firstMaterial(glassMeshes);
     const dummyMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
     dummyMat.emissive.setHex(0x000000);
@@ -780,9 +815,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       lidShutX: lid.position.x,
       ventOffset: { x: ventLocal.x / S, y: ventLocal.y / S },
       lampAnchor: lamp,
-      lampMat: lampMat || dummyMat,
+      lampMat: lampMats[0] || dummyMat,
+      lampMats: lampMats.length ? lampMats : null,
       cabGlass: glassMat || dummyMat,
-      beacon: lampMat || dummyMat,
+      beacon: beaconMats[0] || dummyMat,
+      beaconMats: beaconMats.length ? beaconMats : null,
       wheels: [],
       setTrackPhase(phase) {
         for (let i = 0; i < trackPhaseMaps.length; i++) {
@@ -6121,9 +6158,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     // beacon: idle pulse, brisk blink rolling, strobe under the bit — peak stays under the bit's
     const beaconBusy = drilling ? 9 : (moving ? 5 : 0);
-    roverBuilt.dyn.beacon.emissiveIntensity = motionReduce
+    const beaconIntensity = motionReduce
       ? (drilling || moving ? 0.9 : 0.35)
       : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 1.0 : 0.12) : 0.35);
+    const beaconMats = roverBuilt.dyn.beaconMats || [roverBuilt.dyn.beacon];
+    for (let i = 0; i < beaconMats.length; i++) beaconMats[i].emissiveIntensity = beaconIntensity;
     // headlight points where the work is (left/right ride the body flip)
     const ht = faceDir === 'down' ? [0, -S * 3.2] : (faceDir === 'up' ? [0, S * 3.2] : [S * 3.2, 0]);
     headTarget.position.set(ht[0], ht[1], S * 0.3);
@@ -6131,7 +6170,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // off is a sticker, not a light.
     const powered = !d.energyDepleted;
     headlight.intensity = powered ? 52 : 12;
-    roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
+    const lampMats = roverBuilt.dyn.lampMats || [roverBuilt.dyn.lampMat];
+    for (let i = 0; i < lampMats.length; i++) {
+      lampMats[i].emissiveIntensity = powered ? 0.55 : 0.12;
+    }
     if (!roverBuilt.authored) {
       roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
     }

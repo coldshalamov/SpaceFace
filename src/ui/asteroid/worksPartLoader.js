@@ -263,6 +263,9 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
   let lod1Missing = 0;
   let lastError = null;
   const live = [];
+  // A teardown/mount race may hand the same group to two retirement paths. Releasing twice must
+  // not inflate diagnostics or walk/dispose instance resources a second time.
+  const releasedGroups = new WeakSet();
   // id -> { promise, group }. One screen session holds at most ONE standing load per id, and
   // every concurrent caller joins the SAME promise. Without this, two call sites racing the
   // same async mount each take a lease, and the loser's group is dropped without release —
@@ -304,7 +307,8 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
   }
 
   function releaseWorksPart(group) {
-    if (!group) return;
+    if (!group || releasedGroups.has(group)) return false;
+    releasedGroups.add(group);
     const idx = live.indexOf(group);
     if (idx >= 0) live.splice(idx, 1);
     forgetStanding(group);
@@ -317,6 +321,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       owned.length = 0;
     }
     released += 1;
+    return true;
   }
 
   function failLoad(id, url, error) {

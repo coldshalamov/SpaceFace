@@ -22,7 +22,10 @@ import { fileURLToPath } from 'node:url';
 
 import * as THREE from 'three';
 
-import { createSingleFlightMount } from '../src/ui/asteroid/asteroidRenderer3d.js';
+import {
+  createSingleFlightMount,
+  isolateWorksMeshMaterials,
+} from '../src/ui/asteroid/asteroidRenderer3d.js';
 import {
   createWorksPartLoader,
   recordWorksInstanceResources,
@@ -436,8 +439,9 @@ test('a screen session holds exactly one standing rover, however many callers ar
   assert.equal(stats.standing, 1);
 
   loader.releaseWorksPart(a);
+  loader.releaseWorksPart(a);
   const afterRelease = loader.stats();
-  assert.equal(afterRelease.released, 1, 'retiring the rover goes through releaseWorksPart');
+  assert.equal(afterRelease.released, 1, 'retiring the same rover twice is idempotent');
   assert.equal(afterRelease.standing, 0, 'a released group must not stay standing');
   assert.equal(a.parent, null, 'a released group is detached from the scene');
 
@@ -471,6 +475,40 @@ test('instance clones are retired by releaseWorksPart; blueprint resources are n
     sharedDisposed, 0,
     'the blueprint material is the lease\'s to retire, not this instance\'s',
   );
+
+  await loader.dispose('test');
+});
+
+test('real rover lamp preparation isolates every LOD from the shared hull atlas', async () => {
+  const blueprint = blueprintFromPart();
+  const renderer = createMockRenderer();
+  const loader = createWorksPartLoader({ renderer, lease: createCountingLease(blueprint) });
+  const group = await loader.loadStandingPart('rover');
+  const lamps = [];
+  const hull = [];
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    if (/Lamp/.test(obj.name) && !/Boom/.test(obj.name)) lamps.push(obj);
+    else if (/Livery|Steel|Glass/.test(obj.name)) hull.push(obj);
+  });
+  assert.equal(lamps.length, 3, 'the real combined part carries one merged lamp mesh per LOD');
+  assert.ok(hull.length > 0, 'the real combined part exposes non-lamp atlas consumers');
+
+  const sharedAtlas = lamps[0].material;
+  assert.ok(hull.some((mesh) => mesh.material === sharedAtlas), 'precondition: lamp and hull share the atlas');
+  const instanceOwned = [];
+  const isolated = isolateWorksMeshMaterials(lamps, instanceOwned);
+  assert.equal(isolated.length, lamps.length);
+  assert.equal(instanceOwned.length, lamps.length);
+  assert.ok(lamps.every((mesh) => mesh.material !== sharedAtlas), 'every LOD lamp gets an instance clone');
+  assert.ok(hull.some((mesh) => mesh.material === sharedAtlas), 'hull remains on the blueprint atlas');
+
+  for (const material of isolated) material.emissiveIntensity = 0.55;
+  assert.equal(sharedAtlas.emissiveIntensity, 1, 'lamp power never mutates the shared hull atlas');
+  recordWorksInstanceResources(group, instanceOwned);
+  loader.releaseWorksPart(group);
+  loader.releaseWorksPart(group);
+  assert.equal(loader.stats().released, 1, 'double release remains one retirement after material preparation');
 
   await loader.dispose('test');
 });
