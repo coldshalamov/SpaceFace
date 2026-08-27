@@ -1,0 +1,71 @@
+{
+  "assetId": "place_works_fabricator",
+  "cycle": 1,
+  "allSupportedViewZonesClassified": false,
+  "componentReferenceDecision": "not_needed",
+  "zones": [
+    {
+      "zone": "painted_frame",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominatesSupportedView": true,
+      "materialBillOrRetainedReviewEvidence": "dark alkyd over steel; chips at feet/gussets"
+    },
+    {
+      "zone": "fixture_bed",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominatesSupportedView": true,
+      "materialBillOrRetainedReviewEvidence": "worn unpainted plate, T-slots, clamps"
+    },
+    {
+      "zone": "profile_rails_and_blocks",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "bare ground bearing steel"
+    },
+    {
+      "zone": "tool_ceramic",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "dry alumina shroud and nozzle"
+    },
+    {
+      "zone": "energy_chain_polymer",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge"
+      ],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "rooted polymer links in trough"
+    },
+    {
+      "zone": "hooded_lamp",
+      "disposition": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominatesSupportedView": false,
+      "materialBillOrRetainedReviewEvidence": "one recessed warm glass"
+    }
+  ]
+}
