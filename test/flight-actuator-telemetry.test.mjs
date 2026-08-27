@@ -15,8 +15,8 @@ import { PROPULSION_PROFILES } from '../src/core/flight/propulsionCatalog.js';
 
 const DT = 1 / 60;
 
-// One drive per family. Sail is included deliberately: it has no retro or main actuator, so it
-// is the family most likely to break the "same shape for everyone" contract.
+// One drive per family. Sail is included deliberately: its environmental acceleration and weak
+// dead-field trim share the same signed presentation contract.
 const FAMILY_DRIVES = [
   'drive_reaction_m',
   'drive_gravimetric_m',
@@ -104,11 +104,21 @@ test('strafing port and starboard produce opposite-signed lateral demand on oppo
 });
 
 test('main thrust demand is forward-positive and lands on the main channel', () => {
-  for (const driveId of ['drive_reaction_m', 'drive_gravimetric_m', 'drive_pulse_plate_m', 'drive_torch_l']) {
+  for (const driveId of FAMILY_DRIVES) {
     const a = actuatorsFor(driveId, { throttle: 1 }).actuators;
     assert.ok(a.forward > 0, `${driveId}: full throttle must demand forward thrust, got ${a.forward}`);
     assert.ok(a.main > 0 && a.reverse === 0, `${driveId}: full throttle must light only the main channel`);
   }
+});
+
+test('the player field sail retains weak forward trim when no environmental field exists', () => {
+  const profile = PROPULSION_PROFILES.drive_field_sail_m;
+  const { result, actuators } = actuatorsFor('drive_field_sail_m', { throttle: 1 });
+  assert.ok(result.force.x > 0, 'dead-field forward throttle must produce physical force');
+  assert.ok(Math.abs(result.force.x / 20 - profile.trimAccel) < 1e-9,
+    'dead-field authority must be exactly the authored trim acceleration, not invented sail force');
+  assert.ok(actuators.main > 0 && actuators.reverse === 0,
+    'the onboard trim must publish truthful forward actuator demand');
 });
 
 test('braking from forward motion demands reverse, never main thrust', () => {

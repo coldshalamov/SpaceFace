@@ -2902,6 +2902,51 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/power-skid-patched",
       "metadataUrl": "assets/ships/release/render-packages/power-skid-patched/render-package.json"
+    },
+    {
+      "key": "ranger-production-v1",
+      "assetId": "sf.render.ranger-production-v1",
+      "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ranger_production_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
+      "releaseSha256": "6b05c48c7e69338d56e0f7765bc2bfd363f419ca1cbd35091ed453567c1debaf",
+      "releaseBytes": 4463960,
+      "rootNode": "RANGER_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ranger-production-v1",
+      "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1/render-package.json"
+    },
+    {
+      "key": "ranger-production-v1-lod1",
+      "assetId": "sf.render.ranger-production-v1-lod1",
+      "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ranger_production_v1_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
+      "releaseSha256": "6f076e487de231689f3da601cf67d7103d01d7a51f41b1625b66db84d0fb09a5",
+      "releaseBytes": 4450152,
+      "rootNode": "RANGER_LOD1_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod1/render-package.json"
+    },
+    {
+      "key": "ranger-production-v1-lod2",
+      "assetId": "sf.render.ranger-production-v1-lod2",
+      "runtimeAssetId": "SF_RANGER_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ranger_production_v1_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
+      "releaseSha256": "3a0148e3191e4a6258728e5585f246ad2a5ca0c5192f406052f39dfbc048b761",
+      "releaseBytes": 4426436,
+      "rootNode": "RANGER_LOD2_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json"
     }
   ]
 }

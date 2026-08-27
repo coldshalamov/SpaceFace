@@ -80,6 +80,9 @@ const WHOLE_SHIP_FILES = [
   'drifter_production_v1.glb',
   'drifter_production_v1_lod1.glb',
   'drifter_production_v1_lod2.glb',
+  'ranger_production_v1.glb',
+  'ranger_production_v1_lod1.glb',
+  'ranger_production_v1_lod2.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const allAssets = [

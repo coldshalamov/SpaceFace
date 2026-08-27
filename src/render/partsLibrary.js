@@ -792,13 +792,21 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
   return plan;
 }
 
+const REQUIRED_PRODUCTION_WHOLE_SHIP_DEF_IDS = new Set([
+  'ship_wasp',
+  'ship_drifter',
+  'ship_ranger',
+]);
+
 /** Keep sector preparation on the same complete-body selector as the installed visual factory.
- * Hostile and traffic roles already select complete bodies inside wholeShipVisualForEntity; this
- * covers the two def-driven production bodies whose factory selection is intentionally stricter. */
+ * Hostile and traffic roles already select complete bodies inside wholeShipVisualForEntity. The
+ * starter stays player-only; accepted later fleet remasters also cover short-lived rebuild/NPC
+ * entities that carry the authoritative defId but not the player marker. */
 export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const defId = entity.data.defId;
-  return (entity.isPlayer === true && defId === 'ship_kestrel') || defId === 'ship_wasp';
+  return (entity.isPlayer === true && defId === 'ship_kestrel')
+    || REQUIRED_PRODUCTION_WHOLE_SHIP_DEF_IDS.has(defId);
 }
 
 /**

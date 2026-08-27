@@ -15,6 +15,7 @@ import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  requiresProductionWholeShipForEntity,
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -31,15 +32,6 @@ const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 export function isPlayerKestrel(entity) {
   return !!entity && entity.type === 'ship' && entity.isPlayer === true
     && entity.data && entity.data.defId === 'ship_kestrel';
-}
-
-function requiresProductionWholeShip(entity) {
-  if (!entity || entity.type !== 'ship' || !entity.data) return false;
-  // The active-hull rebuild uses a short-lived render entity that does not retain `isPlayer`, even
-  // though its authoritative defId has already changed. Keep the Kestrel's strict player-only boot
-  // rule, while selecting the production Wasp for every Wasp render entity so ship switching cannot
-  // silently reconstruct the older modular body.
-  return isPlayerKestrel(entity) || entity.data.defId === 'ship_wasp';
 }
 
 function isWorldPlaceProp(entity) {
@@ -156,7 +148,7 @@ export function installVisualOverrides(factory, options = {}) {
     : buildAuthoredStationArchetype;
   factory.build = (entity) => {
     let visual = null;
-    const requiredWholeShip = requiresProductionWholeShip(entity);
+    const requiredWholeShip = requiresProductionWholeShipForEntity(entity);
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
@@ -256,9 +248,9 @@ export function installVisualOverrides(factory, options = {}) {
         releaseMode,
         libraryScope: options.authoredLibraryScope,
         bootstrapPlan: options.authoredBootstrapPlan,
-        // The authored boundary is opt-in: only player hulls with a production whole-ship mapping
-        // may bypass modular assembly. Keep the Kestrel boot rule intact while allowing a later
-        // player switch to the production Wasp to select its complete body on undock and Continue.
+        // The authored boundary is opt-in: only accepted production whole-ship identities may
+        // bypass modular assembly. Keep the Kestrel boot rule intact while allowing later accepted
+        // fleet bodies to remain exact across undock, Continue, and active-hull rebuilds.
         requiredWholeShip,
         onSwap: (payload) => {
           configureTransparentSinglePassSurfaces(payload && (payload.authoredRoot || payload.boundary));

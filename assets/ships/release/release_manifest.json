@@ -3378,6 +3378,48 @@
       "ktx2Textures": 30,
       "meshoptBufferViews": 53,
       "contractNodeCount": 21
+    },
+    {
+      "id": "wholeship_ranger_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ranger_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/ranger_production_v1.glb",
+      "sourceSha256": "c7a49ac369ab33a19def33c9c90066834144029192668ee35c3e3e6077dedc2a",
+      "releaseSha256": "6b05c48c7e69338d56e0f7765bc2bfd363f419ca1cbd35091ed453567c1debaf",
+      "sourceBytes": 8397584,
+      "releaseBytes": 4463960,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 21
+    },
+    {
+      "id": "wholeship_ranger_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ranger_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ranger_production_v1_lod1.glb",
+      "sourceSha256": "df6aa72cad21aa8fbc5ab8c2a2e1d9117ba6d873bab6489975f8e646cd388f13",
+      "releaseSha256": "6f076e487de231689f3da601cf67d7103d01d7a51f41b1625b66db84d0fb09a5",
+      "sourceBytes": 8351348,
+      "releaseBytes": 4450152,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 21
+    },
+    {
+      "id": "wholeship_ranger_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ranger_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb",
+      "sourceSha256": "15252a19e24c9f620689e23867bdda4cc568dde3b5470b19854a94b463db2f2a",
+      "releaseSha256": "3a0148e3191e4a6258728e5585f246ad2a5ca0c5192f406052f39dfbc048b761",
+      "sourceBytes": 8221408,
+      "releaseBytes": 4426436,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 21
     }
   ]
 }
