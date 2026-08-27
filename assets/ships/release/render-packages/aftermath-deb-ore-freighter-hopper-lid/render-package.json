@@ -1,0 +1,2430 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-ore-freighter-hopper-lid",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "b7a696a50016baaf2ccc3b5a0a5a0c11ebf82f7a615a8b8cb2d360df36da057b",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          10.221696853637695,
+          10.713342666625977,
+          -2.828152894973755
+        ],
+        "min": [
+          -15.778303146362305,
+          9.611989974975586,
+          -3.7803304195404053
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7f31117cb883e2dfc45efd94d246862e2d84616c40854a0e5c64ff1ed77f844",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-rim.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-rim",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          10.221696853637695,
+          10.035646438598633,
+          3.809019088745117
+        ],
+        "min": [
+          -15.778303146362305,
+          -6.910314083099365,
+          -3.2175025939941406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cfb6d7288bc027af35ad0d4d12874131949248edf4deba6fc16237d3b333026",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-side.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-side",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.72835922241211,
+          9.642329216003418,
+          3.112520217895508
+        ],
+        "min": [
+          -11.8282470703125,
+          -6.51699686050415,
+          -3.921003580093384
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72a6d79034eac02beb8f8a32ec4506a8c9fecec80090a817ef992527851a5816",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2283596992492676,
+          9.642329216003418,
+          3.112520217895508
+        ],
+        "min": [
+          -3.328246593475342,
+          -6.51699686050415,
+          -3.921003580093384
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5da7280de8321b6f810dd130b3075f620de83e7813a80e73db32335e53618668",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.271640300750732,
+          9.642329216003418,
+          3.112520217895508
+        ],
+        "min": [
+          5.171753406524658,
+          -6.51699686050415,
+          -3.921003580093384
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d304f7ba77802825cbffb9fb3abc14e1bf3abada08b21f3be14a1fcead6a2d99",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1416969299316406,
+          8.952239990234375,
+          1.5228294134140015
+        ],
+        "min": [
+          -13.69830322265625,
+          -1.8269070386886597,
+          1.4686871767044067
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "131d353bf36238d88d1434a954b71511d4cce12a525f9b23448230e5cdbc0b48",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch-ring.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch-ring",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2783031463623047,
+          7.5229620933532715,
+          1.5407426357269287
+        ],
+        "min": [
+          -11.278303146362305,
+          -0.39762911200523376,
+          1.4507739543914795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "254a7ec6c48cc464d8921119180dca349b9260330be03cc09606be509a15fc4f",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.112322807312012,
+          0.4228372871875763,
+          8.18753433227539
+        ],
+        "min": [
+          10.561070442199707,
+          -1.1666085720062256,
+          6.854589939117432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "696ae6f6bbf8106e6326c2c40dbd8c01272f37bc2af3a8c40763363b0d402e54",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14.469069480895996,
+          -2.4523122310638428,
+          2.458674192428589
+        ],
+        "min": [
+          10.492323875427246,
+          -4.204516887664795,
+          0.3816775381565094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57df098c5643f4335788fab5ea0c7223c0f814a1f77c20265f0d8c106affeff5",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.994349479675293,
+          -0.7878128290176392,
+          -4.524712562561035
+        ],
+        "min": [
+          10.251042366027832,
+          -2.6658356189727783,
+          -6.807002067565918
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a61182a4040294c6d470f6f851e4d3870e077bee2ad68b7f2af7c354bb83a05",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.332144737243652,
+          4.382011413574219,
+          -4.7384161949157715
+        ],
+        "min": [
+          10.201247215270996,
+          2.2504489421844482,
+          -8.187414169311523
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e7b2a4d31f51a1c204e0408cf820173b975c69c233c9325ac37b88ee88fcc6a",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.236074447631836,
+          7.327539443969727,
+          -0.02406972646713257
+        ],
+        "min": [
+          10.581317901611328,
+          5.975640296936035,
+          -1.6945085525512695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c8778ec98877f33d150bb879ade303cf53a27df04af5c0900d0333837fcd1bd",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.778268814086914,
+          5.916647434234619,
+          6.983865261077881
+        ],
+        "min": [
+          10.327123641967773,
+          3.160428524017334,
+          4.7507710456848145
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7486007be69d2cdd1b60fd75fbd06a4335633f3c0dc9e7f2db55237628ae6d51",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.419635772705078,
+          -6.82527494430542,
+          2.296220541000366
+        ],
+        "min": [
+          -14.046195983886719,
+          -8.869544982910156,
+          0.23785138130187988
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d3880c5089522d2e9d76170c5dbb6fecaaf0fec36094077c36d214c3bd9ca1a",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.156859397888184,
+          -7.63154935836792,
+          2.005842924118042
+        ],
+        "min": [
+          -8.559905052185059,
+          -10.983085632324219,
+          -0.676574170589447
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0eb62f000be64f4bb9146a75d2bf6c5c76e378d51079f9e4f5b1b49a9a4cb220",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5693576335906982,
+          -7.336581230163574,
+          1.12032151222229
+        ],
+        "min": [
+          0.29942256212234497,
+          -9.907868385314941,
+          -1.0049469470977783
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "946efd2164aab93c9f070fd892c63fc8045c94b69629656203c217eb24cb93b4",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.816426277160645,
+          -6.813161373138428,
+          4.042063236236572
+        ],
+        "min": [
+          6.212099552154541,
+          -11.482603073120117,
+          -0.30453357100486755
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4187d8199c9b1bc6878e7c59881148bd30a7de353e436fad653b1b453ae2929b",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.028532981872559,
+          -6.367610931396484,
+          4.046786308288574
+        ],
+        "min": [
+          6.950783729553223,
+          -9.073172569274902,
+          2.312567949295044
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a580187573ffc0a388174304c47879f88d61ecc44b42fe571fadec7db742a79",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.004293918609619,
+          -5.760228633880615,
+          4.809216022491455
+        ],
+        "min": [
+          0.4376741647720337,
+          -11.108153343200684,
+          4.200232982635498
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02352957889a2844278b574a36e7a67bdf9dcb1679770dac79aca9debf7a9978",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.021291732788086,
+          -5.831406116485596,
+          5.538280963897705
+        ],
+        "min": [
+          -7.815910339355469,
+          -9.209096908569336,
+          3.4396445751190186
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "430f882762addb2d49a60a414559421e307387de1a8c62decae737921062453d",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.225481986999512,
+          -6.104786396026611,
+          4.5764946937561035
+        ],
+        "min": [
+          -13.832127571105957,
+          -8.13724422454834,
+          1.7106139659881592
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "209a7bdbfc6ca17595a4299d85ca7e1c48084e1792e9ebd598f52242473ad4b0",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "id": "material:543629edf101c89ef59f8a0b",
+      "name": "wrk_paint_freight_ochre",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "id": "material:acad180edd387403bb113453",
+      "name": "wrk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-rim",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lid_rim",
+      "nodeName": "lid_rim",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-side",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lid_side",
+      "nodeName": "lid_side",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lid_stiff_0",
+      "nodeName": "lid_stiff_0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lid_stiff_1",
+      "nodeName": "lid_stiff_1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lid_stiff_2",
+      "nodeName": "lid_stiff_2",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "scorch_lid_scorch",
+      "nodeName": "scorch_lid_scorch",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "scorch_lid_scorch_ring",
+      "nodeName": "scorch_lid_scorch_ring",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_0",
+      "nodeName": "tear_lid_end_tear_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_1",
+      "nodeName": "tear_lid_end_tear_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_2",
+      "nodeName": "tear_lid_end_tear_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_3",
+      "nodeName": "tear_lid_end_tear_3",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_4",
+      "nodeName": "tear_lid_end_tear_4",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_end_tear_5",
+      "nodeName": "tear_lid_end_tear_5",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_0",
+      "nodeName": "tear_lid_tear_0",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_1",
+      "nodeName": "tear_lid_tear_1",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_2",
+      "nodeName": "tear_lid_tear_2",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_3",
+      "nodeName": "tear_lid_tear_3",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_4",
+      "nodeName": "tear_lid_tear_4",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_5",
+      "nodeName": "tear_lid_tear_5",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_6",
+      "nodeName": "tear_lid_tear_6",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_lid_tear_7",
+      "nodeName": "tear_lid_tear_7",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "deb_ore_freighter_hopper_lid",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "2d2e3b5d4051fc0eff290ce5e240a37235613cb0ed38e72f8f9979ae6c5d393b"
+    },
+    "sourceGlb": {
+      "bytes": 22132,
+      "sha256": "9e54eac2939c6993ece696c61719b990fc3bacc5278bddbd145248a1b8b0d04d",
+      "uri": "place_aftermath_deb_ore_freighter_hopper_lid.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 50952,
+    "sha256": "e02f380bd7c8acdbca248bf718e8977226fc6a6aad36a8c77b0e0002b3774845",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.0000171661376953125,
+        -0.3846302032470703,
+        0.00006008148193359375
+      ],
+      "max": [
+        15.778268814086914,
+        10.713342666625977,
+        8.18753433227539
+      ],
+      "min": [
+        -15.778303146362305,
+        -11.482603073120117,
+        -8.187414169311523
+      ],
+      "size": [
+        31.55657196044922,
+        22.195945739746094,
+        16.374948501586914
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "geology": 21
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 23,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lid_rim",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lid_side",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lid_stiff_0",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lid_stiff_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lid_stiff_2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "scorch_lid_scorch",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "scorch_lid_scorch_ring",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_2",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_3",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_4",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_end_tear_5",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_0",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_2",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_3",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_4",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_5",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_6",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_lid_tear_7",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb"
+  },
+  "runtimeHash": "f6c466bec9051681e513065e051eaa0881cbb48e32f9ab8d6959a230a1165e18",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          15.778268814086914,
+          10.713342666625977,
+          8.18753433227539
+        ],
+        "min": [
+          -15.778303146362305,
+          -11.482603073120117,
+          -8.187414169311523
+        ]
+      },
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-rim",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-side",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-0",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-1",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lid-stiff-2",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.scorch-lid-scorch-ring",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-0",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-1",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-2",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-3",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-4",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-end-tear-5",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-0",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-1",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-2",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-3",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-4",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-5",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-6",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.tear-lid-tear-7",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1665 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-liner-hull-panel-authored-down",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "352c8f87ae54d8ea5075e3baa565fc8284b0dab086ad6f3e865f821b4f5c180c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.612636566162109,
+          0.5301790237426758,
+          0.9131884574890137
+        ],
+        "min": [
+          -8.38736343383789,
+          -0.18273338675498962,
+          -0.8212394714355469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e28da85f493ca60174f30b3f2cffa7ea8906083e1536649fff326c6985d18cc",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-glass.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_deb_liner_hull_panel_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.11263656616211,
+          0.7892246842384338,
+          4.014769554138184
+        ],
+        "min": [
+          -9.88736343383789,
+          -1.5417791604995728,
+          -3.9228203296661377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14f61d88a7aff83cc5e13637e02c1def8b8e9bb00922bcdca4b7a3464a3cea84",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-hull.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deb_liner_hull_panel_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14.349752426147461,
+          6.760372638702393,
+          4.698583602905273
+        ],
+        "min": [
+          -14.349752426147461,
+          -6.760372638702393,
+          -4.698583602905273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "787049b9509902458f7c69bda1811e990dd5b393052fb80992704537c4fc505c",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-insulation.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deb_liner_hull_panel_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          6.462636947631836,
+          0.19224901497364044,
+          3.8528079986572266
+        ],
+        "min": [
+          -7.237363338470459,
+          -2.34480357170105,
+          -3.7608590126037598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2bf5135133ff0151b2504d0fc183b1f0eab5262e64cb3ce757f2abee5ad937b",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-structural.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deb_liner_hull_panel_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          7.612636566162109,
+          0.5301790237426758,
+          0.9131884574890137
+        ],
+        "min": [
+          -8.38736343383789,
+          -0.18273338675498962,
+          -0.8212394714355469
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9b8a80aa31cdf269e0a2dc24c93f43e0fbee06e0ce6dd7b036696964d32dbd2",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-glass.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_deb_liner_hull_panel_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 11
+    },
+    {
+      "bounds": {
+        "max": [
+          9.11263656616211,
+          0.7892246842384338,
+          4.014769554138184
+        ],
+        "min": [
+          -9.88736343383789,
+          -1.5417791604995728,
+          -3.9228203296661377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "824fd56f237f6bf828ead458ddfe2d610fe16b0b92103a748113a77e8748d56d",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-hull.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deb_liner_hull_panel_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 11
+    },
+    {
+      "bounds": {
+        "max": [
+          14.349752426147461,
+          6.760372638702393,
+          4.698583602905273
+        ],
+        "min": [
+          -14.349752426147461,
+          -6.760372638702393,
+          -4.698583602905273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8cb26d7f5d6648337f083306d03311a61addc6644b2dfb7fa1de5f88a800e0c9",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-insulation.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deb_liner_hull_panel_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 166
+    },
+    {
+      "bounds": {
+        "max": [
+          6.462636947631836,
+          0.19224901497364044,
+          3.8528079986572266
+        ],
+        "min": [
+          -7.237363338470459,
+          -2.34480357170105,
+          -3.7608590126037598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6051479e5f2b50b9a9a5c6728eef81bfa2ff46873e93b185945739ed92f23d8",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-structural.primitive.0",
+      "indexCount": 51,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deb_liner_hull_panel_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 35
+    },
+    {
+      "bounds": {
+        "max": [
+          9.11263656616211,
+          0.7892246842384338,
+          4.014769554138184
+        ],
+        "min": [
+          -9.88736343383789,
+          -1.5417791604995728,
+          -3.9228203296661377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "89abe04074b802f54a5ad9d5112516b117d87e88938ee48af2fd395d07998bca",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-hull.primitive.0",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deb_liner_hull_panel_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 6
+    },
+    {
+      "bounds": {
+        "max": [
+          14.349753379821777,
+          6.760562419891357,
+          4.6997575759887695
+        ],
+        "min": [
+          -13.903972625732422,
+          -6.760561466217041,
+          -4.699756622314453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "484b81921c5dcb3e6588f87219938365dacd1cb42834f6ed8d94227bbb017957",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-insulation.primitive.0",
+      "indexCount": 99,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deb_liner_hull_panel_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 67
+    },
+    {
+      "bounds": {
+        "max": [
+          6.462637901306152,
+          0.1922491043806076,
+          3.8528082370758057
+        ],
+        "min": [
+          -7.237363338470459,
+          -2.34480357170105,
+          -3.760859251022339
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7004e9bf8d29cf5e1ed14be932be9fa03dc7f236278fd3ea3d868ba66371449",
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-structural.primitive.0",
+      "indexCount": 21,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deb_liner_hull_panel_Material_Structural_mesh",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 17
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "id": "material:124d57494b8cd5aee7fba823",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_structural_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "id": "material:1ec579f28cf3f8d13c7feca8",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "id": "material:ac4380c2740998f988624d23",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "deb_liner_hull_panel",
+      "nodeName": "deb_liner_hull_panel",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "deb_liner_hull_panel.001",
+      "nodeName": "deb_liner_hull_panel.001",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD0_deb_liner_hull_panel",
+      "nodeName": "LOD0_deb_liner_hull_panel",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_deb_liner_hull_panel_Material_Glass",
+      "nodeName": "LOD0_deb_liner_hull_panel_Material_Glass",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deb_liner_hull_panel_Material_Hull",
+      "nodeName": "LOD0_deb_liner_hull_panel_Material_Hull",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deb_liner_hull_panel_Material_Insulation",
+      "nodeName": "LOD0_deb_liner_hull_panel_Material_Insulation",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deb_liner_hull_panel_Material_Structural",
+      "nodeName": "LOD0_deb_liner_hull_panel_Material_Structural",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD1_deb_liner_hull_panel",
+      "nodeName": "LOD1_deb_liner_hull_panel",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_deb_liner_hull_panel_Material_Glass",
+      "nodeName": "LOD1_deb_liner_hull_panel_Material_Glass",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deb_liner_hull_panel_Material_Hull",
+      "nodeName": "LOD1_deb_liner_hull_panel_Material_Hull",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deb_liner_hull_panel_Material_Insulation",
+      "nodeName": "LOD1_deb_liner_hull_panel_Material_Insulation",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deb_liner_hull_panel_Material_Structural",
+      "nodeName": "LOD1_deb_liner_hull_panel_Material_Structural",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD2_deb_liner_hull_panel",
+      "nodeName": "LOD2_deb_liner_hull_panel",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deb_liner_hull_panel_Material_Hull",
+      "nodeName": "LOD2_deb_liner_hull_panel_Material_Hull",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deb_liner_hull_panel_Material_Insulation",
+      "nodeName": "LOD2_deb_liner_hull_panel_Material_Insulation",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deb_liner_hull_panel_Material_Structural",
+      "nodeName": "LOD2_deb_liner_hull_panel_Material_Structural",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "75a9d9a8de3a5315c29b54545386d0588c6a5295eed2bfffc150c7ab65df832b"
+    },
+    "sourceGlb": {
+      "bytes": 1068808,
+      "sha256": "b13476092f38806e6816b00a9cba907ccc2f0ec7f555c7f061e71c8edf160ead",
+      "uri": "place_aftermath_deb_liner_hull_panel_authored_down.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1079860,
+    "sha256": "0a78c58f69283d1899670ef502d8883c73fa434a1eab9d9e918de7114c604280",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        4.76837158203125e-7,
+        4.76837158203125e-7,
+        4.76837158203125e-7
+      ],
+      "max": [
+        14.349753379821777,
+        6.760562419891357,
+        4.6997575759887695
+      ],
+      "min": [
+        -14.349752426147461,
+        -6.760561466217041,
+        -4.699756622314453
+      ],
+      "size": [
+        28.69950580596924,
+        13.521123886108398,
+        9.399514198303223
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "geology": 6,
+      "glass": 2,
+      "hull": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 17,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deb_liner_hull_panel_Material_Glass",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deb_liner_hull_panel_Material_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deb_liner_hull_panel_Material_Insulation",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deb_liner_hull_panel_Material_Structural",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deb_liner_hull_panel_Material_Glass",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deb_liner_hull_panel_Material_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deb_liner_hull_panel_Material_Insulation",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deb_liner_hull_panel_Material_Structural",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deb_liner_hull_panel_Material_Hull",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deb_liner_hull_panel_Material_Insulation",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deb_liner_hull_panel_Material_Structural",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb"
+  },
+  "runtimeHash": "ad1798c96c6768eb15c6f8839ef93470dddf04e90b1641f69e842ac050778e3d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          14.349753379821777,
+          6.760562419891357,
+          4.6997575759887695
+        ],
+        "min": [
+          -14.349752426147461,
+          -6.760561466217041,
+          -4.699756622314453
+        ]
+      },
+      "id": "sf.render.aftermath-deb-liner-hull-panel-authored-down.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.deb-liner-hull-panel-001",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-glass",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-hull",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-insulation",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod0-deb-liner-hull-panel-material-structural",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-glass",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-hull",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-insulation",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod1-deb-liner-hull-panel-material-structural",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-hull",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-insulation",
+        "sf.render.aftermath-deb-liner-hull-panel-authored-down.node.lod2-deb-liner-hull-panel-material-structural"
+      ]
+    }
+  ]
+}

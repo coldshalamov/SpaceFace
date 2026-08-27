@@ -6,7 +6,7 @@ Y-up glTF with:
 - LOD roots named LOD0_* / LOD1_* / LOD2_*
 - named sockets the runtime drives (boom_pivot, bit_tip, hopper_fill_0..4,
   hopper_lid, lamp_socket, vent_stack, track_L, track_R, scar_plate)
-- a named LOD<n>_Bit cutter mesh parented under bit_tip
+- one named LOD<n>_Bit cutter mesh per LOD, parented beneath bit_tip
 - spacefaceAsset on the glTF asset, the scene, and the canonical root
 
 Authored at works scale: 1.87 x 1.76 x 0.99 wu, origin at cell centre, +Z up
@@ -24,7 +24,6 @@ import struct
 import sys
 from pathlib import Path
 
-import bmesh
 import bpy
 from mathutils import Vector
 
@@ -43,21 +42,9 @@ ASSET_ID = "place_works_rover"
 HOOK_NAMES = mtx.HOOK_NAMES
 HOOK_MESHES = tuple(mtx.HOOK_MESHES)
 EMPTY_HOOKS = ("boom_pivot", "bit_tip", "lamp_socket", "vent_stack")
-
-# The cutter. The LOD builder merges every boom part into one node per material role, so the
-# only thing `bit_tip` could ever have driven arrives welded into Merged_Material_Scar_Boom and
-# Merged_Material_Steel_Boom. Recover it here, at combine time, without touching the frozen
-# hash-sealed LOD sources: blow those two role groups apart by loose part, take back every part
-# that sits on the cutter's own axis, and rebuild them as one named LOD<n>_Bit mesh whose origin
-# is on that axis at the cutting end. Everything else in each role group is rejoined unchanged.
-BIT_MESH_STEM = "Bit"
-BIT_SOURCE_STEMS = ("Merged_Material_Scar_Boom", "Merged_Material_Steel_Boom")
-BIT_AXIS_RADIUS = 0.12       # wu from the cutter axis; nearest non-cutter part sits at 0.165
-BIT_AXIS_BACKREACH = 0.32    # wu behind BIT_TIP; nearest boom-arm part centres at 0.44 behind
-BIT_LOOSE_PARTS = 4          # head + collar (scar role) + tip + point (steel role)
-BIT_SPAN_X = (0.20, 0.50)
-BIT_SPAN_LATERAL = 0.30
-BIT_AXIS_TOLERANCE = 0.05
+CUTTER_SOCKET = "bit_tip"
+CUTTER_STEM = "Bit"
+CUTTER_NAMES = tuple(f"LOD{lod}_{CUTTER_STEM}" for lod in (0, 1, 2))
 
 
 def sha256(path: Path) -> str:
@@ -171,239 +158,40 @@ def _strip_blender_dup(name: str) -> str:
     return name
 
 
-def _lod_stem(name: str) -> str:
-    raw = _strip_blender_dup(name)
-    for lod in (0, 1, 2):
-        prefix = f"LOD{lod}_"
-        if raw.startswith(prefix):
-            return raw[len(prefix):]
-    return raw
-
-
-def _world_bounds(obj):
-    matrix = obj.matrix_world
-    points = [matrix @ Vector(corner[:]) for corner in obj.bound_box]
-    low = Vector((
-        min(p.x for p in points), min(p.y for p in points), min(p.z for p in points),
-    ))
-    high = Vector((
-        max(p.x for p in points), max(p.y for p in points), max(p.z for p in points),
-    ))
-    return low, high
-
-
-def _on_bit_axis(centre) -> bool:
-    tip_x, tip_y, tip_z = mtx.BIT_TIP
-    lateral = ((centre.y - tip_y) ** 2 + (centre.z - tip_z) ** 2) ** 0.5
-    return lateral <= BIT_AXIS_RADIUS and centre.x >= tip_x - BIT_AXIS_BACKREACH
-
-
-def _activate(objects):
+def _join_cutter(imported, lod: int):
+    """Keep the complete forged head and bright point as one runtime-driven cutter."""
+    expected = {
+        f"LOD{lod}_Merged_Material_Scar_Boom",
+        f"LOD{lod}_Merged_Material_Bit_Boom",
+    }
+    parts = [
+        obj for obj in imported
+        if obj.type == "MESH" and obj.get("_sf_raw") in expected
+    ]
+    found = {obj.get("_sf_raw") for obj in parts}
+    if found != expected:
+        raise RuntimeError(
+            f"LOD{lod} cutter requires forged and tool-steel meshes; "
+            f"expected {sorted(expected)}, found {sorted(found)}"
+        )
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in objects:
+    for obj in parts:
         obj.select_set(True)
-    bpy.context.view_layer.objects.active = objects[0]
-
-
-def _mesh_components(obj):
-    """Connected components of `obj`, joined through COINCIDENT POSITIONS.
-
-    Blender's loose-part operator cannot be used here: the glTF import splits vertices at
-    every normal/UV seam, so `separate(type='LOOSE')` sees each face as its own island.
-    This walks the same welded adjacency the release artifact would show without touching a
-    single vertex — no merge-by-distance, no UV or normal damage.
-    """
-    mesh = obj.data
-    parent = {}
-
-    def find(node):
-        while parent[node] != node:
-            parent[node] = parent[parent[node]]
-            node = parent[node]
-        return node
-
-    def union(a, b):
-        root_a, root_b = find(a), find(b)
-        if root_a != root_b:
-            parent[root_a] = root_b
-
-    key_of = []
-    for vert in mesh.vertices:
-        key = (round(vert.co.x, 4), round(vert.co.y, 4), round(vert.co.z, 4))
-        if key not in parent:
-            parent[key] = key
-        key_of.append(key)
-    for poly in mesh.polygons:
-        indices = list(poly.vertices)
-        for other in indices[1:]:
-            union(key_of[indices[0]], key_of[other])
-
-    matrix = obj.matrix_world
-    records = {}
-    for poly in mesh.polygons:
-        root = find(key_of[poly.vertices[0]])
-        record = records.get(root)
-        if record is None:
-            record = {"faces": [], "low": None, "high": None}
-            records[root] = record
-        record["faces"].append(poly.index)
-        for index in poly.vertices:
-            point = matrix @ mesh.vertices[index].co
-            if record["low"] is None:
-                record["low"] = point.copy()
-                record["high"] = point.copy()
-            else:
-                low, high = record["low"], record["high"]
-                low.x, low.y, low.z = min(low.x, point.x), min(low.y, point.y), min(low.z, point.z)
-                high.x, high.y, high.z = max(high.x, point.x), max(high.y, point.y), max(high.z, point.z)
-    for record in records.values():
-        record["centre"] = (record["low"] + record["high"]) * 0.5
-    return list(records.values())
-
-
-def _separate_faces(obj, face_indices, lod):
-    """Peel exactly `face_indices` off `obj` into a new object. Returns the new object."""
-    before = set(bpy.data.objects)
-    _activate([obj])
-    bpy.ops.object.mode_set(mode="EDIT")
-    bm = bmesh.from_edit_mesh(obj.data)
-    bm.faces.ensure_lookup_table()
-    bm.select_mode = {"FACE"}
-    for face in bm.faces:
-        face.select_set(face.index in face_indices)
-    bm.select_flush(True)
-    bmesh.update_edit_mesh(obj.data)
-    bpy.ops.mesh.separate(type="SELECTED")
-    bpy.ops.object.mode_set(mode="OBJECT")
-    made = [o for o in bpy.data.objects if o not in before]
-    if len(made) != 1:
-        raise RuntimeError(f"lod{lod}: face separation produced {len(made)} objects, expected 1")
-    made[0]["sf_import_lod"] = lod
-    return made[0]
-
-
-def _join_objects(objects, name, parent, lod):
-    if not objects:
-        return None
-    _activate(objects)
-    if len(objects) > 1:
-        bpy.ops.object.join()
-    node = bpy.context.view_layer.objects.active
-    node.name = name
-    node["sf_import_lod"] = lod
-    if parent is not None and node.parent is not parent:
-        _reparent_keep_world(node, parent)
-    return node
-
-
-def _set_origin(obj, location):
-    cursor = bpy.context.scene.cursor
-    previous = cursor.location.copy()
-    cursor.location = location
-    _activate([obj])
-    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
-    cursor.location = previous
-
-
-def split_bit_from_boom(imported, lod):
-    """Recover the named cutter mesh from this LOD's merged boom role groups.
-
-    Returns (updated_imported, bit_object). Raises when the frozen LOD source no longer
-    presents the cutter as the loose parts measured at cycle 78 — a silent one-part or
-    zero-part Bit must red the build, not ship a cutter the runtime cannot drive.
-    """
-    sources = []
-    for stem in BIT_SOURCE_STEMS:
-        target = f"LOD{lod}_{stem}"
-        source = next(
-            (o for o in imported
-             if o.type == "MESH" and _strip_blender_dup(o.name) == target),
-            None,
-        )
-        if source is None:
-            raise RuntimeError(f"lod{lod}: boom role group {target} is missing from the LOD source")
-        sources.append((target, source))
-
-    # Snapshot the survivors of `imported` BEFORE any join runs: a join deletes every
-    # non-active participant, so filtering afterwards would walk removed datablocks.
-    consumed = [source for _target, source in sources]
-    remaining = [o for o in imported if all(o is not used for used in consumed)]
-
-    survivors = []
-    bit_parts = []
-    cutter_parts = 0
-    residuals = {}
-    for target, source in sources:
-        components = _mesh_components(source)
-        cutter_faces = set()
-        cutter_count = 0
-        residual_count = 0
-        for record in components:
-            if _on_bit_axis(record["centre"]):
-                cutter_faces.update(record["faces"])
-                cutter_count += 1
-            else:
-                residual_count += 1
-        residuals[target] = residual_count
-        cutter_parts += cutter_count
-        if not cutter_faces:
-            survivors.append(source)
-            continue
-        if residual_count == 0:
-            # The whole role group is cutter (Scar_Boom is nothing but head + collar).
-            bit_parts.append(source)
-            continue
-        piece = _separate_faces(source, cutter_faces, lod)
-        piece.name = f"{target}__cutter"
-        bit_parts.append(piece)
-        survivors.append(source)
-
-    if cutter_parts != BIT_LOOSE_PARTS:
-        raise RuntimeError(
-            f"lod{lod}: expected {BIT_LOOSE_PARTS} cutter parts on the bit axis, found "
-            f"{cutter_parts} (residual parts {residuals}) — the LOD source changed shape"
-        )
-    steel_target = f"LOD{lod}_{BIT_SOURCE_STEMS[1]}"
-    if residuals.get(steel_target, 0) < 1:
-        raise RuntimeError(
-            f"lod{lod}: the bit-axis filter swallowed the whole boom arm out of {steel_target}"
-        )
-
-    bit = _join_objects(bit_parts, f"LOD{lod}_{BIT_MESH_STEM}", bit_parts[0].parent, lod)
-    low, high = _world_bounds(bit)
-    centre = (low + high) * 0.5
-    _set_origin(bit, Vector((high.x, centre.y, centre.z)))
-
-    low, high = _world_bounds(bit)
-    span = high - low
-    centre = (low + high) * 0.5
-    tip_x, tip_y, tip_z = mtx.BIT_TIP
-    if not (BIT_SPAN_X[0] <= span.x <= BIT_SPAN_X[1]):
-        raise RuntimeError(f"lod{lod}: cutter axial span {span.x:.3f} outside {BIT_SPAN_X}")
-    if span.y > BIT_SPAN_LATERAL or span.z > BIT_SPAN_LATERAL:
-        raise RuntimeError(
-            f"lod{lod}: cutter lateral span ({span.y:.3f}, {span.z:.3f}) over {BIT_SPAN_LATERAL}"
-        )
-    if abs(centre.y - tip_y) > BIT_AXIS_TOLERANCE or abs(centre.z - tip_z) > BIT_AXIS_TOLERANCE:
-        raise RuntimeError(
-            f"lod{lod}: cutter centre ({centre.y:.3f}, {centre.z:.3f}) is off the bit axis "
-            f"({tip_y:.3f}, {tip_z:.3f})"
-        )
-    if abs(bit.matrix_world.translation.x - high.x) > 1e-4:
-        raise RuntimeError(f"lod{lod}: cutter origin is not at the cutting end")
-
-    updated = list(remaining)
-    updated.extend(survivors)
-    updated.append(bit)
-    print(json.dumps({
-        "lod": lod,
-        "bitParts": cutter_parts,
-        "bitTriangles": sum(max(0, len(p.vertices) - 2) for p in bit.data.polygons),
-        "bitResiduals": residuals,
-        "bitOrigin": [round(v, 5) for v in bit.matrix_world.translation],
-        "bitSpan": [round(span.x, 5), round(span.y, 5), round(span.z, 5)],
-    }))
-    return updated, bit
+    cutter = next(
+        obj for obj in parts
+        if obj.get("_sf_raw") == f"LOD{lod}_Merged_Material_Bit_Boom"
+    )
+    bpy.context.view_layer.objects.active = cutter
+    bpy.ops.object.join()
+    cutter.name = CUTTER_NAMES[lod]
+    cutter["_sf_raw"] = CUTTER_NAMES[lod]
+    cutter["_sf_cutter"] = True
+    # Joining removes the other Blender object, so rebuild the imported list from
+    # live data instead of retaining an invalid StructRNA handle.
+    return [
+        obj for obj in bpy.data.objects
+        if obj.get("sf_import_lod") == lod
+    ]
 
 
 def combine_lods():
@@ -421,15 +209,13 @@ def combine_lods():
     sockets = {}
     lod_tri = {0: 0, 1: 0, 2: 0}
     mesh_names = []
-    bit_meshes = []
 
     for lod, path in enumerate(lod_paths):
         imported = _import_lod(path, lod)
-        imported, bit = split_bit_from_boom(imported, lod)
-        bit_meshes.append(bit.name)
         for obj in imported:
             raw = _strip_blender_dup(obj.name)
             obj["_sf_raw"] = raw
+        imported = _join_cutter(imported, lod)
 
         # Rename hook meshes first so empties can take the exact runtime names.
         for obj in imported:
@@ -468,7 +254,10 @@ def combine_lods():
                     except Exception:
                         pass
                 continue
-            if raw in HOOK_MESHES:
+            cutter = bool(obj.get("_sf_cutter"))
+            if cutter:
+                obj.name = CUTTER_NAMES[lod]
+            elif raw in HOOK_MESHES:
                 obj.name = f"LOD{lod}_{raw}"
             elif not raw.upper().startswith(f"LOD{lod}_"):
                 if raw.upper().startswith("LOD"):
@@ -478,16 +267,20 @@ def combine_lods():
             else:
                 obj.name = raw
             obj["spacefaceLod"] = f"lod{lod}"
-            obj["spaceface"] = {"lod": f"lod{lod}"}
+            obj["spaceface"] = {
+                "lod": f"lod{lod}",
+                **({"cutter": True, "socket": CUTTER_SOCKET} if cutter else {}),
+            }
+            if cutter:
+                obj["spacefaceCutter"] = True
             tris = sum(max(0, len(p.vertices) - 2) for p in obj.data.polygons) if obj.data else 0
             lod_tri[lod] += tris
             mesh_names.append(obj.name)
             parent = root
-            if raw in HOOK_MESHES and raw in sockets:
+            if cutter:
+                parent = sockets.get(CUTTER_SOCKET) or sockets.get("boom_pivot") or root
+            elif raw in HOOK_MESHES and raw in sockets:
                 parent = sockets[raw]
-            elif _lod_stem(raw) == BIT_MESH_STEM:
-                # The cutter hangs off the socket the runtime spins, not off the arm.
-                parent = sockets.get("bit_tip") or sockets.get("boom_pivot") or root
             elif "Boom" in raw or raw.startswith("Bit"):
                 parent = sockets.get("boom_pivot") or root
             _reparent_keep_world(obj, parent)
@@ -555,8 +348,8 @@ def combine_lods():
         "triangleCount": int(lod_tri[0]),
         "sockets": list(HOOK_NAMES),
         "hooks": list(HOOK_NAMES),
-        "cutterSocket": "bit_tip",
-        "cutterMeshes": list(bit_meshes),
+        "cutterSocket": CUTTER_SOCKET,
+        "cutterMeshes": list(CUTTER_NAMES),
         "wiringStatus": "promoted_source_pending_runtime_scatter",
         "blenderBasis": "Z-up works scale",
         "exportBasis": "Y-up glTF",
@@ -613,14 +406,12 @@ def combine_lods():
         "partsSource": str(combined_parts.relative_to(ROOT)).replace("\\", "/"),
         "lodTriangles": contract["lodTriangles"],
         "hooks": list(HOOK_NAMES),
-        "cutterSocket": "bit_tip",
-        "cutterMeshes": list(bit_meshes),
         "meshNames": sorted(mesh_names),
         "bytes": combined_works.stat().st_size,
         "sha256": sha256(combined_works),
     }
-    (SOURCE_DIR / "rover_inventory.json").write_text(
-        json.dumps(inventory, indent=2) + "\n", encoding="utf-8",
+    (SOURCE_DIR / "rover_inventory.json").write_bytes(
+        (json.dumps(inventory, indent=2) + "\n").encode("utf-8"),
     )
     print(json.dumps({"ok": True, **inventory}, indent=2))
     return inventory
@@ -737,8 +528,8 @@ def main(argv=None):
             }
             for r in reports
         ]
-        (SOURCE_DIR / "rover_inventory.json").write_text(
-            json.dumps(inventory, indent=2) + "\n", encoding="utf-8",
+        (SOURCE_DIR / "rover_inventory.json").write_bytes(
+            (json.dumps(inventory, indent=2) + "\n").encode("utf-8"),
         )
     return 0
 

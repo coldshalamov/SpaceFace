@@ -1,0 +1,2209 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-liner-hull-panel",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9cb17f0860498c398fb6be7f6533f48586aab6087cfb2fb6641ca3df0c38f779",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -6.537597179412842,
+          0.19211488962173462,
+          3.8525798320770264
+        ],
+        "min": [
+          -7.2371296882629395,
+          -2.3446693420410156,
+          -3.7606308460235596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dbe4cce80222fb991999a0dbb58e6eda6a9933752fd8efdf030a74de0803ca79",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.03759694844484329,
+          0.19211488962173462,
+          3.8525798320770264
+        ],
+        "min": [
+          -0.7371299266815186,
+          -2.3446693420410156,
+          -3.7606308460235596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d08c7142467cb67bcec19088acbfbc077685fbe0524843cfc38b62faf2eacb0",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.462402820587158,
+          0.19211488962173462,
+          3.8525798320770264
+        ],
+        "min": [
+          5.7628703117370605,
+          -2.3446693420410156,
+          -3.7606308460235596
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e56c0814579fdb4ae31ae9ba850ff5b2f300fb0b9541dfe05d8ac1e332c782a",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.11263656616211,
+          0.7897883653640747,
+          4.015216827392578
+        ],
+        "min": [
+          -9.88736343383789,
+          -1.5423427820205688,
+          -3.9232676029205322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8af48288c050643a2c482017e27b0f7a9893fd89f718d571470005a9144e4e06",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-skin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-skin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.612636566162109,
+          0.5297350883483887,
+          0.9132801294326782
+        ],
+        "min": [
+          -8.38736343383789,
+          -0.1822894811630249,
+          -0.8213311433792114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ed739c40e0aed774e349de08af7f8d775e70be8c7ae5fd66cdca3d9eb620530",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-win.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-win",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.699850082397461,
+          -1.8880856037139893,
+          3.9877889156341553
+        ],
+        "min": [
+          9.155424118041992,
+          -3.35555100440979,
+          2.723217725753784
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6aa0eb947d2b7df9616a4995429da2f172fae559124539cb9db8e40903a8745d",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.089341163635254,
+          -5.080944061279297,
+          2.030763864517212
+        ],
+        "min": [
+          9.053933143615723,
+          -6.760339736938477,
+          -0.058185458183288574
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7535b290b590de82c30e9c8746afcfda14a1cb372e9b242abb0505657651209a",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.543501853942871,
+          -4.499821186065674,
+          -0.881251335144043
+        ],
+        "min": [
+          8.883770942687988,
+          -6.37623929977417,
+          -2.8904857635498047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c3deda8040f244c44163dc040c9d0d1b95571ce36f90a434fc136b1eaa971b5",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.81945514678955,
+          -0.03428546339273453,
+          -1.288609266281128
+        ],
+        "min": [
+          8.895819664001465,
+          -1.617103934288025,
+          -4.6990180015563965
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a86b47340149d400aa00346546f0e7f271e348ded6ffbb84647a72e37745ad5",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.927210807800293,
+          4.563077449798584,
+          -1.2508955001831055
+        ],
+        "min": [
+          9.072062492370605,
+          3.462229013442993,
+          -3.2333030700683594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "641bd0037703ba8312bef9679165e291e339eded41015bc5e8ff50fd6e81ea9a",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14.34976577758789,
+          6.760406017303467,
+          1.0585777759552002
+        ],
+        "min": [
+          8.937507629394531,
+          3.586639642715454,
+          -0.1108642965555191
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2c09a29e7bb2b376a62c18dcb930b211c024a871ee8aff71d0608b6f4e245a9d",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.632822036743164,
+          3.133009195327759,
+          4.3066511154174805
+        ],
+        "min": [
+          8.938451766967773,
+          2.064772367477417,
+          1.4004700183868408
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9bb358901cf6330c233fe361e67f7adca0215873dec04f68c13f6bd62e424073",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.933574676513672,
+          -1.976888656616211,
+          -2.7372047901153564
+        ],
+        "min": [
+          -11.251152038574219,
+          -3.2945923805236816,
+          -3.8616931438446045
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2386569895ebaee084bf5c7ee14cbd2c59e89b946d851eb6d289f8a42067568f",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.842527389526367,
+          -5.287370681762695,
+          0.006750187836587429
+        ],
+        "min": [
+          -13.278200149536133,
+          -6.74498176574707,
+          -1.8552054166793823
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2bdfb2d72fe51378e3e05d6c2c41c394e16ec5d81067eeab2eb1fac9f3b0c3c5",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.690710067749023,
+          -4.6485772132873535,
+          2.9060380458831787
+        ],
+        "min": [
+          -11.978017807006836,
+          -6.3167948722839355,
+          1.1099661588668823
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "589c5bb371e714715298b0b8b7026d1915fd5a6e159e0d6740e59cb8b772be9e",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.700740814208984,
+          -0.11989068984985352,
+          4.699098587036133
+        ],
+        "min": [
+          -13.903987884521484,
+          -1.549682378768921,
+          1.7027097940444946
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3334fc56bf8f71deec7d035e5d1a6f6b8c1e675dc5b61d27d3fac25e586a819a",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.858843803405762,
+          4.547633647918701,
+          3.25814151763916
+        ],
+        "min": [
+          -12.293883323669434,
+          3.5788960456848145,
+          1.5046323537826538
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8560a49aed0186f6011aaa050b18a9be14e1a90a7545aa071fa04c47ddedda11",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.738982200622559,
+          6.689001560211182,
+          0.12476696819067001
+        ],
+        "min": [
+          -14.349745750427246,
+          3.9170734882354736,
+          -0.9265661239624023
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ac108515498ff76b492f13f8ab76a23a6d3be10af67be79e1515ccf433838b6",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.739107131958008,
+          3.1141674518585205,
+          -1.5516939163208008
+        ],
+        "min": [
+          -12.897619247436523,
+          2.1688997745513916,
+          -4.117894172668457
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c089718c02148a90e1a2ac45b0bddffb882cb90b0449886510a72be75c857650",
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "id": "material:ed8cd23072a107915b0ddafd",
+      "name": "wrk_paint_liner_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "id": "material:fabcdc1eca2d9ec5b43cae27",
+      "name": "wrk_glass_shattered",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lnp_rib_0",
+      "nodeName": "lnp_rib_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lnp_rib_1",
+      "nodeName": "lnp_rib_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lnp_rib_2",
+      "nodeName": "lnp_rib_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-skin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lnp_skin",
+      "nodeName": "lnp_skin",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-win",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lnp_win",
+      "nodeName": "lnp_win",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_0",
+      "nodeName": "tear_a_tear_0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_1",
+      "nodeName": "tear_a_tear_1",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_2",
+      "nodeName": "tear_a_tear_2",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_3",
+      "nodeName": "tear_a_tear_3",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_4",
+      "nodeName": "tear_a_tear_4",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_5",
+      "nodeName": "tear_a_tear_5",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_6",
+      "nodeName": "tear_a_tear_6",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_0",
+      "nodeName": "tear_b_tear_0",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_1",
+      "nodeName": "tear_b_tear_1",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_2",
+      "nodeName": "tear_b_tear_2",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_3",
+      "nodeName": "tear_b_tear_3",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_4",
+      "nodeName": "tear_b_tear_4",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_5",
+      "nodeName": "tear_b_tear_5",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_6",
+      "nodeName": "tear_b_tear_6",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-liner-hull-panel.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "deb_liner_hull_panel",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "8ceaa093aed0737050b7defe6aeb22065359068e7131b76040125ae0c3b84d5c"
+    },
+    "sourceGlb": {
+      "bytes": 21704,
+      "sha256": "964f9841b17cfccc28ab42226774faa671327069fd08320b6ef57e5a67b70ced",
+      "uri": "place_aftermath_deb_liner_hull_panel.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 45772,
+    "sha256": "017327a843aabd57a318972049d54be23cd16f1e0dfd5f052925179d5b279e69",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.000010013580322265625,
+        0.00003314018249511719,
+        0.00004029273986816406
+      ],
+      "max": [
+        14.34976577758789,
+        6.760406017303467,
+        4.699098587036133
+      ],
+      "min": [
+        -14.349745750427246,
+        -6.760339736938477,
+        -4.6990180015563965
+      ],
+      "size": [
+        28.699511528015137,
+        13.520745754241943,
+        9.39811658859253
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 19
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lnp_rib_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lnp_rib_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lnp_rib_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lnp_skin",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "lnp_win",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_3",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_4",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_5",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_6",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_0",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_2",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_3",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_4",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_5",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_6",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel.glb"
+  },
+  "runtimeHash": "1534e159aaa703f4099b24dad44a5caa30aaaad1937b6e2842e73a21f8fa9d55",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          14.34976577758789,
+          6.760406017303467,
+          4.699098587036133
+        ],
+        "min": [
+          -14.349745750427246,
+          -6.760339736938477,
+          -4.6990180015563965
+        ]
+      },
+      "id": "sf.render.aftermath-deb-liner-hull-panel.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-0",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-1",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-rib-2",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-skin",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.lnp-win",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-0",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-1",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-2",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-3",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-4",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-5",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-a-tear-6",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-0",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-1",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-2",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-3",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-4",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-5",
+        "sf.render.aftermath-deb-liner-hull-panel.mesh.tear-b-tear-6",
+        "sf.render.aftermath-deb-liner-hull-panel.root"
+      ]
+    }
+  ]
+}

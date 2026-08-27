@@ -1,0 +1,3361 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.06946611404418945,
+        0.7012721300125122,
+        -2.275451183319092,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-cockpit-section.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.06946611404418945,
+        0.7012721300125122,
+        -2.275451183319092,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.anchor.socket-evidence-registry",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.9305338859558105,
+        1.901272177696228,
+        1.924548864364624,
+        1
+      ],
+      "nodeName": "SOCKET_Evidence_Registry",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-cockpit-section.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.9305338859558105,
+        1.901272177696228,
+        1.924548864364624,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-aft-cockpit-section",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "4205021e778f9dee85a20244c1dbbe300a3519eab93f7fc65aa9b3969dddce9a",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.9305338859558105,
+          3.3014369010925293,
+          1.8246557712554932
+        ],
+        "min": [
+          -2.0694661140441895,
+          -0.2988925576210022,
+          -3.175557851791382
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8d9822fcfdf54fc349616a0938236655a9a0ddec2d9296a50bb08675fd70934c",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-cabin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.ak-cabin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.830533981323242,
+          2.901256799697876,
+          2.0244574546813965
+        ],
+        "min": [
+          -0.7694660425186157,
+          1.3012874126434326,
+          1.6246404647827148
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "33dce9b4398936ff0b49eabf08ddee924e6a2a4e58529f9510217d312dfe5c3f",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy-side.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy-side",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.830533981323242,
+          3.6011805534362793,
+          1.1244970560073853
+        ],
+        "min": [
+          -0.7694660425186157,
+          3.2013635635375977,
+          -2.4753992557525635
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f05de922ed3cb92c4076f809e861a472ecf48bf5d242c642d45315aa227d6ad",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.310953140258789,
+          3.1012721061706543,
+          2.40496826171875
+        ],
+        "min": [
+          1.5501145124435425,
+          2.301271915435791,
+          1.6441296339035034
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "75cc8492a608de1d8aad0a94bab72760f91ee130dbe101323d0f30307b4b9269",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-emerg.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "eb23b099dc30647c4171dcea64a3d0d9b763f879470841734ab735d2629b89a1",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.ak-emerg",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          10.430534362792969,
+          4.301379680633545,
+          2.324655771255493
+        ],
+        "min": [
+          3.430532932281494,
+          -1.6988346576690674,
+          -3.675557851791382
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3601cdba0fd2b359357d3470bbf218bde24ab764ad34d9836d11e0b00639878f",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-nose.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.ak-nose",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.263277053833008,
+          1.7919962406158447,
+          -0.8685141801834106
+        ],
+        "min": [
+          -5.470718860626221,
+          0.10218875110149384,
+          -3.1711480617523193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7e0a4907842371879c7c8aafe054487b957bbe0e697265c5fae4925df87e7df",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1250381469726562,
+          1.5942085981369019,
+          0.556656002998352
+        ],
+        "min": [
+          -8.043835639953613,
+          -2.407353162765503,
+          -1.9231178760528564
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67010cd822c1d771fa69c15d063a4dc6d8fe3f74305593c08a78cf5843dfa08e",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1911838054656982,
+          2.0426392555236816,
+          3.652050018310547
+        ],
+        "min": [
+          -10.360376358032227,
+          -0.6486330628395081,
+          -0.715209424495697
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f8227b6892f41438fc960a4165c30899dbbdc8666a75090f6995df53985e7e3",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1900272369384766,
+          4.154599189758301,
+          1.6327989101409912
+        ],
+        "min": [
+          -6.75728702545166,
+          1.2441846132278442,
+          -1.1083049774169922
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "339234a96b81763304098499b545ccd7245131e0845f20633ecc4bf42c6c5ab5",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.25957989692688,
+          4.597646236419678,
+          -0.4829014837741852
+        ],
+        "min": [
+          -9.074723243713379,
+          1.452433466911316,
+          -3.2221033573150635
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7fa59164a6619311521ef1de6aa9fb87534d866c6f3c906b42abd5b6a0f5c5dd",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-4.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-4",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.4296443462371826,
+          3.693272590637207,
+          1.7165489196777344
+        ],
+        "min": [
+          -3.2092878818511963,
+          -1.0907281637191772,
+          -3.067451000213623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1558fd307eb0a6fe085dbabd3b5ae11758fc16147e8f084eab9c26ce34fa97f5",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.92825174331665,
+          1.146202564239502,
+          -2.042219638824463
+        ],
+        "min": [
+          -5.510679721832275,
+          0.31420233845710754,
+          -2.8742194175720215
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2200d75fe054a0579092c17255c5c17f62253ed860d8c33e899cafbed4671ff2",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.728252410888672,
+          0.6041005849838257,
+          3.118666172027588
+        ],
+        "min": [
+          -10.310680389404297,
+          -0.22789964079856873,
+          2.286665916442871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "366de09725c00635b3f7a2b19491ed49d10f8d63e4ee553b2f3f057e618c5fa0",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.528251647949219,
+          4.261669635772705,
+          -2.0919437408447266
+        ],
+        "min": [
+          -9.110679626464844,
+          3.4296693801879883,
+          -2.923943519592285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb77698b14ee25294733007a4997a60cfb657ae065a769542ba2e59429ffeb7d",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-4.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-4",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.3010826110839844,
+          1.3355962038040161,
+          -0.6318406462669373
+        ],
+        "min": [
+          -5.157849311828613,
+          -1.2208982706069946,
+          -2.6932945251464844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22b9e2533a207b8cf1936282fe7f46f1572bab4d257af3d64cc1b609d0ada76e",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1707956790924072,
+          1.4123835563659668,
+          2.014286994934082
+        ],
+        "min": [
+          -7.808136463165283,
+          -0.7840724587440491,
+          -0.8773426413536072
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "64f4e76677c25d1bc4cc65737ff691ed676a7f3f41b8385302def1cdfee5e406",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.158229351043701,
+          3.3940980434417725,
+          1.923101544380188
+        ],
+        "min": [
+          -6.560702800750732,
+          1.696292757987976,
+          -1.299770474433899
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85da26b012341b991b1394cacd443c1ebeafe91af8b6a35b370be2cd1fc55f62",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2109363079071045,
+          3.185216188430786,
+          -0.6016494631767273
+        ],
+        "min": [
+          -5.247995376586914,
+          1.3915612697601318,
+          -3.2370989322662354
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e10f3803967ef123a15bca6e0dedf55bee73a3e6d2cf80f77bd4be749e11753",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.232819080352783,
+          0.04703201353549957,
+          -1.6343472003936768
+        ],
+        "min": [
+          -4.006112575531006,
+          -0.6644645929336548,
+          -1.9543507099151611
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a2cc6fbe3d8593355549ffa93902354300a4ffccf54a8448ade47c99c1c315b",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.9059407711029053,
+          -0.3952787518501282,
+          -1.6643357276916504
+        ],
+        "min": [
+          -5.532990455627441,
+          -1.4621535539627075,
+          -1.9243621826171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b47fef5861de4ce085fdcc7fe7c9fef0136496a6d4342e39e37b134683f6501",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1677780151367188,
+          -0.07509543001651764,
+          0.4797292947769165
+        ],
+        "min": [
+          -4.07115364074707,
+          -1.7220513820648193,
+          0.15980912744998932
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "205b8b59c922d0d49133cd1c87cd56beedf55eebf9ff738c4c30cee60687b230",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.8537211418151855,
+          -1.5395199060440063,
+          0.44970816373825073
+        ],
+        "min": [
+          -5.58521032333374,
+          -4.597626686096191,
+          0.1898302286863327
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf10ad891b741624aaf807f4d9675cfdaf528a56443d28995d17cde5cc65be07",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.194591760635376,
+          1.925734043121338,
+          1.2185527086257935
+        ],
+        "min": [
+          -4.044340133666992,
+          0.7428759932518005,
+          0.8985007405281067
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37cd9cadc6b1b0687393e4b9d8662ed00ed3c8486447b3cdbf64c014c99f82dd",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.867602825164795,
+          0.9651484489440918,
+          1.1885720491409302
+        ],
+        "min": [
+          -5.571328639984131,
+          -1.086538314819336,
+          0.9284815192222595
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9793030933d76093db3642e8ee6f03af677464d4915133f9440920bfe8c66d0",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.232819080352783,
+          3.255396842956543,
+          -0.4390122592449188
+        ],
+        "min": [
+          -4.006112575531006,
+          2.5439000129699707,
+          -0.7590157389640808
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a3aba6380816c72a3a27f784b7e01e727401f093c6750d41616fcc63af7500c",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.9059407711029053,
+          2.8130855560302734,
+          -0.4690007269382477
+        ],
+        "min": [
+          -5.532990455627441,
+          1.746211051940918,
+          -0.729027271270752
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3aeea10a48137cb9fa7980d9ab47c680575e1f95c85b2e46e68496f8a6f68fc7",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.1677780151367188,
+          2.0531749725341797,
+          -2.202228307723999
+        ],
+        "min": [
+          -4.07115364074707,
+          0.4062190055847168,
+          -2.522148370742798
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "991b04c253c8286886544160f351d0bfa6c31cd6cd42664381807b2300e62224",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.017",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.8537211418151855,
+          0.5887502431869507,
+          -2.2322492599487305
+        ],
+        "min": [
+          -5.58521032333374,
+          -2.4693565368652344,
+          -2.4921274185180664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08dc705eda4f14a43424f967a95c28ba1443c13fa7735dc91e0d34bc4539179e",
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.018",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "id": "material:2ecdc2543581ee905a24eaa8",
+      "name": "wrk_cable",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "id": "material:5a08f6356737023df8d0b8c2",
+      "name": "wrk_hull_bare",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "id": "material:6ba64bc230e8b6c479bb16ed",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "id": "material:acad180edd387403bb113453",
+      "name": "wrk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "eb23b099dc30647c4171dcea64a3d0d9b763f879470841734ab735d2629b89a1",
+      "id": "material:eb23b099dc30647c4171dcea",
+      "name": "wrk_emerg_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "id": "material:fabcdc1eca2d9ec5b43cae27",
+      "name": "wrk_glass_shattered",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-cabin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ak_cabin",
+      "nodeName": "ak_cabin",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "ak_canopy",
+      "nodeName": "ak_canopy",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy-side",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "ak_canopy_side",
+      "nodeName": "ak_canopy_side",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-emerg",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ak_emerg",
+      "nodeName": "ak_emerg",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.ak-nose",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ak_nose",
+      "nodeName": "ak_nose",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_fray_0",
+      "nodeName": "break_aft_fray_0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_fray_1",
+      "nodeName": "break_aft_fray_1",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_fray_2",
+      "nodeName": "break_aft_fray_2",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_fray_3",
+      "nodeName": "break_aft_fray_3",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_fray_4",
+      "nodeName": "break_aft_fray_4",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_hotcore",
+      "nodeName": "break_aft_hotcore",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_hotfray_0",
+      "nodeName": "break_aft_hotfray_0",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_hotfray_2",
+      "nodeName": "break_aft_hotfray_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_hotfray_4",
+      "nodeName": "break_aft_hotfray_4",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_peel_0",
+      "nodeName": "break_aft_peel_0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_peel_1",
+      "nodeName": "break_aft_peel_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_peel_2",
+      "nodeName": "break_aft_peel_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_aft_peel_3",
+      "nodeName": "break_aft_peel_3",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_0a",
+      "nodeName": "stub_cbl_0a",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_0b",
+      "nodeName": "stub_cbl_0b",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_1a",
+      "nodeName": "stub_cbl_1a",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_1b",
+      "nodeName": "stub_cbl_1b",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_2a",
+      "nodeName": "stub_cbl_2a",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_2b",
+      "nodeName": "stub_cbl_2b",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_3a",
+      "nodeName": "stub_cbl_3a",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_3b",
+      "nodeName": "stub_cbl_3b",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_4a",
+      "nodeName": "stub_cbl_4a",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stub_cbl_4b",
+      "nodeName": "stub_cbl_4b",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-aft-cockpit-section.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cockpit-section.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "aft_cockpit_section",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3d6afe860ed16d300306536f3a1c2c9ab29ed25dc1154e5569019219aead4ca7"
+    },
+    "sourceGlb": {
+      "bytes": 36356,
+      "sha256": "b7345045f6c76011364cfbe061b67b1c022570b42e107254ba40af9f0478fbdb",
+      "uri": "place_aftermath_aft_cockpit_section.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 71216,
+    "sha256": "c711bf192e376a83482adba09e15bddfe5966a516d0cbb166ac83da770727d0b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.035079002380371094,
+        0.000009775161743164062,
+        -0.01175391674041748
+      ],
+      "max": [
+        10.430534362792969,
+        4.597646236419678,
+        3.652050018310547
+      ],
+      "min": [
+        -10.360376358032227,
+        -4.597626686096191,
+        -3.675557851791382
+      ],
+      "size": [
+        20.790910720825195,
+        9.19527292251587,
+        7.327607870101929
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.06946611404418945,
+          0.7012721300125122,
+          -2.275451183319092,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 20,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.aftermath-aft-cockpit-section.anchor.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.9305338859558105,
+          1.901272177696228,
+          1.924548864364624,
+          1
+        ],
+        "name": "SOCKET_Evidence_Registry",
+        "planIndex": 21,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Evidence_Registry",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Evidence_Registry",
+            "recordIds": [
+              "sf.render.aftermath-aft-cockpit-section.anchor.socket-evidence-registry"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 28
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 32,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ak_cabin",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ak_canopy",
+        "planIndex": 3,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ak_canopy_side",
+        "planIndex": 4,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ak_emerg",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ak_nose",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_fray_0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_fray_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_fray_2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_fray_3",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_fray_4",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_hotcore",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_hotfray_0",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_hotfray_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_hotfray_4",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_peel_0",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_peel_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_peel_2",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_aft_peel_3",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_0a",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_0b",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_1a",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_1b",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_2a",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_2b",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_3a",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_3b",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_4a",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "stub_cbl_4b",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
+  },
+  "runtimeHash": "02c922b9e1a482fb2706ff526040715bfed706c9f72bcc5ca9117bc26c5748a0",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          10.430534362792969,
+          4.597646236419678,
+          3.652050018310547
+        ],
+        "min": [
+          -10.360376358032227,
+          -4.597626686096191,
+          -3.675557851791382
+        ]
+      },
+      "id": "sf.render.aftermath-aft-cockpit-section.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-cockpit-section.mesh.ak-cabin",
+        "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy",
+        "sf.render.aftermath-aft-cockpit-section.mesh.ak-canopy-side",
+        "sf.render.aftermath-aft-cockpit-section.mesh.ak-emerg",
+        "sf.render.aftermath-aft-cockpit-section.mesh.ak-nose",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-0",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-1",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-2",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-3",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-fray-4",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotcore",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-0",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-2",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-hotfray-4",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-0",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-1",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-2",
+        "sf.render.aftermath-aft-cockpit-section.mesh.break-aft-peel-3",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0a",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-0b",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1a",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-1b",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2a",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-2b",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3a",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-3b",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4a",
+        "sf.render.aftermath-aft-cockpit-section.mesh.stub-cbl-4b",
+        "sf.render.aftermath-aft-cockpit-section.root"
+      ]
+    }
+  ]
+}

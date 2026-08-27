@@ -13,12 +13,14 @@
     "ok": true,
     "id": "drill_platform",
     "stats": {
-      "loaded": 1,
+      "loaded": 2,
       "failed": 0,
       "released": 0,
       "register": "work",
       "lod1Missing": 0,
-      "untaggedMeshes": 0
+      "untaggedMeshes": 0,
+      "standing": 1,
+      "lastError": null
     },
     "hooks": {
       "place_drill_platform": "place_drill_platform"
@@ -214,12 +216,14 @@
     "nodeLod": "lod0"
   },
   "afterLoadStats": {
-    "loaded": 1,
+    "loaded": 2,
     "failed": 0,
     "released": 0,
     "register": "site",
     "lod1Missing": 0,
-    "untaggedMeshes": 0
+    "untaggedMeshes": 0,
+    "standing": 1,
+    "lastError": null
   },
   "afterLoadRegister": "site",
   "lod": {
@@ -316,10 +320,10 @@
     },
     "mounted": {
       "pixels": 71824,
-      "nonBackground": 71115,
-      "lit": 69140,
-      "meanLuma": 115.2192016705298,
-      "meanLitLuma": 118.02774279721878,
+      "nonBackground": 70661,
+      "lit": 68235,
+      "meanLuma": 108.30412875560424,
+      "meanLitLuma": 111.60379590532366,
       "readX": 826,
       "readY": 386,
       "readW": 268,
@@ -327,30 +331,30 @@
     },
     "unmounted": {
       "pixels": 71824,
-      "nonBackground": 70867,
-      "lit": 68223,
-      "meanLuma": 94.0729004332063,
-      "meanLitLuma": 97.06363067000878,
+      "nonBackground": 70108,
+      "lit": 66617,
+      "meanLuma": 80.71195375705977,
+      "meanLitLuma": 84.12268738009696,
       "readX": 826,
       "readY": 386,
       "readW": 268,
       "readH": 268
     },
     "delta": {
-      "changed": 27573,
-      "meanAbs": 194.1973307220832,
-      "mountedLitChanged": 27566,
-      "meanMountedLuma": 151.4889351104419
+      "changed": 27592,
+      "meanAbs": 219.78885184111337,
+      "mountedLitChanged": 27585,
+      "meanMountedLuma": 151.50334220064536
     }
   },
   "scenePass": {
     "mounted": {
-      "triangles": 56378,
-      "calls": 116
+      "triangles": 67632,
+      "calls": 73
     },
     "unmounted": {
-      "triangles": 54370,
-      "calls": 108
+      "triangles": 65624,
+      "calls": 65
     }
   },
   "mask": {
@@ -364,81 +368,81 @@
     "real": {
       "stats": {
         "count": 23297,
-        "meanLuma": 151.75593425763722,
+        "meanLuma": 151.8256235395187,
         "medianLuma": 143.3864,
-        "stdevLuma": 21.550512812486836,
-        "meanR": 204.59020474739236,
-        "meanG": 147.4614757264884,
-        "meanB": 38.720350259690086,
+        "stdevLuma": 21.669394945061853,
+        "meanR": 204.66948534146027,
+        "meanG": 147.5484397132678,
+        "meanB": 38.59067691119028,
         "p05Luma": 142.599,
         "p95Luma": 194.9596
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 97.5481234407844,
-        "medianLuma": 99.73179999999999,
-        "stdevLuma": 40.62396388059671,
-        "meanR": 111.9860067819891,
-        "meanG": 95.78495085204104,
-        "meanB": 72.50002146199081,
-        "p05Luma": 29.331799999999998,
-        "p95Luma": 166.4064
+        "meanLuma": 80.20568625144806,
+        "medianLuma": 78.9736,
+        "stdevLuma": 36.81827525847655,
+        "meanR": 93.06151006567369,
+        "meanG": 78.00343391853028,
+        "meanB": 64.16555779714126,
+        "p05Luma": 22.6338,
+        "p95Luma": 150.44699999999997
       },
       "delta": {
-        "changed": 23281,
-        "changedFrac": 0.9993132162939434
+        "changed": 23282,
+        "changedFrac": 0.999356140275572
       }
     },
     "black": {
       "stats": {
         "count": 23297,
-        "meanLuma": 0.6500759239387045,
+        "meanLuma": 0.013984787740910845,
         "medianLuma": 0,
-        "stdevLuma": 7.804210140453528,
-        "meanR": 0.7297935356483668,
-        "meanG": 0.6690561016439885,
-        "meanB": 0.22732540670472592,
+        "stdevLuma": 1.2659275250472706,
+        "meanR": 0.01940163969609821,
+        "meanG": 0.01296304245181783,
+        "meanB": 0.008155556509421813,
         "p05Luma": 0,
         "p95Luma": 0
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 97.54841128900519,
-        "medianLuma": 99.73179999999999,
-        "stdevLuma": 40.62455911547058,
-        "meanR": 111.98643602180539,
-        "meanG": 95.78520839593081,
-        "meanB": 72.50019315791732,
-        "p05Luma": 29.331799999999998,
-        "p95Luma": 166.4064
+        "meanLuma": 80.20568625144806,
+        "medianLuma": 78.9736,
+        "stdevLuma": 36.81827525847655,
+        "meanR": 93.06151006567369,
+        "meanG": 78.00343391853028,
+        "meanB": 64.16555779714126,
+        "p05Luma": 22.6338,
+        "p95Luma": 150.44699999999997
       },
       "delta": {
-        "changed": 23196,
-        "changedFrac": 0.9956646778555179
+        "changed": 23085,
+        "changedFrac": 0.9909001158947504
       }
     },
     "flat": {
       "stats": {
         "count": 23297,
-        "meanLuma": 158.98453291840144,
+        "meanLuma": 158.9935100485041,
         "medianLuma": 159,
-        "stdevLuma": 0.8737553262027294,
-        "meanR": 159.02064643516331,
-        "meanG": 158.99141520367428,
-        "meanB": 158.8100184573121,
+        "stdevLuma": 0.6411294647213739,
+        "meanR": 158.99892690045928,
+        "meanG": 158.992488303215,
+        "meanB": 158.9876808172726,
         "p05Luma": 159,
         "p95Luma": 159
       },
       "statsUnmounted": {
         "count": 23297,
-        "meanLuma": 97.54678275314235,
-        "medianLuma": 99.6832,
-        "stdevLuma": 40.62804204311321,
-        "meanR": 111.98416105077906,
-        "meanG": 95.78357728462892,
-        "meanB": 72.50049362578874,
-        "p05Luma": 29.331799999999998,
-        "p95Luma": 166.4064
+        "meanLuma": 80.20568625144806,
+        "medianLuma": 78.9736,
+        "stdevLuma": 36.81827525847655,
+        "meanR": 93.06151006567369,
+        "meanG": 78.00343391853028,
+        "meanB": 64.16555779714126,
+        "p05Luma": 22.6338,
+        "p95Luma": 150.44699999999997
       },
       "delta": {
         "changed": 23294,
@@ -482,7 +486,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9993132162939434,
+        "value": 0.999356140275572,
         "floor": 0.5,
         "pass": true
       },
@@ -492,7 +496,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 21.550512812486836,
+        "value": 21.669394945061853,
         "floor": 6,
         "pass": true
       },
@@ -509,7 +513,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9956646778555179,
+        "value": 0.9909001158947504,
         "floor": 0.5,
         "pass": true
       },
@@ -519,9 +523,9 @@
         "pass": false
       },
       "MASK_VARIETY": {
-        "value": 7.804210140453528,
+        "value": 1.2659275250472706,
         "floor": 6,
-        "pass": true
+        "pass": false
       },
       "TRI_DELTA": {
         "value": 2008,
@@ -546,7 +550,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 0.8737553262027294,
+        "value": 0.6411294647213739,
         "floor": 6,
         "pass": false
       },
@@ -590,7 +594,7 @@
         "pass": true
       },
       "MASK_CHANGED": {
-        "value": 0.9993132162939434,
+        "value": 0.999356140275572,
         "floor": 0.5,
         "pass": true
       },
@@ -600,7 +604,7 @@
         "pass": true
       },
       "MASK_VARIETY": {
-        "value": 21.546187845113415,
+        "value": 21.669394945061853,
         "floor": 6,
         "pass": true
       },
@@ -613,7 +617,8 @@
   },
   "negativeCaught": {
     "black": [
-      "MASK_LIT"
+      "MASK_LIT",
+      "MASK_VARIETY"
     ],
     "flat": [
       "MASK_VARIETY"
@@ -626,15 +631,24 @@
     ]
   },
   "normalSession": {
-    "worksStats": null,
+    "worksStats": {
+      "loaded": 1,
+      "failed": 0,
+      "released": 0,
+      "register": "work",
+      "lod1Missing": 0,
+      "untaggedMeshes": 0,
+      "standing": 1,
+      "lastError": null
+    },
     "observerAttached": false,
     "armed": false,
     "rendererInfo": {
       "memory": {
-        "geometries": 81,
-        "textures": 35
+        "geometries": 50,
+        "textures": 44
       },
-      "programs": 22,
+      "programs": 25,
       "render": {
         "triangles": 2,
         "calls": 1
@@ -685,10 +699,10 @@
   },
   "before": {
     "memory": {
-      "geometries": 81,
-      "textures": 35
+      "geometries": 50,
+      "textures": 44
     },
-    "programs": 22,
+    "programs": 25,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -696,10 +710,10 @@
   },
   "afterLoad": {
     "memory": {
-      "geometries": 100,
-      "textures": 59
+      "geometries": 87,
+      "textures": 71
     },
-    "programs": 29,
+    "programs": 33,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -707,10 +721,10 @@
   },
   "hide1": {
     "memory": {
-      "geometries": 84,
-      "textures": 35
+      "geometries": 41,
+      "textures": 41
     },
-    "programs": 27,
+    "programs": 29,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -720,10 +734,10 @@
   },
   "hide2": {
     "memory": {
-      "geometries": 84,
-      "textures": 35
+      "geometries": 41,
+      "textures": 41
     },
-    "programs": 27,
+    "programs": 29,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -733,10 +747,10 @@
   },
   "disposePath": {
     "memory": {
-      "geometries": 84,
-      "textures": 35
+      "geometries": 41,
+      "textures": 41
     },
-    "programs": 27,
+    "programs": 29,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -746,10 +760,10 @@
   },
   "afterDispose": {
     "memory": {
-      "geometries": 84,
-      "textures": 35
+      "geometries": 41,
+      "textures": 41
     },
-    "programs": 27,
+    "programs": 29,
     "render": {
       "triangles": 2,
       "calls": 1
@@ -759,26 +773,26 @@
   },
   "deltas": {
     "load": {
-      "geometries": 19,
-      "textures": 24,
-      "programs": 7
+      "geometries": 37,
+      "textures": 27,
+      "programs": 8
     },
     "hide1": {
-      "geometries": 3,
-      "textures": 0,
-      "programs": 5,
+      "geometries": -9,
+      "textures": -3,
+      "programs": 4,
       "rendererLive": true
     },
     "hide2": {
-      "geometries": 3,
-      "textures": 0,
-      "programs": 5,
+      "geometries": -9,
+      "textures": -3,
+      "programs": 4,
       "rendererLive": true
     },
     "disposePath": {
-      "geometries": 3,
-      "textures": 0,
-      "programs": 5,
+      "geometries": -9,
+      "textures": -3,
+      "programs": 4,
       "rendererLive": true
     }
   },

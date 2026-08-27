@@ -1,0 +1,1935 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.475814819335938,
+        8.214347839355469,
+        -4.810021877288818,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.271081924438477,
+        8.214347839355469,
+        -4.694297790527344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.anchor.socket-salvage-bridge",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.475814819335938,
+        12.214347839355469,
+        -1.8100218772888184,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Bridge",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.271081924438477,
+        12.214347839355469,
+        -1.6942977905273438,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-liner-bow-authored-down",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9dadf08e455a666443aec95f68e9c3cdcf1551dcc5bd429f982516750a6dd0a6",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          20.72108268737793,
+          11.713269233703613,
+          9.607038021087646
+        ],
+        "min": [
+          -20.228918075561523,
+          1.6154265403747559,
+          -12.995633602142334
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4eaf3dcb108839461c1926563e0bb13c6cb8f48efdb71b03bb7b40139591c74",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-glass.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_wreck_liner_bow_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          13.936822891235352,
+          9.768959999084473,
+          10.548162937164307
+        ],
+        "min": [
+          -32.70391654968262,
+          -9.340265274047852,
+          -11.493277072906494
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98463cad74ef7e138d00a2eacf7ca5f639d1a35bec9769368658576036900204",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-heat.primitive.0",
+      "indexCount": 828,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_bow_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          34.27108192443848,
+          12.215202331542969,
+          9.306344509124756
+        ],
+        "min": [
+          6.271080017089844,
+          -10.51071548461914,
+          -12.694940090179443
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4bcf0e8cfcf8210a7c323c1abee3d2d772abdbdb874e269cff396246e974097c",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull.primitive.0",
+      "indexCount": 348,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_bow_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.707399368286133,
+          11.433170318603516,
+          12.994297504425049
+        ],
+        "min": [
+          -34.31574058532715,
+          -12.214282989501953,
+          -11.787615299224854
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06b3a27f772a5f6e5a3b87b8d556b210886497724e9264f772fa27aeec80f755",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-insulation.primitive.0",
+      "indexCount": 744,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_wreck_liner_bow_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 486
+    },
+    {
+      "bounds": {
+        "max": [
+          20.72108268737793,
+          11.713269233703613,
+          9.607038021087646
+        ],
+        "min": [
+          -20.228918075561523,
+          1.6154265403747559,
+          -12.995633602142334
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b51c3174ec254e48ac70cadcb6937b3a6192844bbbeef33ab86027fe413d6fa0",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-glass.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_wreck_liner_bow_Material_Glass_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          6.271083831787109,
+          9.767799377441406,
+          8.106333255767822
+        ],
+        "min": [
+          -30.54391860961914,
+          -9.339104652404785,
+          -11.49492883682251
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e331b0a822db4fdafa9711e1251367bf768f2b63411927a4e237b81cff0d2c5a",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-heat.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_bow_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 228
+    },
+    {
+      "bounds": {
+        "max": [
+          34.31548881530762,
+          12.213933944702148,
+          9.306675434112549
+        ],
+        "min": [
+          6.271073341369629,
+          -11.037588119506836,
+          -12.695271015167236
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d93d28438b15fa13320e72ee70cd618621062993e5b8df190fda48dafdeb39c7",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-hull.primitive.0",
+      "indexCount": 165,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_bow_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 111
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.707399368286133,
+          11.433170318603516,
+          12.994297504425049
+        ],
+        "min": [
+          -34.31574058532715,
+          -12.214282989501953,
+          -11.787615299224854
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "edf798b4acad04439c57ef1e1d848e9db9e9b16f7f789151f4e79311b3593932",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-insulation.primitive.0",
+      "indexCount": 357,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_wreck_liner_bow_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 229
+    },
+    {
+      "bounds": {
+        "max": [
+          6.271097183227539,
+          10.23870849609375,
+          8.106178760528564
+        ],
+        "min": [
+          -21.72892189025879,
+          -9.810013771057129,
+          -11.494774341583252
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "309686f5ec8dd1b3fbd7aafb0dbdeea0792a39d61e29e718024f7fb83c5665c2",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-heat.primitive.0",
+      "indexCount": 165,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_bow_Material_Heat_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 105
+    },
+    {
+      "bounds": {
+        "max": [
+          34.27113151550293,
+          12.21434497833252,
+          9.276098728179932
+        ],
+        "min": [
+          6.271073341369629,
+          -11.037999153137207,
+          -12.69446611404419
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c4f68aa6306c7c336d2852575b8b84a519a0bef36d434eb65a314e44ec57f75",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull.primitive.0",
+      "indexCount": 69,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_bow_Material_Hull_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 41
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.706798553466797,
+          10.907752990722656,
+          12.994809627532959
+        ],
+        "min": [
+          -34.31634330749512,
+          -12.214345932006836,
+          -10.118822574615479
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "886dcca4e76f865b5ba2718a80dfc862628db8406b23f0fd98edb66252b381ff",
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-insulation.primitive.0",
+      "indexCount": 147,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_wreck_liner_bow_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 103
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "id": "material:1ec579f28cf3f8d13c7feca8",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "name": "Material_Heat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_heat_affected_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "id": "material:ac4380c2740998f988624d23",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD0_wreck_liner_bow",
+      "nodeName": "LOD0_wreck_liner_bow",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_wreck_liner_bow_Material_Glass",
+      "nodeName": "LOD0_wreck_liner_bow_Material_Glass",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_bow_Material_Heat",
+      "nodeName": "LOD0_wreck_liner_bow_Material_Heat",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_bow_Material_Hull",
+      "nodeName": "LOD0_wreck_liner_bow_Material_Hull",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_wreck_liner_bow_Material_Insulation",
+      "nodeName": "LOD0_wreck_liner_bow_Material_Insulation",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD1_wreck_liner_bow",
+      "nodeName": "LOD1_wreck_liner_bow",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_wreck_liner_bow_Material_Glass",
+      "nodeName": "LOD1_wreck_liner_bow_Material_Glass",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_bow_Material_Heat",
+      "nodeName": "LOD1_wreck_liner_bow_Material_Heat",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_bow_Material_Hull",
+      "nodeName": "LOD1_wreck_liner_bow_Material_Hull",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_wreck_liner_bow_Material_Insulation",
+      "nodeName": "LOD1_wreck_liner_bow_Material_Insulation",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD2_wreck_liner_bow",
+      "nodeName": "LOD2_wreck_liner_bow",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_bow_Material_Heat",
+      "nodeName": "LOD2_wreck_liner_bow_Material_Heat",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_bow_Material_Hull",
+      "nodeName": "LOD2_wreck_liner_bow_Material_Hull",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_wreck_liner_bow_Material_Insulation",
+      "nodeName": "LOD2_wreck_liner_bow_Material_Insulation",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-blackbox",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.475814819335938,
+        8.214347839355469,
+        -4.810021877288818,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_BlackBox",
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.271081924438477,
+        8.214347839355469,
+        -4.694297790527344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-salvage-bridge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.475814819335938,
+        12.214347839355469,
+        -1.8100218772888184,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Salvage_Bridge",
+      "nodeName": "SOCKET_Salvage_Bridge",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.271081924438477,
+        12.214347839355469,
+        -1.6942977905273438,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "wreck_liner_bow",
+      "nodeName": "wreck_liner_bow",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "wreck_liner_bow.001",
+      "nodeName": "wreck_liner_bow.001",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.20473289489746094,
+        0,
+        0.11572408676147461,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "0d340635b8d84c23edb7b49d218387634fb79bb4e966ed735be76a51648d0c6a"
+    },
+    "sourceGlb": {
+      "bytes": 787740,
+      "sha256": "2f921e0e97f7d0b20d47d1fc77c48bd22fe568a5cdd7ff76a52b4ce329b1f5b9",
+      "uri": "place_aftermath_wreck_liner_bow_authored_down.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 807328,
+    "sha256": "4621c5baea3aec8bf263b87bd2d1da5d0f97e02175995610d4c2ffe97e284f0d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.00042724609375,
+        0.00042819976806640625,
+        -0.0004119873046875
+      ],
+      "max": [
+        34.31548881530762,
+        12.215202331542969,
+        12.994809627532959
+      ],
+      "min": [
+        -34.31634330749512,
+        -12.214345932006836,
+        -12.995633602142334
+      ],
+      "size": [
+        68.63183212280273,
+        24.429548263549805,
+        25.990443229675293
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          15.271081924438477,
+          8.214347839355469,
+          -4.694297790527344,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 16,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-bow-authored-down.anchor.socket-blackbox",
+              "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          15.271081924438477,
+          12.214347839355469,
+          -1.6942977905273438,
+          1
+        ],
+        "name": "SOCKET_Salvage_Bridge",
+        "planIndex": 17,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Bridge",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Bridge",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-bow-authored-down.anchor.socket-salvage-bridge",
+              "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-salvage-bridge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 6,
+      "glass": 2,
+      "hull": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD0_wreck_liner_bow_Material_Glass",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD0_wreck_liner_bow_Material_Heat",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD0_wreck_liner_bow_Material_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD0_wreck_liner_bow_Material_Insulation",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD1_wreck_liner_bow_Material_Glass",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD1_wreck_liner_bow_Material_Heat",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD1_wreck_liner_bow_Material_Hull",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD1_wreck_liner_bow_Material_Insulation",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD2_wreck_liner_bow_Material_Heat",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD2_wreck_liner_bow_Material_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.20473289489746094,
+          0,
+          0.11572408676147461,
+          1
+        ],
+        "name": "LOD2_wreck_liner_bow_Material_Insulation",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow_authored_down.glb"
+  },
+  "runtimeHash": "c2a9698d4de520d027b501af0e922c790ac778310e6acdd0a21d9feb76fa7f4f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          34.31548881530762,
+          12.215202331542969,
+          12.994809627532959
+        ],
+        "min": [
+          -34.31634330749512,
+          -12.214345932006836,
+          -12.995633602142334
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-liner-bow-authored-down.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-glass",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-heat",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-hull",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod0-wreck-liner-bow-material-insulation",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-glass",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-heat",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-hull",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod1-wreck-liner-bow-material-insulation",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-heat",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-hull",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.lod2-wreck-liner-bow-material-insulation",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-blackbox",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.socket-salvage-bridge",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow",
+        "sf.render.aftermath-wreck-liner-bow-authored-down.node.wreck-liner-bow-001"
+      ]
+    }
+  ]
+}

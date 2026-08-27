@@ -1,0 +1,2111 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.power-skid-patched.anchor.socket-power-out",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.099999904632568,
+        0.3499999940395355,
+        1.5,
+        1
+      ],
+      "nodeName": "SOCKET_Power_Out",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.power-skid-patched.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.099999904632568,
+        0.3499999940395355,
+        1.5,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.power-skid-patched",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "48586739f8ab6e87bc13a529f20717a7500dbf6d49f0bce26bc9724b4280992e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.7199723720550537,
+          1.5500274896621704,
+          0.050000011920928955
+        ],
+        "min": [
+          2.5200273990631104,
+          0.6499725580215454,
+          -1.0499999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4490694988a768eb281fbfc12ac3215d5021ec301ba7ea52859491be113db27e",
+      "id": "sf.render.power-skid-patched.mesh.cab-patch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.power-skid-patched.mesh.cab-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.599997043609619,
+          2.3000900745391846,
+          1.2000000476837158
+        ],
+        "min": [
+          1.2000030279159546,
+          0.39990994334220886,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "206225fac0926c7c58ddfcf1fc1db639379cce0809f818d028fa3a6650faef09",
+      "id": "sf.render.power-skid-patched.mesh.cabinet.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.power-skid-patched.mesh.cabinet",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.609450817108154,
+          0.6083539724349976,
+          1.5947879552841187
+        ],
+        "min": [
+          2.543034553527832,
+          0.18997177481651306,
+          0.713557779788971
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f28100ea6e2de5d46ad7c6075d0926d95fcc8864f4025131dda0f3c611c683c",
+      "id": "sf.render.power-skid-patched.mesh.cable.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.power-skid-patched.mesh.cable",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9012033939361572,
+          2.827000141143799,
+          1.1269999742507935
+        ],
+        "min": [
+          -3.0987966060638428,
+          0.5730001926422119,
+          -1.1269999742507935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7482ab1f2be293816641c2805419570ca08ac6fd10e3f7cd79ef555cc86d4c8",
+      "id": "sf.render.power-skid-patched.mesh.core-domea.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-domea",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          1.898796558380127,
+          2.8269999027252197,
+          1.1269999742507935
+        ],
+        "min": [
+          -0.2987966239452362,
+          0.5729999542236328,
+          -1.1269999742507935
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30231828283897b0775260493ccd3014a21a2909d6748e3c5e373f8851abd70a",
+      "id": "sf.render.power-skid-patched.mesh.core-domef.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-domef",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          0.12374204397201538,
+          2.502790689468384,
+          -0.7586814165115356
+        ],
+        "min": [
+          -1.323742151260376,
+          1.2972092628479004,
+          -1.4413186311721802
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8c852c1407928bd25a03d2fda011bce5a69795a0966082bd0ae06e372bc9b0e",
+      "id": "sf.render.power-skid-patched.mesh.core-patch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46254393458366394,
+          0.5750041007995605,
+          1.3224999904632568
+        ],
+        "min": [
+          -2.4174561500549316,
+          0.22499588131904602,
+          -1.3224999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3f68270a0c4d88146e15c32592423ff0a95b3d6a195017a343cd0613fb4cdbca",
+      "id": "sf.render.power-skid-patched.mesh.core-saddlea.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-saddlea",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2174559831619263,
+          0.5750041007995605,
+          1.3224999904632568
+        ],
+        "min": [
+          -0.7374561429023743,
+          0.22499588131904602,
+          -1.3224999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7fba1b12c38daa171888cc16cce8c35f4528503d711babd80ab2a7248fceb5a9",
+      "id": "sf.render.power-skid-patched.mesh.core-saddlef.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-saddlef",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8000003099441528,
+          2.832536220550537,
+          1.1499680280685425
+        ],
+        "min": [
+          -2.000000238418579,
+          0.5674639344215393,
+          -1.1499680280685425
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25455e39f46e6cb597d005baa569a678381486aefb01cc06db0366b7a4561def",
+      "id": "sf.render.power-skid-patched.mesh.core-shell.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.power-skid-patched.mesh.core-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10563790798187256,
+          5.499959945678711,
+          0.21759790182113647
+        ],
+        "min": [
+          -1.6056379079818726,
+          5.300040245056152,
+          -0.21759790182113647
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d1247c76bae764ed32ab62cb571264443d9afd17b59baf78866ef8e010653aa",
+      "id": "sf.render.power-skid-patched.mesh.fin-frame.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.power-skid-patched.mesh.fin-frame",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.052458152174949646,
+          5.399999618530273,
+          0.1739310622215271
+        ],
+        "min": [
+          -1.452458143234253,
+          2.799999952316284,
+          -0.1739310622215271
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "059c9cd4f13618ffa1422acf0d7bf8c6e02048ec49dcaa58c5dacc69e43e3813",
+      "id": "sf.render.power-skid-patched.mesh.fin-wrong.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "a6c904a6141c41ebdbf6811c0e02c7b91098130146f62c7d0af40799203af805",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.power-skid-patched.mesh.fin-wrong",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.730007514357567,
+          1.9799889922142029,
+          0.8000000268220901
+        ],
+        "min": [
+          2.629992254078388,
+          1.8200109601020813,
+          0.40000002086162567
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "340195b415a697fc1ba0441b352e523825d41670e4e0daa9ec6c8f0152e23aee",
+      "id": "sf.render.power-skid-patched.mesh.hood-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.power-skid-patched.mesh.hood-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.769986152648926,
+          2.210013687610626,
+          0.8500000238418579
+        ],
+        "min": [
+          2.5700136199593544,
+          1.9099862426519394,
+          0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c3a09b380f5ee94174b9d1872795e2b510eafac47e3fe2e530b415410d14eb3",
+      "id": "sf.render.power-skid-patched.mesh.hood-shade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.power-skid-patched.mesh.hood-shade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.150000095367432,
+          0.6000000238418579,
+          1.75
+        ],
+        "min": [
+          4.650000095367432,
+          0.09999999403953552,
+          1.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6d5ac785b2a254cd3224b34c82fa2b86066c678774173d098a3f38cc7f05b2c",
+      "id": "sf.render.power-skid-patched.mesh.plug-taped.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.power-skid-patched.mesh.plug-taped",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          0.1499679535627365,
+          -1.200032114982605
+        ],
+        "min": [
+          -2.700000047683716,
+          -0.1499679535627365,
+          -1.4999679327011108
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "119fda55cb4013482a376438a4b2f5869c0dac867d512ea5f6376e8e161d3cfe",
+      "id": "sf.render.power-skid-patched.mesh.runner-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.power-skid-patched.mesh.runner-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          0.1499679535627365,
+          1.4999679327011108
+        ],
+        "min": [
+          -2.700000047683716,
+          -0.1499679535627365,
+          1.200032114982605
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f1fd6054d1db22a82e4ae5c310a21a2aa7646e5bf58cf53d45279163e0b82c0",
+      "id": "sf.render.power-skid-patched.mesh.runner-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.power-skid-patched.mesh.runner-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5,
+          0.3998962640762329,
+          1.5001373291015625
+        ],
+        "min": [
+          -2.5,
+          0.00010375678539276123,
+          -1.5001373291015625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a929f5695615f112131f0bc917dc1f5db83919dd038d9d8105c96e8b815157ec",
+      "id": "sf.render.power-skid-patched.mesh.skid.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.power-skid-patched.mesh.skid",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "id": "material:3fc44c487de257deb82cc903",
+      "name": "esk_tank_shell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "id": "material:5c25af379243dc87acccdd2f",
+      "name": "esk_light_hooded_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "a6c904a6141c41ebdbf6811c0e02c7b91098130146f62c7d0af40799203af805",
+      "id": "material:a6c904a6141c41ebdbf6811c",
+      "name": "esk_radiator_hot",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "id": "material:fc62ff199e40118baa3f1d37",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "id": "material:fca50b48f8068519278f5ec9",
+      "name": "esk_paint_rust",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.power-skid-patched.mesh.cab-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cab_patch",
+      "nodeName": "cab_patch",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.cabinet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cabinet",
+      "nodeName": "cabinet",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.cable",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cable",
+      "nodeName": "cable",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-domea",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_domea",
+      "nodeName": "core_domea",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-domef",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_domef",
+      "nodeName": "core_domef",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_patch",
+      "nodeName": "core_patch",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-saddlea",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_saddlea",
+      "nodeName": "core_saddlea",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-saddlef",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_saddlef",
+      "nodeName": "core_saddlef",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.core-shell",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "core_shell",
+      "nodeName": "core_shell",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.fin-frame",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_frame",
+      "nodeName": "fin_frame",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.fin-wrong",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_wrong",
+      "nodeName": "fin_wrong",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.hood-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_lens",
+      "nodeName": "hood_lens",
+      "nodePath": [
+        0,
+        12,
+        0
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.619999885559082,
+        1.899999976158142,
+        0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.hood-shade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_shade",
+      "nodeName": "hood_shade",
+      "nodePath": [
+        0,
+        12,
+        1
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.619999885559082,
+        1.899999976158142,
+        0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.plug-taped",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plug_taped",
+      "nodeName": "plug_taped",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.runner-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "runner_p",
+      "nodeName": "runner_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.runner-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "runner_s",
+      "nodeName": "runner_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.mesh.skid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid",
+      "nodeName": "skid",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.power-skid-patched.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.power-skid-patched.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "power_skid_patched",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.power-skid-patched.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "fad96cb195b9973b5d08d0320d6d644daa9a39696593c2d8f48c350560ddb7b7"
+    },
+    "sourceGlb": {
+      "bytes": 25216,
+      "sha256": "623d5e11a9c14b056203ea1f1403abd03f283eaf8c695b5b584e26c237a464fd",
+      "uri": "place_power_skid_patched.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 47388,
+    "sha256": "41277ff93ff44f9b9753a89c25fee35bae69500f1fcffc46d20076be583110f1",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.0256017446517944,
+        2.674995996057987,
+        0.12493133544921875
+      ],
+      "max": [
+        5.150000095367432,
+        5.499959945678711,
+        1.75
+      ],
+      "min": [
+        -3.0987966060638428,
+        -0.1499679535627365,
+        -1.5001373291015625
+      ],
+      "size": [
+        8.248796701431274,
+        5.6499278992414474,
+        3.2501373291015625
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.099999904632568,
+          0.3499999940395355,
+          1.5,
+          1
+        ],
+        "name": "SOCKET_Power_Out",
+        "planIndex": 21,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Power_Out",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Power_Out",
+            "recordIds": [
+              "sf.render.power-skid-patched.anchor.socket-power-out"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "mechanical": 16,
+      "radiator": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 22,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cab_patch",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cabinet",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cable",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_domea",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_domef",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_patch",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_saddlea",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_saddlef",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "core_shell",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_frame",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_wrong",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.619999885559082,
+          1.899999976158142,
+          0.6000000238418579,
+          1
+        ],
+        "name": "hood_lens",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.619999885559082,
+          1.899999976158142,
+          0.6000000238418579,
+          1
+        ],
+        "name": "hood_shade",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plug_taped",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "runner_p",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "runner_s",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "skid",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
+  },
+  "runtimeHash": "44c5ca45a09c1648b79da14846839b402222f1c082cef8f30cf7818bd5dafb01",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.150000095367432,
+          5.499959945678711,
+          1.75
+        ],
+        "min": [
+          -3.0987966060638428,
+          -0.1499679535627365,
+          -1.5001373291015625
+        ]
+      },
+      "id": "sf.render.power-skid-patched.body",
+      "nodeIds": [
+        "sf.render.power-skid-patched.mesh.cab-patch",
+        "sf.render.power-skid-patched.mesh.cabinet",
+        "sf.render.power-skid-patched.mesh.cable",
+        "sf.render.power-skid-patched.mesh.core-domea",
+        "sf.render.power-skid-patched.mesh.core-domef",
+        "sf.render.power-skid-patched.mesh.core-patch",
+        "sf.render.power-skid-patched.mesh.core-saddlea",
+        "sf.render.power-skid-patched.mesh.core-saddlef",
+        "sf.render.power-skid-patched.mesh.core-shell",
+        "sf.render.power-skid-patched.mesh.fin-frame",
+        "sf.render.power-skid-patched.mesh.fin-wrong",
+        "sf.render.power-skid-patched.mesh.hood-lens",
+        "sf.render.power-skid-patched.mesh.hood-shade",
+        "sf.render.power-skid-patched.mesh.plug-taped",
+        "sf.render.power-skid-patched.mesh.runner-p",
+        "sf.render.power-skid-patched.mesh.runner-s",
+        "sf.render.power-skid-patched.mesh.skid",
+        "sf.render.power-skid-patched.root"
+      ]
+    }
+  ]
+}

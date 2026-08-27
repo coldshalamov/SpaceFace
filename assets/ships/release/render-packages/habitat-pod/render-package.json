@@ -1,0 +1,2216 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.habitat-pod.anchor.socket-airlock",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.199999809265137,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Airlock",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.habitat-pod.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.199999809265137,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.habitat-pod",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "945a5fca51ac061bcbecb66159c0b1b7deb50041a15585519bf1c78096086096",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -4.000048637390137,
+          1.200000286102295,
+          1.2000000476837158
+        ],
+        "min": [
+          -4.799951553344727,
+          -1.200000286102295,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "978f3d396f32a23f967bb2b22369df9ed6cea42a8bc8472321848ec54e200400",
+      "id": "sf.render.habitat-pod.mesh.collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.habitat-pod.mesh.collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.800031661987305,
+          0.9000000953674316,
+          0.8999999761581421
+        ],
+        "min": [
+          -5.099967956542969,
+          -0.9000000953674316,
+          -0.8999999761581421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba681db63d4997ac6da4fc57976403002e2cf7fa32da5b6a113a98fa91e5bd3e",
+      "id": "sf.render.habitat-pod.mesh.hatch.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.habitat-pod.mesh.hatch",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1113115549087524,
+          2.450000047683716,
+          2.4499998092651367
+        ],
+        "min": [
+          -5.888688087463379,
+          -2.450000047683716,
+          -2.450000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f30c74a0c2d700c0f38e1ca6a2902beac408f3b828b1071a894711b3c3039f9",
+      "id": "sf.render.habitat-pod.mesh.hull-domea.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.003",
+      "nodeId": "sf.render.habitat-pod.mesh.hull-domea",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          5.888688564300537,
+          2.450000047683716,
+          2.4499998092651367
+        ],
+        "min": [
+          1.1113117933273315,
+          -2.450000047683716,
+          -2.450000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "acb1fcaf7e877213d2531ca603c09ee9130b970645939defbaeae7d139bc50fb",
+      "id": "sf.render.habitat-pod.mesh.hull-domef.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.habitat-pod.mesh.hull-domef",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5000007152557373,
+          2.4620814323425293,
+          2.5001068115234375
+        ],
+        "min": [
+          -3.5000007152557373,
+          -2.4620814323425293,
+          -2.5001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc7cf00d7765ac39ac8ad5b224c08d37a2b46bfb8adb1fee921b37f84ec5faf9",
+      "id": "sf.render.habitat-pod.mesh.hull-shell.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.habitat-pod.mesh.hull-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          0.903946042060852,
+          3.5999999046325684,
+          0.11997435986995697
+        ],
+        "min": [
+          0.6960539817810059,
+          2.299999713897705,
+          -0.11997435986995697
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4dd92b0c29782e157d3a2d0f8831338d8c7fe790335f72a4f73c00a40e33fa32",
+      "id": "sf.render.habitat-pod.mesh.mast.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.habitat-pod.mesh.mast",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7331466674804688,
+          1.5399999618530273,
+          0.14000000059604645
+        ],
+        "min": [
+          3.466853141784668,
+          1.2599999904632568,
+          -0.14000000059604645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2399124838facf7e9016e502a90bbd97e77ff6175159af0e86807522b2a7d32b",
+      "id": "sf.render.habitat-pod.mesh.nav.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.004",
+      "nodeId": "sf.render.habitat-pod.mesh.nav",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8000001907348633,
+          -0.30004575848579407,
+          2.5249762535095215
+        ],
+        "min": [
+          1.600000023841858,
+          -0.8999542593955994,
+          2.4750237464904785
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "494b94cea20d8aa8550ad1c9d021f84479ebebe151454a0818380b0ec05b5f9d",
+      "id": "sf.render.habitat-pod.mesh.plate.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.habitat-pod.mesh.plate",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9000000357627869,
+          -2.6999571323394775,
+          0.04998931661248207
+        ],
+        "min": [
+          -2.299999952316284,
+          -3.500042676925659,
+          -0.04998931661248207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9fd10a4fe317a0d9dff07b2eb2559b1766da48758a4aa3ae5d5e7d6da6db6ab4",
+      "id": "sf.render.habitat-pod.mesh.radfin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.habitat-pod.mesh.radfin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          -2.4499497413635254,
+          0.800048828125
+        ],
+        "min": [
+          0,
+          -3.350050449371338,
+          -0.800048828125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3955204058c3a8f641c732179f9402068a85cc56b1c70bf0d3eb087aa832a0dc",
+      "id": "sf.render.habitat-pod.mesh.utility.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.habitat-pod.mesh.utility",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.549999952316284,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          -3.450000047683716,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9f588219c23ef49216e80200fff56226ff8b727c65d52704969717c972f9885",
+      "id": "sf.render.habitat-pod.mesh.win0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.habitat-pod.mesh.win0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.0499999523162842,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          -1.9500000476837158,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d982e3d51996274f8d8232fada2f01e3188331d551ddbf1df78ee1f3d6ddcbb",
+      "id": "sf.render.habitat-pod.mesh.win1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.habitat-pod.mesh.win1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44999998807907104,
+          0.800018310546875,
+          2.4999871253967285
+        ],
+        "min": [
+          -0.44999998807907104,
+          0.1999817043542862,
+          2.3800129890441895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9da9ddabc51fbddc824bd48a2afc4f49d1aa928c1ca5be105510d91b8c9f43a",
+      "id": "sf.render.habitat-pod.mesh.win2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.habitat-pod.mesh.win2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9500000476837158,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          1.0499999523162842,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be2b1cc017782b55440549a004c8afb1e6c980524ae775d988f379eecdb9c3b1",
+      "id": "sf.render.habitat-pod.mesh.win3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.habitat-pod.mesh.win3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.450000047683716,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          2.549999952316284,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68400092ea39ca8bf83bf9b230671e6ef638da8fe5bcd71e2f92cc792a861f86",
+      "id": "sf.render.habitat-pod.mesh.win4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.habitat-pod.mesh.win4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8779321908950806,
+          3.689992904663086,
+          1.9000002145767212
+        ],
+        "min": [
+          0.7220678329467773,
+          3.510006904602051,
+          -1.9000002145767212
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7455129b7f419d9d9870ad6a7974e892692e621e039065971045fc44654ca1e6",
+      "id": "sf.render.habitat-pod.mesh.wing-boom.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.habitat-pod.mesh.wing-boom",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6000641584396362,
+          3.6500136852264404,
+          -0.39999985694885254
+        ],
+        "min": [
+          -0.00006410339119611308,
+          3.5499861240386963,
+          -3.799999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "155e72ee91a2b87a2ebab7360005e11d369b3be1c1e7a2b8d159d0f4d7b6e636",
+      "id": "sf.render.habitat-pod.mesh.wing-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.habitat-pod.mesh.wing-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6000641584396362,
+          3.6500136852264404,
+          3.799999952316284
+        ],
+        "min": [
+          -0.00006410339119611308,
+          3.5499861240386963,
+          0.39999985694885254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2033802796bdc1e6c5aa4c67533a1389c6ca8fc2e5cd00bb264bcb2adbf9661e",
+      "id": "sf.render.habitat-pod.mesh.wing-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.habitat-pod.mesh.wing-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "id": "material:004d84593ded3a8b8bc566c1",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "id": "material:12fb5c7a19cd2d7af38baeab",
+      "name": "esk_light_cabin",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "id": "material:a090cc581cc4edd9c4d71310",
+      "name": "esk_light_nav_green",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "name": "esk_id_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "id": "material:fcaae752dff7f4d8d2acc92d",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.habitat-pod.mesh.collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "collar",
+      "nodeName": "collar",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.hatch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hatch",
+      "nodeName": "hatch",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.hull-domea",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_domea",
+      "nodeName": "hull_domea",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.hull-domef",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_domef",
+      "nodeName": "hull_domef",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.hull-shell",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_shell",
+      "nodeName": "hull_shell",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.mast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "mast",
+      "nodeName": "mast",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.nav",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "nav",
+      "nodeName": "nav",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.plate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate",
+      "nodeName": "plate",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.radfin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "radfin",
+      "nodeName": "radfin",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.utility",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "utility",
+      "nodeName": "utility",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.win0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win0",
+      "nodeName": "win0",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.win1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win1",
+      "nodeName": "win1",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.win2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win2",
+      "nodeName": "win2",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.win3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win3",
+      "nodeName": "win3",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.win4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win4",
+      "nodeName": "win4",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.wing-boom",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_boom",
+      "nodeName": "wing_boom",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.wing-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_p",
+      "nodeName": "wing_p",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.mesh.wing-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_s",
+      "nodeName": "wing_s",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.habitat-pod.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "habitat_pod",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "db794d3351633bf089b0131c62bba7d50cef1bdc76dfa71309598bc6f96081fe"
+    },
+    "sourceGlb": {
+      "bytes": 26404,
+      "sha256": "5bad5f73aae9b3acc7de049bfb04f6a5bf9880844814c55b24878d6527982417",
+      "uri": "place_habitat_pod.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 52444,
+    "sha256": "5b145041dab827a53508593b5ebf00ac8de846e896de340f956aac716f2f8360",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.384185791015625e-7,
+        0.09497511386871338,
+        0
+      ],
+      "max": [
+        5.888688564300537,
+        3.689992904663086,
+        3.799999952316284
+      ],
+      "min": [
+        -5.888688087463379,
+        -3.500042676925659,
+        -3.799999952316284
+      ],
+      "size": [
+        11.777376651763916,
+        7.190035581588745,
+        7.599999904632568
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.199999809265137,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Airlock",
+        "planIndex": 12,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Airlock",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Airlock",
+            "recordIds": [
+              "sf.render.habitat-pod.anchor.socket-airlock"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 17,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 22,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "collar",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hatch",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_domea",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_domef",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_shell",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "mast",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "nav",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "radfin",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "utility",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win0",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win2",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win3",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win4",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_boom",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_p",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_s",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_habitat_pod.glb"
+  },
+  "runtimeHash": "7b0dfdc2cb762695f7fc24d8640e6ca738911150f186bae0b32a34bb1a747d11",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.888688564300537,
+          3.689992904663086,
+          3.799999952316284
+        ],
+        "min": [
+          -5.888688087463379,
+          -3.500042676925659,
+          -3.799999952316284
+        ]
+      },
+      "id": "sf.render.habitat-pod.body",
+      "nodeIds": [
+        "sf.render.habitat-pod.mesh.collar",
+        "sf.render.habitat-pod.mesh.hatch",
+        "sf.render.habitat-pod.mesh.hull-domea",
+        "sf.render.habitat-pod.mesh.hull-domef",
+        "sf.render.habitat-pod.mesh.hull-shell",
+        "sf.render.habitat-pod.mesh.mast",
+        "sf.render.habitat-pod.mesh.nav",
+        "sf.render.habitat-pod.mesh.plate",
+        "sf.render.habitat-pod.mesh.radfin",
+        "sf.render.habitat-pod.mesh.utility",
+        "sf.render.habitat-pod.mesh.win0",
+        "sf.render.habitat-pod.mesh.win1",
+        "sf.render.habitat-pod.mesh.win2",
+        "sf.render.habitat-pod.mesh.win3",
+        "sf.render.habitat-pod.mesh.win4",
+        "sf.render.habitat-pod.mesh.wing-boom",
+        "sf.render.habitat-pod.mesh.wing-p",
+        "sf.render.habitat-pod.mesh.wing-s",
+        "sf.render.habitat-pod.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1019 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-cable-bundle",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "35ed2b4cad1a075b9ddc7aa2741341daa90044c135fdd8ffbaf0c6f6644fbb72",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.96982741355896,
+          0.7294725775718689,
+          -0.17070478200912476
+        ],
+        "min": [
+          -1.9215419292449951,
+          -0.12898388504981995,
+          -2.21435546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b13aad63593733f0075177e6ba52a5e9c456bc8b9ed488187bd97f60995105ca",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.3515102863311768,
+          1.5397708415985107,
+          -0.013983516953885555
+        ],
+        "min": [
+          -1.903225064277649,
+          0.7840368151664734,
+          -1.3872625827789307
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5bee9e14f501679523000930de8e7e8cdf289ab3da8e84f80d86351dff681a1",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7416164875030518,
+          1.882030963897705,
+          0.7370153665542603
+        ],
+        "min": [
+          -1.8933311700820923,
+          0.8609223961830139,
+          0.06864986568689346
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3109a55217d855e4afa6dc87b9b73f02c18c0e2d49345b943685da07f2ea549",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9658610820770264,
+          0.9011274576187134,
+          2.2194786071777344
+        ],
+        "min": [
+          -1.9175755977630615,
+          0.6395969390869141,
+          0.3460487723350525
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e7cfb30db75540dfe88e35fdc7328ec87a6e88a90b405de1d276c75684513e9",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.362711191177368,
+          0.5501874685287476,
+          2.2045867443084717
+        ],
+        "min": [
+          -1.9144258499145508,
+          -0.9232437610626221,
+          0.3419252038002014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "738a1986af573813ff8fd00db20c076745220e6eaa0fae438a19475cbf3afd17",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.767059326171875,
+          0.3318803906440735,
+          0.7008954286575317
+        ],
+        "min": [
+          -1.9187740087509155,
+          -1.8819580078125,
+          0.062113456428050995
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "729eea8f3a7bfe7d4f4b713201d0faf19ebfc0e42ff2e6cccf6e8dc5a96ece48",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9649882316589355,
+          0.41431352496147156,
+          -0.019808834418654442
+        ],
+        "min": [
+          -1.9167027473449707,
+          -1.5139068365097046,
+          -1.4154527187347412
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f7ad58955e188b5f3452cfab3bace55729053c8eee5c4897c3c97eecbf83a8a",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.775857150554657,
+          1.4561972618103027,
+          1.0075522661209106
+        ],
+        "min": [
+          -3.77585768699646,
+          -0.25570860505104065,
+          -0.7926124334335327
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ca745570d1b6bbbf83e997ec4925fa3462f50f8603d4b610d17db0f00e4deb09",
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-duct.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.fb-duct",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "id": "material:2ecdc2543581ee905a24eaa8",
+      "name": "wrk_cable",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "id": "material:bfaa9a8470a29a0d44afaeea",
+      "name": "wrk_pipe",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_0",
+      "nodeName": "fb_c_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_1",
+      "nodeName": "fb_c_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_2",
+      "nodeName": "fb_c_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_3",
+      "nodeName": "fb_c_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_4",
+      "nodeName": "fb_c_4",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_5",
+      "nodeName": "fb_c_5",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_c_6",
+      "nodeName": "fb_c_6",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.mesh.fb-duct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fb_duct",
+      "nodeName": "fb_duct",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-frag-cable-bundle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-cable-bundle.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_cable_bundle",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "cbf0189a16cb338a030c48b24b8be11388a728aaf3083435dcdd3d52340441de"
+    },
+    "sourceGlb": {
+      "bytes": 14000,
+      "sha256": "5c18bbb15edec6ba0af9f4e8e96225bcc2243cc9a1f586c4a4e6a9cb9f5df1c8",
+      "uri": "place_aftermath_frag_cable_bundle.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 22708,
+    "sha256": "7909f678890b9ba6e43470a4f99cacf4b7bf4753714823b9d13d89ade0eb1926",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.0043991804122924805,
+        0.00003647804260253906,
+        0.0025615692138671875
+      ],
+      "max": [
+        3.767059326171875,
+        1.882030963897705,
+        2.2194786071777344
+      ],
+      "min": [
+        -3.77585768699646,
+        -1.8819580078125,
+        -2.21435546875
+      ],
+      "size": [
+        7.542917013168335,
+        3.763988971710205,
+        4.433834075927734
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 7,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_3",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_4",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_5",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_c_6",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fb_duct",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
+  },
+  "runtimeHash": "4cc3b88d77ab97c8921c9260ee9dca25d3798552101c83969299a94709246100",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.767059326171875,
+          1.882030963897705,
+          2.2194786071777344
+        ],
+        "min": [
+          -3.77585768699646,
+          -1.8819580078125,
+          -2.21435546875
+        ]
+      },
+      "id": "sf.render.aftermath-frag-cable-bundle.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-0",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-1",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-2",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-3",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-4",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-5",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-c-6",
+        "sf.render.aftermath-frag-cable-bundle.mesh.fb-duct",
+        "sf.render.aftermath-frag-cable-bundle.root"
+      ]
+    }
+  ]
+}

@@ -3,9 +3,9 @@
   "combined": "assets/works/rover/source/rover.glb",
   "partsSource": "assets/ships/parts/works/place_works_rover.glb",
   "lodTriangles": {
-    "lod0": 19768,
-    "lod1": 2936,
-    "lod2": 1990
+    "lod0": 11846,
+    "lod1": 1914,
+    "lod2": 1158
   },
   "hooks": [
     "boom_pivot",
@@ -21,12 +21,6 @@
     "track_L",
     "track_R",
     "scar_plate"
-  ],
-  "cutterSocket": "bit_tip",
-  "cutterMeshes": [
-    "LOD0_Bit",
-    "LOD1_Bit",
-    "LOD2_Bit"
   ],
   "meshNames": [
     "LOD0_Bit",
@@ -70,7 +64,6 @@
     "LOD1_track_L",
     "LOD1_track_R",
     "LOD2_Bit",
-    "LOD2_Merged_Material_Chevron",
     "LOD2_Merged_Material_Chevron_Boom",
     "LOD2_Merged_Material_Glass",
     "LOD2_Merged_Material_Lamp",
@@ -90,6 +83,6 @@
     "LOD2_track_L",
     "LOD2_track_R"
   ],
-  "bytes": 18430804,
-  "sha256": "98985865B2DD21F557F03B32D70CDBEC45FECCB5405237800E57F2D3E48D8A3F"
+  "bytes": 16875252,
+  "sha256": "2FAEC331992B53502C17261EB58F1FF839B782A73285C696304B02617F7D04EF"
 }

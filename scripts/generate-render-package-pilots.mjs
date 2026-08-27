@@ -42,12 +42,13 @@ const SLOT_BY_DIR = Object.freeze({
   pods: 'pod',
   weapons: 'weapon',
   wholeships: 'hull',
+  works: 'place',
 });
 
 /** Package kind, as the render-package schema understands it. */
 function kindForDir(dir) {
   if (dir === 'wholeships') return 'ship';
-  if (dir === 'places') return 'place';
+  if (dir === 'places' || dir === 'works') return 'place';
   return 'part';
 }
 

@@ -1,0 +1,912 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-pipe-tangle",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f23d3ad15abe66dc87075b0bccb1ace970f3d355b484490307157e539ea012d5",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.2663357257843018,
+          1.4630885124206543,
+          -0.3932124674320221
+        ],
+        "min": [
+          -2.2663357257843018,
+          -0.2892228364944458,
+          -1.434468388557434
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "abf20b114e793b25513933d5d228fb4f03719d8fe3c3d1f145977025e6dcda47",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.004643201828003,
+          1.879868507385254,
+          1.2420552968978882
+        ],
+        "min": [
+          -1.9046430587768555,
+          0.5973038673400879,
+          -0.768237292766571
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6691c7bc0dbfb5618a363835cf300910b0b43745dc166d05bfb7d33cfcb86754",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6763174533843994,
+          0.9859938621520996,
+          1.728717565536499
+        ],
+        "min": [
+          -1.4763174057006836,
+          -0.04085669666528702,
+          0.4764525890350342
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36a6830026d54f8eee7c0195b76bfae718aeac0253d0ee6b4defbe06c40afeb7",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4251223802566528,
+          -0.005025022197514772,
+          1.375649333000183
+        ],
+        "min": [
+          -1.125122308731079,
+          -1.742994785308838,
+          0.09869135916233063
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "088357970c1932c8e4b85a62ed43e9eb06cbf1bd16547f6351a4177853b5776c",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1703022718429565,
+          -0.7792209386825562,
+          0.5143977999687195
+        ],
+        "min": [
+          -0.7703021764755249,
+          -1.8799749612808228,
+          -1.4344120025634766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7df9c19ca1a9de089446c6232bb4089af28a93e0a33affb3f283f99293125008",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8724868297576904,
+          0.17041733860969543,
+          -0.6647448539733887
+        ],
+        "min": [
+          -0.3724866807460785,
+          -0.9630678296089172,
+          -1.696580171585083
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f75dec6153a86dc73558a7d2cab7fe89d2f69bdbafa3401b7898717eaaa1632",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8499466180801392,
+          -1.0087411403656006,
+          1.276045799255371
+        ],
+        "min": [
+          0.35005342960357666,
+          -1.508634328842163,
+          -1.3239541053771973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f592efe1db8d7767f28092a9d3c80912c46893dbaba4b9aadaaf868ce0a347a",
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "bfaa9a8470a29a0d44afaeea7b4f31ba96f9b86e6d215332b811620fd83007d3",
+      "id": "material:bfaa9a8470a29a0d44afaeea",
+      "name": "wrk_pipe",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_0",
+      "nodeName": "fp_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_1",
+      "nodeName": "fp_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_2",
+      "nodeName": "fp_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_3",
+      "nodeName": "fp_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_4",
+      "nodeName": "fp_4",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_5",
+      "nodeName": "fp_5",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fp_bracket",
+      "nodeName": "fp_bracket",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-frag-pipe-tangle.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-pipe-tangle.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_pipe_tangle",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-pipe-tangle.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a4c69709d97b9ac4c02fd053516b1a9ba862db03f4bdf9aea2a1e33dfad5a3ff"
+    },
+    "sourceGlb": {
+      "bytes": 12864,
+      "sha256": "088c700e43ffeaffd2725f69d8228b3ffafa3c11d47b27b029e7c550c3d9d1ee",
+      "uri": "place_aftermath_frag_pipe_tangle.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 21136,
+    "sha256": "ed13e009b20d1c891052d0cd23481ed9093a2088b178089d5a3d163e7382e620",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        -0.00005322694778442383,
+        0.016068696975708008
+      ],
+      "max": [
+        2.2663357257843018,
+        1.879868507385254,
+        1.728717565536499
+      ],
+      "min": [
+        -2.2663357257843018,
+        -1.8799749612808228,
+        -1.696580171585083
+      ],
+      "size": [
+        4.5326714515686035,
+        3.7598434686660767,
+        3.425297737121582
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 9,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_3",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_4",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_5",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fp_bracket",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
+  },
+  "runtimeHash": "4a64f339fa7304bfdec6124bee60d80a92562750de6f70daaaaee339bd040623",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.2663357257843018,
+          1.879868507385254,
+          1.728717565536499
+        ],
+        "min": [
+          -2.2663357257843018,
+          -1.8799749612808228,
+          -1.696580171585083
+        ]
+      },
+      "id": "sf.render.aftermath-frag-pipe-tangle.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-0",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-1",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-2",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-3",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-4",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-5",
+        "sf.render.aftermath-frag-pipe-tangle.mesh.fp-bracket",
+        "sf.render.aftermath-frag-pipe-tangle.root"
+      ]
+    }
+  ]
+}

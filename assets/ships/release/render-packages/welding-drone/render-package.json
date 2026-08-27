@@ -1,0 +1,1454 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.welding-drone.anchor.socket-torch",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.399999976158142,
+        0,
+        -0.3400000035762787,
+        1
+      ],
+      "nodeName": "SOCKET_Torch",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.welding-drone.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.399999976158142,
+        0,
+        -0.3400000035762787,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.welding-drone",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "6caea8352a2768fdd9af5e5da36af35f3010496f9f590fa6cab4b53aa1abed0f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.9002571702003479,
+          0.1442287266254425,
+          -0.24293315410614014
+        ],
+        "min": [
+          0.3797428011894226,
+          -0.044228728860616684,
+          -0.5410668849945068
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d16f3b01829363b85aae4702d50abaf22c142469449e8117f4490ee4f5d73ce8",
+      "id": "sf.render.welding-drone.mesh.arm0-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.welding-drone.mesh.arm0-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.314905047416687,
+          0.13975892961025238,
+          -0.30302172899246216
+        ],
+        "min": [
+          0.8650948405265808,
+          0.01024107076227665,
+          -0.5369783043861389
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa4fda37c7e51701d47b410798e5607aa8369b572ce296ee1b87faeace6a5f34",
+      "id": "sf.render.welding-drone.mesh.arm0-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.welding-drone.mesh.arm0-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9002571702003479,
+          0.14422866702079773,
+          0.5410668253898621
+        ],
+        "min": [
+          0.3797427713871002,
+          -0.04422866553068161,
+          0.2429332286119461
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88cc51af53524aac198fd07759b6ff4138fc33e0ae693b5ee7118b3b84965cb6",
+      "id": "sf.render.welding-drone.mesh.arm1-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.welding-drone.mesh.arm1-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3149049282073975,
+          0.1397588700056076,
+          0.5369783043861389
+        ],
+        "min": [
+          0.8650948405265808,
+          0.010241140611469746,
+          0.30302172899246216
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2316a1d8d6a9762ca41e4291f88b6e85e8271b29e78c0edc8bcaeab34594ab5f",
+      "id": "sf.render.welding-drone.mesh.arm1-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.welding-drone.mesh.arm1-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5,
+          0.300027459859848,
+          0.3500167727470398
+        ],
+        "min": [
+          -0.5,
+          -0.300027459859848,
+          -0.3500167727470398
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "963c795db30de4e6cd680a6010a9962eb8f2a46ee79f08f0417a6c98723c3a63",
+      "id": "sf.render.welding-drone.mesh.body.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.welding-drone.mesh.body",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5899917483329773,
+          0.1900082379579544,
+          0.15000000596046448
+        ],
+        "min": [
+          0.4700081944465637,
+          0.00999175664037466,
+          -0.15000000596046448
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d98bb4fba1339da39625b09260ae79953f7f46a18a882d643c48083826bd573",
+      "id": "sf.render.welding-drone.mesh.eye.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.welding-drone.mesh.eye",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4300000667572021,
+          0.09000431001186371,
+          0.4000021815299988
+        ],
+        "min": [
+          1.2899999618530273,
+          0.009995697997510433,
+          0.2799978256225586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f77ece8aff1780b207e4e1254c4c1779976d8aa5aad30b4e4e43e8af4144eae3",
+      "id": "sf.render.welding-drone.mesh.gripper.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.welding-drone.mesh.gripper",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.07999999821186066,
+          0.42999663949012756,
+          0.07999999821186066
+        ],
+        "min": [
+          -0.07999999821186066,
+          0.3300033509731293,
+          -0.07999999821186066
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a3e43563d1376b2c3c9cec9b50646bd31f6925dc3d18803131769723c2e9bbf4",
+      "id": "sf.render.welding-drone.mesh.hook.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.welding-drone.mesh.hook",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.48342663049697876,
+          0.17000000178813934,
+          0.07000000029802322
+        ],
+        "min": [
+          -0.6165733933448792,
+          0.030000001192092896,
+          -0.07000000029802322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8976d2203409e02f871e6580140e376599448f2bdc48195327c696a967752a6",
+      "id": "sf.render.welding-drone.mesh.tail.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.welding-drone.mesh.tail",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4100222885608673,
+          -0.23999877274036407,
+          0.5099999904632568
+        ],
+        "min": [
+          -0.4700222611427307,
+          -0.40000119805336,
+          -0.5099999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd2001ba8dd75e8acf374a5c285e0177d34e773989180226e427e28927f9a157",
+      "id": "sf.render.welding-drone.mesh.thrusters.primitive.0",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.welding-drone.mesh.thrusters",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4449999332427979,
+          0.09500224143266678,
+          -0.2949977517127991
+        ],
+        "min": [
+          1.315000057220459,
+          0.0049977549351751804,
+          -0.3850022554397583
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15a5cdba7bc300a2fb1f05ad75f5025404b5ee7e69dbd3c6428f863c94939ee3",
+      "id": "sf.render.welding-drone.mesh.torch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.welding-drone.mesh.torch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "id": "material:30a1b3664c52d6456d2dd72a",
+      "name": "esk_light_repair",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "id": "material:710749cab1590f13b764fa15",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "id": "material:76dfa2829c62a55ef4a4f46b",
+      "name": "esk_glass",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "id": "material:9538e2a870a6b542509db5ad",
+      "name": "esk_paint_service_blue",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.welding-drone.mesh.arm0-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "arm0_a",
+      "nodeName": "arm0_a",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.arm0-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "arm0_b",
+      "nodeName": "arm0_b",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.arm1-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "arm1_a",
+      "nodeName": "arm1_a",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.arm1-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "arm1_b",
+      "nodeName": "arm1_b",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "body",
+      "nodeName": "body",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.eye",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "eye",
+      "nodeName": "eye",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.gripper",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gripper",
+      "nodeName": "gripper",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.hook",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hook",
+      "nodeName": "hook",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.tail",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tail",
+      "nodeName": "tail",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.thrusters",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "thrusters",
+      "nodeName": "thrusters",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.mesh.torch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "torch",
+      "nodeName": "torch",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.welding-drone.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.welding-drone.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "welding_drone",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.welding-drone.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6bb7e5aa7691776d2b7c1856ade7d2dc3b181cef7b0cd89c0ce4107a179f0410"
+    },
+    "sourceGlb": {
+      "bytes": 18564,
+      "sha256": "4b087be4aaf770a50fba9ccd2451a66853f74cd880ce7eea384717e7e24a028f",
+      "uri": "place_welding_drone.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 29212,
+    "sha256": "d10a3ef14df3694b96d9da4bf11c6fc9eb74dad1b05c83803246fed4cdac56f3",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.41421326994895935,
+        0.014997720718383789,
+        -2.9802322387695312e-8
+      ],
+      "max": [
+        1.4449999332427979,
+        0.42999663949012756,
+        0.5410668253898621
+      ],
+      "min": [
+        -0.6165733933448792,
+        -0.40000119805336,
+        -0.5410668849945068
+      ],
+      "size": [
+        2.061573326587677,
+        0.8299978375434875,
+        1.082133710384369
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.399999976158142,
+          0,
+          -0.3400000035762787,
+          1
+        ],
+        "name": "SOCKET_Torch",
+        "planIndex": 11,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Torch",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Torch",
+            "recordIds": [
+              "sf.render.welding-drone.anchor.socket-torch"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 9,
+      "mechanical": 1,
+      "service": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 15,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "arm0_a",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "arm0_b",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "arm1_a",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "arm1_b",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "body",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "eye",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gripper",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hook",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tail",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "thrusters",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "torch",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_welding_drone.glb"
+  },
+  "runtimeHash": "f01ad83adbf389f05a69927fad8325fcef94a13ad749fd4a988842d6e7ec15a5",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.4449999332427979,
+          0.42999663949012756,
+          0.5410668253898621
+        ],
+        "min": [
+          -0.6165733933448792,
+          -0.40000119805336,
+          -0.5410668849945068
+        ]
+      },
+      "id": "sf.render.welding-drone.body",
+      "nodeIds": [
+        "sf.render.welding-drone.mesh.arm0-a",
+        "sf.render.welding-drone.mesh.arm0-b",
+        "sf.render.welding-drone.mesh.arm1-a",
+        "sf.render.welding-drone.mesh.arm1-b",
+        "sf.render.welding-drone.mesh.body",
+        "sf.render.welding-drone.mesh.eye",
+        "sf.render.welding-drone.mesh.gripper",
+        "sf.render.welding-drone.mesh.hook",
+        "sf.render.welding-drone.mesh.tail",
+        "sf.render.welding-drone.mesh.thrusters",
+        "sf.render.welding-drone.mesh.torch",
+        "sf.render.welding-drone.root"
+      ]
+    }
+  ]
+}

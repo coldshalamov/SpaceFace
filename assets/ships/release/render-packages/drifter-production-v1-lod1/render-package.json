@@ -1,0 +1,2398 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-camera-focus-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.25,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus.001",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.25,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-cargo-ventral-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        -1.100000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral.001",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4000000059604645,
+        -1.100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-engine-main-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.800000190734863,
+        0.07999999821186066,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main.001",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.800000190734863,
+        0.07999999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-mining-front-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.400000095367432,
+        -0.15000000596046448,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front.001",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.400000095367432,
+        -0.15000000596046448,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-rcs-port-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        1.899999976158142,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port.001",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        1.899999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-rcs-starboard-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        -1.899999976158142,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard.001",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.2000000476837158,
+        0.15000000596046448,
+        -1.899999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-trail-main-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.199999809265137,
+        0.07999999821186066,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main.001",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.199999809265137,
+        0.07999999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-trail-port-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        0.07999999821186066,
+        1.190000057220459,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port.001",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        0.07999999821186066,
+        1.190000057220459,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-trail-starboard-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        0.07999999821186066,
+        -1.190000057220459,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard.001",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7,
+        0.07999999821186066,
+        -1.190000057220459,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-utility-dorsal-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        1.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal.001",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6000000238418579,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.anchor.socket-weapon-front-001",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.25,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front.001",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.drifter-production-v1-lod1.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.25,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.drifter-production-v1-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "5d0116b4d8e32eebd0c05ca4a357bdbd39b9b03cb892c6ec4dc47e7b7fdbd0d9",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.599999904632568,
+          0.5000946521759033,
+          2.6000609397888184
+        ],
+        "min": [
+          -7.199999809265137,
+          -0.9000946283340454,
+          -2.6000609397888184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9d09b348f3fa10bde133e01cea151b3ed9af37a10f70160ad6608a28f705ef7",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.collision-hull-001.primitive.0",
+      "indexCount": 30,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_HULL_MESH.001",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.collision-hull-001",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6200157999992371,
+          0.2700054347515106,
+          1.6319999694824219
+        ],
+        "min": [
+          -0.2200157791376114,
+          0.1699945628643036,
+          -1.6320000886917114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6343e2af445052fce73625d73e2f1e722639763134aebf221cabc886a1fd3d0e",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-accent-001.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "a0b2ebb721c0e35ed1277cfcfe985a7021a299583d781c774192d85a684922f2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.144",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-accent-001",
+      "primitiveIndex": 0,
+      "vertexCount": 528
+    },
+    {
+      "bounds": {
+        "max": [
+          7.149999618530273,
+          1.9289045333862305,
+          2.519829750061035
+        ],
+        "min": [
+          -7.566559791564941,
+          -0.6401045918464661,
+          -2.519829750061035
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08a874587b0d5641d3de9b806c62250899993f6ec3ca61222fdc8ce5b22965be",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-armor-001.primitive.0",
+      "indexCount": 19092,
+      "indexed": true,
+      "materialHash": "3220b2d071b5f7fd63f82e74db11588b1a67788156cb3734b6a582fabfe053d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.108",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-armor-001",
+      "primitiveIndex": 0,
+      "vertexCount": 15193
+    },
+    {
+      "bounds": {
+        "max": [
+          4.349812030792236,
+          1.9619640111923218,
+          0.6236698031425476
+        ],
+        "min": [
+          2.535072088241577,
+          1.2109129428863525,
+          -0.6236697435379028
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80133a884da3b1b7865993b19760d6d632c414d2acd5bbab4be1b817e6c404dd",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-canopy-001.primitive.0",
+      "indexCount": 1620,
+      "indexed": true,
+      "materialHash": "1a209dda587b7c194f20cd1548263a6ea81eca3322e38c543ebecebfd5975392",
+      "materialPipelineKey": "blend",
+      "meshName": "Canopy_PaneP_Mesh.001",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-canopy-001",
+      "primitiveIndex": 0,
+      "vertexCount": 1492
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.907912731170654,
+          0.5968750715255737,
+          1.906999945640564
+        ],
+        "min": [
+          -7.034087657928467,
+          -0.116875059902668,
+          -1.9069998264312744
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbfb98cdec919ba29129eb3941f5ff7b94f5ff9a6c767ece288ff912e7206402",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-ceramic-001.primitive.0",
+      "indexCount": 1416,
+      "indexed": true,
+      "materialHash": "d64f9d220ca7481d7f5a358ddac591e93117ce9caebf9fa511934051953ec569",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.057",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-ceramic-001",
+      "primitiveIndex": 0,
+      "vertexCount": 880
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          1.6523683071136475,
+          2.8800852298736572
+        ],
+        "min": [
+          -7.5,
+          -0.9417661428451538,
+          -2.8800852298736572
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d50e1762c1056fc4ce9e61e919b403d5e9615a48077300ae394ec643235bb67",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-hull-001.primitive.0",
+      "indexCount": 63684,
+      "indexed": true,
+      "materialHash": "46a60e93bce83ea63358159201e8b7e7ea5ec675873c66649dcd9808633c75df",
+      "materialPipelineKey": "opaque",
+      "meshName": "Pressure_Hull_Mesh.001",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-hull-001",
+      "primitiveIndex": 0,
+      "vertexCount": 45453
+    },
+    {
+      "bounds": {
+        "max": [
+          6.25,
+          1.6996667385101318,
+          2.5291454792022705
+        ],
+        "min": [
+          -8.712987899780273,
+          -0.9196668267250061,
+          -2.5291454792022705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c63f4de26aecaf44e07a1c63644778e4224b46db646ef47d7855e029bc298013",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-mechanical-001.primitive.0",
+      "indexCount": 46464,
+      "indexed": true,
+      "materialHash": "5840ef8a236f4a79cc8fc2ed41eb516913f35d0eec48034071aa19126d704781",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.102",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-mechanical-001",
+      "primitiveIndex": 0,
+      "vertexCount": 37504
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.9439916610717773,
+          0.5355363488197327,
+          1.3249999284744263
+        ],
+        "min": [
+          -4.856008529663086,
+          0.3844636380672455,
+          -1.3250000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cedb3d64b6e8b949c253d0a62aaf7431fdbc89f107233760224bbfa48f314616",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-radiator-001.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "c170a676f964ae5053801f40fc6ad599cf9d261d46738dd2157bc68d57020140",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.157",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-radiator-001",
+      "primitiveIndex": 0,
+      "vertexCount": 528
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5720000267028809,
+          0.7629919052124023,
+          2.073115587234497
+        ],
+        "min": [
+          -8.214200019836426,
+          -0.2829919457435608,
+          -2.073115587234497
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "401a563cd678bb2b3fd999617fc3903cb60a9282218f0a2fe979a61ac38d04bd",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-thruster-001.primitive.0",
+      "indexCount": 2784,
+      "indexed": true,
+      "materialHash": "d3bb41bcf6c398791d922b97b9971ed3e9bec0cd1408aea1f95d1a413d26440f",
+      "materialPipelineKey": "opaque",
+      "meshName": "BellLiner_Port_Mesh.001",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-thruster-001",
+      "primitiveIndex": 0,
+      "vertexCount": 1748
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4700000286102295,
+          0.7919925451278687,
+          0.7800244092941284
+        ],
+        "min": [
+          0.8299999833106995,
+          0.7680073976516724,
+          0.45997560024261475
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49c24fb9805d9f9358458271810bd598ed61471d91f24547f614b15a72ecdbfe",
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-warning-001.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "93a82c5b7bc332ed2ce0b94aaec83b071351ace6d02f4a73e71794ca0f489abc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.172",
+      "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod1-warning-001",
+      "primitiveIndex": 0,
+      "vertexCount": 264
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1a209dda587b7c194f20cd1548263a6ea81eca3322e38c543ebecebfd5975392",
+      "id": "material:1a209dda587b7c194f20cd15",
+      "name": "Material_Canopy.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_canopy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_canopy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_canopy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_canopy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3220b2d071b5f7fd63f82e74db11588b1a67788156cb3734b6a582fabfe053d6",
+      "id": "material:3220b2d071b5f7fd63f82e74",
+      "name": "Material_Armor.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_armor_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_armor_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_armor_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_armor_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "46a60e93bce83ea63358159201e8b7e7ea5ec675873c66649dcd9808633c75df",
+      "id": "material:46a60e93bce83ea633581592",
+      "name": "Material_Hull.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5840ef8a236f4a79cc8fc2ed41eb516913f35d0eec48034071aa19126d704781",
+      "id": "material:5840ef8a236f4a79cc8fc2ed",
+      "name": "Material_Mechanical.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_mechanical_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "93a82c5b7bc332ed2ce0b94aaec83b071351ace6d02f4a73e71794ca0f489abc",
+      "id": "material:93a82c5b7bc332ed2ce0b94a",
+      "name": "Material_Warning.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_warning_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_warning_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_warning_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_warning_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a0b2ebb721c0e35ed1277cfcfe985a7021a299583d781c774192d85a684922f2",
+      "id": "material:a0b2ebb721c0e35ed1277cfc",
+      "name": "Material_Accent.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c170a676f964ae5053801f40fc6ad599cf9d261d46738dd2157bc68d57020140",
+      "id": "material:c170a676f964ae5053801f40",
+      "name": "Material_Radiator.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_radiator_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_radiator_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_radiator_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_radiator_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d3bb41bcf6c398791d922b97b9971ed3e9bec0cd1408aea1f95d1a413d26440f",
+      "id": "material:d3bb41bcf6c398791d922b97",
+      "name": "Material_Thruster.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_thruster_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_thruster_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_thruster_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_thruster_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d64f9d220ca7481d7f5a358ddac591e93117ce9caebf9fa511934051953ec569",
+      "id": "material:d64f9d220ca7481d7f5a358d",
+      "name": "Material_Ceramic.001",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "drifter_ceramic_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_ceramic_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_ceramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "drifter_ceramic_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.collision-hull-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_HULL.001",
+      "nodeName": "COLLISION_HULL.001",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-accent-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Accent.001",
+      "nodeName": "LOD1_Accent.001",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-armor-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor.001",
+      "nodeName": "LOD1_Armor.001",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-canopy-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Canopy.001",
+      "nodeName": "LOD1_Canopy.001",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-ceramic-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic.001",
+      "nodeName": "LOD1_Ceramic.001",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-hull-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull.001",
+      "nodeName": "LOD1_Hull.001",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-mechanical-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical.001",
+      "nodeName": "LOD1_Mechanical.001",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-radiator-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Radiator.001",
+      "nodeName": "LOD1_Radiator.001",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-thruster-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Thruster.001",
+      "nodeName": "LOD1_Thruster.001",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.mesh.lod1-warning-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning.001",
+      "nodeName": "LOD1_Warning.001",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.drifter-production-v1-lod1.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.drifter-production-v1-lod1.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "DRIFTER_LOD1_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.drifter-production-v1-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "9c009b48d64768f1034e8433a824311dac09e67b8a4885e73be71bc54b523732"
+    },
+    "sourceGlb": {
+      "bytes": 4916652,
+      "sha256": "b336d976f07e753cb0fa73959b6b87f24c479f305f8529e5460b26d2324f440f",
+      "uri": "drifter_production_v1_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 5960112,
+    "sha256": "962bfeda5346781c49204401bd60c69577fae2d81cd75dbd8670c84c7a6204a8",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.3564939498901367,
+        0.510098934173584,
+        0
+      ],
+      "max": [
+        8,
+        1.9619640111923218,
+        2.8800852298736572
+      ],
+      "min": [
+        -8.712987899780273,
+        -0.9417661428451538,
+        -2.8800852298736572
+      ],
+      "size": [
+        16.712987899780273,
+        2.9037301540374756,
+        5.7601704597473145
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.800000011920929,
+          0.25,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus001",
+        "planIndex": 12,
+        "tags": {
+          "socket": true,
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-camera-focus-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.4000000059604645,
+          -1.100000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral001",
+        "planIndex": 13,
+        "tags": {
+          "socket": true,
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-cargo-ventral-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -6.800000190734863,
+          0.07999999821186066,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main001",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-engine-main-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.400000095367432,
+          -0.15000000596046448,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front001",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-mining-front-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2000000476837158,
+          0.15000000596046448,
+          1.899999976158142,
+          1
+        ],
+        "name": "SOCKET_RCS_Port001",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-rcs-port-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.2000000476837158,
+          0.15000000596046448,
+          -1.899999976158142,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard001",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-rcs-starboard-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.199999809265137,
+          0.07999999821186066,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main001",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-trail-main-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          0.07999999821186066,
+          1.190000057220459,
+          1
+        ],
+        "name": "SOCKET_Trail_Port001",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-trail-port-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7,
+          0.07999999821186066,
+          -1.190000057220459,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard001",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-trail-starboard-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6000000238418579,
+          1.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal001",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-utility-dorsal-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.800000190734863,
+          0.25,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front001",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front.001",
+          "socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front.001",
+            "recordIds": [
+              "sf.render.drifter-production-v1-lod1.anchor.socket-weapon-front-001"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "ceramic": 1,
+      "drive": 1,
+      "glass": 1,
+      "hull": 2,
+      "mechanical": 1,
+      "radiator": 1,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "radiator"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 23,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Accent001",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor001",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Canopy001",
+        "planIndex": 5,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic001",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull001",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical001",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Radiator001",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Thruster001",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning001",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb"
+  },
+  "runtimeHash": "5deb729539bbb3b5740ee34e39b649bf93e5f18357235aa7c2dbc0b4b7777b04",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8,
+          1.9619640111923218,
+          2.8800852298736572
+        ],
+        "min": [
+          -8.712987899780273,
+          -0.9417661428451538,
+          -2.8800852298736572
+        ]
+      },
+      "id": "sf.render.drifter-production-v1-lod1.body",
+      "nodeIds": [
+        "sf.render.drifter-production-v1-lod1.mesh.collision-hull-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-accent-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-armor-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-canopy-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-ceramic-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-hull-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-mechanical-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-radiator-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-thruster-001",
+        "sf.render.drifter-production-v1-lod1.mesh.lod1-warning-001",
+        "sf.render.drifter-production-v1-lod1.root"
+      ]
+    }
+  ]
+}

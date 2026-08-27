@@ -1,0 +1,7538 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19,
+        6.000001907348633,
+        -13.41262149810791,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19,
+        6.000001907348633,
+        -13.41262149810791,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-hazard-wound",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -5.999998092651367,
+        10.58737850189209,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Wound",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -5.999998092651367,
+        10.58737850189209,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-salvage-hab",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -11.999998092651367,
+        -9.41262149810791,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Hab",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -11.999998092651367,
+        -9.41262149810791,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-liner-drum--fresh",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "393ee84c466a845c566aca61a25bd9944c5ce231d7451f5648dd3288f112a779",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          35.567771911621094,
+          0.9407691955566406,
+          -4.635496139526367
+        ],
+        "min": [
+          30.132015228271484,
+          -2.303524971008301,
+          -9.008269309997559
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "11bc0e96f63f4cfaeb395400de3e4de228c0d000613e83e8ed4e7a09838a592c",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.13201332092285,
+          0.9407693147659302,
+          -9.816972732543945
+        ],
+        "min": [
+          -35.567771911621094,
+          -2.30352520942688,
+          -14.18974781036377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "263492b682e31341c76277c5d89f318699a5719af276e1ba432d779609bbf29e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          39.745426177978516,
+          0.6132071018218994,
+          -7.6382246017456055
+        ],
+        "min": [
+          29.68293571472168,
+          -6.854081630706787,
+          -13.399368286132812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f55f57db084d08e7e2012c31330425bcb6b4bc11808ed109d0c1ee2bdb3249f1",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.682933807373047,
+          0.6132059693336487,
+          -5.425875186920166
+        ],
+        "min": [
+          -39.74542236328125,
+          -6.8540802001953125,
+          -11.187017440795898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e1090d23166819d0d0c5b1dd93d718622ef3e5c23cc8b5614e8dc5f1dc97553",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          43.315059661865234,
+          4.072712421417236,
+          -9.332035064697266
+        ],
+        "min": [
+          29.83009910583496,
+          -1.0576807260513306,
+          -17.667795181274414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae8188c7b98fc479bc1114de9565bbd5b79a6150f90c5e7e28856c4acd7341a5",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.830095291137695,
+          4.072709560394287,
+          -1.1574479341506958
+        ],
+        "min": [
+          -43.3150634765625,
+          -1.0576776266098022,
+          -9.493206977844238
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "caf31495eae977c27712f7dae545963037cce1598d2baba22b8a6efbd8ffa564",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          37.65047836303711,
+          6.062978267669678,
+          -6.2082133293151855
+        ],
+        "min": [
+          29.878679275512695,
+          0.2068527638912201,
+          -10.778768539428711
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ee3c6ae2902cd278c7918ca233a8170c17de20463fe820251ed545159568598",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.87867546081543,
+          6.0629777908325195,
+          -8.046473503112793
+        ],
+        "min": [
+          -37.650474548339844,
+          0.20685319602489471,
+          -12.617030143737793
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "51ab4879145ec4d6b1054548ccac814e316bd9dd7f51d013e7e0a81bb2e759bc",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.017",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.40024757385254,
+          4.600000381469727,
+          -4.812621593475342
+        ],
+        "min": [
+          -31.499746322631836,
+          -4.600000381469727,
+          -14.01262092590332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9123b7dbddc788049c39218bc8cbe7fb8afbc98ca55c1217229b46716f51cc9",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6dc09c6f68f9295e425ea8b977bdf12728f0971c8c3c2f18c4c4bb6073b6cd30",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.018",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -34.61498260498047,
+          -0.548209011554718,
+          -12.291022300720215
+        ],
+        "min": [
+          -35.38501739501953,
+          -1.6482093334197998,
+          -13.391022682189941
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31e70de8de5e510fd597c898e5870ca6dad1395a18e1af71c799913b6356faff",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6dc09c6f68f9295e425ea8b977bdf12728f0971c8c3c2f18c4c4bb6073b6cd30",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -42.29498291015625,
+          2.6366031169891357,
+          -2.3486597537994385
+        ],
+        "min": [
+          -43.06501770019531,
+          1.5366027355194092,
+          -3.448659658432007
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bc6679db97885ef94bdfa082fac78221c721f71dbeda312ff19bd6962456479",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6dc09c6f68f9295e425ea8b977bdf12728f0971c8c3c2f18c4c4bb6073b6cd30",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          35.051902770996094,
+          -0.4460970461368561,
+          -5.684813499450684
+        ],
+        "min": [
+          30.34809684753418,
+          -4.692523956298828,
+          -9.062667846679688
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9417fc6484b0d9ec52e3dac26b09ebdf5c1442ca1b867fbddefbdf44298b994b",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.348093032836914,
+          -0.44609788060188293,
+          -9.762575149536133
+        ],
+        "min": [
+          -35.05189895629883,
+          -4.692523002624512,
+          -13.14042854309082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8beb840aded2217a5e867692ebcc227d6c21abca9d2217eb994da92bed7ce978",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.023",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          39.47146224975586,
+          0.6359124779701233,
+          -9.952462196350098
+        ],
+        "min": [
+          30.128538131713867,
+          -1.5980414152145386,
+          -15.361842155456543
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d8cd5bd0d12fc0f7ff4a78bc8868b8b6d7c76769170ac1cb7019a64385fde01",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.021",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.128536224365234,
+          0.6359112858772278,
+          -3.46340012550354
+        ],
+        "min": [
+          -39.47146224975586,
+          -1.598040223121643,
+          -8.872782707214355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d3ab611bd2a84341e0dc72c758576596c842d68a4539cdc375e1693cf3d81301",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.024",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          37.30031967163086,
+          4.621586322784424,
+          -5.824853420257568
+        ],
+        "min": [
+          30.199682235717773,
+          1.479174256324768,
+          -10.589091300964355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48dbaa9c339d31737901378fb5b29ef675ae7cc03daa843bcf10249a46162037",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.022",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.199682235717773,
+          4.621585845947266,
+          -8.236153602600098
+        ],
+        "min": [
+          -37.300315856933594,
+          1.4791743755340576,
+          -13.000388145446777
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f721e3bda4044da9f1f78a598b25c64894f487594e4e3d4edfa7540db0bd122e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.025",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -20.87398338317871,
+          9.034429550170898,
+          13.108887672424316
+        ],
+        "min": [
+          -21.726015090942383,
+          -0.03442571684718132,
+          10.46587085723877
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ff792a2e4c477eb5ea8422a09a646744adf918e7127c549f86b2672644800bc",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.019",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -20.87275505065918,
+          0.03940524533390999,
+          13.108614921569824
+        ],
+        "min": [
+          -21.727243423461914,
+          -9.63940143585205,
+          9.866141319274902
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5067f3cd7196b5c2246966ca2935e816f5c6b93a419403017567f3678f9058d2",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.020",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          16.682559967041016,
+          7.250133991241455
+        ],
+        "min": [
+          -18.479999542236328,
+          15.924569129943848,
+          6.451535701751709
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3fa8266f7a99c252ddcbc96243b9ca995ff5b76d19abbc97b1db5c8154d0ca63",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-4.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-4",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          6.371942043304443,
+          13.202971458435059
+        ],
+        "min": [
+          -18.479999542236328,
+          5.613950252532959,
+          12.404372215270996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93fe2c234bffc0b482dc303ed9137e04090227ad9560ca7420c662695cd2a5f3",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-5.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-5",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          -5.53373384475708,
+          13.202971458435059
+        ],
+        "min": [
+          -18.479999542236328,
+          -6.2917256355285645,
+          12.404372215270996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5bb8ef886ab0c75306b5c3d0dd2ef9a2734029239235635afbcc3091644c696e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-6.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-6",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          -15.844351768493652,
+          7.250133991241455
+        ],
+        "min": [
+          -18.479999542236328,
+          -16.602344512939453,
+          6.451535701751709
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90db9c20879b0b399a1d26824d053d92e7363873abe44d4071fd0ec147c7a801",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-7.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-7",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          13.718790054321289,
+          36.41147994995117,
+          26.998857498168945
+        ],
+        "min": [
+          -13.718790054321289,
+          7.287718772888184,
+          -2.124903678894043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "516b4494468763002597ede128653b3680b6ce129c7601e0bb00aab0675cfad0",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          16.568819046020508,
+          17.536540985107422,
+          30.610366821289062
+        ],
+        "min": [
+          -16.568819046020508,
+          -1.5415215492248535,
+          10.258606910705566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d808a6c3bcfdcc12f5b641e0aa676000e6bfd32c754e69e138e23e0743fafe4",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.64330768585205,
+          9.184419631958008,
+          32.65827560424805
+        ],
+        "min": [
+          -9.64330768585205,
+          -25.179431915283203,
+          8.210697174072266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dde348f5f44bd409b5bc7f2354af17d885cba02039bf399b749abd8e062f318f",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.718792915344238,
+          -7.287716865539551,
+          26.998857498168945
+        ],
+        "min": [
+          -13.718792915344238,
+          -36.411476135253906,
+          -2.1249051094055176
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b7f85c1fd2bf2ed8ff9d57011b9f43cea5a08f7ff8c66595c643a9519c543ee",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.699121475219727,
+          23.000003814697266,
+          13.58737850189209
+        ],
+        "min": [
+          21.300878524780273,
+          -23.000003814697266,
+          -32.412620544433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec388d8da3afba4cbccc63028466053f1d5a18246f51d5672358144cdf72b578",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-16.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-16",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.300878524780273,
+          23.000003814697266,
+          13.58737850189209
+        ],
+        "min": [
+          -22.699121475219727,
+          -23.000003814697266,
+          -32.412620544433594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67a5819ab2f649622f0013dad0a2da0db554d4e1e9f4b45c95852060cf86a825",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-28.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-28",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          12.031075477600098,
+          -29.687232971191406
+        ],
+        "min": [
+          -22,
+          -0.12539581954479218,
+          -33.570594787597656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "43b7b8bc0c8cd92bd64f9bcc66b3232fe75ae4f5926723d56be3e3ca61f2f88e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          20.89375877380371,
+          -21.0457763671875
+        ],
+        "min": [
+          -22,
+          11.633156776428223,
+          -30.306381225585938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2ed876382f3a9f079017743f86d8f50b07c3ef11dfbc1632e88c285b176e595",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -11.633153915405273,
+          -21.0457763671875
+        ],
+        "min": [
+          -22,
+          -20.893754959106445,
+          -30.306381225585938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09ad3a31cf217d1fbc930a309162bf6e54881143fea3aee9d714f63eb997a1c2",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          0.12539993226528168,
+          -29.687232971191406
+        ],
+        "min": [
+          -22,
+          -12.031071662902832,
+          -33.570594787597656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0780cf89623bb4b5c0d3a57958d40d63f4ef5edd6cf175e037c0bf42996e794",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          24.157978057861328,
+          -9.287223815917969
+        ],
+        "min": [
+          -22,
+          20.274612426757812,
+          -21.443695068359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55ba1bc69d6ecb75f731afa0a1922d45c97597438d0ffd6296a79fc1074f8c96",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          24.157978057861328,
+          2.618452548980713
+        ],
+        "min": [
+          -22,
+          20.274612426757812,
+          -9.538019180297852
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3fdd02c21787b3322e0f796f4f4123290a36190e75a0a1331ccded0af344dd9c",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -20.274608612060547,
+          2.618452548980713
+        ],
+        "min": [
+          -22,
+          -24.157974243164062,
+          -9.538019180297852
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5f080333b2eca03b36e25c7b56df03f201d865c390053cb8f4190607665c689",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -20.27461051940918,
+          -9.287223815917969
+        ],
+        "min": [
+          -22,
+          -24.15797233581543,
+          -21.443695068359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c66b081458c9e63e7c10b5e689c415ee75a8173d08e6b481be50de166f1dee8",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          7.060863971710205,
+          -31.611867904663086
+        ],
+        "min": [
+          -18.040000915527344,
+          5.051870822906494,
+          -32.418701171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffc863022d0966963c60d7ddebf7e910fd78ba71d8fef7edd68cc4dfa56932a5",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          17.359159469604492,
+          -25.146060943603516
+        ],
+        "min": [
+          -18.040000915527344,
+          15.733441352844238,
+          -26.771778106689453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "781048723e5abe37e2add6efec9e74c3896fa5a18b8b5a9fcba0d405dccae895",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -15.733437538146973,
+          -25.146060943603516
+        ],
+        "min": [
+          -18.040000915527344,
+          -17.359155654907227,
+          -26.771778106689453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c22d3b2babb83f7419cee97885271ee049fbc7cd3f4df8c5f8c74a376dcb44f0",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -5.0518670082092285,
+          -31.611867904663086
+        ],
+        "min": [
+          -18.040000915527344,
+          -7.0608601570129395,
+          -32.418701171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "469908b881d516d71cc2d6debed650b26156759e8698201cef9704d47b1e2e10",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          23.00608253479004,
+          -14.464489936828613
+        ],
+        "min": [
+          -18.040000915527344,
+          22.199247360229492,
+          -16.47348403930664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "888d42ddd86219f54028036400bbffe3e5cd6fd29147e65b48987d282bbea0a0",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          23.00608253479004,
+          -2.351759195327759
+        ],
+        "min": [
+          -18.040000915527344,
+          22.199247360229492,
+          -4.360752582550049
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "247665781710a3ef9b85210e34b79d2884ec3e9b6b6f885015d73f28d1acb422",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -22.199243545532227,
+          -2.351759195327759
+        ],
+        "min": [
+          -18.040000915527344,
+          -23.006078720092773,
+          -4.360752582550049
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e93b83f15d466a1efd120ddc5013a3ff6b2b546cf376fa5dc817359c81c60a54",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -22.199243545532227,
+          -14.464489936828613
+        ],
+        "min": [
+          -18.040000915527344,
+          -23.006078720092773,
+          -16.47348403930664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0dd5417ea28af9d021102f0cce337966e571c833bb9b4b0a59ada05f1cf22bda",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          19.799999237060547,
+          -20.751039505004883,
+          -0.41328129172325134
+        ],
+        "min": [
+          -19.799999237060547,
+          -21.24895668029785,
+          -18.411962509155273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0f6a63a5be20a1a13bdf89a7b3189e67ab92daa1a48961858c91846079c2f27",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-deck-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.026",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-deck-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          14.760838508605957,
+          14.941329956054688,
+          -25.504758834838867
+        ],
+        "min": [
+          13.239161491394043,
+          13.341329574584961,
+          -27.026437759399414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15acda5843ff6c1c2f367a7c1217f12ced417b1c09c85ae7168da2c23c240456",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-0.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.015",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-0",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7608386278152466,
+          22.46577262878418,
+          -4.8315229415893555
+        ],
+        "min": [
+          0.23916134238243103,
+          20.865774154663086,
+          -6.3531999588012695
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c906d7d01eef490c0429262ee697bfafd365b23ddd5268a4612ab100e91b1e9",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-1.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.016",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-1",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          -11.239161491394043,
+          -19.87323570251465,
+          -16.176225662231445
+        ],
+        "min": [
+          -12.760838508605957,
+          -21.473234176635742,
+          -17.697904586791992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "578841fb312a9545c1a34b0c4ae016f88b9da5de278ced6c47ed0a9cb698f7cc",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-2.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.017",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-2",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          17.534934997558594,
+          10.60000228881836,
+          -24.377685546875
+        ],
+        "min": [
+          12.465065956115723,
+          5.4000020027160645,
+          -29.447555541992188
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15a188fd10a9ea9da008cb0f06a1ca4fb7dca6bc73203adf6dba1e4c3c7d1048",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-fire.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "6a8890f63d5c231d21c5b575e89ad4720b65f2efc4fe745a72e52fca27a3caf3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-fire",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    },
+    {
+      "bounds": {
+        "max": [
+          30.50010871887207,
+          5.000001430511475,
+          -4.41262149810791
+        ],
+        "min": [
+          21.49989128112793,
+          -5.000001430511475,
+          -14.41262149810791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59188983615dbcebaec1182f3017f6dd99cd82236c29d63f6854904dd8fd2aed",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.49989128112793,
+          5.000001430511475,
+          -4.41262149810791
+        ],
+        "min": [
+          -30.50010871887207,
+          -5.000001430511475,
+          -14.41262149810791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "91719309f8bd2fefe359a4fffce8daa2b129fbfb835f1defeeaf89d95f6fc67e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5411639213562012,
+          -8.196124076843262,
+          10.776806831359863
+        ],
+        "min": [
+          -0.5395389199256897,
+          -9.361624717712402,
+          9.723278999328613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c2045d001843b8a05a3c3b5e8ec51a187d681f9b56829bfb03c2aee4ccedf13e",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-0.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-0",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4356601238250732,
+          -8.893590927124023,
+          12.56219482421875
+        ],
+        "min": [
+          -0.05868612229824066,
+          -10.505191802978516,
+          11.105424880981445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6949694ad4c4d26fe35f708fd5ffe4b1bc9d7bce8384ae7c8294369c49336b27",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-1.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-1",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          0.40785837173461914,
+          -16.41214370727539,
+          27.362056732177734
+        ],
+        "min": [
+          -0.12113429605960846,
+          -16.982643127441406,
+          26.84636688232422
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "161fb27d3561160cb68c563fb9e2a1ee7fbd120640aafa548583609181ff3691",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-10.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.011",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-10",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          4.7266669273376465,
+          -17.38152313232422,
+          28.781822204589844
+        ],
+        "min": [
+          4.036241054534912,
+          -18.126121520996094,
+          28.10875701904297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "537b644a0e3e83baad51052aa1269531fac7871d259ae209813390729754535c",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-11.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.012",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-11",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1215999126434326,
+          -11.070289611816406,
+          33.571651458740234
+        ],
+        "min": [
+          1.3201830387115479,
+          -11.934589385986328,
+          32.79038619995117
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aed6d773e24a70213c0c9dda2f43b060be59c97054756f2322a2854aecbd8419",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-12.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.013",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-12",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2927356958389282,
+          -18.38339614868164,
+          32.65387725830078
+        ],
+        "min": [
+          -1.739296317100525,
+          -18.86499786376953,
+          32.21854782104492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "439ce961a85a5cb979b7e3ed81d8f0c6765e624b00d1ccd79d44e993ce274b2b",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-13.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.014",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-13",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5373438596725464,
+          -7.83370304107666,
+          15.103095054626465
+        ],
+        "min": [
+          -0.3202037811279297,
+          -9.837002754211426,
+          13.292256355285645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2cbbe410867c6032f8dec4dd02a7641adccb036530c8ecb479884e5d957acded",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-2.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.003",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-2",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          0.10774880647659302,
+          -10.315702438354492,
+          15.972099304199219
+        ],
+        "min": [
+          -1.0166270732879639,
+          -11.528303146362305,
+          14.875996589660645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bec6bfb68fb73ae1c2b46bb3c965c9064d962b31d40ba6c5c23be436aa3fff6",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-3.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.004",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-3",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9866136312484741,
+          -12.369553565979004,
+          17.120223999023438
+        ],
+        "min": [
+          0.5368677377700806,
+          -13.933053016662598,
+          15.706933975219727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0fdc297d3d0a18baa1043e33299b518db14455fd21183c5efd623bfc54a90d53",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-4.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.005",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-4",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4803924560546875,
+          -11.353133201599121,
+          19.407567977905273
+        ],
+        "min": [
+          0.6755447387695312,
+          -12.2211332321167,
+          18.62295913696289
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38dad9bb467866c46625fc5561437dd487d5b3107435d8726ae0cc506b16d2ec",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-5.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.006",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-5",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6373978853225708,
+          -11.50296401977539,
+          21.549259185791016
+        ],
+        "min": [
+          -1.7297838926315308,
+          -12.68106460571289,
+          20.484342575073242
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf23fdd6841e8701564f5f3c804852bbcde185bcdc3781becc64df20a1caef7b",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-6.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.007",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-6",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8128376603126526,
+          -16.430912017822266,
+          21.510028839111328
+        ],
+        "min": [
+          -0.5166445970535278,
+          -17.86471176147461,
+          20.213977813720703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "94c26ecf7e7f9bfe7893312d3e3309597a27d28c8e1a504099e3fd266e05d677",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-7.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.008",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-7",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          3.073535203933716,
+          -13.618964195251465,
+          24.41551399230957
+        ],
+        "min": [
+          2.288066864013672,
+          -14.466063499450684,
+          23.649795532226562
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a486bab485d79f106e697cfb9776bfbc435351338e4af6c6ba66e2e16b941cef",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-8.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.009",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-8",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.42732176184654236,
+          -11.453073501586914,
+          27.56534194946289
+        ],
+        "min": [
+          -1.4120547771453857,
+          -12.515073776245117,
+          26.605371475219727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0826ea602ce3cf30d346bb5931c6a6ca5c643610c3acb14bb4573210da9d16e5",
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-9.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.010",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-9",
+      "primitiveIndex": 0,
+      "vertexCount": 126
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0025ca46b0f162eb87b58885ce9ad9f917c33c5eb882497d20272b5bafba69fd",
+      "id": "material:0025ca46b0f162eb87b58885",
+      "name": "wrk_vent_coolant",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "id": "material:355b32a25a315894294be3a0",
+      "name": "wrk_deck_grate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6a8890f63d5c231d21c5b575e89ad4720b65f2efc4fe745a72e52fca27a3caf3",
+      "id": "material:6a8890f63d5c231d21c5b575",
+      "name": "wrk_fire_internal",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "id": "material:6ba64bc230e8b6c479bb16ed",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dc09c6f68f9295e425ea8b977bdf12728f0971c8c3c2f18c4c4bb6073b6cd30",
+      "id": "material:6dc09c6f68f9295e425ea8b9",
+      "name": "wrk_hot_orange",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8310f17844d10d11af7e262e70ff5f8a8a9d4d5d44474b17cd1f5bf36cd73bbc",
+      "id": "material:8310f17844d10d11af7e262e",
+      "name": "wrk_emerg_amber",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "ed8cd23072a107915b0ddafd075db59b9547402fec68cafacbe89aeb7054a31a",
+      "id": "material:ed8cd23072a107915b0ddafd",
+      "name": "wrk_paint_liner_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "id": "material:fabcdc1eca2d9ec5b43cae27",
+      "name": "wrk_glass_shattered",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_0",
+      "nodeName": "break_spine_-1_fray_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_0",
+      "nodeName": "break_spine_1_fray_0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_1",
+      "nodeName": "break_spine_-1_fray_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_1",
+      "nodeName": "break_spine_1_fray_1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_2",
+      "nodeName": "break_spine_-1_fray_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_2",
+      "nodeName": "break_spine_1_fray_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_3",
+      "nodeName": "break_spine_-1_fray_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_3",
+      "nodeName": "break_spine_1_fray_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotcore",
+      "nodeName": "break_spine_-1_hotcore",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotfray_0",
+      "nodeName": "break_spine_-1_hotfray_0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotfray_2",
+      "nodeName": "break_spine_-1_hotfray_2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_0",
+      "nodeName": "break_spine_-1_peel_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_0",
+      "nodeName": "break_spine_1_peel_0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_1",
+      "nodeName": "break_spine_-1_peel_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_1",
+      "nodeName": "break_spine_1_peel_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_2",
+      "nodeName": "break_spine_-1_peel_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_2",
+      "nodeName": "break_spine_1_peel_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_ring_crack_0",
+      "nodeName": "crack_ring_crack_0",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_ring_crack_1",
+      "nodeName": "crack_ring_crack_1",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_4",
+      "nodeName": "drum_frame_4",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_5",
+      "nodeName": "drum_frame_5",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_6",
+      "nodeName": "drum_frame_6",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_7",
+      "nodeName": "drum_frame_7",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_4",
+      "nodeName": "drum_petal_4",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_5",
+      "nodeName": "drum_petal_5",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_6",
+      "nodeName": "drum_petal_6",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_7",
+      "nodeName": "drum_petal_7",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-16",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_ring_16",
+      "nodeName": "drum_ring_16",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-28",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_ring_-28",
+      "nodeName": "drum_ring_-28",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_0",
+      "nodeName": "drum_shell_0",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_1",
+      "nodeName": "drum_shell_1",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_10",
+      "nodeName": "drum_shell_10",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_11",
+      "nodeName": "drum_shell_11",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_2",
+      "nodeName": "drum_shell_2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_3",
+      "nodeName": "drum_shell_3",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_8",
+      "nodeName": "drum_shell_8",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_9",
+      "nodeName": "drum_shell_9",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_0",
+      "nodeName": "drum_win_0",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_1",
+      "nodeName": "drum_win_1",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_10",
+      "nodeName": "drum_win_10",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_11",
+      "nodeName": "drum_win_11",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_2",
+      "nodeName": "drum_win_2",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_3",
+      "nodeName": "drum_win_3",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_8",
+      "nodeName": "drum_win_8",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_9",
+      "nodeName": "drum_win_9",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-deck-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_deck_0",
+      "nodeName": "ln_deck_0",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_emerg_0",
+      "nodeName": "ln_emerg_0",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_emerg_1",
+      "nodeName": "ln_emerg_1",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_emerg_2",
+      "nodeName": "ln_emerg_2",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-fire",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_fire",
+      "nodeName": "ln_fire",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_spine_-1",
+      "nodeName": "ln_spine_-1",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_spine_1",
+      "nodeName": "ln_spine_1",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_0",
+      "nodeName": "vent_wound_vent_0",
+      "nodePath": [
+        0,
+        56
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_1",
+      "nodeName": "vent_wound_vent_1",
+      "nodePath": [
+        0,
+        57
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_10",
+      "nodeName": "vent_wound_vent_10",
+      "nodePath": [
+        0,
+        58
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_11",
+      "nodeName": "vent_wound_vent_11",
+      "nodePath": [
+        0,
+        59
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-12",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_12",
+      "nodeName": "vent_wound_vent_12",
+      "nodePath": [
+        0,
+        60
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-13",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_13",
+      "nodeName": "vent_wound_vent_13",
+      "nodePath": [
+        0,
+        61
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_2",
+      "nodeName": "vent_wound_vent_2",
+      "nodePath": [
+        0,
+        62
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_3",
+      "nodeName": "vent_wound_vent_3",
+      "nodePath": [
+        0,
+        63
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_4",
+      "nodeName": "vent_wound_vent_4",
+      "nodePath": [
+        0,
+        64
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_5",
+      "nodeName": "vent_wound_vent_5",
+      "nodePath": [
+        0,
+        65
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_6",
+      "nodeName": "vent_wound_vent_6",
+      "nodePath": [
+        0,
+        66
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_7",
+      "nodeName": "vent_wound_vent_7",
+      "nodePath": [
+        0,
+        67
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_8",
+      "nodeName": "vent_wound_vent_8",
+      "nodePath": [
+        0,
+        68
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "vent_wound_vent_9",
+      "nodeName": "vent_wound_vent_9",
+      "nodePath": [
+        0,
+        69
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "wreck_liner_drum",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3215562056c3fdc71032b488bec47028e113d38d6e619560f895be64b76187ab"
+    },
+    "sourceGlb": {
+      "bytes": 86600,
+      "sha256": "0a52db0b07d66f3f19a6c402bdb9a47a995f6f6b389b765e7608e01ca783e9ef",
+      "uri": "place_aftermath_wreck_liner_drum__fresh.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 189732,
+    "sha256": "5708c46b478e75d15a6787afa49fbd82a83b1dda0756f0acc96060846e8625a0",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.0000019073486328125,
+        0.0000019073486328125,
+        0.0005283355712890625
+      ],
+      "max": [
+        43.315059661865234,
+        36.41147994995117,
+        33.571651458740234
+      ],
+      "min": [
+        -43.3150634765625,
+        -36.411476135253906,
+        -33.570594787597656
+      ],
+      "size": [
+        86.63012313842773,
+        72.82295608520508,
+        67.14224624633789
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          19,
+          6.000001907348633,
+          -13.41262149810791,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 55,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -5.999998092651367,
+          10.58737850189209,
+          1
+        ],
+        "name": "SOCKET_Hazard_Wound",
+        "planIndex": 56,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Wound",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Wound",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-hazard-wound"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -11.999998092651367,
+          -9.41262149810791,
+          1
+        ],
+        "name": "SOCKET_Salvage_Hab",
+        "planIndex": 57,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Hab",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Hab",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--fresh.anchor.socket-salvage-hab"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "mechanical": 66
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 70,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 72,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_3",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotcore",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotfray_0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotfray_2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_2",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_0",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_0",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_2",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_ring_crack_0",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_ring_crack_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_4",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_5",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_6",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_7",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_4",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_5",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_6",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_7",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_ring_-28",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_ring_16",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_0",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_10",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_11",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_2",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_3",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_8",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_9",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_0",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_10",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_11",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_2",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_3",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_8",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_9",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_deck_0",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_emerg_0",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_emerg_1",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_emerg_2",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_fire",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_spine_-1",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_spine_1",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_0",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_1",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_10",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_11",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_12",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_13",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_2",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_3",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_4",
+        "planIndex": 66,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_5",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_6",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_7",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_8",
+        "planIndex": 70,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "vent_wound_vent_9",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__fresh.glb"
+  },
+  "runtimeHash": "3801fe644a56c9dcd0aae4fc9f3e22d259dfeed60da06bcb3329b69bec02d6a3",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          43.315059661865234,
+          36.41147994995117,
+          33.571651458740234
+        ],
+        "min": [
+          -43.3150634765625,
+          -36.411476135253906,
+          -33.570594787597656
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-liner-drum--fresh.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-0-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-1-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-2-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-fray-3-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotcore",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-hotfray-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-0-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-1-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.break-spine-1-peel-2-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.crack-ring-crack-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-4",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-5",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-6",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-frame-7",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-4",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-5",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-6",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-petal-7",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-16",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-ring-28",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-10",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-11",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-3",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-8",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-shell-9",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-10",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-11",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-3",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-8",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.drum-win-9",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-deck-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-emerg-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-fire",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.ln-spine-1-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-0",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-1",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-10",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-11",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-12",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-13",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-2",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-3",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-4",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-5",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-6",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-7",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-8",
+        "sf.render.aftermath-wreck-liner-drum--fresh.mesh.vent-wound-vent-9",
+        "sf.render.aftermath-wreck-liner-drum--fresh.root"
+      ]
+    }
+  ]
+}

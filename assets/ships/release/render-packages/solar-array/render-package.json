@@ -1,0 +1,2191 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.solar-array.anchor.socket-gimbal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Gimbal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.solar-array.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.anchor.socket-power-out",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.200000047683716,
+        0.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Power_Out",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.solar-array.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.200000047683716,
+        0.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.solar-array",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "02abb78e8b6a12a0266c221e22e875dd4feeb8d6a2ff59e1bb674a2124502ea0",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.2999999523162842,
+          0.7999542355537415,
+          1.2999999523162842
+        ],
+        "min": [
+          -1.2999999523162842,
+          0.000045799977669958025,
+          -1.2999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a570ad336e4fda95f60f03b524715063d202bfc6955d37689432c46c1a3709e4",
+      "id": "sf.render.solar-array.mesh.base.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.solar-array.mesh.base",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6999970078468323,
+          3.6999971866607666,
+          1.200000286102295
+        ],
+        "min": [
+          -0.6999970078468323,
+          2.3000028133392334,
+          -1.200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4656790d587ee34e689a30739283e067866ccce365c2665cb1237fad9ea87a92",
+      "id": "sf.render.solar-array.mesh.hub.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.038",
+      "nodeId": "sf.render.solar-array.mesh.hub",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0999999046325684,
+          1,
+          0.5
+        ],
+        "min": [
+          1.0999999046325684,
+          0,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b58086181fb363b1320b17d223bc9228b9eabdc77d5f2df140a6a5739a78ccfc",
+      "id": "sf.render.solar-array.mesh.junction.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.solar-array.mesh.junction",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          -1.4001069068908691
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          -3.399893283843994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bca59aeb74ebac0ae3750645ffdfc337461211a23315977a251793990d81f2af",
+      "id": "sf.render.solar-array.mesh.panel-p0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.solar-array.mesh.panel-p0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          -3.600106716156006
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          -5.599893093109131
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8eb7a619e4d25e82934849c7e3c4091a9eb95c323c9e3c964520f8586eb0666d",
+      "id": "sf.render.solar-array.mesh.panel-p1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.solar-array.mesh.panel-p1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          -5.800107002258301
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          -7.799893379211426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "488da726aa3c2c7492d2c2404655438bd8482cedaf13a294791c42aa2af791a0",
+      "id": "sf.render.solar-array.mesh.panel-p2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.solar-array.mesh.panel-p2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          -8.000106811523438
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          -9.999893188476562
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54d0058bf057d002e0f074ac4243524a35ca0062f251119eaf67f9d99e9ee016",
+      "id": "sf.render.solar-array.mesh.panel-p3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.solar-array.mesh.panel-p3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          3.399893283843994
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          1.4001069068908691
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34967cf4db5146da9f855c99359ee41babbd55e3ee972dcc0b6b3b2164f94a44",
+      "id": "sf.render.solar-array.mesh.panel-s0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.solar-array.mesh.panel-s0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          5.599893093109131
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          3.600106716156006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45a0e0f589e1060eef702e27942a85334352e8af3c1f8ea378c936feca13b1bf",
+      "id": "sf.render.solar-array.mesh.panel-s1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.solar-array.mesh.panel-s1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          7.799893379211426
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          5.800107002258301
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "287c418080179c2e1f964f96ef7d7421ad5939c345800e34e8046c2989fcb9d3",
+      "id": "sf.render.solar-array.mesh.panel-s2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.solar-array.mesh.panel-s2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084867477417,
+          9.999893188476562
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152278900146,
+          8.000106811523438
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0fa7d69877f705ecea56cc86d62e598bd16c9e34f9884a64a919e213f5846466",
+      "id": "sf.render.solar-array.mesh.panel-s3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.solar-array.mesh.panel-s3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.39319339394569397,
+          3.3998923301696777,
+          -1.1785849332809448
+        ],
+        "min": [
+          -0.3931933641433716,
+          2.6001076698303223,
+          -9.621415138244629
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7aeca61d75d122ede20d7b76657b72324158ec84ddd4cd3a9c070996ed0a70dd",
+      "id": "sf.render.solar-array.mesh.spine-p.primitive.0",
+      "indexCount": 1080,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.solar-array.mesh.spine-p",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          0.39319300651550293,
+          3.3998935222625732,
+          9.621414184570312
+        ],
+        "min": [
+          -0.3931930661201477,
+          2.6001064777374268,
+          1.1785860061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "43a5af7aa877b627aa8144e945b4564b5478b669fda2773621bd79b01937de0c",
+      "id": "sf.render.solar-array.mesh.spine-s.primitive.0",
+      "indexCount": 1080,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.solar-array.mesh.spine-s",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1900031566619873,
+          0.7899990677833557,
+          0.20000000298023224
+        ],
+        "min": [
+          2.0499966144561768,
+          0.6100009083747864,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40dc8c3269df527e352519835fc41a58bd15334becaada7a6ae04714f4128485",
+      "id": "sf.render.solar-array.mesh.status.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.solar-array.mesh.status",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.12363627552986145,
+          3.130000114440918,
+          -10.470000267028809
+        ],
+        "min": [
+          -0.12363627552986145,
+          2.869999885559082,
+          -10.730000495910645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8769b5f589591fabf8d988bdbb965387be420eaa2e7d9f1690e955898b0191b4",
+      "id": "sf.render.solar-array.mesh.tip-p.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.solar-array.mesh.tip-p",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          0.12363627552986145,
+          3.130000114440918,
+          10.730000495910645
+        ],
+        "min": [
+          -0.12363627552986145,
+          2.869999885559082,
+          10.470000267028809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d56e321f2c9a2e391a02d698df6a40f8a432aa18f2c71c74f2eb86c7ed8835f4",
+      "id": "sf.render.solar-array.mesh.tip-s.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.003",
+      "nodeId": "sf.render.solar-array.mesh.tip-s",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9749748110771179,
+          2.6000213623046875,
+          1
+        ],
+        "min": [
+          -0.9749748110771179,
+          0.7999786734580994,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "44ce9c0a9b12fa8c59f7aa21c18fbc477ccf34cdbdd946693c614f6d424e9181",
+      "id": "sf.render.solar-array.mesh.tracker.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.020",
+      "nodeId": "sf.render.solar-array.mesh.tracker",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "id": "material:004d84593ded3a8b8bc566c1",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "id": "material:2b5f9fd026bc45c1c843ea55",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "id": "material:53eb4ca876098f910744724d",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "id": "material:710749cab1590f13b764fa15",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "id": "material:a090cc581cc4edd9c4d71310",
+      "name": "esk_light_nav_green",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "id": "material:fcaae752dff7f4d8d2acc92d",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.solar-array.mesh.base",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base",
+      "nodeName": "base",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.hub",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hub",
+      "nodeName": "hub",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.junction",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "junction",
+      "nodeName": "junction",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p0",
+      "nodeName": "panel_p0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p1",
+      "nodeName": "panel_p1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p2",
+      "nodeName": "panel_p2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p3",
+      "nodeName": "panel_p3",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s0",
+      "nodeName": "panel_s0",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s1",
+      "nodeName": "panel_s1",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s2",
+      "nodeName": "panel_s2",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s3",
+      "nodeName": "panel_s3",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.spine-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_p",
+      "nodeName": "spine_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.spine-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_s",
+      "nodeName": "spine_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.status",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "status",
+      "nodeName": "status",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tip-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tip_p",
+      "nodeName": "tip_p",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tip-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tip_s",
+      "nodeName": "tip_s",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tracker",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tracker",
+      "nodeName": "tracker",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "solar_array",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e04c86d7edb1b28b1792560bbc3baff5ad63105df1f9ae84a8c6eb0546c5ca59"
+    },
+    "sourceGlb": {
+      "bytes": 28220,
+      "sha256": "050873377723a6dfc3f3d7bd3d55224a638a11a11582649d718803e3e9f8b024",
+      "uri": "place_solar_array.glb"
+    },
+    "sourceManifest": {
+      "bytes": 135651,
+      "sha256": "9e2b169b16bb3f470f50d0e10f0d60b6ee2082360074ec5f71312b28c22b99a8",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 55912,
+    "sha256": "185af69c310092bd187cfb63d2babf11cb93dacc83b2875d74f607ba8d3d4128",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        1.8499985933303833,
+        0
+      ],
+      "max": [
+        2.299999952316284,
+        3.6999971866607666,
+        10.730000495910645
+      ],
+      "min": [
+        -2.299999952316284,
+        0,
+        -10.730000495910645
+      ],
+      "size": [
+        4.599999904632568,
+        3.6999971866607666,
+        21.46000099182129
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          3,
+          0,
+          1
+        ],
+        "name": "SOCKET_Gimbal",
+        "planIndex": 14,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Gimbal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Gimbal",
+            "recordIds": [
+              "sf.render.solar-array.anchor.socket-gimbal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.200000047683716,
+          0.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Power_Out",
+        "planIndex": 15,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Power_Out",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Power_Out",
+            "recordIds": [
+              "sf.render.solar-array.anchor.socket-power-out"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 17
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 22,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "base",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hub",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "junction",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_p0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_p1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_p2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_p3",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_s0",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_s1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_s2",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "panel_s3",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spine_p",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spine_s",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "status",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tip_p",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tip_s",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tracker",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_solar_array.glb"
+  },
+  "runtimeHash": "fc60b56921bdd37bad5d73ec642c6f905f3db561098a69f6500f389810c41e03",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.6999971866607666,
+          10.730000495910645
+        ],
+        "min": [
+          -2.299999952316284,
+          0,
+          -10.730000495910645
+        ]
+      },
+      "id": "sf.render.solar-array.body",
+      "nodeIds": [
+        "sf.render.solar-array.mesh.base",
+        "sf.render.solar-array.mesh.hub",
+        "sf.render.solar-array.mesh.junction",
+        "sf.render.solar-array.mesh.panel-p0",
+        "sf.render.solar-array.mesh.panel-p1",
+        "sf.render.solar-array.mesh.panel-p2",
+        "sf.render.solar-array.mesh.panel-p3",
+        "sf.render.solar-array.mesh.panel-s0",
+        "sf.render.solar-array.mesh.panel-s1",
+        "sf.render.solar-array.mesh.panel-s2",
+        "sf.render.solar-array.mesh.panel-s3",
+        "sf.render.solar-array.mesh.spine-p",
+        "sf.render.solar-array.mesh.spine-s",
+        "sf.render.solar-array.mesh.status",
+        "sf.render.solar-array.mesh.tip-p",
+        "sf.render.solar-array.mesh.tip-s",
+        "sf.render.solar-array.mesh.tracker",
+        "sf.render.solar-array.root"
+      ]
+    }
+  ]
+}
