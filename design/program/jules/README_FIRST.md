@@ -1,0 +1,1 @@
+Read `README.md` first. The task bank is intentionally subordinate to `CANONICAL_BUILD_MAP.md`, current `AGENTS.md`, live code, and the local integrator.
