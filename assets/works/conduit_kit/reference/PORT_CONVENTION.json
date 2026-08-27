@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 1,
+  "cycle": 2,
   "cellWu": 2.2,
   "halfExtent": 1.1,
   "authoring": {
@@ -57,9 +57,12 @@
       "frameHeight": 0.26,
       "railThickness": 0.040,
       "rollerRadius": 0.045,
-      "rollerCenterZ": 0.088,
-      "beltTopZ": 0.139,
-      "mountClearanceZ": 0.018
+      "rollerCenterZ": 0.073,
+      "beltTopZ": 0.128,
+      "beltWidth": 0.28,
+      "coverWidth": 0.12,
+      "mountClearanceZ": 0.018,
+      "note": "Cycle 02: belt width is interior, not a port dimension. Outer envelope frozen."
     }
   },
   "floorToWall": {
