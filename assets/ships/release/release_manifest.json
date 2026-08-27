@@ -1913,48 +1913,6 @@
       "contractNodeCount": 21
     },
     {
-      "id": "wholeship_drifter_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
-      "sourceSha256": "7d4b598b7b2f6817db31f1eac40608c2e351777e3a8026c3877d3fbfbbee31b4",
-      "releaseSha256": "c3d11f93dd9a8f703e4774555917e7e53c43a45f4bb2393ff12236b752d93193",
-      "sourceBytes": 21748892,
-      "releaseBytes": 13611432,
-      "textures": 36,
-      "ktx2Textures": 36,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 20
-    },
-    {
-      "id": "wholeship_drifter_production_v1_lod1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
-      "sourceSha256": "6e6113a6c1255b48fc64b1e0e3770157ea4565907f6a96ea15c518e1cacf91db",
-      "releaseSha256": "b336d976f07e753cb0fa73959b6b87f24c479f305f8529e5460b26d2324f440f",
-      "sourceBytes": 10740744,
-      "releaseBytes": 4916652,
-      "textures": 36,
-      "ktx2Textures": 36,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 20
-    },
-    {
-      "id": "wholeship_drifter_production_v1_lod2",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
-      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
-      "sourceSha256": "7c40b075998bacc3ed404c05d8d692889777aaf3f6947ae3e2769b1251b68e45",
-      "releaseSha256": "61696483540d02b187b19ca86d9bf61df24e7ca6d26adf34eefd09b3055a2a68",
-      "sourceBytes": 9795272,
-      "releaseBytes": 4419744,
-      "textures": 32,
-      "ktx2Textures": 32,
-      "meshoptBufferViews": 43,
-      "contractNodeCount": 19
-    },
-    {
       "id": "place_aftermath_wreck_ore_freighter_bow",
       "kind": "part:places",
       "source": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow.glb",
@@ -3378,6 +3336,48 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_drifter_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
+      "sourceSha256": "cb3cb57979db776fc608ac2c083b4000aec54a8072e3adc8861458f2a9ac1c41",
+      "releaseSha256": "2e433c8f0fc231844c401af9851d4f96c9fe0e7a686dc8782593cc57a8de97e1",
+      "sourceBytes": 47544172,
+      "releaseBytes": 55155616,
+      "textures": 33,
+      "ktx2Textures": 33,
+      "meshoptBufferViews": 59,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
+      "sourceSha256": "76ae368d562ad71e0abf9e548e1f1ef639bbd42a142884ae3c342cf162cefece",
+      "releaseSha256": "0d26d4b04d35933e9c808c22e2f1772db25842c959abb761facf965a51e8c7f3",
+      "sourceBytes": 17719604,
+      "releaseBytes": 17659640,
+      "textures": 33,
+      "ktx2Textures": 33,
+      "meshoptBufferViews": 58,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
+      "sourceSha256": "e8a28e392ca52bfb1cc6a4416864435744b558406caa347fdbc87fb65e22e0cb",
+      "releaseSha256": "5d98d32dddb9f17bbebf1dd822eb27ebcb9dacc3d5996b2712f9f82cc6c01426",
+      "sourceBytes": 5858752,
+      "releaseBytes": 3060272,
+      "textures": 30,
+      "ktx2Textures": 30,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 21
     }
   ]
 }

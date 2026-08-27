@@ -8,8 +8,8 @@
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "keep",
-  "promoted": false,
-  "reasonNotClosed": "Cycle 28 is independently accepted and source-complete. Live release binding is the remaining promotion step.",
+  "promoted": true,
+  "reasonNotClosed": null,
   "forbidden": {
     "factoryLoftPlusBoxes": false,
     "sharedSheetTint": false,
