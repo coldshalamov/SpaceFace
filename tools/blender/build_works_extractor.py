@@ -1,7 +1,12 @@
-"""PQ-131.03 Works extractor — Cycle 01 authored source candidate.
+"""PQ-131.03 Works extractor — Cycle 02 open-mouth / rooted-process candidate.
 
-Original geometry and original baked/authored maps. Kit GLBs are cited shape
-references only and are never imported.
+Cycle 01 reviews: closed +X grate/brick, filled trough, aft slab, cavity in
+the wrong place. Cycle 02 deletes the hatch/grate, opens a five-wall well,
+roots a Y-axis drum in yoke bearings, replaces the pan with a ribbon belt,
+and keeps the aft as open C-channel + case + fin comb.
+
+Kit GLBs are cited shape references only and are never imported.
+Cycle 01 evidence under evidence/cycle_001/ is immutable.
 
     blender --background --python tools/blender/build_works_extractor.py
 """
@@ -35,7 +40,10 @@ FAMILY = ROOT / "assets" / "works" / "extractor"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_001"
+CYCLE = 2
+EPOCH_NAME = "cycle_002"
+EVIDENCE_DIR = FAMILY / "evidence" / EPOCH_NAME
+CYCLE_01_DIR = FAMILY / "evidence" / "cycle_001"
 BLEND_PATH = SOURCE_DIR / "extractor.blend"
 COMBINED_NAME = "place_works_extractor.glb"
 ASSET_ID = "place_works_extractor"
@@ -50,16 +58,44 @@ KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 
 PIVOT = Vector((0.42, 0.00, 0.36))
 LAMP_LOC = Vector((0.34, 0.68, 0.50))
-BELT_LOC = Vector((0.14, 0.00, 0.16))
+BELT_LOC = Vector((0.04, 0.00, 0.16))
+
+BELT_X0 = -0.22
+BELT_X1 = 0.30
+BELT_HALF_Y = 0.11
+WELL_X0 = 0.34
+WELL_X1 = 0.92
+WELL_Y0 = -0.30
+WELL_Y1 = 0.30
+WELL_Z0 = 0.085
+WELL_Z1 = 0.54
+
+CYCLE_01_SHA256 = {
+    "EPOCH.json": "58F66996D345E11134FEA13FE1533B3AB6214AD4976908C3146A0265466FD2C8",
+    "hidden_faces.json": "6BAEB74D7B2AE604D2A1BF2B538113B01A9203214DF91FEA43BD9DDC9A855901",
+    "hook_identity.png": "CA8C1DE96A7CC009D3D791F3CA27BB3D03E3952940F53DB02630F4F2D98BE7EB",
+    "id_or_material_id.png": "DD8A15A68B85962A1701FDCEC27971178E4CF730D60211E1A657E31FC4558B34",
+    "normal_isolation.png": "CDB6407F7B4FD308EA8D7025E7406DC55024E14E11C0E4D64780756FB39AFB48",
+    "orm_isolation.png": "9182A0896FF0F702E85863954E4D207E35697B0F8BB8605B3635DB3EAE711D92",
+    "works_edge_grazing.png": "25B768C8F3AE49DED6FB202A7E11A3F0301A2425EEA708BC2A9D2142F6DAA214",
+    "works_edge.png": "B705351A88BB0D190919D3CE8201B684E31FD7631B0EE3D08F0137AB0432726B",
+    "works_site.png": "5ECEE8FE9159350BAE9027C68A4E1DF0861F52220D50B14C60A3AE6219B51546",
+    "works_top_clay.png": "CA8C1DE96A7CC009D3D791F3CA27BB3D03E3952940F53DB02630F4F2D98BE7EB",
+    "works_top.png": "6B80C43422F5B652DCBB5D1632AEA0DBCADB3A3F2EF259942BEFA07555158A93",
+}
 
 ROLES = {
-    "structure": {"rgb": (0.078, 0.072, 0.064), "rough": 0.62, "metal": 0.08, "id": (1.0, 0.0, 0.0)},
-    "cutting": {"rgb": (0.52, 0.50, 0.46), "rough": 0.30, "metal": 0.84, "id": (0.0, 1.0, 0.0)},
+    # Dark alkyd over zinc — lifted just enough vs the well so the U rails
+    # survive at 19 px/cell. Still dark paint, never rover yellow.
+    "structure": {"rgb": (0.175, 0.160, 0.140), "rough": 0.60, "metal": 0.10, "id": (1.0, 0.0, 0.0)},
+    "cutting": {"rgb": (0.60, 0.57, 0.52), "rough": 0.28, "metal": 0.86, "id": (0.0, 1.0, 0.0)},
     "drive": {"rgb": (0.28, 0.18, 0.12), "rough": 0.42, "metal": 0.74, "id": (0.0, 0.0, 1.0)},
     "ceramic": {"rgb": (0.58, 0.50, 0.38), "rough": 0.74, "metal": 0.03, "id": (1.0, 1.0, 0.0)},
-    "belt": {"rgb": (0.07, 0.065, 0.06), "rough": 0.88, "metal": 0.04, "id": (1.0, 0.0, 1.0)},
+    "belt": {"rgb": (0.055, 0.050, 0.046), "rough": 0.88, "metal": 0.04, "id": (1.0, 0.0, 1.0)},
     "lamp": {"rgb": (0.92, 0.82, 0.58), "rough": 0.18, "metal": 0.04, "id": (0.0, 1.0, 1.0)},
     "accent": {"rgb": (0.42, 0.24, 0.10), "rough": 0.54, "metal": 0.10, "id": (1.0, 0.4, 0.0)},
+    # Unlit crushing cavity. Near-black, dry, no metal.
+    "well": {"rgb": (0.016, 0.014, 0.012), "rough": 0.92, "metal": 0.02, "id": (0.22, 0.10, 0.06)},
 }
 
 
@@ -208,53 +244,88 @@ def add_cyl(name, loc, radius, depth, role, collection, verts=16, bevel=0.004, r
     return finish_mesh(obj, role, bevel=bevel, collection=collection)
 
 
-def add_tooth_comb(name, x, a0, a1, z, n, out_y, out_z, role, collection, along="y"):
-    """One saw-edge strip instead of N separate boxes."""
+def add_jaw_tiles(name, x, y0, y1, z, n, collection, *, thick=0.032, height=0.042, inset=0.018):
+    """Chunky ceramic jaw tiles on the inner rim. Not a +X saw-grate."""
     n = max(2, int(n))
-    depth = 0.055
-    half = 0.018
-    verts = []
-    faces = []
+    objs = []
+    span = y1 - y0
+    tile_w = span / n * 0.70
     for i in range(n):
-        t0 = i / n
-        t1 = (i + 0.5) / n
-        t2 = (i + 1) / n
-        def pt(t, extra=0.0):
-            if along == "y":
-                y = a0 + (a1 - a0) * t
-                return (x + extra, y, z)
-            zz = a0 + (a1 - a0) * t
-            return (x + extra, z, zz)
-        # root on the rim, tip outward +X
-        r0, r1, r2 = pt(t0), pt(t2), pt(t1, depth)
-        if along == "y":
-            vbase = len(verts)
-            verts.extend((
-                (r0[0], r0[1], r0[2] - half),
-                (r2[0], r2[1], r2[2] - half),
-                (r1[0], r1[1], r1[2] - half),
-                (r0[0], r0[1], r0[2] + half),
-                (r2[0], r2[1], r2[2] + half),
-                (r1[0], r1[1], r1[2] + half),
-            ))
-        else:
-            vbase = len(verts)
-            verts.extend((
-                (r0[0], r0[1] - half, r0[2]),
-                (r2[0], r2[1] - half, r2[2]),
-                (r1[0], r1[1] - half, r1[2]),
-                (r0[0], r0[1] + half, r0[2]),
-                (r2[0], r2[1] + half, r2[2]),
-                (r1[0], r1[1] + half, r1[2]),
-            ))
-        faces.extend((
-            (vbase, vbase + 1, vbase + 2),
-            (vbase + 3, vbase + 5, vbase + 4),
-            (vbase, vbase + 3, vbase + 4, vbase + 1),
-            (vbase + 1, vbase + 4, vbase + 5, vbase + 2),
-            (vbase + 2, vbase + 5, vbase + 3, vbase + 0),
+        y = y0 + span * ((i + 0.5) / n)
+        objs.append(add_box(
+            f"{name}_{i}",
+            (x - inset, y, z),
+            (thick, tile_w, height),
+            "ceramic", collection, bevel=0.002,
         ))
-    return add_mesh(name, verts, faces, role, collection, bevel=0.0)
+    return objs
+
+
+def add_belt_ribbon(name, x0, x1, y0, y1, z_top, thickness, sag, collection, stations=5, bevel=0.002):
+    """Thin belt carcass with a real sag. Open underneath — not a filled pan."""
+    xs = np.linspace(x0, x1, max(3, int(stations)))
+    rings = []
+    for x in xs:
+        t = (float(x) - x0) / max(1e-6, x1 - x0)
+        z = z_top - sag * math.sin(t * math.pi)
+        rings.append((
+            (float(x), y0, z),
+            (float(x), y1, z),
+            (float(x), y1, z - thickness),
+            (float(x), y0, z - thickness),
+        ))
+    return loft_section(name, rings, "belt", collection, bevel=bevel, cap=True)
+
+
+def add_c_rail(name, x0, x1, y_web, inward, collection, lod, z0=0.012, z1=0.155):
+    """C-channel prism at every LOD. Two stations — no loft rungs."""
+    bevel = {0: 0.005, 1: 0.0, 2: 0.0}[lod]
+    thick = {0: 0.034, 1: 0.040, 2: 0.048}[lod]
+    width = {0: 0.22, 1: 0.21, 2: 0.20}[lod]
+    stations = [
+        c_channel_ring(float(x0), y_web, z0, z1, width, thick, inward),
+        c_channel_ring(float(x1), y_web, z0, z1 + 0.05, width, thick, inward),
+    ]
+    return loft_section(name, stations, "structure", collection, bevel)
+
+
+def add_hat_member(name, cx, y0, y1, w, h, collection, lod, z=0.012, role="structure"):
+    bevel = {0: 0.005, 1: 0.0, 2: 0.0}[lod]
+    t = {0: 0.028, 1: 0.036, 2: 0.042}[lod]
+    stations = [
+        hat_beam_ring(cx, float(y0), z, w, h, t),
+        hat_beam_ring(cx, float(y1), z, w, h, t),
+    ]
+    return loft_section(name, stations, role, collection, bevel)
+
+
+def add_yoke_arm(side, lod, collection):
+    """Plate arm from rail saddle to the drum bearing, with a short +X horn."""
+    sign = 1.0 if side == "P" else -1.0
+    bevel = {0: 0.005, 1: 0.004, 2: 0.0}[lod]
+    y_outer = 0.74 * sign
+    y_saddle_in = 0.62 * sign
+    y_mid_out = 0.48 * sign
+    y_mid_in = 0.38 * sign
+    y_brg_out = 0.36 * sign
+    y_brg_in = 0.26 * sign
+
+    def ring(x, yo, yi, z0, z1):
+        return [(x, yo, z0), (x, yi, z0), (x, yi, z1), (x, yo, z1)]
+
+    if lod >= 1:
+        stations = [
+            ring(0.38, y_outer, y_saddle_in, 0.12, 0.24),
+            ring(0.44, y_brg_out, y_brg_in, 0.24, 0.46),
+        ]
+    else:
+        stations = [
+            ring(0.36, y_outer, y_saddle_in, 0.12, 0.22),
+            ring(0.40, y_mid_out, y_mid_in, 0.20, 0.42),
+            ring(0.44, y_brg_out, y_brg_in, 0.26, 0.48),
+            ring(0.62, y_brg_out * 0.92, y_brg_in * 0.92, 0.28, 0.44),
+        ]
+    return loft_section(f"yoke_{side}", stations, "structure", collection, bevel)
 
 
 def add_cone(name, loc, r1, r2, depth, role, collection, verts=12, bevel=0.003, rot=(0, 0, 0)):
@@ -304,17 +375,17 @@ def c_channel_ring(x, y_web, z0, z1, width, thick, inward):
 
 
 def hat_beam_ring(x, y, z, w, h, t):
-    """Hat section opening downward, centred on y, top at z+h."""
+    """Hat section in the XZ plane (open down), lofted along Y. Width `w` is along X."""
     hw, hh = w * 0.5, h
     return [
-        (x, y - hw, z),
-        (x, y - hw + t, z),
-        (x, y - hw + t, z + hh - t),
-        (x, y + hw - t, z + hh - t),
-        (x, y + hw - t, z),
-        (x, y + hw, z),
-        (x, y + hw, z + hh),
-        (x, y - hw, z + hh),
+        (x - hw, y, z),
+        (x - hw + t, y, z),
+        (x - hw + t, y, z + hh - t),
+        (x + hw - t, y, z + hh - t),
+        (x + hw - t, y, z),
+        (x + hw, y, z),
+        (x + hw, y, z + hh),
+        (x - hw, y, z + hh),
     ]
 
 
@@ -423,8 +494,8 @@ def unwrap_unique(objects):
             uv1 = obj.data.uv_layers["UV1"]
         for li, loop in enumerate(obj.data.loops):
             co = obj.data.vertices[loop.vertex_index].co
-            u = (float(co.x) + 0.22) / 0.72
-            v = (float(co.y) + 0.22) / 0.44
+            u = (float(co.x) - BELT_X0) / max(1e-6, BELT_X1 - BELT_X0)
+            v = (float(co.y) + BELT_HALF_Y) / max(1e-6, BELT_HALF_Y * 2.0)
             uv1.data[li].uv = (u, v)
 
 
@@ -691,6 +762,12 @@ def author_maps(bakes, size, stem):
             bb = np.clip(b * (0.85 + ao * 0.16) + groove * 0.6, 0, 1)
             rough = np.clip(spec["rough"] + dirt * 0.06, 0.20, 0.95)
             metal = spec["metal"]
+        elif name == "well":
+            rr = np.clip(r * (0.55 + ao * 0.35) - dirt * 0.04, 0, 1)
+            gg = np.clip(g * (0.55 + ao * 0.32) - dirt * 0.03, 0, 1)
+            bb = np.clip(b * (0.55 + ao * 0.28), 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.04, 0.40, 0.97)
+            metal = spec["metal"]
         elif name == "lamp":
             rr = np.clip(r * (0.90 + ao * 0.12), 0, 1)
             gg = np.clip(g * (0.88 + ao * 0.10), 0, 1)
@@ -811,46 +888,21 @@ def atlas_material(maps, lod, emissive=False):
 # ---------------------------------------------------------------------------
 
 def build_frame(lod, collection):
-    segs = {0: 4, 1: 3, 2: 2}[lod]
-    bevel = {0: 0.006, 1: 0.007, 2: 0.0}[lod]
+    bevel = {0: 0.005, 1: 0.0, 2: 0.0}[lod]
     objs = []
-    # C-channel rails, open toward +X (they stop at x=0.55).
-    xs = np.linspace(-0.90, 0.55, segs)
-    for side, y_web, inward in (("P", 0.74, -1.0), ("S", -0.74, 1.0)):
-        if lod >= 1:
-            objs.append(add_box(
-                f"rail_{side}", ( -0.18, y_web * 0.92, 0.07),
-                (1.44, 0.12, 0.14), "structure", collection, bevel=bevel,
-            ))
-        else:
-            thick = 0.032 if lod == 0 else 0.04
-            width = 0.15 if lod == 0 else 0.13
-            stations = [
-                c_channel_ring(float(x), y_web, 0.012, 0.14, width, thick, inward)
-                for x in xs
-            ]
-            stations[-1] = c_channel_ring(float(xs[-1]), y_web, 0.012, 0.22, width, thick, inward)
-            objs.append(loft_section(f"rail_{side}", stations, "structure", collection, bevel))
-        # Pad feet, underside at z=0.
+    # C-channel rails, open toward +X. Same section family at every LOD.
+    for side, y_web, inward in (("P", 0.78, -1.0), ("S", -0.78, 1.0)):
+        objs.append(add_c_rail(f"rail_{side}", -0.90, 0.55, y_web, inward, collection, lod))
         if lod < 2:
             for tag, fx in (("aft", -0.86), ("fore", 0.48)):
                 objs.append(add_box(
-                    f"foot_{side}_{tag}", (fx, y_web * 0.90, 0.03),
-                    (0.16, 0.18, 0.06), "structure", collection, bevel=0.0,
+                    f"foot_{side}_{tag}", (fx, y_web * 0.92, 0.03),
+                    (0.16, 0.16, 0.06), "structure", collection, bevel=0.0,
                 ))
-    # Aft and mid hat crossmembers.
-    for tag, cx, w, h in (("aft", -0.86, 0.16, 0.13), ("mid", -0.06, 0.14, 0.12)):
-        if lod == 2 and tag == "mid":
-            continue
-        if lod >= 1:
-            objs.append(add_box(f"xmem_{tag}", (cx, 0.0, h * 0.5 + 0.01), (w, 1.24, h), "structure", collection, bevel))
-            continue
-        stations = [
-            hat_beam_ring(cx, y, 0.012, w, h, 0.028)
-            for y in np.linspace(-0.62, 0.62, 3)
-        ]
-        objs.append(loft_section(f"xmem_{tag}", stations, "structure", collection, bevel))
-    # Gussets at rail/crossmember joints (LOD0 only — they vanish at 120 px otherwise).
+    # Open hat crossmembers — never a filled box wall.
+    objs.append(add_hat_member("xmem_aft", -0.86, -0.62, 0.62, 0.16, 0.13, collection, lod))
+    if lod < 2:
+        objs.append(add_hat_member("xmem_mid", -0.08, -0.58, 0.58, 0.13, 0.11, collection, lod))
     if lod == 0:
         for i, (x, y, sx) in enumerate((
             (-0.78, 0.62, 1), (-0.78, -0.62, -1),
@@ -862,191 +914,254 @@ def build_frame(lod, collection):
             ]
             faces = [(0, 1, 2), (3, 5, 4), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
             objs.append(add_mesh(f"gusset_{i}", verts, faces, "structure", collection, bevel=0.004))
-    # Trough side walls (static, not on the belt hook).
-    wall_h = {0: 0.18, 1: 0.16, 2: 0.14}[lod]
-    wall_t = {0: 0.04, 1: 0.045, 2: 0.05}[lod]
-    for side, y in (("P", 0.26), ("S", -0.26)):
-        objs.append(add_box(
-            f"trough_{side}", (0.12, y, 0.08 + wall_h * 0.5),
-            (0.78, wall_t, wall_h), "structure", collection, bevel=bevel,
-        ))
-        # Folded top rim.
-        if lod == 0:
+    # Low trough skirts — they do not close the belt into a pan.
+    if lod < 2:
+        skirt_h = 0.065 if lod == 0 else 0.055
+        skirt_t = 0.026 if lod == 0 else 0.030
+        skirt_x = (BELT_X0 + BELT_X1) * 0.5
+        skirt_len = (BELT_X1 - BELT_X0) - 0.08
+        for side, y in (("P", BELT_HALF_Y + 0.055), ("S", -(BELT_HALF_Y + 0.055))):
             objs.append(add_box(
-                f"trough_rim_{side}", (0.12, y + (0.03 if side == "P" else -0.03), 0.08 + wall_h),
-                (0.78, 0.05, 0.02), "structure", collection, bevel=0.003,
+                f"trough_{side}", (skirt_x, y, 0.055 + skirt_h * 0.5),
+                (skirt_len, skirt_t, skirt_h), "structure", collection, bevel=bevel,
             ))
     return objs
 
 
 def build_drive(lod, collection):
-    bevel = {0: 0.007, 1: 0.008, 2: 0.0}[lod]
+    bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
     objs = []
-    # Lofted gearbox: waist, not a cube.
-    if lod >= 1:
-        objs.append(add_box("drive_case", (-0.52, 0.0, 0.30), (0.48, 0.58, 0.36), "drive", collection, bevel))
-    else:
-        stations = []
-        for x, hy, z0, z1 in (
-            (-0.78, 0.28, 0.12, 0.46),
-            (-0.64, 0.34, 0.10, 0.54),
-            (-0.50, 0.32, 0.10, 0.56),
-            (-0.34, 0.24, 0.14, 0.48),
-        ):
-            ring = [
+    # Lofted gearbox with a waist at every LOD. Narrower than the rail span.
+    stations = []
+    case_spec = (
+        ((-0.76, 0.20, 0.14, 0.44), (-0.62, 0.24, 0.12, 0.52), (-0.48, 0.22, 0.12, 0.54), (-0.34, 0.16, 0.16, 0.46))
+        if lod == 0 else
+        ((-0.74, 0.18, 0.14, 0.46), (-0.52, 0.22, 0.12, 0.52), (-0.34, 0.16, 0.16, 0.44))
+        if lod == 1 else
+        ((-0.70, 0.16, 0.16, 0.44), (-0.38, 0.14, 0.18, 0.42))
+    )
+    for x, hy, z0, z1 in case_spec:
+        if lod == 0:
+            stations.append([
+                (x, -hy * 0.55, z0),
+                (x, hy * 0.55, z0),
+                (x, hy, z0 + 0.08),
+                (x, hy, z1 - 0.06),
+                (x, hy * 0.40, z1),
+                (x, -hy * 0.40, z1),
+                (x, -hy, z1 - 0.06),
+                (x, -hy, z0 + 0.08),
+            ])
+        else:
+            stations.append([
                 (x, -hy, z0), (x, hy, z0), (x, hy, z1), (x, -hy, z1),
-            ]
-            # Extra shoulder points so it is not a scaled rectangle.
-            if lod == 0:
-                ring = [
-                    (x, -hy * 0.55, z0),
-                    (x, hy * 0.55, z0),
-                    (x, hy, z0 + 0.08),
-                    (x, hy, z1 - 0.06),
-                    (x, hy * 0.40, z1),
-                    (x, -hy * 0.40, z1),
-                    (x, -hy, z1 - 0.06),
-                    (x, -hy, z0 + 0.08),
-                ]
-            stations.append(ring)
-        objs.append(loft_section("drive_case", stations, "drive", collection, bevel))
-    # Access cover + warm accent lip.
+            ])
+    objs.append(loft_section("drive_case", stations, "drive", collection, bevel))
     if lod < 2:
-        objs.append(add_box("drive_cover", (-0.50, 0.0, 0.58), (0.28, 0.28, 0.04), "drive", collection, bevel=0.004))
+        objs.append(add_box("drive_cover", (-0.50, 0.0, 0.56), (0.24, 0.22, 0.035), "drive", collection, bevel=0.003))
     if lod == 0:
-        objs.append(add_box("drive_accent", (-0.50, 0.16, 0.60), (0.18, 0.035, 0.025), "accent", collection, bevel=0.003))
-        objs.append(add_cyl("drive_motor", (-0.42, -0.38, 0.30), 0.09, 0.22, "drive", collection,
-                            verts=12, rot=(math.pi / 2, 0, 0), bevel=0.004))
-    # Heat header + rooted fins.
+        objs.append(add_box("drive_accent", (-0.50, 0.12, 0.58), (0.16, 0.03, 0.022), "accent", collection, bevel=0.002))
+        objs.append(add_cyl("drive_motor", (-0.44, -0.32, 0.30), 0.08, 0.18, "drive", collection,
+                            verts=12, rot=(math.pi / 2, 0, 0), bevel=0.003))
+    # Separate heat header (hat section) + rooted fin comb. Not one closed box.
     n_fins = {0: 6, 1: 3, 2: 2}[lod]
+    header_z = 0.58 if lod < 2 else 0.50
     if lod < 2:
-        objs.append(add_box("fin_header", (-0.52, 0.0, 0.62), (0.36, 0.50, 0.03), "drive", collection, bevel=0.003))
-    span = 0.42
+        objs.append(add_hat_member("fin_header", -0.52, -0.20, 0.20, 0.28, 0.05, collection, lod, z=header_z, role="drive"))
+    else:
+        objs.append(add_box("fin_header", (-0.52, 0.0, header_z + 0.02), (0.26, 0.36, 0.03), "drive", collection, bevel=0.0))
+    span = 0.38
+    fin_t = {0: 0.010, 1: 0.014, 2: 0.018}[lod]
+    fin_h = {0: 0.15, 1: 0.13, 2: 0.11}[lod]
     for i in range(n_fins):
         y = -span * 0.5 + (span * i / max(1, n_fins - 1))
         objs.append(add_box(
-            f"fin_{i}", (-0.52, y, 0.70),
-            (0.34, 0.016 if lod else 0.012, 0.16 if lod < 2 else 0.12),
+            f"fin_{i}", (-0.52, y, header_z + 0.05 + fin_h * 0.5),
+            (0.30, fin_t, fin_h),
             "drive", collection, bevel=0.0,
         ))
     return objs
 
 
 def build_head(lod, collection):
-    bevel = {0: 0.006, 1: 0.007, 2: 0.0}[lod]
+    bevel = {0: 0.004, 1: 0.0, 2: 0.0}[lod]
     objs = []
-    # Bearing saddles rooted on the rails (travel with the head/yoke as specified).
-    if lod < 2:
-        for side, y in (("P", 0.30), ("S", -0.30)):
-            objs.append(add_box(f"saddle_{side}", (0.42, y, 0.22), (0.18, 0.10, 0.16), "structure", collection, bevel))
-            objs.append(add_cyl(
-                f"bearing_{side}", (0.42, y, 0.36), 0.07 if lod else 0.065, 0.08,
-                "cutting", collection, verts=12 if lod == 0 else 8, rot=(math.pi / 2, 0, 0), bevel=0.003,
-            ))
-            if lod == 0:
-                objs.append(add_cyl(
-                    f"bearing_flange_{side}", (0.42, y + (0.06 if side == "P" else -0.06), 0.36),
-                    0.09, 0.02, "cutting", collection, verts=12, rot=(math.pi / 2, 0, 0), bevel=0.002,
-                ))
-    # Yoke arms: lofted plates, not boxes.
-    if lod >= 1:
-        objs.append(add_box("yoke", (0.55, 0.0, 0.36), (0.22, 0.62, 0.16), "structure", collection, bevel))
-    else:
-        for side, ys in (("P", 0.28), ("S", -0.28)):
-            stations = [
-                [(0.42, ys - 0.04, 0.28), (0.42, ys + 0.04, 0.28), (0.42, ys + 0.04, 0.46), (0.42, ys - 0.04, 0.46)],
-                [(0.58, ys - 0.05, 0.22), (0.58, ys + 0.05, 0.22), (0.58, ys + 0.05, 0.50), (0.58, ys - 0.05, 0.50)],
-                [(0.72, ys - 0.06, 0.18), (0.72, ys + 0.06, 0.18), (0.72, ys + 0.06, 0.52), (0.72, ys - 0.06, 0.52)],
-            ]
-            objs.append(loft_section(f"yoke_{side}", stations, "structure", collection, bevel))
-    # Open mouth: five walls, +X is the hole.
-    x0, x1 = 0.58, 0.92
-    y0, y1 = -0.34, 0.34
-    z0, z1 = 0.12, 0.56
-    t = {0: 0.045, 1: 0.05, 2: 0.06}[lod]
-    # floor, roof, port, starboard, aft bulkhead
-    objs.append(add_box("mouth_floor", ((x0 + x1) * 0.5, 0.0, z0 + t * 0.5), (x1 - x0, y1 - y0, t), "structure", collection, bevel))
-    objs.append(add_box("mouth_roof", ((x0 + x1) * 0.5, 0.0, z1 - t * 0.5), (x1 - x0, y1 - y0, t), "structure", collection, bevel))
-    objs.append(add_box("mouth_P", ((x0 + x1) * 0.5, y1 - t * 0.5, (z0 + z1) * 0.5), (x1 - x0, t, z1 - z0), "structure", collection, bevel))
-    objs.append(add_box("mouth_S", ((x0 + x1) * 0.5, y0 + t * 0.5, (z0 + z1) * 0.5), (x1 - x0, t, z1 - z0), "structure", collection, bevel))
-    objs.append(add_box("mouth_aft", (x0 + t * 0.5, 0.0, (z0 + z1) * 0.5), (t, y1 - y0 - 2 * t, z1 - z0 - 2 * t), "structure", collection, bevel))
-    # Ceramic liners inside the well.
-    if lod == 0:
-        objs.append(add_box("liner_floor", ((x0 + x1) * 0.5 + 0.02, 0.0, z0 + t + 0.012), (x1 - x0 - 0.08, y1 - y0 - 0.12, 0.02), "ceramic", collection, bevel=0.002))
-        objs.append(add_box("liner_P", ((x0 + x1) * 0.5 + 0.02, y1 - t - 0.015, (z0 + z1) * 0.5), (x1 - x0 - 0.08, 0.02, z1 - z0 - 0.12), "ceramic", collection, bevel=0.002))
-        objs.append(add_box("liner_S", ((x0 + x1) * 0.5 + 0.02, y0 + t + 0.015, (z0 + z1) * 0.5), (x1 - x0 - 0.08, 0.02, z1 - z0 - 0.12), "ceramic", collection, bevel=0.002))
-    # Rim teeth on the +X mouth — one comb per lip, not N boxes.
-    n_teeth = {0: 8, 1: 5, 2: 3}[lod]
-    objs.append(add_tooth_comb("teeth_top", x1, y0 + 0.05, y1 - 0.05, z1 - 0.01, n_teeth, 0.0, 0.0, "ceramic", collection, along="y"))
-    if lod == 0:
-        objs.append(add_tooth_comb("teeth_bot", x1, y0 + 0.05, y1 - 0.05, z0 + 0.01, n_teeth, 0.0, 0.0, "ceramic", collection, along="y"))
-        objs.append(add_tooth_comb("teeth_P", x1, z0 + 0.08, z1 - 0.08, y1 - 0.02, max(3, n_teeth - 2), 0.0, 0.0, "ceramic", collection, along="z"))
-        objs.append(add_tooth_comb("teeth_S", x1, z0 + 0.08, z1 - 0.08, y0 + 0.02, max(3, n_teeth - 2), 0.0, 0.0, "ceramic", collection, along="z"))
-    elif lod == 1:
-        objs.append(add_tooth_comb("teeth_bot", x1, y0 + 0.05, y1 - 0.05, z0 + 0.01, n_teeth, 0.0, 0.0, "ceramic", collection, along="y"))
-    # Horizontal crusher drum inside the mouth.
-    drum_x, drum_z = 0.74, 0.34
-    segs = {0: 16, 1: 10, 2: 8}[lod]
-    objs.append(add_cyl(
-        "drum", (drum_x, 0.0, drum_z), 0.11 if lod else 0.115, 0.52,
-        "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.004,
+    t = {0: 0.055, 1: 0.060, 2: 0.065}[lod]
+    x0, x1 = WELL_X0, WELL_X1
+    y0, y1 = WELL_Y0, WELL_Y1
+    z0, z1 = WELL_Z0, WELL_Z1
+    xc = (x0 + x1) * 0.5
+    zc = (z0 + z1) * 0.5
+    inner_y0, inner_y1 = y0 + t, y1 - t
+
+    # Five-wall crushing shell, NO +X wall, NO closing roof plate.
+    # 1 floor, 2 side walls, 1 aft bulkhead, 1 +X upper lintel.
+    objs.append(add_box(
+        "mouth_floor", (xc, 0.0, z0 - 0.008),
+        (x1 - x0, y1 - y0, 0.028), "well", collection, bevel=0.002,
     ))
-    n_drum_teeth = {0: 6, 1: 0, 2: 0}[lod]
-    for i in range(n_drum_teeth):
-        ang = i * (math.pi * 2 / n_drum_teeth)
-        lx = drum_x + math.cos(ang) * 0.12
-        lz = drum_z + math.sin(ang) * 0.12
+    wall_z = zc + 0.01
+    wall_h = (z1 - z0) + 0.02
+    objs.append(add_box(
+        "mouth_P", (xc, y1 - t * 0.5, wall_z),
+        (x1 - x0, t, wall_h), "structure", collection, bevel=bevel,
+    ))
+    objs.append(add_box(
+        "mouth_S", (xc, y0 + t * 0.5, wall_z),
+        (x1 - x0, t, wall_h), "structure", collection, bevel=bevel,
+    ))
+    # Aft bulkhead sits above the belt chute — open at the bottom.
+    objs.append(add_box(
+        "mouth_aft", (x0 + t * 0.5, 0.0, z0 + 0.22),
+        (t, (y1 - y0) - 2 * t, wall_h - 0.18), "structure", collection, bevel=bevel,
+    ))
+    # +X lintel (fifth wall): a jaw frame, not a lid over the well.
+    lintel_w = 0.055
+    objs.append(add_box(
+        "mouth_lintel", (x1 - lintel_w * 0.5, 0.0, z1 - 0.02),
+        (lintel_w, (y1 - y0) - 0.02, 0.040), "structure", collection, bevel=bevel,
+    ))
+    # Top flanges so the well is a framed hole, not a black tile.
+    if lod < 2:
+        fl_w = 0.055
         objs.append(add_box(
-            f"drum_tooth_{i}", (lx, 0.0, lz),
-            (0.04, 0.46, 0.035), "ceramic", collection, bevel=0.0,
-            rot=(0.0, ang, 0.0),
+            "mouth_flange_P", (xc, y1 - fl_w * 0.35, z1 - 0.008),
+            (x1 - x0 - 0.04, fl_w, 0.018), "structure", collection, bevel=0.0,
         ))
+        objs.append(add_box(
+            "mouth_flange_S", (xc, y0 + fl_w * 0.35, z1 - 0.008),
+            (x1 - x0 - 0.04, fl_w, 0.018), "structure", collection, bevel=0.0,
+        ))
+    # Near-black inner liners so the well reads as a hole from above.
+    if lod == 0:
+        objs.append(add_box(
+            "liner_P", (xc + 0.01, inner_y1 - 0.008, zc),
+            (x1 - x0 - 0.08, 0.016, wall_h - 0.08), "well", collection, bevel=0.0,
+        ))
+        objs.append(add_box(
+            "liner_S", (xc + 0.01, inner_y0 + 0.008, zc),
+            (x1 - x0 - 0.08, 0.016, wall_h - 0.08), "well", collection, bevel=0.0,
+        ))
+        objs.append(add_box(
+            "liner_aft", (x0 + t + 0.012, 0.0, zc + 0.04),
+            (0.016, (y1 - y0) - 2 * t - 0.04, wall_h - 0.16), "well", collection, bevel=0.0,
+        ))
+
+    # Ceramic jaws on the mouth rim only — inward, not a +X grate.
+    n_jaw = {0: 3, 1: 2, 2: 0}[lod]
+    if n_jaw:
+        objs.extend(add_jaw_tiles(
+            "jaw_top", x1 - lintel_w * 0.25, inner_y0 + 0.04, inner_y1 - 0.04,
+            z1 - 0.018, n_jaw, collection, thick=0.036, height=0.028, inset=0.012,
+        ))
+    if lod == 0:
+        objs.extend(add_jaw_tiles(
+            "jaw_bot", x1 - 0.03, inner_y0 + 0.04, inner_y1 - 0.04,
+            z0 + 0.03, n_jaw, collection, thick=0.028, height=0.028, inset=0.016,
+        ))
+
+    # Saddles rooted on the rails, round bearings, yoke arms. Never a yoke brick.
+    brg_y = 0.31
+    brg_r = {0: 0.070, 1: 0.074, 2: 0.078}[lod]
+    brg_n = {0: 12, 1: 8, 2: 6}[lod]
+    for side, y in (("P", brg_y), ("S", -brg_y)):
+        if lod < 2:
+            objs.append(add_box(
+                f"saddle_{side}", (PIVOT.x, y * 2.15, 0.16),
+                (0.18, 0.11, 0.14), "structure", collection, bevel=bevel,
+            ))
+        objs.append(add_cyl(
+            f"bearing_{side}", (PIVOT.x, y, PIVOT.z), brg_r, 0.07 if lod else 0.075,
+            "cutting", collection, verts=brg_n, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
+        ))
+        if lod == 0:
+            objs.append(add_cyl(
+                f"bearing_flange_{side}", (PIVOT.x, y + (0.05 if side == "P" else -0.05), PIVOT.z),
+                0.09, 0.018, "cutting", collection, verts=10, rot=(math.pi / 2, 0, 0), bevel=0.002,
+            ))
+        objs.append(add_yoke_arm(side, lod, collection))
+
+    # Horizontal Y-axis crusher drum inside the well, at the aim pivot.
+    drum_r = {0: 0.108, 1: 0.110, 2: 0.112}[lod]
+    drum_len = {0: 0.46, 1: 0.44, 2: 0.40}[lod]
+    drum_n = {0: 14, 1: 8, 2: 6}[lod]
+    objs.append(add_cyl(
+        "drum", (PIVOT.x, 0.0, PIVOT.z), drum_r, drum_len,
+        "cutting", collection, verts=drum_n, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
+    ))
+    # Metallic flutes — not ceramic rim teeth, not a grate.
+    if lod == 0:
+        for i in range(3):
+            ang = i * (math.pi * 2 / 3) + 0.4
+            lx = PIVOT.x + math.cos(ang) * (drum_r + 0.006)
+            lz = PIVOT.z + math.sin(ang) * (drum_r + 0.006)
+            objs.append(add_box(
+                f"drum_flute_{i}", (lx, 0.0, lz),
+                (0.016, drum_len - 0.10, 0.014), "cutting", collection, bevel=0.0,
+                rot=(0.0, ang, 0.0),
+            ))
     return objs
 
 
 def build_belt(lod, collection):
-    bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     objs = []
-    x0, x1 = -0.22, 0.50
-    y_h = 0.20
-    z = 0.155
-    # Belt ribbon — real surface with thickness and UV along X.
-    objs.append(add_box("belt_face", ((x0 + x1) * 0.5, 0.0, z), (x1 - x0, y_h * 2 - 0.04, 0.018), "belt", collection, bevel=0.002))
-    if lod == 0:
-        objs.append(add_box("belt_return", ((x0 + x1) * 0.5, 0.0, 0.08), (x1 - x0 - 0.06, y_h * 2 - 0.08, 0.014), "belt", collection, bevel=0.002))
-    n_roll = {0: 5, 1: 2, 2: 1}[lod]
-    segs = {0: 12, 1: 8, 2: 6}[lod]
+    x0, x1 = BELT_X0, BELT_X1
+    y0, y1 = -BELT_HALF_Y, BELT_HALF_Y
+    z_top = 0.168
+    sag = {0: 0.018, 1: 0.012, 2: 0.008}[lod]
+    n_stat = {0: 5, 1: 3, 2: 2}[lod]
+    objs.append(add_belt_ribbon(
+        "belt_face", x0, x1, y0, y1, z_top, 0.012, sag, collection,
+        stations=n_stat, bevel=0.001 if lod == 0 else 0.0,
+    ))
+    if lod < 2:
+        objs.append(add_belt_ribbon(
+            "belt_return", x0 + 0.03, x1 - 0.03, y0 + 0.012, y1 - 0.012,
+            0.072, 0.010, sag * 0.4, collection,
+            stations=max(2, n_stat - 1), bevel=0.0,
+        ))
+    n_roll = {0: 4, 1: 2, 2: 1}[lod]
+    segs = {0: 10, 1: 6, 2: 6}[lod]
+    roll_r = {0: 0.030, 1: 0.032, 2: 0.034}[lod]
+    # Rollers longer than the belt so crowns read from above.
+    roll_len = (y1 - y0) + 0.10
     for i in range(n_roll):
         u = i / max(1, n_roll - 1)
-        x = x0 + 0.06 + (x1 - x0 - 0.12) * u
+        x = x0 + 0.05 + (x1 - x0 - 0.10) * u
         objs.append(add_cyl(
-            f"roller_{i}", (x, 0.0, 0.115), 0.032 if lod else 0.034, y_h * 2 - 0.06,
-            "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.002,
+            f"roller_{i}", (x, 0.0, z_top - sag * 0.5 - roll_r + 0.004),
+            roll_r, roll_len, "cutting", collection, verts=segs,
+            rot=(math.pi / 2, 0, 0), bevel=0.001,
         ))
-        # End bearings are a color mass on the roller, not extra meshes.
     if lod < 2:
         objs.append(add_cyl(
-            "drive_pulley", (x0 + 0.02, 0.0, 0.13), 0.045, y_h * 2 - 0.08,
-            "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.003,
+            "drive_pulley", (x0 + 0.015, 0.0, 0.125), 0.042, roll_len - 0.04,
+            "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
         ))
+        if lod == 0:
+            objs.append(add_cyl(
+                "idler_pulley", (x1 - 0.02, 0.0, 0.125), 0.036, roll_len - 0.04,
+                "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.002,
+            ))
     return objs
 
 
 def build_lamp(lod, collection):
-    bevel = {0: 0.003, 1: 0.004, 2: 0.006}[lod]
+    bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     loc = LAMP_LOC
     objs = []
+    hood_n = {0: 10, 1: 8, 2: 6}[lod]
     if lod < 2:
         objs.append(add_cyl("lamp_socket", (loc.x - 0.04, loc.y, loc.z), 0.035, 0.07, "structure", collection,
-                            verts=10 if lod else 12, rot=(0, math.pi / 2, 0), bevel=bevel))
+                            verts=8 if lod else 10, rot=(0, math.pi / 2, 0), bevel=bevel))
     # Hood: truncated cone opening +X, not a glowing bar.
     objs.append(add_cone(
         "lamp_hood", (loc.x + 0.02, loc.y, loc.z), 0.055, 0.028, 0.07,
-        "structure", collection, verts=10 if lod else 12, bevel=bevel, rot=(0, math.pi / 2, 0),
+        "structure", collection, verts=hood_n, bevel=bevel, rot=(0, math.pi / 2, 0),
     ))
     lens = add_cyl(
         "lamp_lens", (loc.x + 0.05, loc.y, loc.z), 0.022, 0.016, "lamp", collection,
-        verts=8 if lod else 10, rot=(0, math.pi / 2, 0), bevel=0.002,
+        verts=6 if lod else 8, rot=(0, math.pi / 2, 0), bevel=0.0 if lod else 0.002,
     )
     objs.append(lens)
     return objs, lens
@@ -1451,6 +1566,105 @@ def inspect_glb(path: Path) -> dict:
     }
 
 
+def assert_cycle_01_frozen():
+    missing = []
+    changed = []
+    for name, expected in CYCLE_01_SHA256.items():
+        path = CYCLE_01_DIR / name
+        if not path.exists():
+            missing.append(name)
+            continue
+        got = sha256(path)
+        if got != expected:
+            changed.append(f"{name}: {got} != {expected}")
+    if missing or changed:
+        raise RuntimeError(
+            "Cycle 01 evidence mutated (forbidden):\n  missing="
+            + ", ".join(missing) + "\n  changed=" + "; ".join(changed)
+        )
+    return {name: sha256(CYCLE_01_DIR / name) for name in CYCLE_01_SHA256}
+
+
+def load_png_rgb(path: Path):
+    img = bpy.data.images.load(str(path), check_existing=False)
+    w, h = img.size
+    arr = np.zeros(w * h * 4, dtype=np.float32)
+    img.pixels.foreach_get(arr)
+    rgba = arr.reshape(h, w, 4)
+    bpy.data.images.remove(img)
+    return rgba, w, h
+
+
+def write_crop(rgba, cx, cy, half, dest: Path):
+    h, w = rgba.shape[:2]
+    x0 = max(0, int(cx - half))
+    x1 = min(w, int(cx + half))
+    y0 = max(0, int(cy - half))
+    y1 = min(h, int(cy + half))
+    crop = rgba[y0:y1, x0:x1].copy()
+    ch, cw = crop.shape[:2]
+    if dest.name in bpy.data.images:
+        bpy.data.images.remove(bpy.data.images[dest.name])
+    img = bpy.data.images.new(dest.name, width=cw, height=ch, alpha=True)
+    img.pixels.foreach_set(np.ascontiguousarray(crop, dtype=np.float32).ravel())
+    img.filepath_raw = str(dest)
+    img.file_format = "PNG"
+    img.save()
+    sanitize_png(dest)
+    bpy.data.images.remove(img)
+    return {"x0": x0, "y0": y0, "x1": x1, "y1": y1, "w": cw, "h": ch}
+
+
+def analyze_works_still(path: Path, px_per_cell: float):
+    """Original-resolution read of the machine at the named register."""
+    rgba, w, h = load_png_rgb(path)
+    luma = 0.2126 * rgba[..., 0] + 0.7152 * rgba[..., 1] + 0.0722 * rgba[..., 2]
+    # World is near-black; pad+machine sit in the centre.
+    cx, cy = w // 2, h // 2
+    search = 80 if px_per_cell < 40 else 160
+    y0, y1 = max(0, cy - search), min(h, cy + search)
+    x0, x1 = max(0, cx - search), min(w, cx + search)
+    region = luma[y0:y1, x0:x1]
+    mask = region > 0.045
+    if not np.any(mask):
+        mask = region > 0.03
+    ys, xs = np.where(mask)
+    if len(xs) == 0:
+        return {"path": str(path.relative_to(ROOT)).replace("\\", "/"), "empty": True}
+    bx0, bx1 = int(xs.min() + x0), int(xs.max() + x0)
+    by0, by1 = int(ys.min() + y0), int(ys.max() + y0)
+    mw, mh = bx1 - bx0 + 1, by1 - by0 + 1
+    machine = luma[by0:by1 + 1, bx0:bx1 + 1]
+    # +X is the right side of the top-down frame.
+    x_split = int(mw * 0.62)
+    plus_x = machine[:, x_split:]
+    dark = plus_x < 0.085
+    dark_cols = np.mean(dark, axis=0) > 0.28 if plus_x.size else np.array([])
+    dark_span_px = int(dark_cols.sum()) if dark_cols.size else 0
+    rail_band = max(1, mh // 8)
+    rails = float(np.mean(np.concatenate([machine[:rail_band], machine[-rail_band:]])) ) if mh > 4 else 0.0
+    well_mean = float(np.mean(plus_x)) if plus_x.size else 0.0
+    well_dark_mean = float(np.mean(plus_x[dark])) if np.any(dark) else well_mean
+    inboard = machine[:, : int(mw * 0.55)]
+    belt_band = machine[mh // 3: 2 * mh // 3, int(mw * 0.22): int(mw * 0.55)]
+    belt_mean = float(np.mean(belt_band)) if belt_band.size else 0.0
+    return {
+        "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+        "resolution": [w, h],
+        "px_per_cell": px_per_cell,
+        "machine_bbox_px": [bx0, by0, bx1, by1],
+        "machine_size_px": [mw, mh],
+        "plus_x_dark_span_px": dark_span_px,
+        "plus_x_dark_frac": float(np.mean(dark)) if dark.size else 0.0,
+        "plus_x_mean": well_mean,
+        "plus_x_dark_mean": well_dark_mean,
+        "rail_mean": rails,
+        "belt_inboard_mean": belt_mean,
+        "well_darker_than_rails": well_dark_mean < rails - 0.02,
+        "bite_px_in_band": dark_span_px >= 4 and dark_span_px <= 8 if px_per_cell < 40 else None,
+    }
+
+
 def setup_mine_lights():
     scene = bpy.context.scene
     try:
@@ -1723,17 +1937,40 @@ def render_stills(glb_path: Path, still_dir: Path):
         mark.data.materials.append(mat)
     paths["hook_identity"] = snap("hook_identity.png", "works_top")
     restore_mats(meshes, clay_b)
+
+    # Original-resolution inspect crops (not legal stills; diagnostics only).
+    inspect_dir = still_dir / "inspect"
+    inspect_dir.mkdir(parents=True, exist_ok=True)
+    crops = {}
+    for key, half in (("works_top", 140), ("works_top_clay", 140), ("works_site", 40), ("works_edge", 160)):
+        rec = paths.get(key)
+        if not rec:
+            continue
+        src = ROOT / rec["path"]
+        rgba, w, h = load_png_rgb(src)
+        crops[key] = write_crop(rgba, w // 2, h // 2, half, inspect_dir / f"{key}_crop.png")
+        if key == "works_edge":
+            # Edge framing parks the object near the right; crop that side.
+            ox = rec.get("object_offset") or [0, 0, 0]
+            if ox[0] > 1.0:
+                crops[key] = write_crop(rgba, int(w * 0.88), h // 2, half, inspect_dir / f"{key}_crop.png")
+    paths["_inspect_crops"] = {
+        k: str((inspect_dir / f"{k}_crop.png").relative_to(ROOT)).replace("\\", "/")
+        for k in crops
+    }
     return paths
 
 
-def write_docs(inventory, contract, inspect, stills, lod_reports):
+def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01):
     FAMILY.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     hashes = {
-        "cycle": 1,
+        "cycle": CYCLE,
         "disposition": "review_pending",
         "combinedSha256": inventory["sha256"],
         "partsSha256": inventory["partsSha256"],
+        "cycle01Frozen": True,
+        "cycle01Sha256": cycle01,
         "lod": {str(r["lod"] if "lod" in r else i): {"sha256": r.get("sha256"), "triangles": r["triangles"]} for i, r in enumerate(lod_reports)},
         "textures": {},
     }
@@ -1741,10 +1978,11 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         hashes["textures"][path.name] = sha256(path)
     (FAMILY / "HASHES.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
 
+    camera_stills = {k: v for k, v in stills.items() if not str(k).startswith("_")}
     epoch = {
         "schema": "spaceface.worksExtractorCycleEpoch.v1",
-        "cycle": 1,
-        "epoch": "cycle_001",
+        "cycle": CYCLE,
+        "epoch": EPOCH_NAME,
         "disposition": "review_pending",
         "state": "design_candidate",
         "gates": {
@@ -1755,6 +1993,7 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
             "G7": "open",
         },
         "independentReview": "not_launched",
+        "cycle01Frozen": True,
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -1781,55 +2020,76 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
             "missingRoots": inspect["missingLodRoots"],
         },
         "bboxBlenderZUp": inventory["bbox"],
-        "camera": stills,
+        "camera": camera_stills,
+        "pixels": pixels,
+        "inspectCrops": stills.get("_inspect_crops") or {},
         "notes": [
-            "Cycle 01 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 02 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 01 evidence/cycle_001 is byte-frozen and was not rewritten.",
+            "Open +X five-wall well (no roof plate, no grate). Yoke/drum/bearings on head_face.",
+            "Thin belt ribbon over rollers with return run. Aft is C-channel + case + fin comb.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
-            "Reviewers were not launched.",
+            "Independent reviewers were not launched. Disposition is review_pending.",
         ],
     }
     (EVIDENCE_DIR / "EPOCH.json").write_text(json.dumps(epoch, indent=2) + "\n", encoding="utf-8")
 
-    audit = f"""# Extractor — material and shape audit (Cycle 01)
+    site_px = (pixels or {}).get("works_site") or {}
+    top_px = (pixels or {}).get("works_top") or {}
+    audit = f"""# Extractor — material and shape audit (Cycle 02)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
+
+Cycle 01 reviews converged on a closed +X grate/brick, a filled trough box, an
+aft slab, and a site silhouette that put the cavity in the wrong place. Cycle 02
+deletes the hatch/grate and the roof plate, opens a five-wall well toward +X,
+roots a Y-axis drum in yoke bearings, replaces the pan with a ribbon belt, and
+keeps the aft as open C-channel, a serviceable case, and a rooted fin comb.
 
 ## Shape grammar
 
 | Form | Primitive origin | Manufactured result | Camera |
 |---|---|---|---|
-| Floor rails | C-channel loft, not a box beam | Load-bearing C section, open +X, pad feet at z=0 | works_top, clay |
-| Crossmembers | Hat-beam loft | Rooted into rails with gussets | works_top |
-| Drive case | 4-station loft with waist | Heat-stained gearbox, access cover, ochre lip | works_top / edge |
-| Fins | Thin plates | Rooted into a header on the case, not occupancy wings | works_top |
-| Mouth | Five-wall shell open +X | Dark well with ceramic rim teeth | works_top |
-| Drum / yoke | Cylinder + lofted arms + bearing bosses | Aimable head under `head_face`, forward +X | works_top / edge |
-| Belt | Ribbon + rollers + return + pulley | Negative space under belt; UV1 along +X | works_top / edge |
-| Lamp | Cone hood + socket + recessed lens | Fixture exists with emission off | works_edge |
-
-Unresolved blockout risk: rim teeth are still faceted blocks; a later cycle may loft a true
-jaw profile if reviewers call the bite a stud ring.
+| Floor rails | C-channel loft at every LOD | Load-bearing C section, open +X, pad feet at z=0 | works_top, clay, site |
+| Crossmembers | Hat-beam loft | Rooted into rails with gussets; not a box wall | works_top |
+| Drive case | Waisted loft, narrower than rail span | Heat-stained gearbox, access cover, ochre lip | works_top / edge |
+| Fins | Thin plates in a hat header | Rooted comb with air between plates | works_top |
+| Mouth | Five-wall shell, no +X wall, no roof plate | Near-black well open to the feed cell | works_top, site |
+| Drum / yoke | Cylinder + lofted arms + round bosses | Aimable head under `head_face`, forward +X | works_top / edge |
+| Jaws | Chunky ceramic tiles on the rim only | Dry tiles facing into the well, not a grate | works_top |
+| Belt | Thin sagging ribbon + rollers + return | Open trough space; UV1 along +X | works_top / edge |
+| Lamp | Cone hood + socket + recessed lens | One fixture; exists with emission off | works_edge |
 
 ## Material allocation
 
-Dark painted structure, bare cutting/roller metal, heat-stained drive, dry ceramic liners,
-rubber belt, one ochre accent, one warm recessed lens. Rover yellow is absent.
+Dark painted structure, worn cutting/roller metal, heat-stained drive, dry
+ceramic jaws on the rim only, rubber belt, near-black well interior, one ochre
+accent, one warm recessed lens. Rover yellow is absent. No plastic copper,
+generic grid, universal edge wear, or unreadable bolt rows.
 
-Maps are mesh-derived AO / tangent normal / pointiness curvature, composited into authored
-1024² basecolor / normal / ORM. Unique non-overlapping UV0. No kit textures.
+Maps are mesh-derived AO / tangent normal / pointiness curvature, composited
+into authored 1024² basecolor / normal / ORM. Unique non-overlapping UV0.
 
 ## LOD
 
 LOD0 {inspect['lodTriangles']['lod0']} / 8000. LOD1 {inspect['lodTriangles']['lod1']} / 2000.
-LOD2 {inspect['lodTriangles']['lod2']} / 600. Direction, conveyor, frame, and all three hooks
-survive. Hidden faces evaluated per LOD only.
+LOD2 {inspect['lodTriangles']['lod2']} / 600. Open mouth, bearing-rooted head,
+belt gap, rails/fins, and all three hooks survive. Hidden faces per LOD only.
+
+## Pixel facts (original 1920×1080)
+
+- works_top machine size px: {top_px.get('machine_size_px')}
+- works_site machine size px: {site_px.get('machine_size_px')}
+- works_site +X dark span px: {site_px.get('plus_x_dark_span_px')} (target 4–6)
+- works_site well darker than rails: {site_px.get('well_darker_than_rails')}
 
 ## Remaining visual risk (honest)
 
-- Site register (~19 px/cell) may collapse the mouth into a dark rectangle; identity depends
-  on the open +X silhouette and fin comb.
-- Drum teeth may alias at 120 px.
-- Independent G1/G2/G4 review has not run.
+- Site register (~19 px/cell) can still merge the drum into the well; identity
+  depends on the open +X bite between the two U rails and the darker inboard ribbon.
+- Jaw tiles are faceted blocks; a later cycle may loft a true jaw profile if
+  reviewers still read a rim stud row.
+- Independent G1/G2/G4 review has not run. This cycle does not close them.
 """
     (FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md").write_text(audit, encoding="utf-8")
 
@@ -1838,7 +2098,7 @@ survive. Hidden faces evaluated per LOD only.
         "assetId": ASSET_ID,
         "root": ROOT_NAME,
         "packet": "PQ-131.03",
-        "cycle": 1,
+        "cycle": CYCLE,
         "currentState": "design_candidate",
         "candidateHash": inventory["sha256"],
         "forwardAxis": "+X",
@@ -1852,7 +2112,7 @@ survive. Hidden faces evaluated per LOD only.
         "forbiddenReads": [
             "safety yellow", "plastic copper", "generic grid", "universal edge wear",
             "neon", "flat decals", "leather", "billboard", "glowing bar", "crate",
-            "turret", "forklift", "gun", "box-plus-cylinder",
+            "turret", "forklift", "gun", "box-plus-cylinder", "closed grate", "filled trough",
         ],
         "allSupportedViewZonesClassified": False,
         "gatesOpen": ["G1", "G2", "G4", "G7"],
@@ -1892,7 +2152,7 @@ survive. Hidden faces evaluated per LOD only.
         },
         "rows": [
             row("MTX-01", "implemented", graz, "pass", True, "Angle bevel 6–12 mm then weighted normals, shade 28°.", bevelWidthM=0.006, shadeAngleDeg=SHADE_ANGLE),
-            row("MTX-03", "implemented", clay, "pass", True, "Mouth is five walls open +X; the +X face is empty."),
+            row("MTX-03", "implemented", clay, "pass", True, "Cycle 02: five-wall well, no +X wall, no roof plate; ceramic jaws on the rim only."),
             row("MTX-16", "implemented", top, "pass", True, "Unique non-overlapping UV0 packed per LOD."),
             row("MTX-20", "implemented", nrm, "pass", True, "High duplicate with extra 3 mm bevel as bake source."),
             row("MTX-21", "implemented", nrm, "pass", True, "Cage extrusion 0.03 wu on selected-to-active normal bake."),
@@ -1909,29 +2169,10 @@ survive. Hidden faces evaluated per LOD only.
             row("MTX-50", "implemented", inventory["partsSource"], "pass", True, "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."),
             row("MTX-52", "implemented", clay, "pass", True, "Macro from cited kit shape language + construction studies, not a cube."),
             row("MTX-53", "not_applicable", None, "pass", True, "Manufactured machine, not a rock/sculpt."),
-            row("MTX-54", "not_applicable", None, "pass", True, "New asset; no prior accepted extractor to revert."),
+            row("MTX-54", "not_applicable", None, "pass", True, "Cycle 02 remaster of the Cycle 01 candidate; Cycle 01 evidence frozen."),
         ],
     }
     (FAMILY / "TECHNIQUE_LEDGER.json").write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
-
-    provenance = """# Extractor reference provenance (Cycle 01)
-
-Generated construction studies (native imagegen). Not projected as textures.
-Not used as normal/AO/roughness/metallic/curvature.
-
-| File | Role | Selected | Rejected |
-|---|---|---|---|
-| reference/ref_01_overhead_extractor.png | planform: open mouth, belt, fins, U-frame | U-frame open +X, toothed well, fin comb, hooded lamp | lamp hose, any yellow |
-| reference/ref_02_crusher_head.png | yoke + drum + bearings | rooted bearings, recessed drum, ceramic teeth | red lamp-can as livery |
-| reference/ref_03_conveyor_stub.png | trough, rollers, negative space, drive | C-channel, sagging belt, finned motor | copying the outdoor yard scale |
-| everyday_space_kit/source/drill_platform.glb | shape only | tool faces the work | geometry, ochre house, 14 m span |
-| everyday_space_kit/source/conveyor_truss.glb | shape only | belt + idler + drive | geometry, 27 m truss, buckets |
-| everyday_space_kit/source/crusher_module.glb | shape only | crushing aperture | geometry, 7 m box, donor materials |
-
-Kit GLBs were inspected for bounds/mesh names only. They were not imported into the
-extractor scene.
-"""
-    (FAMILY / "reference" / "REFERENCE_PROVENANCE.md").write_text(provenance, encoding="utf-8")
     return hashes, epoch
 
 
@@ -1960,6 +2201,7 @@ def main():
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
+    cycle01 = assert_cycle_01_frozen()
 
     lod_reports = []
     for lod in (0, 1, 2):
@@ -1972,8 +2214,14 @@ def main():
     inventory, contract, combined, parts = combine_lods(lod_reports)
     inspect = inspect_glb(parts)
     stills = render_stills(parts, EVIDENCE_DIR)
-    hashes, epoch = write_docs(inventory, contract, inspect, stills, lod_reports)
+    pixels = {}
+    for key, ppc in (("works_top", 120.0), ("works_site", 19.0), ("works_top_clay", 120.0)):
+        rec = stills.get(key)
+        if rec:
+            pixels[key] = analyze_works_still(ROOT / rec["path"], ppc)
+    hashes, epoch = write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01)
     errors = validate_inventory(inventory, inspect, lod_reports)
+    assert_cycle_01_frozen()
     result = {
         "ok": not errors,
         "errors": errors,
@@ -1982,6 +2230,7 @@ def main():
         "stills": {k: v.get("path") if isinstance(v, dict) else v for k, v in stills.items()},
         "epoch": str((EVIDENCE_DIR / "EPOCH.json").relative_to(ROOT)).replace("\\", "/"),
         "hashes": str((FAMILY / "HASHES.json").relative_to(ROOT)).replace("\\", "/"),
+        "pixels": pixels,
     }
     print(json.dumps(result, indent=2))
     if errors:
