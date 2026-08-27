@@ -1,14 +1,17 @@
-"""PQ-049.01 Massline express-liner source builder — cycle 30.
+"""PQ-049.01 Massline express-liner source builder — cycle 31.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
-Cycle 30 form correction: manufactured 1.8–2.0:1 length-to-beam barrel so
-legal abeam occupancy lands in 8–12%. Not a global stretch. Not a saucer.
+
+Cycle 31 form correction: turn the Cycle 30 ivory capsule into a stepped
+inhabited pressure body with octagonal passenger span, real corridor shells,
+a boarding vestibule, rooted drive plant, and civic dorsal hierarchy.
+Keep 1.8–2.05 length-to-beam. Not a saucer, needle, or widened egg.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=30
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=31
 """
 from __future__ import annotations
 
@@ -34,8 +37,6 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_corner_fasteners,
     add_folded_sheet,
-    add_service_pipe,
-    add_tapered_vane,
     apply_modifiers,
     boolean_cut_box,
     cut_open_bay,
@@ -56,7 +57,7 @@ from spaceface_chase_camera import (  # noqa: E402
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
 TEX = 1024
-CYCLE = 30
+CYCLE = 31
 PROBE_OCCUPANCY = False
 RENDER_ONLY = False
 for i, tok in enumerate(sys.argv):
@@ -73,34 +74,37 @@ for i, tok in enumerate(sys.argv):
     elif tok in ("--render-only", "--stills-only"):
         RENDER_ONLY = True
 
-# Cycle 30 manufactured envelope. Metres, +X forward. Not a uniform scale.
-# Length ~34.7 m, beam ~19.2 m → L/B ~1.81. Abeam occupancy tracks beam.
-DRIVE_Y = 8.05
-DRIVE_Z = 0.48
-DRIVE_R_FORE = 1.62
-DRIVE_R_AFT = 1.12
-BOARD_X, BOARD_Z = 11.55, 2.62
-MID_HW, MID_HH = 8.15, 3.55
+# Cycle 31 manufactured envelope. Metres, +X forward.
+# Length ~40.4 m, inhabited beam ~22.1 m → L/B ~1.83.
+# Width from octagonal passenger span + corridor shells, not fins or pods.
+DRIVE_Y = 8.55
+DRIVE_Z = 0.38
+DRIVE_R_FORE = 1.42
+DRIVE_R_AFT = 1.08
+BOARD_X, BOARD_Z = 16.15, 3.42
+MID_HW, MID_HH = 7.85, 4.92
+CORR_Y = 9.72
+CORR_HW, CORR_HH = 1.32, 1.28
 
 ASSET_ID = "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1"
 PART_ID = "massline_express_liner_v1"
 SHADE_ANGLE = 28.0
-BEVEL_HULL = 0.018
-BEVEL_FRAME = 0.008
-BEVEL_HIGH = 0.006
-CAGE_INFLATE = 0.055
-BAKE_AO_SAMPLES = 8
+BEVEL_HULL = 0.016
+BEVEL_FRAME = 0.007
+BEVEL_HIGH = 0.005
+CAGE_INFLATE = 0.038
+BAKE_AO_SAMPLES = 16
 
 ROLE_RGB = {
-    "ceramic": (0.82, 0.74, 0.62),
-    "frame": (0.30, 0.31, 0.34),
-    "keel": (0.070, 0.074, 0.080),
-    "glass": (0.14, 0.22, 0.26),
-    "primer": (0.38, 0.40, 0.34),
-    "refractory": (0.58, 0.42, 0.26),
+    "ceramic": (0.74, 0.66, 0.54),
+    "frame": (0.18, 0.19, 0.22),
+    "keel": (0.055, 0.058, 0.062),
+    "glass": (0.20, 0.30, 0.34),
+    "primer": (0.40, 0.42, 0.36),
+    "refractory": (0.24, 0.16, 0.12),
     "cyan": (0.10, 0.58, 0.62),
     "amber": (0.74, 0.44, 0.12),
-    "throat": (0.085, 0.090, 0.098),
+    "throat": (0.055, 0.050, 0.048),
 }
 
 
@@ -163,91 +167,99 @@ def write_pixels(name, pixels, size, colorspace="sRGB"):
 
 
 def role_maps(role, rgb, size=TEX, prefix=None):
-    """Unique civic maps. Not a Lark/Mule/Wasp tint. Fallback until unique bake."""
+    """Unique civic maps. Not a Lark/Mule/Wasp tint. Not one recipe recolored."""
     prefix = prefix or role
     br, bg, bb = rgb
     albedo, orm, nrm = [], [], []
-    if role == "ceramic":
-        pw, ph = 96, 64
-    elif role == "frame":
-        pw, ph = 28, 14
-    elif role == "primer":
-        pw, ph = 40, 22
-    elif role == "keel":
-        pw, ph = 22, 10
-    elif role == "refractory":
-        pw, ph = 48, 48
-    else:
-        pw, ph = 0, 0
     for y in range(size):
         for x in range(size):
+            u = x / max(1, size - 1)
+            v = y / max(1, size - 1)
             gf = h01(x, y, 19)
-            gf2 = h01(x // 3, y // 3, 47)
-            if pw == 0:
-                dx = dy = 99
-                seam = soft = 0.0
-            else:
-                dx = min(x % pw, pw - (x % pw))
-                dy = min(y % ph, ph - (y % ph))
-                seam = 1.0 if (dx <= 1 or dy <= 1) else 0.0
-                soft = max(0.0, 1.0 - min(dx, dy) / 3.0) if min(dx, dy) <= 3 else 0.0
-            edge = 1.0 if pw and (dx <= 2 or dy <= 2) else 0.0
-            dirt = min(1.0, soft * 0.22 + seam * 0.12 + gf2 * 0.06)
+            gf2 = h01(x // 5, y // 5, 47)
+            gf3 = h01(x // 17, y // 13, 91)
+            nx, ny = 0.5, 0.5
             if role == "ceramic":
-                chip = 1.0 if gf > 0.955 and (x < 90 or y > size - 70) else 0.0
-                r = max(0, min(1, br * (1.0 - dirt * 0.10) + chip * 0.10))
-                g = max(0, min(1, bg * (1.0 - dirt * 0.08) + chip * 0.06))
-                b = max(0, min(1, bb * (1.0 - dirt * 0.06) + chip * 0.04))
-                rough = 0.46 + dirt * 0.12 - edge * 0.03
-                metal = 0.02 + chip * 0.42
+                course = 0.5 + 0.5 * math.sin(v * math.pi * 3.0 + gf3 * 0.4)
+                panel = 0.5 + 0.5 * math.sin(u * math.pi * 2.0 + gf2 * 0.3)
+                brush = abs(math.sin((x * 0.07) + y * 0.011)) * 0.045
+                warm = 0.04 * (gf3 - 0.5)
+                r = max(0, min(1, br * (0.94 + 0.05 * course) + warm + brush))
+                g = max(0, min(1, bg * (0.94 + 0.04 * panel) + warm * 0.6 + brush * 0.5))
+                b = max(0, min(1, bb * (0.96 + 0.03 * panel) + brush * 0.3))
+                rough = 0.42 + 0.10 * gf2 + 0.06 * (1.0 - course)
+                metal = 0.03
+                ao = 0.92 - 0.04 * gf2
+                nx = 0.5 + (gf - 0.5) * 0.04 + (panel - 0.5) * 0.05
+                ny = 0.5 + (gf2 - 0.5) * 0.04 + (course - 0.5) * 0.06
             elif role == "frame":
-                brush = abs(math.sin((x + y * 0.15) * 0.42)) * 0.08
-                r = max(0, min(1, br * (0.92 + gf * 0.10) + brush))
-                g = max(0, min(1, bg * (0.92 + gf * 0.08) + brush * 0.7))
-                b = max(0, min(1, bb * (0.94 + gf * 0.06)))
-                rough = 0.32 + dirt * 0.16 + brush
-                metal = 0.86 + edge * 0.08
+                machine = abs(math.sin(x * 0.55 + y * 0.04))
+                r = max(0, min(1, br * (0.88 + gf * 0.10) + machine * 0.04))
+                g = max(0, min(1, bg * (0.90 + gf * 0.08) + machine * 0.03))
+                b = max(0, min(1, bb * (0.92 + gf * 0.06)))
+                rough = 0.24 + machine * 0.10 + gf2 * 0.06
+                metal = 0.90 + 0.04 * machine
+                ao = 0.78 - 0.10 * (1.0 - machine)
+                nx = 0.5 + (0.5 - machine) * 0.10
+                ny = 0.5 + (gf - 0.5) * 0.03
             elif role == "primer":
-                flake = 0.08 * gf2
-                r = max(0, min(1, br * (0.90 + gf * 0.08) + flake))
-                g = max(0, min(1, bg * (0.88 + gf * 0.08) + flake * 0.6))
+                spangle = abs(math.sin(x * 0.21) * math.cos(y * 0.19))
+                r = max(0, min(1, br * (0.90 + gf * 0.08) + spangle * 0.05))
+                g = max(0, min(1, bg * (0.88 + gf * 0.08) + spangle * 0.04))
                 b = max(0, min(1, bb * (0.84 + gf * 0.06)))
-                rough = 0.58 + dirt * 0.14
-                metal = 0.18 + edge * 0.10
+                rough = 0.56 + spangle * 0.10 + gf2 * 0.06
+                metal = 0.16 + spangle * 0.08
+                ao = 0.86 - spangle * 0.06
+                nx = 0.5 + (gf - 0.5) * 0.05
+                ny = 0.5 + (spangle - 0.5) * 0.06
             elif role == "keel":
-                brush = abs(math.sin(x * 0.55)) * 0.10
-                r = max(0, min(1, br * (0.88 + gf * 0.12) + brush * 0.4))
+                forge = abs(math.sin(x * 0.38))
+                r = max(0, min(1, br * (0.86 + gf * 0.12) + forge * 0.03))
                 g = max(0, min(1, bg * (0.88 + gf * 0.10)))
                 b = max(0, min(1, bb * (0.90 + gf * 0.08)))
-                rough = 0.28 + dirt * 0.18
-                metal = 0.92
+                rough = 0.26 + forge * 0.10 + gf2 * 0.06
+                metal = 0.93
+                ao = 0.72 - forge * 0.08
+                nx = 0.5 + (0.5 - forge) * 0.12
+                ny = 0.5 + (gf - 0.5) * 0.04
             elif role == "refractory":
-                heat = max(0.0, 0.62 - x / size) * 0.34
-                grain = gf2 * 0.16
-                r = max(0, min(1, br * (0.86 + grain) + heat * 0.30))
-                g = max(0, min(1, bg * (0.80 + grain * 0.5) + heat * 0.08))
-                b = max(0, min(1, bb * (0.72 - heat * 0.10)))
-                rough = 0.64 + dirt * 0.12 + grain
-                metal = 0.04
+                heat = max(0.0, 0.72 - u) * 0.55
+                grain = gf2 * 0.18
+                r = max(0, min(1, br * (0.78 + grain) + heat * 0.34))
+                g = max(0, min(1, bg * (0.72 + grain * 0.5) + heat * 0.08))
+                b = max(0, min(1, bb * (0.62 - heat * 0.12)))
+                rough = 0.68 + grain * 0.12 - heat * 0.08
+                metal = 0.05 + heat * 0.08
+                ao = 0.62 - heat * 0.12
+                nx = 0.5 + (gf - 0.5) * 0.08
+                ny = 0.5 + (u - 0.5) * 0.10
             elif role == "glass":
-                r, g, b = br, bg, bb
-                rough, metal = 0.08, 0.02
+                stria = abs(math.sin(x * 0.09 + y * 0.02)) * 0.04
+                r = max(0, min(1, br * 0.92 + stria * 0.4))
+                g = max(0, min(1, bg * 0.94 + stria * 0.5))
+                b = max(0, min(1, bb * 0.96 + stria * 0.6))
+                rough, metal, ao = 0.07, 0.02, 0.90
+                nx, ny = 0.5, 0.5 + stria * 0.4
             elif role == "cyan":
                 pulse = 0.78 + 0.22 * math.sin(x * 0.04)
                 r, g, b = br * pulse, bg * pulse, bb * pulse
-                rough, metal = 0.22, 0.06
+                rough, metal, ao = 0.22, 0.06, 0.88
             elif role == "amber":
                 r, g, b = br, bg, bb
-                rough, metal = 0.36, 0.04
+                rough, metal, ao = 0.36, 0.04, 0.86
             else:
-                r, g, b = br, bg, bb
-                rough, metal = 0.48, 0.12
-            ao = max(0.22, 1.0 - seam * 0.28 - dirt * 0.16 - soft * 0.10)
-            nx = 0.5 + (0.10 if edge else 0.02) * (0.5 - (dx / max(1, pw)))
-            ny = 0.5 + (0.10 if edge else 0.02) * (0.5 - (dy / max(1, ph)))
+                bore = abs(math.sin(u * math.pi))
+                r = max(0, min(1, br * (0.80 + bore * 0.12)))
+                g = max(0, min(1, bg * (0.82 + bore * 0.10)))
+                b = max(0, min(1, bb * (0.84 + bore * 0.08)))
+                rough = 0.40 + (1.0 - bore) * 0.12
+                metal = 0.62 + bore * 0.12
+                ao = 0.48 - (1.0 - bore) * 0.12
+                nx = 0.5 + (gf - 0.5) * 0.06
+                ny = 0.5 + (0.5 - bore) * 0.10
             albedo.extend((r, g, b, 1.0))
-            orm.extend((ao, max(0.05, min(0.94, rough)), max(0.0, min(1.0, metal)), 1.0))
-            nrm.extend((nx, ny, 1.0, 1.0))
+            orm.extend((max(0.12, min(1.0, ao)), max(0.05, min(0.94, rough)), max(0.0, min(1.0, metal)), 1.0))
+            nrm.extend((max(0.05, min(0.95, nx)), max(0.05, min(0.95, ny)), 1.0, 1.0))
     base = write_pixels(f"liner_{prefix}_{size}_basecolor", albedo, size, "sRGB")
     orm_img = write_pixels(f"liner_{prefix}_{size}_orm", orm, size, "Non-Color")
     nrm_img = write_pixels(f"liner_{prefix}_{size}_normal", nrm, size, "Non-Color")
@@ -289,7 +301,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, transmission=0.0):
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     if "Coat Weight" in bsdf.inputs and coat > 0:
         bsdf.inputs["Coat Weight"].default_value = coat
-        bsdf.inputs["Coat Roughness"].default_value = 0.12
+        bsdf.inputs["Coat Roughness"].default_value = 0.10 if coat > 0.2 else 0.16
     if emission:
         if "Emission Color" in bsdf.inputs:
             bsdf.inputs["Emission Color"].default_value = (*emission[0], 1)
@@ -302,29 +314,35 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, transmission=0.0):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.82, 0.74, 0.62), "ceramic", 0.18, None, 0.0, "ceramic"),
-        "Material_Armor": ((0.30, 0.31, 0.34), "frame", 0.04, None, 0.0, "frame"),
-        "Material_Mechanical": ((0.070, 0.074, 0.080), "keel", 0.0, None, 0.0, "keel"),
-        "Material_Canopy": ((0.14, 0.22, 0.26), "glass", 0.22, None, 0.0, "glass"),
-        "Material_Radiator": ((0.38, 0.40, 0.34), "primer", 0.0, None, 0.0, "primer"),
-        "Material_Ceramic": ((0.58, 0.42, 0.26), "refractory", 0.0, None, 0.0, "refractory"),
-        "Material_Accent": ((0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.35), 0.0, "cyan"),
-        "Material_Warning": ((0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.28), 0.0, "amber"),
-        "Material_Thruster": ((0.085, 0.090, 0.098), "throat", 0.0, None, 0.0, "throat"),
+        "Material_Hull": ((0.74, 0.66, 0.54), "ceramic", 0.06, None, 0.0, "ceramic"),
+        "Material_Armor": ((0.18, 0.19, 0.22), "frame", 0.04, None, 0.0, "frame"),
+        "Material_Mechanical": ((0.055, 0.058, 0.062), "keel", 0.0, None, 0.0, "keel"),
+        "Material_Canopy": ((0.20, 0.30, 0.34), "glass", 0.38, None, 0.0, "glass"),
+        "Material_Radiator": ((0.40, 0.42, 0.36), "primer", 0.0, None, 0.0, "primer"),
+        "Material_Ceramic": ((0.24, 0.16, 0.12), "refractory", 0.0, None, 0.0, "refractory"),
+        "Material_Accent": ((0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.28), 0.0, "cyan"),
+        "Material_Warning": ((0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.22), 0.0, "amber"),
+        "Material_Thruster": ((0.055, 0.050, 0.048), "throat", 0.0, None, 0.0, "throat"),
     }
     mats = {}
     for name, (rgb, role, coat, emit, trans, prefix) in specs.items():
         material = bpy.data.materials.new(name)
         bsdf = principled(material)
         bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-        maps = role_maps(role, rgb, prefix=prefix)
-        wire_maps(material, bsdf, maps, coat=coat, emission=emit, transmission=trans)
+        if not PROBE_OCCUPANCY:
+            maps = role_maps(role, rgb, size=TEX, prefix=prefix)
+            wire_maps(material, bsdf, maps, coat=coat, emission=emit, transmission=trans)
+        else:
+            bsdf.inputs["Roughness"].default_value = 0.45
+            bsdf.inputs["Metallic"].default_value = 0.1 if role != "glass" else 0.02
         material["spacefaceRole"] = role
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
                 bsdf.inputs["Transmission Weight"].default_value = 0.0
             if "Alpha" in bsdf.inputs:
                 bsdf.inputs["Alpha"].default_value = 1.0
+            if "Specular IOR Level" in bsdf.inputs:
+                bsdf.inputs["Specular IOR Level"].default_value = 0.55
             try:
                 material.blend_method = "OPAQUE"
             except Exception:
@@ -445,46 +463,71 @@ def loft_hollow(name, outer_rings, inner_rings, material, collection, bevel, clo
     return finish_mesh(obj, material, bevel)
 
 
-def civic_pressure_ring(x, yc, zc, hw, hh, crown=0.55, wall=0.72, belly=0.35):
-    """12-point civic pressure station with a flat deck the chase camera can see."""
-    crown = max(0.0, min(1.0, float(crown)))
-    wall = max(0.0, min(1.0, float(wall)))
-    belly = max(0.0, min(1.0, float(belly)))
-    deck_half = hw * (0.42 + 0.46 * crown)
-    deck_z = zc + hh * (0.78 + 0.16 * crown)
-    wall_z = zc + hh * (0.28 + 0.12 * wall)
-    chine_y = hw
-    chine_z = zc + hh * (0.04 - 0.14 * wall)
-    lower_y = hw * (0.82 - 0.08 * wall)
-    lower_z = zc - hh * (0.22 + 0.10 * belly)
-    belly_y = hw * (0.28 + 0.40 * belly)
-    belly_z = zc - hh * (0.68 + 0.14 * belly)
-    keel_z = zc - hh
+def pressure_ring(x, yc, zc, hw, hh, deck=0.62, wall=0.58, chine=0.12, belly=0.38):
+    """8-point occupied pressure station: flat deck, vertical walls, hard chine.
+
+    This is an inhabited octagon, not a rounded egg. All stations share vertex
+    count so they can loft. Change deck/wall/chine/hw/hh along X; do not scale
+    one ring.
+    """
+    deck = max(0.12, min(0.92, float(deck)))
+    wall = max(0.12, min(0.95, float(wall)))
+    chine = max(0.0, min(0.40, float(chine)))
+    belly = max(0.10, min(0.90, float(belly)))
+    dy_deck = hw * deck
+    dz_deck = zc + hh
+    dy_wall = hw
+    dz_wall = zc + hh * wall
+    dy_chine = hw
+    dz_chine = zc - hh * chine
+    dy_keel = hw * (0.22 + 0.50 * (1.0 - belly))
+    dz_keel = zc - hh
     return [
-        (x, yc - deck_half, deck_z),
-        (x, yc - deck_half * 0.50, deck_z),
-        (x, yc, deck_z),
-        (x, yc + deck_half * 0.50, deck_z),
-        (x, yc + deck_half, deck_z),
-        (x, yc + hw * (0.88 + 0.06 * wall), wall_z + hh * 0.18),
-        (x, yc + hw * (0.78 + 0.10 * wall), wall_z),
-        (x, yc + chine_y, chine_z),
-        (x, yc + lower_y, lower_z),
-        (x, yc + belly_y, belly_z),
-        (x, yc, keel_z),
-        (x, yc - belly_y, belly_z),
-        (x, yc - lower_y, lower_z),
-        (x, yc - chine_y, chine_z),
-        (x, yc - hw * (0.78 + 0.10 * wall), wall_z),
-        (x, yc - hw * (0.88 + 0.06 * wall), wall_z + hh * 0.18),
+        (x, yc - dy_deck, dz_deck),
+        (x, yc + dy_deck, dz_deck),
+        (x, yc + dy_wall, dz_wall),
+        (x, yc + dy_chine, dz_chine),
+        (x, yc + dy_keel, dz_keel),
+        (x, yc - dy_keel, dz_keel),
+        (x, yc - dy_chine, dz_chine),
+        (x, yc - dy_wall, dz_wall),
     ]
 
 
-def regular_ring(x, y, z, radius, sides=10):
+def corridor_ring(x, y, z, hw, hh):
+    """Octagonal inhabited corridor section with real height and wall faces."""
     return [
-        (x, y + math.cos(math.tau * i / sides) * radius, z + math.sin(math.tau * i / sides) * radius)
+        (x, y - hw * 0.55, z + hh),
+        (x, y + hw * 0.55, z + hh),
+        (x, y + hw, z + hh * 0.38),
+        (x, y + hw, z - hh * 0.38),
+        (x, y + hw * 0.55, z - hh),
+        (x, y - hw * 0.55, z - hh),
+        (x, y - hw, z - hh * 0.38),
+        (x, y - hw, z + hh * 0.38),
+    ]
+
+
+def regular_ring(x, y, z, radius, sides=8):
+    return [
+        (x, y + math.cos(math.tau * i / sides + math.pi / sides) * radius,
+         z + math.sin(math.tau * i / sides + math.pi / sides) * radius)
         for i in range(sides)
     ]
+
+
+def drive_case_ring(x, y, z, rx, rz, sides=8):
+    """Manufactured octagonal case, slightly squashed, flattened inboard."""
+    sign = 1.0 if y >= 0 else -1.0
+    pts = []
+    for i in range(sides):
+        ang = math.tau * i / sides + math.pi / sides
+        py = math.cos(ang) * rx
+        pz = math.sin(ang) * rz
+        if sign * py < 0:
+            py *= 0.86
+        pts.append((x, y + py, z + pz))
+    return pts
 
 
 def inset_large_faces(obj, thickness=0.045, depth=0.016, min_area=0.55):
@@ -502,29 +545,6 @@ def inset_large_faces(obj, thickness=0.045, depth=0.016, min_area=0.55):
     finish_mesh(obj, obj.data.materials[0], bevel=0.010)
 
 
-def add_curve_hose(name, points, material, collection, radius=0.022):
-    curve = bpy.data.curves.new(name, "CURVE")
-    curve.dimensions = "3D"
-    curve.bevel_depth = radius
-    curve.bevel_resolution = 2
-    spline = curve.splines.new("BEZIER")
-    spline.bezier_points.add(len(points) - 1)
-    for index, point in enumerate(points):
-        bp = spline.bezier_points[index]
-        bp.co = point
-        bp.handle_left_type = "AUTO"
-        bp.handle_right_type = "AUTO"
-    obj = bpy.data.objects.new(name, curve)
-    collection.objects.link(obj)
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
-    obj = bpy.context.object
-    obj.name = name
-    obj.select_set(False)
-    return finish_mesh(obj, material, bevel=0.002)
-
-
 def try_cut_bay(hull, tag, surface, length, width, depth, outward, mats, collection, kit="empty"):
     try:
         cut_open_bay(hull, tag, surface, length, width, depth, outward, mats, collection, kit=kit, liner=True)
@@ -534,345 +554,386 @@ def try_cut_bay(hull, tag, surface, length, width, depth, outward, mats, collect
         return False
 
 
-def add_boarding_well(hull, lod, mats, collection):
-    """Framed open embarkation pit. Chase must see a dark well with rim thickness."""
-    glass, frame, cyan, hull_mat = (
-        mats["Material_Canopy"], mats["Material_Armor"],
-        mats["Material_Accent"], mats["Material_Hull"],
-    )
+def add_boarding_vestibule(hull, lod, mats, collection):
+    """Framed airlock porch. Human-scale door a person enters, not a black bite."""
+    glass = mats["Material_Canopy"]
+    frame = mats["Material_Armor"]
+    cyan = mats["Material_Accent"]
+    hull_mat = mats["Material_Hull"]
     x, z = BOARD_X, BOARD_Z
-    surface = (x, 0.0, z - 0.18)
-    try_cut_bay(hull, "BoardWell", surface, 4.20, 3.55, 1.22, (0.0, 0.0, 1.0), mats, collection, "empty")
-    add_box("Board_CoamingFore", (x + 2.18, 0.0, z), (0.30, 2.05, 0.16), hull_mat, collection, 0.004)
-    add_box("Board_CoamingAft", (x - 2.18, 0.0, z), (0.30, 2.05, 0.16), hull_mat, collection, 0.004)
-    add_box("Board_CoamingP", (x, -1.92, z), (2.05, 0.22, 0.16), hull_mat, collection, 0.004)
-    add_box("Board_CoamingS", (x, 1.92, z), (2.05, 0.22, 0.16), hull_mat, collection, 0.004)
-    add_box("Board_FrameFore", (x + 1.95, 0.0, z - 0.42), (0.08, 1.62, 0.30), frame, collection, 0.002)
-    add_box("Board_FrameAft", (x - 1.95, 0.0, z - 0.42), (0.08, 1.62, 0.30), frame, collection, 0.002)
-    add_box("Board_FrameP", (x, -1.58, z - 0.42), (1.78, 0.08, 0.30), frame, collection, 0.002)
-    add_box("Board_FrameS", (x, 1.58, z - 0.42), (1.78, 0.08, 0.30), frame, collection, 0.002)
-    add_box("Board_GlassP", (x, -1.46, z - 0.68), (1.65, 0.018, 0.44), glass, collection, 0.001)
-    add_box("Board_GlassS", (x, 1.46, z - 0.68), (1.65, 0.018, 0.44), glass, collection, 0.001)
-    add_box("Board_GlassFore", (x + 1.86, 0.0, z - 0.70), (0.018, 1.38, 0.40), glass, collection, 0.001)
-    add_box("Board_CyanP", (x, -1.52, z - 0.28), (1.48, 0.035, 0.04), cyan, collection, 0.001)
-    add_box("Board_CyanS", (x, 1.52, z - 0.28), (1.48, 0.035, 0.04), cyan, collection, 0.001)
+    surface = (x, 0.0, z - 0.08)
+    try_cut_bay(hull, "BoardWell", surface, 3.05, 2.55, 0.92, (0.0, 0.0, 1.0), mats, collection, "empty")
+    add_box("Board_Threshold", (x + 1.42, 0.0, z - 0.62), (0.38, 1.35, 0.16), hull_mat, collection, 0.004)
+    add_box("Board_Sill", (x + 1.58, 0.0, z - 1.05), (0.22, 1.18, 0.08), frame, collection, 0.003)
+    add_box("Board_DoorFrame", (x + 1.62, 0.0, z - 0.28), (0.10, 1.12, 1.18), frame, collection, 0.003)
+    add_box("Board_DoorLeaf", (x + 1.55, 0.0, z - 0.42), (0.05, 0.82, 0.92), frame, collection, 0.002)
+    add_box("Board_Transom", (x + 1.58, 0.0, z + 0.52), (0.04, 0.78, 0.22), glass, collection, 0.001)
+    add_box("Board_PaneP", (x + 0.15, -1.08, z - 0.35), (1.05, 0.04, 0.72), glass, collection, 0.001)
+    add_box("Board_PaneS", (x + 0.15, 1.08, z - 0.35), (1.05, 0.04, 0.72), glass, collection, 0.001)
+    add_box("Board_MullP", (x + 0.15, -1.08, z - 0.35), (0.06, 0.07, 0.78), frame, collection, 0.002)
+    add_box("Board_MullS", (x + 0.15, 1.08, z - 0.35), (0.06, 0.07, 0.78), frame, collection, 0.002)
+    add_box("Board_CoamingFore", (x + 1.72, 0.0, z + 0.08), (0.16, 1.38, 0.10), hull_mat, collection, 0.003)
+    add_box("Board_CoamingAft", (x - 1.55, 0.0, z + 0.02), (0.14, 1.28, 0.09), hull_mat, collection, 0.003)
+    add_box("Board_CoamingP", (x, -1.32, z + 0.04), (1.55, 0.12, 0.09), hull_mat, collection, 0.003)
+    add_box("Board_CoamingS", (x, 1.32, z + 0.04), (1.55, 0.12, 0.09), hull_mat, collection, 0.003)
+    add_box("Board_Landing", (x + 2.35, 0.0, z - 1.22), (0.95, 1.15, 0.08), hull_mat, collection, 0.003)
+    add_box("Board_GuardLip", (x + 2.55, 0.0, z - 1.08), (0.10, 1.18, 0.14), frame, collection, 0.002)
+    add_box("Board_CyanJambP", (x + 1.60, -0.92, z - 0.18), (0.04, 0.04, 0.85), cyan, collection, 0.001)
+    add_box("Board_CyanJambS", (x + 1.60, 0.92, z - 0.18), (0.04, 0.04, 0.85), cyan, collection, 0.001)
+    add_box("Ops_Brow", (x + 2.05, 0.0, z + 0.92), (0.42, 0.92, 0.08), hull_mat, collection, 0.003)
+    add_box("Ops_FrameCrown", (x + 1.88, 0.0, z + 0.78), (0.18, 1.05, 0.05), frame, collection, 0.002)
     if lod == 0:
-        add_box("Board_Mullion", (x, 0.0, z - 0.58), (0.07, 1.38, 0.10), frame, collection, 0.002)
+        add_box("Board_Handle", (x + 1.50, 0.38, z - 0.35), (0.04, 0.03, 0.16), mats["Material_Mechanical"], collection, 0.001)
 
 
-def add_ops_wedge(hull, mats, collection):
-    """Framed operations glass at the bow. Direction, not a black nose cap."""
-    glass, frame, hull_mat = mats["Material_Canopy"], mats["Material_Armor"], mats["Material_Hull"]
-    try:
-        boolean_cut_box(hull, "OpsCut", (15.45, 0.0, 0.82), (1.12, 1.15, 0.78))
-    except Exception as exc:
-        print(f"ops cut skip: {exc}")
-    add_box("Ops_FrameCrown", (15.58, 0.0, 1.32), (0.55, 0.98, 0.06), frame, collection, 0.002)
-    add_box("Ops_FrameP", (15.58, -0.88, 0.72), (0.55, 0.06, 0.52), frame, collection, 0.002)
-    add_box("Ops_FrameS", (15.58, 0.88, 0.72), (0.55, 0.06, 0.52), frame, collection, 0.002)
-    add_box("Ops_Glass", (15.64, 0.0, 0.78), (0.04, 0.82, 0.46), glass, collection, 0.001)
-    add_box("Ops_Brow", (15.82, 0.0, 1.42), (0.22, 0.68, 0.08), hull_mat, collection, 0.003)
+def add_boarding_necks(lod, mats, collection):
+    """Load path from vestibule into port/starboard corridors."""
+    frame = mats["Material_Armor"]
+    hull = mats["Material_Hull"]
+    for tag, sign in (("P", -1.0), ("S", 1.0)):
+        loft_from_rings(f"BoardNeck_{tag}", [
+            corridor_ring(13.85, sign * 3.55, 1.55, 0.62, 0.92),
+            corridor_ring(12.15, sign * 6.35, 0.85, 0.85, 1.08),
+            corridor_ring(10.55, sign * 8.55, 0.48, 1.05, 1.18),
+        ], hull, collection, 0.006, cap="both")
+        if lod <= 1:
+            add_box(
+                f"BoardNeckFrame_{tag}",
+                (12.15, sign * 6.35, 0.85),
+                (0.10, 1.15, 1.15),
+                frame, collection, 0.003,
+            )
 
 
-def add_observation_belt(hull, lod, mats, collection):
-    """Dorsal-shoulder glass trenches on the wide barrel. Passenger belt, not a stripe decal."""
-    glass, frame = mats["Material_Canopy"], mats["Material_Armor"]
-    for tag, y in (("P", -6.55), ("S", 6.55)):
-        try:
-            boolean_cut_box(hull, f"ObsCut_{tag}", (2.15, y, 3.22), (8.40, 1.05, 0.46))
-        except Exception as exc:
-            print(f"obs cut skip {tag}: {exc}")
-        add_box(f"ObsGlass_{tag}", (2.15, y, 3.04), (8.05, 0.88, 0.048), glass, collection, 0.001)
-        add_box(f"ObsRailOut_{tag}", (2.15, y + (0.50 if y > 0 else -0.50), 3.22), (8.20, 0.07, 0.08), frame, collection, 0.002)
-        add_box(f"ObsRailIn_{tag}", (2.15, y - (0.50 if y > 0 else -0.50), 3.22), (8.20, 0.07, 0.08), frame, collection, 0.002)
-        if lod == 0:
-            for i in range(6):
-                add_box(
-                    f"ObsMull_{tag}_{i}",
-                    (-1.35 + i * 1.40, y, 3.04),
-                    (0.05, 0.70, 0.06),
-                    frame, collection, 0.001,
-                )
-
-
-def add_bulkhead_collar(name, x, hw, hh, mats, collection, crown=0.55, wall=0.78, belly=0.32):
-    """Dark anodized join ring. Breaks the sausage in clay."""
+def add_bulkhead_collar(name, x, hw, hh, mats, collection, deck=0.78, wall=0.82, chine=0.10, belly=0.42):
+    """Proud dark join ring. Breaks the sausage in clay."""
     frame = mats["Material_Armor"]
     loft_from_rings(name, [
-        civic_pressure_ring(x - 0.16, 0, 0.22, hw * 1.045, hh * 1.035, crown, wall, belly),
-        civic_pressure_ring(x + 0.16, 0, 0.22, hw * 1.045, hh * 1.035, crown, wall, belly),
+        pressure_ring(x - 0.22, 0, 0.28, hw * 1.055, hh * 1.045, deck, wall, chine, belly),
+        pressure_ring(x + 0.22, 0, 0.28, hw * 1.055, hh * 1.045, deck, wall, chine, belly),
     ], frame, collection, 0.006, cap="both")
 
 
 def add_dorsal_spine(lod, mats, collection):
-    hull, primer, mech = mats["Material_Hull"], mats["Material_Radiator"], mats["Material_Mechanical"]
-    covers = (
-        ((7.20, 1.85, 3.55, 4.02), (3.40, 2.05, 3.78, 4.22)),
-        ((2.40, 2.12, 3.85, 4.28), (-1.20, 1.92, 3.62, 4.02)),
-        ((-2.40, 1.72, 3.38, 3.72), (-6.40, 1.28, 2.72, 3.08)),
-    )
-    for index, ((x0, h0, d0, t0), (x1, h1, d1, t1)) in enumerate(covers):
-        hat = loft_from_rings(f"Spine_Hat_{index}", [
-            [(x0, -h0, d0), (x0, -h0 * 0.38, t0), (x0, h0 * 0.38, t0), (x0, h0, d0)],
-            [(x1, -h1, d1), (x1, -h1 * 0.38, t1), (x1, h1 * 0.38, t1), (x1, h1, d1)],
-        ], hull, collection, 0.005, cap="both")
-        try:
-            boolean_cut_box(
-                hat, f"SpineSlot_{index}",
-                ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 + 0.02),
-                (1.45, 0.42, 0.18),
-            )
-        except Exception as exc:
-            print(f"spine slot skip {index}: {exc}")
-        add_box(
-            f"SpineSlotLiner_{index}",
-            ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 - 0.05),
-            (1.22, 0.28, 0.045),
-            mech, collection, 0.001,
+    """One equipment well tied to bulkheads. Not a row of identical lids."""
+    hull = mats["Material_Hull"]
+    primer = mats["Material_Radiator"]
+    mech = mats["Material_Mechanical"]
+    frame = mats["Material_Armor"]
+    hat = loft_from_rings("Spine_Well", [
+        [(10.4, -0.72, 4.95), (10.4, -0.22, 5.38), (10.4, 0.22, 5.38), (10.4, 0.72, 4.95)],
+        [(4.6, -0.92, 5.18), (4.6, -0.28, 5.62), (4.6, 0.28, 5.62), (4.6, 0.92, 5.18)],
+        [(-1.4, -0.88, 5.08), (-1.4, -0.26, 5.52), (-1.4, 0.26, 5.52), (-1.4, 0.88, 5.08)],
+        [(-8.2, -0.58, 3.85), (-8.2, -0.18, 4.22), (-8.2, 0.18, 4.22), (-8.2, 0.58, 3.85)],
+    ], hull, collection, 0.005, cap="both")
+    try:
+        boolean_cut_box(hat, "SpineWellCut", (4.4, 0.0, 5.48), (2.15, 0.38, 0.22))
+    except Exception as exc:
+        print(f"spine well skip: {exc}")
+    add_box("Spine_WellLiner", (4.4, 0.0, 5.28), (1.85, 0.26, 0.05), mech, collection, 0.001)
+    add_box("RadModule_Fore", (6.35, 0.0, 5.22), (1.55, 0.62, 0.16), primer, collection, 0.004)
+    try:
+        boolean_cut_box(
+            bpy.data.objects.get("RadModule_Fore") or hat,
+            "RadForeCut", (6.35, 0.0, 5.32), (1.15, 0.38, 0.12),
         )
-        if lod <= 1:
-            for i in range(4):
-                add_box(
-                    f"SpineFin_{index}_{i}",
-                    ((x0 + x1) * 0.5 - 0.45 + i * 0.30, 0.0, (t0 + t1) * 0.5 - 0.02),
-                    (0.018, 0.24, 0.09),
-                    primer, collection, 0.001,
-                )
-    add_box("Spine_FeedAft", (-10.4, 0.0, 1.95), (1.85, 0.28, 0.16), mech, collection, 0.004)
+    except Exception as exc:
+        print(f"rad fore skip: {exc}")
+    add_box("RadFin_ForeA", (6.05, 0.0, 5.28), (0.04, 0.42, 0.10), primer, collection, 0.001)
+    add_box("RadFin_ForeB", (6.35, 0.0, 5.28), (0.04, 0.42, 0.10), primer, collection, 0.001)
+    add_box("RadFin_ForeC", (6.65, 0.0, 5.28), (0.04, 0.42, 0.10), primer, collection, 0.001)
+    add_box("RadModule_Aft", (-2.85, -0.22, 5.05), (1.15, 0.48, 0.14), primer, collection, 0.004)
+    add_box("RadFin_AftA", (-3.15, -0.22, 5.10), (0.035, 0.32, 0.08), primer, collection, 0.001)
+    add_box("RadFin_AftB", (-2.55, -0.22, 5.10), (0.035, 0.32, 0.08), primer, collection, 0.001)
+    add_box("RepairPlate_Stbd", (2.15, 0.55, 5.12), (0.85, 0.28, 0.06), frame, collection, 0.003)
     if lod == 0:
-        add_box("Spine_RootFore", (4.8, 0.0, 3.55), (0.32, 0.28, 0.10), mech, collection, 0.003)
-        add_box("Spine_RootAft", (-4.2, 0.0, 3.18), (0.32, 0.24, 0.10), mech, collection, 0.003)
+        add_box("RepairLatch", (2.45, 0.62, 5.16), (0.10, 0.05, 0.04), mech, collection, 0.001)
+        add_box("Spine_RootFore", (10.1, 0.0, 5.05), (0.22, 0.22, 0.08), mech, collection, 0.002)
+        add_box("Spine_RootAft", (-7.6, 0.0, 3.95), (0.22, 0.18, 0.07), mech, collection, 0.002)
+    add_box("Spine_FeedAft", (-11.2, 0.0, 2.15), (1.65, 0.22, 0.12), mech, collection, 0.004)
 
 
 def add_service_cassette(lod, mats, collection):
     primer, mech = mats["Material_Radiator"], mats["Material_Mechanical"]
     loft_from_rings("Cassette_Body", [
-        civic_pressure_ring(6.6, 0, -3.35, 2.85, 0.52, crown=0.88, wall=0.96, belly=0.82),
-        civic_pressure_ring(1.2, 0, -3.52, 3.25, 0.60, crown=0.92, wall=0.96, belly=0.88),
-        civic_pressure_ring(-3.2, 0, -3.42, 2.95, 0.54, crown=0.88, wall=0.95, belly=0.84),
-        civic_pressure_ring(-6.8, 0, -3.12, 2.05, 0.42, crown=0.78, wall=0.94, belly=0.72),
+        pressure_ring(7.2, 0, -4.55, 2.65, 0.48, deck=0.82, wall=0.92, chine=0.08, belly=0.78),
+        pressure_ring(1.4, 0, -4.78, 3.05, 0.55, deck=0.88, wall=0.94, chine=0.08, belly=0.84),
+        pressure_ring(-3.6, 0, -4.62, 2.75, 0.50, deck=0.82, wall=0.92, chine=0.08, belly=0.80),
+        pressure_ring(-8.2, 0, -4.05, 1.85, 0.38, deck=0.72, wall=0.90, chine=0.08, belly=0.68),
     ], primer, collection, 0.006, cap="both")
-    add_box("Cassette_Seam", (1.15, 0.0, -2.82), (0.045, 2.45, 0.10), mech, collection, 0.002)
+    add_box("Cassette_Seam", (1.35, 0.0, -4.12), (0.045, 2.25, 0.10), mech, collection, 0.002)
     if lod == 0:
-        add_box("Cassette_BayA", (4.1, 0.0, -2.78), (1.55, 1.45, 0.045), primer, collection, 0.003)
-        add_box("Cassette_BayB", (-2.2, 0.0, -2.78), (1.45, 1.32, 0.045), primer, collection, 0.003)
-        for name, loc in (("LatchA", (3.05, 0.92, -2.72)), ("LatchB", (3.05, -0.92, -2.72)),
-                          ("LatchC", (-1.05, 0.86, -2.72)), ("LatchD", (-1.05, -0.86, -2.72))):
+        add_box("Cassette_BayA", (4.4, 0.0, -4.08), (1.45, 1.35, 0.045), primer, collection, 0.003)
+        add_box("Cassette_BayB", (-2.4, 0.0, -4.08), (1.35, 1.22, 0.045), primer, collection, 0.003)
+        for name, loc in (("LatchA", (3.25, 0.88, -4.02)), ("LatchB", (3.25, -0.88, -4.02)),
+                          ("LatchC", (-1.25, 0.80, -4.02)), ("LatchD", (-1.25, -0.80, -4.02))):
             add_box(name, loc, (0.12, 0.055, 0.038), mech, collection, 0.002)
 
 
 def add_keel_and_saddle(lod, mats, collection):
     keel, frame = mats["Material_Mechanical"], mats["Material_Armor"]
     loft_from_rings("Keel_Beam", [
-        civic_pressure_ring(8.0, 0, -2.85, 0.48, 0.36, crown=0.18, wall=0.96, belly=0.90),
-        civic_pressure_ring(1.2, 0, -3.62, 0.78, 0.62, crown=0.12, wall=0.96, belly=0.94),
-        civic_pressure_ring(-3.8, 0, -3.52, 0.70, 0.56, crown=0.12, wall=0.96, belly=0.92),
-        civic_pressure_ring(-11.6, 0, -2.35, 0.42, 0.30, crown=0.10, wall=0.95, belly=0.84),
+        pressure_ring(8.4, 0, -3.85, 0.48, 0.38, deck=0.18, wall=0.92, chine=0.06, belly=0.88),
+        pressure_ring(1.2, 0, -4.85, 0.78, 0.62, deck=0.14, wall=0.94, chine=0.06, belly=0.92),
+        pressure_ring(-4.2, 0, -4.72, 0.70, 0.56, deck=0.14, wall=0.92, chine=0.06, belly=0.90),
+        pressure_ring(-13.2, 0, -3.05, 0.42, 0.30, deck=0.12, wall=0.90, chine=0.06, belly=0.80),
     ], keel, collection, 0.006, cap="both")
     add_folded_sheet(
         "Saddle_CheekP",
-        (1.25, -1.18, -3.95), (-0.55, -1.18, -3.95),
-        (-0.25, -0.32, -2.72), (1.00, -0.32, -2.72),
-        0.055, keel, collection, 0.004,
+        (1.35, -1.22, -5.15), (-0.55, -1.22, -5.15),
+        (-0.25, -0.34, -3.55), (1.05, -0.34, -3.55),
+        0.060, keel, collection, 0.004,
     )
     add_folded_sheet(
         "Saddle_CheekS",
-        (1.25, 1.18, -3.95), (1.00, 0.32, -2.72),
-        (-0.25, 0.32, -2.72), (-0.55, 1.18, -3.95),
-        0.055, keel, collection, 0.004,
+        (1.35, 1.22, -5.15), (1.05, 0.34, -3.55),
+        (-0.25, 0.34, -3.55), (-0.55, 1.22, -5.15),
+        0.060, keel, collection, 0.004,
     )
-    add_box("Saddle_Pad", (0.30, 0.0, -4.05), (0.98, 0.64, 0.075), keel, collection, 0.004)
+    add_box("Saddle_Pad", (0.35, 0.0, -5.28), (1.02, 0.68, 0.080), keel, collection, 0.004)
     add_folded_sheet(
         "Saddle_GussetP",
-        (1.05, -0.32, -2.85), (-0.18, -0.32, -2.85),
-        (-0.62, -0.98, -3.82), (1.32, -0.98, -3.82),
-        0.030, frame, collection, 0.003,
+        (1.10, -0.34, -3.72), (-0.18, -0.34, -3.72),
+        (-0.62, -1.02, -4.95), (1.38, -1.02, -4.95),
+        0.032, frame, collection, 0.003,
     )
     add_folded_sheet(
         "Saddle_GussetS",
-        (1.05, 0.32, -2.85), (1.32, 0.98, -3.82),
-        (-0.62, 0.98, -3.82), (-0.18, 0.32, -2.85),
-        0.030, frame, collection, 0.003,
+        (1.10, 0.34, -3.72), (1.38, 1.02, -4.95),
+        (-0.62, 1.02, -4.95), (-0.18, 0.34, -3.72),
+        0.032, frame, collection, 0.003,
     )
-    add_cylinder("Saddle_Pin", (0.30, 0.0, -3.82), 0.080, 0.32, frame, collection, 10, 0.002, (0, 0, 0))
+    add_cylinder("Saddle_Pin", (0.35, 0.0, -4.95), 0.080, 0.32, frame, collection, 10, 0.002, (0, 0, 0))
     if lod == 0:
-        add_corner_fasteners("Saddle", (0.30, 0.0, -3.92), (0.62, 0.42, 0.025), frame, collection)
+        add_corner_fasteners("Saddle", (0.35, 0.0, -5.12), (0.62, 0.42, 0.025), frame, collection)
 
 
-def gallery_ring(x, y, z, hw, hh):
-    """Octagonal service-gallery section. Walkable pressure corridor, not a fin."""
-    return [
-        (x, y - hw, z + hh * 0.32),
-        (x, y - hw * 0.42, z + hh),
-        (x, y + hw * 0.42, z + hh),
-        (x, y + hw, z + hh * 0.32),
-        (x, y + hw, z - hh * 0.32),
-        (x, y + hw * 0.42, z - hh),
-        (x, y - hw * 0.42, z - hh),
-        (x, y - hw, z - hh * 0.32),
-    ]
-
-
-def add_side_galleries(lod, mats, collection):
-    """Equatorial service galleries rooted into the barrel chine. Load-bearing, glazed."""
-    frame, glass, hull, primer = (
-        mats["Material_Armor"], mats["Material_Canopy"],
-        mats["Material_Hull"], mats["Material_Radiator"],
-    )
-    for tag, sign in (("P", -1.0), ("S", 1.0)):
-        y = sign * 8.72
-        loft_from_rings(f"Gallery_{tag}", [
-            gallery_ring(8.15, y, 0.38, 0.62, 0.78),
-            gallery_ring(4.40, y * 1.018, 0.42, 0.70, 0.88),
-            gallery_ring(1.20, y * 1.035, 0.44, 0.74, 0.92),
-            gallery_ring(-2.40, y * 1.012, 0.40, 0.68, 0.84),
-            gallery_ring(-5.20, y * 0.92, 0.32, 0.52, 0.68),
-        ], hull, collection, 0.008, cap="both")
-        add_box(f"GalleryFrame_{tag}", (1.35, y + sign * 0.68, 0.44), (6.40, 0.055, 1.12), frame, collection, 0.003)
-        add_box(f"GalleryGlass_{tag}", (1.55, y + sign * 0.72, 0.52), (5.85, 0.022, 0.62), glass, collection, 0.001)
-        if lod <= 1:
-            for i in range(4):
-                add_box(
-                    f"GalleryStanchion_{tag}_{i}",
-                    (6.2 - i * 2.55, y + sign * 0.18, 0.38),
-                    (0.08, 0.55, 0.90),
-                    frame, collection, 0.002,
-                )
-        if lod == 0:
-            add_box(f"GalleryPlate_{tag}", (1.35, y + sign * 0.22, -0.42), (2.15, 0.22, 0.06), primer, collection, 0.002)
-
-
-def add_drive_root_fairing(tag, y, mats, collection):
-    """Ceramic shoulder from the tapered aft drum toward the dark drive case. Not a union."""
-    sign = 1.0 if y > 0 else -1.0
+def add_passenger_corridors(lod, mats, collection):
+    """Equatorial inhabited corridor shells. Wall thickness, framed glass, cavity."""
     hull = mats["Material_Hull"]
-    rings = []
-    for x, inner, outer, z0, z1 in (
-        (-10.85, 2.55, 4.15, -0.62, 1.38),
-        (-12.15, 4.85, 6.35, -0.42, 1.18),
-        (-13.20, 6.55, 7.55, -0.22, 0.98),
-    ):
-        rings.append([
-            (x, sign * inner, z0),
-            (x, sign * outer, z0),
-            (x, sign * outer, z1),
-            (x, sign * inner, z1),
-        ])
-    return loft_from_rings(f"DriveFairing_{tag}", rings, hull, collection, 0.010, cap="both")
+    frame = mats["Material_Armor"]
+    glass = mats["Material_Canopy"]
+    mech = mats["Material_Mechanical"]
+    primer = mats["Material_Radiator"]
+    for tag, sign in (("P", -1.0), ("S", 1.0)):
+        y = sign * CORR_Y
+        wall = 0.22
+        loft_hollow(
+            f"Corridor_{tag}",
+            [
+                corridor_ring(10.35, y, 0.42, CORR_HW * 0.92, CORR_HH * 0.92),
+                corridor_ring(6.40, y, 0.48, CORR_HW, CORR_HH),
+                corridor_ring(1.80, y, 0.50, CORR_HW, CORR_HH),
+                corridor_ring(-2.40, y, 0.46, CORR_HW * 0.96, CORR_HH * 0.96),
+                corridor_ring(-5.15, y * 0.94, 0.32, CORR_HW * 0.72, CORR_HH * 0.78),
+            ],
+            [
+                corridor_ring(10.35, y, 0.42, CORR_HW * 0.92 - wall, CORR_HH * 0.92 - wall),
+                corridor_ring(6.40, y, 0.48, CORR_HW - wall, CORR_HH - wall),
+                corridor_ring(1.80, y, 0.50, CORR_HW - wall, CORR_HH - wall),
+                corridor_ring(-2.40, y, 0.46, CORR_HW * 0.96 - wall, CORR_HH * 0.96 - wall),
+                corridor_ring(-5.15, y * 0.94, 0.32, CORR_HW * 0.72 - wall, CORR_HH * 0.78 - wall),
+            ],
+            hull, collection, 0.006, close_front=True,
+        )
+        loft_from_rings(f"CorridorCavity_{tag}", [
+            corridor_ring(9.85, y, 0.42, CORR_HW - wall - 0.08, CORR_HH - wall - 0.08),
+            corridor_ring(1.80, y, 0.48, CORR_HW - wall - 0.08, CORR_HH - wall - 0.08),
+            corridor_ring(-4.55, y * 0.95, 0.36, CORR_HW * 0.70 - wall, CORR_HH * 0.72 - wall),
+        ], mech, collection, 0.002, cap="both")
+        add_box(f"CorrLongeronTop_{tag}", (2.55, y + sign * 0.08, 0.42 + CORR_HH + 0.07), (7.35, 0.10, 0.045), frame, collection, 0.003)
+        add_box(f"CorrLongeronBot_{tag}", (2.55, y + sign * 0.15, 0.42 - CORR_HH - 0.04), (7.35, 0.16, 0.07), frame, collection, 0.003)
+        add_box(
+            f"CorrClerestory_{tag}",
+            (2.55, y + sign * (CORR_HW * 0.42), 0.42 + CORR_HH + 0.01),
+            (6.55, 0.48, 0.035),
+            glass, collection, 0.001,
+        )
+        if lod <= 1:
+            for i, mx in enumerate((6.4, 3.6, 0.8, -1.8)):
+                add_box(
+                    f"CorrClereMull_{tag}_{i}",
+                    (mx, y + sign * (CORR_HW * 0.42), 0.42 + CORR_HH + 0.03),
+                    (0.07, 0.42, 0.055),
+                    frame, collection, 0.001,
+                )
+        add_box(f"CorrReturnFore_{tag}", (10.15, y - sign * 0.15, 0.42), (0.22, 1.15, 1.22), frame, collection, 0.004)
+        add_box(f"CorrReturnAft_{tag}", (-4.85, y * 0.94 - sign * 0.10, 0.34), (0.22, 0.95, 1.05), frame, collection, 0.004)
+        add_folded_sheet(
+            f"CorrRoot_{tag}",
+            (9.6, sign * (MID_HW - 0.12), 0.85),
+            (-4.2, sign * (MID_HW - 0.18), 0.55),
+            (-4.2, sign * (MID_HW + 0.55), 0.15),
+            (9.6, sign * (MID_HW + 0.55), 0.15),
+            0.14, frame, collection, 0.004,
+        )
+        pane_xs = (8.55, 6.35, 4.15, 1.95, -0.25, -2.35)
+        door_index = 2 if sign < 0 else 4
+        for i, px in enumerate(pane_xs):
+            if lod >= 2:
+                break
+            if i == door_index:
+                add_box(f"CorrDoor_{tag}", (px, y + sign * (CORR_HW + 0.02), 0.22), (0.72, 0.08, 1.05), frame, collection, 0.003)
+                add_box(f"CorrDoorLite_{tag}", (px, y + sign * (CORR_HW + 0.06), 0.55), (0.32, 0.03, 0.28), glass, collection, 0.001)
+                continue
+            add_box(f"CorrGlass_{tag}_{i}", (px, y + sign * (CORR_HW + 0.04), 0.58), (0.92, 0.035, 0.58), glass, collection, 0.001)
+            add_box(f"CorrMull_{tag}_{i}", (px + 0.98, y + sign * (CORR_HW + 0.02), 0.48), (0.08, 0.10, 0.95), frame, collection, 0.002)
+        add_box(f"CorrSill_{tag}", (2.55, y + sign * (CORR_HW + 0.02), 0.42 - 0.22), (7.15, 0.08, 0.08), frame, collection, 0.002)
+        add_box(f"CorrHead_{tag}", (2.55, y + sign * (CORR_HW + 0.02), 0.42 + 0.95), (7.15, 0.08, 0.08), frame, collection, 0.002)
+        if lod == 0:
+            add_box(f"CorrPlate_{tag}", (3.15, y + sign * 0.15, 0.42 - CORR_HH - 0.16), (1.85, 0.22, 0.05), primer, collection, 0.002)
 
 
-def add_drive_saddles(tag, y, lod, mats, collection):
-    """Load-bearing drive saddles and struts. Negative space between spine and case."""
+def add_drive_boom(tag, y, mats, collection):
+    """Tapered load-bearing boom from aft load ring into the drive saddle."""
+    frame = mats["Material_Armor"]
+    sign = 1.0 if y > 0 else -1.0
+    z = DRIVE_Z
+    loft_from_rings(f"DriveBoom_{tag}", [
+        [
+            (-11.85, sign * 3.15, 1.35), (-11.85, sign * 4.55, 1.35),
+            (-11.85, sign * 4.55, -0.55), (-11.85, sign * 3.15, -0.55),
+        ],
+        [
+            (-14.35, y - sign * 1.05, z + 0.95), (-14.35, y + sign * 0.22, z + 0.95),
+            (-14.35, y + sign * 0.22, z - 0.85), (-14.35, y - sign * 1.05, z - 0.85),
+        ],
+        [
+            (-16.55, y - sign * 0.72, z + 0.72), (-16.55, y + sign * 0.18, z + 0.72),
+            (-16.55, y + sign * 0.18, z - 0.62), (-16.55, y - sign * 0.72, z - 0.62),
+        ],
+    ], frame, collection, 0.008, cap="both")
+    add_folded_sheet(
+        f"DriveGusset_{tag}",
+        (-11.55, sign * 2.85, 1.55), (-11.55, sign * 3.35, -0.75),
+        (-13.05, y - sign * 0.85, z - 0.55), (-13.05, y - sign * 0.85, z + 0.75),
+        0.070, frame, collection, 0.004,
+    )
+    add_box(f"DriveShoe_{tag}", (-11.95, sign * 3.55, 0.35), (0.55, 0.62, 0.85), frame, collection, 0.004)
+
+
+def add_drive_saddle(tag, y, lod, mats, collection):
+    """Dark forged cheek wrapping the case. No stay-cables, no pale slabs."""
     frame, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     sign = 1.0 if y > 0 else -1.0
     z = DRIVE_Z
-    add_folded_sheet(
-        f"DriveStrutUpper_{tag}",
-        (-10.85, sign * 2.55, 1.15), (-12.40, y - sign * 0.85, z + 0.92),
-        (-13.10, y - sign * 0.55, z + 0.55), (-11.20, sign * 2.20, 0.62),
-        0.085, frame, collection, 0.004,
-    )
-    add_folded_sheet(
-        f"DriveStrutLower_{tag}",
-        (-10.85, sign * 2.40, -0.55), (-11.20, sign * 2.05, -0.12),
-        (-13.10, y - sign * 0.55, z - 0.72), (-12.40, y - sign * 0.85, z - 0.95),
-        0.085, frame, collection, 0.004,
-    )
-    add_box(f"DriveSaddle_{tag}", (-12.55, y - sign * 0.95, z), (1.35, 0.55, 0.72), mech, collection, 0.005)
-    add_box(f"DriveShoe_{tag}", (-13.05, y, z - 1.22), (0.95, 0.48, 0.20), frame, collection, 0.003)
+    loft_from_rings(f"DriveCheek_{tag}", [
+        [
+            (-15.85, y - sign * 1.35, z + 1.15), (-15.85, y + sign * 0.35, z + 1.05),
+            (-15.85, y + sign * 0.35, z - 0.95), (-15.85, y - sign * 1.35, z - 1.05),
+        ],
+        [
+            (-17.55, y - sign * 1.15, z + 1.05), (-17.55, y + sign * 0.28, z + 0.95),
+            (-17.55, y + sign * 0.28, z - 0.85), (-17.55, y - sign * 1.15, z - 0.95),
+        ],
+    ], mech, collection, 0.006, cap="both")
+    add_box(f"DriveClampBar_{tag}", (-16.65, y - sign * 0.15, z + 1.18), (1.15, 0.22, 0.12), frame, collection, 0.003)
     if lod == 0:
-        add_service_pipe(
-            f"DriveLine_{tag}",
-            (-10.4, sign * 0.28, 1.95),
-            (-14.35, y, z + 0.92),
-            mech, collection, 0.030,
-        )
-        add_cylinder(f"DriveFitting_{tag}", (-14.35, y, z + 0.92), 0.048, 0.08, mech, collection, 8, 0.001, (0, 0, 0))
+        add_box(f"DriveClampBolt_{tag}", (-16.15, y - sign * 0.15, z + 1.28), (0.06, 0.05, 0.05), mech, collection, 0.001)
+
+
+def add_rooted_vane(name, origin, material, collection, angle, inner=0.42, outer=0.92):
+    """Stator blade with a root shoe at the liner. Not a pizza slice."""
+    cx, cy, cz = origin
+    ca, sa = math.cos(angle), math.sin(angle)
+
+    def p(x, r, v):
+        return (cx + x, cy + ca * r - sa * v, cz + sa * r + ca * v)
+
+    ht, tt = 0.032, 0.016
+    verts = [
+        p(0.04, inner, -ht), p(0.04, inner, ht), p(0.04, outer, ht), p(0.04, outer, -ht),
+        p(-0.52, inner * 1.05, -tt), p(-0.52, inner * 1.05, tt),
+        p(-0.48, outer * 0.94, tt), p(-0.48, outer * 0.94, -tt),
+        p(0.10, outer + 0.05, -ht * 1.35), p(0.10, outer + 0.05, ht * 1.35),
+        p(-0.12, outer + 0.05, ht * 1.35), p(-0.12, outer + 0.05, -ht * 1.35),
+    ]
+    faces = [
+        (0, 1, 2, 3), (4, 7, 6, 5),
+        (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0),
+        (2, 9, 8, 3), (8, 9, 10, 11),
+        (2, 3, 11, 10), (3, 8, 11, 2),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    return finish_mesh(obj, material, bevel=0.003)
 
 
 def add_civic_drive(tag, y, lod, mats, collection):
-    """Open-aft manufactured case with a real cavity. Never a capped disc. Never unioned into the drum."""
-    frame, mech = mats["Material_Armor"], mats["Material_Mechanical"]
-    refractory, core = mats["Material_Ceramic"], mats["Material_Accent"]
+    """Manufactured hollow case, spun refractory bell, rooted vanes. No tan lid."""
+    frame = mats["Material_Armor"]
+    mech = mats["Material_Mechanical"]
+    refractory = mats["Material_Ceramic"]
     throat = mats["Material_Thruster"]
+    core = mats["Material_Accent"]
     z = DRIVE_Z
-    sides = 10
-    x0, x1, x2, x3, x4 = -11.85, -13.45, -15.25, -16.95, -18.50
-    r0, r1, r2, r3, r4 = DRIVE_R_FORE, 1.48, 1.32, 1.18, DRIVE_R_AFT
+    x0, x1, x2, x3, x4 = -14.65, -16.15, -17.75, -19.25, -20.85
     case = loft_hollow(
         f"Boom_{tag}",
         [
-            regular_ring(x0, y, z, r0, sides),
-            regular_ring(x1, y, z, r1, sides),
-            regular_ring(x2, y, z, r2, sides),
-            regular_ring(x3, y, z, r3, sides),
-            regular_ring(x4, y, z, r4, sides),
+            drive_case_ring(x0, y, z, DRIVE_R_FORE, DRIVE_R_FORE * 0.90, 8),
+            drive_case_ring(x1, y, z, 1.32, 1.18, 8),
+            drive_case_ring(x2, y, z, 1.22, 1.10, 8),
+            drive_case_ring(x3, y, z, 1.14, 1.04, 8),
+            drive_case_ring(x4, y, z, DRIVE_R_AFT, DRIVE_R_AFT * 0.92, 8),
         ],
         [
-            regular_ring(x0, y, z, r0 - 0.52, sides),
-            regular_ring(x1, y, z, r1 - 0.46, sides),
-            regular_ring(x2, y, z, r2 - 0.38, sides),
-            regular_ring(x3, y, z, r3 - 0.32, sides),
-            regular_ring(x4, y, z, r4 - 0.30, sides),
+            drive_case_ring(x0, y, z, DRIVE_R_FORE - 0.38, DRIVE_R_FORE * 0.90 - 0.34, 8),
+            drive_case_ring(x1, y, z, 0.92, 0.82, 8),
+            drive_case_ring(x2, y, z, 0.86, 0.78, 8),
+            drive_case_ring(x3, y, z, 0.80, 0.72, 8),
+            drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.28, DRIVE_R_AFT * 0.92 - 0.26, 8),
         ],
-        frame, collection, 0.010, close_front=True,
+        frame, collection, 0.008, close_front=True,
     )
     loft_hollow(
         f"Liner_{tag}",
         [
-            regular_ring(-14.75, y, z, 0.92, 12),
-            regular_ring(-16.45, y, z, 0.84, 12),
-            regular_ring(-18.25, y, z, 0.76, 12),
+            regular_ring(-16.85, y, z, 0.86, 10),
+            regular_ring(-18.55, y, z, 0.80, 10),
+            regular_ring(-20.55, y, z, 0.94, 10),
         ],
         [
-            regular_ring(-14.75, y, z, 0.66, 12),
-            regular_ring(-16.45, y, z, 0.56, 12),
-            regular_ring(-18.25, y, z, 0.50, 12),
+            regular_ring(-16.85, y, z, 0.62, 10),
+            regular_ring(-18.55, y, z, 0.54, 10),
+            regular_ring(-20.55, y, z, 0.70, 10),
         ],
         refractory, collection, 0.003, close_front=True,
     )
     loft_hollow(
-        f"Collar_{tag}",
+        f"Rim_{tag}",
         [
-            regular_ring(-18.15, y, z, 1.18, 12),
-            regular_ring(-18.65, y, z, 1.26, 12),
+            regular_ring(-20.45, y, z, 1.12, 10),
+            regular_ring(-20.72, y, z, 1.18, 10),
         ],
         [
-            regular_ring(-18.15, y, z, 0.80, 12),
-            regular_ring(-18.65, y, z, 0.82, 12),
+            regular_ring(-20.45, y, z, 0.78, 10),
+            regular_ring(-20.72, y, z, 0.82, 10),
         ],
-        refractory, collection, 0.004, close_front=False,
+        mech, collection, 0.003, close_front=False,
     )
-    loft_hollow(
-        f"Flange_{tag}",
-        [
-            regular_ring(-13.55, y, z, 1.58, 12),
-            regular_ring(-13.92, y, z, 1.68, 12),
-        ],
-        [
-            regular_ring(-13.55, y, z, 1.08, 12),
-            regular_ring(-13.92, y, z, 1.10, 12),
-        ],
-        mech, collection, 0.005, close_front=False,
-    )
-    add_cylinder(f"ThroatFloor_{tag}", (-14.65, y, z), 0.58, 0.10, throat, collection, 12, 0.002)
-    add_cylinder(f"Hub_{tag}", (-16.05, y, z), 0.20, 0.55, throat, collection, 12, 0.002)
-    add_cylinder(f"Core_{tag}", (-15.85, y, z), 0.08, 0.14, core, collection, 12, 0.001)
-    add_drive_saddles(tag, y, lod, mats, collection)
+    add_cylinder(f"ThroatFloor_{tag}", (-16.95, y, z), 0.52, 0.10, throat, collection, 10, 0.002)
+    add_cylinder(f"Hub_{tag}", (-18.35, y, z), 0.18, 0.48, throat, collection, 10, 0.002)
+    add_cylinder(f"Core_{tag}", (-18.15, y, z), 0.07, 0.12, core, collection, 10, 0.001)
+    add_drive_boom(tag, y, mats, collection)
+    add_drive_saddle(tag, y, lod, mats, collection)
     if lod <= 1:
-        for index in range(8):
-            ang = math.tau * index / 8
+        for index in range(6):
+            ang = math.tau * index / 6
             add_box(
                 f"Clamp_{tag}_{index}",
-                (-13.75, y + math.cos(ang) * 1.52, z + math.sin(ang) * 1.52),
-                (0.070, 0.048, 0.034),
+                (-16.35, y + math.cos(ang) * 1.28, z + math.sin(ang) * 1.14),
+                (0.080, 0.055, 0.040),
                 mech, collection, 0.002, (0, 0, ang),
             )
     if lod == 0:
-        for index in range(10):
-            add_tapered_vane(
-                f"Vane_{tag}_{index}", (-18.05, y, z), refractory, collection,
-                math.tau * index / 10, scale=1.95,
+        for index in range(6):
+            add_rooted_vane(
+                f"Vane_{tag}_{index}", (-19.85, y, z), refractory, collection,
+                math.tau * index / 6, inner=0.36, outer=0.78,
             )
     return case
 
@@ -898,19 +959,19 @@ def add_dock_hardware(tag, loc, mats, collection, lod, cyan=True):
 
 def sockets():
     return {
-        "SOCKET_Weapon_Front": (15.25, 0.0, 0.42),
-        "SOCKET_Engine_Main": (-17.85, 0.0, DRIVE_Z),
-        "SOCKET_Trail_Main": (-18.65, 0.0, DRIVE_Z),
-        "SOCKET_Trail_Port": (-18.65, -DRIVE_Y, DRIVE_Z),
-        "SOCKET_Trail_Starboard": (-18.65, DRIVE_Y, DRIVE_Z),
-        "SOCKET_Utility_Dorsal": (0.4, 0.0, 4.35),
-        "SOCKET_Cargo_Ventral": (0.30, 0.0, -4.05),
-        "SOCKET_Camera_Focus": (0.4, 0.0, 0.35),
-        "SOCKET_RCS_Port": (8.8, -8.55, 0.85),
-        "SOCKET_RCS_Starboard": (8.8, 8.55, 0.85),
-        "SOCKET_Dock_Port": (3.40, -9.35, 0.38),
-        "SOCKET_Service_Starboard": (-1.80, 9.20, 0.38),
-        "SOCKET_Tether_Keel": (0.30, 0.0, -4.05),
+        "SOCKET_Weapon_Front": (17.85, 0.0, 0.55),
+        "SOCKET_Engine_Main": (-20.15, 0.0, DRIVE_Z),
+        "SOCKET_Trail_Main": (-20.85, 0.0, DRIVE_Z),
+        "SOCKET_Trail_Port": (-20.85, -DRIVE_Y, DRIVE_Z),
+        "SOCKET_Trail_Starboard": (-20.85, DRIVE_Y, DRIVE_Z),
+        "SOCKET_Utility_Dorsal": (4.4, 0.0, 5.55),
+        "SOCKET_Cargo_Ventral": (0.35, 0.0, -5.28),
+        "SOCKET_Camera_Focus": (0.4, 0.0, 0.45),
+        "SOCKET_RCS_Port": (8.8, -(CORR_Y + 0.15), 0.85),
+        "SOCKET_RCS_Starboard": (8.8, CORR_Y + 0.15, 0.85),
+        "SOCKET_Dock_Port": (3.40, -(CORR_Y + CORR_HW + 0.08), 0.42),
+        "SOCKET_Service_Starboard": (-1.80, CORR_Y + CORR_HW + 0.08, 0.42),
+        "SOCKET_Tether_Keel": (0.35, 0.0, -5.28),
     }
 
 
@@ -925,7 +986,7 @@ def shade_and_uv(obj):
             poly.use_smooth = True
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.014, scale_to_bounds=True)
+    bpy.ops.uv.smart_project(angle_limit=62.0, island_margin=0.022, scale_to_bounds=True)
     bpy.ops.object.mode_set(mode="OBJECT")
     if "UV1" in obj.data.uv_layers:
         obj.data.uv_layers.remove(obj.data.uv_layers["UV1"])
@@ -937,29 +998,32 @@ def shade_and_uv(obj):
 
 
 def drum_stations(lod):
-    """Stepped civic barrel. Three longitudinal beats; mid is not a scaled bow.
+    """Three manufactured beats: boarding bow, parallel octagonal span, drive taper.
 
-    Beat 1 bow/boarding, beat 2 parallel passenger barrel, beat 3 transfer/drive
-    root. Wider than Cycle 29 by manufactured section, not a non-uniform scale.
+    Mid stations are copies of the occupied section, not a scaled bow. Shoulder
+    and load-ring steps are abrupt so clay reads stations instead of an egg.
     """
+    mid = dict(deck=0.80, wall=0.86, chine=0.10, belly=0.42)
     if lod >= 2:
         return [
-            civic_pressure_ring(16.45, 0, 0.12, 1.15, 0.82, crown=0.10, wall=0.16, belly=0.12),
-            civic_pressure_ring(11.55, 0, 0.26, 5.85, 2.55, crown=0.78, wall=0.55, belly=0.32),
-            civic_pressure_ring(1.35, 0, 0.38, MID_HW, MID_HH, crown=0.96, wall=0.92, belly=0.58),
-            civic_pressure_ring(-7.10, 0, 0.24, 5.40, 2.45, crown=0.42, wall=0.78, belly=0.32),
-            civic_pressure_ring(-14.20, 0, 0.16, 2.25, 1.22, crown=0.14, wall=0.62, belly=0.12),
+            pressure_ring(19.45, 0, 0.22, 1.25, 1.65, deck=0.22, wall=0.28, chine=0.06, belly=0.18),
+            pressure_ring(15.85, 0, 0.42, 5.15, 3.55, deck=0.58, wall=0.62, chine=0.10, belly=0.28),
+            pressure_ring(4.20, 0, 0.38, MID_HW, MID_HH, **mid),
+            pressure_ring(-8.85, 0, 0.22, 5.05, 3.05, deck=0.42, wall=0.68, chine=0.10, belly=0.28),
+            pressure_ring(-16.35, 0, 0.12, 2.15, 1.35, deck=0.22, wall=0.48, chine=0.08, belly=0.16),
         ]
     return [
-        civic_pressure_ring(16.45, 0, 0.10, 1.05, 0.78, crown=0.06, wall=0.12, belly=0.10),
-        civic_pressure_ring(14.55, 0, 0.16, 2.35, 1.35, crown=0.22, wall=0.28, belly=0.16),
-        civic_pressure_ring(11.55, 0, 0.26, 5.85, 2.55, crown=0.78, wall=0.55, belly=0.32),
-        civic_pressure_ring(7.40, 0, 0.32, 7.55, 3.25, crown=0.88, wall=0.84, belly=0.48),
-        civic_pressure_ring(1.35, 0, 0.38, MID_HW, MID_HH, crown=0.96, wall=0.92, belly=0.58),
-        civic_pressure_ring(-3.10, 0, 0.32, 7.45, 3.20, crown=0.72, wall=0.86, belly=0.50),
-        civic_pressure_ring(-7.10, 0, 0.24, 5.40, 2.45, crown=0.42, wall=0.78, belly=0.32),
-        civic_pressure_ring(-11.20, 0, 0.18, 3.15, 1.65, crown=0.22, wall=0.68, belly=0.18),
-        civic_pressure_ring(-14.20, 0, 0.14, 2.25, 1.22, crown=0.14, wall=0.62, belly=0.12),
+        pressure_ring(19.55, 0, 0.18, 1.18, 1.58, deck=0.20, wall=0.26, chine=0.05, belly=0.16),
+        pressure_ring(17.65, 0, 0.28, 2.65, 2.45, deck=0.38, wall=0.42, chine=0.08, belly=0.20),
+        pressure_ring(15.85, 0, 0.38, 4.85, 3.45, deck=0.55, wall=0.58, chine=0.10, belly=0.26),
+        pressure_ring(12.35, 0, 0.42, 6.55, 4.25, deck=0.70, wall=0.74, chine=0.10, belly=0.34),
+        pressure_ring(10.15, 0, 0.38, MID_HW, MID_HH, **mid),
+        pressure_ring(4.20, 0, 0.38, MID_HW, MID_HH, **mid),
+        pressure_ring(-1.55, 0, 0.38, MID_HW, MID_HH, **mid),
+        pressure_ring(-5.45, 0, 0.30, 6.55, 4.05, deck=0.68, wall=0.78, chine=0.10, belly=0.36),
+        pressure_ring(-9.35, 0, 0.22, 4.85, 2.95, deck=0.45, wall=0.66, chine=0.10, belly=0.28),
+        pressure_ring(-13.05, 0, 0.16, 3.25, 1.95, deck=0.32, wall=0.56, chine=0.08, belly=0.20),
+        pressure_ring(-16.55, 0, 0.12, 2.15, 1.32, deck=0.22, wall=0.48, chine=0.08, belly=0.16),
     ]
 
 
@@ -985,7 +1049,7 @@ def inflate_mesh(obj, distance):
 def raise_high_source(obj):
     """Genuinely higher than the game mesh: tighter bevels and extra panel steps."""
     try:
-        inset_large_faces(obj, thickness=0.022, depth=0.010, min_area=0.28)
+        inset_large_faces(obj, thickness=0.028, depth=0.014, min_area=0.22)
     except Exception as exc:
         print(f"high inset skip {obj.name}: {exc}")
     mod = obj.modifiers.new("HighBevel", "BEVEL")
@@ -1080,41 +1144,91 @@ def bake_curvature(high, low, cage, img):
             high.material_slots[0].material = backup[0]
 
 
+def sanitize_normal_pixels(pixels, size):
+    out = list(pixels)
+    count = size * size
+    for i in range(count):
+        r = out[i * 4]
+        g = out[i * 4 + 1]
+        b = out[i * 4 + 2]
+        if b < 0.55 or r < 0.08 or r > 0.92 or g < 0.08 or g > 0.92:
+            out[i * 4] = 0.5
+            out[i * 4 + 1] = 0.5
+            out[i * 4 + 2] = 1.0
+    return out
+
+
 def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
     ao = list(ao_img.pixels) if ao_img else []
     curv = list(curv_img.pixels) if curv_img else []
-    nrm = list(nrm_img.pixels) if nrm_img else []
+    nrm = sanitize_normal_pixels(list(nrm_img.pixels), size) if nrm_img else []
     albedo, orm = [], []
     br, bg, bb = rgb
     metal_base = {
-        "ceramic": 0.03, "frame": 0.88, "keel": 0.92, "primer": 0.16,
-        "refractory": 0.04, "glass": 0.02, "cyan": 0.06, "amber": 0.04, "throat": 0.70,
+        "ceramic": 0.03, "frame": 0.90, "keel": 0.93, "primer": 0.16,
+        "refractory": 0.05, "glass": 0.02, "cyan": 0.06, "amber": 0.04, "throat": 0.62,
     }.get(role, 0.12)
     rough_base = {
-        "ceramic": 0.48, "frame": 0.32, "keel": 0.28, "primer": 0.58,
-        "refractory": 0.66, "glass": 0.08, "cyan": 0.22, "amber": 0.36, "throat": 0.42,
+        "ceramic": 0.46, "frame": 0.28, "keel": 0.26, "primer": 0.58,
+        "refractory": 0.70, "glass": 0.07, "cyan": 0.22, "amber": 0.36, "throat": 0.40,
     }.get(role, 0.45)
     count = size * size
     for i in range(count):
         a = ao[i * 4] if ao else 0.85
-        if role in ("glass", "cyan", "amber"):
-            a = max(0.55, a)
-        elif role == "refractory":
-            a = max(0.32, a)
-        elif role == "throat":
-            a = max(0.28, a)
         c = curv[i * 4] if curv else 0.5
-        cavity = max(0.0, 0.45 - c) * 2.0
-        edge = max(0.0, c - 0.62) * 2.2
-        r = max(0, min(1, br * (0.55 + 0.45 * a) * (1.0 - cavity * 0.22) + edge * 0.08))
-        g = max(0, min(1, bg * (0.55 + 0.45 * a) * (1.0 - cavity * 0.18) + edge * 0.06))
-        b = max(0, min(1, bb * (0.55 + 0.45 * a) * (1.0 - cavity * 0.14) + edge * 0.04))
-        rough = max(0.05, min(0.94, rough_base + cavity * 0.16 - edge * 0.10))
-        metal = max(0.0, min(1.0, metal_base + edge * (0.55 if role == "ceramic" else 0.08)))
+        cavity = max(0.0, 0.48 - c) * 2.1
+        edge = max(0.0, c - 0.60) * 2.0
+        x = i % size
+        y = i // size
+        u = x / max(1, size - 1)
+        gf = h01(x, y, 19)
+        if role == "glass":
+            a = max(0.72, a)
+            r = br * (0.90 + 0.08 * a)
+            g = bg * (0.92 + 0.06 * a)
+            b = bb * (0.94 + 0.05 * a)
+            rough = 0.07 + cavity * 0.04
+            metal = 0.02
+        elif role == "ceramic":
+            a = max(0.42, a)
+            shade = 0.70 + 0.30 * a
+            r = max(0, min(1, br * shade * (1.0 - cavity * 0.18) + edge * 0.05 + (gf - 0.5) * 0.03))
+            g = max(0, min(1, bg * shade * (1.0 - cavity * 0.14) + edge * 0.03 + (gf - 0.5) * 0.02))
+            b = max(0, min(1, bb * shade * (1.0 - cavity * 0.10) + edge * 0.02))
+            rough = max(0.32, min(0.62, rough_base + cavity * 0.14 - edge * 0.08 + (0.5 - a) * 0.08))
+            metal = metal_base + edge * 0.12
+        elif role == "frame":
+            a = max(0.28, a)
+            shade = 0.55 + 0.45 * a
+            r = max(0, min(1, br * shade * (1.0 - cavity * 0.22)))
+            g = max(0, min(1, bg * shade * (1.0 - cavity * 0.18)))
+            b = max(0, min(1, bb * shade * (1.0 - cavity * 0.14)))
+            rough = max(0.16, min(0.48, rough_base + cavity * 0.14 - edge * 0.08))
+            metal = min(1.0, metal_base + edge * 0.06)
+        elif role == "refractory":
+            a = max(0.28, a)
+            heat = max(0.0, 0.65 - u) * 0.40
+            r = max(0, min(1, br * (0.55 + 0.45 * a) + heat * 0.28 + cavity * 0.04))
+            g = max(0, min(1, bg * (0.50 + 0.45 * a) + heat * 0.06))
+            b = max(0, min(1, bb * (0.48 + 0.40 * a) - heat * 0.08))
+            rough = max(0.52, min(0.86, rough_base + cavity * 0.10 - heat * 0.08))
+            metal = metal_base + heat * 0.08
+        elif role == "throat":
+            a = max(0.22, a)
+            r = max(0, min(1, br * (0.45 + 0.55 * a)))
+            g = max(0, min(1, bg * (0.45 + 0.55 * a)))
+            b = max(0, min(1, bb * (0.45 + 0.55 * a)))
+            rough = max(0.28, min(0.62, rough_base + cavity * 0.12))
+            metal = metal_base
+        else:
+            a = max(0.30, a)
+            r = max(0, min(1, br * (0.58 + 0.42 * a) * (1.0 - cavity * 0.16)))
+            g = max(0, min(1, bg * (0.58 + 0.42 * a) * (1.0 - cavity * 0.14)))
+            b = max(0, min(1, bb * (0.58 + 0.42 * a) * (1.0 - cavity * 0.12)))
+            rough = max(0.08, min(0.90, rough_base + cavity * 0.14 - edge * 0.08))
+            metal = metal_base
         albedo.extend((r, g, b, 1.0))
-        orm.extend((max(0.12, min(1.0, a)), rough, metal, 1.0))
-        if not nrm:
-            continue
+        orm.extend((max(0.12, min(1.0, a)), max(0.05, min(0.94, rough)), max(0.0, min(1.0, metal)), 1.0))
     base = write_pixels(f"liner_{prefix}_{size}_basecolor", albedo, size, "sRGB")
     orm_img = write_pixels(f"liner_{prefix}_{size}_orm", orm, size, "Non-Color")
     if nrm:
@@ -1128,18 +1242,24 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
     return base, orm_img, nrm_out
 
 
-def extra_high_bolts(low, collection, material):
+def extra_high_meso(low, collection, material):
+    """Meso construction for the bake high, not random corner bolts."""
     extras = []
+    name = low.name.lower()
     bbox = [Vector(c) for c in low.bound_box]
     center = sum(bbox, Vector((0, 0, 0))) / 8.0
-    size = (max(v.x for v in bbox) - min(v.x for v in bbox),
-            max(v.y for v in bbox) - min(v.y for v in bbox),
-            max(v.z for v in bbox) - min(v.z for v in bbox))
+    size = (
+        max(v.x for v in bbox) - min(v.x for v in bbox),
+        max(v.y for v in bbox) - min(v.y for v in bbox),
+        max(v.z for v in bbox) - min(v.z for v in bbox),
+    )
     world = low.matrix_world @ center
-    for i, (ox, oy) in enumerate(((-0.32, -0.28), (-0.32, 0.28), (0.32, -0.28), (0.32, 0.28))):
-        loc = (world.x + ox * size[0], world.y + oy * size[1], world.z + size[2] * 0.42)
-        extras.append(add_cylinder(
-            f"{low.name}_HighBolt_{i}", loc, 0.012, 0.018, material, collection, 6, 0.0, (0, 0, 0),
+    if "hull" in name or "armor" in name:
+        extras.append(add_box(
+            f"{low.name}_HighSeam",
+            (world.x, world.y, world.z + size[2] * 0.18),
+            (max(0.18, size[0] * 0.22), 0.018, 0.012),
+            material, collection, 0.0,
         ))
     return extras
 
@@ -1166,7 +1286,7 @@ def bake_lod0_unique(merged, collection, mats):
         prefix = f"lod0_{key.lower()}"
         high = duplicate_object(obj, f"{obj.name}_HIGH", collection)
         raise_high_source(high)
-        extras = extra_high_bolts(high, collection, material)
+        extras = extra_high_meso(high, collection, material)
         if extras:
             bpy.ops.object.select_all(action="DESELECT")
             for extra in extras:
@@ -1198,7 +1318,7 @@ def bake_lod0_unique(merged, collection, mats):
                 for node in list(obj.data.materials[0].node_tree.nodes):
                     if node.type != "OUTPUT_MATERIAL" and node != bsdf:
                         obj.data.materials[0].node_tree.nodes.remove(node)
-            coat = 0.18 if key == "Hull" else (0.22 if key == "Canopy" else 0.04 if key == "Armor" else 0.0)
+            coat = 0.06 if key == "Hull" else (0.38 if key == "Canopy" else 0.04 if key == "Armor" else 0.0)
             wire_maps(obj.data.materials[0], bsdf, maps, coat=coat)
             report["baked"].append(obj.name)
             print(f"baked {obj.name} size={size}")
@@ -1226,49 +1346,31 @@ def build_lod(lod, mats):
     }
     hull_obj = loft_from_rings("Pressure_Drum", drum_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
     if lod <= 1:
-        add_ops_wedge(hull_obj, mats, collection)
-        add_boarding_well(hull_obj, lod, mats, collection)
-        add_observation_belt(hull_obj, lod, mats, collection)
-        try_cut_bay(hull_obj, "PortDock", (3.40, -7.85, 0.28), 2.95, 1.72, 0.68, (0, -1, 0), mats, collection, "empty")
-        try_cut_bay(hull_obj, "StbdService", (-1.80, 7.65, 0.28), 2.65, 1.58, 0.64, (0, 1, 0), mats, collection, "empty")
-        add_dock_hardware("Port", (3.40, -9.22, 0.38), mats, collection, lod, cyan=True)
-        add_dock_hardware("Stbd", (-1.80, 9.08, 0.38), mats, collection, lod, cyan=False)
+        add_boarding_vestibule(hull_obj, lod, mats, collection)
+        add_boarding_necks(lod, mats, collection)
+        try_cut_bay(hull_obj, "PortDock", (3.40, -MID_HW + 0.35, 0.28), 2.35, 1.15, 0.55, (0, -1, 0), mats, collection, "empty")
+        try_cut_bay(hull_obj, "StbdService", (-1.80, MID_HW - 0.35, 0.28), 2.15, 1.05, 0.52, (0, 1, 0), mats, collection, "empty")
+        add_dock_hardware("Port", (3.40, -(CORR_Y + CORR_HW + 0.06), 0.42), mats, collection, lod, cyan=True)
+        add_dock_hardware("Stbd", (-1.80, CORR_Y + CORR_HW + 0.06, 0.42), mats, collection, lod, cyan=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull_mat)
         add_dorsal_spine(lod, mats, collection)
-        add_side_galleries(lod, mats, collection)
-        add_bulkhead_collar("Collar_Shoulder", 7.40, 7.55, 3.25, mats, collection, 0.88, 0.84, 0.48)
-        add_bulkhead_collar("Collar_Waist", -3.10, 7.45, 3.20, mats, collection, 0.72, 0.86, 0.50)
-        add_bulkhead_collar("Collar_Drive", -11.20, 3.15, 1.65, mats, collection, 0.22, 0.68, 0.18)
+        add_passenger_corridors(lod, mats, collection)
+        add_bulkhead_collar("Collar_Shoulder", 10.15, MID_HW, MID_HH, mats, collection, 0.80, 0.86, 0.10, 0.42)
+        add_bulkhead_collar("Collar_Waist", -1.55, MID_HW, MID_HH, mats, collection, 0.80, 0.86, 0.10, 0.42)
+        add_bulkhead_collar("Collar_Drive", -13.05, 3.25, 1.95, mats, collection, 0.32, 0.56, 0.08, 0.20)
         try:
-            boolean_cut_box(hull_obj, "RadFore", (1.70, 0.0, 3.55), (1.35, 0.62, 0.22))
-        except Exception as exc:
-            print(f"rad fore skip: {exc}")
-        try:
-            boolean_cut_box(hull_obj, "RadAft", (-4.60, 0.0, 3.18), (1.22, 0.54, 0.20))
-        except Exception as exc:
-            print(f"rad aft skip: {exc}")
-        rad = mats["Material_Radiator"]
-        for i in range(5):
-            add_box(f"RadFin_Fore_{i}", (0.70 + i * 0.50, 0.0, 3.42), (0.016, 0.44, 0.12), rad, collection, 0.001)
-            add_box(f"RadFin_Aft_{i}", (-5.35 + i * 0.42, 0.0, 3.02), (0.014, 0.38, 0.10), rad, collection, 0.001)
-        try:
-            inset_large_faces(hull_obj, thickness=0.085, depth=0.024, min_area=2.4)
+            inset_large_faces(hull_obj, thickness=0.070, depth=0.018, min_area=2.8)
         except Exception as exc:
             print(f"inset skip: {exc}")
+    else:
+        add_passenger_corridors(lod, mats, collection)
+        add_box("NoseCap", (19.62, 0.0, 0.35), (0.16, 0.85, 0.62), hull_mat, collection, 0.003)
     add_service_cassette(lod, mats, collection)
     add_keel_and_saddle(lod, mats, collection)
     add_civic_drive("Port", -DRIVE_Y, lod, mats, collection)
     add_civic_drive("Stbd", DRIVE_Y, lod, mats, collection)
-    add_drive_root_fairing("Port", -DRIVE_Y, mats, collection)
-    add_drive_root_fairing("Stbd", DRIVE_Y, mats, collection)
-    add_box("NoseCap", (16.62, 0.0, 0.28), (0.14, 0.78, 0.52), hull_mat, collection, 0.003)
-    if lod == 0:
-        add_curve_hose(
-            "Service_Hose",
-            [(6.2, 1.35, -2.65), (1.2, 1.55, -1.55), (-9.4, 1.05, 0.42), (-15.9, DRIVE_Y, DRIVE_Z)],
-            mats["Material_Mechanical"], collection, 0.024,
-        )
+    add_box("NoseCap_LOD", (19.68, 0.0, 0.32), (0.14, 0.72, 0.55), hull_mat, collection, 0.003)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
@@ -1307,11 +1409,11 @@ def build_lod(lod, mats):
         add_empty(name, loc, collection, root)
     bm = bmesh.new()
     for point in (
-        (16.8, 0, 0.2), (11.4, -5.6, 1.8), (11.4, 5.6, 1.8),
-        (1.2, -9.4, 0.4), (1.2, 9.4, 0.4),
-        (-12.2, -7.2, 0.3), (-12.2, 7.2, 0.3),
-        (-18.8, -DRIVE_Y, DRIVE_Z), (-18.8, DRIVE_Y, DRIVE_Z),
-        (0.30, 0, -4.1), (0.8, 0, 4.2),
+        (19.8, 0, 0.3), (15.6, -4.4, 2.4), (15.6, 4.4, 2.4),
+        (4.2, -11.1, 0.5), (4.2, 11.1, 0.5),
+        (-13.2, -7.4, 0.3), (-13.2, 7.4, 0.3),
+        (-21.0, -DRIVE_Y, DRIVE_Z), (-21.0, DRIVE_Y, DRIVE_Z),
+        (0.35, 0, -5.3), (4.4, 0, 5.6),
     ):
         bm.verts.new(point)
     bm.verts.ensure_lookup_table()
@@ -1384,7 +1486,7 @@ def setup_studio():
     scene.render.resolution_y = 900
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
-    set_view(standard=False, exposure=0.85)
+    set_view(standard=False, exposure=0.72)
     eevee = getattr(scene, "eevee", None)
     if eevee:
         for attr, val in (
@@ -1400,8 +1502,8 @@ def setup_studio():
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
-    bg.inputs["Color"].default_value = (0.048, 0.052, 0.058, 1)
-    bg.inputs["Strength"].default_value = 1.55
+    bg.inputs["Color"].default_value = (0.042, 0.046, 0.052, 1)
+    bg.inputs["Strength"].default_value = 1.35
     for obj in list(scene.objects):
         if obj.type in {"CAMERA", "LIGHT"}:
             bpy.data.objects.remove(obj, do_unlink=True)
@@ -1410,12 +1512,12 @@ def setup_studio():
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (18, -22, 16), 720, (0.96, 0.97, 1.00), 24),
-        ("Fill", (4, 18, 10), 1100, (0.78, 0.82, 0.86), 22),
-        ("Top", (2, 4, 22), 780, (0.90, 0.92, 0.96), 18),
-        ("Rim", (-16, -8, 8), 640, (0.78, 0.84, 0.92), 16),
-        ("Kick", (-8, 12, -5), 320, (0.74, 0.78, 0.84), 12),
-        ("AftFill", (-14, -14, 9), 520, (0.80, 0.84, 0.90), 16),
+        ("Key", (20, -24, 17), 980, (0.97, 0.97, 1.00), 20),
+        ("Fill", (4, 18, 10), 620, (0.78, 0.82, 0.88), 22),
+        ("Top", (2, 4, 24), 640, (0.90, 0.92, 0.96), 16),
+        ("Rim", (-16, -8, 8), 720, (0.76, 0.82, 0.90), 14),
+        ("Kick", (-8, 12, -5), 280, (0.74, 0.78, 0.84), 12),
+        ("AftFill", (-14, -14, 9), 480, (0.80, 0.84, 0.90), 16),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
@@ -1529,7 +1631,7 @@ def assign_all_slots(obj, mat):
         slot.material = mat
 
 
-def set_view(standard=False, exposure=0.85):
+def set_view(standard=False, exposure=0.72):
     scene = bpy.context.scene
     if standard:
         scene.view_settings.view_transform = "Standard"
@@ -1662,10 +1764,11 @@ def render_cycle_from_glb(glb_path):
     world_bg.inputs["Color"].default_value = prior_color
     world_bg.inputs["Strength"].default_value = prior_strength
 
-    camera.location = Vector(focus) + Vector((8.5, -11.2, 2.4))
+    target = Vector((focus[0] + 2.2, focus[1] - 7.4, focus[2] + 1.15))
+    camera.location = Vector((focus[0] + 9.2, focus[1] - 18.5, focus[2] + 5.4))
     camera.data.lens_unit = "MILLIMETERS"
-    camera.data.lens = 48
-    look_at(camera, focus)
+    camera.data.lens = 32
+    look_at(camera, target)
     bpy.context.scene.render.filepath = str(out / "grazing_close.png")
     bpy.ops.render.render(write_still=True)
 
@@ -1675,7 +1778,7 @@ def render_cycle_from_glb(glb_path):
     bore.size = 3.2
     bore_obj = bpy.data.objects.new("BoreFill", bore)
     bpy.context.scene.collection.objects.link(bore_obj)
-    throat = (focus[0] - 16.6, focus[1] - DRIVE_Y, focus[2] + DRIVE_Z)
+    throat = (focus[0] - 18.4, focus[1] - DRIVE_Y, focus[2] + DRIVE_Z)
     bore_obj.location = (throat[0] - 6.4, throat[1] - 1.15, throat[2] + 0.55)
     look_at(bore_obj, throat)
     camera.location = (throat[0] - 7.4, throat[1] - 2.15, throat[2] + 1.15)
@@ -1685,9 +1788,9 @@ def render_cycle_from_glb(glb_path):
     bpy.ops.render.render(write_still=True)
 
     ids = {
-        "Hull": (0.78, 0.70, 0.56), "Armor": (0.16, 0.17, 0.20), "Mechanical": (0.08, 0.09, 0.10),
+        "Hull": (0.74, 0.64, 0.50), "Armor": (0.16, 0.17, 0.20), "Mechanical": (0.08, 0.09, 0.10),
         "Canopy": (0.18, 0.38, 0.44), "Accent": (0.08, 0.72, 0.76), "Warning": (0.78, 0.42, 0.10),
-        "Ceramic": (0.62, 0.38, 0.18), "Thruster": (0.06, 0.06, 0.08), "Radiator": (0.40, 0.42, 0.34),
+        "Ceramic": (0.42, 0.26, 0.16), "Thruster": (0.06, 0.06, 0.08), "Radiator": (0.40, 0.42, 0.34),
     }
 
     def id_color(obj):
@@ -1708,7 +1811,7 @@ def render_cycle_from_glb(glb_path):
     backups = override_map_isolation(meshes, "normal")
     render_chase_still(camera, out / "normal_isolation.png", distance=DISTANCE_CLOSE, heading_deg=0.0, focus=focus)
     restore_mats(meshes, backups)
-    set_view(standard=False, exposure=0.85)
+    set_view(standard=False, exposure=0.72)
 
     still_hashes = {path.name: sha256(path) for path in sorted(out.glob("*.png"))}
     identity = {
@@ -1727,7 +1830,7 @@ def render_cycle_from_glb(glb_path):
             "play_chase_abeam": {"distance": DISTANCE_DEFAULT, "heading_deg": 90.0},
             "play_chase_close": {"distance": DISTANCE_CLOSE, "heading_deg": 0.0},
             "clay_play_chase": {"distance": DISTANCE_DEFAULT, "heading_deg": 0.0, "material": "neutral_clay"},
-            "grazing_close": {"kind": "diagnostic", "lens_mm": 48},
+            "grazing_close": {"kind": "diagnostic", "lens_mm": 32},
             "drive_rear": {"kind": "diagnostic", "lens_mm": 55},
             "diagnostics": ["id_or_material_id.png", "orm_isolation.png", "normal_isolation.png"],
         },

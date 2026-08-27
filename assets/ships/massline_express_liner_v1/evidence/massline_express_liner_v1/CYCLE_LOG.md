@@ -10,5 +10,6 @@
 | 28 | KEEP | KEEP | KEEP | Inset cabin glass. Open boarding well, rooted twin throats, stepped drum. Cycle 28 pixels still read as a pale capsule with black slots and capped drives; isolation was flat. |
 | 29 | review_pending | review_pending | review_pending | Hollow outboard drive cases, tapered aft spine, cut boarding/observation glass, unique-UV cage bake. Abeam width 4.60% recorded honestly. |
 | 30 | review_pending | review_pending | review_pending | Manufactured 1.81:1 barrel (35.41 x 19.53 x 8.52 m). Abeam 8.28% in band. Side galleries, drive saddles, retained wells/drives/bakes. |
+| 31 | review_pending | review_pending | review_pending | Stepped octagonal body (40.67 x 22.41 x 11.05 m, L/B 1.81). Abeam 9.77%. Hollow corridors, boarding vestibule, rooted drive plant, civic spine. Unique maps; yellow wedges gone. |
 
 Whole-asset G1/G2/G4 stay open. Source candidate only.

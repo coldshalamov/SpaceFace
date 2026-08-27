@@ -55,7 +55,8 @@ separate recessed docking/service interfaces: a dark socket floor, ceramic jamb,
 service plate. They must be interfaces a station arm could touch, not painted rectangles.
 
 Above the drum, the planned dorsal cooling/service spine must make the ship legible from a traffic camera.
-Three broad formed covers must carry recessed cooling slots and feed into the drive roots. At the rear,
+One equipment well tied to the bulkhead rings, a few large radiator/access modules, and one restrained
+asymmetric repair plate must carry the service read. Passenger glazing belongs in the corridors and boarding. At the rear,
 two low, separated drive booms must leave deliberate negative space around the centerline. Each boom must
 be a tapered framed housing with a deep, dry refractory throat; the hot surface and its low cyan core
 must remain recessed behind a real rim. The two throats, keel, service cassette, and docking frames must
@@ -90,7 +91,7 @@ drives,” not Lark, Span, Mule, a freight barge, or a luxury capsule.
 | Low service cassette | Galvanized/primer enclosure with latches, seam, and small drain/inspection face. | Below passenger glazing; shallow depth. |
 | Keel | Dark load beam with multiple thickness stations. | Carries tether brackets and boom roots. |
 | Tether saddle | Forged side cheeks, bridge pad, and gussets into both keel and drum frame. | Lower/non-passenger-facing; no decorative ring. |
-| Dorsal spine | Formed service covers with cooling recesses and rooted feed runs. | Three readable covers, not a fin forest. |
+| Dorsal spine | One equipment well, two differently sized radiator modules, one offset repair plate. | Not a row of identical lids. |
 | Drive booms/throats | Tapered booms, heat shield roots, deep ceramic/refractory throat liners. | Emission is recessed and low. |
 
 ### Material and LOD intent
@@ -111,11 +112,11 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the cycle-30 source candidate exists. LOD0 hash
-`4109ACADF65F755F1655A7667F14DA1A5746B1E5313650CDED1156FCCCED9574`.
-Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_30/`.
+G0 is written and the cycle-31 source candidate exists. LOD0 hash
+`CC243E8499EBF2D6FA451CB30F9A369CFE9B1C8191737FF9B434633A3ADF4827`.
+Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_31/`.
 Whole-asset G1/G2/G4 require an independent hash-bound review of those stills;
 this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
 until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
-Source bounds 35.41 x 19.53 x 8.52 m (length-to-beam 1.81). Abeam occupancy
-is 8.28% width, in the 8–22% band.
+Source bounds 40.67 x 22.41 x 11.05 m (length-to-beam 1.81). Default occupancy
+17.47%, abeam 9.77%, close 45.74%, all uncropped.
