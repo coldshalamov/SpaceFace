@@ -6719,7 +6719,7 @@
       "priority": 307,
       "title": "Finish and wire Ranger (player explorer)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.02"
       ],
@@ -6738,8 +6738,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Polish Ranger only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-03-ranger-REPORT.md"
+      ],
+      "brief": "Ranger is quality-closed at the player chase camera and promoted through source, live parts, release, and render packages. The accepted C32 surveyor survives active-hull rebuilds on the exact whole-body route; a real dead-field field-sail defect was fixed with the authored onboard trim, and headed flight proved the body, changing frames, and forward motion. Hitch remained untouched."
     },
     {
       "id": "PQ-050.04",

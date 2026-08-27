@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-050.04 Ironback remaster | controller / delegated pre-production reviews | IMPLEMENTING | `tools/blender/build_ironback_mtx.py`, `assets/ships/fleet_player_bodies_v1/ironback/**` | Inspect the current barge candidate and produce an exact-source chase-camera form pass; no live promotion before KEEP |
 
 ## Uncommitted work without a confirmed live thread
 

@@ -119,8 +119,12 @@ change the chase camera could see.
   only as a chase-camera form pass. Do not model another seat.
 - **Drifter (`PQ-050.02`)** is quality-closed at the chase camera, independently
   reviewed KEEP, and promoted through live source/release/render packages.
-- **Remaining ships** have not had a chase-camera close. Ranger
-  (`PQ-050.03`) through Survey pin (`PQ-050.22`). Ranger is next; one ship at a time.
+- **Ranger (`PQ-050.03`)** is quality-closed at the chase camera, independently
+  reviewed KEEP, and promoted through live source/release/render packages. Its active-hull rebuild
+  now retains the exact production body, and its field sail has truthful onboard trim when no
+  environmental field exists.
+- **Remaining ships** have not had a chase-camera close. Ironback
+  (`PQ-050.04`) through Survey pin (`PQ-050.22`). Ironback is next; one ship at a time.
 - Quality remaining on every unfinished leaf: silhouette, wells, canopy, and
   drive throats that read at 144 WU; lofted wings/nacelles; unique surfaces;
   MTX ledger bound to the close hash with chase-camera proof; five valid
@@ -134,8 +138,8 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 |---|---|---|
 | `.01` | Hornet | wired candidate, **not quality-closed**. Chase-camera form remaining. An orange seat is not progress. |
 | `.02` | Drifter | **Done.** Accepted C28 workboat silhouette and drive-throat form promoted through source, live parts, release, and render packages; independent chase-camera and integration reviews KEEP. |
-| `.03` | Ranger | next |
-| `.04` | Ironback | not started |
+| `.03` | Ranger | **Done.** Accepted C32 long-endurance surveyor promoted through source, live parts, release, and render packages; exact active-hull routing, dead-field trim authority, independent chase-camera review, and headed flight acceptance are closed. |
+| `.04` | Ironback | next |
 | `.05` | Bastion | not started |
 | `.06` | Atlas | not started |
 | `.07` | Warden | not started |
