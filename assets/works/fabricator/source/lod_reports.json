@@ -1,0 +1,122 @@
+[
+  {
+    "lod": 0,
+    "triangles": 8140,
+    "triangleParts": {
+      "LOD0_fabricator": 6036,
+      "LOD0_Gantry": 1796,
+      "LOD0_Lamp": 308
+    },
+    "uvOverlaps": 15344,
+    "atlasCoverage": 0.33457183837890625,
+    "bbox": {
+      "min": [
+        -1.02,
+        -1.02,
+        0.0
+      ],
+      "max": [
+        1.02,
+        1.02,
+        0.835
+      ],
+      "size": [
+        2.04,
+        2.04,
+        0.835
+      ]
+    },
+    "lamp": [
+      0.62,
+      0.92,
+      0.8
+    ],
+    "textures": {
+      "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_basecolor.png",
+      "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_normal.png",
+      "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_orm.png",
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_uv0_layout.png"
+    },
+    "sha256": "F77512095FFF93FBABB2855A58631E4AF77FF249D8A4F74AE7BDB73DABBA9A5E"
+  },
+  {
+    "lod": 1,
+    "triangles": 940,
+    "triangleParts": {
+      "LOD1_fabricator": 680,
+      "LOD1_Gantry": 220,
+      "LOD1_Lamp": 40
+    },
+    "uvOverlaps": 1555,
+    "atlasCoverage": 0.47110748291015625,
+    "bbox": {
+      "min": [
+        -1.02,
+        -1.02,
+        0.0
+      ],
+      "max": [
+        1.02,
+        1.02,
+        0.835
+      ],
+      "size": [
+        2.04,
+        2.04,
+        0.835
+      ]
+    },
+    "lamp": [
+      0.62,
+      0.92,
+      0.8
+    ],
+    "textures": {
+      "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_basecolor.png",
+      "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_normal.png",
+      "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_orm.png",
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_uv0_layout.png"
+    },
+    "sha256": "0DB87AC2E8BCF4E8471FCC73799060D37E41ABEE8C3D80F97C7C60AA086FF03C"
+  },
+  {
+    "lod": 2,
+    "triangles": 616,
+    "triangleParts": {
+      "LOD2_fabricator": 460,
+      "LOD2_Gantry": 116,
+      "LOD2_Lamp": 40
+    },
+    "uvOverlaps": 994,
+    "atlasCoverage": 0.4553241729736328,
+    "bbox": {
+      "min": [
+        -1.02,
+        -1.02,
+        0.0
+      ],
+      "max": [
+        1.02,
+        1.02,
+        0.835
+      ],
+      "size": [
+        2.04,
+        2.04,
+        0.835
+      ]
+    },
+    "lamp": [
+      0.62,
+      0.92,
+      0.8
+    ],
+    "textures": {
+      "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_basecolor.png",
+      "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_normal.png",
+      "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_orm.png",
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_uv0_layout.png"
+    },
+    "sha256": "6ABC267094436E3374C3CF589E2C0229CE1CF7023E193B718A34F18C9D38D6E6"
+  }
+]

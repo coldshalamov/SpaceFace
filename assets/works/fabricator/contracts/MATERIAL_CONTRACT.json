@@ -1,0 +1,72 @@
+{
+  "assetId": "place_works_fabricator",
+  "cycle": 1,
+  "candidateHash": "7CE2C148CF961D39EE1B35E8E14FF7414480BCA9808BDD046D2105D04808961F",
+  "roles": {
+    "frame": {
+      "rgb": [
+        0.145,
+        0.122,
+        0.094
+      ],
+      "roughness": 0.58,
+      "metallic": 0.1
+    },
+    "bed": {
+      "rgb": [
+        0.62,
+        0.575,
+        0.5
+      ],
+      "roughness": 0.38,
+      "metallic": 0.72
+    },
+    "rail": {
+      "rgb": [
+        0.71,
+        0.74,
+        0.76
+      ],
+      "roughness": 0.24,
+      "metallic": 0.88
+    },
+    "ceramic": {
+      "rgb": [
+        0.72,
+        0.64,
+        0.52
+      ],
+      "roughness": 0.72,
+      "metallic": 0.03
+    },
+    "polymer": {
+      "rgb": [
+        0.145,
+        0.13,
+        0.118
+      ],
+      "roughness": 0.62,
+      "metallic": 0.04
+    },
+    "lamp": {
+      "rgb": [
+        0.92,
+        0.84,
+        0.62
+      ],
+      "roughness": 0.24,
+      "metallic": 0.04
+    }
+  },
+  "atlas": "1024 unique-UV0 per LOD",
+  "forbidden": [
+    "rover yellow",
+    "generic grid",
+    "plastic chrome",
+    "glowing window",
+    "floating cable",
+    "repeated-box greebles",
+    "billboard",
+    "emissive outline"
+  ]
+}

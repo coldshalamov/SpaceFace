@@ -1,0 +1,75 @@
+{
+  "contractVersion": 1,
+  "assetId": "place_works_fabricator",
+  "partId": "place_works_fabricator",
+  "liveId": "place_works_fabricator",
+  "rootName": "SF_WORKS_FABRICATOR_V1",
+  "slot": "place",
+  "category": "works",
+  "family": "asteroid_works",
+  "packet": "PQ-131.08",
+  "cycle": 1,
+  "role": "one-cell open gantry fabricator \u2014 head position is progress",
+  "forward": "+X",
+  "up": "+Y",
+  "starboard": "+Z",
+  "unit": "metre",
+  "normalConvention": "OpenGL",
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "textureCompression": "PNG-source",
+  "textureAuthorship": "unique UV0 atlas, mesh-derived AO, role-authored albedo/ORM/normal",
+  "textureSize": 1024,
+  "deliverableRole": "source_candidate",
+  "lods": [
+    "lod0",
+    "lod1",
+    "lod2"
+  ],
+  "exportedLods": [
+    "lod0",
+    "lod1",
+    "lod2"
+  ],
+  "lodTriangles": {
+    "lod0": 8140,
+    "lod1": 940,
+    "lod2": 616
+  },
+  "triangleCount": 8140,
+  "sockets": [
+    "gantry_head",
+    "lamp"
+  ],
+  "hooks": [
+    "gantry_head",
+    "lamp"
+  ],
+  "rail": "rail",
+  "travel": {
+    "axis": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "length": 1.4,
+    "progress0": [
+      -0.7,
+      0.0,
+      0.7
+    ],
+    "progress1": [
+      0.7,
+      0.0,
+      0.7
+    ],
+    "authoredProgress": 0,
+    "space": "blender_z_up",
+    "gltfNote": "export_yup: Blender +X stays glTF +X; runtime drives gantry_head local +X * length * progress"
+  },
+  "wiringStatus": "source_candidate_unwired",
+  "blenderBasis": "Z-up works scale",
+  "exportBasis": "Y-up glTF",
+  "state": "design_candidate",
+  "gateScope": "component",
+  "g1g2g4": "evidence_ready"
+}

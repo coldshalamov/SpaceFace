@@ -1,0 +1,160 @@
+{
+  "assetId": "place_works_fabricator",
+  "candidateHash": "7CE2C148CF961D39EE1B35E8E14FF7414480BCA9808BDD046D2105D04808961F",
+  "cycle": 1,
+  "class": "place",
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/grazing_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Angle-limited bevel 1\u20132 segments, shade 28\u00b0, weighted normals on game mesh."
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "T-slot trenches, gutter U-channels, and spindle/shroud cavities are holes with thickness, not painted squares."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/uv0_layout.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Smart-project + pack unique UV0 per LOD; overlap sampled on a 1024 occupancy grid."
+    },
+    {
+      "id": "MTX-20",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/grazing_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Game mesh carries manufactured bevels and extra LOD0 seals/bolts; not a raw cube."
+    },
+    {
+      "id": "MTX-21",
+      "state": "not_applicable",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Direct-to-game mid-poly; no high-to-low cage this cycle."
+    },
+    {
+      "id": "MTX-22",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "OpenGL tangent atlas authored from unique UV0 plus grind/wear; not a generated beauty frame."
+    },
+    {
+      "id": "MTX-23",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Vertex AO from BVH rays packed into ORM red; cavities darker than open plate."
+    },
+    {
+      "id": "MTX-24",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/grazing_close.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Wear uses height/edge (bed lips bright, feet chipped); convex edges reveal metal."
+    },
+    {
+      "id": "MTX-25",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Short-ray AO dirt in T-slots, gutters, block lips, chain hinges."
+    },
+    {
+      "id": "MTX-30",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No imagen. Maps come from mesh UV raster + BVH AO."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/material_id.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Paint dielectric, bed/rail metallic, ceramic dry, polymer dielectric, lamp glass."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique UV0 atlas for this asset; not a tinted rover/Wasp sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "ORM R=AO G=rough B=metal with per-role ranges; G is not a flat fill."
+    },
+    {
+      "id": "MTX-39",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cavity dirt multiplied into albedo; brown/gray, not black crayon."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Open gantry, not printer/altar/crate/glowing box/flat table/floating nozzle; no rover yellow."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Modifiers applied, triangulated, weighted normals, extras, Y-up GLB, collision helper."
+    },
+    {
+      "id": "MTX-52",
+      "state": "not_applicable",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Manufactured machine, not a rock/wreck mass."
+    },
+    {
+      "id": "MTX-53",
+      "state": "not_applicable",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No sculpt/photogrammetry; industrial plate/rail construction."
+    },
+    {
+      "id": "MTX-54",
+      "state": "implemented",
+      "still": "assets/works/fabricator/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "First authored candidate; nothing accepted to revert to."
+    }
+  ]
+}
