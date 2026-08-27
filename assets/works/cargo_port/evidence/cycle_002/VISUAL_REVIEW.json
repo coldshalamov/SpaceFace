@@ -1,0 +1,72 @@
+{
+  "schema": "spaceface.worksCargoPortVisualReview.v1",
+  "assetId": "place_works_cargo_port",
+  "cycle": 2,
+  "candidateSha256": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
+  "reviewer": "cycle02_recovery_author",
+  "scope": "iteration_decision_not_gate_acceptance",
+  "originalResolutionInspection": true,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "viewsInspected": [
+    "works_top",
+    "works_edge",
+    "works_top_clay",
+    "works_edge_clay",
+    "works_top_grazing",
+    "works_top_normal",
+    "works_top_orm",
+    "works_top_matid",
+    "works_top_hooks",
+    "crate_stage_01",
+    "crate_stage_02",
+    "crate_stage_03",
+    "crate_stage_04",
+    "crate_stage_05",
+    "crate_stage_sheet",
+    "pod_seated_top",
+    "pod_seated_edge",
+    "pod_launch_clear_top",
+    "pod_launch_clear_edge",
+    "works_top_lod1",
+    "works_top_lod2",
+    "works_site",
+    "works_site_id",
+    "works_site_lod2"
+  ],
+  "changedZones": [
+    "folded octagonal flange and loading throat",
+    "asymmetric cradle saddle, jaws, and C-channel load beam",
+    "three unequal folded jack pads and well guides",
+    "five additive manufactured freight footprints",
+    "faceted courier pod and keyed docking face",
+    "LOD1 and LOD2 logistics silhouettes"
+  ],
+  "dominantRetainedZones": [
+    "open well and liner",
+    "courier launch axis and hooks",
+    "freight apron",
+    "dark port, mid-value freight, and cool pod material allocation"
+  ],
+  "visibleSuccesses": [
+    "The open well remains a dark crescent around the seated pod in top and edge views.",
+    "The saddle and clamp jaws now transfer through a folded C-channel into the apron.",
+    "Five stages add distinct trunk, cube, instrument, frame, and vented footprints without a vertical pile.",
+    "At 19 px per cell the dark port, cooler pod, and freight apron remain separate without labels or emission.",
+    "The launch-clear views preserve the authored positive-Z climb and expose the open collar."
+  ],
+  "remainingVisibleRisks": [
+    "At 19 px per cell the five individual modules intentionally collapse into one freight-apron family even though port, pod, and cargo remain distinct.",
+    "The saddle jaws and C-channel are construction reads at 120 px per cell and become subpixel in the site register.",
+    "The cool docking face remains the brightest local value and may still attract a brief circular-badge read before the asymmetric cradle and freight register."
+  ],
+  "technicalRisks": [
+    "The normal, AO, curvature, and cavity channels are procedural atlas inputs rather than exact-mesh high/cage bakes; G3 remains blocked.",
+    "The candidate is not wired, released, runtime-captured, or independently reviewed; G1, G2, G4, G6, and G7 remain open."
+  ],
+  "decision": "keep",
+  "gatePassClaimed": false,
+  "independentReview": false
+}

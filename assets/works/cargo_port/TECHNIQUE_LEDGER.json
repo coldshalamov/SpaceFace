@@ -2,13 +2,13 @@
   "schemaVersion": "1.0",
   "assetId": "place_works_cargo_port",
   "class": "place",
-  "cycle": 1,
-  "candidateHash": "BF506A8937DFC5FE196841E6B061C04D48BE24258130B5BDD4342F3CC16D3A70",
+  "cycle": 2,
+  "candidateHash": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
   "rows": [
     {
       "id": "MTX-01",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top_grazing.png",
+      "still": "evidence/cycle_002/works_top_grazing.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Bevelled game mesh, shade_smooth_by_angle 28, weighted normals."
@@ -16,79 +16,79 @@
     {
       "id": "MTX-03",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top_clay.png",
+      "still": "evidence/cycle_002/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Constructed well liner and docking well with wall thickness, not a painted ring."
+      "notes": "Horseshoe flange and liner with a real well; loading throat not a closed torus."
     },
     {
       "id": "MTX-16",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top_orm.png",
+      "still": "evidence/cycle_002/works_top_orm.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Smart-project UV0 per part, remapped into unique atlas tiles."
     },
     {
       "id": "MTX-20",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_grazing.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_grazing.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Bevelled-high on the game mesh; no separate sculpt high."
+      "notes": "No distinct higher source exists; the bevelled game mesh cannot close MTX-20."
     },
     {
       "id": "MTX-21",
-      "state": "not_applicable",
-      "still": "evidence/cycle_001/works_top.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No cage bake this cycle; maps are mesh-authored."
+      "notes": "No selected-to-active cage bake exists in this design-candidate cycle."
     },
     {
       "id": "MTX-22",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_normal.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_normal.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "OpenGL tangent normals from authored atlas, not a generated projection."
+      "notes": "The OpenGL atlas normal is procedural response, not a tangent bake from the exact mesh."
     },
     {
       "id": "MTX-23",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_orm.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_orm.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "AO authored into ORM.R and multiplied into albedo."
+      "notes": "ORM.R is an authored cavity approximation, not AO baked from the exact mesh."
     },
     {
       "id": "MTX-24",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_normal.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_normal.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Curvature implied by bevel + atlas edge slopes, not a sculpt bake."
+      "notes": "No exact-mesh curvature bake exists; atlas edge slopes are not a substitute."
     },
     {
       "id": "MTX-25",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_orm.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_orm.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Cavity darkening in atlas AO at seams and well."
+      "notes": "No exact-mesh concavity bake exists; atlas cavity darkening remains provisional."
     },
     {
       "id": "MTX-30",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Maps derived from mesh UVs and authored generators, not from imagegen pixels."
+      "notes": "Imagegen pixels are absent, but normal/AO/curvature are not yet mesh-derived."
     },
     {
       "id": "MTX-31",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top_matid.png",
+      "still": "evidence/cycle_002/works_top_matid.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Five billed substances: port oxide, cradle wear, crate paint, pod skin, thruster."
@@ -96,39 +96,39 @@
     {
       "id": "MTX-32",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "One 1024 atlas with per-role generators, not a tinted shared sheet."
     },
     {
       "id": "MTX-33",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top_orm.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top_orm.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Authored ORM: AO/rough/metal per role with crate and pod v-bands."
+      "notes": "Roughness and metallic vary by role, but ORM.R cannot close until mesh AO exists."
     },
     {
       "id": "MTX-39",
-      "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "state": "blocked",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Seam dirt in atlas; no generic leather bump."
+      "notes": "Seam dirt is provisional until driven by the exact-mesh cavity bake."
     },
     {
       "id": "MTX-46",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No rover yellow, no glow outline, no toy rocket ogive, no cube pile."
+      "notes": "No rover yellow, no glow hatch, no cube pucks, no 2x2 cabinet."
     },
     {
       "id": "MTX-50",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Exported GLB retains exact root, LOD roots, and hook names."
@@ -136,15 +136,15 @@
     {
       "id": "MTX-52",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top_clay.png",
+      "still": "evidence/cycle_002/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Macro from shaft-collar / cradle / crate / capsule references, not a torus+capsule."
+      "notes": "Asymmetric C-cradle, folded C-channel load beam, horseshoe flange, and five freight footprints."
     },
     {
       "id": "MTX-53",
       "state": "not_applicable",
-      "still": "evidence/cycle_001/works_top.png",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Place candidate is manufactured sections, not photogrammetry."
@@ -152,10 +152,10 @@
     {
       "id": "MTX-54",
       "state": "implemented",
-      "still": "evidence/cycle_001/works_top.png",
+      "still": "evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "New asset; no silent revert of a prior accepted candidate."
+      "notes": "Cycle 02 revises cycle 01 form; cycle 01 evidence remains frozen."
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "assetId": "place_works_cargo_port",
-  "cycle": 1,
+  "cycle": 2,
   "atlas": "source/textures/cargo_port_atlas_{basecolor,normal,orm}.png",
   "size": 1024,
   "roles": [
