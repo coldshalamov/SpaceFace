@@ -238,11 +238,16 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
 function assertRuntimeAssetIdentity(pilot, documentRoot, scene) {
   const sceneExtras = scene.getExtras() || {};
   const assetExtras = documentRoot.getAsset()?.extras || {};
+  const authoredRootExtras = pilot.sceneRoot === true
+    ? {}
+    : (scene.listChildren().find((node) => node.getName() === pilot.rootNode)?.getExtras() || {});
   const metadata = [
     sceneExtras.spacefaceAsset,
     sceneExtras.spaceface,
     assetExtras.spacefaceAsset,
     assetExtras.spaceface,
+    authoredRootExtras.spacefaceAsset,
+    authoredRootExtras.spaceface,
     assetExtras,
   ].find((value) => value && typeof value === 'object');
   const declaredAssetId = metadata?.assetId;
