@@ -2,14 +2,14 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "place_works_refinery",
   "shipId": "place_works_refinery",
-  "candidateHash": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+  "candidateHash": "7984CD679A1FC5A6259EA2BD232A8CB58834D214935D100D263E6A1222827733",
   "exportGlb": "assets/ships/parts/works/place_works_refinery.glb",
   "class": "place_station_module",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "not_launched",
   "independentReviewer": null,
-  "cycle": 1,
+  "cycle": 2,
   "disposition": "review_pending",
   "forbidden": {
     "factoryLoftPlusBoxes": false,
@@ -22,7 +22,7 @@
     {
       "id": "MTX-01",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/works_edge_grazing_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_edge_grazing_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "bevelWidthM": 0.012,
@@ -32,15 +32,15 @@
     {
       "id": "MTX-03",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/works_top_clay_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_top_clay_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Crown is a shell around a recessed slit; inner well has wall thickness; ember lens is the floor, not a painted stripe."
+      "notes": "Blind charging well: thick steel lip, soot-tapered refractory walls, small recessed ember floor. Not a through-hole or orange stripe."
     },
     {
       "id": "MTX-16",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/uv0_layout.png",
+      "still": "assets/works/refinery/evidence/cycle_002/uv0_layout.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Unique UV0 packed on the bake target; overlap loop count 0."
@@ -48,7 +48,7 @@
     {
       "id": "MTX-20",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/normal_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/normal_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "High duplicate with extra interface bolts (LOD0) baked selected-to-active onto the game mesh."
@@ -56,7 +56,7 @@
     {
       "id": "MTX-21",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/normal_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/normal_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cage is an inflated copy of the low (0.028 wu) used for the tangent bake."
@@ -64,7 +64,7 @@
     {
       "id": "MTX-22",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/normal_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/normal_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cycles tangent OpenGL normal bake; quiet on the crown from works_top, readable on straps/stack."
@@ -72,7 +72,7 @@
     {
       "id": "MTX-23",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/orm_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/orm_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cycles AO bake packed to ORM.R and multiplied into albedo."
@@ -88,7 +88,7 @@
     {
       "id": "MTX-25",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/orm_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/orm_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Short-range AO plus concave pointiness dirt the slit, flue neck, and saddle contacts."
@@ -104,7 +104,7 @@
     {
       "id": "MTX-31",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/id_or_material_id_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/id_or_material_id_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Paint dielectric, stack/pipe/hotmetal metallic, refractory dry ceramic, slit nonmetal."
@@ -120,7 +120,7 @@
     {
       "id": "MTX-33",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/orm_isolation_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/orm_isolation_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "ORM channels vary by role; not a flat G."
@@ -128,7 +128,7 @@
     {
       "id": "MTX-39",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/works_top_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_top_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cavity dirt in the slit, flue, and saddle contacts; not a uniform dirt overlay."
@@ -136,10 +136,10 @@
     {
       "id": "MTX-46",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/works_top_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_top_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No rover yellow, no neon, no leather. Remaining risk: rounded-rect furnace and a warm slot that can thumbnail as a glow."
+      "notes": "No rover yellow, no neon, no leather. Jacket cool graphite; tank matte oxide-red; well near-black. Remaining risk: rectangular furnace, stack-as-disk from above."
     },
     {
       "id": "MTX-50",
@@ -152,10 +152,10 @@
     {
       "id": "MTX-52",
       "state": "implemented",
-      "still": "assets/works/refinery/evidence/cycle_001/works_top_clay_1to1.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_top_clay_1to1.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Macro from cited industrial stills: furnace + rooted stack + saddle tank. Not a cube or UV sphere."
+      "notes": "Macro from cited industrial stills: rectangular furnace, rooted rect/round/miter flue, saddle tank. Clay is a process train, not a lozenge."
     },
     {
       "id": "MTX-53",
@@ -168,7 +168,7 @@
     {
       "id": "MTX-54",
       "state": "not_applicable",
-      "still": "assets/works/refinery/evidence/cycle_001/works_top.png",
+      "still": "assets/works/refinery/evidence/cycle_002/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "New source candidate; no previous accepted works-refinery mesh to revert."

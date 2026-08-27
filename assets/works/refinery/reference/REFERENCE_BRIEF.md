@@ -1,8 +1,9 @@
-# Works refinery — Cycle 01 reference brief
+# Works refinery — Cycle 02 reference brief
 
 **Asset:** `place_works_refinery` (PQ-131.04). **Class:** place / station module, works camera only.
-**Tier:** B (one-cell process machine). **State:** `design_candidate`. Cycle 01 of ≥5.
+**Tier:** B (one-cell process machine). **State:** `design_candidate`. Cycle 02 of ≥5.
 G1/G2/G4 whole-asset stay open; this cycle records `review_pending` and does not launch reviewers.
+Cycle 01 evidence under `evidence/cycle_001/` is immutable.
 
 Supported cameras (live `spaceface_works_camera.py`, never a studio three-quarter):
 
@@ -156,7 +157,11 @@ together.
 
 ---
 
-## Cycle 01 completion (this packet)
+## Cycle 02 completion (this packet)
 
 Source candidate only. Do not wire, release, promote, push, or mark PQ-131.04 complete.
 Disposition: `review_pending`. Independent reviewers are **not** launched from this cycle.
+
+Cycle 02 is the real-throat / separated-process correction. Keep-set from Cycle 01: `SF_WORKS_REFINERY_V1`, origin on z=0, one-cell envelope, furnace / offset stack / offset tank, exact `furnace_slit` `stack_vent` `lamp` hooks, legal works cameras, beauty emission off, LOD ceilings 8k/2k/600.
+
+What changed: blind recessed charging well with a formed lip and soot walls; rectangular insulated jacket with inset courses; rooted rect takeoff / transition / mitered elbow / rain-capped stack; routed pipe; saddle tank in matte oxide-red; hooded lamp at the flue neck. Site register must read as three values, not one warm-brown square.
