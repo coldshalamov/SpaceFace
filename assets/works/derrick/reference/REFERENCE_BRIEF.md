@@ -1,8 +1,9 @@
-# Works surface derrick / head-frame — Cycle 01 reference brief
+# Works surface derrick / head-frame — Cycle 02 reference brief
 
 **Asset:** `place_works_derrick` (PQ-131.05). **Class:** place / station module, works camera only.
-**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 01 of ≥5.
+**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 02 of ≥5.
 G1/G2/G4 whole-asset stay open; this cycle records `review_pending` and does not launch reviewers.
+Cycle 01 evidence under `evidence/cycle_001/` is frozen.
 
 Supported cameras (live `tools/blender/spaceface_works_camera.py`, never a studio three-quarter):
 
@@ -30,7 +31,7 @@ The rover is the **only** safety-yellow object in the mine. This asset never wea
 ## Cited local references (geometry and textures are NOT imported)
 
 These three kit stills plus the live procedural stand-in are the only image/code authorities for
-Cycle 01 form. They are cited, not sampled. No vertex, UV, or texel is copied onto the candidate.
+form. They are cited, not sampled. No vertex, UV, or texel is copied onto the candidate.
 
 | # | Exact local path | What is selected | What is rejected |
 |---|---|---|---|
@@ -59,19 +60,22 @@ the player came in. Canon: Helix Directorate + MTS ore trade and Asteroid Works 
 campaign §4 `.05`; this exact pattern is extrapolated. It is a **winch head-frame**, not a radio
 tower, not an oil pumpjack, not a generic truss, not a toy crane, not a flat arch, not a box stack.
 
-Two manufactured A-frame leg pairs straddle the shaft. A rooted winch drum in bearing blocks pays
-the umbilical down the hole. A small grated service platform with guarded access lets a crew reach
-the crown. Two hooded work lights look into the shaft. Orange exists only as restrained safety
-markings on shoes, kick plates, and a crown-beam edge.
+Two manufactured A-frame leg pairs straddle the shaft as **open A** (one A-bar and splice plates;
+no rung/ladder-truss fill, no X-grid). A rooted winch drum on the −X skid pays the umbilical at a
+visible tangent, over a **crown head sheave**, then down the empty well. A small grated service
+platform with guarded access sits offset on +X — not a roof. Two hooded work lights look into the
+shaft. Orange exists only as restrained edge wear and one kick-plate mark; never yellow-black shoe tape.
 
 | Assembly | Manufacture |
 |---|---|
 | A-frame legs | Wide-flange I-beam (rolled section), splice plates at mid-height, gusseted into shoes and into a crown knee. Dark alkyd over zinc phosphate. |
-| Cross-bracing | Angle / flat bar in the A-plane; portal struts between the two frames. Every brace ends on a weld plate, never in air. |
-| Base shoes | Folded plate pads with stiffener gussets and a bolt circle into the crust. Underside at z = 0. Orange edge marking only. |
-| Shaft collar | Short circular curb around the open well; the hole is empty. |
-| Winch / drum | Machined drum with flanges, through-spindle, two pillow-block bearings on a skid welded back to the legs. Heat/oil around the gearbox. Parent: `drum_spin`. |
-| Cable / umbilical | Wrapped on the drum; leaves at the **payout tangent** (`cable_anchor`) and drops through the collar. Greasy jacket, not a laser. |
+| A-bar / splice | One I-strut per A-plane at mid-height; splice plates on the web at the joints. No diagonals, no rungs. |
+| Portal | Crown beam plus one platform-side portal. Nothing crosses or fills the well. |
+| Base shoes | Folded plate pads with stiffener gussets and a bolt circle into the crust. Underside at z = 0. No yellow-black stripe. |
+| Shaft collar | Short circular curb around the open well; the hole is empty; the drum does not sit on it. |
+| Winch / drum | Machined drum with flanges, through-spindle, two pillow-block bearings on a −X skid. Heat/oil around the gearbox. Parent: `drum_spin`. |
+| Head sheave | Grooved wheel in cheek plates on the crown beam. Turns the cable from the rise into the shaft. |
+| Cable / umbilical | Coils on the drum; leaves at the **payout tangent** (`cable_anchor`); rises to the sheave; drops through the collar. Greasy jacket, not a laser. |
 | Service platform | Grated floor (modelled bars), kick plate, two-rail guard, ladder from a +X shoe. Dry galvanised / dusty. |
 | Lamps | Cast hood + socket + recessed lens, one port, one starboard on the crown. Only the lens emits. Parents: `lamp_L`, `lamp_R`. |
 | Fasteners | Modelled hex heads at shoe/leg, bearing/skid, and platform brackets. Not texture studs. |
@@ -85,15 +89,16 @@ a lattice stick, or a box on stilts, the asset has failed.
 
 Five shapes a person names from above:
 
-1. **Dark shaft well** — a real hole in a collar, not a painted disc.
+1. **Dark shaft well** — a real hole in a collar, not a painted disc, not covered by the drum.
 2. **Four shoes** — pads at the corners, the load path into the crust.
-3. **Two A-frames** — four legs converging to a crown beam; open negative space between them.
-4. **Drum across the well** — a flanged cylinder in bearing blocks, cable leaving a visible tangent.
-5. **Small grated platform** — offset, guarded, not a roof over the shaft. Two lamp hoods at the crown.
+3. **Two open A-frames** — four legs converging to a crown beam; negative space inside each A and between the pair. Not an X-grid.
+4. **Causal winch path** — flanged drum on −X, cable leaving a visible tangent, crown sheave, descent into the hole.
+5. **Small grated platform** — offset +X, guarded, not a roof. Two lamp **hoods** (rim + mouth), not pinpricks.
 
 At `works_edge` the same camera with the object at the frame edge must show **three-cell height**
-and the A-spread (legs leaning in). At `works_site` (~19 px/cell) the diamond of shoes + A + hole
-still reads as the surface gateway.
+and the A-spread (legs leaning in). At `works_site` (~19 px/cell) four shoe corners, an open central
+shaft marker, and a tall head-frame mass must still read. No camera enlargement. A filled rounded
+square is a failure.
 
 Clay must hold those masses without textures.
 
@@ -111,16 +116,17 @@ Clay must hold those masses without textures.
 | Shoe pad | 0.36 × 0.30 × 0.10, underside z = 0 |
 | Crown / head beam | z ≈ 6.20, span along Y |
 | Shaft collar inner / outer | 0.36 / 0.54 |
-| Drum centre | (−0.04, 0.00, 1.52), r ≈ 0.24, length ≈ 0.78 along Y |
+| Drum centre | (−0.62, 0.00, 1.38), r ≈ 0.20, length ≈ 0.68 along Y |
 | `drum_spin` | drum origin |
-| `cable_anchor` | bottom payout tangent toward the well |
-| Platform | z ≈ 5.38, +X offset, ~0.70 × 0.78 |
-| `lamp_L` / `lamp_R` | crown, Y ±0.42 |
+| `cable_anchor` | visible leaving tangent on the drum, toward the sheave |
+| Head sheave | (0.00, 0.00, 6.36), r ≈ 0.11 |
+| Platform | z ≈ 5.38, +X offset, ~0.48 × 0.60, not over the well |
+| `lamp_L` / `lamp_R` | crown, Y ±0.40, hoods tilted toward the well |
 
 Hooks:
 
 - `drum_spin` at the drum origin. Children: drum shell, flanges, spindle. Bearings stay on the skid.
-- `cable_anchor` on the actual payout tangent (bottom of the drum, toward the shaft).
+- `cable_anchor` on the actual leaving tangent of the drum, toward the crown sheave.
 - `lamp_L`, `lamp_R` at the hood/lens sockets. Only the lenses emit.
 
 Budget: LOD0 ≤ 12,000 tris, LOD1 ≤ 3,000, LOD2 ≤ 900. Maps: authored **2048²** basecolor / normal /
@@ -141,7 +147,8 @@ Working scene: `tools/blender/build_works_derrick.py`.
 | Bearings | billed | cast housing + machined race | oxide + grease | drums glued to a beam |
 | Collar / well | billed | painted steel curb, empty hole | dark, dusty | filled disc, halo |
 | Grating / platform deck | billed | galvanised bar / dusty steel | dry, high roughness | solid box deck, card |
-| Kick / shoe edge marking | billed | alkyd marking | restrained **works orange** | safety yellow `#ffd23f`, hazard as livery |
+| Kick edge marking | billed | alkyd marking | restrained **works orange** on the kick only | safety yellow `#ffd23f`, yellow-black shoe tape |
+| Shoe / structure edges | billed | dark alkyd + orange edge wear in the map | wear, not a stripe mesh | hazard chevrons, rover yellow |
 | Cable jacket | billed | greasy composite | dark, rough, dielectric | neon, laser, glowing line |
 | Lamp lens | billed | warm glass, recessed | only legal emissive | glowing bar, sphere, halo |
 | Hidden shoe undersides | billed (edge sees shoes) | steel | paint + dirt | floating legs |
@@ -149,7 +156,7 @@ Working scene: `tools/blender/build_works_derrick.py`.
 World: dark. Key `0xffdcbc` raking, real shadows. Rim `0x9db8f0` weak. Fill `0xd8c3a8` weak.
 ≈5:1 key:fill. Bevels must exist. Cavities must be real. Orange is a marking, not a light.
 
-G0–G7: Cycle 01 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
+G0–G7: Cycle 02 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
 
 ---
 
@@ -166,11 +173,11 @@ before any surface row is `implemented`.
 1. **Planform at 120 px/cell** — hole, four shoes, two A-frames, drum, offset platform.
 2. **Edge height** — three-cell A-spread, not a squat arch.
 3. **Clay vs textured** — form holds in `works_top_clay.png`.
-4. **Drum is a machine** — flanges, spindle, pillow blocks, payout tangent.
+4. **Causal winch path** — flanges, spindle, pillow blocks, visible tangent, crown sheave, drop into the hole.
 5. **Platform is grated and guarded** — bars, kick, rails, ladder; not a slab roof.
-6. **Lamps are fixtures** — hood / socket / recessed lens; readable with emission off.
-7. **Orange discipline** — markings only; never rover yellow.
-8. **Hooks / envelope / LOD** — 4/4 names; bbox inside the cell; LOD1/2 keep A, drum, platform, lamps.
+6. **Lamps are fixtures** — hood / socket / recessed lens; readable with emission off at 120 px.
+7. **Orange discipline** — edge wear + one kick mark; never rover yellow; never yellow-black shoe tape.
+8. **Hooks / envelope / LOD** — 4/4 names; bbox inside the cell; LOD1/2 keep four shoes, open shaft, A, drum/sheave, platform, lamps.
 
-Cycle 01 weakest expected: grate density vs 120 px, and site-register height (top-down 19 px will
-flatten the tower — identity then depends on the shoe diamond and the hole).
+Cycle 02 weakest expected: site-register height (top-down 19 px will flatten the tower — identity
+then depends on four shoe corners, the dark collar hole, and the head-frame mass).

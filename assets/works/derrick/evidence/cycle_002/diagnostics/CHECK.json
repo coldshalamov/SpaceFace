@@ -1,0 +1,116 @@
+{
+  "ok": true,
+  "errors": [],
+  "python": true,
+  "root": true,
+  "hooks": {
+    "drum_spin": true,
+    "cable_anchor": true,
+    "lamp_L": true,
+    "lamp_R": true
+  },
+  "lodTriangles": {
+    "lod0": 6696,
+    "lod1": 1232,
+    "lod2": 856
+  },
+  "bbox": {
+    "min": [
+      -1.08,
+      -0.87,
+      0.0
+    ],
+    "max": [
+      1.08,
+      0.87,
+      6.49
+    ],
+    "size": [
+      2.16,
+      1.74,
+      6.49
+    ]
+  },
+  "cycle001Frozen": true,
+  "candidate": "DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75",
+  "crops": {
+    "works_top.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        138,
+        138
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/works_top_crop.png",
+      "centreLuma": 34.85,
+      "meanLuma": 39.11
+    },
+    "works_top_clay.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        138,
+        138
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/works_top_clay_crop.png",
+      "centreLuma": 106.21,
+      "meanLuma": 92.44
+    },
+    "works_edge.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        142,
+        164
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/works_edge_crop.png",
+      "centreLuma": 37.47,
+      "meanLuma": 33.22
+    },
+    "works_edge_grazing.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        150,
+        164
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/works_edge_grazing_crop.png",
+      "centreLuma": 23.47,
+      "meanLuma": 18.59
+    },
+    "works_site.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        38,
+        38
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/works_site_crop.png",
+      "centreLuma": 51.15,
+      "meanLuma": 19.47
+    },
+    "hook_identity.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        143,
+        165
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_002/diagnostics/hook_identity_crop.png",
+      "centreLuma": 132.41,
+      "meanLuma": 83.29
+    }
+  }
+}
