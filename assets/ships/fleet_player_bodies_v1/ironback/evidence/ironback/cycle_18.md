@@ -9,12 +9,15 @@ material deltas worth retaining. The candidate is not accepted or promoted.
 
 `REVISE`
 
-The current exact-source evidence is not a legal acceptance set. The builder infers a 2.4915 render
-scale from `ASSEMBLY_HULL_UNITS * IRONBACK_COLLISION_RADIUS`, making the default rear chase occupy
-far more than the shared 8–22% width band and cropping the hull and arms in the close chase. The
-preflight explicitly records that the legacy palette dimensions are not a direct GLB scale. Cycle 19
-must trace and use the actual live whole-body transform or retain authored source scale; it must not
-invent a display target from collision radius.
+The current exact-source evidence is not yet a legal acceptance set, but its 2.4915 render scale is
+correct. The live renderer normalizes the authored hull's +X length to `targetLength: 1.72`, then
+`shipKit.finalizeShip` scales the normalized root by Ironback's radius 24; the resulting 41.28 WU
+length is therefore the actual whole-body presentation transform, not a legacy-palette inference.
+ImageMagick foreground measurements at 1600 px put default chase at 287 px (17.94%) and abeam at
+270 px (16.88%), both inside the shared 8–22% band. Close chase measures 761 px (47.56%), above the
+20–42% close band. The failure is the candidate's near-square transverse/arm envelope after the
+valid runtime transform, not the shared chase camera or default presentation scale. Cycle 19 must
+retain the traced transform and bring the close envelope into band through real macro construction.
 
 The underlying form also remains below the frozen barge target:
 
