@@ -1,9 +1,13 @@
-# Works Massline Core — Cycle 01 reference brief
+# Works Massline Core — reference brief (Cycle 02 form correction)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 1 of ≥5. This page is the
+(signature installed machine). **State:** `design_candidate`. Cycle 2 of ≥5. This page is the
 contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
-`review_pending`; this cycle does not launch reviewers.
+`review_pending` / `revise`; this cycle does not launch reviewers.
+
+Cycle 01 read as a flat washer / manhole on a filled brown square, with toy radial tabs,
+stud-like feet and no lamp. Cycle 02 keeps identity, hooks, envelope, cameras and the dark
+open well, and rebuilds the manufactured form.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object offset to the
 frame edge so side walls read), `works_site` (19 px/cell). All 1920×1080, 31° perspective, +Z up,
@@ -91,17 +95,18 @@ the hole, the four feet, and the channel section without textures.
 1 cell = 2.2 wu. Envelope **2.20 × 2.20 × 1.10 wu**. Origin at cell centre. +Z up. Underside
 on the cut face (z = 0). Footprint stays inside ±1.10.
 
-| Part | wu |
+| Part | wu (Cycle 02) |
 |---|---|
 | Envelope X × Y × Z | 2.20 × 2.20 × 1.10 |
-| Well inner radius (open hole) | 0.38 |
-| Liner outer radius / height | 0.54 / 0.02–0.62 |
-| Collar channel outer radius | 0.86 |
-| Spin ring r0–r1 / z | 0.58–0.80 / 0.74–0.96 |
-| Foot pad centres (diagonals) | (±0.92, ±0.92) |
-| Foot pad size | 0.40 × 0.30 × 0.09 |
-| Lamp (approx) | r ≈ 0.90 at ~78°, hood to z ≈ 1.08 |
-| Service hatch | +X sector, ~0.28 × 0.16, proud 0.02 |
+| Well inner radius (open hole) | 0.36 |
+| Liner outer radius / height | 0.50 / 0.012–0.56 |
+| Mouth lip | r 0.34–0.53, z 0.50–0.64 |
+| Inner race (ring_spin) | 0.545–0.655 / z 0.655–0.790 |
+| Collar U-channel | r 0.72–0.94, z 0.145–0.50, 8 overlapping courses |
+| Foot pad centres (world-aligned corners) | (±0.88, ±0.88) |
+| Foot pad size | 0.39 × 0.35 × 0.084 |
+| Lamp | r ≈ 0.82 at ~82°, can + visor + recessed lens |
+| Service hatch | +X sector, ~0.31 × 0.16, proud on collar |
 
 Hooks:
 
@@ -150,5 +155,6 @@ textures.
 8. **Manufacture** — courses, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
 9. **LOD** — LOD1/LOD2 keep hole, feet, lamp, ring hook; no collapse-decimate of the hole.
 
-Cycle 01 weakest expected: spin-ring lug density vs the collar, and how dark the well reads
-against the pad in EEVEE — both are later-cycle material, not a reason to ship a torus now.
+Cycle 02 remaining risk: course-gap and four-corner notch hold at 19 px/cell; lamp can vs
+metal highlight; inner race staying visually separate from the collar. Independent review
+is still `review_pending`. Do not treat this cycle as KEEP.
