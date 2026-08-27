@@ -75,6 +75,14 @@
       "files": ["src/render/canvasTextures.js"]
     },
     {
+      "id": "startup-gpu-residency-proxy",
+      "status": "offscreen-admission",
+      "playerSees": "Nothing; a clipped 1x1 loading/Continue pass only uploads live drawable buffers",
+      "technique": "Type-matched Three.js proxy, including Points, rendered with color writes disabled",
+      "whyListed": "The completeness scan correctly finds Points and gl_PointSize, but this is an offscreen GPU-admission mechanism rather than a world object or player-facing effect.",
+      "files": ["src/render/startupGpuResidency.js"]
+    },
+    {
       "id": "legacy-starfield",
       "status": "unused",
       "playerSees": "Nothing on the live route (spaceBackground replaced this)",
