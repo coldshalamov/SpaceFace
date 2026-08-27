@@ -91,7 +91,8 @@ Two distinct quantities that specs conflated:
 - Canonical numbers (VFX spec wins over Core's, except shake which Core owns):
   - `fov = 50`, `near = 1`, `far = 4000`.
   - Tilt 60° from horizontal; offset computed as `(0, D*sin60°, -D*cos60°)`.
-  - Zoom presets (height/D): combat `55`, cruise `70` (default), map-peek `130`. Scroll-wheel clamps `45..130`.
+  - Chase distances (height/D): close profile `58`, default `144`. Manual zoom clamps `45..330`;
+    speed and context framing stay inside that live range.
   - Camera follows **position only, never ship yaw** (anti-nausea).
   - Follow lerp `CAM_LERP = 6.0/s` (Core's value; frame-rate-independent `1-exp(-CAM_LERP*frameDt)`).
   - Look-ahead `k=0.35`, max `18 wu`, aim-bias `0.25`.

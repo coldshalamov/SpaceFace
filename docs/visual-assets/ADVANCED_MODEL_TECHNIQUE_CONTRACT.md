@@ -72,9 +72,9 @@ studio camera and call it play size.
 - Any camera closer than D=58
 - Any camera inside the hull, canopy, or cabin
 - A seat/console crop (`bay_interior.png` and friends)
-- A hero three-quarter, starboard profile, or rear beauty where the ship occupies
-  more than ~40% of frame width (default chase must stay in the ~8–22% band;
-  close chase ~20–42%)
+- A hero three-quarter, starboard profile, or rear beauty captured outside the
+  supported poses (default chase must stay in the ~8–22% band; close chase derives
+  from the same band at D=58, approximately 20–55%)
 
 Those illegal frames may exist as **diagnostics**. They never close a row. They
 never count as a cycle. A leaf that spent its cycles on seats, cabin kits, or
