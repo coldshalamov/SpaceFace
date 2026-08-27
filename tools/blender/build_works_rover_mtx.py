@@ -1,32 +1,24 @@
-"""PQ-131.01 Works rover MTX builder. Cycle 79: the value ladder, rebuilt.
+"""PQ-131.01 Works rover MTX builder. Cycle 80: LOD1 is the site mesh.
 
-Cycle 78 came back REVISE x3 and was named "not a cycle" — 1% of pixels moved.
-The three reviewers agreed on one root note: the value ladder is inverted. The
-deck was the brightest large surface in every view, the belts sat lighter than
-the boom and the well, the windshield was a painted black square, the boom
-spine was a white pinstripe, the flank plate was a blank white rectangle, and
-`works_site` had no mine in it at all.
+Cycle 79 rebuilt the value ladder on LOD0 and lit a mine into the site frame.
+Two causal lies remained, and they were the same lie: the site register never
+saw LOD1. `works_site` was rendered from rover_lod0.glb, and LOD1 was the
+LOD0 construction plus DECIMATE COLLAPSE to 4,000 triangles — MTX-48's named
+fake. Collapse closes the hopper and the roof pane and smears glass into hull.
 
-Cycle 79 rebuilds the ladder in the material bill and in the mesh:
+Cycle 80 authors LOD1 (and LOD2) as site-scale meshes that keep openings and
+material breaks, and it shoots `works_site` from rover_lod1.glb:
 
-  * belts are the darkest mass and carry cross-cleats and an outboard steel lip
-    rail; the light catch moves to the OUTER edge;
-  * deck/tub drops below the pad ground value and desaturates to plate steel,
-    broken by courses, coamings and seam steps;
-  * the roof pane is a real aperture cut through a roof slab, with rim
-    thickness, a mullion, and a dark-but-nonzero glass;
-  * safety yellow returns as bolted coaming sections and a cab rail, hue-
-    separated from the body and never the brightest object;
-  * the boom spine becomes a segmented, tapered steel rib with end returns;
-    the bit gets a dark forged body and a bright working tip only;
-  * the flank scar plate gets a chamfer, a bolt course and a real gas-breach
-    hole, and a `works_edge_flank` still that can actually see it;
-  * `works_site` gets a lit mine: floor relief, benches, berm, muck and rock,
-    with contact shadow, and the beside-flight sheet is cut from the SITE view.
-
-The hopper well is the one element cycle 78 reviewers called finished. It is
-untouched: dark interior, lit near/side walls, ribbed floor, chamfered rim.
-No steel lip ring, no steel well walls, no boom cap.
+  * no COLLAPSE decimate on any LOD;
+  * LOD1 drops sub-pixel micro (cleats, cage, mullion, courses, bolts) that
+    aliases at 19 px/cell into sparkle, and keeps the five planform masses as
+    geometry: stadium belts, hopper hole, raised cab with a real pane, offset
+    boom, minority yellow;
+  * track_L / track_R at LOD1 are the belt itself (the UV-scroll mesh), not a
+    joined pile of grousers;
+  * LOD0 is the works_top / works_edge mesh and is not retuned this cycle;
+  * the hopper well stays the cycle-78 cavity: no steel lip ring, no steel
+    well walls, no boom cap.
 
 Authored at works scale: 1.87 x 1.76 x 0.99 wu, origin at cell centre, +Z up,
 tracks' underside at z = 0. Root node `rover`. LOD meshes named
@@ -68,7 +60,7 @@ FAMILY = ROOT / "assets" / "works" / "rover"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
 TEX = TEX_BY_LOD[0]
-CYCLE = 79
+CYCLE = 80
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--mtx-cycle="):
         CYCLE = int(tok.split("=", 1)[1])
@@ -292,6 +284,11 @@ SITE_FLOORS = {
     "SITE_LIGHT_PLUS_ACCENT": ("<=", 0.35),
     "SITE_MAX_OVER_MEDIAN": (">=", 4.0),
     "SITE_ACCENT_HUE_SEPARATION": (">", 5.0),
+    # MTX-48 at the site register, measured on the LOD1 still. Collapse-decimate
+    # closed these; a copy of LOD0 shot at 19 px/cell cannot prove they survived.
+    "SITE_TRACK_SHARE": (">=", 0.28),
+    "SITE_WELL_PIXELS": (">=", 4.0),
+    "SITE_GLASS_PIXELS": (">=", 2.0),
 }
 SITE_CROP_PX = 38
 SITE_ACCENT_MIN_PX = 8
@@ -1242,9 +1239,15 @@ def add_track_outer_lip(prefix, xc, yc, half_len, radius, sign, z_top, material,
     is not the hopper lip ring cycle 77 removed.
     """
     made = []
+    # Coarse four/eight-segment perimeter boxes overhang the authored stadium
+    # at the turns: their long local Y axis becomes an X/Y diagonal after
+    # rotation. That made the site LOD physically larger than LOD0. Keep the
+    # sparse read, but split the outboard catch often enough that every box
+    # stays inside the frozen track envelope.
+    n_samples = 28 if lod == 0 else (16 if lod == 1 else 12)
     peri = 4.0 * half_len + 2.0 * math.pi * radius
-    seg = peri / float(N_LIP_SAMPLES) * 0.92
-    for i, (x, y, ang) in enumerate(stadium_xy_path(xc, yc, half_len, radius, N_LIP_SAMPLES)):
+    seg = peri / float(n_samples) * 0.92
+    for i, (x, y, ang) in enumerate(stadium_xy_path(xc, yc, half_len, radius, n_samples)):
         ny = math.sin(ang)
         if ny * sign < 0.30:
             continue
@@ -1548,43 +1551,45 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     recalc_mesh(hull)
     hull["sf_body"] = True
 
-    belly_specs = (
-        (-0.18, 0.34, 0.08, DECK_Z0),
-        (0.08, 0.32, 0.08, DECK_Z0),
-        (0.30, 0.28, 0.08, DECK_Z0),
-    )
-    belly = center_loft("Belly", belly_specs, steel, collection, bevel=bevel_body)
-    set_bevel(belly, segments=1)
-    band(belly, V_STEEL_PLATE)
-    belly["sf_body"] = True
+    if lod <= 1:
+        belly_specs = (
+            (-0.18, 0.34, 0.08, DECK_Z0),
+            (0.08, 0.32, 0.08, DECK_Z0),
+            (0.30, 0.28, 0.08, DECK_Z0),
+        )
+        belly = center_loft("Belly", belly_specs, steel, collection, bevel=bevel_body)
+        set_bevel(belly, segments=1)
+        band(belly, V_STEEL_PLATE)
+        belly["sf_body"] = True
 
     # Overlapping plate courses with real gaps between them. Row y=140 of cycle
     # 78 held twenty-eight consecutive pixels of one value; nothing on this deck
-    # runs that far unbroken now.
-    for tag, x0, x1, hy0, hy1, rise in (
-        ("DeckCourseAft", -0.82, -0.62, 0.42, 0.42, 0.012),
-        ("DeckCourseAftB", -0.60, -0.50, 0.43, 0.42, 0.020),
-        ("DeckCourseWaist", -0.14, 0.02, 0.40, 0.34, 0.010),
-        ("DeckCourseWaistB", 0.04, 0.14, 0.335, 0.305, 0.022),
-        ("DeckCourseMid", 0.05, 0.20, 0.33, 0.28, 0.014),
-        ("DeckCourseFore", 0.23, 0.36, 0.26, 0.19, 0.010),
-    ):
-        course = add_folded_sheet(
-            tag,
-            (x0, -hy0, DECK_Z1 + rise), (x1, -hy1, DECK_Z1 + rise),
-            (x1, hy1, DECK_Z1 + rise), (x0, hy0, DECK_Z1 + rise),
-            0.016, steel, collection, bevel_plate,
-        )
-        band(course, V_STEEL_PLATE)
-
-    # A bolted service hatch on the waist, which is where a deck plate would
-    # actually come off. Cycle 78's deck carried no access of any kind.
-    hatch = add_box(
-        "DeckHatch", (-0.28, 0.235, DECK_Z1 + 0.014),
-        (0.085, 0.070, 0.014), steel, collection, bevel=bevel_plate,
-    )
-    band(hatch, V_STEEL_PLATE)
+    # runs that far unbroken now. LOD1 drops them: 0.01 wu steps do not occupy a
+    # pixel at 19 px/cell, and they were the first thing COLLAPSE ate.
     if lod == 0:
+        for tag, x0, x1, hy0, hy1, rise in (
+            ("DeckCourseAft", -0.82, -0.62, 0.42, 0.42, 0.012),
+            ("DeckCourseAftB", -0.60, -0.50, 0.43, 0.42, 0.020),
+            ("DeckCourseWaist", -0.14, 0.02, 0.40, 0.34, 0.010),
+            ("DeckCourseWaistB", 0.04, 0.14, 0.335, 0.305, 0.022),
+            ("DeckCourseMid", 0.05, 0.20, 0.33, 0.28, 0.014),
+            ("DeckCourseFore", 0.23, 0.36, 0.26, 0.19, 0.010),
+        ):
+            course = add_folded_sheet(
+                tag,
+                (x0, -hy0, DECK_Z1 + rise), (x1, -hy1, DECK_Z1 + rise),
+                (x1, hy1, DECK_Z1 + rise), (x0, hy0, DECK_Z1 + rise),
+                0.016, steel, collection, bevel_plate,
+            )
+            band(course, V_STEEL_PLATE)
+
+        # A bolted service hatch on the waist, which is where a deck plate would
+        # actually come off. Cycle 78's deck carried no access of any kind.
+        hatch = add_box(
+            "DeckHatch", (-0.28, 0.235, DECK_Z1 + 0.014),
+            (0.085, 0.070, 0.014), steel, collection, bevel=bevel_plate,
+        )
+        band(hatch, V_STEEL_PLATE)
         for hi, (hx, hy) in enumerate((
             (-0.355, 0.175), (-0.205, 0.175), (-0.355, 0.295), (-0.205, 0.295),
         )):
@@ -1597,26 +1602,28 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (BODY_AFT_X, -0.46, 0.12),
         0.016, scar_mat, collection, bevel_plate,
     )
-    add_folded_sheet(
-        "SideWallP",
-        (BODY_AFT_X + 0.02, 0.46, DECK_Z1),
-        (BODY_FORE_X - 0.04, 0.20, DECK_Z1),
-        (BODY_FORE_X - 0.04, 0.20, 0.12),
-        (BODY_AFT_X + 0.02, 0.46, 0.12),
-        0.016, scar_mat, collection, bevel_plate,
-    )
-    add_folded_sheet(
-        "SideWallS",
-        (BODY_AFT_X + 0.02, -0.46, DECK_Z1),
-        (BODY_FORE_X - 0.04, -0.20, DECK_Z1),
-        (BODY_FORE_X - 0.04, -0.20, 0.12),
-        (BODY_AFT_X + 0.02, -0.46, 0.12),
-        0.016, scar_mat, collection, bevel_plate,
-    )
+    if lod <= 1:
+        add_folded_sheet(
+            "SideWallP",
+            (BODY_AFT_X + 0.02, 0.46, DECK_Z1),
+            (BODY_FORE_X - 0.04, 0.20, DECK_Z1),
+            (BODY_FORE_X - 0.04, 0.20, 0.12),
+            (BODY_AFT_X + 0.02, 0.46, 0.12),
+            0.016, scar_mat, collection, bevel_plate,
+        )
+        add_folded_sheet(
+            "SideWallS",
+            (BODY_AFT_X + 0.02, -0.46, DECK_Z1),
+            (BODY_FORE_X - 0.04, -0.20, DECK_Z1),
+            (BODY_FORE_X - 0.04, -0.20, 0.12),
+            (BODY_AFT_X + 0.02, -0.46, 0.12),
+            0.016, scar_mat, collection, bevel_plate,
+        )
     # Track frames are transverse beams, not a continuous plate, so the gap
     # between deck edge and belt stays a real dark slot from directly above.
     for sign, tag in ((1.0, "P"), (-1.0, "S")):
-        for ix, xw in enumerate((-0.66, -0.24, 0.14)):
+        bridge_xs = (-0.66, -0.24, 0.14) if lod == 0 else ((-0.66, 0.14) if lod == 1 else (-0.24,))
+        for ix, xw in enumerate(bridge_xs):
             beam = add_box(
                 f"TrackBridge{tag}_{ix}",
                 (xw, sign * 0.50, 0.26),
@@ -1674,38 +1681,39 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     )
     chamfer_z = DECK_Z1 - 0.08
     chamfer_in = 0.08
-    add_folded_sheet(
-        "HopperChamferAft",
-        (WELL_CX - WELL_HX, -WELL_HY, DECK_Z1),
-        (WELL_CX - WELL_HX, WELL_HY, DECK_Z1),
-        (WELL_CX - WELL_HX + chamfer_in, WELL_HY - 0.02, chamfer_z),
-        (WELL_CX - WELL_HX + chamfer_in, -WELL_HY + 0.02, chamfer_z),
-        0.018, rubble, collection, bevel_plate,
-    )
-    add_folded_sheet(
-        "HopperChamferFore",
-        (WELL_CX + WELL_HX - chamfer_in, -WELL_HY + 0.02, chamfer_z),
-        (WELL_CX + WELL_HX - chamfer_in, WELL_HY - 0.02, chamfer_z),
-        (WELL_CX + WELL_HX, WELL_HY, DECK_Z1),
-        (WELL_CX + WELL_HX, -WELL_HY, DECK_Z1),
-        0.018, rubble, collection, bevel_plate,
-    )
-    add_folded_sheet(
-        "HopperChamferP",
-        (WELL_CX - WELL_HX + 0.02, WELL_HY - chamfer_in, chamfer_z),
-        (WELL_CX + WELL_HX - 0.02, WELL_HY - chamfer_in, chamfer_z),
-        (WELL_CX + WELL_HX, WELL_HY, DECK_Z1),
-        (WELL_CX - WELL_HX, WELL_HY, DECK_Z1),
-        0.018, rubble, collection, bevel_plate,
-    )
-    add_folded_sheet(
-        "HopperChamferS",
-        (WELL_CX - WELL_HX, -WELL_HY, DECK_Z1),
-        (WELL_CX + WELL_HX, -WELL_HY, DECK_Z1),
-        (WELL_CX + WELL_HX - 0.02, -WELL_HY + chamfer_in, chamfer_z),
-        (WELL_CX - WELL_HX + 0.02, -WELL_HY + chamfer_in, chamfer_z),
-        0.018, rubble, collection, bevel_plate,
-    )
+    if lod <= 1:
+        add_folded_sheet(
+            "HopperChamferAft",
+            (WELL_CX - WELL_HX, -WELL_HY, DECK_Z1),
+            (WELL_CX - WELL_HX, WELL_HY, DECK_Z1),
+            (WELL_CX - WELL_HX + chamfer_in, WELL_HY - 0.02, chamfer_z),
+            (WELL_CX - WELL_HX + chamfer_in, -WELL_HY + 0.02, chamfer_z),
+            0.018, rubble, collection, bevel_plate,
+        )
+        add_folded_sheet(
+            "HopperChamferFore",
+            (WELL_CX + WELL_HX - chamfer_in, -WELL_HY + 0.02, chamfer_z),
+            (WELL_CX + WELL_HX - chamfer_in, WELL_HY - 0.02, chamfer_z),
+            (WELL_CX + WELL_HX, WELL_HY, DECK_Z1),
+            (WELL_CX + WELL_HX, -WELL_HY, DECK_Z1),
+            0.018, rubble, collection, bevel_plate,
+        )
+        add_folded_sheet(
+            "HopperChamferP",
+            (WELL_CX - WELL_HX + 0.02, WELL_HY - chamfer_in, chamfer_z),
+            (WELL_CX + WELL_HX - 0.02, WELL_HY - chamfer_in, chamfer_z),
+            (WELL_CX + WELL_HX, WELL_HY, DECK_Z1),
+            (WELL_CX - WELL_HX, WELL_HY, DECK_Z1),
+            0.018, rubble, collection, bevel_plate,
+        )
+        add_folded_sheet(
+            "HopperChamferS",
+            (WELL_CX - WELL_HX, -WELL_HY, DECK_Z1),
+            (WELL_CX + WELL_HX, -WELL_HY, DECK_Z1),
+            (WELL_CX + WELL_HX - 0.02, -WELL_HY + chamfer_in, chamfer_z),
+            (WELL_CX - WELL_HX + 0.02, -WELL_HY + chamfer_in, chamfer_z),
+            0.018, rubble, collection, bevel_plate,
+        )
     # C77: HopperLip* deleted. Steel ring read as a framed pane.
     transom_x1 = WELL_CX - WELL_HX
     add_folded_sheet(
@@ -1733,24 +1741,26 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     # brief bans, and the framed-pane read cycle 77 removed the steel lip ring
     # for. Yellow is now bolted-on paint on a deck edge, and nothing else.
     coaming_z = DECK_Z1 + 0.018
-    for tag, x0, x1, y0, y1 in (
+    livery_bars = (
         ("Livery_KickP", -0.66, -0.26, 0.330, 0.442),
         ("Livery_KickS", -0.80, -0.52, -0.442, -0.330),
         ("Livery_Transom", -0.815, -0.745, -0.240, 0.180),
-    ):
-        bar = add_folded_sheet(
-            tag,
-            (x0, y0, coaming_z), (x1, y0, coaming_z),
-            (x1, y1, coaming_z), (x0, y1, coaming_z),
-            0.028, livery, collection, bevel_plate,
-        )
-        bar["sf_livery"] = True
-        if lod == 0:
-            for bi, bx in enumerate((x0 + 0.035, 0.5 * (x0 + x1), x1 - 0.035)):
-                add_hex_bolt(
-                    f"{tag}_Bolt{bi}", (bx, 0.5 * (y0 + y1), coaming_z + 0.020),
-                    steel, collection, bevel=0.0,
-                )
+    )
+    if lod <= 1:
+        for tag, x0, x1, y0, y1 in livery_bars:
+            bar = add_folded_sheet(
+                tag,
+                (x0, y0, coaming_z), (x1, y0, coaming_z),
+                (x1, y1, coaming_z), (x0, y1, coaming_z),
+                0.028, livery, collection, bevel_plate,
+            )
+            bar["sf_livery"] = True
+            if lod == 0:
+                for bi, bx in enumerate((x0 + 0.035, 0.5 * (x0 + x1), x1 - 0.035)):
+                    add_hex_bolt(
+                        f"{tag}_Bolt{bi}", (bx, 0.5 * (y0 + y1), coaming_z + 0.020),
+                        steel, collection, bevel=0.0,
+                    )
 
     # ------------------------------------------------------------------ cab
     cab = center_loft(
@@ -1803,13 +1813,15 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         0.010, glass, collection, 0.002 if lod == 0 else 0.0,
     )
     pane["sf_pane"] = True
-    mullion = add_box(
-        "CabMullion",
-        (PANE_CX, 0.0, PANE_GLASS_Z + 0.018),
-        (0.017, PANE_HY - 0.012, 0.014),
-        steel, collection, bevel=0.002 if lod == 0 else 0.0,
-    )
-    machined(mullion)
+    if lod == 0:
+        # A mullion that reads at 120 px/cell splits a 2 px site pane into noise.
+        mullion = add_box(
+            "CabMullion",
+            (PANE_CX, 0.0, PANE_GLASS_Z + 0.018),
+            (0.017, PANE_HY - 0.012, 0.014),
+            steel, collection, bevel=0.002,
+        )
+        machined(mullion)
     fore_pane = add_folded_sheet(
         "CabGlass",
         (CAB_CX + CAB_HX - 0.032, -0.090, 0.802),
@@ -1834,43 +1846,45 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     brow["sf_livery"] = True
     # A grab rail, not a painted roof. Half the width it was, so it reads as
     # hardware standing on the lid rather than a bright slab lying on it.
-    roof_rail = add_box(
-        "CabRoofRail",
-        (CAB_CX - 0.09, 0.0, (ROOF_Z1 + ROOF_RAIL_Z1) * 0.5),
-        (0.022, CAB_HY - 0.040, (ROOF_RAIL_Z1 - ROOF_Z1) * 0.5),
-        livery, collection, bevel=bevel_plate,
-    )
-    roof_rail["sf_livery"] = True
-    if lod == 0:
+    if lod <= 1:
+        roof_rail = add_box(
+            "CabRoofRail",
+            (CAB_CX - 0.09, 0.0, (ROOF_Z1 + ROOF_RAIL_Z1) * 0.5),
+            (0.022, CAB_HY - 0.040, (ROOF_RAIL_Z1 - ROOF_Z1) * 0.5),
+            livery, collection, bevel=bevel_plate,
+        )
+        roof_rail["sf_livery"] = True
+    if lod <= 1:
         for ri, ry in enumerate((-(CAB_HY - 0.045), CAB_HY - 0.045)):
-            stanchion = add_box(
-                f"CabRailFoot_{ri}", (CAB_CX - 0.09, ry, ROOF_Z1 + 0.004),
-                (0.022, 0.016, 0.010), steel, collection, bevel=0.0,
-            )
-            machined(stanchion)
-    add_folded_sheet(
-        "CabCheekP",
-        (CAB_CX - 0.08, CAB_HY, DECK_Z1 + 0.012),
-        (CAB_CX + CAB_HX, CAB_HY, DECK_Z1 + 0.012),
-        (CAB_CX + CAB_HX, 0.30, DECK_Z1 + 0.012),
-        (CAB_CX - 0.08, 0.30, DECK_Z1 + 0.012),
-        0.018, steel, collection, bevel_plate,
-    )
-    add_folded_sheet(
-        "CabCheekS",
-        (CAB_CX - 0.08, -0.30, DECK_Z1 + 0.012),
-        (CAB_CX + CAB_HX, -0.30, DECK_Z1 + 0.012),
-        (CAB_CX + CAB_HX, -CAB_HY, DECK_Z1 + 0.012),
-        (CAB_CX - 0.08, -CAB_HY, DECK_Z1 + 0.012),
-        0.018, steel, collection, bevel_plate,
-    )
+            if lod == 0:
+                stanchion = add_box(
+                    f"CabRailFoot_{ri}", (CAB_CX - 0.09, ry, ROOF_Z1 + 0.004),
+                    (0.022, 0.016, 0.010), steel, collection, bevel=0.0,
+                )
+                machined(stanchion)
+        add_folded_sheet(
+            "CabCheekP",
+            (CAB_CX - 0.08, CAB_HY, DECK_Z1 + 0.012),
+            (CAB_CX + CAB_HX, CAB_HY, DECK_Z1 + 0.012),
+            (CAB_CX + CAB_HX, 0.30, DECK_Z1 + 0.012),
+            (CAB_CX - 0.08, 0.30, DECK_Z1 + 0.012),
+            0.018, steel, collection, bevel_plate,
+        )
+        add_folded_sheet(
+            "CabCheekS",
+            (CAB_CX - 0.08, -0.30, DECK_Z1 + 0.012),
+            (CAB_CX + CAB_HX, -0.30, DECK_Z1 + 0.012),
+            (CAB_CX + CAB_HX, -CAB_HY, DECK_Z1 + 0.012),
+            (CAB_CX - 0.08, -CAB_HY, DECK_Z1 + 0.012),
+            0.018, steel, collection, bevel_plate,
+        )
 
-    # Chevrons sit on the steel waist, not on a yellow hat.
-    z_chev = DECK_Z1 + 0.026
-    add_chevron_plate("Chevron_AP", -0.04, 0.14, 0.32, z_chev, chevron, steel, collection, lod, bevel_plate)
-    add_chevron_plate("Chevron_AS", -0.04, -0.32, -0.14, z_chev, chevron, steel, collection, lod, bevel_plate)
-    add_chevron_plate("Chevron_BP", 0.12, 0.12, 0.26, z_chev, chevron, steel, collection, lod, bevel_plate)
-    add_chevron_plate("Chevron_BS", 0.12, -0.26, -0.12, z_chev, chevron, steel, collection, lod, bevel_plate)
+        # Chevrons sit on the steel waist, not on a yellow hat.
+        z_chev = DECK_Z1 + 0.026
+        add_chevron_plate("Chevron_AP", -0.04, 0.14, 0.32, z_chev, chevron, steel, collection, lod, bevel_plate)
+        add_chevron_plate("Chevron_AS", -0.04, -0.32, -0.14, z_chev, chevron, steel, collection, lod, bevel_plate)
+        add_chevron_plate("Chevron_BP", 0.12, 0.12, 0.26, z_chev, chevron, steel, collection, lod, bevel_plate)
+        add_chevron_plate("Chevron_BS", 0.12, -0.26, -0.12, z_chev, chevron, steel, collection, lod, bevel_plate)
 
     if lod == 0:
         for i, (bx, by) in enumerate((
@@ -1885,25 +1899,27 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     # to survive to the site register as the machine's brightest beat.
     lamp_x = BODY_FORE_X + 0.055
     lamp_z = DECK_Z1 + 0.145
-    bracket = add_box(
-        "LampBracket", (BODY_FORE_X - 0.02, 0.0, DECK_Z1 + 0.075),
-        (0.030, 0.060, 0.080), steel, collection, bevel=0.0,
-    )
-    machined(bracket)
+    if lod <= 1:
+        bracket = add_box(
+            "LampBracket", (BODY_FORE_X - 0.02, 0.0, DECK_Z1 + 0.075),
+            (0.030, 0.060, 0.080), steel, collection, bevel=0.0,
+        )
+        machined(bracket)
     can = add_cylinder("LampCan", (lamp_x - 0.035, 0.0, lamp_z), 0.052, 0.070, steel, collection, vertices=cyl_v, bevel=0.0, rot=(0, math.pi / 2, 0))
     machined(can)
     add_cylinder("LampLens", (lamp_x + 0.006, 0.0, lamp_z), 0.040, 0.018, lamp_mat, collection, vertices=cyl_v, bevel=0.0, rot=(0, math.pi / 2, 0))
-    hood = add_folded_sheet(
-        "LampHood",
-        (lamp_x - 0.090, -0.070, lamp_z + 0.070), (lamp_x - 0.018, -0.062, lamp_z + 0.052),
-        (lamp_x - 0.018, 0.062, lamp_z + 0.052), (lamp_x - 0.090, 0.070, lamp_z + 0.070),
-        0.012, steel, collection, 0.002 if lod == 0 else 0.0,
-    )
-    machined(hood)
-    pipe = add_cylinder("VentPipe", (CAB_CX - 0.15, CAB_HY - 0.09, ROOF_Z1 + 0.006), 0.026, 0.036, steel, collection, vertices=8, bevel=0.0, rot=(0, 0, 0))
-    machined(pipe)
-    vent_cap = add_cylinder("VentCap", (CAB_CX - 0.15, CAB_HY - 0.09, ROOF_Z1 + 0.024), 0.034, 0.016, steel, collection, vertices=8, bevel=0.0, rot=(0, 0, 0))
-    machined(vent_cap)
+    if lod <= 1:
+        hood = add_folded_sheet(
+            "LampHood",
+            (lamp_x - 0.090, -0.070, lamp_z + 0.070), (lamp_x - 0.018, -0.062, lamp_z + 0.052),
+            (lamp_x - 0.018, 0.062, lamp_z + 0.052), (lamp_x - 0.090, 0.070, lamp_z + 0.070),
+            0.012, steel, collection, 0.002 if lod == 0 else 0.0,
+        )
+        machined(hood)
+        pipe = add_cylinder("VentPipe", (CAB_CX - 0.15, CAB_HY - 0.09, ROOF_Z1 + 0.006), 0.026, 0.036, steel, collection, vertices=8, bevel=0.0, rot=(0, 0, 0))
+        machined(pipe)
+        vent_cap = add_cylinder("VentCap", (CAB_CX - 0.15, CAB_HY - 0.09, ROOF_Z1 + 0.024), 0.034, 0.016, steel, collection, vertices=8, bevel=0.0, rot=(0, 0, 0))
+        machined(vent_cap)
 
     # ------------------------------------------------------------- beacon
     # A caged amber safety beacon on the aft deck. The works cameras all look
@@ -1917,11 +1933,12 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     # named fake is "a bright disk on a surface", which is what cycle 78's
     # reviewer graded the bare vent cap as.
     beacon_x, beacon_y = -0.72, 0.255
-    beacon_post = add_box(
-        "BeaconPost", (beacon_x, beacon_y, DECK_Z1 + 0.048),
-        (0.026, 0.026, 0.050), steel, collection, bevel=0.0,
-    )
-    machined(beacon_post)
+    if lod <= 1:
+        beacon_post = add_box(
+            "BeaconPost", (beacon_x, beacon_y, DECK_Z1 + 0.048),
+            (0.026, 0.026, 0.050), steel, collection, bevel=0.0,
+        )
+        machined(beacon_post)
     beacon_can = add_cylinder(
         "BeaconCan", (beacon_x, beacon_y, DECK_Z1 + 0.128), 0.095, 0.062,
         steel, collection, vertices=cyl_v, bevel=0.0, rot=(0, 0, 0),
@@ -1931,7 +1948,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         "BeaconLens", (beacon_x, beacon_y, DECK_Z1 + 0.172), 0.076, 0.046,
         lamp_mat, collection, vertices=cyl_v, bevel=0.0, rot=(0, 0, 0),
     )
-    if lod <= 1:
+    if lod == 0:
         for ci in range(4):
             ang = math.pi * 0.25 + ci * math.pi * 0.5
             post = add_box(
@@ -2007,9 +2024,9 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
             )
 
     # --------------------------------------------------------------- tracks
-    n_pads = N_TREAD_PADS
-    n_st_xy = 7 if lod == 0 else 5
-    n_arc_xy = 7 if lod == 0 else 5
+    n_pads = N_TREAD_PADS if lod == 0 else 0
+    n_st_xy = 7 if lod == 0 else (5 if lod == 1 else 3)
+    n_arc_xy = n_st_xy
     for sign, tname in ((1.0, "track_L"), (-1.0, "track_R")):
         yc = sign * TRACK_YC
         belt = add_stadium_xy_belt(
@@ -2028,12 +2045,19 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         set_bevel(crown, segments=1)
         band(crown, V_TRACK_RUBBER)
         crown["sf_body"] = True
-        cleats = add_track_cleats(
-            tname, TRACK_XC, yc, TRACK_HL, TRACK_R_PLAN, TRACK_BELT_THICK,
-            TRACK_TOP_Z, n_pads, track_mat, collection, 0.0,
-        )
-        for pad in cleats:
-            pad["sf_track_join"] = tname
+        if lod == 0:
+            cleats = add_track_cleats(
+                tname, TRACK_XC, yc, TRACK_HL, TRACK_R_PLAN, TRACK_BELT_THICK,
+                TRACK_TOP_Z, n_pads, track_mat, collection, 0.0,
+            )
+            for pad in cleats:
+                pad["sf_track_join"] = tname
+        else:
+            # UV-scroll hook is the belt itself once the grousers are gone. At
+            # 19 px/cell 18 cleats alias into a dashed smear, which is how a
+            # solid rubber wall becomes a paperclip.
+            belt["sf_track_join"] = tname
+            crown["sf_track_join"] = tname
         add_track_outer_lip(
             f"TrackRail_{tname}", TRACK_XC, yc, TRACK_HL, TRACK_R_PLAN,
             sign, TRACK_TOP_Z, track_mat, collection, lod,
@@ -2073,25 +2097,27 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         )
         machined(idler)
         idler["sf_body"] = True
-        tensioner = add_box(
-            f"IdlerTensioner_{tname}", (TRACK_XC + TRACK_HL - 0.07, yc, TRACK_TOP_Z - 0.05),
-            (0.070, 0.036, 0.030), steel, collection, bevel=0.0,
-        )
-        machined(tensioner)
-        tensioner["sf_body"] = True
-        rocker = add_box(
-            f"Rocker_{tname}", (TRACK_XC, sign * 0.50, 0.10),
-            (0.52, 0.032, 0.052), steel, collection, bevel=0.0,
-        )
-        machined(rocker)
-        rocker["sf_body"] = True
-        for ix, xw in enumerate((-0.50, -0.06)):
-            bogie = add_box(
-                f"Bogie_{tname}_{ix}", (xw, sign * 0.54, 0.15),
-                (0.062, 0.062, 0.070), steel, collection, bevel=0.0,
+        if lod <= 1:
+            tensioner = add_box(
+                f"IdlerTensioner_{tname}", (TRACK_XC + TRACK_HL - 0.07, yc, TRACK_TOP_Z - 0.05),
+                (0.070, 0.036, 0.030), steel, collection, bevel=0.0,
             )
-            machined(bogie)
-            bogie["sf_body"] = True
+            machined(tensioner)
+            tensioner["sf_body"] = True
+            rocker = add_box(
+                f"Rocker_{tname}", (TRACK_XC, sign * 0.50, 0.10),
+                (0.52, 0.032, 0.052), steel, collection, bevel=0.0,
+            )
+            machined(rocker)
+            rocker["sf_body"] = True
+        if lod == 0:
+            for ix, xw in enumerate((-0.50, -0.06)):
+                bogie = add_box(
+                    f"Bogie_{tname}_{ix}", (xw, sign * 0.54, 0.15),
+                    (0.062, 0.062, 0.070), steel, collection, bevel=0.0,
+                )
+                machined(bogie)
+                bogie["sf_body"] = True
 
     # ----------------------------------------------------------------- boom
     boom_pivot = add_empty("boom_pivot", PIVOT, collection, root, size=0.08)
@@ -2118,27 +2144,39 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     # the arm's brightness, with no taper and no end return - a decal doing a
     # structural job. This one reads by its shadow and its silhouette bump.
     spine_x0, spine_x1 = px + 0.06, tx - 0.20
-    spine_n = 5 if lod == 0 else (4 if lod == 1 else 3)
-    spine_pitch = (spine_x1 - spine_x0) / float(spine_n)
-    for i in range(spine_n):
-        t = i / float(spine_n - 1)
-        cx = spine_x0 + (spine_x1 - spine_x0) * t
-        seg = add_box(
-            f"BoomSpine_{i}", (cx, py, pz + 0.185 - 0.020 * t),
-            (spine_pitch * 0.52, 0.052 - 0.017 * t, 0.030 - 0.009 * t),
-            steel, collection, bevel=0.003 if lod == 0 else 0.0,
-        )
-        set_bevel(seg, segments=1)
-        machined(seg)
-        seg["sf_boom"] = True
-        if lod == 0 and i < spine_n - 1:
-            joint = add_box(
-                f"BoomSpineJoint_{i}",
-                (cx + spine_pitch * 0.5, py, pz + 0.180 - 0.020 * t),
-                (0.012, 0.040, 0.024), steel, collection, bevel=0.0,
+    if lod == 0:
+        spine_n = 5
+        spine_pitch = (spine_x1 - spine_x0) / float(spine_n)
+        for i in range(spine_n):
+            t = i / float(spine_n - 1)
+            cx = spine_x0 + (spine_x1 - spine_x0) * t
+            seg = add_box(
+                f"BoomSpine_{i}", (cx, py, pz + 0.185 - 0.020 * t),
+                (spine_pitch * 0.52, 0.052 - 0.017 * t, 0.030 - 0.009 * t),
+                steel, collection, bevel=0.003,
             )
-            machined(joint)
-            joint["sf_boom"] = True
+            set_bevel(seg, segments=1)
+            machined(seg)
+            seg["sf_boom"] = True
+            if i < spine_n - 1:
+                joint = add_box(
+                    f"BoomSpineJoint_{i}",
+                    (cx + spine_pitch * 0.5, py, pz + 0.180 - 0.020 * t),
+                    (0.012, 0.040, 0.024), steel, collection, bevel=0.0,
+                )
+                machined(joint)
+                joint["sf_boom"] = True
+    else:
+        # One mill-scale rail. Four collapsed segments became a stripe; one
+        # authored rail reads as a load path at 19 px/cell.
+        rail = add_box(
+            "BoomSpine_0",
+            (0.5 * (spine_x0 + spine_x1), py, pz + 0.175),
+            (0.5 * (spine_x1 - spine_x0), 0.044, 0.026),
+            steel, collection, bevel=0.0,
+        )
+        machined(rail)
+        rail["sf_boom"] = True
     for tag, cx, hz in (("Root", spine_x0 - 0.014, 0.062), ("Tip", spine_x1 + 0.012, 0.046)):
         ret = add_box(
             f"BoomSpineReturn{tag}", (cx, py, pz + 0.185 - hz),
@@ -2181,7 +2219,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     )
     band(lid, V_STEEL_PLATE)
     lid["sf_keep"] = True
-    if lod <= 1:
+    if lod == 0:
         for ix, lz in enumerate((0.21, 0.31, 0.41)):
             rib = add_folded_sheet(
                 f"LidRib_{ix}",
@@ -2189,7 +2227,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
                 (BODY_AFT_X - 0.026, WELL_HY - 0.03, lz),
                 (BODY_AFT_X - 0.026, WELL_HY - 0.03, lz + 0.026),
                 (BODY_AFT_X - 0.026, -WELL_HY + 0.03, lz + 0.026),
-                0.012, steel, collection, 0.002 if lod == 0 else 0.0,
+                0.012, steel, collection, 0.002,
             )
             machined(rib)
     if lod == 0:
@@ -2275,8 +2313,19 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         except TypeError:
             pass
 
+    # Cycle 80: never COLLAPSE-decimate. That is MTX-48 — it closes the hopper
+    # and the roof pane and smears glass into hull. LOD1/2 are authored
+    # reductions; over-budget is a build failure, not a modifier.
     if lod > 0:
-        decimate_to_budget(collection, TRI_BUDGET[lod])
+        authored = sum(
+            count_tris(obj) for obj in collection.all_objects
+            if obj.type == "MESH"
+        )
+        if authored > TRI_BUDGET[lod]:
+            raise RuntimeError(
+                f"lod{lod} authored {authored} tris over budget {TRI_BUDGET[lod]}; "
+                f"drop micro, do not decimate"
+            )
 
     hooks = assert_hooks(collection)
     bbox = measured_bbox([obj for obj in collection.all_objects if obj.type == "MESH"])
@@ -3350,7 +3399,7 @@ def planform_report(still_dir: Path):
     bpy.data.images.remove(top_img)
     report["pass"] = bool(tex_ok and clay_ok and c3_ok and site.get("pass"))
     out = still_dir / "planform_report.json"
-    out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    out.write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
     return report
 
 
@@ -3688,6 +3737,12 @@ def site_report(still_dir: Path, review_dir: Path):
                     f"{SITE_ACCENT_MIN_PX} required before a hue median is reported"
                 ),
             }
+        n_lit = max(1, int(lit.sum()))
+        rows["SITE_TRACK_SHARE"] = _row(
+            "SITE_TRACK_SHARE", float(int(roles["track"].sum())) / n_lit
+        )
+        rows["SITE_WELL_PIXELS"] = _row("SITE_WELL_PIXELS", float(int(roles["rubble"].sum())))
+        rows["SITE_GLASS_PIXELS"] = _row("SITE_GLASS_PIXELS", float(int(roles["glass"].sum())))
     report = {
         "cropOrigin": [x0, y0],
         "cropSize": size,
@@ -3715,7 +3770,15 @@ def site_report(still_dir: Path, review_dir: Path):
     return report
 
 
-def render_stills_from_glb(glb_path: Path, still_dir: Path):
+def render_stills_from_glb(glb_path: Path, still_dir: Path, registers=("close", "site")):
+    """Render close (LOD0: top/edge) and/or site (LOD1) registers from one GLB.
+
+    Cycle 79 shot every still, including works_site, from rover_lod0.glb. The
+    packet puts LOD1 on the site camera. Passing registers=('site',) with the
+    LOD1 file is the only legal site evidence path.
+    """
+    registers = tuple(registers)
+    print(f"render registers={registers} from {glb_path.name}")
     reset_scene()
     bpy.ops.import_scene.gltf(filepath=str(glb_path))
     camera, pad = setup_mine_lights()
@@ -3727,7 +3790,7 @@ def render_stills_from_glb(glb_path: Path, still_dir: Path):
         obj for obj in bpy.data.objects
         if obj.type == "MESH" and obj.name != "MinePad" and not obj.name.startswith("hopper_fill_")
     ]
-    site_objects = build_site_set()
+    site_objects = build_site_set() if "site" in registers else []
     still_dir.mkdir(parents=True, exist_ok=True)
 
     def show_site(visible):
@@ -3772,9 +3835,10 @@ def render_stills_from_glb(glb_path: Path, still_dir: Path):
         scene.render.film_transparent = False
         return str(path)
 
-    paths = {
-        "works_top": snap("works_top.png", "works_top"),
-        "works_edge": snap("works_edge.png", "works_edge"),
+    paths = {}
+    if "close" in registers:
+        paths["works_top"] = snap("works_top.png", "works_top")
+        paths["works_edge"] = snap("works_edge.png", "works_edge")
         # The material bill nominates works_edge as the scar plate's proving
         # view, but the plate sits on the -Y flank and the (1, 0) edge offset
         # projects that face at zero area — which is why cycle 78's reviewer
@@ -3782,15 +3846,18 @@ def render_stills_from_glb(glb_path: Path, still_dir: Path):
         # the cycle-to-cycle diff still works; this is an ADDITIONAL still with
         # the object parked toward +X+Y, so the aft wall AND the starboard
         # flank, its scar plate and the starboard belt's outer lip all read.
-        "works_edge_flank": snap("works_edge_flank.png", "works_edge", edge_dir=(0.62, 0.78)),
-    }
-    show_site(True)
-    paths["works_site"] = snap("works_site.png", "works_site")
-    show_site(False)
+        paths["works_edge_flank"] = snap("works_edge_flank.png", "works_edge", edge_dir=(0.62, 0.78))
+        backups, _clay = override_clay(meshes)
+        paths["works_top_clay"] = snap("works_top_clay.png", "works_top")
+        restore_mats(meshes, backups)
 
-    backups, _clay = override_clay(meshes)
-    paths["works_top_clay"] = snap("works_top_clay.png", "works_top")
-    restore_mats(meshes, backups)
+    if "site" in registers:
+        show_site(True)
+        paths["works_site"] = snap("works_site.png", "works_site")
+        show_site(False)
+        clay_back, _sc = override_clay(meshes)
+        paths["works_site_clay"] = snap("works_site_clay.png", "works_site")
+        restore_mats(meshes, clay_back)
 
     pad.hide_render = True
     for light in [obj for obj in bpy.data.objects if obj.type == "LIGHT"]:
@@ -3812,20 +3879,23 @@ def render_stills_from_glb(glb_path: Path, still_dir: Path):
         pass
     scene.view_settings.exposure = 0.0
     flat_back = override_flat_mask(meshes)
-    paths["works_top_mask"] = snap("works_top_mask.png", "works_top", transparent=False, samples=1)
-    paths["works_edge_mask"] = snap("works_edge_mask.png", "works_edge", transparent=False, samples=1)
-    # The site beauty frame now has a lit mine in it, so "everything above
-    # luma 0.05 is the rover" stops being true. The site crop and every site
-    # number are taken against this role pass instead.
-    paths["works_site_mask"] = snap("works_site_mask.png", "works_site", transparent=False, samples=1)
-    paths["works_edge_flank_mask"] = snap(
-        "works_edge_flank_mask.png", "works_edge", transparent=False, edge_dir=(0.62, 0.78), samples=1
-    )
+    if "close" in registers:
+        paths["works_top_mask"] = snap("works_top_mask.png", "works_top", transparent=False, samples=1)
+        paths["works_edge_mask"] = snap("works_edge_mask.png", "works_edge", transparent=False, samples=1)
+        paths["works_edge_flank_mask"] = snap(
+            "works_edge_flank_mask.png", "works_edge", transparent=False, edge_dir=(0.62, 0.78), samples=1
+        )
+    if "site" in registers:
+        # The site beauty frame has a lit mine in it, so "everything above
+        # luma 0.05 is the rover" stops being true. The site crop and every site
+        # number are taken against this role pass instead, from the LOD1 mesh.
+        paths["works_site_mask"] = snap("works_site_mask.png", "works_site", transparent=False, samples=1)
     restore_mats(meshes, flat_back)
-    pose_top = apply_works_camera(camera, framing="works_top", focus=(0.0, 0.0, 0.0))
-    depth_back, _dmat = override_depth(meshes, pose_top["distance"])
-    paths["works_top_depth"] = snap("works_top_depth.png", "works_top", transparent=False, samples=1)
-    restore_mats(meshes, depth_back)
+    if "close" in registers:
+        pose_top = apply_works_camera(camera, framing="works_top", focus=(0.0, 0.0, 0.0))
+        depth_back, _dmat = override_depth(meshes, pose_top["distance"])
+        paths["works_top_depth"] = snap("works_top_depth.png", "works_top", transparent=False, samples=1)
+        restore_mats(meshes, depth_back)
     if hasattr(scene, "eevee"):
         try:
             scene.eevee.taa_render_samples = 32
@@ -3861,7 +3931,7 @@ def main():
     reset_scene()
     print(f"works rover cycle {CYCLE}: atlas 4x4, map ladder {TEX_BY_LOD}")
     reports = []
-    lod0_glb = None
+    lod_paths = {}
     atlas_maps_by_lod = {}
     for lod in (0, 1, 2):
         reset_scene()
@@ -3882,10 +3952,10 @@ def main():
             "sha256": sha256(output),
             "byteBudget": GLB_BUDGET[lod],
             "byteOverBudget": nbytes > GLB_BUDGET[lod],
+            "decimate": False,
         })
         reports.append(report)
-        if lod == 0:
-            lod0_glb = output
+        lod_paths[lod] = output
         print(json.dumps({"lod": lod, "triangles": report["triangles"], "draws": report["draws"], "bytes": nbytes, "sha256": report["sha256"]}, indent=2))
 
     removed = purge_cycle1_textures()
@@ -3895,7 +3965,8 @@ def main():
     stills = {}
     planform = {}
     try:
-        stills = render_stills_from_glb(lod0_glb, still_dir)
+        stills.update(render_stills_from_glb(lod_paths[0], still_dir, registers=("close",)))
+        stills.update(render_stills_from_glb(lod_paths[1], still_dir, registers=("site",)))
         planform = planform_report(still_dir)
     except Exception as exc:
         blender_status["render"] = f"crash: {exc}"
@@ -3904,7 +3975,7 @@ def main():
 
     tex = texture_report()
     tex["tileMapDetail"] = atlas_maps_by_lod.get(0, {})
-    (still_dir / "texture_report.json").write_text(json.dumps(tex, indent=2) + "\n", encoding="utf-8")
+    (still_dir / "texture_report.json").write_bytes((json.dumps(tex, indent=2) + "\n").encode("utf-8"))
 
     hashes = {f"rover_lod{r['lod']}.glb": r["sha256"] for r in reports}
     sidecar = FAMILY / "evidence" / f"cycle_{CYCLE:03d}_hash_sidecar.json"
@@ -3917,7 +3988,7 @@ def main():
             "result": "MATCH" if prev == hashes else "MISMATCH",
         }
         print(f"determinism {determinism['result']}")
-    sidecar.write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
+    sidecar.write_bytes((json.dumps(hashes, indent=2) + "\n").encode("utf-8"))
 
     still_rel = {}
     for key, path in stills.items():
@@ -3931,6 +4002,7 @@ def main():
         "review_1to1/works_edge_1to1.png",
         "review_1to1/works_edge_flank_1to1.png",
         "review_1to1/works_site_1to1.png",
+        "works_site_clay.png",
     ):
         target = still_dir / extra
         key = Path(extra).stem
@@ -3951,13 +4023,18 @@ def main():
         "hooks": reports[0]["hooks"] if reports else {},
         "bbox": reports[0]["bbox"] if reports else {},
         "stills": still_rel,
-        "visibleFaces": {"note": "cycle 79 does not run hidden-face culling with --delete"},
+        "closeLod": 0,
+        "siteLod": 1,
+        "siteGlbSha256": reports[1]["sha256"] if len(reports) > 1 else None,
+        "visibleFaces": {
+            "note": "cycle 80 does not run hidden-face culling with --delete; works_site is LOD1"
+        },
         "determinism": determinism,
         "purgedTextures": removed,
         "blender": blender_status,
     }
     out_json = FAMILY / "evidence" / f"cycle_{CYCLE:03d}.json"
-    out_json.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    out_json.write_bytes((json.dumps(receipt, indent=2) + "\n").encode("utf-8"))
     print(json.dumps({
         "ok": True,
         "cycle": CYCLE,
@@ -3968,6 +4045,8 @@ def main():
         "pngCount": tex["pngCount"],
         "planformPass": planform.get("pass"),
         "sitePass": planform.get("sitePass"),
+        "tris1": reports[1]["triangles"] if len(reports) > 1 else None,
+        "siteLod": 1,
     }, indent=2))
     return 0
 
