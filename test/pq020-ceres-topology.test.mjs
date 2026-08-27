@@ -155,6 +155,36 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(cinder.exactAgreement, true);
   assert.deepEqual(cinder.live, cinder.planned);
 
+  assert.deepEqual(first.additiveDressing, second.additiveDressing);
+  assert.equal(
+    first.additiveDressing.schema,
+    'spaceface.pq020-ceres-additive-dressing.v1',
+  );
+  assert.equal(
+    first.additiveDressing.exclusionPolicy,
+    'explicit_world_dressing_data_flags',
+  );
+  assert.deepEqual(first.additiveDressing.groupIds, ['everydaySpaceKit', 'wreckAftermath']);
+  assert.deepEqual(first.additiveDressing.totals, {
+    entities: 10,
+    byType: { fx: 10 },
+    collidable: 0,
+    colliders: 0,
+  });
+  assert.equal(first.additiveDressing.ambiguousEntities, 0);
+  assert.deepEqual(first.additiveDressing.groups, [
+    {
+      id: 'everydaySpaceKit',
+      dataFlag: 'everydaySpaceKit',
+      live: { entities: 6, byType: { fx: 6 }, collidable: 0, colliders: 0 },
+    },
+    {
+      id: 'wreckAftermath',
+      dataFlag: 'wreckAftermath',
+      live: { entities: 4, byType: { fx: 4 }, collidable: 0, colliders: 0 },
+    },
+  ]);
+
   for (const group of Object.values(first.requiresHeaded)) {
     assert.equal(group.requiresHeaded, true);
     for (const value of Object.values(group.fields)) assert.equal(value, null);
@@ -203,6 +233,22 @@ test('PQ-020 validator fails closed on topology, structural, map, and evidence-s
   assert.ok(cinderPlannedResult.failures.some((failure) => (
     failure.startsWith('additiveWorldSites.world_site_ceres_cinder_sluice.planned:')
   )));
+
+  const additiveDressingDrift = structuredClone(snapshot);
+  additiveDressingDrift.additiveDressing.groups[0].live.entities -= 1;
+  const additiveDressingResult = validatePq020CeresTopologySnapshot(additiveDressingDrift);
+  assert.equal(additiveDressingResult.pass, false);
+  assert.ok(additiveDressingResult.failures.some((failure) => (
+    failure.startsWith('additiveDressing.everydaySpaceKit.live:')
+  )));
+
+  const ambiguousDressing = structuredClone(snapshot);
+  ambiguousDressing.additiveDressing.ambiguousEntities = 1;
+  const ambiguousDressingResult = validatePq020CeresTopologySnapshot(ambiguousDressing);
+  assert.equal(ambiguousDressingResult.pass, false);
+  assert.ok(ambiguousDressingResult.failures.includes(
+    'additiveDressing.ambiguousEntities:1!=0',
+  ));
 
   const mapDrift = structuredClone(snapshot);
   mapDrift.transit.beacon.systemMapDrawPos.x += 1;

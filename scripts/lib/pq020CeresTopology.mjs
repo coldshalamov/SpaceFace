@@ -64,6 +64,8 @@ export const PQ020_CATHEDRAL_SITE_ID = 'world_site_wreck_cathedral';
 export const PQ020_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
   'spaceface.pq020-ceres-additive-world-sites.v1';
+export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
+  'spaceface.pq020-ceres-additive-dressing.v1';
 // Re-pinned 2026-08-18. The only input that moved is worldSite.releaseSha256: the Cathedral
 // binding had been carrying the pre-rebuild hash, so this digest was green against a value
 // no file on disk produced. Nothing structural changed -- entity, collider, proxy, operation
@@ -73,6 +75,20 @@ export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
   'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
+const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
+  everydaySpaceKit: Object.freeze({
+    entities: 6,
+    byType: Object.freeze({ fx: 6 }),
+    collidable: 0,
+    colliders: 0,
+  }),
+  wreckAftermath: Object.freeze({
+    entities: 4,
+    byType: Object.freeze({ fx: 4 }),
+    collidable: 0,
+    colliders: 0,
+  }),
+});
 
 const EXPECTED_POCKETS = Object.freeze({
   civic: Object.freeze({
@@ -278,11 +294,13 @@ export async function buildPq020CeresTopologySnapshot() {
     },
     structuralCost: harness.structuralCost,
     additiveWorldSites: harness.additiveWorldSites,
+    additiveDressing: harness.additiveDressing,
     requiresHeaded: headedEvidenceStubs(),
   };
 
   // ── PQ-020 continuation proofs ───────────────────────────────────────────────────────────────
-  // Every row below, including additiveWorldSites above, is a SIBLING of `structuralCost`.
+  // Every row below, including additiveWorldSites and additiveDressing above, is a SIBLING of
+  // `structuralCost`.
   // `structuralCost` deliberately remains the Cathedral-inclusive PQ-020 core: its digest
   // b2232d1d… is pinned, while manifest-identified later World Sites fail closed in their own
   // live-versus-planned census instead of silently moving or weakening that core.
@@ -486,6 +504,7 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
 
   validateStructuralCost(snapshot?.structuralCost, failures);
   validateAdditiveWorldSites(snapshot?.additiveWorldSites, failures);
+  validateAdditiveDressing(snapshot?.additiveDressing, failures);
   validateHeadedStubs(snapshot?.requiresHeaded, failures);
   validateContinuationProofs(snapshot, failures);
 
@@ -514,6 +533,7 @@ export function validatePq020CeresTopologySnapshot(snapshot) {
     rejectedStaleProposal: stale,
     structuralCost: snapshot?.structuralCost || null,
     additiveWorldSites: snapshot?.additiveWorldSites || null,
+    additiveDressing: snapshot?.additiveDressing || null,
     requiresHeaded: snapshot?.requiresHeaded || null,
     naturalJobs: snapshot?.naturalJobs || null,
     offscreenProjection: snapshot?.offscreenProjection || null,
@@ -580,10 +600,11 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       manifest.sectorId === sector.id && manifest.id !== PQ020_CATHEDRAL_SITE_ID
     ));
     const additiveWorldSites = buildAdditiveWorldSiteCensus(liveCeresEntities, additiveManifests);
+    const additiveDressing = buildAdditiveDressingCensus(liveCeresEntities);
     const additiveWorldObjectIds = new Set(additiveManifests.map((manifest) => manifest.worldObjectId));
     const entities = liveCeresEntities.filter((entity) => (
       !worldSiteOwnerIdForEntity(entity, additiveWorldObjectIds)
-    ));
+    )).filter((entity) => !isAdditiveDressingEntity(entity));
     const coreCensus = censusLiveEntities(entities);
     const siteEntities = entities.filter((entity) => (
       worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)
@@ -641,6 +662,7 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
     return {
       structuralCost,
       additiveWorldSites,
+      additiveDressing,
       systemModel,
       beaconPhysicalGlobal: beacon?.pos ? roundPoint(beacon.pos) : null,
       beaconPhysicalPlaceId: beacon?.data?.placeId || null,
@@ -688,6 +710,33 @@ function buildAdditiveWorldSiteCensus(liveEntities, manifests) {
     totals,
     allMaterializedExactlyAsPlanned: sites.every((site) => site.exactAgreement),
   };
+}
+
+function buildAdditiveDressingCensus(liveEntities) {
+  const groupIds = Object.keys(EXPECTED_ADDITIVE_DRESSING_CENSUSES).sort();
+  const groups = groupIds.map((id) => ({
+    id,
+    dataFlag: id,
+    live: censusLiveEntities(liveEntities.filter((entity) => entity.data?.[id] === true)),
+  }));
+  const tagged = liveEntities.filter((entity) => isAdditiveDressingEntity(entity));
+  const ambiguousEntities = tagged.filter((entity) => (
+    groupIds.filter((id) => entity.data?.[id] === true).length !== 1
+  )).length;
+  return {
+    schema: PQ020_CERES_ADDITIVE_DRESSING_SCHEMA,
+    sectorId: PQ020_CERES_SECTOR_ID,
+    exclusionPolicy: 'explicit_world_dressing_data_flags',
+    groupIds,
+    groups,
+    totals: censusLiveEntities(tagged),
+    ambiguousEntities,
+  };
+}
+
+function isAdditiveDressingEntity(entity) {
+  return Object.keys(EXPECTED_ADDITIVE_DRESSING_CENSUSES)
+    .some((id) => entity?.data?.[id] === true);
 }
 
 function censusLiveEntities(entities) {
@@ -888,6 +937,46 @@ function validateAdditiveWorldSites(value, failures) {
   if (stableStringify(cinder?.planned) !== stableStringify(expectedCinder)) {
     failures.push(`additiveWorldSites.${CINDER_SLUICE_SITE_ID}:contract-drift`);
   }
+}
+
+function validateAdditiveDressing(value, failures) {
+  if (!value || value.schema !== PQ020_CERES_ADDITIVE_DRESSING_SCHEMA) {
+    failures.push('additiveDressing:schema');
+    return;
+  }
+  exact(failures, 'additiveDressing.sectorId', value.sectorId, PQ020_CERES_SECTOR_ID);
+  exact(
+    failures,
+    'additiveDressing.exclusionPolicy',
+    value.exclusionPolicy,
+    'explicit_world_dressing_data_flags',
+  );
+  const expectedIds = Object.keys(EXPECTED_ADDITIVE_DRESSING_CENSUSES).sort();
+  if (stableStringify(value.groupIds) !== stableStringify(expectedIds)) {
+    failures.push(`additiveDressing:groupIds:${stableStringify(value.groupIds || null)}`);
+  }
+  const groups = Array.isArray(value.groups) ? value.groups : [];
+  exact(failures, 'additiveDressing.groupCount', groups.length, expectedIds.length);
+  for (const id of expectedIds) {
+    const row = groups.find((candidate) => candidate?.id === id);
+    if (!row) {
+      failures.push(`additiveDressing:${id}:missing`);
+      continue;
+    }
+    exact(failures, `additiveDressing.${id}.dataFlag`, row.dataFlag, id);
+    const expected = EXPECTED_ADDITIVE_DRESSING_CENSUSES[id];
+    if (stableStringify(row.live) !== stableStringify(expected)) {
+      failures.push(
+        `additiveDressing.${id}.live:${stableStringify(row.live || null)}`
+        + `!=${stableStringify(expected)}`,
+      );
+    }
+  }
+  const expectedTotals = sumEntityCensuses(Object.values(EXPECTED_ADDITIVE_DRESSING_CENSUSES));
+  if (stableStringify(value.totals) !== stableStringify(expectedTotals)) {
+    failures.push('additiveDressing.totals');
+  }
+  exact(failures, 'additiveDressing.ambiguousEntities', value.ambiguousEntities, 0);
 }
 
 /**
