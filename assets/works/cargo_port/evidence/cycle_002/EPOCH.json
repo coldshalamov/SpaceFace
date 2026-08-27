@@ -1,0 +1,163 @@
+{
+  "schema": "spaceface.worksCargoPortCycleEpoch.v1",
+  "assetId": "place_works_cargo_port",
+  "cycle": 2,
+  "state": "design_candidate",
+  "disposition": "keep",
+  "candidate": {
+    "root": "SF_WORKS_CARGO_PORT_V1",
+    "sourceGlb": "assets/works/cargo_port/source/cargo_port.glb",
+    "partGlb": "assets/ships/parts/works/place_works_cargo_port.glb",
+    "sha256": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
+    "partsSha256": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532"
+  },
+  "cycle01": {
+    "candidateSha256": "BF506A8937DFC5FE196841E6B061C04D48BE24258130B5BDD4342F3CC16D3A70",
+    "hashes": "assets/works/cargo_port/evidence/cycle_001/HASHES.json",
+    "frozen": true
+  },
+  "supportedViews": {
+    "works_top": {
+      "pxPerCell": 120,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge": {
+      "pxPerCell": 120,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_site": {
+      "pxPerCell": 19,
+      "resolution": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "open",
+    "G2": "open",
+    "G3": "blocked:no_mesh_derived_high_cage_bakes",
+    "G4": "open",
+    "G5": "evidence_ready",
+    "G6": "open",
+    "G7": "open"
+  },
+  "materialTruth": {
+    "preflight": "assets/works/cargo_port/reference/REFERENCE_BRIEF.md",
+    "allSupportedViewZonesClassified": false
+  },
+  "hooks": [
+    "crate_0",
+    "crate_1",
+    "crate_2",
+    "crate_3",
+    "crate_4",
+    "cradle",
+    "pod_root",
+    "pod_thruster"
+  ],
+  "lodTriangles": [
+    {
+      "lod": 0,
+      "port_tris": 7176,
+      "pod_tris": 2430,
+      "crate_tris": [
+        1404,
+        1188,
+        1404,
+        1188,
+        1188
+      ],
+      "crate_total": 6372
+    },
+    {
+      "lod": 1,
+      "port_tris": 824,
+      "pod_tris": 574,
+      "crate_tris": [
+        924,
+        612,
+        912,
+        996,
+        684
+      ],
+      "crate_total": 4128
+    },
+    {
+      "lod": 2,
+      "port_tris": 592,
+      "pod_tris": 274,
+      "crate_tris": [
+        60,
+        72,
+        48,
+        24,
+        36
+      ],
+      "crate_total": 240
+    }
+  ],
+  "stills": {
+    "works_top": "E51CA809C5065D229C473B63BF57656267EBC72F96E905C3E4CF00E776E3FEA2",
+    "works_edge": "A2C8A3395EC385F946EAFE20A57ACF9108E686F97E8102527F7B64A5AEA65DC8",
+    "works_top_clay": "196D6BBBD9A0598CD696C798207B918227110C0533440EB2AA85C58878FD3D67",
+    "works_edge_clay": "DA3E1B147552F503661BD5860AAF361FF64C7A818B6687E5255FBE4DDA1AB034",
+    "works_top_grazing": "1A6237EE433F699B3B66299E736E1ADC624D7FD113E303C45812A8EB7E55B731",
+    "works_top_normal": "AC3BBE5DE0445F89BED9699F7BE14DA41921970C5C1B992CA86CB407B22CA1B1",
+    "works_top_orm": "440E0C0D3D1EF70BE3865901ABCA4238D94B725CD9911435FAA833D946752411",
+    "works_top_matid": "671AECC999198B9867F1F71B3CE5C8AE53EFF60568A7757414D1516FE81117E7",
+    "works_top_hooks": "B0677A8BB720B481F956344AB7EB05A248FBE6BF0B35B38289F0B61ACF89E377",
+    "crate_stage_01": "4B2E123981CB43388E55EC32263EC65C1368B077A7E048ED85E63D25C6A72268",
+    "crate_stage_02": "509559CCC468C1EFA402B5F405CCE5535F380A41AE16C7BDCF4FC38712C38C4C",
+    "crate_stage_03": "FAC251A40DD6EA8D165E52B2DDCD52D4D384908D86A488DE08D99AE122AFE91D",
+    "crate_stage_04": "BA410A417EF85926ACD75B9ADB42570EA9DD21F6C9873096EC43F4DCEA014AC6",
+    "crate_stage_05": "34FAD21AF1B681622F183CA916DA4CBBC941BDA70E3DB42979A091AAA5ED5ED2",
+    "crate_stage_sheet": "C97675C3B7342C5B8FF641CFAE382529090BA0BD0D69F706E5723F87317FF20D",
+    "pod_seated_top": "4DD320C18C8BD45F2BA166BC569109D96185C874254875D75EC39A63764CFB31",
+    "pod_seated_edge": "403FF541F209BE7C1A8DE1911BBEA813A96F20C1C4A154ED7F8737E61FFC2A31",
+    "pod_launch_clear_top": "8500D167517373E72DDE395F9F0A438CF2B9C3880225F91D85D4148F4CA59305",
+    "pod_launch_clear_edge": "AAA4101BC89DF930B75416AAE0D056256DCA2971C3257CE0C80835428CB429B6",
+    "works_top_lod1": "7412DC869C76A5CAAD37685E58B82E98818E89AF59A8B0EB00B7EB38BE5DD157",
+    "works_site": "4D8B079F6682C287A21BA00564F6E31B841E0C15688C43B21C6F4A316824FD7B",
+    "works_site_id": "186266A098189FE2FD6E6F048C75EF948E0DD5629EC72332C09F9ADA56BBE969",
+    "works_top_lod2": "48003813980B697187765388BEC278574AA60422437555F0F14C4A14CB0E7152",
+    "works_site_lod2": "E255032C44482DC9C0DA52B8E394911B78A46DB3D15631C2BA84037917EC461D"
+  },
+  "paths": {
+    "works_top": "assets/works/cargo_port/evidence/cycle_002/works_top.png",
+    "works_edge": "assets/works/cargo_port/evidence/cycle_002/works_edge.png",
+    "works_top_clay": "assets/works/cargo_port/evidence/cycle_002/works_top_clay.png",
+    "works_edge_clay": "assets/works/cargo_port/evidence/cycle_002/works_edge_clay.png",
+    "works_top_grazing": "assets/works/cargo_port/evidence/cycle_002/works_top_grazing.png",
+    "normal": "assets/works/cargo_port/evidence/cycle_002/works_top_normal.png",
+    "orm": "assets/works/cargo_port/evidence/cycle_002/works_top_orm.png",
+    "works_top_matid": "assets/works/cargo_port/evidence/cycle_002/works_top_matid.png",
+    "works_top_hooks": "assets/works/cargo_port/evidence/cycle_002/works_top_hooks.png",
+    "crate_stage_1": "assets/works/cargo_port/evidence/cycle_002/crate_stage_01.png",
+    "crate_stage_2": "assets/works/cargo_port/evidence/cycle_002/crate_stage_02.png",
+    "crate_stage_3": "assets/works/cargo_port/evidence/cycle_002/crate_stage_03.png",
+    "crate_stage_4": "assets/works/cargo_port/evidence/cycle_002/crate_stage_04.png",
+    "crate_stage_5": "assets/works/cargo_port/evidence/cycle_002/crate_stage_05.png",
+    "crate_stage_sheet": "assets/works/cargo_port/evidence/cycle_002/crate_stage_sheet.png",
+    "pod_seated_top": "assets/works/cargo_port/evidence/cycle_002/pod_seated_top.png",
+    "pod_seated_edge": "assets/works/cargo_port/evidence/cycle_002/pod_seated_edge.png",
+    "pod_launch_clear_top": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_top.png",
+    "pod_launch_clear_edge": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_edge.png",
+    "works_top_lod1": "assets/works/cargo_port/evidence/cycle_002/works_top_lod1.png",
+    "works_site": "assets/works/cargo_port/evidence/cycle_002/works_site.png",
+    "works_site_id": "assets/works/cargo_port/evidence/cycle_002/works_site_id.png",
+    "works_top_lod2": "assets/works/cargo_port/evidence/cycle_002/works_top_lod2.png",
+    "works_site_lod2": "assets/works/cargo_port/evidence/cycle_002/works_site_lod2.png"
+  },
+  "authorInspection": "recorded:assets/works/cargo_port/evidence/cycle_002/VISUAL_REVIEW.json",
+  "independentReview": "not_launched",
+  "wired": false,
+  "released": false
+}

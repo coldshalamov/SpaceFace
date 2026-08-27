@@ -2,7 +2,7 @@
   "assetId": "place_works_cargo_port",
   "root": "SF_WORKS_CARGO_PORT_V1",
   "packet": "PQ-131.09",
-  "cycle": 1,
+  "cycle": 2,
   "productionState": "design_candidate",
   "launchAxis": {
     "blender": "+Z",
@@ -41,129 +41,137 @@
   "triangles": [
     {
       "lod": 0,
-      "port_tris": 7824,
-      "pod_tris": 2222,
+      "port_tris": 7176,
+      "pod_tris": 2430,
       "crate_tris": [
-        1512,
-        1512,
-        1620,
-        1728,
-        1404
+        1404,
+        1188,
+        1404,
+        1188,
+        1188
       ],
-      "crate_total": 7776
+      "crate_total": 6372
     },
     {
       "lod": 1,
-      "port_tris": 676,
-      "pod_tris": 762,
+      "port_tris": 824,
+      "pod_tris": 574,
       "crate_tris": [
-        936,
-        936,
-        1044,
-        1152,
-        828
+        924,
+        612,
+        912,
+        996,
+        684
       ],
-      "crate_total": 4896
+      "crate_total": 4128
     },
     {
       "lod": 2,
-      "port_tris": 532,
-      "pod_tris": 168,
+      "port_tris": 592,
+      "pod_tris": 274,
       "crate_tris": [
+        60,
         72,
-        72,
-        72,
-        72,
-        72
+        48,
+        24,
+        36
       ],
-      "crate_total": 360
+      "crate_total": 240
     }
   ],
   "bbox": {
     "min": [
-      -0.89,
-      -0.95,
+      -1.0079,
+      -0.88,
       0.0
     ],
     "max": [
-      1.1,
-      0.95,
-      1.163
+      1.08,
+      0.7,
+      1.064
     ],
     "sizeWu": [
-      1.99,
-      1.9,
-      1.163
+      2.0879,
+      1.58,
+      1.064
     ],
     "sizeCells": [
-      0.9045,
-      0.8636,
-      0.5286
+      0.949,
+      0.7182,
+      0.4836
     ],
     "zMin": 0.0
   },
   "hashes": {
-    "combined": "BF506A8937DFC5FE196841E6B061C04D48BE24258130B5BDD4342F3CC16D3A70",
-    "parts": "BF506A8937DFC5FE196841E6B061C04D48BE24258130B5BDD4342F3CC16D3A70",
-    "lod0": "3E61E5D5E81D887F0CBE98B9FDEED4A8115F38DE5C896EDB67D3760FC33A205B",
-    "lod1": "FAD27DCB3FD9961D27F72D110701851369A856207E6066F2D1388B415411E846",
-    "lod2": "9C0A1EC1EBB054B99BD83C44F4FB9D32680C53D917AFE82A61745F4B1E9C7306",
-    "atlas_basecolor": "6B70E45F415EA86932F3BB2C6D4375D7E452BC5992BF4343CD460926C4D8D9E6",
-    "atlas_orm": "4FE8D3656CE71F81FF830B3D30F12256A983B968EA23108D5223A502FD46E564",
+    "combined": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
+    "parts": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
+    "lod0": "B188024BA14598F9709A44EF375A1D022897805189C4A4652B976D3AD4D7E355",
+    "lod1": "1E3E92417C6C98BA5B035E58E22190A72158D41CFDD238BCAD2E1FD757B625AB",
+    "lod2": "1614DD6A843C504754721E291E75C15E92C99A71EDAFDE5907009FBA823F7CDE",
+    "atlas_basecolor": "BFA11F2DC3CF3CA16C5108269768135630D6423186F29F564EC9ACD3C2E4FCA1",
+    "atlas_orm": "4B314AE54DD7692C468E681AEE6C08E71DAFF6B730AE2D69CABB0B2FBDD94974",
     "atlas_normal": "8296F9E825B9BDC8DADAB6D651072BE0AC1468430118D782D09E97A72E1F8429",
     "ref_01": "67344F641C1E704549110EA624B69877FC781AB73CC864B73EDABE5DFCED7174",
     "ref_02": "17FEF1588BEFBA68121AC34D0418057D3C0AEF4D8C3EBD3612DB957063C2D9F9",
     "ref_03": "995864893A2035C6BAC71B8B33483F044E306EC70845337940EF688348136684",
     "ref_04": "5E0BC217E1144D50EE80011F981ABA7CD86A9BD639EE1C68D059C85EF1D7993C",
     "stills": {
-      "works_top": "AD9BB5D1E01E116CCA62A6B078EDBE8E862557F5A67F4225B9FB3C8A92F66DBB",
-      "works_edge": "B55BE5F6D4726E4223578997C4B99E3ABCF9A27B6C3852FCF5BF3DD7DCA32C1C",
-      "works_top_clay": "D48F95D1E0FEE3E71E3FECBE76AB62CBF3B87CC371C0FF9C7AAAC464EC602D6B",
-      "works_edge_clay": "195C519B65470FE4C0F795CBF11736AFF279C6BF332E69ED0E29739BE9D20D4C",
-      "works_top_grazing": "D4476AEA33822B40345206C79543F6CC97205B5F79457159EC49D080FF344548",
-      "works_top_normal": "258DAE3365277CADACE64C5D4E70D0841E3C6F0B70DC89D076B44FFE12D5A95E",
-      "works_top_orm": "266D7A8E2A1ECCDD993A29D6B58CDF6FA5547CE74FDE7BEF1993FCE59FE09B8D",
-      "works_top_matid": "12E7D1F9518A72151D47602E6198B7A4D0B4A4F1D693A214C8662501DD4E62AD",
-      "works_top_hooks": "20C1F02475A5F94E8F8233826C458355556294619A23C39260A262484103D64B",
-      "crate_stage_01": "6AA3AB8251C93CDB260B7A647130F9043C62629DD2BA3F5FAE668B5451F43735",
-      "crate_stage_02": "A89BBB53E7F63B3F944B188A8AD1A4A2CF879F64D9320F3F2848884F58547551",
-      "crate_stage_03": "72EE15A0880932B317866C968326764E18F03DFF2E19E45D0082A80B5ABF66B7",
-      "crate_stage_04": "50C4BB5593A73C7E66F8826120D2ADBD9C92950BC8447855D1B5B81DF88105A4",
-      "crate_stage_05": "D4CE15102C09702811520B63A20EF1935251259DD87C8AED99FCD16A6034A8F7",
-      "crate_stage_sheet": "037C084505694AE2019D71310349ACB95D91199411A0894B01E5DC3170CB1809",
-      "pod_seated_top": "D4CE15102C09702811520B63A20EF1935251259DD87C8AED99FCD16A6034A8F7",
-      "pod_seated_edge": "60F018F7323C550923D8DE5323EE068BF939455CB93C583D40B93B964F072EB6",
-      "pod_launch_clear_top": "4D509290AE37B77E39340C01AD637A30D078CA611DF7EDBE7174621CAB125051",
-      "pod_launch_clear_edge": "BC66DE5ECFC822DC84FBD5E21E6D907FD072152F06E4DEEEBE0146F8089C25C2",
-      "works_site": "FA2D9779200570B56D46C71D5A7DF89A7F75BC9BBD83A0F12F03A6CF864C1F96",
-      "works_site_id": "C077CC38363C6709BFB1C885B2053D0CE871C5B6EE994F066AFE513828C4D5E5"
+      "works_top": "E51CA809C5065D229C473B63BF57656267EBC72F96E905C3E4CF00E776E3FEA2",
+      "works_edge": "A2C8A3395EC385F946EAFE20A57ACF9108E686F97E8102527F7B64A5AEA65DC8",
+      "works_top_clay": "196D6BBBD9A0598CD696C798207B918227110C0533440EB2AA85C58878FD3D67",
+      "works_edge_clay": "DA3E1B147552F503661BD5860AAF361FF64C7A818B6687E5255FBE4DDA1AB034",
+      "works_top_grazing": "1A6237EE433F699B3B66299E736E1ADC624D7FD113E303C45812A8EB7E55B731",
+      "works_top_normal": "AC3BBE5DE0445F89BED9699F7BE14DA41921970C5C1B992CA86CB407B22CA1B1",
+      "works_top_orm": "440E0C0D3D1EF70BE3865901ABCA4238D94B725CD9911435FAA833D946752411",
+      "works_top_matid": "671AECC999198B9867F1F71B3CE5C8AE53EFF60568A7757414D1516FE81117E7",
+      "works_top_hooks": "B0677A8BB720B481F956344AB7EB05A248FBE6BF0B35B38289F0B61ACF89E377",
+      "crate_stage_01": "4B2E123981CB43388E55EC32263EC65C1368B077A7E048ED85E63D25C6A72268",
+      "crate_stage_02": "509559CCC468C1EFA402B5F405CCE5535F380A41AE16C7BDCF4FC38712C38C4C",
+      "crate_stage_03": "FAC251A40DD6EA8D165E52B2DDCD52D4D384908D86A488DE08D99AE122AFE91D",
+      "crate_stage_04": "BA410A417EF85926ACD75B9ADB42570EA9DD21F6C9873096EC43F4DCEA014AC6",
+      "crate_stage_05": "34FAD21AF1B681622F183CA916DA4CBBC941BDA70E3DB42979A091AAA5ED5ED2",
+      "crate_stage_sheet": "C97675C3B7342C5B8FF641CFAE382529090BA0BD0D69F706E5723F87317FF20D",
+      "pod_seated_top": "4DD320C18C8BD45F2BA166BC569109D96185C874254875D75EC39A63764CFB31",
+      "pod_seated_edge": "403FF541F209BE7C1A8DE1911BBEA813A96F20C1C4A154ED7F8737E61FFC2A31",
+      "pod_launch_clear_top": "8500D167517373E72DDE395F9F0A438CF2B9C3880225F91D85D4148F4CA59305",
+      "pod_launch_clear_edge": "AAA4101BC89DF930B75416AAE0D056256DCA2971C3257CE0C80835428CB429B6",
+      "works_top_lod1": "7412DC869C76A5CAAD37685E58B82E98818E89AF59A8B0EB00B7EB38BE5DD157",
+      "works_site": "4D8B079F6682C287A21BA00564F6E31B841E0C15688C43B21C6F4A316824FD7B",
+      "works_site_id": "186266A098189FE2FD6E6F048C75EF948E0DD5629EC72332C09F9ADA56BBE969",
+      "works_top_lod2": "48003813980B697187765388BEC278574AA60422437555F0F14C4A14CB0E7152",
+      "works_site_lod2": "E255032C44482DC9C0DA52B8E394911B78A46DB3D15631C2BA84037917EC461D"
     }
   },
   "stills": {
-    "works_top": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top.png",
-    "works_edge": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_edge.png",
-    "works_top_clay": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_clay.png",
-    "works_edge_clay": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_edge_clay.png",
-    "works_top_grazing": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_grazing.png",
-    "normal": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_normal.png",
-    "orm": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_orm.png",
-    "works_top_matid": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_matid.png",
-    "works_top_hooks": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_top_hooks.png",
-    "crate_stage_1": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_01.png",
-    "crate_stage_2": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_02.png",
-    "crate_stage_3": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_03.png",
-    "crate_stage_4": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_04.png",
-    "crate_stage_5": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_05.png",
-    "crate_stage_sheet": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\crate_stage_sheet.png",
-    "pod_seated_top": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\pod_seated_top.png",
-    "pod_seated_edge": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\pod_seated_edge.png",
-    "pod_launch_clear_top": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\pod_launch_clear_top.png",
-    "pod_launch_clear_edge": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\pod_launch_clear_edge.png",
-    "works_site": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_site.png",
-    "works_site_id": "C:\\sf-agents\\grok-pq13109-cargo-builder-20260827\\assets\\works\\cargo_port\\evidence\\cycle_001\\works_site_id.png"
+    "works_top": "assets/works/cargo_port/evidence/cycle_002/works_top.png",
+    "works_edge": "assets/works/cargo_port/evidence/cycle_002/works_edge.png",
+    "works_top_clay": "assets/works/cargo_port/evidence/cycle_002/works_top_clay.png",
+    "works_edge_clay": "assets/works/cargo_port/evidence/cycle_002/works_edge_clay.png",
+    "works_top_grazing": "assets/works/cargo_port/evidence/cycle_002/works_top_grazing.png",
+    "normal": "assets/works/cargo_port/evidence/cycle_002/works_top_normal.png",
+    "orm": "assets/works/cargo_port/evidence/cycle_002/works_top_orm.png",
+    "works_top_matid": "assets/works/cargo_port/evidence/cycle_002/works_top_matid.png",
+    "works_top_hooks": "assets/works/cargo_port/evidence/cycle_002/works_top_hooks.png",
+    "crate_stage_1": "assets/works/cargo_port/evidence/cycle_002/crate_stage_01.png",
+    "crate_stage_2": "assets/works/cargo_port/evidence/cycle_002/crate_stage_02.png",
+    "crate_stage_3": "assets/works/cargo_port/evidence/cycle_002/crate_stage_03.png",
+    "crate_stage_4": "assets/works/cargo_port/evidence/cycle_002/crate_stage_04.png",
+    "crate_stage_5": "assets/works/cargo_port/evidence/cycle_002/crate_stage_05.png",
+    "crate_stage_sheet": "assets/works/cargo_port/evidence/cycle_002/crate_stage_sheet.png",
+    "pod_seated_top": "assets/works/cargo_port/evidence/cycle_002/pod_seated_top.png",
+    "pod_seated_edge": "assets/works/cargo_port/evidence/cycle_002/pod_seated_edge.png",
+    "pod_launch_clear_top": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_top.png",
+    "pod_launch_clear_edge": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_edge.png",
+    "works_top_lod1": "assets/works/cargo_port/evidence/cycle_002/works_top_lod1.png",
+    "works_site": "assets/works/cargo_port/evidence/cycle_002/works_site.png",
+    "works_site_id": "assets/works/cargo_port/evidence/cycle_002/works_site_id.png",
+    "works_top_lod2": "assets/works/cargo_port/evidence/cycle_002/works_top_lod2.png",
+    "works_site_lod2": "assets/works/cargo_port/evidence/cycle_002/works_site_lod2.png"
   },
   "errors": [],
   "g1g2g4": "open",
+  "g3": "blocked:no_mesh_derived_high_cage_bakes",
+  "technicalEvidence": "evidence_ready",
   "wired": false,
   "released": false,
   "glbNodes": [
@@ -206,24 +214,24 @@
   ],
   "podBbox": {
     "min": [
-      -0.5493,
-      -0.29,
+      -0.4133,
+      -0.26,
       0.16
     ],
     "max": [
-      -0.0107,
-      0.2693,
-      1.163
+      -0.022,
+      0.1325,
+      1.064
     ],
     "sizeWu": [
-      0.5387,
-      0.5593,
-      1.003
+      0.3913,
+      0.3925,
+      0.904
     ],
     "sizeCells": [
-      0.2449,
-      0.2542,
-      0.4559
+      0.1779,
+      0.1784,
+      0.4109
     ],
     "zMin": 0.16
   }

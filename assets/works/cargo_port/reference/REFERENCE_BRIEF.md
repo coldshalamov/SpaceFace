@@ -166,3 +166,23 @@ masses without textures.
 
 Cycle 01 weakest expected: pod docking face density vs the collar, and crate family variation at
 19 px/cell — both are later-cycle material, not a reason to glue cubes now.
+
+---
+
+## Cycle 02 correction (this candidate)
+
+Cycle 01 stills read as a shrine: concentric octagon around a pale circular docking well, four
+equal cube jack pads, and a 2×2 cabinet of recolored cubes. Cycle 02 keeps the same hooks,
+envelope, launch axis, and budgets, and freezes `evidence/cycle_001`.
+
+| Defect | Cycle 02 construction |
+|---|---|
+| Concentric torus collar | Folded octagonal flange with unequal outer radii, overlapping plates, +X loading throat, closed liner |
+| Symmetric dual saddles | One C-clamp cradle open toward the throat, load beam to the apron, visible jaws |
+| Equal cube pucks | Three folded hat-section jack pads of different size/rotation; C-channel guides |
+| 2×2 cube freight | Trunk → cube → instrument → open frame → vented module; unique XY footprints |
+| Pale circular badge | Faceted pressure shell offset into the clamp; rectangular keyed docking plate |
+| Site families merge | LOD1/LOD2 keep dark port, mid freight, cooler pod at 19 px/cell; no labels/glow |
+
+Working scene is still `tools/blender/build_works_cargo_port.py`. Cycle 02 evidence lives in
+`evidence/cycle_002/`. G1/G2/G4 remain open.
