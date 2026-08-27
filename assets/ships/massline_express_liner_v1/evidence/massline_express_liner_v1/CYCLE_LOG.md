@@ -12,5 +12,6 @@
 | 30 | review_pending | review_pending | review_pending | Manufactured 1.81:1 barrel (35.41 x 19.53 x 8.52 m). Abeam 8.28% in band. Side galleries, drive saddles, retained wells/drives/bakes. |
 | 31 | review_pending | review_pending | review_pending | Stepped octagonal body (40.67 x 22.41 x 11.05 m, L/B 1.81). Abeam 9.77%. Hollow corridors, boarding vestibule, rooted drive plant, civic spine. Unique maps; yellow wedges gone. |
 | 32 | review_pending | review_pending | review_pending | Three inhabited stations (40.67 x 22.45 x 10.99 m, L/B 1.81). Abeam 9.75%. Hat-section rings, integrated corridor shells, port boarding cut, drive housings from the aft bulkhead. Box unwrap; AO in ORM only. |
+| 33 | REVISE | REVISE | REVISE | Hollow passenger galleries, real hat returns, dry matched drive throats, role-aware curved UVs, and three chase-visible recessed observation bays. Passenger glazing now survives D=144, but the pale central course still reads too slab-like and the outboard drives still separate into fork appendages at play distance. |
 
 Whole-asset G1/G2/G4 stay open. Source candidate only.
