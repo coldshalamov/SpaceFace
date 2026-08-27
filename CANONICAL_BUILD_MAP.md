@@ -82,6 +82,14 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 - `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
   plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
   flyable-ship remaster.
+- **Jules / cloud agents / spend cloud requests** →
+  [`design/program/jules/README.md`](./design/program/jules/README.md). Validate with
+  `node scripts/jules-dispatch.mjs --validate`; select or render exact work with
+  `node scripts/jules-dispatch.mjs --next` or `--id JULES-XXXX --format prompt`.
+  This is a directed candidate bank, **not** the live PQ queue, INFERENCE production, or
+  acceptance authority. Dispatch one task per cloud branch/PR; a stronger local integrator
+  reviews, rebases, proves, and merges. Jules tasks do not edit the bank, queue, NOW board,
+  root authority, or expected telemetry envelopes.
 - **Campaign / overnight / “non-INFERENCE work in this map” / “non-inference graphics work” /
   “do all of it”** → stay on admitted
   program work and **keep going**. Do not open the INFERENCE method. Do not take a single `--next`
