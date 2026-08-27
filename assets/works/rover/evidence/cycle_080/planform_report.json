@@ -1,0 +1,380 @@
+{
+  "textured": {
+    "YELLOW_MINORITY": {
+      "value": 0.0519,
+      "floor": 0.45,
+      "op": "<=",
+      "pass": true
+    },
+    "TRACK_BAND": {
+      "value": 0.3747,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 0.985,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 0.9916,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.0745,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0231,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.3077,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.1972,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "texturedPass": true,
+  "clay": {
+    "TRACK_BAND": {
+      "value": 0.3734,
+      "floor": 0.16,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_PORT": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_OUTERMOST_STARBOARD": {
+      "value": 1.0,
+      "floor": 0.8,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_HOLE": {
+      "value": 0.047,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_PANE": {
+      "value": 0.0259,
+      "floor": 0.02,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_REACH": {
+      "value": 0.3077,
+      "floor": 0.1,
+      "op": ">=",
+      "pass": true
+    },
+    "BOOM_OFFSET": {
+      "value": 0.1972,
+      "floor": 0.15,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "clayHolds": true,
+  "cycle3": {
+    "TRACK_CONTRAST_PORT": {
+      "value": -10.5536,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": false
+    },
+    "TRACK_CONTRAST_STARBOARD": {
+      "value": -36.9708,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": false
+    },
+    "TRACK_SEPARATION_PORT": {
+      "value": 32.6086,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_SEPARATION_STARBOARD": {
+      "value": 31.043,
+      "floor": 18.0,
+      "op": ">=",
+      "pass": true
+    },
+    "LIVERY_SAT_RENDERED": {
+      "value": 0.9861,
+      "floor": 0.3,
+      "op": ">=",
+      "pass": true
+    },
+    "HAS_MASS": {
+      "value": 0.9176,
+      "floor": 0.72,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_IS_A_HOLE": {
+      "value": 0.4668,
+      "floor": 0.24,
+      "op": ">=",
+      "pass": true
+    },
+    "CAB_IS_RAISED": {
+      "value": 0.2967,
+      "floor": 0.28,
+      "op": ">=",
+      "pass": true
+    },
+    "WELL_CAB_DIFFER": {
+      "value": [
+        0.4668,
+        -0.2967
+      ],
+      "floor": "opposite signs",
+      "op": "signs",
+      "pass": true
+    },
+    "ONE_BODY": {
+      "value": 0.3482,
+      "floor": 0.9,
+      "op": ">=",
+      "pass": false
+    },
+    "TREAD_PADS_PORT": {
+      "value": 21.0,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TREAD_PADS_STARBOARD": {
+      "value": 21.0,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_ENDS_ROUND_PORT": {
+      "value": 0.1007,
+      "floor": 0.06,
+      "op": ">=",
+      "pass": true
+    },
+    "TRACK_ENDS_ROUND_STARBOARD": {
+      "value": 0.1713,
+      "floor": 0.06,
+      "op": ">=",
+      "pass": true
+    },
+    "NORMAL_RELIEF": {
+      "value": 0.2468,
+      "floor": 0.04,
+      "op": ">=",
+      "pass": true
+    },
+    "NORMAL_RELIEF_LIVERY": {
+      "value": 0.2445,
+      "floor": 0.03,
+      "op": ">=",
+      "pass": true
+    },
+    "CLAY_SHADING": {
+      "value": 53.6588,
+      "floor": 14.0,
+      "op": ">=",
+      "pass": true
+    },
+    "LIVERY_HUE": {
+      "value": 46.7281,
+      "floor": [
+        44.0,
+        54.0
+      ],
+      "op": "range",
+      "pass": true
+    },
+    "LIVERY_SAT": {
+      "value": 0.7398,
+      "floor": 0.7,
+      "op": ">=",
+      "pass": true
+    },
+    "BIT_NOT_PINK": {
+      "value": 35.7321,
+      "floor": "outside 330-25",
+      "op": "hue",
+      "pass": true
+    },
+    "EDGE_SHOWS_WALL": {
+      "value": 1.1667,
+      "floor": 1.1,
+      "op": ">=",
+      "pass": true
+    }
+  },
+  "cycle3Pass": false,
+  "texturedRaw": {
+    "YELLOW_MINORITY": 0.0519,
+    "TRACK_BAND": 0.3747,
+    "TRACK_OUTERMOST_PORT": 0.985,
+    "TRACK_OUTERMOST_STARBOARD": 0.9916,
+    "WELL_HOLE": 0.0745,
+    "CAB_PANE": 0.0231,
+    "BOOM_REACH": 0.3077,
+    "BOOM_OFFSET": 0.1972,
+    "silhouettePixels": 6917,
+    "bbox": [
+      910,
+      492,
+      1014,
+      587
+    ]
+  },
+  "clayRaw": {
+    "YELLOW_MINORITY": 0.0,
+    "TRACK_BAND": 0.3734,
+    "TRACK_OUTERMOST_PORT": 1.0,
+    "TRACK_OUTERMOST_STARBOARD": 1.0,
+    "WELL_HOLE": 0.047,
+    "CAB_PANE": 0.0259,
+    "BOOM_REACH": 0.3077,
+    "BOOM_OFFSET": 0.1972,
+    "silhouettePixels": 6917,
+    "bbox": [
+      910,
+      492,
+      1014,
+      587
+    ]
+  },
+  "objectBboxPx": [
+    910,
+    492,
+    1014,
+    587
+  ],
+  "objectSilhouettePixels": 6917,
+  "depthWu": {
+    "hasMass": 0.9176471829414368,
+    "wellMinusDeck": 0.466835618019104,
+    "cabMinusDeck": 0.2966845631599426,
+    "p02": 0.18352942168712616,
+    "p98": 1.1011766195297241
+  },
+  "normalStdev": 0.24677085876464844,
+  "normalStdevLivery": 0.24448703229427338,
+  "pass": false,
+  "site": {
+    "cropOrigin": [
+      941,
+      521
+    ],
+    "cropSize": 38,
+    "roverBboxPx": [
+      952,
+      533,
+      967,
+      546
+    ],
+    "roverLitPixelsFullFrame": 159,
+    "measured": {
+      "litPixels": 159,
+      "accentPixels": 9,
+      "lumMin": 11.85,
+      "lumMedian": 32.48,
+      "lumMax": 190.76,
+      "lumP99": 143.99,
+      "dark": 0.3836,
+      "mid": 0.5283,
+      "light": 0.0314,
+      "accent": 0.0566,
+      "lightPlusAccent": 0.0881,
+      "maxOverMedian": 5.8738,
+      "bodyHue": 32.355,
+      "accentHue": 44.576,
+      "hueSeparation": 12.221,
+      "meanSaturation": 0.5175
+    },
+    "heuristicAccent": {
+      "litPixels": 159,
+      "accentPixels": 0,
+      "lumMin": 11.85,
+      "lumMedian": 32.48,
+      "lumMax": 190.76,
+      "lumP99": 143.99,
+      "dark": 0.3836,
+      "mid": 0.5472,
+      "light": 0.0692,
+      "accent": 0.0,
+      "lightPlusAccent": 0.0692,
+      "maxOverMedian": 5.8738,
+      "bodyHue": 33.093,
+      "accentHue": 0.0,
+      "hueSeparation": 33.093,
+      "meanSaturation": 0.5175
+    },
+    "rows": {
+      "SITE_DARK_BUCKET": {
+        "value": 0.3836,
+        "floor": 0.2,
+        "op": ">=",
+        "pass": true
+      },
+      "SITE_LIGHT_PLUS_ACCENT": {
+        "value": 0.0881,
+        "floor": 0.35,
+        "op": "<=",
+        "pass": true
+      },
+      "SITE_MAX_OVER_MEDIAN": {
+        "value": 5.8738,
+        "floor": 4.0,
+        "op": ">=",
+        "pass": true
+      },
+      "SITE_ACCENT_HUE_SEPARATION": {
+        "value": 12.221,
+        "floor": 5.0,
+        "op": ">",
+        "pass": true
+      },
+      "SITE_TRACK_SHARE": {
+        "value": 0.36477987421383645,
+        "floor": 0.28,
+        "op": ">=",
+        "pass": true
+      },
+      "SITE_WELL_PIXELS": {
+        "value": 20.0,
+        "floor": 4.0,
+        "op": ">=",
+        "pass": true
+      },
+      "SITE_GLASS_PIXELS": {
+        "value": 2.0,
+        "floor": 2.0,
+        "op": ">=",
+        "pass": true
+      }
+    },
+    "pass": true
+  },
+  "sitePass": true
+}
