@@ -4,7 +4,7 @@
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "class": "place",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
-  "candidateHash": "1A00E2C61302A60DC95C81630F7A2B58A4373E049B28218C36CEFC1FCF2739A8",
+  "candidateHash": "2B62F1799FE9021D59680007275BC3F93B29D51B4052F8F04410CEA7A2C54B50",
   "exportGlb": "assets/ships/parts/works/place_works_massline_core.glb",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "review_pending",
@@ -20,7 +20,7 @@
     {
       "id": "MTX-01",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_edge_grazing.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_edge_grazing.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Angle-limited bevel ~7 mm, shade_smooth_by_angle 28\u00b0, weighted normals keep_sharp.",
@@ -30,15 +30,15 @@
     {
       "id": "MTX-03",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top_clay.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Circular thick refractory liner with a real lip and darker throat; open through, not a booleaned paper tube."
+      "notes": "Tapered dark refractory liner with a real lip and true inner wall; open through, not a brown plug."
     },
     {
       "id": "MTX-16",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Unique UV0 per joined bake target packed into non-overlapping atlas columns (body/spin/lamp)."
@@ -46,7 +46,7 @@
     {
       "id": "MTX-20",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Tangent-space geometric normals from the bevelled mesh; world-normal isolation still from the exported GLB."
@@ -54,7 +54,7 @@
     {
       "id": "MTX-21",
       "state": "not_applicable",
-      "still": "assets/works/massline_core/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Place-scale wellhead: unique-UV mesh-derived normal, no separate cage object."
@@ -62,7 +62,7 @@
     {
       "id": "MTX-22",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "OpenGL tangent normals on unique UV0; isolation is world-space geometric, distinct from ORM."
@@ -70,7 +70,7 @@
     {
       "id": "MTX-23",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Vertex hemisphere AO via BVH, rasterized into ORM.R; AO at courses, gussets, feet, race, throat."
@@ -78,7 +78,7 @@
     {
       "id": "MTX-24",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Vertex curvature from neighbour-normal angle drives wear; no checker or grid stamp."
@@ -86,7 +86,7 @@
     {
       "id": "MTX-25",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cavity from curvature + short AO darkens liner mouth, course gaps, gusset and foot contacts."
@@ -94,7 +94,7 @@
     {
       "id": "MTX-30",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "AO/curvature/normal authored from the mesh. Cited concept stills are never sampled as maps."
@@ -102,7 +102,7 @@
     {
       "id": "MTX-31",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/material_id.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/material_id.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Paint dielectric, wear metallic, liner dry mineral, accent oxide, lamp dielectric."
@@ -110,7 +110,7 @@
     {
       "id": "MTX-32",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Unique 1024 albedo for this asset; rover atlas is not tinted or reused."
@@ -118,7 +118,7 @@
     {
       "id": "MTX-33",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "ORM R=mesh AO, G=role roughness + cavity, B=role metallic + curvature wear."
@@ -126,23 +126,23 @@
     {
       "id": "MTX-39",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Cavity dirt multiplied into albedo; brown/grey, not black crayon."
+      "notes": "Edge-wear from curvature on alkyd; no uniform AO dirt crayon."
     },
     {
       "id": "MTX-46",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top_clay.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "No yellow livery, no emissive torus, no filled square deck, no plastic default."
+      "notes": "No yellow livery, no emissive torus, no nested-square pucks, no plastic default."
     },
     {
       "id": "MTX-50",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/hook_identity.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/hook_identity.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "glTF extras stamp identity, LOD prefixes, sockets, collision helper, OpenGL/ORM contract."
@@ -150,15 +150,15 @@
     {
       "id": "MTX-52",
       "state": "implemented",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top_clay.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Macro: hole + overlapping U-channel collar + four corner feet + separate inner race + one lamp."
+      "notes": "Macro: hole + hat-channel collar + four corner angle shoes + separate inner race + rooted lamp."
     },
     {
       "id": "MTX-53",
       "state": "not_applicable",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Manufactured wellhead, not a rock/wreck; no sculpt/photogrammetry bake is required."
@@ -166,10 +166,10 @@
     {
       "id": "MTX-54",
       "state": "not_applicable",
-      "still": "assets/works/massline_core/evidence/cycle_002/works_top.png",
+      "still": "assets/works/massline_core/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Cycle 02 correction of Cycle 01; Cycle 01 evidence bytes are not rewritten."
+      "notes": "Cycle 03 correction of Cycle 02; Cycle 01 and Cycle 02 evidence bytes are not rewritten."
     }
   ]
 }

@@ -3,7 +3,7 @@
   "assetId": "place_works_massline_core",
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "packet": "PQ-131.02",
-  "cycle": 2,
+  "cycle": 3,
   "state": "design_candidate",
   "disposition": "review_pending",
   "allSupportedViewZonesClassified": false,
@@ -79,7 +79,13 @@
     "leather",
     "billboard",
     "decal-hole",
-    "flat AO"
+    "flat AO",
+    "chrome",
+    "black plastic",
+    "uniform AO dirt",
+    "nested-square puck feet",
+    "brown well plug",
+    "beacon lamp"
   ],
   "componentReferenceDecision": "not_needed",
   "citedReferences": [
