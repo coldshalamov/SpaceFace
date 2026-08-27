@@ -1,8 +1,9 @@
-# Works conduit kit — cycle 1 reference brief
+# Works conduit kit — reference brief and Cycle 02 lane correction
 
 **Asset:** `place_works_conduit_*` (PQ-131.06). **Class:** place/prop, works camera only. **Tier:** C
-(repeated manufactured families). **State:** `design_candidate`. Cycle 1 of the kit. This page is the
-construction contract. Do not import third-party geometry or textures.
+(repeated manufactured families). **State:** `design_candidate`. Cycle 2 of the kit (lane correction;
+power frozen at Cycle 01 KEEP). This page is the construction contract. Do not import third-party
+geometry or textures.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object at frame edge),
 `works_site` (19 px/cell). All 1920×1080, 31° perspective, Blender +Z up, origin at cell centre.
@@ -178,8 +179,27 @@ inside the master kit scene.
 6. **Works camera** — stills are `works_top` / `works_edge` / `works_site`, not a beauty crop.
 7. **Envelope** — every piece inside one 2.2 wu cell.
 
-G0–G7: cycle 1 is `evidence_ready` only. Whole-asset G1/G2/G4 stay open pending independent
-review of `evidence/cycle_01/` at 1:1. This candidate is not accepted art.
+G0–G7: cycle 2 is `evidence_ready` only. Whole-asset G1/G2/G4 stay open pending independent
+review of `evidence/cycle_02/` at 1:1. Cycle 01 stills stay on disk as the KEEP record for power.
+This candidate is not accepted art.
 
 Working scene: `tools/blender/build_works_conduit_kit.py` →
 `assets/works/conduit_kit/source/` and `assets/ships/parts/works/place_works_conduit_*.glb`.
+
+---
+
+## Cycle 02 lane correction (this cycle)
+
+Independent review: **power KEEP**, freeze geometry/textures/ports/evidence. Lane **REVISE**:
+
+1. The belt was a wide black ribbon filling the trough. Cycle 02 drops the deck, sweeps two
+   C-channel rails, sits a **narrow raised belt** on roller crowns, and leaves side/under
+   negative space so the pad reads through at 120 px/cell.
+2. Junction was a featureless box. Cycle 02 puts a **removable service lid** (lip, reveal,
+   restrained fasteners, handle) on a smaller enclosure in the hollow, with a **rooted
+   gearmotor** on end, junction, T and cross.
+3. Corner/T/cross read as a seam or two overlapping straights. Cycle 02 keeps **one-piece
+   corner topology**, a through-run plus outside branch on the T, four arms around a hollow
+   cross, and splice lobes instead of a filled slab. Port envelope 0.76 × 0.26 is unchanged.
+4. LOD1/2 keep the hollow gap and the T/cross/junction lobes at 19 px/cell. No glow, labels,
+   or scale inflation. Lanes must not become the power family.
