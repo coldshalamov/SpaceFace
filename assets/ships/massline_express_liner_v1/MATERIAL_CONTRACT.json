@@ -5,7 +5,7 @@
   "scope": "PQ-049.01 source candidate; chase-camera evidence only; not wired",
   "componentReferenceDecision": "native_imagegen",
   "allSupportedViewZonesClassified": false,
-  "candidateHash": "CC243E8499EBF2D6FA451CB30F9A369CFE9B1C8191737FF9B434633A3ADF4827",
+  "candidateHash": "00F2DCAB9A2F24506E4A5576B48237D7EB74295CBFCCF0A1E4AB71F64EF35C60",
   "supportedViews": [
     "play_chase",
     "play_chase_abeam",
@@ -20,7 +20,7 @@
   "textureStrategy": {
     "format": "portable embedded PNG in source GLB plus editable PNGs under source/textures/",
     "roles": ["baseColor_sRGB", "orm_noncolor", "normal_noncolor"],
-    "uvStrategy": "Each render mesh has unique UV0 from smart project plus a scaled UV1. LOD0 unique albedo/ORM/normal maps are cage-baked (high duplicate, inflate 0.055 m, Cycles selected-to-active). Checker/stretch review remains G3 and is not a self-pass.",
+    "uvStrategy": "Each render mesh has unique UV0 from cube/box projection plus a scaled UV1. LOD0 unique albedo/ORM/normal maps are cage-baked (high duplicate, inflate 0.038 m, Cycles selected-to-active). Basecolor does not carry baked AO; occlusion lives in ORM red. Checker/stretch review remains G3 and is not a self-pass.",
     "materialModel": "glTF metallic-roughness with per-role unique maps rather than a recolored common shader",
     "wearRule": "Wear is restricted to dock contact, tether contact, cassette latch, heat-throat, and service-handling regions; there is no global dirt layer."
   },
@@ -34,8 +34,8 @@
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: formed passenger pressure shell maintained between dock calls.",
       "substrateManufactureAndFinish": "formed alloy pressure vessel beneath a warm off-white ceramic-paint system with local repairable seam bands",
       "interfacesLoadAccessAndHeatPaths": "bulkhead stations carry the wedge, docking jambs, dorsal spine roots, and keel brackets; ceramic remains continuous across quiet plate",
-      "expectedOpticalResponse": "non-metallic low-sheen coating; warm broad highlights with sparse local scuffing rather than plastic gloss",
-      "forbiddenReads": ["generic white plastic", "luxury yacht gelcoat", "uniform grime", "blank cylinder"]
+      "expectedOpticalResponse": "non-metallic quiet rough ceramic paint; no wood grain, no baked-AO darkening of the open shell",
+      "forbiddenReads": ["generic white plastic", "luxury yacht gelcoat", "MDF wood grain", "beige gelcoat", "uniform grime", "blank cylinder"]
     },
     {
       "zone": "forward_operations_wedge_and_frame",
@@ -46,8 +46,8 @@
       "functionOriginAndServiceContext": "framed boarding/operations enclosure ahead of the passenger pressure bulkhead",
       "substrateManufactureAndFinish": "forged/anodized structural rails around laminated smoked safety glazing",
       "interfacesLoadAccessAndHeatPaths": "rails bridge the pressure shoulder; panes are seated inside a frame rather than laid on a hull",
-      "expectedOpticalResponse": "dark satin frame with restrained directional highlights; translucent blue-grey glass distinct from painted or metallic surfaces",
-      "forbiddenReads": ["black painted nose", "futuristic neon canopy", "fighter cockpit", "floating glass cards"]
+      "expectedOpticalResponse": "satin anodized frame lifted above crushed black; dark blue-grey dielectric glass with transmission and inner depth",
+      "forbiddenReads": ["black painted nose", "black visor bite", "cyan pin identity", "futuristic neon canopy", "fighter cockpit", "floating glass cards", "opaque slate cards"]
     },
     {
       "zone": "low_service_cassette",
@@ -70,8 +70,8 @@
       "functionOriginAndServiceContext": "reinforced non-passenger-facing Massline latch/load transfer assembly",
       "substrateManufactureAndFinish": "forged dark alloy saddle cheeks, machined bridge pad, anodized structural frame",
       "interfacesLoadAccessAndHeatPaths": "saddle brackets key into keel and pressure bulkhead stations with visible gussets; contact pad is isolated from boarding faces",
-      "expectedOpticalResponse": "dense dark metal with more directional roughness than the painted hull and restrained contact-polish only at the tether pad",
-      "forbiddenReads": ["decorative ring", "floating tether point", "rubber hose", "black plastic"]
+      "expectedOpticalResponse": "satin dark metal denser than the painted hull; not crushed black plastic",
+      "forbiddenReads": ["decorative ring", "floating tether point", "rubber hose", "black plastic", "crushed-black hoop"]
     },
     {
       "zone": "port_starboard_docking_and_service_interfaces",
@@ -104,10 +104,10 @@
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_RefractoryHeatAlloy", "MAT_SF_Massline_WayfindingCyan"],
       "functionOriginAndServiceContext": "paired aft propulsion assemblies with protected heat-throat liners",
-      "substrateManufactureAndFinish": "tapered dark alloy boom housing around dry refractory liner and low-luminance engine core",
-      "interfacesLoadAccessAndHeatPaths": "booms root at the keel and dorsal spine; interior liners sit behind visible rims with vent/service connection",
-      "expectedOpticalResponse": "dark satin boom, dry rough refractory, faint recessed cyan core; heat concentration is local to throat interiors",
-      "forbiddenReads": ["glowing disk", "neon thruster", "smooth tube", "plastic nozzle"]
+      "substrateManufactureAndFinish": "short tapered dark-alloy housing grown from the aft bulkhead around a dry refractory liner",
+      "interfacesLoadAccessAndHeatPaths": "gusseted load-ring saddles; interior liners sit behind thick metal throats with six thin rooted stator blades",
+      "expectedOpticalResponse": "dark satin housing, dry rough refractory, no chrome lip, faint recessed cyan core",
+      "forbiddenReads": ["glowing disk", "neon thruster", "smooth tube", "plastic nozzle", "stick boom", "hanging can", "chrome lip", "plywood throat"]
     },
     {
       "zone": "side_service_galleries",
@@ -116,10 +116,10 @@
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: equatorial passenger/service walkways rooted into the pressure-drum chine, carrying dock contacts without becoming wings.",
-      "substrateManufactureAndFinish": "hollow ceramic-painted corridor shells with visible wall thickness, dark anodized frames, and inset smoked dielectric glass over a dark cavity",
-      "interfacesLoadAccessAndHeatPaths": "octagonal corridor section returns into bulkhead collars; dock jambs sit on the outer face; load shoes return into the drum chine",
-      "expectedOpticalResponse": "same warm ceramic as the drum with dark frame and smoked glass over volume, not a flat card or fin",
-      "forbiddenReads": ["flat wing", "disc flange", "fin card", "floating box", "I-beam rail"]
+      "substrateManufactureAndFinish": "hollow ceramic-painted corridor shells with inner wall, formed sill/header, four pane/door bays, and inset dark blue-grey dielectric glass",
+      "interfacesLoadAccessAndHeatPaths": "corridor section returns into hat-section collars; dock jambs sit on the outer face; load shoes return into the drum chine",
+      "expectedOpticalResponse": "quiet ceramic belt with satin frame and transmissive glass over inner depth, not a hanging card or fin",
+      "forbiddenReads": ["flat wing", "disc flange", "fin card", "floating box", "I-beam rail", "hanging gallery slab", "opaque slate card"]
     },
     {
       "zone": "wayfinding_fixtures_and_sparse_markings",
@@ -135,9 +135,9 @@
     }
   ],
   "knownOpenItems": [
-    "Cycle 31 source candidate and chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 CC243E8499EBF2D6FA451CB30F9A369CFE9B1C8191737FF9B434633A3ADF4827.",
+    "Cycle 32 source candidate and chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 00F2DCAB9A2F24506E4A5576B48237D7EB74295CBFCCF0A1E4AB71F64EF35C60.",
     "G3 needs an independent checker/stretch review; unique UV0 is not a self-pass.",
     "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests.",
-    "Abeam width 9.77% is inside the cycle-31 9–12% margin and the legal 8–22% band. Independent review still owns the KEEP call. Remaining risk: hull can still read as a large warm painted volume at D=144; corridor glass is smoked dielectric, not transmissive; drive vanes are rooted but blocky."
+    "Abeam width 9.75% is inside the 9–12% margin and the legal 8–22% band. Independent review still owns the KEEP call. Remaining risk: the wide passenger course can still read as a rectangular belt at D=144; glass transmission is authored but may still read as dark cards in EEVEE; throat chamfers catch a bright lip under the diagnostic bore light."
   ]
 }
