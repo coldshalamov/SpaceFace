@@ -1,0 +1,54 @@
+{
+  "assetId": "place_works_extractor",
+  "root": "SF_WORKS_EXTRACTOR_V1",
+  "combined": "assets/works/extractor/source/extractor.glb",
+  "partsSource": "assets/ships/parts/works/place_works_extractor.glb",
+  "blend": "assets/works/extractor/source/extractor.blend",
+  "lodTriangles": {
+    "lod0": 3580,
+    "lod1": 1736,
+    "lod2": 564
+  },
+  "hooks": [
+    "head_face",
+    "belt",
+    "lamp"
+  ],
+  "meshNames": [
+    "LOD0_belt",
+    "LOD0_extractor",
+    "LOD0_head",
+    "LOD0_lamp",
+    "LOD0_lamp_lens",
+    "LOD1_belt",
+    "LOD1_extractor",
+    "LOD1_head",
+    "LOD1_lamp",
+    "LOD1_lamp_lens",
+    "LOD2_belt",
+    "LOD2_extractor",
+    "LOD2_head",
+    "LOD2_lamp",
+    "LOD2_lamp_lens"
+  ],
+  "bbox": {
+    "min": [
+      -0.94,
+      -0.756,
+      0.0
+    ],
+    "max": [
+      0.975,
+      0.756,
+      0.78
+    ],
+    "size": [
+      1.915,
+      1.512,
+      0.78
+    ]
+  },
+  "bytes": 8189132,
+  "sha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0",
+  "partsSha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0"
+}

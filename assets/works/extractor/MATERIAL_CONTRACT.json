@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_extractor",
+  "root": "SF_WORKS_EXTRACTOR_V1",
+  "packet": "PQ-131.03",
+  "cycle": 1,
+  "currentState": "design_candidate",
+  "candidateHash": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0",
+  "forwardAxis": "+X",
+  "upAxisBlender": "+Z",
+  "upAxisGltf": "+Y",
+  "hooks": [
+    "head_face",
+    "belt",
+    "lamp"
+  ],
+  "materials": {
+    "structure": {
+      "rgb": [
+        0.078,
+        0.072,
+        0.064
+      ],
+      "rough": 0.62,
+      "metal": 0.08
+    },
+    "cutting": {
+      "rgb": [
+        0.52,
+        0.5,
+        0.46
+      ],
+      "rough": 0.3,
+      "metal": 0.84
+    },
+    "drive": {
+      "rgb": [
+        0.28,
+        0.18,
+        0.12
+      ],
+      "rough": 0.42,
+      "metal": 0.74
+    },
+    "ceramic": {
+      "rgb": [
+        0.58,
+        0.5,
+        0.38
+      ],
+      "rough": 0.74,
+      "metal": 0.03
+    },
+    "belt": {
+      "rgb": [
+        0.07,
+        0.065,
+        0.06
+      ],
+      "rough": 0.88,
+      "metal": 0.04
+    },
+    "lamp": {
+      "rgb": [
+        0.92,
+        0.82,
+        0.58
+      ],
+      "rough": 0.18,
+      "metal": 0.04
+    },
+    "accent": {
+      "rgb": [
+        0.42,
+        0.24,
+        0.1
+      ],
+      "rough": 0.54,
+      "metal": 0.1
+    }
+  },
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL",
+  "textureSize": 1024,
+  "forbiddenReads": [
+    "safety yellow",
+    "plastic copper",
+    "generic grid",
+    "universal edge wear",
+    "neon",
+    "flat decals",
+    "leather",
+    "billboard",
+    "glowing bar",
+    "crate",
+    "turret",
+    "forklift",
+    "gun",
+    "box-plus-cylinder"
+  ],
+  "allSupportedViewZonesClassified": false,
+  "gatesOpen": [
+    "G1",
+    "G2",
+    "G4",
+    "G7"
+  ]
+}
