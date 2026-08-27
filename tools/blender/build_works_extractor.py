@@ -1,12 +1,14 @@
-"""PQ-131.03 Works extractor — Cycle 02 open-mouth / rooted-process candidate.
+"""PQ-131.03 Works extractor — Cycle 03 open crushing process / material correction.
 
-Cycle 01 reviews: closed +X grate/brick, filled trough, aft slab, cavity in
-the wrong place. Cycle 02 deletes the hatch/grate, opens a five-wall well,
-roots a Y-axis drum in yoke bearings, replaces the pan with a ribbon belt,
-and keeps the aft as open C-channel + case + fin comb.
+Cycle 02 site still is a KEEP at legal 19 px/cell (frozen). Top, edge and
+material reviews: REVISE. Cycle 03 cuts the remaining +X floor/wall so tan
+pad shows through 8–10 px of the bite, puts a lit Y-axis tool-steel drum in
+the well on rail-top circular housings, plants 3–4 chunky refractory jaws on
+the rim, thins the belt to a ribbon over roller crowns, air-gaps the fins,
+and corrects dielectric paint / isolated ceramic / restrained heat.
 
 Kit GLBs are cited shape references only and are never imported.
-Cycle 01 evidence under evidence/cycle_001/ is immutable.
+Cycle 01 and Cycle 02 evidence folders are immutable.
 
     blender --background --python tools/blender/build_works_extractor.py
 """
@@ -40,10 +42,11 @@ FAMILY = ROOT / "assets" / "works" / "extractor"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
-CYCLE = 2
-EPOCH_NAME = "cycle_002"
+CYCLE = 3
+EPOCH_NAME = "cycle_003"
 EVIDENCE_DIR = FAMILY / "evidence" / EPOCH_NAME
 CYCLE_01_DIR = FAMILY / "evidence" / "cycle_001"
+CYCLE_02_DIR = FAMILY / "evidence" / "cycle_002"
 BLEND_PATH = SOURCE_DIR / "extractor.blend"
 COMBINED_NAME = "place_works_extractor.glb"
 ASSET_ID = "place_works_extractor"
@@ -56,19 +59,20 @@ CELL_WU = 2.2
 SHADE_ANGLE = 28.0
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 
-PIVOT = Vector((0.42, 0.00, 0.36))
-LAMP_LOC = Vector((0.34, 0.68, 0.50))
+PIVOT = Vector((0.42, 0.00, 0.27))
+LAMP_LOC = Vector((0.34, 0.68, 0.48))
 BELT_LOC = Vector((0.04, 0.00, 0.16))
 
 BELT_X0 = -0.22
-BELT_X1 = 0.30
-BELT_HALF_Y = 0.11
-WELL_X0 = 0.34
+BELT_X1 = 0.28
+BELT_HALF_Y = 0.085
+WELL_X0 = 0.50
 WELL_X1 = 0.92
-WELL_Y0 = -0.30
-WELL_Y1 = 0.30
-WELL_Z0 = 0.085
-WELL_Z1 = 0.54
+WELL_Y0 = -0.32
+WELL_Y1 = 0.32
+WELL_Z0 = 0.08
+WELL_Z1 = 0.32
+BITE_OPEN_X0 = 0.76
 
 CYCLE_01_SHA256 = {
     "EPOCH.json": "58F66996D345E11134FEA13FE1533B3AB6214AD4976908C3146A0265466FD2C8",
@@ -84,19 +88,42 @@ CYCLE_01_SHA256 = {
     "works_top.png": "6B80C43422F5B652DCBB5D1632AEA0DBCADB3A3F2EF259942BEFA07555158A93",
 }
 
-ROLES = {
-    # Dark alkyd over zinc — lifted just enough vs the well so the U rails
-    # survive at 19 px/cell. Still dark paint, never rover yellow.
-    "structure": {"rgb": (0.175, 0.160, 0.140), "rough": 0.60, "metal": 0.10, "id": (1.0, 0.0, 0.0)},
-    "cutting": {"rgb": (0.60, 0.57, 0.52), "rough": 0.28, "metal": 0.86, "id": (0.0, 1.0, 0.0)},
-    "drive": {"rgb": (0.28, 0.18, 0.12), "rough": 0.42, "metal": 0.74, "id": (0.0, 0.0, 1.0)},
-    "ceramic": {"rgb": (0.58, 0.50, 0.38), "rough": 0.74, "metal": 0.03, "id": (1.0, 1.0, 0.0)},
-    "belt": {"rgb": (0.055, 0.050, 0.046), "rough": 0.88, "metal": 0.04, "id": (1.0, 0.0, 1.0)},
-    "lamp": {"rgb": (0.92, 0.82, 0.58), "rough": 0.18, "metal": 0.04, "id": (0.0, 1.0, 1.0)},
-    "accent": {"rgb": (0.42, 0.24, 0.10), "rough": 0.54, "metal": 0.10, "id": (1.0, 0.4, 0.0)},
-    # Unlit crushing cavity. Near-black, dry, no metal.
-    "well": {"rgb": (0.016, 0.014, 0.012), "rough": 0.92, "metal": 0.02, "id": (0.22, 0.10, 0.06)},
+CYCLE_02_SHA256 = {
+    "EPOCH.json": "E291CB2F31715912C42BBD8D2B3A7764304B023394F486FE51A0D0739CF17408",
+    "hidden_faces.json": "359D5D8B031542D511AD94FF3681CE401112FCB6909B957E50038A00EB7A7D8D",
+    "hook_identity.png": "DE3052CDBF0758B8917C93A47843657D59591DE324F949477E05A6AB7B38F8C9",
+    "id_or_material_id.png": "B4731F403AA6E92ECE06356ECF74FA866E59BB0F9D56B7AEFB5A3D3BB57BC470",
+    "INSPECT.md": "09A8BCC47DBD08FE54D78DBD256B1F34E2F2C95623A208C807E79FC3D7433C45",
+    "inspect/works_edge_crop.png": "8CB6E42FD55E887078E798438C7D7DA3957D62F5E4CC8A2B860DDA53AA5F12C9",
+    "inspect/works_site_crop.png": "65114741662803EEE065AEAD5C3A916BA0600F414F7B67D15567C732ECF621D9",
+    "inspect/works_top_clay_crop.png": "4A372ED49DCB2946ACD5428EBC93302F52C3517D381767AC587EEB058CE6CDB0",
+    "inspect/works_top_crop.png": "F388BF69EC1E6CF06202709C50DB75ED75DC1DB234E80C1A5B62FE28B53D9C6D",
+    "normal_isolation.png": "E4413B951C2D1DB49B6BB98F9EA2A167510B4846E0F2F0137286CCD4FBBF833F",
+    "orm_isolation.png": "4ED866D8A6DB310D0355E156B70D4188334DA3DD020E1C4646775E8E793003D4",
+    "works_edge_grazing.png": "268D5022B62878B2D6D463470FD8E6B8F6781CBD4C53D2D45A2C355B593D6C08",
+    "works_edge.png": "3899BFB5785A0E7E373B5E6A868EFE41F655B61B56CA2165C36DA112987B26F3",
+    "works_site.png": "397B99EAFA072FECE913591C7171ACA87C41DDE81D6DD84B82A585A938132471",
+    "works_top_clay.png": "DE3052CDBF0758B8917C93A47843657D59591DE324F949477E05A6AB7B38F8C9",
+    "works_top.png": "6C04A7865BDA576C58A9CE972E1C023BBFE034D0C1D57C93E44637A52495C51E",
 }
+
+ROLES = {
+    # Dark alkyd over zinc — dielectric paint. ORM metal stays low.
+    "structure": {"rgb": (0.18, 0.165, 0.145), "rough": 0.62, "metal": 0.08, "id": (1.0, 0.0, 0.0)},
+    # Worn machined tool steel — drum, rollers, fins, bearing housings.
+    "cutting": {"rgb": (0.70, 0.66, 0.58), "rough": 0.26, "metal": 0.90, "id": (0.0, 1.0, 0.0)},
+    # Gearbox only. Restrained straw/blue heat, not a copper wash.
+    "drive": {"rgb": (0.26, 0.17, 0.12), "rough": 0.44, "metal": 0.72, "id": (0.0, 0.0, 1.0)},
+    # Dry refractory jaw blocks, isolated from the painted housing.
+    "ceramic": {"rgb": (0.62, 0.52, 0.38), "rough": 0.78, "metal": 0.02, "id": (1.0, 1.0, 0.0)},
+    "belt": {"rgb": (0.06, 0.052, 0.048), "rough": 0.90, "metal": 0.03, "id": (1.0, 0.0, 1.0)},
+    "lamp": {"rgb": (0.90, 0.80, 0.56), "rough": 0.22, "metal": 0.03, "id": (0.0, 1.0, 1.0)},
+    "accent": {"rgb": (0.40, 0.23, 0.10), "rough": 0.56, "metal": 0.08, "id": (1.0, 0.4, 0.0)},
+}
+
+
+def write_text_lf(path: Path, text: str) -> None:
+    path.write_bytes(text.encode("utf-8"))
 
 
 def sha256(path: Path) -> str:
@@ -162,7 +189,7 @@ def role_material(role: str):
         if key in bsdf.inputs:
             bsdf.inputs[key].default_value = (1.0, 0.82, 0.48, 1.0)
         if "Emission Strength" in bsdf.inputs:
-            bsdf.inputs["Emission Strength"].default_value = 3.2
+            bsdf.inputs["Emission Strength"].default_value = 1.15
     mat["spacefaceRole"] = role
     return mat
 
@@ -244,21 +271,9 @@ def add_cyl(name, loc, radius, depth, role, collection, verts=16, bevel=0.004, r
     return finish_mesh(obj, role, bevel=bevel, collection=collection)
 
 
-def add_jaw_tiles(name, x, y0, y1, z, n, collection, *, thick=0.032, height=0.042, inset=0.018):
-    """Chunky ceramic jaw tiles on the inner rim. Not a +X saw-grate."""
-    n = max(2, int(n))
-    objs = []
-    span = y1 - y0
-    tile_w = span / n * 0.70
-    for i in range(n):
-        y = y0 + span * ((i + 0.5) / n)
-        objs.append(add_box(
-            f"{name}_{i}",
-            (x - inset, y, z),
-            (thick, tile_w, height),
-            "ceramic", collection, bevel=0.002,
-        ))
-    return objs
+def add_jaw_block(name, loc, size, collection, bevel=0.006):
+    """One dry-refractory jaw, large enough to survive works_top (~0.14 wu)."""
+    return add_box(name, loc, size, "ceramic", collection, bevel=bevel)
 
 
 def add_belt_ribbon(name, x0, x1, y0, y1, z_top, thickness, sag, collection, stations=5, bevel=0.002):
@@ -520,8 +535,8 @@ def ensure_cycles():
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
-    scene.cycles.samples = 4
-    scene.cycles.preview_samples = 2
+    scene.cycles.samples = 8
+    scene.cycles.preview_samples = 4
     scene.render.bake.margin = 8
     scene.render.bake.use_selected_to_active = False
 
@@ -711,7 +726,9 @@ def author_maps(bakes, size, stem):
     yy, xx = np.mgrid[0:h, 0:w]
     n1 = ((xx * 17 + yy * 31) % 251).astype(np.float32) / 250.0
     n2 = ((xx * 9 + yy * 13) % 173).astype(np.float32) / 172.0
-    dirt = np.clip((1.0 - ao) * 0.85 + n1 * 0.08, 0.0, 1.0)
+    # Flatten AO so symmetric rails cannot split; dirt is cavity-only and quiet.
+    ao_flat = np.clip(0.78 + 0.22 * ao, 0.0, 1.0)
+    dirt = np.clip((1.0 - ao) * 0.18, 0.0, 0.22)
     convex = np.clip((curv - 0.52) * 3.4, 0.0, 1.0)
     concave = np.clip((0.48 - curv) * 3.4, 0.0, 1.0)
 
@@ -724,61 +741,54 @@ def author_maps(bakes, size, stem):
         if not np.any(mask):
             continue
         r, g, b = spec["rgb"]
-        # Causal wear: paint chips to metal on convex; dirt in concave; heat on drive.
         if name == "structure":
-            chip = convex * (n2 > 0.78).astype(np.float32)
-            rr = np.clip(r * (0.72 + 0.28 * ao) - dirt * 0.10 + chip * 0.28, 0, 1)
-            gg = np.clip(g * (0.72 + 0.28 * ao) - dirt * 0.08 + chip * 0.24, 0, 1)
-            bb = np.clip(b * (0.74 + 0.26 * ao) - dirt * 0.06 + chip * 0.20, 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.16 - chip * 0.12, 0.08, 0.95)
-            metal = np.clip(spec["metal"] + chip * 0.55, 0.0, 1.0)
+            # Dielectric alkyd. Sparse corner chips only — never a metal channel.
+            chip = convex * (n2 > 0.96).astype(np.float32)
+            rr = np.clip(r * (0.90 + 0.10 * ao_flat) - dirt * 0.04 + chip * 0.10, 0, 1)
+            gg = np.clip(g * (0.90 + 0.10 * ao_flat) - dirt * 0.03 + chip * 0.08, 0, 1)
+            bb = np.clip(b * (0.91 + 0.09 * ao_flat) - dirt * 0.02 + chip * 0.06, 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.06 - chip * 0.04, 0.20, 0.92)
+            metal = np.clip(spec["metal"] + chip * 0.08, 0.0, 0.18)
         elif name == "cutting":
-            polish = np.clip(ao * 0.4 + convex * 0.5, 0, 1)
-            rr = np.clip(r * (0.78 + polish * 0.28) - concave * 0.10, 0, 1)
-            gg = np.clip(g * (0.78 + polish * 0.24) - concave * 0.08, 0, 1)
-            bb = np.clip(b * (0.80 + polish * 0.18) - concave * 0.06, 0, 1)
-            rough = np.clip(spec["rough"] + concave * 0.18 - polish * 0.10, 0.08, 0.95)
-            metal = np.clip(spec["metal"] - dirt * 0.06, 0.0, 1.0)
+            polish = np.clip(ao_flat * 0.20 + convex * 0.40, 0, 1)
+            rr = np.clip(r * (0.94 + polish * 0.10) - concave * 0.04, 0, 1)
+            gg = np.clip(g * (0.94 + polish * 0.08) - concave * 0.03, 0, 1)
+            bb = np.clip(b * (0.93 + polish * 0.07) - concave * 0.02, 0, 1)
+            rough = np.clip(spec["rough"] + concave * 0.08 - polish * 0.08, 0.10, 0.80)
+            metal = np.clip(spec["metal"] - dirt * 0.03, 0.74, 0.96)
         elif name == "drive":
-            heat = np.clip((1.0 - ao) * 0.55 + n1 * 0.15, 0, 1)
-            rr = np.clip(r * (0.80 + ao * 0.15) + heat * 0.18, 0, 1)
-            gg = np.clip(g * (0.78 + ao * 0.12) + heat * 0.02, 0, 1)
-            bb = np.clip(b * (0.70 + ao * 0.10) - heat * 0.08, 0, 1)
-            # straw/blue heat stain, not plastic copper
-            bb = np.clip(bb + heat * n2 * 0.10, 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.12 - heat * 0.06, 0.08, 0.95)
-            metal = np.clip(spec["metal"] - dirt * 0.08, 0.0, 1.0)
+            # Restrained heat on the gearbox only. No copper wash, no uniform dirt.
+            heat = np.clip((1.0 - ao) * 0.22, 0, 0.28)
+            rr = np.clip(r * (0.88 + ao_flat * 0.10) + heat * 0.10, 0, 1)
+            gg = np.clip(g * (0.88 + ao_flat * 0.08) + heat * 0.01, 0, 1)
+            bb = np.clip(b * (0.84 + ao_flat * 0.08) - heat * 0.04 + heat * n2 * 0.05, 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.05 - heat * 0.04, 0.20, 0.90)
+            metal = np.clip(spec["metal"] - dirt * 0.04, 0.55, 0.82)
         elif name == "ceramic":
-            chip = convex * (n1 > 0.7).astype(np.float32)
-            rr = np.clip(r * (0.70 + ao * 0.22) - dirt * 0.12 + chip * 0.08, 0, 1)
-            gg = np.clip(g * (0.70 + ao * 0.20) - dirt * 0.10 + chip * 0.05, 0, 1)
-            bb = np.clip(b * (0.68 + ao * 0.18) - dirt * 0.08, 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.10 + chip * 0.08, 0.20, 0.95)
-            metal = np.clip(spec["metal"] + chip * 0.04, 0.0, 0.2)
-        elif name == "belt":
-            groove = ((xx % 18) < 2).astype(np.float32) * 0.08
-            rr = np.clip(r * (0.85 + ao * 0.20) + groove + dirt * 0.04, 0, 1)
-            gg = np.clip(g * (0.85 + ao * 0.18) + groove * 0.8 + dirt * 0.03, 0, 1)
-            bb = np.clip(b * (0.85 + ao * 0.16) + groove * 0.6, 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.06, 0.20, 0.95)
+            chip = convex * (n1 > 0.88).astype(np.float32)
+            rr = np.clip(r * (0.88 + ao_flat * 0.10) - dirt * 0.05 + chip * 0.06, 0, 1)
+            gg = np.clip(g * (0.88 + ao_flat * 0.09) - dirt * 0.04 + chip * 0.03, 0, 1)
+            bb = np.clip(b * (0.86 + ao_flat * 0.08) - dirt * 0.03, 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.04 + chip * 0.05, 0.40, 0.95)
             metal = spec["metal"]
-        elif name == "well":
-            rr = np.clip(r * (0.55 + ao * 0.35) - dirt * 0.04, 0, 1)
-            gg = np.clip(g * (0.55 + ao * 0.32) - dirt * 0.03, 0, 1)
-            bb = np.clip(b * (0.55 + ao * 0.28), 0, 1)
-            rough = np.clip(spec["rough"] + dirt * 0.04, 0.40, 0.97)
+        elif name == "belt":
+            groove = ((xx % 22) < 2).astype(np.float32) * 0.05
+            rr = np.clip(r * (0.90 + ao_flat * 0.12) + groove, 0, 1)
+            gg = np.clip(g * (0.90 + ao_flat * 0.10) + groove * 0.8, 0, 1)
+            bb = np.clip(b * (0.90 + ao_flat * 0.08) + groove * 0.6, 0, 1)
+            rough = np.clip(spec["rough"] + dirt * 0.04, 0.40, 0.95)
             metal = spec["metal"]
         elif name == "lamp":
-            rr = np.clip(r * (0.90 + ao * 0.12), 0, 1)
-            gg = np.clip(g * (0.88 + ao * 0.10), 0, 1)
-            bb = np.clip(b * (0.80 + ao * 0.08), 0, 1)
+            rr = np.clip(r * (0.92 + ao_flat * 0.08), 0, 1)
+            gg = np.clip(g * (0.90 + ao_flat * 0.07), 0, 1)
+            bb = np.clip(b * (0.84 + ao_flat * 0.06), 0, 1)
             rough = spec["rough"]
             metal = spec["metal"]
         else:  # accent
-            rr = np.clip(r * (0.78 + ao * 0.22) - dirt * 0.08, 0, 1)
-            gg = np.clip(g * (0.76 + ao * 0.20) - dirt * 0.06, 0, 1)
-            bb = np.clip(b * (0.74 + ao * 0.16) - dirt * 0.04, 0, 1)
-            rough = spec["rough"] + dirt * 0.08
+            rr = np.clip(r * (0.88 + ao_flat * 0.12) - dirt * 0.03, 0, 1)
+            gg = np.clip(g * (0.86 + ao_flat * 0.10) - dirt * 0.02, 0, 1)
+            bb = np.clip(b * (0.84 + ao_flat * 0.08) - dirt * 0.02, 0, 1)
+            rough = spec["rough"] + dirt * 0.04
             metal = spec["metal"]
         albedo[mask, 0] = rr[mask]
         albedo[mask, 1] = gg[mask]
@@ -878,7 +888,7 @@ def atlas_material(maps, lod, emissive=False):
         if key in bsdf.inputs:
             nt.links.new(tex_c.outputs["Color"], bsdf.inputs[key])
         if "Emission Strength" in bsdf.inputs:
-            bsdf.inputs["Emission Strength"].default_value = 2.6
+            bsdf.inputs["Emission Strength"].default_value = 1.05
     mat["spacefaceRole"] = "atlas"
     return mat
 
@@ -914,17 +924,7 @@ def build_frame(lod, collection):
             ]
             faces = [(0, 1, 2), (3, 5, 4), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)]
             objs.append(add_mesh(f"gusset_{i}", verts, faces, "structure", collection, bevel=0.004))
-    # Low trough skirts — they do not close the belt into a pan.
-    if lod < 2:
-        skirt_h = 0.065 if lod == 0 else 0.055
-        skirt_t = 0.026 if lod == 0 else 0.030
-        skirt_x = (BELT_X0 + BELT_X1) * 0.5
-        skirt_len = (BELT_X1 - BELT_X0) - 0.08
-        for side, y in (("P", BELT_HALF_Y + 0.055), ("S", -(BELT_HALF_Y + 0.055))):
-            objs.append(add_box(
-                f"trough_{side}", (skirt_x, y, 0.055 + skirt_h * 0.5),
-                (skirt_len, skirt_t, skirt_h), "structure", collection, bevel=bevel,
-            ))
+    # No trough skirts — the belt is a free ribbon over rollers.
     return objs
 
 
@@ -963,204 +963,198 @@ def build_drive(lod, collection):
         objs.append(add_box("drive_accent", (-0.50, 0.12, 0.58), (0.16, 0.03, 0.022), "accent", collection, bevel=0.002))
         objs.append(add_cyl("drive_motor", (-0.44, -0.32, 0.30), 0.08, 0.18, "drive", collection,
                             verts=12, rot=(math.pi / 2, 0, 0), bevel=0.003))
-    # Separate heat header (hat section) + rooted fin comb. Not one closed box.
-    n_fins = {0: 6, 1: 3, 2: 2}[lod]
-    header_z = 0.58 if lod < 2 else 0.50
+    # Air-gapped heat path: fewer, thinner, taller plates in a header.
+    # Worn machined steel (cutting), not a packed vent grille.
+    n_fins = {0: 4, 1: 3, 2: 2}[lod]
+    header_z = 0.56 if lod < 2 else 0.50
     if lod < 2:
-        objs.append(add_hat_member("fin_header", -0.52, -0.20, 0.20, 0.28, 0.05, collection, lod, z=header_z, role="drive"))
+        objs.append(add_hat_member("fin_header", -0.52, -0.16, 0.16, 0.22, 0.04, collection, lod, z=header_z, role="drive"))
     else:
-        objs.append(add_box("fin_header", (-0.52, 0.0, header_z + 0.02), (0.26, 0.36, 0.03), "drive", collection, bevel=0.0))
-    span = 0.38
-    fin_t = {0: 0.010, 1: 0.014, 2: 0.018}[lod]
-    fin_h = {0: 0.15, 1: 0.13, 2: 0.11}[lod]
+        objs.append(add_box("fin_header", (-0.52, 0.0, header_z + 0.02), (0.22, 0.30, 0.03), "drive", collection, bevel=0.0))
+    span = 0.40
+    fin_t = {0: 0.007, 1: 0.010, 2: 0.014}[lod]
+    fin_h = {0: 0.20, 1: 0.16, 2: 0.13}[lod]
+    fin_x = {0: 0.22, 1: 0.24, 2: 0.26}[lod]
     for i in range(n_fins):
         y = -span * 0.5 + (span * i / max(1, n_fins - 1))
         objs.append(add_box(
-            f"fin_{i}", (-0.52, y, header_z + 0.05 + fin_h * 0.5),
-            (0.30, fin_t, fin_h),
-            "drive", collection, bevel=0.0,
+            f"fin_{i}", (-0.52, y, header_z + 0.04 + fin_h * 0.5),
+            (fin_x, fin_t, fin_h),
+            "cutting", collection, bevel=0.0,
         ))
     return objs
 
 
 def build_head(lod, collection):
+    """Open +X aperture, lit Y-axis drum, rail-top circular housings, rim jaws.
+
+    No +X closing wall, no well floor through the bite, no roof, no grate.
+    """
     bevel = {0: 0.004, 1: 0.0, 2: 0.0}[lod]
     objs = []
-    t = {0: 0.055, 1: 0.060, 2: 0.065}[lod]
+    t = {0: 0.050, 1: 0.055, 2: 0.060}[lod]
     x0, x1 = WELL_X0, WELL_X1
     y0, y1 = WELL_Y0, WELL_Y1
     z0, z1 = WELL_Z0, WELL_Z1
+    wall_len = x1 - x0
     xc = (x0 + x1) * 0.5
-    zc = (z0 + z1) * 0.5
-    inner_y0, inner_y1 = y0 + t, y1 - t
+    wall_h = z1 - z0
+    wall_z = z0 + wall_h * 0.5
 
-    # Five-wall crushing shell, NO +X wall, NO closing roof plate.
-    # 1 floor, 2 side walls, 1 aft bulkhead, 1 +X upper lintel.
+    # Two cheeks only. Open +X, open top, no floor in the bite.
     objs.append(add_box(
-        "mouth_floor", (xc, 0.0, z0 - 0.008),
-        (x1 - x0, y1 - y0, 0.028), "well", collection, bevel=0.002,
-    ))
-    wall_z = zc + 0.01
-    wall_h = (z1 - z0) + 0.02
-    objs.append(add_box(
-        "mouth_P", (xc, y1 - t * 0.5, wall_z),
-        (x1 - x0, t, wall_h), "structure", collection, bevel=bevel,
+        "cheek_P", (xc, y1 - t * 0.5, wall_z),
+        (wall_len, t, wall_h), "structure", collection, bevel=bevel,
     ))
     objs.append(add_box(
-        "mouth_S", (xc, y0 + t * 0.5, wall_z),
-        (x1 - x0, t, wall_h), "structure", collection, bevel=bevel,
+        "cheek_S", (xc, y0 + t * 0.5, wall_z),
+        (wall_len, t, wall_h), "structure", collection, bevel=bevel,
     ))
-    # Aft bulkhead sits above the belt chute — open at the bottom.
-    objs.append(add_box(
-        "mouth_aft", (x0 + t * 0.5, 0.0, z0 + 0.22),
-        (t, (y1 - y0) - 2 * t, wall_h - 0.18), "structure", collection, bevel=bevel,
+    # No well floor. The +X bite is true void to the tan pad.
+
+    # 3–4 chunky dry-refractory jaw blocks on the rim. Survive works_top.
+    jaw_h = {0: 0.16, 1: 0.15, 2: 0.14}[lod]
+    jaw_x = {0: 0.14, 1: 0.15, 2: 0.16}[lod]
+    jaw_y = {0: 0.11, 1: 0.12, 2: 0.13}[lod]
+    jaw_z = z1 - jaw_h * 0.35
+    jaw_fore_x = 0.68
+    jaw_aft_x = 0.56
+    y_rim_p = y1 - t - jaw_y * 0.15
+    y_rim_s = y0 + t + jaw_y * 0.15
+    objs.append(add_jaw_block(
+        "jaw_P_fore", (jaw_fore_x, y_rim_p, jaw_z),
+        (jaw_x, jaw_y, jaw_h), collection, bevel=0.005 if lod == 0 else 0.0,
     ))
-    # +X lintel (fifth wall): a jaw frame, not a lid over the well.
-    lintel_w = 0.055
-    objs.append(add_box(
-        "mouth_lintel", (x1 - lintel_w * 0.5, 0.0, z1 - 0.02),
-        (lintel_w, (y1 - y0) - 0.02, 0.040), "structure", collection, bevel=bevel,
+    objs.append(add_jaw_block(
+        "jaw_S_fore", (jaw_fore_x, y_rim_s, jaw_z),
+        (jaw_x, jaw_y, jaw_h), collection, bevel=0.005 if lod == 0 else 0.0,
     ))
-    # Top flanges so the well is a framed hole, not a black tile.
     if lod < 2:
-        fl_w = 0.055
-        objs.append(add_box(
-            "mouth_flange_P", (xc, y1 - fl_w * 0.35, z1 - 0.008),
-            (x1 - x0 - 0.04, fl_w, 0.018), "structure", collection, bevel=0.0,
+        objs.append(add_jaw_block(
+            "jaw_P_aft", (jaw_aft_x, y_rim_p, jaw_z - 0.01),
+            (jaw_x * 0.90, jaw_y, jaw_h * 0.92), collection, bevel=0.004 if lod == 0 else 0.0,
         ))
-        objs.append(add_box(
-            "mouth_flange_S", (xc, y0 + fl_w * 0.35, z1 - 0.008),
-            (x1 - x0 - 0.04, fl_w, 0.018), "structure", collection, bevel=0.0,
-        ))
-    # Near-black inner liners so the well reads as a hole from above.
-    if lod == 0:
-        objs.append(add_box(
-            "liner_P", (xc + 0.01, inner_y1 - 0.008, zc),
-            (x1 - x0 - 0.08, 0.016, wall_h - 0.08), "well", collection, bevel=0.0,
-        ))
-        objs.append(add_box(
-            "liner_S", (xc + 0.01, inner_y0 + 0.008, zc),
-            (x1 - x0 - 0.08, 0.016, wall_h - 0.08), "well", collection, bevel=0.0,
-        ))
-        objs.append(add_box(
-            "liner_aft", (x0 + t + 0.012, 0.0, zc + 0.04),
-            (0.016, (y1 - y0) - 2 * t - 0.04, wall_h - 0.16), "well", collection, bevel=0.0,
+        objs.append(add_jaw_block(
+            "jaw_S_aft", (jaw_aft_x, y_rim_s, jaw_z - 0.01),
+            (jaw_x * 0.90, jaw_y, jaw_h * 0.92), collection, bevel=0.004 if lod == 0 else 0.0,
         ))
 
-    # Ceramic jaws on the mouth rim only — inward, not a +X grate.
-    n_jaw = {0: 3, 1: 2, 2: 0}[lod]
-    if n_jaw:
-        objs.extend(add_jaw_tiles(
-            "jaw_top", x1 - lintel_w * 0.25, inner_y0 + 0.04, inner_y1 - 0.04,
-            z1 - 0.018, n_jaw, collection, thick=0.036, height=0.028, inset=0.012,
+    # Circular bearing housings rooted on the rail tops (Z-up → circles from above).
+    rail_y = 0.67
+    rail_top_z = 0.18
+    brg_r = {0: 0.092, 1: 0.094, 2: 0.096}[lod]
+    brg_h = {0: 0.18, 1: 0.17, 2: 0.16}[lod]
+    brg_n = {0: 14, 1: 10, 2: 8}[lod]
+    brg_z = rail_top_z + brg_h * 0.5
+    drum_z = brg_z
+    for side, y in (("P", rail_y), ("S", -rail_y)):
+        objs.append(add_box(
+            f"saddle_{side}", (PIVOT.x, y, rail_top_z - 0.03),
+            (0.20, 0.14, 0.08), "structure", collection, bevel=bevel,
         ))
-    if lod == 0:
-        objs.extend(add_jaw_tiles(
-            "jaw_bot", x1 - 0.03, inner_y0 + 0.04, inner_y1 - 0.04,
-            z0 + 0.03, n_jaw, collection, thick=0.028, height=0.028, inset=0.016,
-        ))
-
-    # Saddles rooted on the rails, round bearings, yoke arms. Never a yoke brick.
-    brg_y = 0.31
-    brg_r = {0: 0.070, 1: 0.074, 2: 0.078}[lod]
-    brg_n = {0: 12, 1: 8, 2: 6}[lod]
-    for side, y in (("P", brg_y), ("S", -brg_y)):
-        if lod < 2:
-            objs.append(add_box(
-                f"saddle_{side}", (PIVOT.x, y * 2.15, 0.16),
-                (0.18, 0.11, 0.14), "structure", collection, bevel=bevel,
-            ))
         objs.append(add_cyl(
-            f"bearing_{side}", (PIVOT.x, y, PIVOT.z), brg_r, 0.07 if lod else 0.075,
-            "cutting", collection, verts=brg_n, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
+            f"bearing_{side}", (PIVOT.x, y, brg_z), brg_r, brg_h,
+            "cutting", collection, verts=brg_n, rot=(0, 0, 0), bevel=0.0 if lod else 0.002,
         ))
         if lod == 0:
             objs.append(add_cyl(
-                f"bearing_flange_{side}", (PIVOT.x, y + (0.05 if side == "P" else -0.05), PIVOT.z),
-                0.09, 0.018, "cutting", collection, verts=10, rot=(math.pi / 2, 0, 0), bevel=0.002,
+                f"bearing_cap_{side}", (PIVOT.x, y, brg_z + brg_h * 0.42),
+                brg_r * 0.62, 0.018, "cutting", collection, verts=10, rot=(0, 0, 0), bevel=0.002,
             ))
-        objs.append(add_yoke_arm(side, lod, collection))
 
-    # Horizontal Y-axis crusher drum inside the well, at the aim pivot.
-    drum_r = {0: 0.108, 1: 0.110, 2: 0.112}[lod]
-    drum_len = {0: 0.46, 1: 0.44, 2: 0.40}[lod]
-    drum_n = {0: 14, 1: 8, 2: 6}[lod]
+    # Y-axis tool-steel drum spanning the housings. Lit — not buried in a pit.
+    drum_r = {0: 0.132, 1: 0.134, 2: 0.136}[lod]
+    drum_len = {0: 1.08, 1: 1.04, 2: 1.00}[lod]
+    drum_n = {0: 16, 1: 10, 2: 8}[lod]
     objs.append(add_cyl(
-        "drum", (PIVOT.x, 0.0, PIVOT.z), drum_r, drum_len,
+        "drum", (PIVOT.x, 0.0, drum_z), drum_r, drum_len,
         "cutting", collection, verts=drum_n, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
     ))
-    # Metallic flutes — not ceramic rim teeth, not a grate.
     if lod == 0:
+        axle_len = drum_len + 0.18
+        objs.append(add_cyl(
+            "drum_axle", (PIVOT.x, 0.0, drum_z), 0.028, axle_len,
+            "cutting", collection, verts=8, rot=(math.pi / 2, 0, 0), bevel=0.0,
+        ))
         for i in range(3):
-            ang = i * (math.pi * 2 / 3) + 0.4
-            lx = PIVOT.x + math.cos(ang) * (drum_r + 0.006)
-            lz = PIVOT.z + math.sin(ang) * (drum_r + 0.006)
+            ang = i * (math.pi * 2 / 3) + 0.35
+            lx = PIVOT.x + math.cos(ang) * (drum_r + 0.005)
+            lz = drum_z + math.sin(ang) * (drum_r + 0.005)
             objs.append(add_box(
                 f"drum_flute_{i}", (lx, 0.0, lz),
-                (0.016, drum_len - 0.10, 0.014), "cutting", collection, bevel=0.0,
+                (0.014, drum_len - 0.16, 0.012), "cutting", collection, bevel=0.0,
                 rot=(0.0, ang, 0.0),
             ))
     return objs
 
 
 def build_belt(lod, collection):
+    """Thin rubber ribbon over visible roller crowns. Side and under void."""
     objs = []
     x0, x1 = BELT_X0, BELT_X1
     y0, y1 = -BELT_HALF_Y, BELT_HALF_Y
-    z_top = 0.168
-    sag = {0: 0.018, 1: 0.012, 2: 0.008}[lod]
+    z_top = 0.175
+    sag = {0: 0.016, 1: 0.012, 2: 0.008}[lod]
     n_stat = {0: 5, 1: 3, 2: 2}[lod]
     objs.append(add_belt_ribbon(
-        "belt_face", x0, x1, y0, y1, z_top, 0.012, sag, collection,
+        "belt_face", x0, x1, y0, y1, z_top, 0.008, sag, collection,
         stations=n_stat, bevel=0.001 if lod == 0 else 0.0,
     ))
     if lod < 2:
         objs.append(add_belt_ribbon(
-            "belt_return", x0 + 0.03, x1 - 0.03, y0 + 0.012, y1 - 0.012,
-            0.072, 0.010, sag * 0.4, collection,
+            "belt_return", x0 + 0.04, x1 - 0.04, y0 + 0.010, y1 - 0.010,
+            0.062, 0.007, sag * 0.35, collection,
             stations=max(2, n_stat - 1), bevel=0.0,
         ))
-    n_roll = {0: 4, 1: 2, 2: 1}[lod]
-    segs = {0: 10, 1: 6, 2: 6}[lod]
-    roll_r = {0: 0.030, 1: 0.032, 2: 0.034}[lod]
-    # Rollers longer than the belt so crowns read from above.
-    roll_len = (y1 - y0) + 0.10
+    n_roll = {0: 3, 1: 2, 2: 1}[lod]
+    segs = {0: 12, 1: 8, 2: 6}[lod]
+    roll_r = {0: 0.038, 1: 0.040, 2: 0.042}[lod]
+    # Crowns longer than the ribbon so they read from above with side void.
+    roll_len = (y1 - y0) + 0.16
     for i in range(n_roll):
         u = i / max(1, n_roll - 1)
-        x = x0 + 0.05 + (x1 - x0 - 0.10) * u
+        x = x0 + 0.06 + (x1 - x0 - 0.12) * u
+        # Crown sits proud of the ribbon.
         objs.append(add_cyl(
-            f"roller_{i}", (x, 0.0, z_top - sag * 0.5 - roll_r + 0.004),
+            f"roller_{i}", (x, 0.0, z_top - sag * 0.35 - roll_r + 0.010),
             roll_r, roll_len, "cutting", collection, verts=segs,
             rot=(math.pi / 2, 0, 0), bevel=0.001,
         ))
     if lod < 2:
         objs.append(add_cyl(
-            "drive_pulley", (x0 + 0.015, 0.0, 0.125), 0.042, roll_len - 0.04,
+            "drive_pulley", (x0 + 0.012, 0.0, 0.118), 0.046, roll_len - 0.04,
             "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.0 if lod else 0.002,
         ))
         if lod == 0:
             objs.append(add_cyl(
-                "idler_pulley", (x1 - 0.02, 0.0, 0.125), 0.036, roll_len - 0.04,
+                "idler_pulley", (x1 - 0.018, 0.0, 0.118), 0.040, roll_len - 0.04,
                 "cutting", collection, verts=segs, rot=(math.pi / 2, 0, 0), bevel=0.002,
             ))
     return objs
 
 
 def build_lamp(lod, collection):
+    """Hood + socket readable; do not enlarge into a beacon."""
     bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     loc = LAMP_LOC
     objs = []
     hood_n = {0: 10, 1: 8, 2: 6}[lod]
+    if lod == 0:
+        objs.append(add_box(
+            "lamp_bracket", (loc.x - 0.06, loc.y, loc.z - 0.04),
+            (0.08, 0.028, 0.018), "structure", collection, bevel=0.002,
+        ))
     if lod < 2:
-        objs.append(add_cyl("lamp_socket", (loc.x - 0.04, loc.y, loc.z), 0.035, 0.07, "structure", collection,
-                            verts=8 if lod else 10, rot=(0, math.pi / 2, 0), bevel=bevel))
-    # Hood: truncated cone opening +X, not a glowing bar.
+        objs.append(add_cyl(
+            "lamp_socket", (loc.x - 0.035, loc.y, loc.z), 0.028, 0.055, "structure", collection,
+            verts=8 if lod else 10, rot=(0, math.pi / 2, 0), bevel=bevel,
+        ))
     objs.append(add_cone(
-        "lamp_hood", (loc.x + 0.02, loc.y, loc.z), 0.055, 0.028, 0.07,
+        "lamp_hood", (loc.x + 0.018, loc.y, loc.z), 0.048, 0.022, 0.062,
         "structure", collection, verts=hood_n, bevel=bevel, rot=(0, math.pi / 2, 0),
     ))
     lens = add_cyl(
-        "lamp_lens", (loc.x + 0.05, loc.y, loc.z), 0.022, 0.016, "lamp", collection,
+        "lamp_lens", (loc.x + 0.042, loc.y, loc.z), 0.016, 0.012, "lamp", collection,
         verts=6 if lod else 8, rot=(0, math.pi / 2, 0), bevel=0.0 if lod else 0.002,
     )
     objs.append(lens)
@@ -1436,7 +1430,7 @@ def combine_lods(lod_reports):
         "sha256": sha256(combined),
         "partsSha256": sha256(parts),
     }
-    (SOURCE_DIR / "extractor_inventory.json").write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(SOURCE_DIR / "extractor_inventory.json", json.dumps(inventory, indent=2) + "\n")
     print(json.dumps({"ok": True, **inventory}, indent=2))
     return inventory, contract, combined, parts
 
@@ -1566,23 +1560,31 @@ def inspect_glb(path: Path) -> dict:
     }
 
 
-def assert_cycle_01_frozen():
+def assert_epoch_frozen(label, folder: Path, expected: dict):
     missing = []
     changed = []
-    for name, expected in CYCLE_01_SHA256.items():
-        path = CYCLE_01_DIR / name
+    for name, digest in expected.items():
+        path = folder / name
         if not path.exists():
             missing.append(name)
             continue
         got = sha256(path)
-        if got != expected:
-            changed.append(f"{name}: {got} != {expected}")
+        if got != digest:
+            changed.append(f"{name}: {got} != {digest}")
     if missing or changed:
         raise RuntimeError(
-            "Cycle 01 evidence mutated (forbidden):\n  missing="
+            f"{label} evidence mutated (forbidden):\n  missing="
             + ", ".join(missing) + "\n  changed=" + "; ".join(changed)
         )
-    return {name: sha256(CYCLE_01_DIR / name) for name in CYCLE_01_SHA256}
+    return {name: sha256(folder / name) for name in expected}
+
+
+def assert_cycle_01_frozen():
+    return assert_epoch_frozen("Cycle 01", CYCLE_01_DIR, CYCLE_01_SHA256)
+
+
+def assert_cycle_02_frozen():
+    return assert_epoch_frozen("Cycle 02", CYCLE_02_DIR, CYCLE_02_SHA256)
 
 
 def load_png_rgb(path: Path):
@@ -1645,9 +1647,9 @@ def analyze_works_still(path: Path, px_per_cell: float):
     rails = float(np.mean(np.concatenate([machine[:rail_band], machine[-rail_band:]])) ) if mh > 4 else 0.0
     well_mean = float(np.mean(plus_x)) if plus_x.size else 0.0
     well_dark_mean = float(np.mean(plus_x[dark])) if np.any(dark) else well_mean
-    inboard = machine[:, : int(mw * 0.55)]
     belt_band = machine[mh // 3: 2 * mh // 3, int(mw * 0.22): int(mw * 0.55)]
     belt_mean = float(np.mean(belt_band)) if belt_band.size else 0.0
+    tan_bite = measure_tan_bite(rgba[by0:by1 + 1, bx0:bx1 + 1], luma[by0:by1 + 1, bx0:bx1 + 1], px_per_cell)
     return {
         "path": str(path.relative_to(ROOT)).replace("\\", "/"),
         "resolution": [w, h],
@@ -1662,6 +1664,46 @@ def analyze_works_still(path: Path, px_per_cell: float):
         "belt_inboard_mean": belt_mean,
         "well_darker_than_rails": well_dark_mean < rails - 0.02,
         "bite_px_in_band": dark_span_px >= 4 and dark_span_px <= 8 if px_per_cell < 40 else None,
+        **tan_bite,
+    }
+
+
+def measure_tan_bite(pad_rgba, pad_luma, px_per_cell):
+    """Count tan-pad columns in the +X mouth, before the pad margin.
+
+    The 2.4 wu pad fills the bbox Y-edges everywhere, so 'full-column tan'
+    cannot distinguish bite from margin. Window is the mouth X-band only
+    (drum/+X jaws → cheek ends, ~0.76–0.92 wu → ~0.82–0.88 of the pad bbox).
+    """
+    mh, mw = pad_luma.shape
+    if mh < 8 or mw < 8:
+        return {"tan_bite_px": 0, "tan_bite_mean": 0.0, "pad_mean": 0.0}
+    c = 4
+    corners = np.concatenate([
+        pad_rgba[:c, :c, :3].reshape(-1, 3),
+        pad_rgba[:c, -c:, :3].reshape(-1, 3),
+        pad_rgba[-c:, :c, :3].reshape(-1, 3),
+        pad_rgba[-c:, -c:, :3].reshape(-1, 3),
+    ], axis=0)
+    pad_rgb = np.mean(corners, axis=0)
+    pad_mean = float(np.mean(pad_rgb))
+    rgb = pad_rgba[..., :3]
+    rg = (rgb[..., 0] + rgb[..., 1]) * 0.5
+    bb = rgb[..., 2]
+    tan_like = (rg > bb + 0.008) & (rg > 0.06) & (pad_luma > 0.07)
+    y0, y1 = int(mh * 0.42), int(mh * 0.58)
+    centre_frac = np.mean(tan_like[y0:y1], axis=0)
+    # Mouth X only — stop before the pad margin past WELL_X1.
+    start = int(mw * 0.808)
+    stop = int(mw * 0.885)
+    cols = centre_frac[start:stop] if centre_frac.size else np.array([])
+    tan_cols = int(np.sum(cols > 0.40)) if cols.size else 0
+    tan_mean = float(np.mean(rgb[y0:y1, start:stop])) if stop > start else 0.0
+    return {
+        "tan_bite_px": tan_cols,
+        "tan_bite_mean": tan_mean,
+        "pad_mean": pad_mean,
+        "tan_bite_target": [8, 10] if px_per_cell >= 100 else None,
     }
 
 
@@ -1961,7 +2003,7 @@ def render_stills(glb_path: Path, still_dir: Path):
     return paths
 
 
-def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01):
+def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01, cycle02):
     FAMILY.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     hashes = {
@@ -1970,13 +2012,15 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         "combinedSha256": inventory["sha256"],
         "partsSha256": inventory["partsSha256"],
         "cycle01Frozen": True,
+        "cycle02Frozen": True,
         "cycle01Sha256": cycle01,
+        "cycle02Sha256": cycle02,
         "lod": {str(r["lod"] if "lod" in r else i): {"sha256": r.get("sha256"), "triangles": r["triangles"]} for i, r in enumerate(lod_reports)},
         "textures": {},
     }
     for path in sorted(TEX_DIR.glob("*.png")):
         hashes["textures"][path.name] = sha256(path)
-    (FAMILY / "HASHES.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "HASHES.json", json.dumps(hashes, indent=2) + "\n")
 
     camera_stills = {k: v for k, v in stills.items() if not str(k).startswith("_")}
     epoch = {
@@ -1994,6 +2038,8 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         },
         "independentReview": "not_launched",
         "cycle01Frozen": True,
+        "cycle02Frozen": True,
+        "cycle02SiteKeep": True,
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -2024,27 +2070,36 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         "pixels": pixels,
         "inspectCrops": stills.get("_inspect_crops") or {},
         "notes": [
-            "Cycle 02 source candidate only. Not wired, not released, not accepted.",
-            "Cycle 01 evidence/cycle_001 is byte-frozen and was not rewritten.",
-            "Open +X five-wall well (no roof plate, no grate). Yoke/drum/bearings on head_face.",
-            "Thin belt ribbon over rollers with return run. Aft is C-channel + case + fin comb.",
+            "Cycle 03 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 01 evidence/cycle_001 and Cycle 02 evidence/cycle_002 are byte-frozen.",
+            "Cycle 02 works_site at 19 px/cell is a KEEP; this cycle keeps that camera.",
+            "Open +X aperture: no closing floor/wall in the bite; tan pad shows 8-10 px at 120 px/cell.",
+            "Y-axis tool-steel drum on rail-top circular housings; 3-4 chunky refractory jaws; no roof/grate.",
+            "Ribbon belt over roller crowns with side/under void. Air-gapped steel fins. Hooded lamp, not a beacon.",
+            "Paint dielectric; ceramic isolated; restrained heat on the gearbox only.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
             "Independent reviewers were not launched. Disposition is review_pending.",
         ],
     }
-    (EVIDENCE_DIR / "EPOCH.json").write_text(json.dumps(epoch, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(EVIDENCE_DIR / "EPOCH.json", json.dumps(epoch, indent=2) + "\n")
 
     site_px = (pixels or {}).get("works_site") or {}
     top_px = (pixels or {}).get("works_top") or {}
-    audit = f"""# Extractor — material and shape audit (Cycle 02)
+    audit = f"""# Extractor — material and shape audit (Cycle 03)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
 
-Cycle 01 reviews converged on a closed +X grate/brick, a filled trough box, an
-aft slab, and a site silhouette that put the cavity in the wrong place. Cycle 02
-deletes the hatch/grate and the roof plate, opens a five-wall well toward +X,
-roots a Y-axis drum in yoke bearings, replaces the pan with a ribbon belt, and
-keeps the aft as open C-channel, a serviceable case, and a rooted fin comb.
+Cycle 02 site still at legal 19 px/cell is a KEEP and is frozen. Top, edge and
+material reviews returned REVISE: the mouth was still a black pit, the drum
+was lost in that pit, jaws were stud-scale, the belt still read as a trough,
+fins packed into a grille, and paint/ORM treated the frame as metal with a
+rail AO split.
+
+Cycle 03 cuts the remaining +X floor/wall so tan pad shows through the bite,
+plants a lit Y-axis tool-steel drum on circular housings rooted on the rail
+tops, puts 3–4 chunky dry-refractory jaw blocks on the rim, thins the belt
+to a ribbon over roller crowns, air-gaps the fin plates, and restores
+dielectric paint / isolated ceramic / restrained gearbox heat.
 
 ## Shape grammar
 
@@ -2052,20 +2107,22 @@ keeps the aft as open C-channel, a serviceable case, and a rooted fin comb.
 |---|---|---|---|
 | Floor rails | C-channel loft at every LOD | Load-bearing C section, open +X, pad feet at z=0 | works_top, clay, site |
 | Crossmembers | Hat-beam loft | Rooted into rails with gussets; not a box wall | works_top |
-| Drive case | Waisted loft, narrower than rail span | Heat-stained gearbox, access cover, ochre lip | works_top / edge |
-| Fins | Thin plates in a hat header | Rooted comb with air between plates | works_top |
-| Mouth | Five-wall shell, no +X wall, no roof plate | Near-black well open to the feed cell | works_top, site |
-| Drum / yoke | Cylinder + lofted arms + round bosses | Aimable head under `head_face`, forward +X | works_top / edge |
-| Jaws | Chunky ceramic tiles on the rim only | Dry tiles facing into the well, not a grate | works_top |
-| Belt | Thin sagging ribbon + rollers + return | Open trough space; UV1 along +X | works_top / edge |
-| Lamp | Cone hood + socket + recessed lens | One fixture; exists with emission off | works_edge |
+| Drive case | Waisted loft, narrower than rail span | Gearbox with restrained heat, access cover, ochre lip | works_top / edge |
+| Fins | Thin tall plates in a hat header | Air-gapped machined-steel heat path, not a vent grille | works_top |
+| Mouth | Two cheeks, no +X wall, no floor in the bite, no roof | Open aperture; tan pad through 8–10 px at 120 px/cell | works_top, site |
+| Drum / housings | Y-axis cylinder + Z-up circular housings on rail tops | Lit tool-steel crusher under `head_face` | works_top / edge |
+| Jaws | 3–4 chunky refractory blocks on the rim | Dry tiles facing the bite, not a grate | works_top |
+| Belt | Thin sagging ribbon + proud roller crowns + return | Side and under void; UV1 along +X | works_top / edge |
+| Lamp | Cone hood + socket + recessed lens | One fixture; hood/socket readable; not a beacon | works_edge |
 
 ## Material allocation
 
-Dark painted structure, worn cutting/roller metal, heat-stained drive, dry
-ceramic jaws on the rim only, rubber belt, near-black well interior, one ochre
-accent, one warm recessed lens. Rover yellow is absent. No plastic copper,
-generic grid, universal edge wear, or unreadable bolt rows.
+Painted frame is dielectric (ORM metal low). Drum, rollers, fins and bearing
+housings are worn machined steel. Jaw blocks are dry refractory, isolated
+from the housing. Gearbox carries restrained heat stain only. Belt is rubber.
+One ochre accent, one warm recessed lens. Rover yellow is absent. No plastic
+copper, generic grid, universal edge wear, rail AO split, or unreadable bolt
+rows.
 
 Maps are mesh-derived AO / tangent normal / pointiness curvature, composited
 into authored 1024² basecolor / normal / ORM. Unique non-overlapping UV0.
@@ -2079,19 +2136,20 @@ belt gap, rails/fins, and all three hooks survive. Hidden faces per LOD only.
 ## Pixel facts (original 1920×1080)
 
 - works_top machine size px: {top_px.get('machine_size_px')}
+- works_top tan bite px: {top_px.get('tan_bite_px')} (target 8–10)
 - works_site machine size px: {site_px.get('machine_size_px')}
-- works_site +X dark span px: {site_px.get('plus_x_dark_span_px')} (target 4–6)
+- works_site +X dark span px: {site_px.get('plus_x_dark_span_px')}
 - works_site well darker than rails: {site_px.get('well_darker_than_rails')}
 
 ## Remaining visual risk (honest)
 
-- Site register (~19 px/cell) can still merge the drum into the well; identity
-  depends on the open +X bite between the two U rails and the darker inboard ribbon.
-- Jaw tiles are faceted blocks; a later cycle may loft a true jaw profile if
-  reviewers still read a rim stud row.
+- Site register (~19 px/cell) still cannot resolve the drum as a separate
+  cylinder; identity depends on the U-rails, the open +X bite, and the darker
+  inboard ribbon.
+- Jaw blocks are faceted refractory, not a lofted jaw profile.
 - Independent G1/G2/G4 review has not run. This cycle does not close them.
 """
-    (FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md").write_text(audit, encoding="utf-8")
+    write_text_lf(FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md", audit)
 
     contract_json = {
         "schemaVersion": "1.0",
@@ -2113,11 +2171,12 @@ belt gap, rails/fins, and all three hooks survive. Hidden faces per LOD only.
             "safety yellow", "plastic copper", "generic grid", "universal edge wear",
             "neon", "flat decals", "leather", "billboard", "glowing bar", "crate",
             "turret", "forklift", "gun", "box-plus-cylinder", "closed grate", "filled trough",
+            "black vent", "closed pit", "vent grille",
         ],
         "allSupportedViewZonesClassified": False,
         "gatesOpen": ["G1", "G2", "G4", "G7"],
     }
-    (FAMILY / "MATERIAL_CONTRACT.json").write_text(json.dumps(contract_json, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "MATERIAL_CONTRACT.json", json.dumps(contract_json, indent=2) + "\n")
 
     def row(mid, state, still, clay, fake, notes, **extra):
         rec = {
@@ -2152,7 +2211,7 @@ belt gap, rails/fins, and all three hooks survive. Hidden faces per LOD only.
         },
         "rows": [
             row("MTX-01", "implemented", graz, "pass", True, "Angle bevel 6–12 mm then weighted normals, shade 28°.", bevelWidthM=0.006, shadeAngleDeg=SHADE_ANGLE),
-            row("MTX-03", "implemented", clay, "pass", True, "Cycle 02: five-wall well, no +X wall, no roof plate; ceramic jaws on the rim only."),
+            row("MTX-03", "implemented", clay, "pass", True, "Cycle 03: open +X aperture, no bite floor/wall/roof; 3-4 chunky refractory jaws on the rim."),
             row("MTX-16", "implemented", top, "pass", True, "Unique non-overlapping UV0 packed per LOD."),
             row("MTX-20", "implemented", nrm, "pass", True, "High duplicate with extra 3 mm bevel as bake source."),
             row("MTX-21", "implemented", nrm, "pass", True, "Cage extrusion 0.03 wu on selected-to-active normal bake."),
@@ -2161,22 +2220,83 @@ belt gap, rails/fins, and all three hooks survive. Hidden faces per LOD only.
             row("MTX-24", "implemented", orm, "pass", True, "Pointiness curvature baked as emit."),
             row("MTX-25", "implemented", orm, "pass", True, "Concave curvature drives cavity dirt."),
             row("MTX-30", "implemented", nrm, "pass", True, "Generated refs are construction studies only; maps are mesh-derived."),
-            row("MTX-31", "implemented", top, "pass", True, "Paint dielectric, steel metallic, ceramic dry, belt rubber, lamp glass."),
+            row("MTX-31", "implemented", top, "pass", True, "Paint dielectric (metal channel low), steel on drum/fins, ceramic isolated, belt rubber, lamp glass."),
             row("MTX-32", "implemented", top, "pass", True, "Authored 1024 albedo from ID × AO × causal wear, not a tinted sheet."),
             row("MTX-33", "implemented", orm, "pass", True, "ORM: R=AO G=rough B=metal, role-varying."),
-            row("MTX-39", "implemented", top, "pass", True, "Dirt in concave AO, not a black crayon."),
+            row("MTX-39", "implemented", top, "pass", True, "Restrained cavity dirt and gearbox heat only; no rail AO split or uniform dirt."),
             row("MTX-46", "implemented", clay, "pass", True, "No yellow, neon, leather, glowing bar, or kit donor."),
             row("MTX-50", "implemented", inventory["partsSource"], "pass", True, "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."),
             row("MTX-52", "implemented", clay, "pass", True, "Macro from cited kit shape language + construction studies, not a cube."),
             row("MTX-53", "not_applicable", None, "pass", True, "Manufactured machine, not a rock/sculpt."),
-            row("MTX-54", "not_applicable", None, "pass", True, "Cycle 02 remaster of the Cycle 01 candidate; Cycle 01 evidence frozen."),
+            row("MTX-54", "not_applicable", None, "pass", True, "Cycle 03 remaster of the Cycle 02 candidate; Cycle 01 and Cycle 02 evidence frozen."),
         ],
     }
-    (FAMILY / "TECHNIQUE_LEDGER.json").write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(FAMILY / "TECHNIQUE_LEDGER.json", json.dumps(ledger, indent=2) + "\n")
     return hashes, epoch
 
 
-def validate_inventory(inventory, inspect, lod_reports):
+def run_hidden_faces(glb_path: Path, dest: Path):
+    import works_visible_faces as wvf
+    wvf.wipe_scene()
+    wvf.import_glb(str(glb_path))
+    meshes = wvf.render_meshes()
+    rows = wvf.classify(meshes)
+    rel = str(glb_path.relative_to(ROOT)).replace("\\", "/")
+    report = wvf.report_for(meshes, rows, glb=rel, deleted=False)
+    report["note"] = (
+        "dry-run; pass --delete only after inspecting hiddenFrac. "
+        "Do not use this as a quality close. LODs were evaluated one at a time."
+    )
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    write_text_lf(dest, json.dumps(report, indent=2) + "\n")
+    return report
+
+
+def write_inspect_md(inventory, inspect, stills, pixels, hidden):
+    top = pixels.get("works_top") or {}
+    site = pixels.get("works_site") or {}
+    text = f"""# Extractor Cycle 03 — original-resolution inspect
+
+Candidate `{inventory['sha256']}`.
+Disposition **`review_pending`**. Independent reviewers were not launched.
+G1/G2/G4/G7 remain open.
+
+Inspected once at 1920×1080 (`works_top`, clay, edge, grazing, site, normal, ORM,
+material ID, hook identity) plus centre crops. Cycle 01 and Cycle 02 evidence
+are byte-frozen. Cycle 02 `works_site` at 19 px/cell remains a KEEP.
+
+## Cycle 02 defects vs this still
+
+| Cycle 02 review | Cycle 03 still |
+|---|---|
+| +X closed black pit / vent box | Open aperture; tan pad through the bite |
+| Drum lost in the well | Y-axis tool-steel drum on rail-top circular housings |
+| Jaw tiles too small | 3–4 chunky dry-refractory blocks on the rim |
+| Belt as filled trough | Thin ribbon over proud roller crowns, side/under void |
+| Fins as vent grille | Fewer, thinner, taller air-gapped plates |
+| Paint/ORM metal + rail AO split | Dielectric frame, isolated ceramic, restrained gearbox heat |
+
+## Pixel / camera facts
+
+- Legal cameras only: `works_top` / `works_edge` / `works_site`, 31° PERS, 1920×1080.
+- `works_top` machine bbox ≈ {top.get('machine_size_px')} px at 120 px/cell.
+- `works_top` tan bite px: {top.get('tan_bite_px')} (target 8–10).
+- `works_site` pad+machine bbox ≈ {site.get('machine_size_px')} px at 19 px/cell.
+- Hooks `head_face`, `belt`, `lamp` present. Root `{ROOT_NAME}`.
+- LOD0 {inspect['lodTriangles']['lod0']} / 8000 · LOD1 {inspect['lodTriangles']['lod1']} / 2000 · LOD2 {inspect['lodTriangles']['lod2']} / 600.
+- Envelope {inventory['bbox']['size']} wu, underside z=0, +X feed.
+- Hidden-face dry-run: {hidden.get('hiddenFaces')} / {hidden.get('faces')} hidden (per LOD).
+
+## Remaining risk (honest)
+
+- Site register is a handful of pixels; U-rails vs bite will still be the identity.
+- Jaw blocks are faceted refractory, not a lofted jaw profile.
+- This is a source candidate. Not wired, not released, not accepted.
+"""
+    write_text_lf(EVIDENCE_DIR / "INSPECT.md", text)
+
+
+def validate_inventory(inventory, inspect, lod_reports, pixels=None):
     errors = []
     bbox = inventory["bbox"]
     size = bbox["size"]
@@ -2192,6 +2312,10 @@ def validate_inventory(inventory, inspect, lod_reports):
     for h in HOOK_NAMES:
         if h not in inspect["hooksFound"]:
             errors.append(f"missing hook {h}")
+    top = (pixels or {}).get("works_top") or {}
+    tan = top.get("tan_bite_px")
+    if tan is not None and not (8 <= int(tan) <= 10):
+        errors.append(f"works_top tan bite {tan} px not in 8–10")
     return errors
 
 
@@ -2202,6 +2326,7 @@ def main():
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
     cycle01 = assert_cycle_01_frozen()
+    cycle02 = assert_cycle_02_frozen()
 
     lod_reports = []
     for lod in (0, 1, 2):
@@ -2219,9 +2344,12 @@ def main():
         rec = stills.get(key)
         if rec:
             pixels[key] = analyze_works_still(ROOT / rec["path"], ppc)
-    hashes, epoch = write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01)
-    errors = validate_inventory(inventory, inspect, lod_reports)
+    hidden = run_hidden_faces(parts, EVIDENCE_DIR / "hidden_faces.json")
+    write_inspect_md(inventory, inspect, stills, pixels, hidden)
+    hashes, epoch = write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01, cycle02)
+    errors = validate_inventory(inventory, inspect, lod_reports, pixels)
     assert_cycle_01_frozen()
+    assert_cycle_02_frozen()
     result = {
         "ok": not errors,
         "errors": errors,
