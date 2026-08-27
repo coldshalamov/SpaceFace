@@ -81,7 +81,7 @@ All three must show **the ship as the player sees it**:
 
 - the whole ship in frame, not a cabin, not a wing filling the view
 - `play_chase` / `play_chase_abeam`: ship ~8–22% of frame width
-- `play_chase_close`: ship ~20–42% of frame width
+- `play_chase_close`: derive the same band at D=58, approximately 20–55% of frame width
 - not clipped, not inside the hull, not a single plate filling the frame
 - not so dark or blown that edges disappear
 - no HUD

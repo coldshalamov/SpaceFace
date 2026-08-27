@@ -45,6 +45,10 @@
 
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
+import {
+  PLAY_CHASE_CLOSE_WIDTH_FRAC,
+  PLAY_CHASE_WIDTH_FRAC,
+} from './lib/chase-camera-occupancy.mjs';
 
 function decodePng(path) {
   const buf = readFileSync(path);
@@ -290,11 +294,13 @@ if (asJson) {
     console.log(`  silhouette   ${r.silhouette.w} x ${r.silhouette.h} px  (${r.silhouette.lengthToHeight} : 1)`
       + `  width ${Math.round(r.silhouette.widthFrac * 100)}% of frame`);
     const wf = r.silhouette.widthFrac;
-    if (wf > 0.42) {
+    const [defaultMin] = PLAY_CHASE_WIDTH_FRAC;
+    const [closeMin, closeMax] = PLAY_CHASE_CLOSE_WIDTH_FRAC;
+    if (wf > closeMax) {
       console.log('  chase        TOO CLOSE — ship fills the frame. This is a beauty shot, not play_chase.');
-    } else if (wf >= 0.20 && wf <= 0.42) {
-      console.log('  chase        close-zoom band (D=58). Default play_chase should be ~8–22%.');
-    } else if (wf >= 0.08 && wf < 0.20) {
+    } else if (wf >= closeMin) {
+      console.log('  chase        close-zoom band (D=58, ~20–55%). Default play_chase should be ~8–22%.');
+    } else if (wf >= defaultMin) {
       console.log('  chase        default-play band (D=144).');
     } else {
       console.log('  chase        ship is a speck or invalid crop.');
