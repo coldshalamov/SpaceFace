@@ -1,9 +1,15 @@
-"""PQ-131.07 Works gas tap — Cycle 01 wall-manifold source candidate.
+"""PQ-131.07 Works gas tap — Cycle 02 rooted tap and site-asymmetry correction.
 
 Authored at works scale. One-cell wall-mounted valve manifold that taps a gas
-pocket rather than breaching it. Root SF_WORKS_GAS_TAP_V1. LOD roots
-LOD0_gas_tap / LOD1_gas_tap / LOD2_gas_tap. Hooks valve_wheel, gauge_needle,
-lamp.
+pocket rather than breaching it. Cycle 02 keeps the Cycle 01 four-spoke wheel,
+offset gauge, dark plate and non-glow materials, then corrects the remaining
+wheel-on-plate / site-collapse defects: hat-section clamp with returns and
+four corner blocks, coaxial valve/stem/yoke, cylindrical gauge with cream
+face, and a short supported lance through a gland into the +X pocket.
+
+Root SF_WORKS_GAS_TAP_V1. LOD roots LOD0_gas_tap / LOD1_gas_tap / LOD2_gas_tap.
+Hooks valve_wheel, gauge_needle, lamp. Cycle 01 evidence is frozen; this
+builder writes cycle_002 only.
 
     blender --background --python tools/blender/build_works_gas_tap.py
     blender --background --python tools/blender/build_works_gas_tap.py -- --combine-only
@@ -33,7 +39,9 @@ from spaceface_works_camera import apply_works_camera  # noqa: E402
 FAMILY = ROOT / "assets" / "works" / "gas_tap"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_001"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
+CYCLE01_DIR = FAMILY / "evidence" / "cycle_001"
+DIAG_DIR = EVIDENCE_DIR / "diagnostics"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 BLEND_SOURCE = FAMILY / "source" / "gas_tap.blend"
 
@@ -41,13 +49,26 @@ ASSET_ID = "place_works_gas_tap"
 ROOT_NAME = "SF_WORKS_GAS_TAP_V1"
 COMBINED_NAME = "place_works_gas_tap.glb"
 PACKET = "PQ-131.07"
-CYCLE = 1
+CYCLE = 2
 CELL_WU = 2.2
 TEX = 1024
 SHADE_ANGLE_DEG = 28.0
 TRI_BUDGET = {0: 6000, 1: 1500, 2: 500}
 HOOK_NAMES = ("valve_wheel", "gauge_needle", "lamp")
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
+CYCLE01_FREEZE = {
+    "grazing.png": "DF330186879416E9475628291892CD5F457147BC91CD3515523222315C5FE0F6",
+    "hooks_identity.png": "4007E5F39615B068AF91188ED9EA4AAA9922FA745466825C04832D5FB8D9662D",
+    "material_id.png": "DD71BF7C875E0790D7E1EC6C6B4D2B9ED0C4F4FEFDE3E6CC1F3BA3341C2CA472",
+    "normal_isolation.png": "FE5EE51185804D49C8357F4C2A10A3560E702E00B41C8E11BC0EED59217B5FE7",
+    "orm_isolation.png": "021704729E10FF30047302306EC729532A1A1C1A31D0072FE95D953FD28385E3",
+    "works_edge.png": "B1FF98A26C4F9FBE5B202A9798309A29EA193A8E020B7A94750575A9DFEC5C20",
+    "works_edge_clay.png": "D9F74E1A545C347FD7C09F360E0198379F22F0D9FC16BC61BCFADA3AE460AD0E",
+    "works_site.png": "17FB06F6CF078A9F26A0036863D38CF8B6608824D9A585DF383C654C588DC634",
+    "works_site_clay.png": "58FC845877B1A34F9A90827C8FBEAB4A74A41362D9EC59E990BE2A82A3E1638D",
+    "works_top.png": "34C16BF19C7927631D0FA3E39F851E7B44BA3981DCA59CC15586B4C7AE7BCE57",
+    "works_top_clay.png": "FC59AF12BF6FF9F290B09DD75D8AF3EB21D1696775FC65823EF812C56B1AF5CD",
+}
 
 ATLAS_TILE = {
     "paint": 0,
@@ -59,11 +80,11 @@ ATLAS_TILE = {
     "lamp": 6,
 }
 ROLE_RGB = {
-    "paint": (0.165, 0.149, 0.125),
+    "paint": (0.072, 0.068, 0.060),
     "steel": (0.428, 0.439, 0.459),
     "brass": (0.541, 0.420, 0.227),
     "rubber": (0.090, 0.082, 0.075),
-    "face": (0.847, 0.816, 0.769),
+    "face": (0.88, 0.84, 0.78),
     "glass": (0.086, 0.063, 0.035),
     "lamp": (0.95, 0.88, 0.62),
 }
@@ -88,22 +109,27 @@ V_STEEL_BRIGHT = (0.82, 0.98)
 EMIT_ALPHA = {"lamp": 0.72}
 
 # Geometry contract (works scale, origin at cell centre).
+# Hat-section web faces the room; returns and clamp feet go +X to the wall.
 PLATE_X0, PLATE_X1 = 0.86, 0.96
-PLATE_HY, PLATE_Z0, PLATE_Z1 = 0.76, 0.10, 0.88
+PLATE_HY, PLATE_Z0, PLATE_Z1 = 0.68, 0.12, 0.84
+HAT_TOP_X0, HAT_TOP_X1 = 0.88, 1.04
+HAT_TOP_Z0, HAT_TOP_Z1 = 0.84, 0.94
 CLAMP_X0, CLAMP_X1 = 1.00, 1.08
-WHEEL_C = (0.48, 0.10, 0.80)
-WHEEL_R = 0.36
-GAUGE_C = (0.58, -0.52, 0.70)
-GAUGE_R = 0.15
-LAMP_C = (0.80, 0.58, 0.86)
+CLAMP_HY = 0.76
 VALVE_C = (0.52, 0.08, 0.38)
-LANCE_Y, LANCE_Z = 0.22, 0.38
-LANCE_X0, LANCE_X1 = 0.98, 1.14
-NEEDLE_REST = (0.0, 0.11, 0.0)
+WHEEL_C = (0.52, 0.08, 0.80)
+WHEEL_R = 0.36
+GAUGE_C = (0.56, -0.54, 0.72)
+GAUGE_R = 0.15
+LAMP_C = (0.94, 0.58, 0.96)
+LANCE_Y, LANCE_Z = 0.30, 0.38
+LANCE_X0, LANCE_X1 = 0.98, 1.16
+NEEDLE_Z = GAUGE_C[2] + 0.041
+WALL_INNER_X = 1.08
 
 SEG = {
-    0: {"cyl": 8, "wheel": 12, "hose": 6, "hose_s": 6, "spokes": 5, "bolts": True},
-    1: {"cyl": 7, "wheel": 8, "hose": 4, "hose_s": 6, "spokes": 4, "bolts": False},
+    0: {"cyl": 8, "wheel": 12, "hose": 6, "hose_s": 6, "spokes": 4, "bolts": True},
+    1: {"cyl": 7, "wheel": 8, "hose": 4, "hose_s": 6, "spokes": 4, "bolts": True},
     2: {"cyl": 6, "wheel": 8, "hose": 2, "hose_s": 5, "spokes": 4, "bolts": False},
 }
 
@@ -564,6 +590,13 @@ def link_object(obj, collection):
 
 
 def parent_keep(obj, parent):
+    # Blender defers matrix-world evaluation after direct location writes.  A
+    # fresh empty therefore still reports the identity matrix unless the view
+    # layer is updated first, which silently moved all exported hook pivots to
+    # the asset origin.  Evaluate before capturing the world transform so the
+    # hook keeps its authored pivot while joined world-space geometry is
+    # counter-transformed beneath it.
+    bpy.context.view_layer.update()
     mw = obj.matrix_world.copy()
     obj.parent = parent
     obj.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -839,72 +872,94 @@ def steel_band(obj, band):
 
 # --------------------------------------------------------------------------- geometry
 def hat_backplate(collection, lod):
-    """Folded hat-section plate: web, return flanges, stiffener, bolt bosses."""
+    """Folded hat-section clamp: room-facing web, wall-bound returns, top brim.
+
+    The Cycle 01 grooved square / cell-colored slab is replaced by a formed
+    channel. From above the top return is the long dark bar; Y-end legs and
+    four corner blocks carry the clamp mass. No service label, no groove rib.
+    """
     parts = []
     bv = 0.008 if lod == 0 else 0.0
     web = add_box(
         "BackplateWeb",
         ((PLATE_X0 + PLATE_X1) * 0.5, 0.0, (PLATE_Z0 + PLATE_Z1) * 0.5),
-        (PLATE_X1 - PLATE_X0) * 0.5, PLATE_HY - 0.04, (PLATE_Z1 - PLATE_Z0) * 0.5,
+        (PLATE_X1 - PLATE_X0) * 0.5, PLATE_HY, (PLATE_Z1 - PLATE_Z0) * 0.5,
         "paint", collection, bevel=bv,
     )
     parts.append(web)
+    top = add_box(
+        "HatTopReturn",
+        ((HAT_TOP_X0 + HAT_TOP_X1) * 0.5, 0.0, (HAT_TOP_Z0 + HAT_TOP_Z1) * 0.5),
+        (HAT_TOP_X1 - HAT_TOP_X0) * 0.5, PLATE_HY + 0.02, (HAT_TOP_Z1 - HAT_TOP_Z0) * 0.5,
+        "paint", collection, bevel=bv,
+    )
+    parts.append(top)
+    if lod < 2:
+        bot = add_box(
+            "HatBotReturn",
+            ((HAT_TOP_X0 + HAT_TOP_X1) * 0.5, 0.0, 0.07),
+            (HAT_TOP_X1 - HAT_TOP_X0) * 0.5, PLATE_HY + 0.02, 0.06,
+            "paint", collection, bevel=0.0,
+        )
+        parts.append(bot)
     if lod < 2:
         for sign in (-1.0, 1.0):
-            flange = add_box(
-                f"ReturnFlange_{'P' if sign > 0 else 'S'}",
-                ((PLATE_X0 + PLATE_X1) * 0.5 - 0.012, sign * (PLATE_HY - 0.02), (PLATE_Z0 + PLATE_Z1) * 0.5),
-                0.055, 0.022, (PLATE_Z1 - PLATE_Z0) * 0.48,
-                "paint", collection, bevel=0.005 if lod == 0 else 0.0,
+            leg = add_box(
+                f"HatYReturn_{'P' if sign > 0 else 'S'}",
+                ((PLATE_X1 + CLAMP_X0) * 0.5, sign * PLATE_HY, (PLATE_Z0 + PLATE_Z1) * 0.5),
+                0.07, 0.030, (PLATE_Z1 - PLATE_Z0) * 0.46,
+                "paint", collection, bevel=0.004 if lod == 0 else 0.0,
             )
-            parts.append(flange)
+            parts.append(leg)
     if lod == 0:
-        rib = add_box(
-            "PlateRib",
-            (PLATE_X0 + 0.02, 0.0, (PLATE_Z0 + PLATE_Z1) * 0.5),
-            0.018, PLATE_HY - 0.12, 0.035,
-            "paint", collection, bevel=0.004,
-        )
-        parts.append(rib)
-        nameplate = add_box(
-            "ServicePlate",
-            (PLATE_X0 - 0.006, -0.18, 0.28),
-            0.008, 0.16, 0.05,
+        cleat = add_box(
+            "PlateCleat",
+            (PLATE_X0 - 0.012, 0.0, 0.48),
+            0.012, 0.16, 0.035,
             "paint", collection, bevel=0.003,
         )
-        parts.append(nameplate)
+        parts.append(cleat)
     return parts
 
 
 def clamp_blocks(collection, lod):
+    """Four corner clamp blocks, hex bolts, and real standoff posts to the wall."""
     parts = []
     bolts = SEG[lod]["bolts"]
     corners = (
-        (0.62, 0.74), (0.62, -0.74), (0.24, 0.74), (0.24, -0.74),
+        (0.78, CLAMP_HY),
+        (0.78, -CLAMP_HY),
+        (0.22, CLAMP_HY),
+        (0.22, -CLAMP_HY),
     )
-    if lod >= 2:
-        corners = ((0.62, 0.74), (0.62, -0.74))
-    for i, (yz, yy) in enumerate(corners):
+    for i, (zz, yy) in enumerate(corners):
         pad = add_box(
             f"ClampPad_{i}",
-            ((CLAMP_X0 + CLAMP_X1) * 0.5, yy, yz),
-            (CLAMP_X1 - CLAMP_X0) * 0.5, 0.09, 0.09,
+            ((CLAMP_X0 + CLAMP_X1) * 0.5, yy, zz),
+            (CLAMP_X1 - CLAMP_X0) * 0.5 + 0.012, 0.10, 0.10,
             "paint", collection, bevel=0.005 if lod == 0 else 0.0,
         )
-        steel_band(pad, V_STEEL_PLATE)
         parts.append(pad)
         if lod < 2:
             throat = add_box(
                 f"ClampThroat_{i}",
-                ((PLATE_X1 + CLAMP_X0) * 0.5, yy, yz),
-                0.05, 0.055, 0.055,
+                ((PLATE_X1 + CLAMP_X0) * 0.5, yy, zz),
+                0.055, 0.062, 0.062,
                 "paint", collection, bevel=0.0,
             )
             parts.append(throat)
+            post = add_cyl(
+                f"Standoff_{i}",
+                ((PLATE_X1 + CLAMP_X1) * 0.5, yy, zz),
+                0.018, (CLAMP_X1 - PLATE_X1),
+                "steel", collection, n=max(6, SEG[lod]["cyl"] - 2), axis="x", bevel=0.0,
+            )
+            steel_band(post, V_STEEL_MACHINED)
+            parts.append(post)
         if lod == 0:
             gusset = add_box(
                 f"ClampGusset_{i}",
-                (PLATE_X1 - 0.01, yy * 0.92, yz),
+                (PLATE_X1 - 0.01, yy * 0.94, zz),
                 0.03, 0.04, 0.07,
                 "paint", collection, bevel=0.0,
             )
@@ -912,17 +967,24 @@ def clamp_blocks(collection, lod):
         if bolts:
             bolt = add_hex(
                 f"ClampBolt_{i}",
-                (PLATE_X0 - 0.02, yy, yz),
-                0.022, 0.05, "steel", collection, axis="x", bevel=0.0,
+                (PLATE_X0 - 0.018, yy, zz),
+                0.024, 0.05, "steel", collection, axis="x", bevel=0.0,
             )
             steel_band(bolt, V_STEEL_BRIGHT)
             parts.append(bolt)
-    # Bottom feet so the underside sits at z=0 and edge view shows legs.
-    for i, yy in enumerate((-0.42, 0.42)):
+            if i < 2 and lod < 2:
+                top_bolt = add_hex(
+                    f"ClampTopBolt_{i}",
+                    ((CLAMP_X0 + CLAMP_X1) * 0.5, yy, zz + 0.112),
+                    0.022, 0.036, "steel", collection, axis="z", bevel=0.0,
+                )
+                steel_band(top_bolt, V_STEEL_BRIGHT)
+                parts.append(top_bolt)
+    for i, yy in enumerate((-0.40, 0.40)):
         foot = add_box(
             f"StandFoot_{i}",
-            (0.92, yy, 0.05),
-            0.08, 0.07, 0.05,
+            (0.94, yy, 0.045),
+            0.09, 0.07, 0.045,
             "paint", collection, bevel=0.0,
         )
         parts.append(foot)
@@ -930,6 +992,7 @@ def clamp_blocks(collection, lod):
 
 
 def valve_body(collection, lod):
+    """Globe body saddled to the plate; stem and yoke coaxial with the wheel."""
     n = SEG[lod]["cyl"]
     parts = []
     vc = VALVE_C
@@ -951,6 +1014,23 @@ def valve_body(collection, lod):
     body = loft_rings("ValveBody", rings, "steel", collection, bevel=0.008 if lod == 0 else 0.0, cap=True)
     steel_band(body, V_STEEL_MACHINED)
     parts.append(body)
+    saddle = add_box(
+        "ValveSaddle",
+        ((vc[0] + PLATE_X0) * 0.5 + 0.10, vc[1], vc[2]),
+        0.11, 0.085, 0.075,
+        "steel", collection, bevel=0.004 if lod == 0 else 0.0,
+    )
+    steel_band(saddle, V_STEEL_MACHINED)
+    parts.append(saddle)
+    if lod == 0:
+        uclamp = add_box(
+            "ValveUClamp",
+            (PLATE_X0 - 0.018, vc[1], vc[2]),
+            0.018, 0.095, 0.09,
+            "steel", collection, bevel=0.0,
+        )
+        steel_band(uclamp, V_STEEL_MACHINED)
+        parts.append(uclamp)
     if lod < 2:
         for tag, x, hx in (("InletFlange", vc[0] + 0.20, 0.018), ("OutletFlange", vc[0] - 0.20, 0.018)):
             fl = add_cyl(tag, (x, vc[1], vc[2]), 0.13, hx * 2, "steel", collection, n=n, axis="x", bevel=0.0)
@@ -1049,15 +1129,21 @@ def handwheel(collection, lod):
 
 
 def gauge_assembly(collection, lod):
+    """Cylindrical case, stepped bezel, recessed cream face, needle on a boss.
+
+    Cycle 01 read as a gold torus around a black hole because a dark glass disc
+    capped the face. The cream face is now the visible top; glass is a thin
+    recessed ring; the needle is dark steel on a brass boss.
+    """
     n = SEG[lod]["cyl"]
-    parts_static = []
     gx, gy, gz = GAUGE_C
     case = loft_rings(
         "GaugeCase",
         [
-            circle_ring(gx, gy, gz - 0.04, 0.13, 0.13, n, "z"),
-            circle_ring(gx, gy, gz + 0.03, 0.145, 0.145, n, "z"),
-            circle_ring(gx, gy, gz + 0.045, 0.12, 0.12, n, "z"),
+            circle_ring(gx, gy, gz - 0.055, 0.112, 0.112, n, "z"),
+            circle_ring(gx, gy, gz + 0.018, 0.122, 0.122, n, "z"),
+            circle_ring(gx, gy, gz + 0.036, 0.122, 0.122, n, "z"),
+            circle_ring(gx, gy, gz + 0.036, 0.102, 0.102, n, "z"),
         ],
         "steel", collection, bevel=0.0, cap=True,
     )
@@ -1067,50 +1153,77 @@ def gauge_assembly(collection, lod):
         bezel = loft_rings(
             "GaugeBezel",
             [
-                circle_ring(gx, gy, gz + 0.046, 0.148, 0.148, n, "z"),
-                circle_ring(gx, gy, gz + 0.056, 0.148, 0.148, n, "z"),
-                circle_ring(gx, gy, gz + 0.056, 0.122, 0.122, n, "z"),
-                circle_ring(gx, gy, gz + 0.048, 0.122, 0.122, n, "z"),
+                circle_ring(gx, gy, gz + 0.038, 0.126, 0.126, n, "z"),
+                circle_ring(gx, gy, gz + 0.048, 0.126, 0.126, n, "z"),
+                circle_ring(gx, gy, gz + 0.048, 0.108, 0.108, n, "z"),
+                circle_ring(gx, gy, gz + 0.040, 0.108, 0.108, n, "z"),
             ],
             "brass", collection, bevel=0.0, cap=False,
         )
         parts_static.append(bezel)
-    face = add_cyl("GaugeFace", (gx, gy, gz + 0.042), 0.120, 0.008, "face", collection, n=n, axis="z", bevel=0.0)
-    glass = add_cyl("GaugeGlass", (gx, gy, gz + 0.052), 0.118, 0.005, "glass", collection, n=n, axis="z", bevel=0.0)
-    parts_static.extend([face, glass])
+    face = add_cyl("GaugeFace", (gx, gy, gz + 0.038), 0.104, 0.008, "face", collection, n=n, axis="z", bevel=0.0)
+    parts_static.append(face)
     if lod == 0:
-        stub = add_cyl("GaugeStub", (gx, gy + 0.16, gz - 0.02), 0.022, 0.10, "brass", collection, n=max(6, n - 2), axis="y", bevel=0.0)
-        elbow = add_box("GaugeElbow", (gx, gy + 0.22, gz - 0.06), 0.025, 0.03, 0.04, "brass", collection, bevel=0.0)
-        parts_static.extend([stub, elbow])
+        glass = loft_rings(
+            "GaugeGlass",
+            [
+                circle_ring(gx, gy, gz + 0.044, 0.106, 0.106, n, "z"),
+                circle_ring(gx, gy, gz + 0.048, 0.106, 0.106, n, "z"),
+                circle_ring(gx, gy, gz + 0.048, 0.092, 0.092, n, "z"),
+                circle_ring(gx, gy, gz + 0.044, 0.092, 0.092, n, "z"),
+            ],
+            "glass", collection, bevel=0.0, cap=False,
+        )
+        parts_static.append(glass)
+        stub = add_cyl(
+            "GaugeStub", (gx, gy + 0.155, gz - 0.018), 0.022, 0.10, "brass",
+            collection, n=max(6, n - 2), axis="y", bevel=0.0,
+        )
+        riser = add_cyl(
+            "GaugeRiser", (gx, gy + 0.20, gz - 0.07), 0.020, 0.12, "brass",
+            collection, n=max(6, n - 2), axis="z", bevel=0.0,
+        )
+        elbow = add_box("GaugeElbow", (gx, gy + 0.20, gz - 0.04), 0.024, 0.028, 0.036, "brass", collection, bevel=0.0)
+        parts_static.extend([stub, riser, elbow])
+    elif lod == 1:
+        stub = add_cyl(
+            "GaugeStub", (gx, gy + 0.14, gz - 0.02), 0.022, 0.08, "brass",
+            collection, n=max(6, n - 2), axis="y", bevel=0.0,
+        )
+        parts_static.append(stub)
     needle = add_mesh(
         "GaugeNeedle",
         [
-            (gx - 0.008, gy - 0.01, gz + 0.042),
-            (gx + 0.008, gy - 0.01, gz + 0.042),
-            (gx + 0.003, gy + 0.11, gz + 0.042),
-            (gx - 0.003, gy + 0.11, gz + 0.042),
-            (gx - 0.008, gy - 0.01, gz + 0.048),
-            (gx + 0.008, gy - 0.01, gz + 0.048),
-            (gx + 0.003, gy + 0.11, gz + 0.048),
-            (gx - 0.003, gy + 0.11, gz + 0.048),
+            (gx - 0.010, gy - 0.012, gz + 0.038),
+            (gx + 0.010, gy - 0.012, gz + 0.038),
+            (gx + 0.003, gy + 0.092, gz + 0.038),
+            (gx - 0.003, gy + 0.092, gz + 0.038),
+            (gx - 0.010, gy - 0.012, gz + 0.046),
+            (gx + 0.010, gy - 0.012, gz + 0.046),
+            (gx + 0.003, gy + 0.092, gz + 0.046),
+            (gx - 0.003, gy + 0.092, gz + 0.046),
         ],
-        BOX_FACES, "brass", collection, bevel=0.0,
+        BOX_FACES, "steel", collection, bevel=0.0,
     )
+    steel_band(needle, V_STEEL_PLATE)
     needle_parts = [needle]
-    if lod == 0:
-        boss = add_cyl("NeedleBoss", (gx, gy, gz + 0.045), 0.016, 0.012, "brass", collection, n=max(6, n - 2), axis="z", bevel=0.0)
+    if lod < 2:
+        boss = add_cyl(
+            "NeedleBoss", (gx, gy, gz + 0.044), 0.018, 0.012, "brass",
+            collection, n=max(6, n - 2), axis="z", bevel=0.0,
+        )
         needle_parts.append(boss)
     return parts_static, needle_parts
 
 
 def hose_and_lance(collection, lod):
+    """Supported hose through a hex union and packed gland, lance into +X pocket."""
     n = SEG[lod]["hose_s"]
     n_r = SEG[lod]["hose"]
     parts = []
-    # Supported short run: valve inlet -> saddle -> lance. Slight sag, no long tail.
     p0 = Vector((VALVE_C[0] + 0.22, VALVE_C[1], VALVE_C[2]))
-    p1 = Vector((0.84, 0.16, 0.34))
-    p2 = Vector((LANCE_X0, LANCE_Y, LANCE_Z))
+    p1 = Vector((0.78, 0.20, 0.34))
+    p2 = Vector((PLATE_X1 - 0.02, LANCE_Y, LANCE_Z))
     ctrl = [p0, p1, p2] if n_r >= 3 else [p0, p2]
     steps = max(2, n_r)
     path = []
@@ -1122,64 +1235,105 @@ def hose_and_lance(collection, lod):
             pt = (1 - t) * (1 - t) * ctrl[0] + 2 * (1 - t) * t * ctrl[1] + t * t * ctrl[2]
         path.append(Vector(pt))
     rings = []
+    tangents = []
     for i, pt in enumerate(path):
         if i < len(path) - 1:
             tangent = path[i + 1] - pt
         else:
             tangent = pt - path[i - 1]
-        rad = 0.034
-        rings.append(oriented_ring(pt, tangent, rad, n))
+        tangents.append(tangent)
+        rings.append(oriented_ring(pt, tangent, 0.034, n))
     hose = loft_rings("HoseRun", rings, "rubber", collection, bevel=0.0, cap=True)
     parts.append(hose)
+    if lod == 0 and len(path) >= 3:
+        for i in (1, len(path) - 2):
+            pt = path[i]
+            tan = tangents[i]
+            if tan.length < 1e-6:
+                continue
+            tn = tan.normalized()
+            a = pt - tn * 0.012
+            b = pt + tn * 0.012
+            armor = loft_rings(
+                f"HoseArmor_{i}",
+                [oriented_ring(a, tn, 0.042, n), oriented_ring(b, tn, 0.042, n)],
+                "steel", collection, bevel=0.0, cap=True,
+            )
+            steel_band(armor, V_STEEL_MACHINED)
+            parts.append(armor)
     if lod < 2:
         u0 = add_hex("HoseUnion_In", (p0.x + 0.02, p0.y, p0.z), 0.038, 0.04, "brass", collection, axis="x", bevel=0.0)
-        nipple0 = add_cyl("HoseNipple_In", (p0.x - 0.02, p0.y, p0.z), 0.022, 0.04, "brass", collection, n=max(6, n), axis="x", bevel=0.0)
-        u1 = add_hex("HoseUnion_Out", (p2.x - 0.02, p2.y, p2.z), 0.038, 0.04, "brass", collection, axis="x", bevel=0.0)
+        nipple0 = add_cyl(
+            "HoseNipple_In", (p0.x - 0.02, p0.y, p0.z), 0.022, 0.04, "brass",
+            collection, n=max(6, n), axis="x", bevel=0.0,
+        )
+        u1 = add_hex(
+            "HoseUnion_Plate", (PLATE_X1 - 0.01, LANCE_Y, LANCE_Z),
+            0.042, 0.05, "brass", collection, axis="x", bevel=0.0,
+        )
         parts.extend([u0, nipple0, u1])
-    if lod < 2:
-        saddle = add_box("HoseSaddle", (0.88, 0.18, 0.28), 0.05, 0.04, 0.03, "steel", collection, bevel=0.003 if lod == 0 else 0.0)
+        saddle = add_box(
+            "HoseSaddle", (0.80, 0.20, 0.28), 0.05, 0.045, 0.032, "steel",
+            collection, bevel=0.003 if lod == 0 else 0.0,
+        )
         steel_band(saddle, V_STEEL_MACHINED)
         parts.append(saddle)
     if lod == 0:
-        saddle_arm = add_box("HoseSaddleArm", (0.90, 0.10, 0.22), 0.02, 0.08, 0.016, "steel", collection, bevel=0.0)
+        saddle_arm = add_box("HoseSaddleArm", (0.84, 0.12, 0.22), 0.02, 0.08, 0.016, "steel", collection, bevel=0.0)
         steel_band(saddle_arm, V_STEEL_MACHINED)
         parts.append(saddle_arm)
+    if lod < 2:
+        gland = add_hex(
+            "PackedGland", (PLATE_X1 + 0.03, LANCE_Y, LANCE_Z),
+            0.048, 0.06, "brass", collection, axis="x", bevel=0.0,
+        )
+        parts.append(gland)
     lance = add_cyl(
         "InletLance", ((LANCE_X0 + LANCE_X1) * 0.5, LANCE_Y, LANCE_Z),
-        0.024, (LANCE_X1 - LANCE_X0), "steel", collection, n=max(6, n), axis="x", bevel=0.0,
+        0.026, (LANCE_X1 - LANCE_X0), "steel", collection, n=max(6, n), axis="x", bevel=0.0,
     )
     steel_band(lance, V_STEEL_BRIGHT)
     parts.append(lance)
     if lod < 2:
         guard = add_cyl(
-            "LanceGuard", (LANCE_X1 - 0.03, LANCE_Y, LANCE_Z),
-            0.038, 0.06, "steel", collection, n=max(6, n), axis="x", bevel=0.0,
+            "LanceGuard", (LANCE_X1 - 0.04, LANCE_Y, LANCE_Z),
+            0.036, 0.05, "steel", collection, n=max(6, n), axis="x", bevel=0.0,
         )
         steel_band(guard, V_STEEL_MACHINED)
-        gland = add_cyl(
-            "PackedGland", (PLATE_X1 + 0.01, LANCE_Y, LANCE_Z),
-            0.045, 0.05, "brass", collection, n=max(6, n), axis="x", bevel=0.0,
-        )
-        parts.extend([guard, gland])
+        parts.append(guard)
     return parts
 
 
 def lamp_assembly(collection, lod):
+    """One hooded lamp, rooted on the hat top return. Small. Not the site identity."""
     n = SEG[lod]["cyl"]
     hood = loft_rings(
         "LampHood",
         [
-            circle_ring(LAMP_C[0], LAMP_C[1], LAMP_C[2] - 0.03, 0.055, 0.055, n, "z"),
-            circle_ring(LAMP_C[0], LAMP_C[1], LAMP_C[2] + 0.04, 0.040, 0.040, n, "z"),
+            circle_ring(LAMP_C[0], LAMP_C[1], LAMP_C[2] - 0.028, 0.042, 0.042, n, "z"),
+            circle_ring(LAMP_C[0], LAMP_C[1], LAMP_C[2] + 0.022, 0.030, 0.030, n, "z"),
         ],
         "paint", collection, bevel=0.0, cap=False,
     )
     static = [hood]
     if lod == 0:
-        can = add_cyl("LampCan", (LAMP_C[0], LAMP_C[1], LAMP_C[2] - 0.02), 0.032, 0.04, "steel", collection, n=n, axis="z", bevel=0.0)
+        can = add_cyl(
+            "LampCan", (LAMP_C[0], LAMP_C[1], LAMP_C[2] - 0.018), 0.024, 0.032, "steel",
+            collection, n=n, axis="z", bevel=0.0,
+        )
         steel_band(can, V_STEEL_MACHINED)
         static.append(can)
-    glass = add_cyl("LampGlass", (LAMP_C[0], LAMP_C[1], LAMP_C[2] + 0.012), 0.028, 0.016, "lamp", collection, n=n, axis="z", bevel=0.0)
+        standoff = add_box(
+            "LampStandoff",
+            (LAMP_C[0] - 0.04, LAMP_C[1], LAMP_C[2] - 0.04),
+            0.04, 0.016, 0.012,
+            "paint", collection, bevel=0.0,
+        )
+        static.append(standoff)
+    glass = add_cyl(
+        "LampGlass", (LAMP_C[0], LAMP_C[1], LAMP_C[2] + 0.008), 0.020, 0.012, "lamp",
+        collection, n=n, axis="z", bevel=0.0,
+    )
     return static, [glass]
 
 
@@ -1235,7 +1389,7 @@ def build_lod(lod, atlas_mat):
         finish_for_atlas(obj, atlas_mat, TEX)
 
     wheel_hook = add_empty("valve_wheel", Vector(WHEEL_C), collection, parent=root, size=0.10)
-    needle_hook = add_empty("gauge_needle", Vector((GAUGE_C[0], GAUGE_C[1], GAUGE_C[2] + 0.045)), collection, parent=root, size=0.06)
+    needle_hook = add_empty("gauge_needle", Vector((GAUGE_C[0], GAUGE_C[1], NEEDLE_Z)), collection, parent=root, size=0.06)
     lamp_hook = add_empty("lamp", Vector(LAMP_C), collection, parent=root, size=0.05)
 
     static_mesh = join_group(static, f"LOD{lod}_gas_tap", root)
@@ -1274,7 +1428,7 @@ def build_lod(lod, atlas_mat):
         },
         "hooks": {
             "valve_wheel": list(WHEEL_C),
-            "gauge_needle": [GAUGE_C[0], GAUGE_C[1], GAUGE_C[2] + 0.045],
+            "gauge_needle": [GAUGE_C[0], GAUGE_C[1], NEEDLE_Z],
             "lamp": list(LAMP_C),
         },
         "undersideZ": round(bbox_min.z, 4),
@@ -1284,6 +1438,8 @@ def build_lod(lod, atlas_mat):
         raise RuntimeError(f"LOD{lod} underside {bbox_min.z} is below z=0")
     if bbox_max.x > 1.18:
         raise RuntimeError(f"LOD{lod} occupancy tail x={bbox_max.x}")
+    if bbox_max.x < 1.12:
+        raise RuntimeError(f"LOD{lod} lance does not clear the plate x={bbox_max.x}")
     if abs(bbox_min.x) > 1.12 or abs(bbox_min.y) > 1.12 or abs(bbox_max.y) > 1.12:
         print(f"WARN LOD{lod} near cell edge bbox={report['bbox']}")
     if tris > TRI_BUDGET[lod]:
@@ -1462,15 +1618,12 @@ def combine_lods():
                     obj["socket"] = True
                     obj["spacefaceSocket"] = True
                     parent_keep(obj, root)
-        for obj in list(imported):
+        # Reparent every mesh while its imported LOD hook hierarchy still
+        # exists.  Removing imported empties first can invalidate the mesh
+        # world transform and produce a doubled counter-translation beneath
+        # the shared hook in the combined GLB.
+        for obj in [candidate for candidate in imported if candidate.type == "MESH"]:
             raw = obj["_sf_raw"]
-            if obj.type != "MESH":
-                if lod > 0:
-                    try:
-                        bpy.data.objects.remove(obj, do_unlink=True)
-                    except Exception:
-                        pass
-                continue
             if raw.startswith(f"LOD{lod}_"):
                 obj.name = raw
             else:
@@ -1487,11 +1640,17 @@ def combine_lods():
             elif raw.endswith("_lamp") or raw == f"LOD{lod}_lamp":
                 parent = sockets.get("lamp") or root
             parent_keep(obj, parent)
+        if lod > 0:
+            for obj in [candidate for candidate in imported if candidate.type != "MESH"]:
+                try:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+                except Exception:
+                    pass
     for hook in HOOK_NAMES:
         if hook not in sockets:
             loc = {
                 "valve_wheel": Vector(WHEEL_C),
-                "gauge_needle": Vector((GAUGE_C[0], GAUGE_C[1], GAUGE_C[2] + 0.045)),
+                "gauge_needle": Vector((GAUGE_C[0], GAUGE_C[1], NEEDLE_Z)),
                 "lamp": Vector(LAMP_C),
             }[hook]
             sockets[hook] = add_empty(hook, loc, bpy.context.scene.collection, parent=root)
@@ -1599,7 +1758,9 @@ def combine_lods():
         "cycle": CYCLE,
         "state": "design_candidate",
     }
-    (SOURCE_DIR / "gas_tap_inventory.json").write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    (SOURCE_DIR / "gas_tap_inventory.json").write_text(
+        json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n",
+    )
     print(json.dumps({"ok": True, **inventory}, indent=2))
     try:
         bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_SOURCE))
@@ -1658,23 +1819,70 @@ def setup_mine_lights():
     pad_mat = bpy.data.materials.new("MinePadMat")
     pad_mat.use_nodes = True
     pad_bsdf = next(n for n in pad_mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-    pad_bsdf.inputs["Base Color"].default_value = (0.07, 0.055, 0.042, 1)
-    pad_bsdf.inputs["Roughness"].default_value = 0.86
-    pad_bsdf.inputs["Metallic"].default_value = 0.04
+    pad_bsdf.inputs["Base Color"].default_value = (0.036, 0.032, 0.028, 1)
+    pad_bsdf.inputs["Roughness"].default_value = 0.90
+    pad_bsdf.inputs["Metallic"].default_value = 0.02
     pad.data.materials.append(pad_mat)
-    # Rock wall at +X so edge stills prove clamp standoff.
-    bpy.ops.mesh.primitive_cube_add(location=(1.18, 0.0, 0.55))
+    # Rock wall at +X. Inner face at WALL_INNER_X so clamp standoff and the
+    # lance pocket both read. A boolean cylinder cuts the gas pocket.
+    wall_hx = 0.16
+    bpy.ops.mesh.primitive_cube_add(location=(WALL_INNER_X + wall_hx, 0.0, 0.55))
     wall = bpy.context.object
     wall.name = "RockWall"
-    wall.scale = (0.08, 1.15, 0.70)
+    wall.scale = (wall_hx, 1.15, 0.70)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     wall_mat = bpy.data.materials.new("RockWallMat")
     wall_mat.use_nodes = True
     wbsdf = next(n for n in wall_mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-    wbsdf.inputs["Base Color"].default_value = (0.12, 0.11, 0.09, 1)
-    wbsdf.inputs["Roughness"].default_value = 0.92
+    wbsdf.inputs["Base Color"].default_value = (0.10, 0.09, 0.075, 1)
+    wbsdf.inputs["Roughness"].default_value = 0.94
     wbsdf.inputs["Metallic"].default_value = 0.02
     wall.data.materials.append(wall_mat)
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=0.075, depth=0.50,
+        location=(WALL_INNER_X + 0.10, LANCE_Y, LANCE_Z),
+        rotation=(0.0, math.pi * 0.5, 0.0),
+    )
+    cutter = bpy.context.object
+    cutter.name = "PocketCutter"
+    bool_mod = wall.modifiers.new("Pocket", "BOOLEAN")
+    bool_mod.operation = "DIFFERENCE"
+    bool_mod.object = cutter
+    bpy.context.view_layer.objects.active = wall
+    try:
+        bpy.ops.object.modifier_apply(modifier="Pocket")
+    except Exception:
+        pass
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    # Top-open slot so the works_top camera sees the lance enter the pocket
+    # instead of dying under the wall's roof.
+    bpy.ops.mesh.primitive_cube_add(location=(WALL_INNER_X + 0.10, LANCE_Y, 0.78))
+    slot = bpy.context.object
+    slot.name = "PocketSlot"
+    slot.scale = (0.14, 0.09, 0.55)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    slot_mod = wall.modifiers.new("PocketSlot", "BOOLEAN")
+    slot_mod.operation = "DIFFERENCE"
+    slot_mod.object = slot
+    bpy.context.view_layer.objects.active = wall
+    try:
+        bpy.ops.object.modifier_apply(modifier="PocketSlot")
+    except Exception:
+        pass
+    bpy.data.objects.remove(slot, do_unlink=True)
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=0.070, depth=0.03,
+        location=(WALL_INNER_X + 0.28, LANCE_Y, LANCE_Z),
+        rotation=(0.0, math.pi * 0.5, 0.0),
+    )
+    pocket_back = bpy.context.object
+    pocket_back.name = "PocketBack"
+    back_mat = bpy.data.materials.new("PocketBackMat")
+    back_mat.use_nodes = True
+    bbsdf = next(n for n in back_mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    bbsdf.inputs["Base Color"].default_value = (0.025, 0.022, 0.018, 1)
+    bbsdf.inputs["Roughness"].default_value = 0.96
+    pocket_back.data.materials.append(back_mat)
     cam_data = bpy.data.cameras.new("WorksCam")
     camera = bpy.data.objects.new("WorksCam", cam_data)
     scene.collection.objects.link(camera)
@@ -1743,7 +1951,7 @@ def render_stills(glb_path: Path, still_dir: Path, registers=("close", "site")):
     camera, pad, wall = setup_mine_lights()
     meshes = [
         obj for obj in bpy.data.objects
-        if obj.type == "MESH" and obj.name not in {"MinePad", "RockWall"}
+        if obj.type == "MESH" and obj.name not in {"MinePad", "RockWall", "PocketBack", "PocketCutter"}
     ]
     still_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1903,6 +2111,87 @@ def render_stills(glb_path: Path, still_dir: Path, registers=("close", "site")):
     return paths
 
 
+def save_nn_crop(src_png: Path, dest_png: Path, half_px: int, scale: int = 1, center=None) -> str:
+    """Diagnostic nearest-neighbour crop. Not a review still. Never writes cycle_001."""
+    dest_png.parent.mkdir(parents=True, exist_ok=True)
+    img = bpy.data.images.load(str(src_png))
+    w, h = img.size
+    pixels = np.array(img.pixels[:], dtype=np.float32).reshape((h, w, img.channels))
+    if pixels.shape[2] == 3:
+        pixels = np.concatenate([pixels, np.ones((h, w, 1), dtype=np.float32)], axis=2)
+    if center is None:
+        cx, cy = w // 2, h // 2
+    else:
+        cx, cy = int(center[0]), int(center[1])
+    x0, x1 = max(0, cx - half_px), min(w, cx + half_px)
+    y0, y1 = max(0, cy - half_px), min(h, cy + half_px)
+    crop = pixels[y0:y1, x0:x1]
+    if scale > 1:
+        crop = np.repeat(np.repeat(crop, scale, axis=0), scale, axis=1)
+    ch, cw = crop.shape[:2]
+    name = f"diag_{dest_png.stem}"
+    if name in bpy.data.images:
+        bpy.data.images.remove(bpy.data.images[name])
+    out = bpy.data.images.new(name, width=cw, height=ch, alpha=True)
+    out.pixels.foreach_set(np.ascontiguousarray(crop, dtype=np.float32).ravel())
+    tmp = dest_png.with_suffix(".tmp.png")
+    out.filepath_raw = str(tmp)
+    out.file_format = "PNG"
+    out.save()
+    bpy.data.images.remove(out)
+    bpy.data.images.remove(img)
+    if dest_png.exists():
+        dest_png.unlink()
+    tmp.replace(dest_png)
+    sanitize_png(dest_png)
+    return str(dest_png.relative_to(ROOT)).replace("\\", "/")
+
+
+def write_diagnostics(stills: dict) -> dict:
+    DIAG_DIR.mkdir(parents=True, exist_ok=True)
+    out = {}
+    top = stills.get("works_top")
+    if top:
+        out["works_top_crop"] = save_nn_crop(Path(top), DIAG_DIR / "works_top_crop.png", 110, 2)
+        clay = stills.get("works_top_clay")
+        if clay:
+            out["works_top_clay_crop"] = save_nn_crop(Path(clay), DIAG_DIR / "works_top_clay_crop.png", 110, 2)
+    site = stills.get("works_site")
+    if site:
+        out["works_site_nn8"] = save_nn_crop(Path(site), DIAG_DIR / "works_site_nn8.png", 16, 8)
+        site_clay = stills.get("works_site_clay")
+        if site_clay:
+            out["works_site_clay_nn8"] = save_nn_crop(Path(site_clay), DIAG_DIR / "works_site_clay_nn8.png", 16, 8)
+    edge = stills.get("works_edge")
+    if edge:
+        # works_edge parks the object near the right of the 1920-wide frame.
+        out["works_edge_crop"] = save_nn_crop(
+            Path(edge), DIAG_DIR / "works_edge_crop.png", 110, 2, center=(1770, 540),
+        )
+        clay_edge = stills.get("works_edge_clay")
+        if clay_edge:
+            out["works_edge_clay_crop"] = save_nn_crop(
+                Path(clay_edge), DIAG_DIR / "works_edge_clay_crop.png", 110, 2, center=(1770, 540),
+            )
+    return out
+
+
+def assert_cycle01_frozen() -> dict:
+    missing = []
+    mismatch = []
+    for name, expected in CYCLE01_FREEZE.items():
+        path = CYCLE01_DIR / name
+        if not path.exists():
+            missing.append(name)
+            continue
+        got = sha256(path)
+        if got != expected:
+            mismatch.append({"file": name, "expected": expected, "got": got})
+    if missing or mismatch:
+        raise RuntimeError(f"Cycle 01 evidence must stay frozen: missing={missing} mismatch={mismatch}")
+    return {"ok": True, "files": len(CYCLE01_FREEZE)}
+
+
 def inspect_glb(path: Path) -> dict:
     gltf, _rest = _read_glb(path)
     nodes = gltf.get("nodes") or []
@@ -1933,7 +2222,19 @@ def inspect_glb(path: Path) -> dict:
     return report
 
 
-def write_hashes(inventory, lod_reports, stills, inspect):
+def _rel(path_like) -> str:
+    path = Path(path_like)
+    try:
+        return str(path.resolve().relative_to(ROOT)).replace("\\", "/")
+    except Exception:
+        return str(path).replace("\\", "/")
+
+
+def write_hashes(inventory, lod_reports, stills, inspect, diagnostics=None):
+    stills_rel = {k: _rel(v) for k, v in (stills or {}).items()}
+    diag_rel = {k: _rel(v) for k, v in (diagnostics or {}).items()}
+    evidence_paths = [Path(path) for path in (stills or {}).values()]
+    evidence_paths.extend(ROOT / rel for rel in diag_rel.values())
     payload = {
         "packet": PACKET,
         "cycle": CYCLE,
@@ -1943,7 +2244,12 @@ def write_hashes(inventory, lod_reports, stills, inspect):
         "builder": "tools/blender/build_works_gas_tap.py",
         "inventory": inventory,
         "lodReports": lod_reports,
-        "stills": stills,
+        "stills": stills_rel,
+        "diagnostics": diag_rel,
+        "evidenceSha256": {
+            _rel(path): sha256(path) for path in sorted(evidence_paths, key=lambda item: _rel(item))
+        },
+        "cycle01Freeze": CYCLE01_FREEZE,
         "inspect": inspect,
         "textures": {
             p.name: sha256(p) for p in sorted(TEX_DIR.glob("*.png"))
@@ -1958,14 +2264,65 @@ def write_hashes(inventory, lod_reports, stills, inspect):
         "triBudget": TRI_BUDGET,
     }
     out = FAMILY / "HASHES.json"
-    out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
     return payload
+
+
+def reports_from_lod_files():
+    """Measure existing LOD GLBs without rebuilding geometry.
+
+    The Blender glTF importer round-trips export_yup back to authoring Z-up.
+    """
+    reports = []
+    for lod in (0, 1, 2):
+        path = SOURCE_DIR / f"gas_tap_lod{lod}.glb"
+        if not path.exists():
+            raise FileNotFoundError(path)
+        reset_scene()
+        bpy.ops.import_scene.gltf(filepath=str(path))
+        meshes = [obj for obj in bpy.data.objects if obj.type == "MESH"]
+        tris = sum(tri_count(m) for m in meshes)
+        bbox_min = Vector((1e9, 1e9, 1e9))
+        bbox_max = Vector((-1e9, -1e9, -1e9))
+        for mesh in meshes:
+            for corner in mesh.bound_box:
+                wpt = mesh.matrix_world @ Vector(corner)
+                bbox_min.x = min(bbox_min.x, wpt.x)
+                bbox_min.y = min(bbox_min.y, wpt.y)
+                bbox_min.z = min(bbox_min.z, wpt.z)
+                bbox_max.x = max(bbox_max.x, wpt.x)
+                bbox_max.y = max(bbox_max.y, wpt.y)
+                bbox_max.z = max(bbox_max.z, wpt.z)
+        report = {
+            "lod": lod,
+            "triangles": int(tris),
+            "budget": TRI_BUDGET[lod],
+            "overBudget": tris > TRI_BUDGET[lod],
+            "draws": len(meshes),
+            "bbox": {
+                "min": [round(bbox_min.x, 4), round(bbox_min.y, 4), round(bbox_min.z, 4)],
+                "max": [round(bbox_max.x, 4), round(bbox_max.y, 4), round(bbox_max.z, 4)],
+            },
+            "hooks": {
+                "valve_wheel": list(WHEEL_C),
+                "gauge_needle": [GAUGE_C[0], GAUGE_C[1], NEEDLE_Z],
+                "lamp": list(LAMP_C),
+            },
+            "undersideZ": round(bbox_min.z, 4),
+            "tapMaxX": round(bbox_max.x, 4),
+            "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+            "bytes": path.stat().st_size,
+            "sha256": sha256(path),
+        }
+        reports.append(report)
+    return reports
 
 
 def parse_args(argv):
     combine_only = False
     inspect_only = False
     evidence_only = False
+    reports_only = False
     for tok in argv:
         if tok == "--combine-only":
             combine_only = True
@@ -1973,7 +2330,9 @@ def parse_args(argv):
             inspect_only = True
         elif tok == "--evidence-only":
             evidence_only = True
-    return combine_only, inspect_only, evidence_only
+        elif tok == "--reports-from-lods":
+            reports_only = True
+    return combine_only, inspect_only, evidence_only, reports_only
 
 
 def rebuild_lods():
@@ -2011,31 +2370,68 @@ def main(argv=None):
     argv = list(sys.argv if argv is None else argv)
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
-    combine_only, inspect_only, evidence_only = parse_args(argv)
+    combine_only, inspect_only, evidence_only, reports_only = parse_args(argv)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
 
+    if reports_only:
+        reports = reports_from_lod_files()
+        inv_path = SOURCE_DIR / "gas_tap_inventory.json"
+        inventory = json.loads(inv_path.read_text(encoding="utf-8")) if inv_path.exists() else {}
+        inventory["lodReports"] = reports
+        inv_path.write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n")
+        hashes_path = FAMILY / "HASHES.json"
+        payload = json.loads(hashes_path.read_text(encoding="utf-8")) if hashes_path.exists() else {}
+        payload["lodReports"] = reports
+        payload["inventory"] = inventory
+        hashes_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
+        print(json.dumps(reports, indent=2))
+        return 0
+
     if inspect_only:
         path = PARTS_DIR / COMBINED_NAME
         report = inspect_glb(path)
-        print(json.dumps(report, indent=2))
+        freeze = assert_cycle01_frozen()
+        print(json.dumps({"inspect": report, "cycle01Freeze": freeze}, indent=2))
         return 0
 
+    freeze = assert_cycle01_frozen()
+    existing_reports = None
+    inv_path = SOURCE_DIR / "gas_tap_inventory.json"
+    if inv_path.exists():
+        try:
+            existing_reports = json.loads(inv_path.read_text(encoding="utf-8")).get("lodReports")
+        except Exception:
+            existing_reports = None
     reports = None
     if not combine_only and not evidence_only:
         reports = rebuild_lods()
     inventory, contract = combine_lods()
     if reports:
         inventory["lodReports"] = reports
-        (SOURCE_DIR / "gas_tap_inventory.json").write_text(json.dumps(inventory, indent=2) + "\n", encoding="utf-8")
+    elif existing_reports:
+        inventory["lodReports"] = existing_reports
+    if inventory.get("lodReports"):
+        (SOURCE_DIR / "gas_tap_inventory.json").write_text(
+            json.dumps(inventory, indent=2) + "\n", encoding="utf-8", newline="\n",
+        )
 
     stills = {}
     stills.update(render_stills(SOURCE_DIR / "gas_tap_lod0.glb", EVIDENCE_DIR, registers=("close",)))
     stills.update(render_stills(SOURCE_DIR / "gas_tap_lod1.glb", EVIDENCE_DIR, registers=("site",)))
+    diagnostics = write_diagnostics(stills)
     inspect = inspect_glb(PARTS_DIR / COMBINED_NAME)
-    payload = write_hashes(inventory, reports or inventory.get("lodReports"), stills, inspect)
-    print(json.dumps({"stills": stills, "inspect": inspect, "hashes": str((FAMILY / "HASHES.json").relative_to(ROOT)).replace('\\', '/')}, indent=2))
+    payload = write_hashes(
+        inventory, reports or inventory.get("lodReports"), stills, inspect, diagnostics,
+    )
+    print(json.dumps({
+        "stills": stills,
+        "diagnostics": diagnostics,
+        "inspect": inspect,
+        "cycle01Freeze": freeze,
+        "hashes": str((FAMILY / "HASHES.json").relative_to(ROOT)).replace("\\", "/"),
+    }, indent=2))
     return 0
 
 

@@ -1,6 +1,6 @@
 {
   "assetId": "place_works_gas_tap",
-  "cycle": 1,
+  "cycle": 2,
   "supportedViews": ["works_top", "works_edge", "works_site"],
   "allSupportedViewZonesClassified": false,
   "componentReferenceDecision": "native_imagegen",
