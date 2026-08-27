@@ -117,10 +117,10 @@ change the chase camera could see.
 
 - **Hornet (`PQ-050.01`)** is a **wired candidate, not quality-closed**. Resume
   only as a chase-camera form pass. Do not model another seat.
-- **Drifter (`PQ-050.02`)** is a wired pancake-dart. **Not accepted art.** Same
-  camera law. After Hornet actually closes at chase size, this is next.
+- **Drifter (`PQ-050.02`)** is quality-closed at the chase camera, independently
+  reviewed KEEP, and promoted through live source/release/render packages.
 - **Remaining ships** have not had a chase-camera close. Ranger
-  (`PQ-050.03`) through Survey pin (`PQ-050.22`). One ship at a time.
+  (`PQ-050.03`) through Survey pin (`PQ-050.22`). Ranger is next; one ship at a time.
 - Quality remaining on every unfinished leaf: silhouette, wells, canopy, and
   drive throats that read at 144 WU; lofted wings/nacelles; unique surfaces;
   MTX ledger bound to the close hash with chase-camera proof; five valid
@@ -133,8 +133,8 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 | Leaf | Ship | This campaign |
 |---|---|---|
 | `.01` | Hornet | wired candidate, **not quality-closed**. Chase-camera form remaining. An orange seat is not progress. |
-| `.02` | Drifter | seven form attempts this campaign (C18–24). Three volumes + ringed throats in candidate. C20 still live. **Not quality-closed.** |
-| `.03` | Ranger | not started |
+| `.02` | Drifter | **Done.** Accepted C28 workboat silhouette and drive-throat form promoted through source, live parts, release, and render packages; independent chase-camera and integration reviews KEEP. |
+| `.03` | Ranger | next |
 | `.04` | Ironback | not started |
 | `.05` | Bastion | not started |
 | `.06` | Atlas | not started |

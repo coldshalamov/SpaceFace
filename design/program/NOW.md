@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-08-24
-baseCommit: 1667de421d95eafe44652d8484bcbba3fe39c84c
+refreshed: 2026-08-27
+baseCommit: cf0a9d9cd9ca5e580fd7a0660feaa3f1a9cff5a8
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```

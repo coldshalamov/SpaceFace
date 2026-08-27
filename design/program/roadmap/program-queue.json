@@ -6689,7 +6689,7 @@
       "priority": 306,
       "title": "Finish and wire Drifter (player multirole)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-050.01"
       ],
@@ -6708,8 +6708,10 @@
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Drifter C20 is a wired pancake-dart candidate, not a quality-close. Remaining: three workboat volumes (cabin / walkable hold / rectangular drive house), face-delete wells, lofted fat-root winglets, nacelle throats recessed in transoms, unique surfaces, MTX ledger bound to the close hash, five valid reviewed cycles. Recopy only this ship's three LODs if the body closes. Hitch stays untouched. Do not copy Hornet's needle."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-050-02-drifter-REPORT.md"
+      ],
+      "brief": "Drifter is quality-closed at the player chase camera and promoted as the live source, parts, release, and render-package body. The accepted LOD0/1/2 hashes, focused routing/LOD/package checks, live runtime presentation, and independent KEEP reviews are bound in the receipt. Hitch remained untouched."
     },
     {
       "id": "PQ-050.03",
