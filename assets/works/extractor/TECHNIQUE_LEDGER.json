@@ -1,0 +1,175 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "place_works_extractor",
+  "shipId": "place_works_extractor",
+  "candidateHash": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0",
+  "exportGlb": "assets/ships/parts/works/place_works_extractor.glb",
+  "class": "place",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "clayStillReadsAsPrimitives": false,
+  "independentReview": "blocked",
+  "independentReviewer": null,
+  "forbidden": {
+    "factoryLoftPlusBoxes": false,
+    "sharedSheetTint": false,
+    "shadeSmoothWholeObject": false,
+    "internalVoidCalledBay": false,
+    "imagenUsedAsBake": false
+  },
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_edge_grazing.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Angle bevel 6\u201312 mm then weighted normals, shade 28\u00b0.",
+      "bevelWidthM": 0.006,
+      "shadeAngleDeg": 28.0
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Mouth is five walls open +X; the +X face is empty."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique non-overlapping UV0 packed per LOD."
+    },
+    {
+      "id": "MTX-20",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "High duplicate with extra 3 mm bevel as bake source."
+    },
+    {
+      "id": "MTX-21",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cage extrusion 0.03 wu on selected-to-active normal bake."
+    },
+    {
+      "id": "MTX-22",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Tangent OpenGL normal from the mesh."
+    },
+    {
+      "id": "MTX-23",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cycles AO baked to unique UV0."
+    },
+    {
+      "id": "MTX-24",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Pointiness curvature baked as emit."
+    },
+    {
+      "id": "MTX-25",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Concave curvature drives cavity dirt."
+    },
+    {
+      "id": "MTX-30",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Generated refs are construction studies only; maps are mesh-derived."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Paint dielectric, steel metallic, ceramic dry, belt rubber, lamp glass."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Authored 1024 albedo from ID \u00d7 AO \u00d7 causal wear, not a tinted sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "ORM: R=AO G=rough B=metal, role-varying."
+    },
+    {
+      "id": "MTX-39",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Dirt in concave AO, not a black crayon."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No yellow, neon, leather, glowing bar, or kit donor."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "assets/ships/parts/works/place_works_extractor.glb",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."
+    },
+    {
+      "id": "MTX-52",
+      "state": "implemented",
+      "still": "assets/works/extractor/evidence/cycle_001/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Macro from cited kit shape language + construction studies, not a cube."
+    },
+    {
+      "id": "MTX-53",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Manufactured machine, not a rock/sculpt."
+    },
+    {
+      "id": "MTX-54",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "New asset; no prior accepted extractor to revert."
+    }
+  ]
+}
