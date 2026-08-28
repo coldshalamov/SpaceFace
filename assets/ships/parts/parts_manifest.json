@@ -5700,6 +5700,42 @@
       }
     },
     {
+      "id": "place_works_cargo_port",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_cargo_port.glb",
+      "tris": 15978,
+      "bytes": 4522136,
+      "textureSize": 1024,
+      "note": "PQ-131.09 — authored Cargo Port Cycle 02 source candidate with five freight stages, launch cradle, courier pod and thruster hooks. Exact-source visual review is KEEP from one independent reviewer; whole-asset G1/G2/G4 remain open until the packet's three-review set is complete.",
+      "hooks": [
+        "crate_0",
+        "crate_1",
+        "crate_2",
+        "crate_3",
+        "crate_4",
+        "cradle",
+        "pod_root",
+        "pod_thruster"
+      ],
+      "sockets": [
+        "crate_0",
+        "crate_1",
+        "crate_2",
+        "crate_3",
+        "crate_4",
+        "cradle",
+        "pod_root",
+        "pod_thruster"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.0079, -0.88, 0],
+        "max": [1.08, 0.7, 1.064],
+        "dimensionsM": [2.0879, 1.58, 1.064]
+      }
+    },
+    {
       "id": "place_works_conduit_power_straight",
       "category": "works",
       "priority": "P0",
@@ -6027,6 +6063,7 @@
       "places/place_claim_outpost_bastion.glb",
       "places/place_landmark_wreck_cathedral.glb",
       "works/place_works_rover.glb",
+      "works/place_works_cargo_port.glb",
       "works/place_works_conduit_power_straight.glb",
       "works/place_works_conduit_power_corner.glb",
       "works/place_works_conduit_power_t.glb",

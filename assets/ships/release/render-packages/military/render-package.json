@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d26da6ba2758a42e940088a79f0589e668b5addc5b41c1c0204955475811fd31",
+  "contentHash": "63b6fc5a21b7fa800fb15afa81a342990c17f4ae5b6cb6225a221e6ded3380e4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2834,8 +2834,8 @@
       "uri": "place_station_military.glb"
     },
     "sourceManifest": {
-      "bytes": 137851,
-      "sha256": "8dc70e142e22126046d744f0d177f1006c481d03af36d93b06a620b4c059e13e",
+      "bytes": 147718,
+      "sha256": "60fccba27e49ad473bcd7d9f38a084533a790c1c88b98b6a64dab1e3551ea4d4",
       "uri": "pilots.json"
     }
   },
@@ -4033,7 +4033,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_military.glb"
   },
-  "runtimeHash": "fda7c148c5dc83b754dfd0563fe9779456ae301f3400015a262d2cf7e55ce833",
+  "runtimeHash": "01b4ca86205788e2c9ee030b4a1bc5577fc5d64d21c6f420eee9829edf5ee1d3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

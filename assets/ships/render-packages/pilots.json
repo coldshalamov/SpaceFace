@@ -3127,6 +3127,24 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-junction",
       "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json"
+    },
+    {
+      "key": "works-cargo-port",
+      "assetId": "sf.render.works-cargo-port",
+      "runtimeAssetId": "place_works_cargo_port",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_cargo_port",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_cargo_port.glb",
+      "releaseSha256": "d8375460fdc3b801fdc485340c774e20ca9e37806223a55d28aa9624f586e9a0",
+      "releaseBytes": 976668,
+      "rootNode": "SF_WORKS_CARGO_PORT_V1",
+      "dynamicNameIncludes": [
+        "crate_",
+        "pod"
+      ],
+      "outputDir": "assets/ships/release/render-packages/works-cargo-port",
+      "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json"
     }
   ]
 }

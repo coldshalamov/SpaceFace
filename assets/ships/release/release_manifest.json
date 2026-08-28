@@ -3648,6 +3648,25 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "place_works_cargo_port",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_cargo_port.glb",
+      "release": "assets/ships/release/parts/works/place_works_cargo_port.glb",
+      "sourceSha256": "81bf7466450434aa0e2ca055d793548ccc8150107d7e51046922b7525e11a532",
+      "releaseSha256": "d8375460fdc3b801fdc485340c774e20ca9e37806223a55d28aa9624f586e9a0",
+      "sourceBytes": 4522136,
+      "releaseBytes": 976668,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 105,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }
