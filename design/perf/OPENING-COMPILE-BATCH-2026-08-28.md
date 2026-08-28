@@ -88,7 +88,19 @@ all six runs. The two arms differ only by the three `beginReadinessBatch` call s
 | flight hitches in window | 29 / 19 / 44 | **13 / 14 / 11** |
 | opening post-submit validation | failed 3 of 3 | **failed 0 of 3** |
 
-The arms do not overlap on any of the four measures.
+Three further runs in the **shipped** state (census removed, render-target ordering fixed) came in at
+6.5 / 8.8 / 10.4 s for the stage and 11.3 / 12.3 / 14.5 s to flight, all three with zero validation
+failures. Pooling every batched run, the stage lands in 6.2–10.4 s against a control of 18.6–21.1 s,
+and load to flight in 9.8–14.5 s against 22.4–25.7 s. The arms do not overlap on any measure, and
+the batched arm is the more variable of the two because what remains is one driver link the cohort
+must still wait out.
+
+**Read the report's `first visible draw identity gate` line with care.** It is derived from whichever
+1 Hz sample happened to carry a `validation` object, so a run that never sampled one prints `fail;
+uncaptured none` with zero deltas beside it — the probe's own comment near that formatter documents
+the artifact. The authoritative signal is the renderer's own
+`[render] opening submission post-submit validation failed` console error: emitted in 3 of 3 control
+runs and 0 of 6 batched runs, with first-visible geometry and texture deltas of +6/+6 against 0/0.
 
 Load time fell by roughly 60%. Hitches fell too, so this is not the forbidden trade of a visible
 stall moved into an unresponsive loading shell — the shell got shorter *and* the frames after it got
