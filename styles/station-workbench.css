@@ -329,7 +329,7 @@
 /* Five rows at natural height overrun the 52vh list cap — raise it so the fifth row peeks and the
    thin scrollbar is the affordance for the rest (vision-review round 2). The panel's real ceiling
    is the size middleware's inline max-height in shipworks.js, not a stylesheet rule. */
-.sx-chooser__list { max-height:min(62vh,580px); scrollbar-width:thin; }
+.sx-chooser__list { max-height:min(62vh,580px); scrollbar-width:thin; scrollbar-color:rgba(100,224,239,.35) transparent; }
 /* A disabled verb must still read as a button, not vanish into the row (global button:disabled
    opacity .4 + the station surface left 'Dock to fit' near-invisible). */
 .sx-modrow__buy:disabled, .sx-chooser__unfit:disabled { opacity:.85; background:transparent; border:1px solid currentColor; color:var(--ink-mute, #84a0c8); box-shadow:none; }
@@ -393,7 +393,8 @@
 .sx-mkt-cursor circle { fill:#0c0e0f; stroke-width:2; vector-effect:non-scaling-stroke; }
 .sx-mkt-cursor text { fill:var(--ink-0); font:500 13px var(--sf-data-face); paint-order:stroke; stroke:#0c0e0f; stroke-width:4px; }
 .sx-mkt-brush { stroke-width:1; vector-effect:non-scaling-stroke; }
-.sx-mkt-brushreadout { position:absolute; left:8px; bottom:5px; max-width:75%; color:#777870; font:400 13px/1.2 var(--sf-data-face); }
+/* The chart's baseline drew straight through the overlay hint; the plate keeps it legible. */
+.sx-mkt-brushreadout { position:absolute; left:8px; bottom:5px; max-width:75%; padding:2px 7px; color:#8b8e88; font:400 13px/1.2 var(--sf-data-face); background:color-mix(in srgb, var(--bg) 74%, transparent); }
 .sx-mkt-stats { gap:0; padding-top:0; border-top:0; }
 .sx-mkt-stats .sx-stat { padding:9px 12px; border-right:1px solid #303230; }
 .sx-mkt-stats .sx-stat:last-child { border-right:0; }
@@ -506,17 +507,30 @@ button.sx-fab-in { cursor:pointer; }
 .sx-fac-pulse,
 .sx-fac-network { min-width:0; min-height:0; }
 .sx-fac-pulse {
-  display:grid; grid-template-columns:190px minmax(0,1fr); grid-template-rows:minmax(0,1fr) 122px;
+  /* The ident track needs a floor: at its 1fr minimum it crushed to ~25px and rendered the
+     jurisdiction list as a column of three-letter fragments ("cor/sec/jun/che/cu/sca"). */
+  display:grid; grid-template-columns:190px minmax(200px,1fr); grid-template-rows:minmax(0,1fr) 122px;
   align-items:center; padding:10px 16px 0; overflow:hidden;
 }
 .sx-fac-pulse::before { content:""; position:absolute; top:0; left:0; height:2px; }
 .sx-dial--compact { grid-column:1; grid-row:1; align-self:center; width:182px; height:182px; margin:0; }
 .sx-dial--compact .sx-dial-svg { width:182px; height:182px; }
-.sx-dial--compact .sx-dial-core { top:45%; }
+.sx-dial--compact .sx-dial-core {
+  top:45%;
+  /* Backing plate: the gauge arc painted straight through the "30 TO ACCEPTED" caption. */
+  z-index:1;
+  padding:3px 10px;
+  background:color-mix(in srgb, var(--sf-surface) 84%, transparent);
+  border-radius:2px;
+}
 .sx-dial--compact .sx-dial-tier { font-size:13px; }
 .sx-dial--compact .sx-dial-rep { font-size:25px; }
 .sx-dial--compact .sx-dial-next { max-width:116px; color:#797a74; font:500 13px/1.2 var(--sx-mono); letter-spacing:.05em; text-align:center; }
-.sx-fac-ident { grid-column:2; grid-row:1; min-width:0; padding:4px 12px 4px 4px; }
+.sx-fac-ident { grid-column:2; grid-row:1; min-width:0; padding:4px 12px 4px 4px;
+  /* The generic .sf-crest plate is a space-between ROW; inside the pulse it squeezed the
+     jurisdiction paragraph into a ~25px right-edge sliver clipped to three-letter fragments
+     ("cor/sec/jun/che/cu/sca"). The identity reads as a stack: flag, name, jurisdiction. */
+  flex-direction:column; align-items:stretch; gap:0; }
 .sx-fac-ident__flag { color:var(--sx-worklight); font:600 12px/1 var(--sx-mono); letter-spacing:var(--sf-track-micro); }
 .sx-fac-ident h2 { margin:8px 0 5px; color:var(--ink-0); font:600 clamp(22px,2vw,31px)/.95 var(--sx-display); letter-spacing:.035em; text-transform:uppercase; }
 .sx-fac-ident p { margin:0; max-width:36ch; color:#797a74; font:400 13px/1.35 var(--sx-ui); }
@@ -731,7 +745,9 @@ button.sx-fab-in { cursor:pointer; }
 .sx-choice:focus-visible { outline:2px solid var(--ink-0); outline-offset:2px; }
 
 .sx-bar__leads { grid-row:3; min-width:0; min-height:0; display:grid; grid-template-columns:1.05fr .85fr 1.35fr; gap:3px; padding:0; overflow:hidden; }
-.sx-bar__leads > .sx-panel { min-width:0; height:100%; display:grid; grid-template-columns:118px minmax(0,1fr); align-content:start; gap:4px 10px; padding:10px 12px; overflow:hidden; border:0; border-right:1px solid #303230; border-radius:0; background:transparent; }
+/* Short viewports collapse this row below its content; scroll the panels instead of silently
+   clipping lead rows mid-line. */
+.sx-bar__leads > .sx-panel { min-width:0; height:100%; display:grid; grid-template-columns:118px minmax(0,1fr); align-content:start; gap:4px 10px; padding:10px 12px; overflow:hidden; overflow-y:auto; border:0; border-right:1px solid #303230; border-radius:0; background:transparent; }
 .sx-bar__leads > .sx-panel:last-child { border-right:0; grid-template-columns:92px minmax(0,1fr); }
 .sx-bar__leads .sx-panel__head { grid-column:1; grid-row:1/6; align-self:start; margin:2px 0 0; color:#a8a59c; font-size:12px; letter-spacing:var(--sf-track-micro); }
 .sx-bar__leads .sx-panel__head .sx-ico { color:var(--sx-worklight); }
@@ -890,6 +906,9 @@ button.sx-fab-in { cursor:pointer; }
 /* MARKET — one manipulable data scope with physical trade and route instruments
    anchored directly over it. No permanent right-hand dashboard column. */
 .sx-mkt { position:relative; grid-template-columns:minmax(0,1fr); gap:2px; }
+/* The dockside notice anchors into the stage's reserved 88px bottom padding; as a grid item it
+   fell into an implicit third row past the fixed-height grid and painted over the stats row. */
+.sx-mkt > .sx-adboard { position:absolute; left:24px; right:24px; bottom:10px; z-index:2; }
 .sx-mkt__list { grid-column:1; }
 .sx-mkt__stage {
   grid-column:1;
@@ -1120,7 +1139,7 @@ button.sx-fab-in { cursor:pointer; }
 .sx-sw-flow { background:color-mix(in srgb, var(--sf-surface) 72%, transparent); border-left-color:rgba(94,209,224,.17); }
 .sx-sw-flow__beam { background:linear-gradient(90deg,var(--sx-cool),#9b79ed); box-shadow:0 0 9px rgba(85,217,239,.45); }
 .sx-sw-circuit__core { border-color:rgba(243,173,80,.33); background:rgba(30,24,16,.58); }
-.sx-chooser__panel { border-color:rgba(100,224,239,.34); border-left-color:var(--sx-cool); background:linear-gradient(150deg,#0c1c27,var(--sf-surface)); box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 34px rgba(85,217,239,.08); clip-path:none; }
+.sx-chooser__panel { border-color:rgba(100,224,239,.34); border-left-width:1px; border-left-color:rgba(100,224,239,.34); border-top:2px solid var(--sx-cool); background:linear-gradient(150deg,#0c1c27,var(--sf-surface)); box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 34px rgba(85,217,239,.08); clip-path:none; }
 .sx-chooser__kicker,.sx-chooser__panel .sx-modrow__ic { color:var(--sx-cool); }
 
 /* Market is a luminous analytical scope; only the transaction hardware remains warm and physical. */
@@ -1590,7 +1609,9 @@ button.sx-fab-in { cursor:pointer; }
     linear-gradient(90deg,transparent,rgba(84,211,229,.055) 22%,rgba(84,211,229,.055) 78%,transparent),
     linear-gradient(180deg,color-mix(in srgb, var(--sf-surface) 76%, transparent),color-mix(in srgb, var(--bg) 34%, transparent));
 }
-.sx-mkt-browser { height:100%; display:grid; grid-template-rows:31px 27px minmax(0,1fr); gap:3px; }
+/* Family pills wrap instead of scrolling off: a clipped "RESTRI…" read as a broken row. The
+   commodity rail below keeps its own scroll. */
+.sx-mkt-browser { height:100%; display:grid; grid-template-rows:31px auto minmax(0,1fr); gap:3px; }
 .sx-mkt-browser__tools { display:flex; align-items:center; justify-content:space-between; min-width:0; gap:24px; }
 .sx-mkt-browser__mode {
   display:flex; align-items:baseline; gap:10px;
@@ -1609,8 +1630,7 @@ button.sx-fab-in { cursor:pointer; }
   background:color-mix(in srgb, var(--sf-surface) 62%, transparent); color:#e1f3f4; font:500 13px/1 var(--sx-ui);
 }
 .sx-mkt-search input::placeholder { color:#49676b; }
-.sx-mkt-browser__filters { display:flex; align-items:center; gap:3px; min-width:0; overflow-x:auto; scrollbar-width:none; }
-.sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
+.sx-mkt-browser__filters { display:flex; flex-wrap:wrap; align-items:center; gap:3px 2px; min-width:0; }
 .sx-mkt-filter {
   position:relative; flex:0 0 auto; height:25px; padding:0 10px; border:0; border-radius:0;
   background:transparent; color:#668488; cursor:pointer;
@@ -1714,6 +1734,10 @@ button.sx-fab-in { cursor:pointer; }
 .sx-mkt__list .sx-mkt-row.is-active::after { height:2px; opacity:1; box-shadow:0 0 8px color-mix(in srgb,var(--family) 70%,transparent); }
 .sx-mkt__list .sx-mkt-row.is-active .sx-mkt-row__held { color:var(--family); }
 .sx-mkt-driver-ribbon {
+  /* flex:none: the chart below is flex:1 and would otherwise squeeze this ribbon below its
+     content height, clipping driver labels mid-line ("Trade Hub consumes Iron Ore" lost its
+     second line under the bottom border). The chart absorbs the squeeze instead. */
+  flex:none;
   max-width:calc(100% - 320px); min-height:44px; margin:3px 0 2px;
   display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
   border-top:1px solid rgba(99,205,220,.13); border-bottom:1px solid rgba(99,205,220,.10);
@@ -1884,8 +1908,12 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ind-process__head > span { display:grid; place-items:center; color:var(--sx-cool); }
 .sx-ind-process__head b { font:600 12px/1 var(--sx-ui); letter-spacing:var(--sf-track-micro); }
 .sx-ind-process__head i { color:#456b6f; font:500 13px/1 var(--sx-mono); font-style:normal; }
-.sx-ind-process__items { min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:40px; gap:3px; padding:2px 5px 3px; overflow-y:auto; scrollbar-width:none; }
-.sx-ind-process__items::-webkit-scrollbar { display:none; }
+.sx-ind-process__items { min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:40px; gap:3px; padding:2px 5px 3px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(91,198,211,.35) transparent; }
+/* The strip scrolls when a process lists more blueprints than its rows fit; a fully hidden
+   scrollbar made that undiscoverable (rows clipped mid-card with no cue). */
+.sx-ind-process__items::-webkit-scrollbar { display:block; width:6px; }
+.sx-ind-process__items::-webkit-scrollbar-thumb { background:rgba(91,198,211,.3); }
+.sx-ind-process__items::-webkit-scrollbar-track { background:transparent; }
 .sx-ind-row,
 .sx-ind-row:hover,
 .sx-ind-row:focus-visible,
