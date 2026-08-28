@@ -51,6 +51,59 @@ test('opening GPU admission compiles and touches one unique subject per yield', 
   assert.deepEqual(order, ['compile:a', 'touch:a', 'yield', 'compile:b', 'touch:b']);
 });
 
+test('a readiness batch issues every compile before the drain, and every touch after it', async () => {
+  // `renderer.compile()` under KHR_parallel_shader_compile only STARTS the driver link, so the
+  // cohort must reach the driver before the first wait. Two orderings are load-bearing here:
+  // no compile may wait on the one before it (that is the 25.8 s serialization this removes), and
+  // no touch may run before the drain (a draw against an unlinked program pays the same stall).
+  const order = [];
+  const a = { id: 'a', material: { uuid: 'ma' }, geometry: { uuid: 'ga' } };
+  const b = { id: 'b', material: { uuid: 'mb' }, geometry: { uuid: 'gb' } };
+  let drained = false;
+  const result = await admitOpeningUnitsAcrossSlices({
+    subjects: [a, b],
+    beginReadinessBatch: () => ({
+      async drain() { order.push('drain'); drained = true; return { contextLost: false }; },
+      close() { order.push('close'); },
+    }),
+    compileOne: (subject) => {
+      order.push(`compile:${subject.id}`);
+      return Promise.resolve(`compiled:${subject.id}`);
+    },
+    touchOne: (subject) => {
+      assert.equal(drained, true, `touch:${subject.id} ran before the batch drained`);
+      order.push(`touch:${subject.id}`);
+    },
+    yieldToMain: async () => { order.push('yield'); },
+  });
+  assert.equal(result.subjects, 2);
+  assert.equal(result.batched, true);
+  assert.deepEqual(order, [
+    'compile:a', 'yield', 'compile:b',
+    'drain', 'close',
+    'touch:a', 'yield', 'touch:b',
+  ]);
+  assert.deepEqual(result.results.map((entry) => entry.compiled), ['compiled:a', 'compiled:b']);
+});
+
+test('a batch that throws mid-issue still closes, so no compile is left suspended', async () => {
+  const order = [];
+  const a = { id: 'a', material: { uuid: 'ma' }, geometry: { uuid: 'ga' } };
+  await assert.rejects(
+    admitOpeningUnitsAcrossSlices({
+      subjects: [a],
+      beginReadinessBatch: () => ({
+        async drain() { throw new Error('drain failed'); },
+        close() { order.push('close'); },
+      }),
+      compileOne: () => Promise.resolve(null),
+      touchOne: () => { order.push('touch'); },
+    }),
+    /drain failed/,
+  );
+  assert.deepEqual(order, ['close'], 'close must run even when the drain throws');
+});
+
 test('exact-target touch hides other drawables and restores them', () => {
   const scene = new THREE.Scene();
   const keep = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());

@@ -272,6 +272,113 @@ export async function compileScenePipelinesForRenderTarget(
  * for real WebGLRenderer instances, but own the timer so context loss can retire it immediately.
  * Lightweight render/test adapters keep using compileAsync() directly.
  */
+/**
+ * Shared shader-readiness batch.
+ *
+ * `renderer.compile()` under KHR_parallel_shader_compile only *starts* the driver link; the wait is
+ * the poll on `program.isReady()`. Admitting one unit at a time therefore serializes waits that the
+ * driver is perfectly willing to overlap. Measured on this project's Intel/ANGLE D3D11 baseline:
+ * 238 opening admissions spent 0.12 s inside `renderer.compile()` and 25.8 s waiting, one program
+ * at a time, with 31 units carrying 23.9 s of it.
+ *
+ * While a batch is open, `compilePipelinesContextSafe` hands its programs to the batch and suspends
+ * instead of running its own timer. `drain()` polls the whole cohort once and settles every waiter
+ * together, so the cohort costs roughly the slowest link rather than the sum of all of them. The
+ * programs compiled, their cache keys, and the resulting picture are identical either way — only
+ * the waiting is pooled.
+ *
+ * A caller that joins an open batch is still settled only after ITS programs are linked, because
+ * `drain()` waits for every registered program before settling anyone. Early resolution is not
+ * possible, so an unrelated compile that lands mid-batch is slowed, never made unsafe.
+ */
+let pipelineReadinessBatch = null;
+
+export function beginScenePipelineReadinessBatch(renderer = null) {
+  if (pipelineReadinessBatch) {
+    pipelineReadinessBatch.depth += 1;
+    return pipelineReadinessBatch.handle;
+  }
+  const batch = {
+    depth: 1,
+    accepting: true,
+    programs: new Set(),
+    waiters: [],
+    gl: null,
+    renderer: renderer || null,
+    entryTarget: renderer && typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null,
+    handle: null,
+  };
+  const settleAll = (result) => {
+    const waiters = batch.waiters.splice(0);
+    for (const waiter of waiters) {
+      try { waiter(result); } catch (_) { /* a waiter's own cleanup must not strand the rest */ }
+    }
+    // Every joined call restores the render target it captured on entry, and those captures nest
+    // while the cohort is suspended. Re-assert the target the batch opened with so the renderer is
+    // left exactly where it started regardless of settle order.
+    if (batch.renderer && typeof batch.renderer.setRenderTarget === 'function') {
+      batch.renderer.setRenderTarget(batch.entryTarget || null);
+    }
+  };
+  batch.handle = {
+    join(gl, programs, settle) {
+      if (!batch.accepting) return false;
+      if (gl && !batch.gl) batch.gl = gl;
+      for (const program of programs) batch.programs.add(program);
+      batch.waiters.push(settle);
+      return true;
+    },
+    async drain(options = {}) {
+      batch.accepting = false;
+      const gl = batch.gl;
+      const timeoutMs = Number.isFinite(Number(options.timeoutMs)) ? Number(options.timeoutMs) : 20000;
+      const now = () => ((typeof performance !== 'undefined' && performance.now)
+        ? performance.now() : Date.now());
+      const started = now();
+      while (batch.programs.size > 0) {
+        if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+          settleAll({ contextLost: true, reason: 'WebGL context lost during shader compilation' });
+          return { contextLost: true, programs: 0 };
+        }
+        for (const program of batch.programs) {
+          // Same guard the single-unit path carries: after a restore an old-context WebGLProgram is
+          // not a valid query target even though its JS wrapper still exists.
+          if (!program.program
+            || (gl && typeof gl.isProgram === 'function' && !gl.isProgram(program.program))) {
+            settleAll({
+              contextLost: true,
+              reason: 'WebGL program invalidated during shader compilation',
+            });
+            return { contextLost: true, programs: 0 };
+          }
+          if (program.isReady()) batch.programs.delete(program);
+        }
+        if (batch.programs.size === 0) break;
+        if (now() - started > timeoutMs) break;
+        await new Promise((resolve) => { setTimeout(resolve, 4); });
+      }
+      const remaining = batch.programs.size;
+      batch.programs.clear();
+      settleAll({ contextLost: false });
+      return { contextLost: false, programs: remaining };
+    },
+    close() {
+      batch.depth -= 1;
+      if (batch.depth > 0) return;
+      batch.accepting = false;
+      batch.programs.clear();
+      // A throw between open and drain must never strand a suspended compile: the startup gate
+      // would simply time out twenty seconds later with no attribution.
+      settleAll({ contextLost: false });
+      if (pipelineReadinessBatch === batch) pipelineReadinessBatch = null;
+    },
+  };
+  pipelineReadinessBatch = batch;
+  return batch.handle;
+}
+
 function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
   const canvas = renderer && renderer.domElement;
   const canOwnReadiness = typeof renderer.compile === 'function'
@@ -319,6 +426,10 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
       return;
     }
 
+    // Measured on this project's Intel/ANGLE D3D11 baseline: the extension IS present here, and
+    // renderer.compile() above returns in ~0.4 ms because it only STARTS the driver link. The
+    // seconds live in the readiness wait below, which is why pooling that wait across a cohort
+    // (beginScenePipelineReadinessBatch) is worth 15 s of loading.
     const parallelCompile = renderer.extensions.get('KHR_parallel_shader_compile');
     if (!parallelCompile || !materials || materials.size === 0) {
       finish({ contextLost: false });
@@ -333,6 +444,11 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
     }
     if (programs.size === 0) {
       finish({ contextLost: false });
+      return;
+    }
+
+    if (pipelineReadinessBatch && pipelineReadinessBatch.accepting
+      && pipelineReadinessBatch.handle.join(gl, programs, finish)) {
       return;
     }
 

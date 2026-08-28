@@ -1,10 +1,17 @@
 // Finite opening GPU admission.
 //
 // The first-picture census used to collapse many live materials onto a handful of family
-// `customProgramCacheKey` strings, then compile those leaves without a real draw. On Intel/ANGLE
-// without KHR_parallel_shader_compile, link and bufferData still happen in the first bloomScene.
-// This module admits unique materials and geometries one unit at a time against the live target,
-// yielding between units so neither cost lands in one presented scene pass.
+// `customProgramCacheKey` strings, then compile those leaves without a real draw. Without a real
+// draw, link and bufferData still happen in the first bloomScene. This module admits unique
+// materials and geometries against the live target, yielding between units so neither cost lands
+// in one presented scene pass.
+//
+// Do not read the older "on Intel/ANGLE without KHR_parallel_shader_compile" framing as this
+// baseline's condition: measured 2026-08-28, that extension IS present on the project's
+// Intel/ANGLE D3D11 target. It is exactly why one-unit-at-a-time admission was expensive —
+// `renderer.compile()` returns in microseconds because it only STARTS the link, so waiting per
+// unit serialized 25.8 s of driver work the GPU would have overlapped. Pass
+// `beginReadinessBatch` to pool that wait. See design/perf/OPENING-COMPILE-BATCH-2026-08-28.md.
 
 import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
 
@@ -300,17 +307,63 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     seen.add(subject);
     ordered.push(subject);
   }
-  const results = await compileSubjectsAcrossPresents(
-    ordered,
-    async (subject) => {
-      const compiled = compileOne ? await compileOne(subject) : null;
-      const touched = touchOne ? touchOne(subject) : null;
-      return { compiled, touched };
-    },
-    yieldToMain,
-    { budgetMs: 0 },
-  );
+  // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
+  // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
+  // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the
+  // driver link — so admitting units one at a time serializes waits the driver would gladly
+  // overlap. Touches must still follow the drain: a draw against an unlinked program pays the same
+  // stall this is removing. Same units, same programs, same picture; only the waiting is pooled.
+  const beginBatch = typeof options.beginReadinessBatch === 'function'
+    ? options.beginReadinessBatch
+    : null;
+  if (!beginBatch) {
+    const results = await compileSubjectsAcrossPresents(
+      ordered,
+      async (subject) => {
+        const compiled = compileOne ? await compileOne(subject) : null;
+        const touched = touchOne ? touchOne(subject) : null;
+        return { compiled, touched };
+      },
+      yieldToMain,
+      { budgetMs: 0 },
+    );
+    return {
+      skipped: ordered.length === 0,
+      subjects: ordered.length,
+      materials: Number(units.materialCount) || (units.programSubjects || []).length,
+      geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+      results,
+    };
+  }
+
+  const batch = beginBatch();
+  let compiled = [];
+  let drained = null;
+  try {
+    // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
+    // executor and then suspends on the batch, so the whole cohort reaches the driver before the
+    // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
+    const issued = [];
+    for (let index = 0; index < ordered.length; index++) {
+      issued.push(compileOne ? compileOne(ordered[index]) : null);
+      if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+    }
+    drained = await batch.drain();
+    compiled = await Promise.all(issued);
+  } finally {
+    batch.close();
+  }
+  const results = [];
+  for (let index = 0; index < ordered.length; index++) {
+    results.push({
+      compiled: compiled[index] ?? null,
+      touched: touchOne ? touchOne(ordered[index]) : null,
+    });
+    if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+  }
   return {
+    batched: true,
+    contextLost: drained ? drained.contextLost === true : false,
     skipped: ordered.length === 0,
     subjects: ordered.length,
     materials: Number(units.materialCount) || (units.programSubjects || []).length,

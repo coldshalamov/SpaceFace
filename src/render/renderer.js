@@ -16,6 +16,7 @@ import {
 import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
+  beginScenePipelineReadinessBatch,
   createBloom,
   compileScenePipelinesForRenderTarget,
   DEFAULT_BLOOM_STRENGTH,
@@ -2992,6 +2993,7 @@ export const render = {
         const route = this._selectPostRoute();
         await admitOpeningUnitsAcrossSlices({
           units: uniqueAdmissionUnits(leaves),
+          beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: (subject) => Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)),
           touchOne: (subject) => (
             this.bloom && typeof this.bloom.touchScenePipelines === 'function'
@@ -3730,6 +3732,7 @@ export const render = {
       const result = subjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
+          beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
           touchOne: touchExactTargetSubject,
           yieldToMain: yieldToBrowser,
@@ -3878,6 +3881,7 @@ export const render = {
           const route = this._selectPostRoute();
           lateColor = await admitOpeningUnitsAcrossSlices({
             units: uniqueAdmissionUnits(lateCompileRoots.flatMap((root) => collectCompileSubjects(root))),
+            beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
             compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
             touchOne: touchExactTargetSubject,
             yieldToMain: yieldToBrowser,
