@@ -33,6 +33,17 @@ export const ROVER_HOOKS = Object.freeze([
   'scar_plate',
 ]);
 
+export const CARGO_PORT_HOOKS = Object.freeze([
+  'crate_0',
+  'crate_1',
+  'crate_2',
+  'crate_3',
+  'crate_4',
+  'cradle',
+  'pod_root',
+  'pod_thruster',
+]);
+
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
 function conduitPart(family, kind) {
@@ -106,6 +117,13 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: ROVER_HOOKS,
   }),
+  cargo_port: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_cargo_port.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: CARGO_PORT_HOOKS,
+    siteNodeLod: 'lod2',
+  }),
   place_works_conduit_power_straight: conduitPart('power', 'straight'),
   place_works_conduit_power_corner: conduitPart('power', 'corner'),
   place_works_conduit_power_t: conduitPart('power', 't'),
@@ -125,8 +143,11 @@ function selectUrl(entry, register) {
   return entry.lod0;
 }
 
-function resolveNodeLod(tagsPresent, register) {
+function resolveNodeLod(tagsPresent, register, preferredSiteLod = 'lod1') {
   if (register === 'site') {
+    for (let i = 0; i < tagsPresent.length; i++) {
+      if (tagsPresent[i] === preferredSiteLod) return preferredSiteLod;
+    }
     for (let i = 0; i < tagsPresent.length; i++) {
       if (tagsPresent[i] === 'lod1') return 'lod1';
     }
@@ -136,7 +157,7 @@ function resolveNodeLod(tagsPresent, register) {
 
 function applyLodVisibility(group, register) {
   const tags = group.userData.worksLodTags || [];
-  const want = resolveNodeLod(tags, register);
+  const want = resolveNodeLod(tags, register, group.userData.worksSiteNodeLod || 'lod1');
   group.userData.worksNodeLod = want;
   group.traverse((obj) => {
     if (!obj.isMesh) return;
@@ -187,7 +208,7 @@ function disposeRendererBoundResource(resource) {
   else resource.dispose();
 }
 
-function instantiateBlueprint(blueprint, hookNames) {
+function instantiateBlueprint(blueprint, hookNames, entry) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
   root.userData.worksClone = true;
@@ -220,6 +241,7 @@ function instantiateBlueprint(blueprint, hookNames) {
   root.userData.worksLodTags = tagsPresent;
   root.userData.worksUntaggedMeshes = untagged;
   root.userData.worksGpuResources = [...gpuResources];
+  root.userData.worksSiteNodeLod = entry && entry.siteNodeLod ? entry.siteNodeLod : 'lod1';
 
   for (const marker of blueprint.markers || []) {
     const node = new THREE.Object3D();
@@ -284,6 +306,9 @@ function bindWorksHookHierarchy(root, hooks) {
   const boom = hooks.boom_pivot;
   const bit = hooks[CUTTER_SOCKET];
   if (bit && boom) reparentKeepWorld(bit, boom);
+  const podRoot = hooks.pod_root;
+  const podThruster = hooks.pod_thruster;
+  if (podThruster && podRoot) reparentKeepWorld(podThruster, podRoot);
   const cutters = [];
   for (let i = 0; i < meshes.length; i++) {
     const mesh = meshes[i];
@@ -293,6 +318,10 @@ function bindWorksHookHierarchy(root, hooks) {
       // to boom_pivot swings with the boom but can never turn on its own axis.
       reparentKeepWorld(mesh, bit || boom || root);
       cutters.push(mesh);
+      continue;
+    }
+    if (stem === 'pod') {
+      reparentKeepWorld(mesh, podRoot || root);
       continue;
     }
     if (hooks[stem]) {
@@ -443,7 +472,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     if (blueprint.assetId && hookNames.indexOf(blueprint.assetId) < 0) {
       hookNames.push(blueprint.assetId);
     }
-    const group = instantiateBlueprint(blueprint, hookNames);
+    const group = instantiateBlueprint(blueprint, hookNames, entry);
     applyLodVisibility(group, requestedRegister);
     group.userData.worksPartId = id;
     group.userData.worksUrl = url;

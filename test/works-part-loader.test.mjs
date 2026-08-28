@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import {
+  CARGO_PORT_HOOKS,
   createWorksPartLoader,
   resolveWorksConduitPiece,
   WORKS_PARTS,
@@ -30,6 +31,15 @@ test('conduit registry names every released family and fitting', () => {
       assert.deepEqual(row.hooks, [family === 'power' ? 'powered' : 'flow_mesh']);
     }
   }
+});
+
+test('cargo registry names the released port, dynamic hooks and site LOD2 contract', () => {
+  assert.equal(
+    WORKS_PARTS.cargo_port.lod0,
+    'assets/ships/release/parts/works/place_works_cargo_port.glb',
+  );
+  assert.deepEqual(WORKS_PARTS.cargo_port.hooks, CARGO_PORT_HOOKS);
+  assert.equal(WORKS_PARTS.cargo_port.siteNodeLod, 'lod2');
 });
 
 test('every nonzero N/E/S/W mask selects exact canonical ports and rotation', () => {
@@ -249,6 +259,44 @@ function makeBlueprint() {
   };
 }
 
+function makeCargoBlueprint() {
+  const material = new THREE.MeshStandardMaterial();
+  const identity = new THREE.Matrix4();
+  const at = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
+  const primitives = [];
+  const resources = { material };
+  for (const lod of [0, 1, 2]) {
+    for (const stem of ['Body', 'pod', 'pod_thruster', 'crate_0']) {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      installResidencyShield(geometry);
+      resources[`lod${lod}${stem}`] = geometry;
+      primitives.push({
+        name: `LOD${lod}_${stem}`,
+        geometry,
+        material,
+        matrix: identity.clone(),
+        tags: { lod: `lod${lod}` },
+      });
+    }
+  }
+  installResidencyShield(material);
+  return {
+    assetId: 'place_works_cargo_port',
+    primitives,
+    markers: [
+      { name: 'crate_0', matrix: at(-0.4, 0, 0) },
+      { name: 'crate_1', matrix: at(-0.2, 0, 0) },
+      { name: 'crate_2', matrix: identity.clone() },
+      { name: 'crate_3', matrix: at(0.2, 0, 0) },
+      { name: 'crate_4', matrix: at(0.4, 0, 0) },
+      { name: 'cradle', matrix: identity.clone() },
+      { name: 'pod_root', matrix: at(0, 0.1, 0) },
+      { name: 'pod_thruster', matrix: at(0, 0.1, -0.2) },
+    ],
+    resources,
+  };
+}
+
 function meshVisibility(group) {
   const rows = {};
   group.traverse((obj) => {
@@ -380,5 +428,54 @@ test('loadWorksPart returns LOD-aware hooks and dispose restores renderer.info b
   const closed = await loader.loadWorksPart(FIXTURE_ID);
   assert.equal(closed, null, 'load after dispose is a no-op');
 
+  renderer.dispose();
+});
+
+test('cargo instances are distinct, preserve pod hierarchy, use site LOD2 and release idempotently', async () => {
+  const renderer = createMockRenderer();
+  const blueprint = makeCargoBlueprint();
+  let loads = 0;
+  let leaseReleases = 0;
+  const lease = {
+    isActive: () => true,
+    async load(url) {
+      loads += 1;
+      assert.equal(url, WORKS_PARTS.cargo_port.lod0);
+      return blueprint;
+    },
+    release() { leaseReleases += 1; },
+  };
+  const loader = createWorksPartLoader({ renderer, lease });
+
+  const first = await loader.loadWorksPart('cargo_port');
+  const second = await loader.loadWorksPart('cargo_port');
+  assert.notEqual(first, second, 'installed ports require independent live groups');
+  assert.equal(loads, 2, 'cargo must not use the rover standing-instance cache');
+
+  const hooks = first.userData.worksHooks;
+  assert.equal(hooks.pod_thruster.parent, hooks.pod_root, 'thruster marker follows pod_root');
+  const nodes = {};
+  first.traverse((node) => { if (node.name) nodes[node.name] = node; });
+  for (const lod of [0, 1, 2]) {
+    assert.equal(nodes[`LOD${lod}_pod`].parent, hooks.pod_root, `LOD${lod} pod follows pod_root`);
+    assert.equal(
+      nodes[`LOD${lod}_pod_thruster`].parent,
+      hooks.pod_thruster,
+      `LOD${lod} thruster mesh follows nested thruster hook`,
+    );
+    assert.equal(nodes[`LOD${lod}_crate_0`].parent, hooks.crate_0, `LOD${lod} freight follows crate hook`);
+  }
+
+  loader.setRegister('site');
+  assert.equal(first.userData.worksNodeLod, 'lod2');
+  assert.equal(nodes.LOD0_Body.visible, false);
+  assert.equal(nodes.LOD1_Body.visible, false);
+  assert.equal(nodes.LOD2_Body.visible, true);
+
+  assert.equal(loader.releaseWorksPart(first), true);
+  assert.equal(loader.releaseWorksPart(first), false, 'double release is an idempotent no-op');
+  loader.dispose('cargo-test-exit');
+  assert.equal(leaseReleases, 1);
+  assert.equal(loader.stats().live, 0);
   renderer.dispose();
 });
