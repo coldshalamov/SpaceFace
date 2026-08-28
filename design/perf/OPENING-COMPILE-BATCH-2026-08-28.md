@@ -58,13 +58,22 @@ under the same cache keys against the same target, and the same touches run. Onl
 pooled. No resolution, effect, population, or asset fidelity is traded — the rejected-shortcuts list
 in the convergence plan is untouched.
 
-### Two safety properties worth keeping
+### Three safety properties worth keeping
 
 - **A joiner cannot be released early.** `drain()` settles nobody until every registered program has
   linked, so an unrelated compile that lands mid-cohort is slowed, never made unsafe. Once `drain()`
   starts, `join()` refuses new arrivals and they run their own wait.
 - **`close()` always settles.** A throw between open and drain would otherwise strand suspended
   compiles and the startup gate would simply time out twenty seconds later with no attribution.
+- **The entry render target is re-asserted after the waiters unwind, not during settle.** This one
+  was got wrong first and is worth spelling out. `compileScenePipelinesForRenderTarget` captures the
+  bound target, sets its compile target, and restores the capture in a `finally`. While a cohort is
+  suspended those captures nest — call *k* captured what call *k−1* had just set — so their
+  unwinding leaves the renderer on a compile target rather than where it started. Crucially, settle
+  only *resolves* each compile; every `finally` runs a microtask later. A restore performed inside
+  `settleAll` is therefore ordered *before* all of them and is simply overwritten. The fix is
+  `restoreEntryTarget()`, called once `await Promise.allSettled(issued)` proves every `finally` has
+  run. A test that models the waiter synchronously cannot see any of this and will pass either way.
 
 ## Result
 
@@ -115,7 +124,14 @@ the two routes do not share the cost structure this change addresses.
 ## Coverage
 
 - `test/scene-pipeline-readiness-batch.test.mjs` — cohort settles only after the whole cohort links;
-  late joiners are refused; `close()` cannot strand a waiter; the entry render target is re-asserted
-  whatever order waiters unwind in; nested opens share one cohort.
+  late joiners are refused; `close()` cannot strand a waiter; the entry render target survives the
+  waiters unwinding a microtask later (the waiter is modelled asynchronously on purpose — a
+  synchronous stand-in passes against the broken ordering); nested opens share one cohort.
 - `test/opening-gpu-admission.test.mjs` — batched ordering (no compile waits on the previous one, no
   touch precedes the drain) and close-on-throw. The unbatched interleaved order is still asserted.
+
+Every test in the tree that references `renderer.js`, `bloom.js`, or `openingGpuAdmission.js` was
+run before and after: 331 tests, 326 pass, the same 5 failures on both sides. Those five
+(`gpu-timer-attribution`, `planar-additive-policy`, `render-target-pipeline-warmup`,
+`ship-aux-dirty-ranges`, `tabletop-policy`) are pre-existing and were verified red at the parent
+commit. Do not attribute them here.

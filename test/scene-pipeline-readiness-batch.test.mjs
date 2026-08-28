@@ -61,24 +61,37 @@ test('close settles anyone still suspended so a throw cannot strand the startup 
   assert.equal(settled.length, 1, 'close must settle suspended compiles rather than hang them');
 });
 
-test('the batch restores the render target it opened with, whatever order waiters unwind in', async () => {
+test('the entry render target survives the waiters unwinding a microtask later', async () => {
+  // The real waiter is `finish`, which only RESOLVES the suspended compile. The continuation that
+  // restores that call's captured target runs in a later microtask, and each call captured what the
+  // one before it had set — so a restore performed inside settleAll would be ordered first and lose.
   const entry = { name: 'entry-target' };
-  const targets = [];
+  const compileTarget = { name: 'compile-target' };
+  let current = entry;
   const renderer = {
-    getRenderTarget: () => entry,
-    setRenderTarget: (t) => { targets.push(t); },
+    getRenderTarget: () => current,
+    setRenderTarget: (t) => { current = t; },
   };
   const batch = beginScenePipelineReadinessBatch(renderer);
+  const issued = [];
   try {
-    // Two joined calls each captured a different "previous" target while suspended; their own
-    // restores would otherwise leave the renderer pointed at a compile target.
-    batch.join(liveGl, [fakeProgram('a', 0)], () => renderer.setRenderTarget({ name: 'stale-a' }));
-    batch.join(liveGl, [fakeProgram('b', 0)], () => renderer.setRenderTarget({ name: 'stale-b' }));
+    for (let i = 0; i < 3; i++) {
+      // Mirror compileScenePipelinesForRenderTarget: capture, set the compile target, then restore
+      // in a finally that runs only once the batch settles this call.
+      const captured = renderer.getRenderTarget();
+      renderer.setRenderTarget(compileTarget);
+      issued.push(new Promise((resolve) => {
+        batch.join(liveGl, [fakeProgram(`p${i}`, 0)], resolve);
+      }).finally(() => { renderer.setRenderTarget(captured); }));
+    }
     await batch.drain();
+    await Promise.all(issued);
   } finally {
     batch.close();
+    await Promise.allSettled(issued);
+    batch.restoreEntryTarget();
   }
-  assert.equal(targets[targets.length - 1], entry, 'the entry target is re-asserted last');
+  assert.equal(current, entry, 'the renderer must be left exactly where the batch found it');
 });
 
 test('nested opens share one cohort and only the outermost close retires it', async () => {

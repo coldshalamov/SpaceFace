@@ -315,12 +315,6 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
     for (const waiter of waiters) {
       try { waiter(result); } catch (_) { /* a waiter's own cleanup must not strand the rest */ }
     }
-    // Every joined call restores the render target it captured on entry, and those captures nest
-    // while the cohort is suspended. Re-assert the target the batch opened with so the renderer is
-    // left exactly where it started regardless of settle order.
-    if (batch.renderer && typeof batch.renderer.setRenderTarget === 'function') {
-      batch.renderer.setRenderTarget(batch.entryTarget || null);
-    }
   };
   batch.handle = {
     join(gl, programs, settle) {
@@ -363,6 +357,18 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       batch.programs.clear();
       settleAll({ contextLost: false });
       return { contextLost: false, programs: remaining };
+    },
+    /**
+     * Every joined call captured a render target on entry and restores it in a `finally` that runs
+     * in a microtask AFTER settle — and those captures nest, so call k captured what call k-1 had
+     * just set. Their unwinding therefore leaves the renderer on a compile target, and re-asserting
+     * inside settleAll would be ordered before them and lose. The caller must invoke this once its
+     * issued promises have all settled, which is the first moment every `finally` has run.
+     */
+    restoreEntryTarget() {
+      if (!batch.renderer || typeof batch.renderer.setRenderTarget !== 'function') return false;
+      batch.renderer.setRenderTarget(batch.entryTarget || null);
+      return true;
     },
     close() {
       batch.depth -= 1;

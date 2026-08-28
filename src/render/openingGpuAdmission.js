@@ -337,13 +337,13 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   }
 
   const batch = beginBatch();
+  const issued = [];
   let compiled = [];
   let drained = null;
   try {
     // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
     // executor and then suspends on the batch, so the whole cohort reaches the driver before the
     // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
-    const issued = [];
     for (let index = 0; index < ordered.length; index++) {
       issued.push(compileOne ? compileOne(ordered[index]) : null);
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
@@ -352,6 +352,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     compiled = await Promise.all(issued);
   } finally {
     batch.close();
+    // Settling only RESOLVES each suspended compile; the `finally` that restores its captured
+    // render target runs a microtask later, and those captures nest into one another. Wait for
+    // every one of them to unwind, then put the renderer back where the batch found it.
+    await Promise.allSettled(issued);
+    if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
   }
   const results = [];
   for (let index = 0; index < ordered.length; index++) {
