@@ -3553,7 +3553,9 @@ html.sf-dyslexia #sf-galaxymap {
 /* ---- Nav rows in the Overview tab ----------------------------------------------------------- */
 #sf-galaxymap .gm-nav-row {
   display: grid;
-  grid-template-columns: 78px 1fr;
+  /* Content-sized label track: "DESTINATION" at the 12px tracked stamp overflows a fixed 78px
+     column and painted straight through the value cell. */
+  grid-template-columns: auto 1fr;
   gap: 2px 9px;
   padding: 5px 0;
   border-top: 1px solid var(--mf-line-1);
