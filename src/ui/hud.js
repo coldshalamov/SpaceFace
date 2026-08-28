@@ -20,6 +20,7 @@ import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
+import { icon } from './station/icons.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -724,9 +725,11 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   CHARGE: 'Close or break LOS',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
-  FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔',
-  TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠',
-  CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔',
+  // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
+  // to color emoji on platforms that ship an emoji font; the palette's own icons are pre-fixed.
+  FLYBY: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
 const TELL_POOL_SIZE = 3;
 const DEFAULT_TELEGRAPH_TICKS = 30;
@@ -2339,9 +2342,11 @@ export function createHud(ctx, alerts) {
     -webkit-box-orient: vertical;
   }
   .sf-cargo-lock-icon {
-    font-size: 12px;
+    display: flex;
+    align-items: center;
     color: var(--warn);
   }
+  .sf-cargo-lock-icon svg { display: block; }
   .sf-cargo-block-bottom {
     display: flex;
     flex-direction: column;
@@ -3077,7 +3082,7 @@ export function createHud(ctx, alerts) {
       block.innerHTML = `
         <div class="sf-cargo-block-top">
           <span class="sf-cargo-block-name">${name}</span>
-          ${isLocked ? '<span class="sf-cargo-lock-icon">🔒</span>' : ''}
+          ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
         </div>
         <div class="sf-cargo-block-bottom">
           <span class="sf-cargo-block-qty">${qty} units</span>
@@ -3563,7 +3568,8 @@ export function createHud(ctx, alerts) {
     const role = (e.role || (def && def.role) || '').toLowerCase();
     
     if (family === 'scout' || role.includes('scout') || role.includes('starter')) return '⌃';
-    if (family === 'fighter' || role.includes('fighter')) return '⚔';
+    // ⚔ defaults to color emoji on emoji-font platforms; \uFE0E keeps the roster monochrome.
+    if (family === 'fighter' || role.includes('fighter')) return '⚔\uFE0E';
     if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return '⛃';
     if (family === 'miner' || role.includes('miner')) return '⛏';
     if (family === 'frigate' || role.includes('frigate')) return '▲';
@@ -3571,7 +3577,7 @@ export function createHud(ctx, alerts) {
     if (role.includes('gunship')) return '⎔';
     
     const sClass = (e.shipClass || '').toLowerCase();
-    if (sClass === 'fighter') return '⚔';
+    if (sClass === 'fighter') return '⚔\uFE0E';
     if (sClass === 'gunship') return '⎔';
     if (sClass === 'frigate') return '▲';
     if (sClass === 'capital') return '⚹';

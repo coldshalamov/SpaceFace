@@ -11,6 +11,7 @@ import {
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
+import { icon } from '../station/icons.js';
 import { BINDINGS } from '../bindings.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
 
@@ -77,6 +78,8 @@ function injectStyle() {
   color:var(--ink-dim); font-family:var(--mono); }
 #sf-base .base-foot { display:flex; gap:10px; justify-content:flex-end; }
 #sf-base button.sf-btn { width:auto; padding:8px 18px; }
+#sf-base .sf-btn-ico { display:inline-flex; align-items:center; margin-right:7px; vertical-align:-2px; }
+#sf-base .sf-btn-ico svg { display:block; }
 #sf-base button.sf-btn--primary { background:linear-gradient(180deg,#ffc064,#db9838);
   border-color:#6b4a26; color:#1c1206; }
 /* Build buttons set an inline width:100%/padding:6px, which the fascia's left index notch would
@@ -597,7 +600,12 @@ export const baseScreen = {
       tp.className = 'sf-btn sf-btn--primary';
       tp.style.width = 'auto';
       tp.style.alignSelf = 'flex-start';
-      tp.textContent = '⚡ Teleport to ' + (claims._stationName ? claims._stationName(body.linkedStationId) : 'linked station');
+      // Drawn bolt from the shared icon set instead of the ⚡ emoji, which renders as a color
+      // emoji glyph on emoji-font platforms and clashes with the menu button material.
+      tp.innerHTML = '<span class="sf-btn-ico">' + icon('energy', 14) + '</span>';
+      tp.appendChild(document.createTextNode(
+        'Teleport to ' + (claims._stationName ? claims._stationName(body.linkedStationId) : 'linked station')
+      ));
       tp.addEventListener('click', () => {
         claims.teleportFrom(body.id);
         if (ctx.screenManager) ctx.screenManager.popScreen();

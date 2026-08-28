@@ -152,7 +152,9 @@ export const SEMANTIC_PALETTE = {
   boost:    { color: '#c98cff', cssVar: '--sf-cargo',    shape: 'bar',      icon: '»', glyph: 'boost',       label: 'Boost' },
 
   // --- alert severities (color-coded strips; icon makes them non-color-only) ---
-  warning:  { color: '#ffb347', cssVar: '--sf-warn',     shape: 'tri-bang', icon: '⚠', glyph: 'warning',     label: 'Warning' },
+  // ⚠ carries \uFE0E (text presentation): it defaults to color emoji on emoji-font platforms,
+  // which would break the monochrome text channel this palette feeds.
+  warning:  { color: '#ffb347', cssVar: '--sf-warn',     shape: 'tri-bang', icon: '⚠\uFE0E', glyph: 'warning',     label: 'Warning' },
   danger:   { color: '#ff5470', cssVar: '--sf-danger',   shape: 'octagon',  icon: '⊘', glyph: 'danger',      label: 'Danger' },
 };
 

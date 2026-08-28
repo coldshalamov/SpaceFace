@@ -40,6 +40,10 @@ const RAW = {
   // Dismiss. The set previously had no close glyph, so panels reached for `undock` — a launch
   // arrow — and every chooser shipped with an up-arrow where its close button should be.
   close: `<path ${P} d="M7 7l10 10M17 7 7 17"/>`,
+  // Locked hold. Marks cargo the player cannot sell (active-contract or story cargo) in the HUD
+  // hold; replaces the 🔒 emoji, which rendered in a different visual language from every other
+  // HUD mark and left the restriction unexplained.
+  lock: `<rect x="5.5" y="10.5" width="13" height="9" rx="1.8" ${P}/><path ${P} d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><path ${P} d="M12 14v2.4" opacity="0.85"/>`,
   spark: `<path ${P} d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M18 6l-2.5 2.5M6 18l2.5-2.5M18 18l-2.5-2.5" opacity="0.9"/>`,
   target: `<circle cx="12" cy="12" r="7.5" ${P}/><circle cx="12" cy="12" r="2.4" ${P}/><path ${P} d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>`,
   route: `<circle cx="5.5" cy="17.5" r="2.1" ${P}/><circle cx="18.5" cy="6.5" r="2.1" ${P}/><path ${P} stroke-dasharray="2 2.6" d="M7 16 17 8"/>`,

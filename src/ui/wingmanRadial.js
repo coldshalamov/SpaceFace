@@ -9,15 +9,19 @@
 // The radial keeps the player's hands on thrust/trigger — open, pick, gone — matching the cockpit feel.
 
 import { BINDINGS } from './bindings.js';
+import { icon } from './station/icons.js';
 
 const STYLE_ID = 'sf-wingman-radial-style';
 
 // N / E / S / W wedges. `order` is the batched ui:wingOrder kind; `key` is the shortcut.
+// Glyphs come from the shared drawn icon set (station/icons.js) so the radial speaks the same
+// visual language as the rest of the HUD — the old ⛊/✦ Unicode marks rendered at mixed weights
+// and ⛊ has no consistent cross-platform glyph.
 const OPTIONS = [
-  { key: '1', order: 'attack', label: 'Attack Target', glyph: '⌖', pos: 'top', needsTarget: true },
-  { key: '2', order: 'screen', label: 'Screen', glyph: '⛊', pos: 'right' },
-  { key: '3', order: 'regroup', label: 'Regroup', glyph: '↟', pos: 'bottom' },
-  { key: '4', order: 'hold', label: 'Hold', glyph: '✦', pos: 'left' },
+  { key: '1', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
+  { key: '2', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
+  { key: '3', order: 'regroup', label: 'Regroup', icon: 'boost', pos: 'bottom' },
+  { key: '4', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
 ];
 
 export function createWingmanRadial(ctx) {
@@ -49,7 +53,7 @@ export function createWingmanRadial(ctx) {
     wedge.className = `sf-wradial__wedge sf-wradial__wedge--${opt.pos}`;
     wedge.setAttribute('role', 'menuitem');
     wedge.innerHTML =
-      `<span class="sf-wradial__glyph">${opt.glyph}</span>` +
+      `<span class="sf-wradial__glyph">${icon(opt.icon, 18)}</span>` +
       `<span class="sf-wradial__label">${opt.label}</span>` +
       `<span class="sf-wradial__key mono">${opt.key}</span>`;
     wedge.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); issue(opt); });
@@ -211,7 +215,8 @@ function injectCss() {
   .sf-wradial__wedge--disabled { opacity:.4; }
   .sf-wradial__wedge--disabled:hover { border-color:var(--panel-edge, rgba(120,160,200,.3)); box-shadow:none; }
   .sf-wradial__wedge:disabled { cursor:not-allowed; }
-  .sf-wradial__glyph { font-size:18px; color:var(--visor-cyan, #39d0ff); line-height:1; }
+  .sf-wradial__glyph { font-size:18px; color:var(--visor-cyan, #39d0ff); line-height:1; width:18px; height:18px; display:flex; align-items:center; justify-content:center; }
+  .sf-wradial__glyph svg { display:block; }
   .sf-wradial__label { font-size:12px; letter-spacing:.04em; white-space:nowrap; }
   .sf-wradial__key { font-size:12px; color:var(--text-secondary, #9fb4cc); border:1px solid var(--panel-edge, rgba(120,160,200,.3));
     border-radius:3px; padding:0 4px; }

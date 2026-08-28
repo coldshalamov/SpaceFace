@@ -29,10 +29,12 @@ import { FACTION_META } from '../data/factions.js';
 export const SECURITY_TIER_LABELS = ['secure', 'patrolled', 'contested', 'dangerous', 'lawless', 'lethal'];
 
 // Hazard type → glyph + one-word label (readable at a glance; full counterplay language is packet A7).
+// ☢ carries \uFE0E so it renders as a monochrome text glyph matching the rest of the set instead of
+// a color emoji on emoji-font platforms.
 export const HAZARD_GLYPHS = {
   dense_asteroid: { glyph: '◆', label: 'dense rock' },
   nebula:         { glyph: '≋', label: 'nebula' },
-  radiation:      { glyph: '☢', label: 'radiation' },
+  radiation:      { glyph: '☢\uFE0E', label: 'radiation' },
   debris:         { glyph: '✕', label: 'debris' },
 };
 
