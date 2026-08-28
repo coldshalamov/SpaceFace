@@ -3571,7 +3571,7 @@ export function createHud(ctx, alerts) {
     // ⚔ defaults to color emoji on emoji-font platforms; \uFE0E keeps the roster monochrome.
     if (family === 'fighter' || role.includes('fighter')) return '⚔\uFE0E';
     if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return '⛃';
-    if (family === 'miner' || role.includes('miner')) return '⛏';
+    if (family === 'miner' || role.includes('miner')) return '⛏\uFE0E';
     if (family === 'frigate' || role.includes('frigate')) return '▲';
     if (family === 'capital' || role.includes('capital')) return '⚹';
     if (role.includes('gunship')) return '⎔';

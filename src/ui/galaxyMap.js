@@ -10790,7 +10790,8 @@ function drawServicePictogram(g, svc, x, y, r, color) {
 // glyph helpers
 function hazardTypeGlyph(type) {
   switch (type) {
-    case 'radiation': return '☢';
+    // \uFE0E keeps ☢ a monochrome text glyph (it defaults to color emoji on emoji-font platforms).
+    case 'radiation': return '☢\uFE0E';
     case 'nebula': return '✦';
     case 'dense_asteroid': return '◈';
     case 'debris': return '⚙';
