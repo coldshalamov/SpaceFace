@@ -165,6 +165,191 @@ export function createSingleFlightMount(run) {
   };
 }
 
+// PQ-131.06 — authored Conduit transaction, kept pure so its async lifecycle is testable without
+// a canvas or WebGL context. A successful transaction never asks for the procedural network at all.
+// The fallback is an error path, not a hidden second renderer sitting behind accepted authored art.
+//
+// Each rebuild invalidates the prior generation. Late arrivals are released exactly once and may
+// not install a stale fallback. The callbacks deliberately own scene/loader details; this controller
+// owns only the all-or-fallback commit and its truthful diagnostics.
+export function createConduitMountLifecycle({
+  load,
+  prepare,
+  mount,
+  unmount,
+  release,
+  buildFallback,
+  disposeFallback,
+  isClosed = () => false,
+} = {}) {
+  for (const [name, fn] of Object.entries({
+    load, prepare, mount, unmount, release, buildFallback, disposeFallback,
+  })) {
+    if (typeof fn !== 'function') {
+      throw new TypeError(`[conduitMount] ${name} must be a function`);
+    }
+  }
+
+  let generation = 0;
+  let current = [];
+  let fallback = null;
+  let state = Object.freeze({
+    generation,
+    phase: 'empty',
+    desiredCount: 0,
+    authoredCount: 0,
+    fallback: false,
+    failure: null,
+  });
+
+  const publish = (next) => {
+    state = Object.freeze({
+      generation,
+      phase: next.phase,
+      desiredCount: next.desiredCount,
+      authoredCount: next.authoredCount,
+      fallback: next.fallback,
+      failure: next.failure || null,
+    });
+    return state;
+  };
+
+  const releaseRecord = (record) => {
+    if (!record || record.released) return false;
+    record.released = true;
+    if (record.mounted) {
+      record.mounted = false;
+      unmount(record);
+    }
+    release(record.source, record);
+    return true;
+  };
+
+  const releaseRecords = (records) => {
+    for (let i = records.length - 1; i >= 0; i--) releaseRecord(records[i]);
+    records.length = 0;
+  };
+
+  const retireVisible = () => {
+    releaseRecords(current);
+    if (fallback !== null) {
+      disposeFallback(fallback);
+      fallback = null;
+    }
+  };
+
+  const cancelled = (attemptGeneration) => (
+    attemptGeneration !== generation || isClosed()
+  );
+
+  async function rebuild(desiredInput) {
+    const desired = Array.isArray(desiredInput) ? desiredInput.slice() : [];
+    generation += 1;
+    const attemptGeneration = generation;
+    retireVisible();
+    publish({
+      phase: desired.length ? 'loading' : 'empty',
+      desiredCount: desired.length,
+      authoredCount: 0,
+      fallback: false,
+      failure: null,
+    });
+    if (!desired.length) return { status: 'empty', state };
+
+    const staged = [];
+    const abort = () => {
+      releaseRecords(staged);
+      return { status: 'cancelled', state };
+    };
+    const fail = (reason) => {
+      releaseRecords(staged);
+      if (cancelled(attemptGeneration)) return { status: 'cancelled', state };
+      fallback = buildFallback(desired, reason);
+      publish({
+        phase: 'fallback',
+        desiredCount: desired.length,
+        authoredCount: 0,
+        fallback: true,
+        failure: reason,
+      });
+      return { status: 'fallback', state };
+    };
+
+    for (let i = 0; i < desired.length; i++) {
+      if (cancelled(attemptGeneration)) return abort();
+      let source = null;
+      try {
+        source = await load(desired[i], i);
+      } catch (error) {
+        return fail(error && error.message ? error.message : String(error));
+      }
+      if (cancelled(attemptGeneration)) {
+        if (source) releaseRecord({ source, desired: desired[i], released: false, mounted: false });
+        return abort();
+      }
+      if (!source) return fail(`authored load returned no part at index ${i}`);
+
+      let prepared = null;
+      try {
+        prepared = prepare(source, desired[i], i);
+      } catch (error) {
+        releaseRecord({ source, desired: desired[i], released: false, mounted: false });
+        return fail(error && error.message ? error.message : String(error));
+      }
+      if (!prepared) {
+        releaseRecord({ source, desired: desired[i], released: false, mounted: false });
+        return fail(`authored part preparation failed at index ${i}`);
+      }
+      staged.push({
+        ...prepared,
+        source,
+        desired: desired[i],
+        released: false,
+        mounted: false,
+      });
+    }
+
+    if (cancelled(attemptGeneration)) return abort();
+    try {
+      for (let i = 0; i < staged.length; i++) {
+        staged[i].mounted = true;
+        mount(staged[i], i);
+      }
+    } catch (error) {
+      return fail(error && error.message ? error.message : String(error));
+    }
+    if (cancelled(attemptGeneration)) return abort();
+
+    current = staged.splice(0);
+    publish({
+      phase: 'authored',
+      desiredCount: desired.length,
+      authoredCount: current.length,
+      fallback: false,
+      failure: null,
+    });
+    return { status: 'authored', state };
+  }
+
+  function cancel(reason = 'cancelled') {
+    generation += 1;
+    retireVisible();
+    publish({
+      phase: reason === 'disposed' ? 'disposed' : 'empty',
+      desiredCount: 0,
+      authoredCount: 0,
+      fallback: false,
+      failure: null,
+    });
+  }
+
+  return Object.freeze({
+    rebuild,
+    cancel,
+    stats: () => state,
+  });
+}
+
 // Module load REPORTS a divergence; it must never throw. uiRoot.registerScreens() swallows a
 // module-evaluation rejection with a console.warn and skips the screen, so a throw here would
 // delete the whole mining board from the game while boot and every headless check stayed green
@@ -868,7 +1053,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
   function retireWorksAssets(reason = 'works-screen-exit') {
     if (worksRetirePromise) return worksRetirePromise;
-    disposeAuthoredOverlayParts();
+    disposeOverlayParts('disposed');
     unmountWorksProof();
     const loader = worksLoader;
     worksLoader = null;
@@ -1954,7 +2139,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const overlayParts = [];       // { kind, key, mat, mesh } — one per NETWORK, state-driven
   const overlayCasings = [];     // shared dark armour, state-free
   const authoredOverlayParts = []; // per-cell accepted Conduit release pieces
-  let authoredOverlayGeneration = 0;
+  let conduitMountLifecycle = null;
   const laneFlows = [];          // { key, routes:[{pts,cum,len}], phase }
   const netState = { power: new Map(), lane: new Map() };
   const overlayWidth = { lane: 0, power: 0 };    // cell fractions of the last build, for §7 checks
@@ -3571,24 +3756,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return `${h}|${zoomRegister}|${ph}|${Math.round(registerPxPerWu(zoomRegister))}`;
   }
 
-  function setProceduralOverlayVisible(visible) {
-    for (const part of overlayParts) part.mesh.visible = visible;
-    for (const mesh of overlayCasings) mesh.visible = visible;
-  }
-
-  function disposeAuthoredOverlayParts() {
-    authoredOverlayGeneration += 1;
-    const loader = worksLoader;
-    for (let i = 0; i < authoredOverlayParts.length; i++) {
-      const rec = authoredOverlayParts[i];
-      overlayRoot.remove(rec.seat);
-      if (loader) loader.releaseWorksPart(rec.source);
-      else if (rec.source.parent) rec.source.parent.remove(rec.source);
-    }
-    authoredOverlayParts.length = 0;
-    setProceduralOverlayVisible(true);
-  }
-
   function conduitDynamicMeshes(group, family) {
     const hook = family === 'power' ? 'powered' : 'flow_mesh';
     return collectNamedMeshes(group, (name) => {
@@ -3597,12 +3764,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
-  async function mountAuthoredOverlays(desired) {
-    if (!desired.length || worksTearingDown || disposed || glTeardownDone) return false;
-    const generation = authoredOverlayGeneration;
-    const loader = ensureWorksLoader();
-    if (!loader) return false;
-
+  function resolveAuthoredOverlayPieces(desired) {
     // A junction is a service variant of a real four-port crossing, never a phantom arm. Pick the
     // lowest-index cross in each live sim component; all later four-way cells use the plain cross.
     const serviceCellByNetwork = new Map();
@@ -3613,23 +3775,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const prior = serviceCellByNetwork.get(serviceKey);
       if (prior == null || rec.idx < prior) serviceCellByNetwork.set(serviceKey, rec.idx);
     }
-
-    const staged = [];
-    const releaseStaged = () => {
-      for (let i = 0; i < staged.length; i++) {
-        const rec = staged[i];
-        if (rec.seat.parent) rec.seat.parent.remove(rec.seat);
-        loader.releaseWorksPart(rec.source);
-      }
-      staged.length = 0;
-    };
-
-    for (let i = 0; i < desired.length; i++) {
-      if (generation !== authoredOverlayGeneration || worksTearingDown || disposed || glTeardownDone) {
-        releaseStaged();
-        return false;
-      }
-      const rec = desired[i];
+    return desired.map((rec) => {
       // A lone painted cell is the existing physical stub: give its end fitting a stable direction
       // without claiming that it connects to a neighbour in the sim.
       const visualMask = rec.mask || [1, 2, 4, 8][hash32(rec.idx, rec.family === 'power' ? 61 : 67) & 3];
@@ -3637,51 +3783,31 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const piece = resolveWorksConduitPiece(rec.family, visualMask, {
         service: rec.mask === 15 && serviceCellByNetwork.get(serviceKey) === rec.idx,
       });
-      const source = await loader.loadWorksPart(piece.assetId);
-      if (!source || generation !== authoredOverlayGeneration
-          || worksTearingDown || disposed || glTeardownDone) {
-        if (source) loader.releaseWorksPart(source);
-        releaseStaged();
-        return false;
-      }
-
-      const dynamicMeshes = conduitDynamicMeshes(source, rec.family);
-      const owned = [];
-      const mats = isolateWorksMeshMaterials(dynamicMeshes, owned);
-      if (!mats.length) {
-        loader.releaseWorksPart(source);
-        releaseStaged();
-        return false;
-      }
-      recordWorksInstanceResources(source, owned);
-
-      // Source GLBs are Blender Z-up exported as glTF Y-up. The inner +90° X seat maps the
-      // authored mount plane onto the Works XY board; the outer Z rotation maps exact ports.
-      source.position.set(0, 0, 0);
-      source.rotation.set(Math.PI / 2, 0, 0);
-      source.scale.set(1, 1, 1);
-      const seat = new THREE.Group();
-      seat.name = `authored_${piece.assetId}_${rec.idx}`;
-      seat.position.set(worldX(rec.c), worldY(rec.r) + rec.off, Z.overlay);
-      seat.rotation.z = piece.rotation;
-      seat.add(source);
-      staged.push({ ...rec, ...piece, seat, source, mats, dynamicMeshes });
-    }
-
-    if (generation !== authoredOverlayGeneration || worksTearingDown || disposed || glTeardownDone) {
-      releaseStaged();
-      return false;
-    }
-    for (let i = 0; i < staged.length; i++) {
-      overlayRoot.add(staged[i].seat);
-      authoredOverlayParts.push(staged[i]);
-    }
-    setProceduralOverlayVisible(false);
-    return true;
+      return { ...rec, ...piece };
+    });
   }
 
-  function disposeOverlayParts() {
-    disposeAuthoredOverlayParts();
+  function prepareAuthoredOverlay(source, rec) {
+    const dynamicMeshes = conduitDynamicMeshes(source, rec.family);
+    const owned = [];
+    const mats = isolateWorksMeshMaterials(dynamicMeshes, owned);
+    if (!mats.length) return null;
+    recordWorksInstanceResources(source, owned);
+
+    // Source GLBs are Blender Z-up exported as glTF Y-up. The inner +90° X seat maps the
+    // authored mount plane onto the Works XY board; the outer Z rotation maps exact ports.
+    source.position.set(0, 0, 0);
+    source.rotation.set(Math.PI / 2, 0, 0);
+    source.scale.set(1, 1, 1);
+    const seat = new THREE.Group();
+    seat.name = `authored_${rec.assetId}_${rec.idx}`;
+    seat.position.set(worldX(rec.c), worldY(rec.r) + rec.off, Z.overlay);
+    seat.rotation.z = rec.rotation;
+    seat.add(source);
+    return { ...rec, seat, mats, dynamicMeshes };
+  }
+
+  function disposeProceduralOverlayParts() {
     for (const part of overlayParts) {
       overlayRoot.remove(part.mesh);
       part.mesh.geometry.dispose();
@@ -3693,6 +3819,53 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       mesh.geometry.dispose();
     }
     overlayCasings.length = 0;
+  }
+
+  function ensureConduitMountLifecycle() {
+    if (conduitMountLifecycle) return conduitMountLifecycle;
+    conduitMountLifecycle = createConduitMountLifecycle({
+      async load(rec) {
+        const loader = ensureWorksLoader();
+        return loader ? loader.loadWorksPart(rec.assetId) : null;
+      },
+      prepare: prepareAuthoredOverlay,
+      mount(record) {
+        overlayRoot.add(record.seat);
+        authoredOverlayParts.push(record);
+      },
+      unmount(record) {
+        overlayRoot.remove(record.seat);
+        const at = authoredOverlayParts.indexOf(record);
+        if (at >= 0) authoredOverlayParts.splice(at, 1);
+      },
+      release(source) {
+        const loader = worksLoader;
+        if (loader) loader.releaseWorksPart(source);
+        else if (source && source.parent) source.parent.remove(source);
+      },
+      buildFallback(desired) {
+        buildProceduralOverlays(desired);
+        return { pieces: desired.length };
+      },
+      disposeFallback() {
+        disposeProceduralOverlayParts();
+      },
+      isClosed: () => worksTearingDown || disposed || glTeardownDone,
+    });
+    return conduitMountLifecycle;
+  }
+
+  function disposeOverlayParts(reason = 'cancelled') {
+    if (conduitMountLifecycle) conduitMountLifecycle.cancel(reason);
+    else disposeProceduralOverlayParts();
+    // A lifecycle cancellation removes every authored/fallback body. Flow is separate dynamic
+    // presentation state and is retired with the same topology generation.
+    if (authoredOverlayParts.length) {
+      // Defensive only: the lifecycle owns this list. A non-empty residue indicates a callback
+      // failed, but detached seats must still not survive renderer teardown.
+      for (const rec of authoredOverlayParts) overlayRoot.remove(rec.seat);
+      authoredOverlayParts.length = 0;
+    }
     laneFlows.length = 0;
     flowDots.count = 0;
   }
@@ -3720,10 +3893,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return (canvas.clientHeight || 1) / (2 * (halfW / canvasAspect()));
   }
 
-  function rebuildOverlays(site, projection = null) {
-    disposeOverlayParts();
-    if (!site) return;
-    const authoredDesired = [];
+  function overlayBuildPlan(site, projection = null) {
+    const desired = [];
     const siteReg = zoomRegister === 'site';
     const machineCells = new Set(site.machines.map((m) => tileIndex(m.col, m.row)));
     // WHERE THE ISLANDS COME FROM: the projection's own connected components, not a second flood
@@ -3761,7 +3932,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         w: powerW, coreK: 0.36, off: offW,
       },
     ];
-    const trayGeos = [];
     const shared = new Set([...kinds[0].cells].filter((i) => kinds[1].cells.has(i)));
     for (const kind of kinds) overlayWidth[kind.name] = kind.w;
     overlayWidth.regPxPerCell = regPxPerCell;
@@ -3791,7 +3961,50 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const cy = worldY(r) + off;
         const key = compOf[kind.name].get(idx) || '_';
         const mask = connectivityMask(has, c, r);
-        authoredDesired.push({ family: kind.name, idx, c, r, key, mask, off });
+        desired.push({
+          family: kind.name,
+          idx,
+          c,
+          r,
+          key,
+          mask,
+          off,
+          w: kind.w,
+          coreK: kind.coreK,
+          tray: kind.tray,
+          coreMat: kind.coreMat,
+        });
+      }
+    }
+    return {
+      desired: resolveAuthoredOverlayPieces(desired),
+      shared,
+      laneOff: kinds[0].off,
+    };
+  }
+
+  function buildProceduralOverlays(desired) {
+    disposeProceduralOverlayParts();
+    const trayGeos = [];
+    for (const family of ['lane', 'power']) {
+      const records = desired.filter((rec) => rec.family === family);
+      if (!records.length) continue;
+      const kind = records[0];
+      const casingGeos = [];
+      const coreByComp = new Map();
+      const pushCore = (key, g) => {
+        let list = coreByComp.get(key);
+        if (!list) { list = []; coreByComp.set(key, list); }
+        list.push(g);
+      };
+      const W = S * kind.w;
+      const arms = [[1, 0, -1], [2, 1, 0], [4, 0, 1], [8, -1, 0]];
+      // One armed section of run, built in the arm's own frame and then rotated into place.
+      const place = (g, ang, x, y, z) => { g.rotateZ(ang); g.translate(x, y, z); return g; };
+      for (const rec of records) {
+        const { c, r, key, mask, off } = rec;
+        const cx = worldX(c);
+        const cy = worldY(r) + off;
         let any = false;
         for (const [bit, dc, dr] of arms) {
           if (!(mask & bit)) continue;
@@ -3801,7 +4014,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           const ang = Math.atan2(dy, dx);
           const mx = cx + dx * len / 2;
           const my = cy + dy * len / 2;
-          if (kind.tray) {
+          if (rec.tray) {
             // A COVERED CONVEYOR: bolted floor plate, two side rails, a narrow lit channel down the
             // middle and a glass lid. The flow dots ride between the rails, under the lid.
             casingGeos.push(place(new THREE.BoxGeometry(len, W, S * 0.05), ang, mx, my, Z.overlay));
@@ -3810,17 +4023,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
               rail.translate(0, sy * (W / 2 - W * 0.075), 0);
               casingGeos.push(place(rail, ang, mx, my, Z.overlay + 0.1));
             }
-            pushCore(key, place(new THREE.BoxGeometry(len, W * kind.coreK, S * 0.05), ang, mx, my, Z.overlay + 0.04));
+            pushCore(key, place(new THREE.BoxGeometry(len, W * rec.coreK, S * 0.05), ang, mx, my, Z.overlay + 0.04));
             trayGeos.push(place(new THREE.BoxGeometry(len, W * 0.92, S * 0.035), ang, mx, my, Z.overlay + 0.21));
           } else {
             // ARMOURED CABLE: a dark casing bolted to the floor with the conductor lit inside it.
             casingGeos.push(place(new THREE.BoxGeometry(len, W, S * 0.14), ang, mx, my, Z.overlay + 0.02));
-            pushCore(key, place(new THREE.BoxGeometry(len, W * kind.coreK, S * 0.16), ang, mx, my, Z.overlay + 0.06));
+            pushCore(key, place(new THREE.BoxGeometry(len, W * rec.coreK, S * 0.16), ang, mx, my, Z.overlay + 0.06));
           }
         }
         // Per-cell fitting: a saddle clamp on the cable, a cross strap over the tray. Present at
         // BOTH registers — this is the hardware that stops a run reading as a drawn line.
-        if (kind.tray) {
+        if (rec.tray) {
           const strap = new THREE.BoxGeometry(S * 0.1, W * 1.06, S * 0.07);
           strap.translate(cx, cy, Z.overlay + 0.25);
           casingGeos.push(strap);
@@ -3835,9 +4048,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         // colour, so a node on a dead island goes dead with it.
         if (popcount4(mask) >= 3) {
           const jg = ensureIndexed(junctionNodeGeo.clone());
-          const k = S * (kind.tray ? 1.25 : 1);
+          const k = S * (rec.tray ? 1.25 : 1);
           jg.scale(k, k, k);
-          jg.translate(cx, cy, Z.overlay + (kind.tray ? 0.16 : 0.06));
+          jg.translate(cx, cy, Z.overlay + (rec.tray ? 0.16 : 0.06));
           pushCore(key, jg);
         }
         if (!any) {
@@ -3874,7 +4087,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         overlayRoot.add(mesh);
-        overlayParts.push({ kind: kind.name, key, mat, mesh });
+        overlayParts.push({ kind: family, key, mat, mesh });
       }
     }
     if (trayGeos.length) {
@@ -3887,10 +4100,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       for (const g of trayGeos) g.dispose();
     }
+  }
+
+  function rebuildOverlays(site, projection = null) {
+    laneFlows.length = 0;
+    flowDots.count = 0;
+    if (!site) {
+      disposeOverlayParts(worksTearingDown ? 'disposed' : 'empty');
+      return;
+    }
+    const plan = overlayBuildPlan(site, projection);
     // The flow rides the lane's OWN centreline, so it takes the offset this build actually used —
     // recomputing it here is how the dots ended up beside the tray instead of inside it.
-    rebuildLaneFlows(site, projection, shared, kinds[0].off);
-    void mountAuthoredOverlays(authoredDesired);
+    rebuildLaneFlows(site, projection, plan.shared, plan.laneOff);
+    void ensureConduitMountLifecycle().rebuild(plan.desired).catch((error) => {
+      console.error('[asteroidRenderer3d] authored Conduit transaction failed', error);
+    });
   }
 
   // ---- lane flow routes (law §7: dots move TOWARD THE PORT) ------------------------------------
@@ -5293,7 +5518,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // dots on the glass, the crate stage, the lens, and the build-mode board feedback. A check can
     // therefore assert that a state CHANGED SOMETHING, not merely that a flag flipped.
     networks() {
-      const runs = overlayParts.map((part) => ({
+      const mountState = conduitMountLifecycle
+        ? conduitMountLifecycle.stats()
+        : {
+            generation: 0, phase: 'empty', desiredCount: 0, authoredCount: 0,
+            fallback: false, failure: null,
+          };
+      const proceduralRuns = overlayParts.map((part) => ({
         kind: part.kind,
         key: part.key,
         hex: `#${part.mat.color.getHexString()}`,
@@ -5302,6 +5533,29 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           ? !!(netState.power.get(part.key) || {}).live
           : !!(netState.lane.get(part.key) || {}).live,
       }));
+      const authoredRunMap = new Map();
+      let authoredPhysicalMeshes = 0;
+      for (const part of authoredOverlayParts) {
+        part.source.traverse((obj) => {
+          if (obj.isMesh && obj.visible) authoredPhysicalMeshes += 1;
+        });
+        const runKey = `${part.family}:${part.key}`;
+        if (authoredRunMap.has(runKey)) continue;
+        const mat = part.mats.find((candidate) => candidate && candidate.color) || null;
+        authoredRunMap.set(runKey, {
+          kind: part.family,
+          key: part.key,
+          hex: mat ? `#${mat.color.getHexString()}` : null,
+          emissive: mat && 'emissiveIntensity' in mat
+            ? Number(mat.emissiveIntensity.toFixed(3))
+            : 0,
+          live: part.family === 'power'
+            ? !!(netState.power.get(part.key) || {}).live
+            : !!(netState.lane.get(part.key) || {}).live,
+        });
+      }
+      const authoredRuns = [...authoredRunMap.values()];
+      const runs = mountState.phase === 'authored' ? authoredRuns : proceduralRuns;
       const lanes = [];
       for (const [key, st] of netState.lane) {
         lanes.push({
@@ -5325,13 +5579,25 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           rotation: Number(part.rotation.toFixed(4)),
         })),
         authoredCount: authoredOverlayParts.length,
-        proceduralFallback: authoredOverlayParts.length === 0,
+        expectedAuthoredCount: mountState.desiredCount,
+        authoredCoverageComplete: mountState.phase === 'authored'
+          && mountState.desiredCount > 0
+          && authoredOverlayParts.length === mountState.desiredCount,
+        mountPhase: mountState.phase,
+        mountGeneration: mountState.generation,
+        mountFailure: mountState.failure,
+        proceduralFallback: mountState.phase === 'fallback',
+        proceduralBodies: overlayParts.length + overlayCasings.length,
         lanes,
         power,
         islands: runs.filter((r) => !r.live).length,
         flowDots: flowDots.count,
         flowRoutes: laneFlows.reduce((n, f) => n + f.routes.length, 0),
-        casings: overlayCasings.length,
+        // Back-compatible capture field: on authored success this is the physical authored mesh
+        // count, never the count of hidden procedural casings (there are none). In fallback mode it
+        // is the procedural armour count. New checks should use authoredCoverageComplete and
+        // proceduralBodies for the exact transaction verdict.
+        casings: mountState.phase === 'authored' ? authoredPhysicalMeshes : overlayCasings.length,
         // The run's drawn CROSS SECTION in screen pixels. §7 asks the same drawing to stay legible
         // at the site register; a run that thinned to a hairline there would be a painted line, so
         // this is the number the check holds a floor against.
