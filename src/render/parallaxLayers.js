@@ -18,6 +18,15 @@ const ROCK_BASE = 0xb4aea3;
 const FAR = { count: 80, factor: 0.22, tile: 3000, y: -96, yJitter: 36, radius0: 7, radius1: 28 };
 const MID = { count: 1400, factor: 0.55, tile: 560, y: -28, yJitter: 18, radius0: 0.28, radius1: 3.4 };
 const NEAR = { count: 96, factor: 1.18, tile: 460, y: 4, yJitter: 9, radius0: 0.07, radius1: 0.42 };
+
+// The wrap cell must always be wider than the visible frustum footprint at the band's plane, or
+// the cell edge itself becomes an on-screen line: chips pop across it and empty sky shows outside
+// it. The authored tile is sized for the default chase view; when the player zooms out (or widens
+// FOV) the effective tile grows in discrete steps so the edge stays off-screen. Instance counts
+// never change — the same authored chips spread over the larger cell.
+const PARALLAX_TILE_MARGIN = 1.12;
+const PARALLAX_TILE_MAX_SCALE = 4;
+const PARALLAX_TILE_STEP = 1.2;
 const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
 const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
 const MID_SPIN_PARAMS_ATTRIBUTE = 'aParallaxSpinParams';
@@ -122,6 +131,7 @@ class ParallaxLayers {
     }
 
     this._updatePalette(frameDt);
+    this._updateWrapTiles();
     this._updateDebris(frameDt);
   }
 
@@ -268,7 +278,7 @@ class ParallaxLayers {
 
     this.scene.add(group);
     this.groups.push(group);
-    this._layers.push({ group, factor: spec.factor, tile: spec.tile, motionUniforms });
+    this._layers.push({ group, factor: spec.factor, tile: spec.tile, y: spec.y, effTile: spec.tile, motionUniforms });
     this._bandMaterials.push({ material, colorMul });
     return { group, mesh, motionUniforms };
   }
@@ -370,6 +380,45 @@ class ParallaxLayers {
     }
   }
 
+  /**
+   * Keep each band's wrap cell wider than the visible frustum footprint at the band's plane.
+   * The effective tile only changes in discrete PARALLAX_TILE_STEP multiples of the authored tile,
+   * so between steps the wrap is bit-identical (no reflow) and a step boundary is a single instant
+   * re-layout instead of continuous churn. Instance counts are untouched.
+   */
+  _updateWrapTiles() {
+    const camera = this.state.camera || EMPTY_OBJECT;
+    const camObj = camera.obj || EMPTY_OBJECT;
+    const zoom = Number.isFinite(camera.liveZoom) ? camera.liveZoom
+      : Number.isFinite(camera.zoom) ? camera.zoom : 144;
+    const fovDeg = Number.isFinite(camera.fov) ? camera.fov : 50;
+    const aspect = Number.isFinite(camObj.aspect) && camObj.aspect > 0 ? camObj.aspect : 16 / 9;
+    const tiltDeg = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+    const halfFovRad = Math.max(4, fovDeg * 0.5) * Math.PI / 180;
+    // Steepest ray still inside the frustum (tilt − half fov above the camera axis) — where it
+    // hits the band plane is the far edge of the visible footprint along the look direction.
+    const lookTan = Math.tan(Math.max(6, tiltDeg - fovDeg * 0.5) * Math.PI / 180);
+    const sideTan = Math.tan(halfFovRad);
+    for (let i = 0; i < this._layers.length; i++) {
+      const layer = this._layers[i];
+      const planeDist = zoom + Math.abs(Number(layer.y) || 0);
+      const planeScale = zoom > 0 ? planeDist / zoom : 1;
+      const halfSide = sideTan * zoom * aspect * planeScale;
+      const lookReach = planeDist / lookTan;
+      const scaled = Math.max(halfSide, lookReach) * PARALLAX_TILE_MARGIN * 2;
+      const base = layer.tile;
+      const capped = Math.min(scaled, base * PARALLAX_TILE_MAX_SCALE);
+      const steps = capped > base
+        ? Math.ceil(Math.log(capped / base) / Math.log(PARALLAX_TILE_STEP))
+        : 0;
+      const effTile = steps > 0 ? Math.min(base * Math.pow(PARALLAX_TILE_STEP, steps), base * PARALLAX_TILE_MAX_SCALE) : base;
+      if (effTile !== layer.effTile) {
+        layer.effTile = effTile;
+        layer.motionUniforms.tile.value = effTile;
+      }
+    }
+  }
+
   _updateDebris(dt) {
     const uniforms = this._debrisSpinUniforms;
     if (!uniforms || dt <= 0) return;
@@ -468,23 +517,38 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
           '#include <begin_vertex>',
           `float sfParallaxTime = mix(uParallaxPrimaryTime, uParallaxTailTime, ${MID_SPIN_PARAMS_ATTRIBUTE}.z);`,
           `float sfParallaxAngle = ${MID_SPIN_PARAMS_ATTRIBUTE}.x + ${MID_SPIN_PARAMS_ATTRIBUTE}.y * sfParallaxTime;`,
-          `transformed = sfRotateParallaxDebris(transformed, ${MID_SPIN_AXIS_ATTRIBUTE}, sfParallaxAngle);`,
+          'transformed = sfRotateParallaxDebris(transformed, ' + MID_SPIN_AXIS_ATTRIBUTE + ', sfParallaxAngle);',
         ].join('\n'),
         'local vertex rotation',
       );
     }
 
+    // Wrap + edge shrink run before project_vertex so the chip can be scaled into nothing as it
+    // approaches the wrap-cell edge. A chip that dissolves before the boundary cannot pop across
+    // it, and the empty region outside the cell can never show a chip vanishing mid-screen.
     shader.vertexShader = replaceRequiredShaderSource(
       shader.vertexShader,
-      '#include <project_vertex>',
+      '#include <begin_vertex>',
       [
-        '#include <project_vertex>',
+        '#include <begin_vertex>',
         'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
         'vec2 sfParallaxWrappedCenter = mod(',
         '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
         '  uParallaxTile',
         ') - uParallaxTile * 0.5;',
         'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',
+        'float sfParallaxEdge = max(abs(sfParallaxWrappedCenter.x), abs(sfParallaxWrappedCenter.y))',
+        '  / (uParallaxTile * 0.5);',
+        'transformed *= 1.0 - smoothstep(0.78, 0.97, sfParallaxEdge);',
+      ].join('\n'),
+      'wrapped instance center + edge shrink',
+    );
+
+    shader.vertexShader = replaceRequiredShaderSource(
+      shader.vertexShader,
+      '#include <project_vertex>',
+      [
+        '#include <project_vertex>',
         'mvPosition.xyz += (modelViewMatrix * vec4(sfParallaxDelta.x, 0.0, sfParallaxDelta.y, 0.0)).xyz;',
         'gl_Position = projectionMatrix * mvPosition;',
       ].join('\n'),

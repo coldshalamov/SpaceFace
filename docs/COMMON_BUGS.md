@@ -608,4 +608,43 @@ still be gated.
 `src/render/visualOverrides.js` (`directAuthoredMount`). Proof:
 `test/fleet-npc-wholeship-routing.test.mjs`, `test/flight-compose-gate.test.mjs`.
 
+### Cause C — the opening mesh defer never released (fixed 2026-08-28, live-confirmed on seed 47)
+Even with A and B fixed, whole sessions had ships at **R0_GLASS with no `entity.mesh` at all**:
+they sat in the renderer's mesh build queue that never drained. Chain: the opening submission
+validation does a strict GPU-resource count match (programs/geometries/textures) between census
+and first draw; one benign late geometry admission classifies as
+`unexplainedFirstVisibleAdmission` and forces `ok: false`; the after-paint latch then skipped
+`releaseOpeningMeshDefer` **on purpose** ("retain this delta as evidence"). `state.render`
+kept `deferNoncriticalMeshStreaming: true` for the whole session, `serviceRenderMeshResidency`
+returned `deferred` every frame, and every ship spawned or promoted after the first picture
+stayed invisible — while `check:assets:live` style checks still passed because they force
+upgrades manually. Read the three flags live to confirm this shape:
+`deferNoncriticalMeshStreaming`, `openingSubmissionValidation.ok`, `firstPlayableFrameAt`.
+
+Fix: the paint latch releases the defer unconditionally (`applyFirstPlayablePaintRelease`); the
+validation failure stays on `state.render` as evidence only. A `prepareFrame` failsafe releases
+the hold after 15 s if the paint callback never fires. Lock: `test/opening-mesh-defer.test.mjs`
+(wired into `check:baseline` as `opening-mesh-defer`). Do not re-tighten the latch to gate on
+`validation.ok` again — a startup diagnostic may never park flight streaming.
+
+---
+
+## 14. A curved on-screen line where background rocks pop in/out at high zoom-out (fixed 2026-08-28)
+
+**Symptom:** Zoomed out, a curved boundary (four cell edges under perspective) crosses the screen:
+parallax debris chips render inside it, empty sky outside it, and chips appear/disappear along the
+line as the player drifts.
+
+**Cause:** `parallaxLayers` wraps every instance into one `tile × tile` cell centered on the
+camera (FAR 3000, MID 560, NEAR 460 WU). The authored tiles assumed the default chase view. At
+high zoom-out the visible frustum footprint at the band plane exceeds the cell, so the wrap-cell
+edge is on-screen and the wrap teleports chips across it. Which band owns the arc is provable by
+hiding `Parallax_MidDebris` on the live page and watching the whole field vanish.
+
+**Fix:** the effective tile grows in discrete 1.2× steps (capped at 4× authored) so the cell edge
+stays outside the visible footprint at any zoom/FOV within the cap; the wrap shader also shrinks
+chips to zero near the cell edge so a boundary can never pop a chip on-screen. Instance counts are
+unchanged and the ordinary-zoom look is bit-identical (tile stays authored below the first step).
+Lock: `scripts/check-parallax-layers.mjs` (`checkWrapCellGrowsWithZoomOut`).
+
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

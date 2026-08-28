@@ -21,8 +21,54 @@ assert.equal(typeof parallaxLayers.wrapParallaxCoordinate, 'function', 'wrap hel
 checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 80, mid: 1400, near: 96 });
 checkStack({ particleQuality: 'low', motionReduce: false }, { far: 40, mid: 700, near: 48 });
 checkStack({ particleQuality: 'low', motionReduce: true }, { far: 40, mid: 700, near: 24 });
+checkWrapCellGrowsWithZoomOut();
 
 console.log('Parallax layers OK: global-focus per-instance wrap, rebase continuity, static matrices, GPU spin');
+
+/**
+ * The zoom-out band bug: the wrap cell used to stay at its authored size, so at high zoom-out the
+ * cell edge was an on-screen arc — chips popped across it and empty sky showed outside it. The
+ * effective tile must grow (in discrete steps, capped) once the visible frustum footprint at the
+ * band plane exceeds the authored cell, and must stay at the authored value at ordinary zoom.
+ */
+function checkWrapCellGrowsWithZoomOut() {
+  const scene = new THREE.Scene();
+  const video = { particleQuality: 'medium', motionReduce: false };
+  const state = makeState(video);
+  state.camera.zoom = 330;
+  state.camera.fov = 50;
+  state.camera.tilt = 60;
+  state.camera.obj = { aspect: 16 / 9 };
+  const stack = parallaxLayers.init(scene, state, null, state.render.sectorPalette);
+  const mid = stack.groups.find((group) => group.userData.layer === 'midDebris');
+  const near = stack.groups.find((group) => group.userData.layer === 'nearSpeedMotes');
+  const far = stack.groups.find((group) => group.userData.layer === 'farDust');
+  const midTile = () => mid.children[0].material.userData.spacefaceParallaxInstanceWrap.uniforms.tile.value;
+
+  assert.equal(midTile(), mid.userData.tileSize, 'tile starts at the authored value');
+  parallaxLayers.update(1 / 60);
+  const grown = midTile();
+  assert.ok(grown > mid.userData.tileSize,
+    `max zoom-out must widen the wrap cell past the authored ${mid.userData.tileSize}; received ${grown}`);
+  assert.ok(grown <= mid.userData.tileSize * 4, 'the wrap cell must stay inside its 4x cap');
+  const ratio = grown / mid.userData.tileSize;
+  const step = Math.round(Math.log(ratio) / Math.log(1.2));
+  assert.ok(Math.abs(ratio - Math.pow(1.2, step)) < 1e-9,
+    `the effective tile must be a discrete 1.2-step multiple; received ratio ${ratio}`);
+
+  const nearTile = near.children[0].material.userData.spacefaceParallaxInstanceWrap.uniforms.tile.value;
+  assert.ok(nearTile > near.userData.tileSize, 'the near band cell must grow too');
+  const farTile = far.children[0].material.userData.spacefaceParallaxInstanceWrap.uniforms.tile.value;
+  assert.equal(farTile, far.userData.tileSize,
+    'the far band cell already covers the visible footprint at max zoom and must stay authored');
+
+  // Zooming back in must restore the authored cell exactly.
+  state.camera.zoom = 144;
+  parallaxLayers.update(1 / 60);
+  assert.equal(midTile(), mid.userData.tileSize, 'returning to ordinary zoom restores the authored tile');
+
+  parallaxLayers.dispose();
+}
 
 function checkStack(video, expected) {
   const scene = new THREE.Scene();
@@ -66,6 +112,9 @@ function checkStack(video, expected) {
     assert.equal(shader.uniforms.uParallaxTile, wrap.uniforms.tile);
     assert.match(shader.vertexShader, /sfParallaxWrappedCenter/);
     assert.match(shader.vertexShader, /uParallaxWorldFocus \* uParallaxFactor/);
+    assert.match(shader.vertexShader, /sfParallaxEdge/);
+    assert.match(shader.vertexShader, /smoothstep\(0\.78, 0\.97, sfParallaxEdge\)/,
+      'chips must dissolve before the wrap-cell edge so the boundary can never pop on-screen');
     assert.match(shader.vertexShader, /mvPosition\.xyz \+=/);
   }
 
