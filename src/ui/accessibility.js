@@ -146,8 +146,9 @@ export const SEMANTIC_PALETTE = {
   hull:     { color: '#ff5470', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
   shield:   { color: '#39d0ff', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
   energy:   { color: '#ffd84a', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
-  // NOTE: the game has no "armor" stat — hull/shield/energy(=cap)/heat/boost are the real bars
-  // (gameState.js:14, hud.js:61-67). 'energy' IS the capacitor ('cap' in entity state).
+  // NOTE: armor IS a real stat — entities carry armorHp/armorMax and combat/damage.js consumes
+  // them; the command bar pins an ARMR row (commandBar.js). The non-armor bars (energy=cap, heat,
+  // boost) are listed alongside hull/shield/armor for completeness.
   heat:     { color: '#ff8a3d', cssVar: '--sf-warn',     shape: 'bar',      icon: '≋', glyph: 'heat',        label: 'Heat' },
   boost:    { color: '#c98cff', cssVar: '--sf-cargo',    shape: 'bar',      icon: '»', glyph: 'boost',       label: 'Boost' },
 
