@@ -271,23 +271,28 @@ function injectStyle() {
   style.textContent = `
   #sf-signal-investigation { position:absolute; top:112px; right:16px; width:min(390px,calc(100vw - 32px));
     z-index:1065; box-sizing:border-box; padding:9px 11px 10px; contain:layout paint style;
-    background:rgba(5,9,18,.93); border:1px solid rgba(80,216,255,.4); border-left:3px solid #50d8ff;
-    color:#d7e6ff; font-family:var(--mono,Consolas,monospace); transition:opacity .16s ease-out,transform .16s ease-out; }
+    /* Flight-instrument plate (menu fascia material): near-opaque hairline plate, severity on the
+       TOP edge + head stamp — not the old glass box with a vibe-coded left accent bar. */
+    background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
+    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-cyan, #4ec3e6);
+    border-radius:3px; box-shadow:0 14px 30px rgba(0,0,0,.35);
+    color:var(--hud-paper, #e9eff4); font-family:var(--hud-data, var(--mono, Consolas, monospace)); transition:opacity .16s ease-out,transform .16s ease-out; }
   #sf-signal-investigation[hidden] { display:none !important; }
-  .sf-signal__head { display:flex; justify-content:space-between; gap:12px; color:#50d8ff; font-size:12px; letter-spacing:.14em; }
+  .sf-signal__head { display:flex; justify-content:space-between; gap:12px; color:var(--hud-cyan, #4ec3e6); font-size:12px; letter-spacing:.14em; }
   .sf-signal__headline { margin-top:5px; font-size:14px; line-height:1.25; letter-spacing:.045em; }
-  .sf-signal__meta { margin-top:3px; color:#91abc9; font-size:12px; line-height:1.35; letter-spacing:.08em; }
-  .sf-signal__detail { margin-top:4px; color:#bdcde3; font-size:12px; line-height:1.4; }
+  .sf-signal__meta { margin-top:3px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.35; letter-spacing:.08em; }
+  .sf-signal__detail { margin-top:4px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.4; }
   .sf-signal__foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; }
-  .sf-signal__more { min-width:0; color:#7892b6; font-size:12px; letter-spacing:.08em; }
-  .sf-signal__foot button { pointer-events:auto; flex:0 0 auto; min-height:32px; padding:6px 9px; border:1px solid rgba(80,216,255,.58);
-    background:rgba(80,216,255,.1); color:#dff8ff; font:700 12px/1.2 var(--mono,Consolas,monospace); letter-spacing:.06em; cursor:pointer; }
+  .sf-signal__more { min-width:0; color:var(--hud-muted, #71828f); font-size:12px; letter-spacing:.08em; }
+  .sf-signal__foot button { pointer-events:auto; flex:0 0 auto; min-height:32px; padding:6px 9px;
+    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); background:rgba(255,255,255,.04);
+    color:var(--hud-paper, #e9eff4); font:700 12px/1.2 var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px; }
   .sf-signal__foot button b { display:inline-grid; place-items:center; min-width:16px; min-height:16px; margin-right:5px;
-    border:1px solid rgba(223,248,255,.55); border-radius:50%; font-size:12px; }
-  .sf-signal__foot button:hover,.sf-signal__foot button:focus-visible { background:rgba(80,216,255,.2); outline:2px solid #9cecff; outline-offset:2px; }
+    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-radius:50%; font-size:12px; color:var(--hud-cyan, #4ec3e6); }
+  .sf-signal__foot button:hover,.sf-signal__foot button:focus-visible { background:rgba(255,255,255,.08); outline:2px solid var(--hud-cyan, #4ec3e6); outline-offset:2px; }
   .sf-signal__foot button:disabled { opacity:.55; cursor:default; }
-  #sf-signal-investigation.sf-signal--receipt { border-color:rgba(98,224,138,.5); border-left-color:#62e08a; }
-  #sf-signal-investigation.sf-signal--receipt .sf-signal__head { color:#62e08a; }
+  #sf-signal-investigation.sf-signal--receipt { border-top-color:var(--good, #62e08a); }
+  #sf-signal-investigation.sf-signal--receipt .sf-signal__head { color:var(--good, #62e08a); }
   @media (max-width:900px),(max-height:620px) {
     #sf-signal-investigation { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
     .sf-signal__headline { font-size:12px; } .sf-signal__detail { font-size:12px; }
