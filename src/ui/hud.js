@@ -2847,7 +2847,7 @@ export function createHud(ctx, alerts) {
 
     const basisText = contentEl.querySelector('.sf-ins-basis');
     const basis = getAverageBasis(state, commodityId);
-    basisText.textContent = basis != null ? `${basis} CR` : 'N/A';
+    basisText.textContent = basis != null ? `${basis.toLocaleString('en-US')} CR` : 'N/A';
 
     const buyerText = contentEl.querySelector('.sf-ins-buyer');
     const routeBtn = contentEl.querySelector('.sf-btn-route');

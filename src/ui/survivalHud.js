@@ -92,7 +92,7 @@ export function levelProgress(run) {
 export function earnLine(award) {
   if (!award) return null;
   const parts = [];
-  if (award.credits > 0) parts.push(`+${award.credits} CR`);
+  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} CR`);
   if (award.score > 0) parts.push(`+${award.score} SCORE`);
   if (award.xp > 0) parts.push(`+${award.xp} XP`);
   if (parts.length === 0) return null;
