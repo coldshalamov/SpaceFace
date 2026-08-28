@@ -1,0 +1,2674 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.parts-rack",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "22b3ba848c5185202e00a83bfb4ad8009c9e29036c5f248503cc715223a689d7",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.6951920986175537,
+          4.235932350158691,
+          1.9040803909301758
+        ],
+        "min": [
+          3.504807710647583,
+          -0.03593241795897484,
+          0.24591946601867676
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "560f3e1abc04b6b03cd1d82639ce0d2f4ae3386945294c8a54a9b2438cfe4c9d",
+      "id": "sf.render.parts-rack.mesh.aleg0-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.parts-rack.mesh.aleg0-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.6951920986175537,
+          4.235932350158691,
+          -0.24591994285583496
+        ],
+        "min": [
+          3.504807710647583,
+          -0.035932548344135284,
+          -1.9040799140930176
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "438f4aebae45d0cd40ac5f9250c4d6e26356ad6c78cdb378427e892c48f7f7dc",
+      "id": "sf.render.parts-rack.mesh.aleg0-f.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.parts-rack.mesh.aleg0-f",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.504807710647583,
+          4.235932350158691,
+          1.9040803909301758
+        ],
+        "min": [
+          -3.6951920986175537,
+          -0.03593241795897484,
+          0.24591946601867676
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db5e12b5a01cc9a16fd47b7c836a0e1317e8eb62f52b891aa1905dac07e09ff4",
+      "id": "sf.render.parts-rack.mesh.aleg1-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.parts-rack.mesh.aleg1-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.504807710647583,
+          4.235932350158691,
+          -0.24591994285583496
+        ],
+        "min": [
+          -3.6951920986175537,
+          -0.035932548344135284,
+          -1.9040799140930176
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "331745e76b3f9cf67c77181592d7149f7f629b5811ed5ddd099581f95509edf6",
+      "id": "sf.render.parts-rack.mesh.aleg1-f.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.parts-rack.mesh.aleg1-f",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.686605215072632,
+          4.299989223480225,
+          0.3500000238418579
+        ],
+        "min": [
+          3.513394594192505,
+          4.100010395050049,
+          -0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4eae9a9a6890cf6bccf21aa52a5bd142a7196ce2131a637b058df2ab93c44830",
+      "id": "sf.render.parts-rack.mesh.atie0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.parts-rack.mesh.atie0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.513394594192505,
+          4.299989223480225,
+          0.3500000238418579
+        ],
+        "min": [
+          -3.686605215072632,
+          4.100010395050049,
+          -0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4997c2cc7c648faa20e932bfc267d39e8cc3272715d37d4dbc141bac5a7befdf",
+      "id": "sf.render.parts-rack.mesh.atie1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.parts-rack.mesh.atie1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.0424133762717247,
+          4.786408424377441,
+          0.5327677130699158
+        ],
+        "min": [
+          -0.0424133762717247,
+          4.263591766357422,
+          -0.032767731696367264
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d256e1c7cec21abf166c994e44b04576658d179dec63c08576b5bf66c96690a7",
+      "id": "sf.render.parts-rack.mesh.fl-bracket.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.parts-rack.mesh.fl-bracket",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.1750086545944214,
+          4.928714752197266,
+          0.6839929819107056
+        ],
+        "min": [
+          -0.1750086545944214,
+          4.571285247802734,
+          0.3160070478916168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b27de7e6d3e858d02c741e8bb1d42354dea2abc78b3d0f833eb0375adffc6dc6",
+      "id": "sf.render.parts-rack.mesh.fl-housing.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.parts-rack.mesh.fl-housing",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.14000000059604645,
+          4.759610176086426,
+          0.663998544216156
+        ],
+        "min": [
+          -0.14000000059604645,
+          4.575461387634277,
+          0.44190070033073425
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7169f883588fab352ba8ba037f8f77f2fb3222e5cd1a95ca3a82b7306a2702cd",
+      "id": "sf.render.parts-rack.mesh.fl-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.parts-rack.mesh.fl-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.100076198577881,
+          0.19990691542625427,
+          2
+        ],
+        "min": [
+          3.099923610687256,
+          -0.09990692138671875,
+          -2
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2722f43169facd8bf9b93386c0ed088f33767a7d5565ac6990d8504c7f0428d",
+      "id": "sf.render.parts-rack.mesh.foot0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.parts-rack.mesh.foot0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.099923610687256,
+          0.19990691542625427,
+          2
+        ],
+        "min": [
+          -4.100076198577881,
+          -0.09990692138671875,
+          -2
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "174fe2fe918fbac2273a663d886c566e6da995d7bd48b80cac797b232c794a6b",
+      "id": "sf.render.parts-rack.mesh.foot1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.parts-rack.mesh.foot1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.519999980926514,
+          0.6999832391738892,
+          1.2299814224243164
+        ],
+        "min": [
+          3.7199997901916504,
+          0.20001670718193054,
+          1.1700186729431152
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19b84637d595f4e4069e12c2d53a2b91ed8af6a439640a67faec00e990c866f1",
+      "id": "sf.render.parts-rack.mesh.id.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.parts-rack.mesh.id",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          3.398707389831543,
+          -0.06552019715309143
+        ],
+        "min": [
+          -2.799999952316284,
+          0.10129250586032867,
+          -0.5344797968864441
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d0d1ff71f4a8b569413672ddd83803652a167d0138b85c4d5f9905dd057d353",
+      "id": "sf.render.parts-rack.mesh.plate0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.parts-rack.mesh.plate0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          3.3809335231781006,
+          -0.3535035252571106
+        ],
+        "min": [
+          -2.799999952316284,
+          0.1190665066242218,
+          -1.1464964151382446
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e728dafd145c00f77ee7d3114b369881232c7d623f5c7342739aaa3413414b0f",
+      "id": "sf.render.parts-rack.mesh.plate1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.parts-rack.mesh.plate1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          3.3470945358276367,
+          -0.6455886363983154
+        ],
+        "min": [
+          -2.799999952316284,
+          0.15290533006191254,
+          -1.7544115781784058
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8a62c6e335a98682c5bbc6804d45989437f57c327094762f82dffd6c73e9e3cd",
+      "id": "sf.render.parts-rack.mesh.plate2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.parts-rack.mesh.plate2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          3.390162467956543,
+          0.8818948864936829
+        ],
+        "min": [
+          -2.799999952316284,
+          0.10983771830797195,
+          0.21810509264469147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02c86b4a9c163562ff4ca4a4809ac6bbd74767af73ccf60b984c785d169dfeb0",
+      "id": "sf.render.parts-rack.mesh.plate3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.parts-rack.mesh.plate3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          3.3470945358276367,
+          1.6544114351272583
+        ],
+        "min": [
+          -2.799999952316284,
+          0.15290533006191254,
+          0.5455885529518127
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3fc6fbca1d213bcbcd68981a36cd58db3cf1641ed2d79f7256b9bf72bfde2574",
+      "id": "sf.render.parts-rack.mesh.plate4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.parts-rack.mesh.plate4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.200000524520874,
+          0.7023488879203796,
+          -0.9398388862609863
+        ],
+        "min": [
+          -3.200000524520874,
+          0.39765116572380066,
+          -1.2601611614227295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5b7907e2627023d6f72894dcf9b1c02cddf46ea38945d4d5d6475409f216b450",
+      "id": "sf.render.parts-rack.mesh.spar0.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.parts-rack.mesh.spar0",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          3.200000524520874,
+          0.7023488879203796,
+          0.16016113758087158
+        ],
+        "min": [
+          -3.200000524520874,
+          0.39765116572380066,
+          -0.16016113758087158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fec6fdd6d65ea5910e9b3e2b55a47f4975b393889f37b40c89ed00bd9887390",
+      "id": "sf.render.parts-rack.mesh.spar1.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.parts-rack.mesh.spar1",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          3.200000524520874,
+          0.7023488879203796,
+          1.2601611614227295
+        ],
+        "min": [
+          -3.200000524520874,
+          0.39765116572380066,
+          0.9398388862609863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93936e8dd2fb24807e90fda20cb32bf5781d8e2fe7c268e95a839c698889a0f7",
+      "id": "sf.render.parts-rack.mesh.spar2.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.parts-rack.mesh.spar2",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.599945068359375,
+          0.7000686526298523,
+          1.7000000476837158
+        ],
+        "min": [
+          -3.0000548362731934,
+          0.1999313235282898,
+          -1.7000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d31cdda26fd1060823642a3a10a0dcc61c7fe2813e3aa03be759cd10556121e5",
+      "id": "sf.render.parts-rack.mesh.sparcradle-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.parts-rack.mesh.sparcradle-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0000548362731934,
+          0.7000686526298523,
+          1.7000000476837158
+        ],
+        "min": [
+          2.599945068359375,
+          0.1999313235282898,
+          -1.7000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e687e66103fe8d2c36d8a363d04e280da318288d53709d278b36790f3974283",
+      "id": "sf.render.parts-rack.mesh.sparcradle-f.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.parts-rack.mesh.sparcradle-f",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5999999046325684,
+          4.359866619110107,
+          0.09536423534154892
+        ],
+        "min": [
+          -3.5999999046325684,
+          4.140133380889893,
+          -0.09536423534154892
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46440bdc1c4bbe9b01e1e8b57c536df8c8f7f432f7baf57f59ac61d4d8dd41b5",
+      "id": "sf.render.parts-rack.mesh.spine.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.parts-rack.mesh.spine",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "id": "material:1d7c6efa6307449b139dd83f",
+      "name": "esk_paint_industrial_ochre",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "id": "material:30a1b3664c52d6456d2dd72a",
+      "name": "esk_light_repair",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9538e2a870a6b542509db5ad2dcbc9e75d9b4ad5f1d408012e7920b31c6bd81d",
+      "id": "material:9538e2a870a6b542509db5ad",
+      "name": "esk_paint_service_blue",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "name": "esk_id_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "id": "material:fc62ff199e40118baa3f1d37",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "id": "material:fcaae752dff7f4d8d2acc92d",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.parts-rack.mesh.aleg0-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aleg0_a",
+      "nodeName": "aleg0_a",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.aleg0-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aleg0_f",
+      "nodeName": "aleg0_f",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.aleg1-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aleg1_a",
+      "nodeName": "aleg1_a",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.aleg1-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aleg1_f",
+      "nodeName": "aleg1_f",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.atie0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "atie0",
+      "nodeName": "atie0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.atie1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "atie1",
+      "nodeName": "atie1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.fl-bracket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fl_bracket",
+      "nodeName": "fl_bracket",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.fl-housing",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fl_housing",
+      "nodeName": "fl_housing",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.fl-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fl_lens",
+      "nodeName": "fl_lens",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.foot0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "foot0",
+      "nodeName": "foot0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.foot1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "foot1",
+      "nodeName": "foot1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.id",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "id",
+      "nodeName": "id",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.plate0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate0",
+      "nodeName": "plate0",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.plate1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate1",
+      "nodeName": "plate1",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.plate2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate2",
+      "nodeName": "plate2",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.plate3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate3",
+      "nodeName": "plate3",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.plate4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "plate4",
+      "nodeName": "plate4",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.spar0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spar0",
+      "nodeName": "spar0",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.spar1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spar1",
+      "nodeName": "spar1",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.spar2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spar2",
+      "nodeName": "spar2",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.sparcradle-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "sparcradle_a",
+      "nodeName": "sparcradle_a",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.sparcradle-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "sparcradle_f",
+      "nodeName": "sparcradle_f",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.mesh.spine",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine",
+      "nodeName": "spine",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.parts-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.parts-rack.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "parts_rack",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.parts-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "27269c2df61e288e55eba6e9cece16b335a587694e40ed9773c68135cc3b1c6d"
+    },
+    "sourceGlb": {
+      "bytes": 25320,
+      "sha256": "d12badb5e8b84d8992d9a7b07102b9b99b07d312c41e95159d39de30766dd2c7",
+      "uri": "place_parts_rack.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 45168,
+    "sha256": "11d750baeb961d65292488f93ecb703fb9ec05055d3e944ea3680a5760248cf1",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.2099618911743164,
+        2.4144039154052734,
+        0
+      ],
+      "max": [
+        4.519999980926514,
+        4.928714752197266,
+        2
+      ],
+      "min": [
+        -4.100076198577881,
+        -0.09990692138671875,
+        -2
+      ],
+      "size": [
+        8.620076179504395,
+        5.028621673583984,
+        4
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 13,
+      "mechanical": 3,
+      "service": 7
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 25,
+        "role": "service"
+      }
+    ],
+    "nodeCount": 26,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aleg0_a",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aleg0_f",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aleg1_a",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aleg1_f",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "atie0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "atie1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fl_bracket",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fl_housing",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fl_lens",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "foot0",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "foot1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "id",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate0",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate2",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate3",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "plate4",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spar0",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spar1",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spar2",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "sparcradle_a",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "sparcradle_f",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spine",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_parts_rack.glb"
+  },
+  "runtimeHash": "1004784773435a043cb9b41df470e59a44c6ce3911d42cd8b36258d2f63d59dc",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.519999980926514,
+          4.928714752197266,
+          2
+        ],
+        "min": [
+          -4.100076198577881,
+          -0.09990692138671875,
+          -2
+        ]
+      },
+      "id": "sf.render.parts-rack.body",
+      "nodeIds": [
+        "sf.render.parts-rack.mesh.aleg0-a",
+        "sf.render.parts-rack.mesh.aleg0-f",
+        "sf.render.parts-rack.mesh.aleg1-a",
+        "sf.render.parts-rack.mesh.aleg1-f",
+        "sf.render.parts-rack.mesh.atie0",
+        "sf.render.parts-rack.mesh.atie1",
+        "sf.render.parts-rack.mesh.fl-bracket",
+        "sf.render.parts-rack.mesh.fl-housing",
+        "sf.render.parts-rack.mesh.fl-lens",
+        "sf.render.parts-rack.mesh.foot0",
+        "sf.render.parts-rack.mesh.foot1",
+        "sf.render.parts-rack.mesh.id",
+        "sf.render.parts-rack.mesh.plate0",
+        "sf.render.parts-rack.mesh.plate1",
+        "sf.render.parts-rack.mesh.plate2",
+        "sf.render.parts-rack.mesh.plate3",
+        "sf.render.parts-rack.mesh.plate4",
+        "sf.render.parts-rack.mesh.spar0",
+        "sf.render.parts-rack.mesh.spar1",
+        "sf.render.parts-rack.mesh.spar2",
+        "sf.render.parts-rack.mesh.sparcradle-a",
+        "sf.render.parts-rack.mesh.sparcradle-f",
+        "sf.render.parts-rack.mesh.spine",
+        "sf.render.parts-rack.root"
+      ]
+    }
+  ]
+}

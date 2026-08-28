@@ -12,12 +12,39 @@ import {
   disposeAuthoredAssetRuntime,
 } from '../../render/assetLoader.js';
 
+// The authored cutter. `build_works_rover.py` exports one LOD<n>_Bit mesh per LOD and parents it
+// under bit_tip; the blueprint arrives flattened, so the hierarchy is rebuilt here by name.
+export const CUTTER_STEM = 'Bit';
+export const CUTTER_SOCKET = 'bit_tip';
+
+export const ROVER_HOOKS = Object.freeze([
+  'boom_pivot',
+  'bit_tip',
+  'hopper_fill_0',
+  'hopper_fill_1',
+  'hopper_fill_2',
+  'hopper_fill_3',
+  'hopper_fill_4',
+  'hopper_lid',
+  'lamp_socket',
+  'vent_stack',
+  'track_L',
+  'track_R',
+  'scar_plate',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
     lod1: null,
     slot: 'place',
     hooks: Object.freeze([]),
+  }),
+  rover: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_rover.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: ROVER_HOOKS,
   }),
 });
 
@@ -139,7 +166,72 @@ function instantiateBlueprint(blueprint, hookNames) {
     worksHooks[name] = found[name] || null;
   }
   root.userData.worksHooks = worksHooks;
+  root.userData.worksCutterMeshes = bindWorksHookHierarchy(root, worksHooks);
   return root;
+}
+
+// Per-instance clones (a track sampler, a cutter material that must glow alone) are NOT the
+// blueprint's shared GPU resources: the lease owns those and hands the same ones to every clone.
+// Anything recorded here belongs to exactly one group and dies with it in releaseWorksPart.
+export function recordWorksInstanceResources(group, resources) {
+  if (!group || !resources) return;
+  const list = group.userData.worksInstanceResources
+    || (group.userData.worksInstanceResources = []);
+  const items = Array.isArray(resources) ? resources : [resources];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item && list.indexOf(item) < 0) list.push(item);
+  }
+}
+
+const _hookWorld = new THREE.Matrix4();
+const _hookInv = new THREE.Matrix4();
+
+function reparentKeepWorld(child, parent) {
+  if (!child || !parent || child === parent || child.parent === parent) return;
+  child.updateMatrixWorld(true);
+  parent.updateMatrixWorld(true);
+  _hookWorld.copy(child.matrixWorld);
+  parent.add(child);
+  _hookInv.copy(parent.matrixWorld).invert();
+  child.matrix.copy(_hookInv.multiply(_hookWorld));
+  child.matrix.decompose(child.position, child.quaternion, child.scale);
+}
+
+function hookStem(name) {
+  const raw = String(name || '');
+  return raw.replace(/^LOD[012]_/, '');
+}
+
+function bindWorksHookHierarchy(root, hooks) {
+  if (!hooks) return [];
+  const meshes = [];
+  root.traverse((obj) => {
+    if (obj.isMesh) meshes.push(obj);
+  });
+  const boom = hooks.boom_pivot;
+  const bit = hooks[CUTTER_SOCKET];
+  if (bit && boom) reparentKeepWorld(bit, boom);
+  const cutters = [];
+  for (let i = 0; i < meshes.length; i++) {
+    const mesh = meshes[i];
+    const stem = hookStem(mesh.name);
+    if (stem === CUTTER_STEM) {
+      // The cutter hangs off the socket the runtime spins, never off the arm: a cutter parented
+      // to boom_pivot swings with the boom but can never turn on its own axis.
+      reparentKeepWorld(mesh, bit || boom || root);
+      cutters.push(mesh);
+      continue;
+    }
+    if (hooks[stem]) {
+      reparentKeepWorld(mesh, hooks[stem]);
+      continue;
+    }
+    if (/_Boom$/.test(mesh.name) || /Bit/i.test(mesh.name)) {
+      reparentKeepWorld(mesh, boom || root);
+    }
+  }
+  return cutters;
 }
 
 function releaseClone(group) {
@@ -169,7 +261,16 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
   let failed = 0;
   let released = 0;
   let lod1Missing = 0;
+  let lastError = null;
   const live = [];
+  // A teardown/mount race may hand the same group to two retirement paths. Releasing twice must
+  // not inflate diagnostics or walk/dispose instance resources a second time.
+  const releasedGroups = new WeakSet();
+  // id -> { promise, group }. One screen session holds at most ONE standing load per id, and
+  // every concurrent caller joins the SAME promise. Without this, two call sites racing the
+  // same async mount each take a lease, and the loser's group is dropped without release —
+  // observed as worksStats.loaded: 2 / released: 0 in the PQ-131.00 receipt.
+  const standing = new Map();
 
   function stats() {
     let untaggedMeshes = 0;
@@ -183,6 +284,8 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       register,
       lod1Missing,
       untaggedMeshes,
+      standing: standing.size,
+      lastError,
     };
   }
 
@@ -194,12 +297,45 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     for (let i = 0; i < live.length; i++) applyLodVisibility(live[i], register);
   }
 
+  function forgetStanding(group) {
+    for (const [id, record] of standing) {
+      if (record.group === group) {
+        standing.delete(id);
+        return;
+      }
+    }
+  }
+
   function releaseWorksPart(group) {
-    if (!group) return;
+    if (!group || releasedGroups.has(group)) return false;
+    releasedGroups.add(group);
     const idx = live.indexOf(group);
     if (idx >= 0) live.splice(idx, 1);
+    forgetStanding(group);
+    const owned = group.userData ? group.userData.worksInstanceResources : null;
     releaseClone(group);
+    if (Array.isArray(owned)) {
+      // Instance-owned clones die with the instance. The blueprint's shared geometry, materials
+      // and textures belong to the lease and are retired once, in dispose().
+      for (let i = 0; i < owned.length; i++) disposeRendererBoundResource(owned[i]);
+      owned.length = 0;
+    }
     released += 1;
+    return true;
+  }
+
+  function failLoad(id, url, error) {
+    failed += 1;
+    lastError = {
+      id,
+      url,
+      message: error && error.message ? error.message : String(error),
+    };
+    // Loud on purpose. The authored rover is not accepted yet, so the caller keeps its procedural
+    // fallback and the screen stays playable — but a silent null here is exactly how a dead
+    // authored asset hid behind a working picture for weeks. Name it every time.
+    console.error(`[worksPartLoader] authored works part "${id}" did not load from ${url}`, error);
+    return null;
   }
 
   async function loadWorksPart(id, options = {}, attempt = 0) {
@@ -217,14 +353,12 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
         optional: true,
         ...(options || {}),
       });
-    } catch {
-      failed += 1;
-      return null;
+    } catch (error) {
+      return failLoad(id, url, error);
     }
     if (!lease.isActive() || closed) return null;
     if (!blueprint || !Array.isArray(blueprint.primitives)) {
-      failed += 1;
-      return null;
+      return failLoad(id, url, new Error('the lease resolved no mesh primitives'));
     }
 
     if (register !== requestedRegister) {
@@ -252,9 +386,41 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     return group;
   }
 
+  // The lifecycle a screen session must use for anything it keeps on camera. Concurrent callers
+  // share one promise and one group; a caller that arrives after the load settled gets the same
+  // standing group back instead of taking a second lease.
+  function loadStandingPart(id, options = {}) {
+    const existing = standing.get(id);
+    if (existing) return existing.promise;
+    const record = { promise: null, group: null };
+    record.promise = loadWorksPart(id, options).then(
+      (group) => {
+        if (!group) {
+          if (standing.get(id) === record) standing.delete(id);
+          return null;
+        }
+        record.group = group;
+        group.userData.worksStanding = id;
+        return group;
+      },
+      (error) => {
+        if (standing.get(id) === record) standing.delete(id);
+        throw error;
+      },
+    );
+    standing.set(id, record);
+    return record.promise;
+  }
+
+  function standingPart(id) {
+    const record = standing.get(id);
+    return record ? record.group : null;
+  }
+
   function dispose(reason = 'works-screen-exit') {
     if (closed) return 0;
     closed = true;
+    standing.clear();
     const gpu = new Set();
     for (let i = 0; i < live.length; i++) collectGroupGpuResources(live[i], gpu);
     while (live.length) releaseWorksPart(live[live.length - 1]);
@@ -265,6 +431,8 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
 
   return Object.freeze({
     loadWorksPart,
+    loadStandingPart,
+    standingPart,
     releaseWorksPart,
     setRegister,
     stats,

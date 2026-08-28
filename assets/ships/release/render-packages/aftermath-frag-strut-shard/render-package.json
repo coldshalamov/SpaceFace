@@ -1,0 +1,1239 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-strut-shard",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "2528bdee5ae50b96f484183b53e44af2e06495ca82f722143f26e616e3d9e0b1",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.769012451171875,
+          0.9587495923042297,
+          -0.5321956276893616
+        ],
+        "min": [
+          2.6189327239990234,
+          0.40850144624710083,
+          -0.8803307414054871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aeed7848517987d520e382f052e7aafcb0ff528d046fbf2890f8a9f763e6605a",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          4.62586784362793,
+          1.126573085784912,
+          -0.7481124401092529
+        ],
+        "min": [
+          2.5170199871063232,
+          0.2647400200366974,
+          -1.8834234476089478
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a8b359b06ad11ca1639920d57e2c1c7fee93fe182fc87edb5cfcd59f3a55145",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          5.275571823120117,
+          2.3258168697357178,
+          -0.6732655763626099
+        ],
+        "min": [
+          2.453850746154785,
+          0.6013845801353455,
+          -1.735378623008728
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebc15e62f311db54c727d7256288d94196b0b62ab7103bcce7a2aee7865d83c0",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          3.003730297088623,
+          1.1462271213531494,
+          -0.45118895173072815
+        ],
+        "min": [
+          2.8537988662719727,
+          0.22622700035572052,
+          -1.371188998222351
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eefa2488b6db4a3225c577365767b5ebd34b5c88732b40d0b3f7d2792733dc1f",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7885215282440186,
+          0.8938653469085693,
+          -0.6585977673530579
+        ],
+        "min": [
+          3.67651629447937,
+          0.7338652610778809,
+          -0.8185977339744568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d27ef06a6866447f1f39eab88af3f65afb4478aa67d41039069eaf2320ab9859",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          5.229907035827637,
+          2.228045701980591,
+          -1.478639006614685
+        ],
+        "min": [
+          5.117901802062988,
+          2.0680458545684814,
+          -1.6386390924453735
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aced80ebfbda6570f0cd40a16feb8e0d63f1d3d04e709e51f705a68193f33d29",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5320284366607666,
+          1.2333186864852905,
+          -0.32480502128601074
+        ],
+        "min": [
+          2.670118570327759,
+          0.012508547864854336,
+          -1.3971316814422607
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bef78833166205a87dd93a7b50b4d18b145738c74b399d32fef1703ca5369266",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.468809127807617,
+          1.295241355895996,
+          -0.7506620287895203
+        ],
+        "min": [
+          2.4179558753967285,
+          0.6617908477783203,
+          -1.4774580001831055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b33a1741221a299bff1edb3410742a10f29950112048c5c5079a34cef271baa5",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4710328578948975,
+          0.8730055689811707,
+          0.35892313718795776
+        ],
+        "min": [
+          -5.263298988342285,
+          -1.117149829864502,
+          -1.136902093887329
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e2e762d74fb44c1d485ce4588c59eac69f39762a6790bafbd1dca8fa6c9f3a1",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.fs-main.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.fs-main",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7733621597290039,
+          -0.17017331719398499,
+          1.8588969707489014
+        ],
+        "min": [
+          -2.5657002925872803,
+          -2.3258731365203857,
+          -0.3979451656341553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "74d2f3c92b3a2806c988a13f2be86c1c8609c1227385682189dee8dcb84904f4",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.fs-side.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.fs-side",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "id": "material:6ba64bc230e8b6c479bb16ed",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_fray_0",
+      "nodeName": "break_fray_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_fray_1",
+      "nodeName": "break_fray_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_fray_2",
+      "nodeName": "break_fray_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_hotcore",
+      "nodeName": "break_hotcore",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_hotfray_0",
+      "nodeName": "break_hotfray_0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_hotfray_2",
+      "nodeName": "break_hotfray_2",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_peel_0",
+      "nodeName": "break_peel_0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.break-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_peel_1",
+      "nodeName": "break_peel_1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.fs-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fs_main",
+      "nodeName": "fs_main",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.fs-side",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fs_side",
+      "nodeName": "fs_side",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_strut_shard",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "c9b306a999f95c855b8ab5868d6b078e23bf72efa7cbf9be319cb900c207f8cf"
+    },
+    "sourceGlb": {
+      "bytes": 18628,
+      "sha256": "da2889d7fccf9381fefc9e80e69a815cbe4b576ba42089b7b952f5612362ecea",
+      "uri": "place_aftermath_frag_strut_shard.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 27840,
+    "sha256": "5298da7d7d4b8e792991d6f6607c85974a9ee6ce3b6840c3ef8445c70bd40521",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.006136417388916016,
+        -0.000028133392333984375,
+        -0.012263238430023193
+      ],
+      "max": [
+        5.275571823120117,
+        2.3258168697357178,
+        1.8588969707489014
+      ],
+      "min": [
+        -5.263298988342285,
+        -2.3258731365203857,
+        -1.8834234476089478
+      ],
+      "size": [
+        10.538870811462402,
+        4.6516900062561035,
+        3.742320418357849
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 10
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 12,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_fray_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_fray_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_fray_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_hotcore",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_hotfray_0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_hotfray_2",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_peel_0",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_peel_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fs_main",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fs_side",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
+  },
+  "runtimeHash": "7696231c144b605000ac256c1512486dbd9b1323f45c82dc88a6fc9608de3059",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.275571823120117,
+          2.3258168697357178,
+          1.8588969707489014
+        ],
+        "min": [
+          -5.263298988342285,
+          -2.3258731365203857,
+          -1.8834234476089478
+        ]
+      },
+      "id": "sf.render.aftermath-frag-strut-shard.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-strut-shard.mesh.break-fray-0",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-fray-1",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-fray-2",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-hotcore",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-0",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-hotfray-2",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-peel-0",
+        "sf.render.aftermath-frag-strut-shard.mesh.break-peel-1",
+        "sf.render.aftermath-frag-strut-shard.mesh.fs-main",
+        "sf.render.aftermath-frag-strut-shard.mesh.fs-side",
+        "sf.render.aftermath-frag-strut-shard.root"
+      ]
+    }
+  ]
+}

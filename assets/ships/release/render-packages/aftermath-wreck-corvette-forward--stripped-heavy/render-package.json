@@ -1,0 +1,5354 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.576614379882812,
+        6.479885101318359,
+        -6.410841941833496,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.576614379882812,
+        6.479885101318359,
+        -6.410841941833496,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-evidence-registry",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        25.423385620117188,
+        1.0198848247528076,
+        2.7891578674316406,
+        1
+      ],
+      "nodeName": "SOCKET_Evidence_Registry",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        25.423385620117188,
+        1.0198848247528076,
+        2.7891578674316406,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-hazard-break",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -35.57661437988281,
+        0.019884824752807617,
+        -3.8108420372009277,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Break",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -35.57661437988281,
+        0.019884824752807617,
+        -3.8108420372009277,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-salvage-barbette",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.423385620117188,
+        7.4598846435546875,
+        -3.8108420372009277,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Barbette",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        13.423385620117188,
+        7.4598846435546875,
+        -3.8108420372009277,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "12b2c82e971039160fbecf8a3d280a791468abd968cd422cf1686a84e93c4919",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          17.518280029296875,
+          6.559692859649658,
+          0.389157772064209
+        ],
+        "min": [
+          9.3284912109375,
+          3.560077428817749,
+          -8.010841369628906
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49f0972340897efe399b821da8b779ca2f6563c8a00ed14e13ff87132f076de2",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-barb.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-barb",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          17.810771942138672,
+          7.209766864776611,
+          0.6891579627990723
+        ],
+        "min": [
+          9.035999298095703,
+          6.110002040863037,
+          -8.310842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "96f5290dff2c2ba07f065b32f58baace55a90f9a060f39f9b6c4f427600b9f67",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-ring.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-ring",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.526607513427734,
+          -1.0392146110534668,
+          -10.034994125366211
+        ],
+        "min": [
+          -39.0266227722168,
+          -1.719214677810669,
+          -10.714994430541992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2df144b767c7c36ee87f09f86c9ec41e4f6ecd8ca3fc8d2066ee839984d7968",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.027",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.526607513427734,
+          -6.315340042114258,
+          -4.168653964996338
+        ],
+        "min": [
+          -39.0266227722168,
+          -6.995340347290039,
+          -4.848654270172119
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85429bacfaab6f34cf0d028a5b8310fe2d9e4869eb0db88455c3ac5322437129",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-1.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.028",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-1",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.526607513427734,
+          -2.3665316104888916,
+          2.662038564682007
+        ],
+        "min": [
+          -39.0266227722168,
+          -3.046531915664673,
+          1.9820386171340942
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dc0f6fde261489a6c176fa494a9afd35bb6db21366d24d26385f733ff834868b",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.029",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.526607513427734,
+          5.350091934204102,
+          1.0172985792160034
+        ],
+        "min": [
+          -39.0266227722168,
+          4.67009162902832,
+          0.33729854226112366
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ea52f5df43e6affca96000c3afe0bdb77e8e97601b2f7265e3373ea477a456f",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-3.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.030",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-3",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.526607513427734,
+          6.170418739318848,
+          -6.829898834228516
+        ],
+        "min": [
+          -39.0266227722168,
+          5.490418434143066,
+          -7.509899139404297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "84cd64e27de0ccb218a5e65bb6fb262468dcc7863ea67ab33ab5ee9d814afbeb",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-4.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.031",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-4",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.563385009765625,
+          0.2659280002117157,
+          -10.276753425598145
+        ],
+        "min": [
+          -42.853843688964844,
+          -0.22615835070610046,
+          -10.997729301452637
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a4664cb7c252c2aeecf552ee834cec0525b53786607e495a81abaa05c48c9b9",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.56394577026367,
+          -3.6341893672943115,
+          -8.94986629486084
+        ],
+        "min": [
+          -43.63328170776367,
+          -4.375642776489258,
+          -9.751145362854004
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d78fa95f6561d1322f586ad5248e66dc3343851c3c1bf8c80c49f08bf462f0c",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.55942916870117,
+          -6.027606964111328,
+          -5.548827648162842
+        ],
+        "min": [
+          -44.41779708862305,
+          -6.997097015380859,
+          -6.317760944366455
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c7e4c0529582bbb44152d1b45cdb4f63279249c326231670bbd265a0fa848fc3",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.56288528442383,
+          -6.095030307769775,
+          -1.3908939361572266
+        ],
+        "min": [
+          -43.24434280395508,
+          -6.86975622177124,
+          -2.0053534507751465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fba8ff99356acf01bd14d1d291f2e1a571df4f8e1ceac448e871b87bf54d580e",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.562965393066406,
+          -3.611693859100342,
+          2.168931484222412
+        ],
+        "min": [
+          -44.024261474609375,
+          -4.410480976104736,
+          1.3056998252868652
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d5d3b22f706948e01e4ff388de46b4a4e2e99c60bfcf23cb957e613e7463146",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.563385009765625,
+          0.2659291625022888,
+          3.376044511795044
+        ],
+        "min": [
+          -42.853843688964844,
+          -0.22615951299667358,
+          2.6550710201263428
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e8148a022916682d6bf1eb6c63a17a9b94287162c879c641aaed193620a3e80a",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.56394577026367,
+          4.415410995483398,
+          2.129460573196411
+        ],
+        "min": [
+          -43.63328170776367,
+          3.673959970474243,
+          1.3281821012496948
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0afc95c93f5e63d1830d6286277e3ec585502b4c42fc8513270f1b806bec9f5c",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.55943298339844,
+          7.036865711212158,
+          -1.3039240837097168
+        ],
+        "min": [
+          -44.41779327392578,
+          6.067376613616943,
+          -2.0728554725646973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c535f2604ba032c4aa65f4af2e9c7bd59b2408daaa14e49ca2eb208a8f009074",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.56288528442383,
+          6.909526348114014,
+          -5.616330146789551
+        ],
+        "min": [
+          -43.24434280395508,
+          6.134800434112549,
+          -6.230790138244629
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e61b58238ab503032026feed76bb094d1b7626578cd9da6bfeef955cb6f20f77",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.562965393066406,
+          4.450248718261719,
+          -8.927382469177246
+        ],
+        "min": [
+          -44.024261474609375,
+          3.6514663696289062,
+          -9.790616035461426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a21b7ba455f53787c01fd0a0fab927a0bd434ffb8fc075e3b845ddbb6927fd9",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.515987396240234,
+          -1.6768320798873901,
+          -9.567872047424316
+        ],
+        "min": [
+          -40.06724166870117,
+          -3.26627779006958,
+          -10.900816917419434
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5d24f6281ec47ee2271ed249d2c117ec6f0737d742a187f1ad2d4d7f675e6761",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.35393142700195,
+          -4.860515117645264,
+          -5.699872016906738
+        ],
+        "min": [
+          -42.51729965209961,
+          -6.472975254058838,
+          -8.174459457397461
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f63aaeb6cd1b4ca2a9314986ce717276c982d92092f25b2a5c506b974b54ae9d",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.28121566772461,
+          -5.601074695587158,
+          -1.5048820972442627
+        ],
+        "min": [
+          -40.8740119934082,
+          -7.679864406585693,
+          -3.4793660640716553
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e6643316bacbb32e8538610cb653d593a42fcafba9559550c04b3a3fe4d726a",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.422847747802734,
+          -2.7305643558502197,
+          2.8564326763153076
+        ],
+        "min": [
+          -43.020381927490234,
+          -5.236820220947266,
+          -0.5194262266159058
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "748c2784f021f66c433399abe6d554a55419c5d0378af7af03de805e58e0a98f",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.32448196411133,
+          0.4135197401046753,
+          4.050392150878906
+        ],
+        "min": [
+          -41.40274429321289,
+          -0.09369047731161118,
+          1.704092264175415
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eeaee81f1e1a3c3a245a595b40a696dfb11465b513ddb66c155bcbccfaac4277",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.49468994140625,
+          5.56584358215332,
+          2.1035890579223633
+        ],
+        "min": [
+          -43.520538330078125,
+          2.7590274810791016,
+          -0.2610911726951599
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b80341d374b93cd34cbcf5429bf3d89f41d926312a7ae466763edcc0f93781eb",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.427181243896484,
+          7.340271949768066,
+          -1.6072993278503418
+        ],
+        "min": [
+          -41.87204360961914,
+          5.723240852355957,
+          -3.9980721473693848
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dc5f5bc1c8021d1e6f3032cd57e83bd07665dc3594fc576374ec752b62582958",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.165870666503906,
+          6.934966087341309,
+          -6.229193210601807
+        ],
+        "min": [
+          -40.4173583984375,
+          4.891366004943848,
+          -8.530529022216797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2e1401faab2688cb0776d0ca1a4642552691b689d386949c4139a261777735d",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -38.40415954589844,
+          2.816042900085449,
+          -8.687808990478516
+        ],
+        "min": [
+          -42.467071533203125,
+          1.4064369201660156,
+          -11.220109939575195
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e5fbb359cd70a18f91ed0755fcaa750d9b822d8ce156a66ec4eef02f0bc5607",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.575687408447266,
+          -0.3502250909805298,
+          3.6190452575683594
+        ],
+        "min": [
+          -30.57754135131836,
+          -0.610005259513855,
+          3.259270668029785
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "86b0c94beae5097e3e8f38eae7779a5cf4582b2225b3d8558e73420e017e3544",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.038",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.5756871700286865,
+          -0.35022446513175964,
+          3.619044542312622
+        ],
+        "min": [
+          -16.57754135131836,
+          -0.6100058555603027,
+          3.2592713832855225
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "135cd568bee136cb2897d731453159849b0aa5ac540c6b191a8c085b885c8839",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.039",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.7268383502960205,
+          6.779799461364746,
+          -0.11084198951721191
+        ],
+        "min": [
+          -2.2263896465301514,
+          5.179970741271973,
+          -7.510842323303223
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b35e5de1565b36c8b736c82b9436f3b5003e77e2d648be2f9c070f69a4f7192",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge-glass.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "blend",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5766143798828125,
+          7.679628849029541,
+          0.68947833776474
+        ],
+        "min": [
+          -15.576614379882812,
+          3.2801413536071777,
+          -8.311161994934082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "94c55e8eeaa6b3261997f13066b765b2df40b747c31c720f078a9c5f72773c49",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.57661247253418,
+          7.019886493682861,
+          3.1891579627990723
+        ],
+        "min": [
+          -32.57661437988281,
+          -6.980116844177246,
+          -10.810842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59cbefbb2267810904137c74bd4a4779965ac69b1226ffe1709f9df9995a3827",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-5.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-5",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.57661247253418,
+          7.019886493682861,
+          3.1891579627990723
+        ],
+        "min": [
+          -18.576616287231445,
+          -6.980116844177246,
+          -10.810842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2fa254064e8405db6416db6d871086a290cac80a7145c050135239a1b6bd1b8a",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-6.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-6",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          9.42338752746582,
+          7.019886493682861,
+          3.1891579627990723
+        ],
+        "min": [
+          -4.576616287231445,
+          -6.980116844177246,
+          -10.810842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48f239d1780ab6d99ab7eddf9cc89091b76dbe1a9c7f43c6fa712e3a81a6898f",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-7.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-7",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          23.42338752746582,
+          7.019886493682861,
+          3.1891579627990723
+        ],
+        "min": [
+          9.423383712768555,
+          -6.980116844177246,
+          -10.810842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3b38e60988a75131d8445e65c43a627f70b15d73135abffc612a95022eed863",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-8.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-8",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          37.42338562011719,
+          7.019886493682861,
+          3.1891579627990723
+        ],
+        "min": [
+          23.423383712768555,
+          -6.980116844177246,
+          -10.810842514038086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3737c60f20c294fff52c0d2869b8b1791bf924e7062ed2f044f85727e951614a",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-9.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-9",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          44.42338562011719,
+          7.0198564529418945,
+          3.1891274452209473
+        ],
+        "min": [
+          28.423383712768555,
+          -6.980084419250488,
+          -10.810811996459961
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d84d35b5ff47b3dca9e729ed176577d158fcd97780755dc9ba8cac2f15a4a28",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-prow.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-prow",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.375762939453125,
+          -0.2712371349334717,
+          6.502695560455322
+        ],
+        "min": [
+          -17.910337448120117,
+          -1.7506670951843262,
+          2.985328197479248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "492ecb4edf896df2bc06bfd0c2c9552e21bad10c0b8e4178d314ff2f4d50f480",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.032",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -12.10119342803955,
+          -0.40547576546669006,
+          8.807190895080566
+        ],
+        "min": [
+          -16.917232513427734,
+          -2.4050471782684326,
+          2.204859972000122
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ddeae95b0437ba7e0b74faed68cde6e75bde30893fc4b8464984173d4676dc2e",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.034",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -12.647905349731445,
+          4.1855244636535645,
+          11.106372833251953
+        ],
+        "min": [
+          -17.27375030517578,
+          -0.8731476068496704,
+          2.224684715270996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a304cb5e934c61ab6ef3bc5f942aac57a02f3c080b11f1d59a6096a475d11987",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.035",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.1417236328125,
+          1.0999075174331665,
+          5.142289161682129
+        ],
+        "min": [
+          -16.801422119140625,
+          -2.9480929374694824,
+          1.0942895412445068
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "631881f728723719c11a2ff019461a6500e7a138193b4202eb5a12cd9b8dce77",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.037",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.753372192382812,
+          -0.5768864750862122,
+          6.776725769042969
+        ],
+        "min": [
+          -17.246196746826172,
+          -1.2808866500854492,
+          6.072726249694824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c90db1ce2adf23722a4904f67af05db6811040910b00dccabe58d16a241bd74",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.033",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.146482467651367,
+          3.7253479957580566,
+          11.01850414276123
+        ],
+        "min": [
+          -13.639307022094727,
+          3.021347999572754,
+          10.31450366973877
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1fb6939ed5ebc5e744dea295fc5da07a456c6eac03d4b5d18a6cc60cae7962f4",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.036",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.585458755493164,
+          0.6175007820129395,
+          6.14663553237915
+        ],
+        "min": [
+          -18.407079696655273,
+          -3.28505802154541,
+          3.3290464878082275
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c430e762f8b550edba069aae64cf7d6525dc25d04fb48915f7d29ff3c13a51c7",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.021",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.562872886657715,
+          0.9283256530761719,
+          9.84933853149414
+        ],
+        "min": [
+          -15.853333473205566,
+          -1.9764223098754883,
+          2.037562847137451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c526efc3ec3b7819821b188019363ed858fc6e3579b6540ad49d8c8c0a328467",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.022",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.509806632995605,
+          1.1235456466674805,
+          8.564391136169434
+        ],
+        "min": [
+          -18.679195404052734,
+          -0.6955458521842957,
+          2.042066812515259
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af8d9901e77812382a2ab7b39e3de75f24a9372b7d12962f3a031941b60bd2f5",
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.023",
+      "nodeId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "14bf611974b680d78643d866f232f89db83e2b3a242499db488d38cc198d7fc4",
+      "id": "material:14bf611974b680d78643d866",
+      "name": "wrk_cut_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "id": "material:22334c862d743f3b681c8a34",
+      "name": "wrk_armor",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "id": "material:acad180edd387403bb113453",
+      "name": "wrk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "id": "material:d6a50e6ee7951288218a6754",
+      "name": "wrk_paint_navy_concord",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "id": "material:fabcdc1eca2d9ec5b43cae27",
+      "name": "wrk_glass_shattered",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-barb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_fwd_barb",
+      "nodeName": "barbette_fwd_barb",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_fwd_ring",
+      "nodeName": "barbette_fwd_ring",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_0",
+      "nodeName": "break_lance_hot_0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_1",
+      "nodeName": "break_lance_hot_1",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_2",
+      "nodeName": "break_lance_hot_2",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_3",
+      "nodeName": "break_lance_hot_3",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_4",
+      "nodeName": "break_lance_hot_4",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_0",
+      "nodeName": "break_lance_rib_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_1",
+      "nodeName": "break_lance_rib_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_2",
+      "nodeName": "break_lance_rib_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_3",
+      "nodeName": "break_lance_rib_3",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_4",
+      "nodeName": "break_lance_rib_4",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_5",
+      "nodeName": "break_lance_rib_5",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_6",
+      "nodeName": "break_lance_rib_6",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_7",
+      "nodeName": "break_lance_rib_7",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_8",
+      "nodeName": "break_lance_rib_8",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_9",
+      "nodeName": "break_lance_rib_9",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_0",
+      "nodeName": "break_lance_tear_0",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_1",
+      "nodeName": "break_lance_tear_1",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_2",
+      "nodeName": "break_lance_tear_2",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_3",
+      "nodeName": "break_lance_tear_3",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_4",
+      "nodeName": "break_lance_tear_4",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_5",
+      "nodeName": "break_lance_tear_5",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_6",
+      "nodeName": "break_lance_tear_6",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_7",
+      "nodeName": "break_lance_tear_7",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_8",
+      "nodeName": "break_lance_tear_8",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_belt_crack_0",
+      "nodeName": "crack_belt_crack_0",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_belt_crack_1",
+      "nodeName": "crack_belt_crack_1",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_bridge",
+      "nodeName": "cv_bridge",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "cv_bridge_glass",
+      "nodeName": "cv_bridge_glass",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_5",
+      "nodeName": "cv_hull_5",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_6",
+      "nodeName": "cv_hull_6",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_7",
+      "nodeName": "cv_hull_7",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_8",
+      "nodeName": "cv_hull_8",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_9",
+      "nodeName": "cv_hull_9",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-prow",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_prow",
+      "nodeName": "cv_prow",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_fray_0",
+      "nodeName": "gouge_fray_0",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_fray_1",
+      "nodeName": "gouge_fray_1",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_fray_2",
+      "nodeName": "gouge_fray_2",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_hotcore",
+      "nodeName": "gouge_hotcore",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_hotfray_0",
+      "nodeName": "gouge_hotfray_0",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_hotfray_2",
+      "nodeName": "gouge_hotfray_2",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_peel_0",
+      "nodeName": "gouge_peel_0",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_peel_1",
+      "nodeName": "gouge_peel_1",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "gouge_peel_2",
+      "nodeName": "gouge_peel_2",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "wreck_corvette_forward",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4becf4ea3747edf32fc95c8375c6df9ef8feb1a876f97701d5434d9af958dbdb"
+    },
+    "sourceGlb": {
+      "bytes": 47180,
+      "sha256": "6313d1c5273fb3cc5fee2aa9c6c82c2757efe983ea0df010d681b9c6cef93b47",
+      "uri": "place_aftermath_wreck_corvette_forward__stripped_heavy.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 113120,
+    "sha256": "8db027edd6945ecacc617f2d3a9b88199729bf4a02e6b86669430afec9d92d07",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.0027942657470703125,
+        -0.00011777877807617188,
+        -0.056868553161621094
+      ],
+      "max": [
+        44.42338562011719,
+        7.679628849029541,
+        11.106372833251953
+      ],
+      "min": [
+        -44.41779708862305,
+        -7.679864406585693,
+        -11.220109939575195
+      ],
+      "size": [
+        88.84118270874023,
+        15.359493255615234,
+        22.32648277282715
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.576614379882812,
+          6.479885101318359,
+          -6.410841941833496,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 47,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          25.423385620117188,
+          1.0198848247528076,
+          2.7891578674316406,
+          1
+        ],
+        "name": "SOCKET_Evidence_Registry",
+        "planIndex": 48,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Evidence_Registry",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Evidence_Registry",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-evidence-registry"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -35.57661437988281,
+          0.019884824752807617,
+          -3.8108420372009277,
+          1
+        ],
+        "name": "SOCKET_Hazard_Break",
+        "planIndex": 49,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Break",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Break",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-hazard-break"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          13.423385620117188,
+          7.4598846435546875,
+          -3.8108420372009277,
+          1
+        ],
+        "name": "SOCKET_Salvage_Barbette",
+        "planIndex": 50,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Barbette",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Barbette",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.anchor.socket-salvage-barbette"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 44
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 51,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_fwd_barb",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_fwd_ring",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_0",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_3",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_4",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_2",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_3",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_4",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_5",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_6",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_7",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_8",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_9",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_0",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_2",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_3",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_4",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_5",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_6",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_7",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_8",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_belt_crack_0",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_belt_crack_1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_bridge",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_bridge_glass",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_5",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_6",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_7",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_8",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_9",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_prow",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_fray_0",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_fray_1",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_fray_2",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_hotcore",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_hotfray_0",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_hotfray_2",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_peel_0",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_peel_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "gouge_peel_2",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__stripped_heavy.glb"
+  },
+  "runtimeHash": "b6dab3a49d0603aa2992df5c011815995334094e7a703461fa97c38bf3e69770",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          44.42338562011719,
+          7.679628849029541,
+          11.106372833251953
+        ],
+        "min": [
+          -44.41779708862305,
+          -7.679864406585693,
+          -11.220109939575195
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-barb",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.barbette-fwd-ring",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-3",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-hot-4",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-3",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-4",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-5",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-6",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-7",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-8",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-rib-9",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-3",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-4",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-5",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-6",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-7",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.break-lance-tear-8",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.crack-belt-crack-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-bridge-glass",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-5",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-6",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-7",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-8",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-hull-9",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.cv-prow",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-fray-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotcore",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-hotfray-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-0",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-1",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.mesh.gouge-peel-2",
+        "sf.render.aftermath-wreck-corvette-forward--stripped-heavy.root"
+      ]
+    }
+  ]
+}

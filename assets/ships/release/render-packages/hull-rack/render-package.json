@@ -1,0 +1,3397 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hull-rack.anchor.socket-next-section",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Next_Section",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.hull-rack.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hull-rack",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "71a40e3dccfe6044b2577892cf98f9d2d31cc02ea10acaaa12c140ad37004a9b",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          8.022348403930664,
+          0.9103899598121643,
+          -1.848423957824707
+        ],
+        "min": [
+          -8.022348403930664,
+          0.1896100789308548,
+          -2.5515761375427246
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eaeb8d24e66bd967672e2aa5b19dc3583d50f45b9d4928385c12b3d88828f03d",
+      "id": "sf.render.hull-rack.mesh.bed-p.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.176",
+      "nodeId": "sf.render.hull-rack.mesh.bed-p",
+      "primitiveIndex": 0,
+      "vertexCount": 1080
+    },
+    {
+      "bounds": {
+        "max": [
+          8.022348403930664,
+          0.9103899598121643,
+          2.5515761375427246
+        ],
+        "min": [
+          -8.022348403930664,
+          0.1896100789308548,
+          1.848423957824707
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "42a5f83e0782a97a1d9adea6a1743c4bd58860724479abcce997440bd80b4273",
+      "id": "sf.render.hull-rack.mesh.bed-s.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.086",
+      "nodeId": "sf.render.hull-rack.mesh.bed-s",
+      "primitiveIndex": 0,
+      "vertexCount": 1080
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.439566612243652,
+          6.536277770996094,
+          -2.429938554763794
+        ],
+        "min": [
+          -8.560433387756348,
+          -0.03627777099609375,
+          -3.570061445236206
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f214dc11d17d8456a12f5b2ed75ae79d262787a978d609c426582f3b0ebf3869",
+      "id": "sf.render.hull-rack.mesh.end-a-p.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.116",
+      "nodeId": "sf.render.hull-rack.mesh.end-a-p",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.439566612243652,
+          6.536277770996094,
+          3.570061445236206
+        ],
+        "min": [
+          -8.560433387756348,
+          -0.03627777099609375,
+          2.429938554763794
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd726a16c42fc263ab0d19f3b2b406f35d9236bdaa9116f0c8aa53d3fa7c2f12",
+      "id": "sf.render.hull-rack.mesh.end-a-s.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.056",
+      "nodeId": "sf.render.hull-rack.mesh.end-a-s",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          8.560433387756348,
+          6.536277770996094,
+          -2.429938554763794
+        ],
+        "min": [
+          7.439566612243652,
+          -0.03627777099609375,
+          -3.570061445236206
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4bc3ec674387ea7519d1a81cc0e3b2c7b6b65879edfc295103be6c8bca65b2c2",
+      "id": "sf.render.hull-rack.mesh.end-f-p.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.070",
+      "nodeId": "sf.render.hull-rack.mesh.end-f-p",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          8.560433387756348,
+          6.536277770996094,
+          3.570061445236206
+        ],
+        "min": [
+          7.439566612243652,
+          -0.03627777099609375,
+          2.429938554763794
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "527de787b957d4d9f198530766ffe0faa929b43761be2483579e60426bc148e3",
+      "id": "sf.render.hull-rack.mesh.end-f-s.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.hull-rack.mesh.end-f-s",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.43961238861084,
+          0.5700303316116333,
+          3.0380911827087402
+        ],
+        "min": [
+          -8.56038761138916,
+          -0.5700303912162781,
+          -3.0380911827087402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "187ad1297a572070bfadeb78bc4e243fcd2998f461aebb4c094d56751d81791b",
+      "id": "sf.render.hull-rack.mesh.frame-a.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.028",
+      "nodeId": "sf.render.hull-rack.mesh.frame-a",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          8.56038761138916,
+          0.5700303316116333,
+          3.0380911827087402
+        ],
+        "min": [
+          7.439611911773682,
+          -0.5700303912162781,
+          -3.0380911827087402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c98a53b030e8e473064e7fd3611f8a229513e5cf059b97d7dc79d80d18abfdba",
+      "id": "sf.render.hull-rack.mesh.frame-f.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.042",
+      "nodeId": "sf.render.hull-rack.mesh.frame-f",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          8.200000002980232,
+          6.739991247653961,
+          0.20000000298023224
+        ],
+        "min": [
+          7.799999997019768,
+          6.660008333623409,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "488e877b29ec013176d56f4e1d6c446ab4e1702bcb736baaecc8e260775c1a0d",
+      "id": "sf.render.hull-rack.mesh.hood-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.hull-rack.mesh.hood-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.349999994039536,
+          6.91498376429081,
+          0.3499999940395355
+        ],
+        "min": [
+          7.6500000059604645,
+          6.765015807002783,
+          -0.3499999940395355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b3055677d86d68855fffa32e8a3fd4b40f08a9e0916ade5daf9b5a219a79282",
+      "id": "sf.render.hull-rack.mesh.hood-shade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.hull-rack.mesh.hood-shade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.157626547945546,
+          5.6300647258758545,
+          2.518828067163213
+        ],
+        "min": [
+          -7.019361106795209,
+          0.7699363231658936,
+          -2.9019071245347234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4fed3eee5562e45298bb74d8391b4e603d01e5da456eba2d2feed5a0ab73ec0",
+      "id": "sf.render.hull-rack.mesh.s0-rib-a.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.177",
+      "nodeId": "sf.render.hull-rack.mesh.s0-rib-a",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.98063898301519,
+          5.6300647258758545,
+          2.9019071102639167
+        ],
+        "min": [
+          -3.842373541864853,
+          0.7699363231658936,
+          -2.5188280814340196
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb1bf98dbd30740712aa95b18e8997c7968e74986933e7c6ef51aa5df3dba622",
+      "id": "sf.render.hull-rack.mesh.s0-rib-b.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.146",
+      "nodeId": "sf.render.hull-rack.mesh.s0-rib-b",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.107903876221233,
+          1.2499572038650513,
+          2.8242893800218054
+        ],
+        "min": [
+          -6.514599559898157,
+          0.8500425815582275,
+          2.3383153390200153
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30ea812bac3db0920da0c42fd033572a0e99bbba25ebece9ae06864fad5b005e",
+      "id": "sf.render.hull-rack.mesh.s0-scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.hull-rack.mesh.s0-scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.8160593242266874,
+          3.5000396370887756,
+          2.8501722289661737
+        ],
+        "min": [
+          -6.811232595471834,
+          1.2999603748321533,
+          2.352144797652273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56f0258c0d2fb9332a0bb6022a85bce973b961f8fc6a1c8dc1bc6e0acfe38e2c",
+      "id": "sf.render.hull-rack.mesh.s0-skin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.hull-rack.mesh.s0-skin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.7123996396740733,
+          5.600003004074097,
+          2.8587458026190005
+        ],
+        "min": [
+          -6.910103796445316,
+          5.399996995925903,
+          2.3038589164228203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b35dbd22cf3fa6a6e43d84b9ad0e4c24914b2ef3ef780d4ed164620b707ee15",
+      "id": "sf.render.hull-rack.mesh.s0-str-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.150",
+      "nodeId": "sf.render.hull-rack.mesh.s0-str-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.7123996396740733,
+          1.0000030994415283,
+          2.8587458026190005
+        ],
+        "min": [
+          -6.910103796445316,
+          0.799997091293335,
+          2.3038589164228203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b22aa5da041135180edebf20b8bc9d80214186e3a954ed15e21d47c403a79685",
+      "id": "sf.render.hull-rack.mesh.s0-str-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.154",
+      "nodeId": "sf.render.hull-rack.mesh.s0-str-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.087357610464096,
+          5.6300647258758545,
+          2.7300000190734863
+        ],
+        "min": [
+          -1.312642902135849,
+          0.7699363231658936,
+          -2.7300000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb544b57c10335ea8f5e9ce48bf42ab34a1eb25dddccea61bf2ee7724e4dfd63",
+      "id": "sf.render.hull-rack.mesh.s1-rib-a.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.155",
+      "nodeId": "sf.render.hull-rack.mesh.s1-rib-a",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1126424372196198,
+          5.6300647258758545,
+          2.7300000190734863
+        ],
+        "min": [
+          1.8873571455478668,
+          0.7699363231658936,
+          -2.7300000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9c260320ce8b85cc414c7794e737b5b4d33f4544ee091747822ea148268cc9c6",
+      "id": "sf.render.hull-rack.mesh.s1-rib-b.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.156",
+      "nodeId": "sf.render.hull-rack.mesh.s1-rib-b",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6000000536441803,
+          1.2499572038650513,
+          2.700051784515381
+        ],
+        "min": [
+          -0.8000000417232513,
+          0.8500425815582275,
+          2.499948024749756
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30ea812bac3db0920da0c42fd033572a0e99bbba25ebece9ae06864fad5b005e",
+      "id": "sf.render.hull-rack.mesh.s1-scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.hull-rack.mesh.s1-scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0000000298023224,
+          5.600003004074097,
+          2.68652606010437
+        ],
+        "min": [
+          -1.2000000178813934,
+          5.399996995925903,
+          2.5134737491607666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b35dbd22cf3fa6a6e43d84b9ad0e4c24914b2ef3ef780d4ed164620b707ee15",
+      "id": "sf.render.hull-rack.mesh.s1-str-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.160",
+      "nodeId": "sf.render.hull-rack.mesh.s1-str-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0000000298023224,
+          1.0000030994415283,
+          2.68652606010437
+        ],
+        "min": [
+          -1.2000000178813934,
+          0.799997091293335,
+          2.5134737491607666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b22aa5da041135180edebf20b8bc9d80214186e3a954ed15e21d47c403a79685",
+      "id": "sf.render.hull-rack.mesh.s1-str-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.164",
+      "nodeId": "sf.render.hull-rack.mesh.s1-str-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          4.242372927120211,
+          5.6300647258758545,
+          2.9019071958887572
+        ],
+        "min": [
+          3.3806383682705485,
+          0.7699363231658936,
+          -2.518827995809179
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "711aa6761a556f411bc0a28315963684f1230b2d219fe66f611996c7f411c81f",
+      "id": "sf.render.hull-rack.mesh.s2-rib-a.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.165",
+      "nodeId": "sf.render.hull-rack.mesh.s2-rib-a",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          7.419360728754592,
+          5.6300647258758545,
+          2.51882812424644
+        ],
+        "min": [
+          6.557626169904929,
+          0.7699363231658936,
+          -2.9019070674514964
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9e3ce2d792855faf4db1473a704cf9eb06d0db72cb0d9e50f7eb734c184f68e",
+      "id": "sf.render.hull-rack.mesh.s2-rib-b.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.166",
+      "nodeId": "sf.render.hull-rack.mesh.s2-rib-b",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          6.914599655265588,
+          1.2499572038650513,
+          2.8242893800218054
+        ],
+        "min": [
+          4.507903971588664,
+          0.8500425815582275,
+          2.3383153390200153
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30ea812bac3db0920da0c42fd033572a0e99bbba25ebece9ae06864fad5b005e",
+      "id": "sf.render.hull-rack.mesh.s2-scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.hull-rack.mesh.s2-scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.583940771140744,
+          3.5000396370887756,
+          -2.352144797652273
+        ],
+        "min": [
+          3.5887674998955976,
+          1.2999603748321533,
+          -2.8501722289661737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2373426c25fd4fe9239d29e102034b29c568c47a3c65dc4725483be492211d71",
+      "id": "sf.render.hull-rack.mesh.s2-skin.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.hull-rack.mesh.s2-skin",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.310103891812748,
+          5.600003004074097,
+          2.8587458026190005
+        ],
+        "min": [
+          4.112399735041505,
+          5.399996995925903,
+          2.3038589164228203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b35dbd22cf3fa6a6e43d84b9ad0e4c24914b2ef3ef780d4ed164620b707ee15",
+      "id": "sf.render.hull-rack.mesh.s2-str-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.170",
+      "nodeId": "sf.render.hull-rack.mesh.s2-str-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          7.310103891812748,
+          1.0000030994415283,
+          2.8587458026190005
+        ],
+        "min": [
+          4.112399735041505,
+          0.799997091293335,
+          2.3038589164228203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b22aa5da041135180edebf20b8bc9d80214186e3a954ed15e21d47c403a79685",
+      "id": "sf.render.hull-rack.mesh.s2-str-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.174",
+      "nodeId": "sf.render.hull-rack.mesh.s2-str-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          6.639652729034424,
+          -2.8789024353027344
+        ],
+        "min": [
+          -8,
+          6.360347270965576,
+          -3.1210975646972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c79de8b3fc677e8ba43fbe2e113a7a2d1ad50f50ca28a166e36cb7e705382989",
+      "id": "sf.render.hull-rack.mesh.spine-p.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.175",
+      "nodeId": "sf.render.hull-rack.mesh.spine-p",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          6.639652729034424,
+          3.1210975646972656
+        ],
+        "min": [
+          -8,
+          6.360347270965576,
+          2.8789024353027344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f37752a3dad89ab9ffe91554afed96eaad98da57d7a03d46662c6313fd60dc0",
+      "id": "sf.render.hull-rack.mesh.spine-s.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.084",
+      "nodeId": "sf.render.hull-rack.mesh.spine-s",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2b5f9fd026bc45c1c843ea55d24c186e8a86537a1cd994d9299205527fab604c",
+      "id": "material:2b5f9fd026bc45c1c843ea55",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "id": "material:5c25af379243dc87acccdd2f",
+      "name": "esk_light_hooded_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "id": "material:fc62ff199e40118baa3f1d37",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "id": "material:fca50b48f8068519278f5ec9",
+      "name": "esk_paint_rust",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hull-rack.mesh.bed-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "bed_p",
+      "nodeName": "bed_p",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.bed-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "bed_s",
+      "nodeName": "bed_s",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.end-a-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "end_a_p",
+      "nodeName": "end_a_p",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.end-a-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "end_a_s",
+      "nodeName": "end_a_s",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.end-f-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "end_f_p",
+      "nodeName": "end_f_p",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.end-f-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "end_f_s",
+      "nodeName": "end_f_s",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.frame-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "frame_a",
+      "nodeName": "frame_a",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.frame-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "frame_f",
+      "nodeName": "frame_f",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.hood-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_lens",
+      "nodeName": "hood_lens",
+      "nodePath": [
+        0,
+        9,
+        0
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8,
+        6.71999979019165,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.hood-shade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_shade",
+      "nodeName": "hood_shade",
+      "nodePath": [
+        0,
+        9,
+        1
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8,
+        6.71999979019165,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-rib-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_rib_a",
+      "nodeName": "s0_rib_a",
+      "nodePath": [
+        0,
+        10,
+        0
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-rib-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_rib_b",
+      "nodeName": "s0_rib_b",
+      "nodePath": [
+        0,
+        10,
+        1
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-scorch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_scorch",
+      "nodeName": "s0_scorch",
+      "nodePath": [
+        0,
+        10,
+        2
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-skin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_skin",
+      "nodeName": "s0_skin",
+      "nodePath": [
+        0,
+        10,
+        3
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-str-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_str_a",
+      "nodeName": "s0_str_a",
+      "nodePath": [
+        0,
+        10,
+        4
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s0-str-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s0_str_b",
+      "nodeName": "s0_str_b",
+      "nodePath": [
+        0,
+        10,
+        5
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        -5,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s1-rib-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s1_rib_a",
+      "nodeName": "s1_rib_a",
+      "nodePath": [
+        0,
+        11,
+        0
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s1-rib-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s1_rib_b",
+      "nodeName": "s1_rib_b",
+      "nodePath": [
+        0,
+        11,
+        1
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s1-scorch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s1_scorch",
+      "nodeName": "s1_scorch",
+      "nodePath": [
+        0,
+        11,
+        2
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s1-str-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s1_str_a",
+      "nodeName": "s1_str_a",
+      "nodePath": [
+        0,
+        11,
+        3
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s1-str-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s1_str_b",
+      "nodeName": "s1_str_b",
+      "nodePath": [
+        0,
+        11,
+        4
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-rib-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_rib_a",
+      "nodeName": "s2_rib_a",
+      "nodePath": [
+        0,
+        12,
+        0
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-rib-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_rib_b",
+      "nodeName": "s2_rib_b",
+      "nodePath": [
+        0,
+        12,
+        1
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-scorch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_scorch",
+      "nodeName": "s2_scorch",
+      "nodePath": [
+        0,
+        12,
+        2
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-skin",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_skin",
+      "nodeName": "s2_skin",
+      "nodePath": [
+        0,
+        12,
+        3
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-str-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_str_a",
+      "nodeName": "s2_str_a",
+      "nodePath": [
+        0,
+        12,
+        4
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.s2-str-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "s2_str_b",
+      "nodeName": "s2_str_b",
+      "nodePath": [
+        0,
+        12,
+        5
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        0.9928086362317385,
+        0,
+        -0.11971220364474622,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.11971220364474622,
+        0,
+        0.9928086362317385,
+        0,
+        5.400000095367432,
+        3.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.spine-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_p",
+      "nodeName": "spine_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.mesh.spine-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_s",
+      "nodeName": "spine_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.hull-rack.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hull-rack.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "hull_rack",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hull-rack.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "25d92bbebf75f5766fdfa49e4a3f72cefca8e96b05ae4d369fdebe7e4f85469a"
+    },
+    "sourceGlb": {
+      "bytes": 36408,
+      "sha256": "b12610563448c1c2187c00ea9a129b78ccb559360546e2b0d0d504bec26d37a6",
+      "uri": "place_hull_rack.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 125660,
+    "sha256": "592d297fcdf38b7777d871e3d37705fbe665a4e40b5817d42e7525e139e99558",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        3.1724766865372658,
+        0
+      ],
+      "max": [
+        8.560433387756348,
+        6.91498376429081,
+        3.570061445236206
+      ],
+      "min": [
+        -8.560433387756348,
+        -0.5700303912162781,
+        -3.570061445236206
+      ],
+      "size": [
+        17.120866775512695,
+        7.485014155507088,
+        7.140122890472412
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Next_Section",
+        "planIndex": 34,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Next_Section",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Next_Section",
+            "recordIds": [
+              "sf.render.hull-rack.anchor.socket-next-section"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 29
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 36,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 37,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "bed_p",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "bed_s",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "end_a_p",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "end_a_s",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "end_f_p",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "end_f_s",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "frame_a",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "frame_f",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8,
+          6.71999979019165,
+          0,
+          1
+        ],
+        "name": "hood_lens",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8,
+          6.71999979019165,
+          0,
+          1
+        ],
+        "name": "hood_shade",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_rib_a",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_rib_b",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_scorch",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_skin",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_str_a",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          -5,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s0_str_b",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s1_rib_a",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s1_rib_b",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s1_scorch",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s1_str_a",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s1_str_b",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_rib_a",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_rib_b",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_scorch",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_skin",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_str_a",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9928086362317385,
+          0,
+          -0.11971220364474622,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.11971220364474622,
+          0,
+          0.9928086362317385,
+          0,
+          5.400000095367432,
+          3.200000047683716,
+          0,
+          1
+        ],
+        "name": "s2_str_b",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spine_p",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spine_s",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_hull_rack.glb"
+  },
+  "runtimeHash": "46ca9c00a1411bd29a3c97a543fd7b29c5c6bc76e80d68c1e589566586f9e096",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.560433387756348,
+          6.91498376429081,
+          3.570061445236206
+        ],
+        "min": [
+          -8.560433387756348,
+          -0.5700303912162781,
+          -3.570061445236206
+        ]
+      },
+      "id": "sf.render.hull-rack.body",
+      "nodeIds": [
+        "sf.render.hull-rack.mesh.bed-p",
+        "sf.render.hull-rack.mesh.bed-s",
+        "sf.render.hull-rack.mesh.end-a-p",
+        "sf.render.hull-rack.mesh.end-a-s",
+        "sf.render.hull-rack.mesh.end-f-p",
+        "sf.render.hull-rack.mesh.end-f-s",
+        "sf.render.hull-rack.mesh.frame-a",
+        "sf.render.hull-rack.mesh.frame-f",
+        "sf.render.hull-rack.mesh.hood-lens",
+        "sf.render.hull-rack.mesh.hood-shade",
+        "sf.render.hull-rack.mesh.s0-rib-a",
+        "sf.render.hull-rack.mesh.s0-rib-b",
+        "sf.render.hull-rack.mesh.s0-scorch",
+        "sf.render.hull-rack.mesh.s0-skin",
+        "sf.render.hull-rack.mesh.s0-str-a",
+        "sf.render.hull-rack.mesh.s0-str-b",
+        "sf.render.hull-rack.mesh.s1-rib-a",
+        "sf.render.hull-rack.mesh.s1-rib-b",
+        "sf.render.hull-rack.mesh.s1-scorch",
+        "sf.render.hull-rack.mesh.s1-str-a",
+        "sf.render.hull-rack.mesh.s1-str-b",
+        "sf.render.hull-rack.mesh.s2-rib-a",
+        "sf.render.hull-rack.mesh.s2-rib-b",
+        "sf.render.hull-rack.mesh.s2-scorch",
+        "sf.render.hull-rack.mesh.s2-skin",
+        "sf.render.hull-rack.mesh.s2-str-a",
+        "sf.render.hull-rack.mesh.s2-str-b",
+        "sf.render.hull-rack.mesh.spine-p",
+        "sf.render.hull-rack.mesh.spine-s",
+        "sf.render.hull-rack.root"
+      ]
+    }
+  ]
+}

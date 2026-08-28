@@ -1,0 +1,483 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-plate-curl",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9755bb0a563b01001d88c66b074a277b2a638ffe2677ad60d0ae3002a1277c82",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.1988108158111572,
+          0.23543566465377808,
+          2.2104737758636475
+        ],
+        "min": [
+          -3.1988108158111572,
+          -2.660957098007202,
+          -0.4316222667694092
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88f7c202435aa9db88e2879139eeee32bb5772243afff9326c76e78a628b396a",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8969364166259766,
+          0.05801653861999512,
+          1.6573654413223267
+        ],
+        "min": [
+          -2.796936511993408,
+          -0.8835378885269165,
+          -2.0785140991210938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ea6e58c7981a4883df50f72dad67eacc8f71c1d2834de7c0cb7ae29571e9c03",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.520338296890259,
+          1.6794127225875854,
+          0.1315048187971115
+        ],
+        "min": [
+          -2.320338249206543,
+          -0.9049339890480042,
+          -2.7526533603668213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b9a0b9f066209c8eec24cfec7fe9f1aa44258742a579f18851e0d8652df57bc",
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.fc-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "id": "material:543629edf101c89ef59f8a0b",
+      "name": "wrk_paint_freight_ochre",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fc_0",
+      "nodeName": "fc_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fc_1",
+      "nodeName": "fc_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.mesh.fc-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fc_2",
+      "nodeName": "fc_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-plate-curl.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-plate-curl.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_plate_curl",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-plate-curl.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4856eb3a783e7a74a2cbed73a0c2eb62579c6934b6839a68ef2e3b199d701185"
+    },
+    "sourceGlb": {
+      "bytes": 8108,
+      "sha256": "f98d7213210d90e276f38ae0dd0bc6f7af22da637bb81c65a055a3917756b228",
+      "uri": "place_aftermath_frag_plate_curl.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 11212,
+    "sha256": "b9ab1c209a3109df8d56eed4f0b8e6cbf1cb16b7be0dbcec9c5340157005da38",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        -0.49077218770980835,
+        -0.2710897922515869
+      ],
+      "max": [
+        3.1988108158111572,
+        1.6794127225875854,
+        2.2104737758636475
+      ],
+      "min": [
+        -3.1988108158111572,
+        -2.660957098007202,
+        -2.7526533603668213
+      ],
+      "size": [
+        6.3976216316223145,
+        4.340369820594788,
+        4.963127136230469
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 5,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fc_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fc_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fc_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
+  },
+  "runtimeHash": "8c352a3e123e74764ab5398b0428f3e96cd132eef1fc9177435dd93837c586bd",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.1988108158111572,
+          1.6794127225875854,
+          2.2104737758636475
+        ],
+        "min": [
+          -3.1988108158111572,
+          -2.660957098007202,
+          -2.7526533603668213
+        ]
+      },
+      "id": "sf.render.aftermath-frag-plate-curl.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-plate-curl.mesh.fc-0",
+        "sf.render.aftermath-frag-plate-curl.mesh.fc-1",
+        "sf.render.aftermath-frag-plate-curl.mesh.fc-2",
+        "sf.render.aftermath-frag-plate-curl.root"
+      ]
+    }
+  ]
+}

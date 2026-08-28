@@ -1,0 +1,5577 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19,
+        6.000001907348633,
+        -12.956387519836426,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19,
+        6.000001907348633,
+        -12.956387519836426,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-hazard-wound",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -5.999998092651367,
+        11.043612480163574,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Wound",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -5.999998092651367,
+        11.043612480163574,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-salvage-hab",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -11.999998092651367,
+        -8.956387519836426,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Hab",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -11.999998092651367,
+        -8.956387519836426,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-liner-drum--derelict",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0dbf5d47b612aff522d0addf069cff584a66edda78da2aaad1fca0637da99f8c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          35.567771911621094,
+          0.9407691955566406,
+          -4.179262161254883
+        ],
+        "min": [
+          30.132015228271484,
+          -2.303524971008301,
+          -8.552035331726074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7c0aa1b638852c14da382056cbcbd208a049b430ffbbf87cd350348b2751520",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.13201332092285,
+          0.9407693147659302,
+          -9.360738754272461
+        ],
+        "min": [
+          -35.567771911621094,
+          -2.30352520942688,
+          -13.733513832092285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d053f8e6c97faaae1320d0aa2095387e4992e604eb07e688ee0800267bd84ee",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          39.745426177978516,
+          0.6132071018218994,
+          -7.181990623474121
+        ],
+        "min": [
+          29.68293571472168,
+          -6.854081630706787,
+          -12.943134307861328
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8061144bf9de2b3d13af669081c157c60f2cbdfb0f2331c4c43ac5d7b3e6e543",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.682933807373047,
+          0.6132059693336487,
+          -4.969641208648682
+        ],
+        "min": [
+          -39.74542236328125,
+          -6.8540802001953125,
+          -10.730783462524414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a209fe3ceebe1503c6d406a66ed9e3abfc301c17c5134387cd7363f151b95d73",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          43.315059661865234,
+          4.072712421417236,
+          -8.875801086425781
+        ],
+        "min": [
+          29.83009910583496,
+          -1.0576807260513306,
+          -17.21156120300293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25901c4c6f97f859d45e176e3473ceb04128ea266813715073fa377e318cf990",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.830095291137695,
+          4.072709560394287,
+          -0.7012139558792114
+        ],
+        "min": [
+          -43.3150634765625,
+          -1.0576776266098022,
+          -9.036972999572754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e5fdf64a7df48fa36e22eb336cb24170a55cf7a9750eb89f0c89664c351bd80",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          37.65047836303711,
+          6.062978267669678,
+          -5.751979351043701
+        ],
+        "min": [
+          29.878679275512695,
+          0.2068527638912201,
+          -10.322534561157227
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5b292565877b8e1c56e43623a75358bb90a7c5d6c04d743405bd1392586fc795",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -29.87867546081543,
+          6.0629777908325195,
+          -7.590240001678467
+        ],
+        "min": [
+          -37.650474548339844,
+          0.20685319602489471,
+          -12.160796165466309
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec7a91e2e215263a05ce59ef009e92c701e2b10bb2db5e3df70083cfc0efd470",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.017",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.40024757385254,
+          4.600000381469727,
+          -4.356387615203857
+        ],
+        "min": [
+          -31.499746322631836,
+          -4.600000381469727,
+          -13.556386947631836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4438822c3b573d218e180986f9cb284432d3a6a294c6c568f67ff1b4028f2d2",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.018",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -34.61498260498047,
+          -0.548209011554718,
+          -11.83478832244873
+        ],
+        "min": [
+          -35.38501739501953,
+          -1.6482093334197998,
+          -12.934788703918457
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6428ddf5bc61d5d62c105419f1ec195ea426722a64de6ef883c04f8d3ae007e6",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -42.29498291015625,
+          2.6366031169891357,
+          -1.892425775527954
+        ],
+        "min": [
+          -43.06501770019531,
+          1.5366027355194092,
+          -2.9924256801605225
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9fcdc225274e5665c993e2685efd7f69074de9da15e2f7988648adb1c6243e32",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          35.051902770996094,
+          -0.4460970461368561,
+          -5.228579521179199
+        ],
+        "min": [
+          30.34809684753418,
+          -4.692523956298828,
+          -8.606433868408203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7a2b7c29331a683f0e0d46902eafa561bef919a3a4134044c3e039171e4774b",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.348093032836914,
+          -0.44609788060188293,
+          -9.306341171264648
+        ],
+        "min": [
+          -35.05189895629883,
+          -4.692523002624512,
+          -12.684194564819336
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f45c7b9b2ffd8ebfb86e596540eeeec4aa5ead3a242a8d38c4e1d2313d55ca10",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.023",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          39.47146224975586,
+          0.6359124779701233,
+          -9.496228218078613
+        ],
+        "min": [
+          30.128538131713867,
+          -1.5980414152145386,
+          -14.905608177185059
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29bbb7c7127445caf79aaf4161cd91ea153b706602da5b978b86599d4c4aed30",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.021",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.128536224365234,
+          0.6359112858772278,
+          -3.0071661472320557
+        ],
+        "min": [
+          -39.47146224975586,
+          -1.598040223121643,
+          -8.416548728942871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bc26090af538218ec886452e73caec973efd2f9a4b06e857ea87a08d2c8c607",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.024",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          37.30031967163086,
+          4.621586322784424,
+          -5.368619441986084
+        ],
+        "min": [
+          30.199682235717773,
+          1.479174256324768,
+          -10.132857322692871
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dbb30a0adf6ef00f59e5ea6533675b27867c7815bb3ad353de8bc1e0a2ddf243",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.022",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.199682235717773,
+          4.621585845947266,
+          -7.779919624328613
+        ],
+        "min": [
+          -37.300315856933594,
+          1.4791743755340576,
+          -12.544154167175293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b8ab1647aa398135edf002af6485d0dc8d3f8d4738795652d14cf50b11f59e7f",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.025",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -20.87398338317871,
+          9.034429550170898,
+          13.5651216506958
+        ],
+        "min": [
+          -21.726015090942383,
+          -0.03442571684718132,
+          10.922104835510254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b18ed4fd9476a43078b4b9f2381a7bee57baabbe446e6594ad44494775bf090",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.019",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -20.87275505065918,
+          0.03940524533390999,
+          13.564848899841309
+        ],
+        "min": [
+          -21.727243423461914,
+          -9.63940143585205,
+          10.322375297546387
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "efdec89520dfea80168fc8932d4aa71a78cb96a3ad8854b42c83bac948217470",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.020",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          16.682559967041016,
+          7.7063679695129395
+        ],
+        "min": [
+          -18.479999542236328,
+          15.924569129943848,
+          6.907769680023193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2d42563f15469e37830099cd31002c7f757d97ba73beabf91427beab3ccefa0",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-4.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-4",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          6.371942043304443,
+          13.659205436706543
+        ],
+        "min": [
+          -18.479999542236328,
+          5.613950252532959,
+          12.86060619354248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce5f1ec129fdc556202772e2cbb4fb090b4afe2c2f9760c747dae9901957d12f",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-5.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-5",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          -5.53373384475708,
+          13.659205436706543
+        ],
+        "min": [
+          -18.479999542236328,
+          -6.2917256355285645,
+          12.86060619354248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76edad97492e0d1beb8f3f4625efa73cbedd7a6d266ce4ca8fc5ec376fb7cf7c",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-6.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-6",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          18.479999542236328,
+          -15.844351768493652,
+          7.7063679695129395
+        ],
+        "min": [
+          -18.479999542236328,
+          -16.602344512939453,
+          6.907769680023193
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c4c6d1d6b6506483fcc8b834f8ada1580064a2e0603eb7c9960ac1998b5f198",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-7.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-7",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          13.718790054321289,
+          36.41147994995117,
+          27.45509147644043
+        ],
+        "min": [
+          -13.718790054321289,
+          7.287718772888184,
+          -1.6686697006225586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fc6cac87ea691d2548dde1ebab72e5ba9cd7b44173f8758880c912e71730eb5d",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          16.568819046020508,
+          17.536540985107422,
+          31.066600799560547
+        ],
+        "min": [
+          -16.568819046020508,
+          -1.5415215492248535,
+          10.71484088897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "00e3d7ee214cb987fbd5c985af6545baae927d80169930cff9b634318cc93d76",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.64330768585205,
+          9.184419631958008,
+          33.11450958251953
+        ],
+        "min": [
+          -9.64330768585205,
+          -25.179431915283203,
+          8.66693115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db68df91b678613730d90e74c567c9f0fc4ab3febae5d5972c433bc6db987414",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          13.718792915344238,
+          -7.287716865539551,
+          27.45509147644043
+        ],
+        "min": [
+          -13.718792915344238,
+          -36.411476135253906,
+          -1.6686710119247437
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aeb43aeee5437ef35053a48c11a5f9c6e51c2c1e0fcbb66145a80699fc837f51",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.699121475219727,
+          23.000003814697266,
+          14.043612480163574
+        ],
+        "min": [
+          21.300878524780273,
+          -23.000003814697266,
+          -31.95638656616211
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41acb2ce83959de55518bb56b41d5d86a1227d7e181c6750ef046cd2524b60c7",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-16.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-16",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.300878524780273,
+          23.000003814697266,
+          14.043612480163574
+        ],
+        "min": [
+          -22.699121475219727,
+          -23.000003814697266,
+          -31.95638656616211
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee8a35f7debca07a8c42fc0d4b92b61bbff56e223cec3d87a78f896de05a0db5",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-28.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-28",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          12.031075477600098,
+          -29.230998992919922
+        ],
+        "min": [
+          -22,
+          -0.12539581954479218,
+          -33.11436080932617
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7279c9dc0aba1cd10bfd45e9858809c864cefe1c1a6ca58e9e6315f1c14a8ed2",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          20.89375877380371,
+          -20.589542388916016
+        ],
+        "min": [
+          -22,
+          11.633156776428223,
+          -29.850147247314453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef3d8d1f651c4d6397f47661922fef5c00a2ff24fa9a3bb01b89c682f0c11b2d",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -11.633153915405273,
+          -20.589542388916016
+        ],
+        "min": [
+          -22,
+          -20.893754959106445,
+          -29.850147247314453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f48807969e07230fec3b99514077ca667693de279d0ba21605ad604bca77ef2e",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          0.12539993226528168,
+          -29.230998992919922
+        ],
+        "min": [
+          -22,
+          -12.031071662902832,
+          -33.11436080932617
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d15297637712b90b9ec33751510ecddde4594c063473027785ac26b1b16b432",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          24.157978057861328,
+          -8.830989837646484
+        ],
+        "min": [
+          -22,
+          20.274612426757812,
+          -20.98746109008789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "00066bbdb3411450b065df8f6489aaf914cfcdf812c42cda4bb0bef27fe35728",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          24.157978057861328,
+          3.0746865272521973
+        ],
+        "min": [
+          -22,
+          20.274612426757812,
+          -9.081785202026367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9003633609ea41ecfcc7070aa7738f18611609da669c3611306d3fabb2103305",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -20.274608612060547,
+          3.0746865272521973
+        ],
+        "min": [
+          -22,
+          -24.157974243164062,
+          -9.081785202026367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a126bfe9fbc8c62113b4c4002cdc31adf92652a4953fcfe4f3ddba9922f342a9",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22,
+          -20.27461051940918,
+          -8.830989837646484
+        ],
+        "min": [
+          -22,
+          -24.15797233581543,
+          -20.98746109008789
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8852efbf60a893f41b02cb7a4cb806e78c47e90dd2de037ffd2cb62922fd6e90",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          7.060863971710205,
+          -31.1556339263916
+        ],
+        "min": [
+          -18.040000915527344,
+          5.051870822906494,
+          -31.96246910095215
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b8ab6e6107e5e3157a64dd5f3657b5ff0c005df2a7db402f3723a7e3162f482",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          17.359159469604492,
+          -24.68982696533203
+        ],
+        "min": [
+          -18.040000915527344,
+          15.733441352844238,
+          -26.31554412841797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c46926deaf8439ce7968f2bb0c2efae4e885504516bbdf3bf6103390b891ea73",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -15.733437538146973,
+          -24.68982696533203
+        ],
+        "min": [
+          -18.040000915527344,
+          -17.359155654907227,
+          -26.31554412841797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4587a82cd1bc49a8e7de3870228e2a5accfdbb8c41ea98d574c07e869362e6b8",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-10.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-10",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -5.0518670082092285,
+          -31.1556339263916
+        ],
+        "min": [
+          -18.040000915527344,
+          -7.0608601570129395,
+          -31.96246910095215
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76f11b1be6b1f73f1ff14866be39279e832114f94506480134a963a9c6f6202e",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-11.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-11",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          23.00608253479004,
+          -14.008255958557129
+        ],
+        "min": [
+          -18.040000915527344,
+          22.199247360229492,
+          -16.017250061035156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14475110d76c86846dd966094fc8c5d4a3f9700116414a791bc1bf020019e253",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          23.00608253479004,
+          -1.8955252170562744
+        ],
+        "min": [
+          -18.040000915527344,
+          22.199247360229492,
+          -3.9045188426971436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "decb46e0863c7b1be0c92fdd0fb89af94c7aba8cf807035bed12b7a8203daa71",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -22.199243545532227,
+          -1.8955252170562744
+        ],
+        "min": [
+          -18.040000915527344,
+          -23.006078720092773,
+          -3.9045188426971436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "84e630f62deb467ea920f78b99ed7d1e67ed53fac2cebbaa44107bfad60ad922",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.040000915527344,
+          -22.199243545532227,
+          -14.008255958557129
+        ],
+        "min": [
+          -18.040000915527344,
+          -23.006078720092773,
+          -16.017250061035156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40f77abe6bffbf35f841d3bbfca3bc7628c898a04eab14dc48bf584996174824",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-9.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-9",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          19.799999237060547,
+          -20.751039505004883,
+          0.04295268654823303
+        ],
+        "min": [
+          -19.799999237060547,
+          -21.24895668029785,
+          -17.95572853088379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "48eff6d1e01a1b2f0475fbb9eaa1f5cc986106303b01920d50c3ed8ad2f2ad32",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-deck-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.026",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-deck-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          30.50010871887207,
+          5.000001430511475,
+          -3.956387519836426
+        ],
+        "min": [
+          21.49989128112793,
+          -5.000001430511475,
+          -13.956387519836426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "290f1ba2f05a321f9b07fbbaf25380a520d4a099f00ba8e54960270bda460da1",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -21.49989128112793,
+          5.000001430511475,
+          -3.956387519836426
+        ],
+        "min": [
+          -30.50010871887207,
+          -5.000001430511475,
+          -13.956387519836426
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b0fc1ee216dbb069b12c08806c9f4f895ee53c9efd420d04f9a31584fda073a3",
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "22d57526c76821748e8f1defb24cb911a715cdd58692e21afce4d9478451809b",
+      "id": "material:22d57526c76821748e8f1def",
+      "name": "wrk_chalk_paint",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "id": "material:355b32a25a315894294be3a0",
+      "name": "wrk_deck_grate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "id": "material:dc58c1e92573c2f8d4ca1106",
+      "name": "wrk_dust_matte",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fabcdc1eca2d9ec5b43cae27398b252ffee6c581c8fc4b412d66ba3346b4993c",
+      "id": "material:fabcdc1eca2d9ec5b43cae27",
+      "name": "wrk_glass_shattered",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_0",
+      "nodeName": "break_spine_-1_fray_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_0",
+      "nodeName": "break_spine_1_fray_0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_1",
+      "nodeName": "break_spine_-1_fray_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_1",
+      "nodeName": "break_spine_1_fray_1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_2",
+      "nodeName": "break_spine_-1_fray_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_2",
+      "nodeName": "break_spine_1_fray_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_fray_3",
+      "nodeName": "break_spine_-1_fray_3",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_fray_3",
+      "nodeName": "break_spine_1_fray_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotcore",
+      "nodeName": "break_spine_-1_hotcore",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotfray_0",
+      "nodeName": "break_spine_-1_hotfray_0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_hotfray_2",
+      "nodeName": "break_spine_-1_hotfray_2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_0",
+      "nodeName": "break_spine_-1_peel_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_0",
+      "nodeName": "break_spine_1_peel_0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_1",
+      "nodeName": "break_spine_-1_peel_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_1",
+      "nodeName": "break_spine_1_peel_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_-1_peel_2",
+      "nodeName": "break_spine_-1_peel_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_spine_1_peel_2",
+      "nodeName": "break_spine_1_peel_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_ring_crack_0",
+      "nodeName": "crack_ring_crack_0",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_ring_crack_1",
+      "nodeName": "crack_ring_crack_1",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_4",
+      "nodeName": "drum_frame_4",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_5",
+      "nodeName": "drum_frame_5",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_6",
+      "nodeName": "drum_frame_6",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_frame_7",
+      "nodeName": "drum_frame_7",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_4",
+      "nodeName": "drum_petal_4",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_5",
+      "nodeName": "drum_petal_5",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_6",
+      "nodeName": "drum_petal_6",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_petal_7",
+      "nodeName": "drum_petal_7",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-16",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_ring_16",
+      "nodeName": "drum_ring_16",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-28",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_ring_-28",
+      "nodeName": "drum_ring_-28",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_0",
+      "nodeName": "drum_shell_0",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_1",
+      "nodeName": "drum_shell_1",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_10",
+      "nodeName": "drum_shell_10",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_11",
+      "nodeName": "drum_shell_11",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_2",
+      "nodeName": "drum_shell_2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_3",
+      "nodeName": "drum_shell_3",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_8",
+      "nodeName": "drum_shell_8",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_shell_9",
+      "nodeName": "drum_shell_9",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_0",
+      "nodeName": "drum_win_0",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_1",
+      "nodeName": "drum_win_1",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_10",
+      "nodeName": "drum_win_10",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_11",
+      "nodeName": "drum_win_11",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_2",
+      "nodeName": "drum_win_2",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_3",
+      "nodeName": "drum_win_3",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_8",
+      "nodeName": "drum_win_8",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-9",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum_win_9",
+      "nodeName": "drum_win_9",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-deck-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_deck_0",
+      "nodeName": "ln_deck_0",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_spine_-1",
+      "nodeName": "ln_spine_-1",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ln_spine_1",
+      "nodeName": "ln_spine_1",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "wreck_liner_drum",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "9edde68f0e082e2a4b060e8808f9498d6aeb1ebc7c2d93e316d5a4bf85025242"
+    },
+    "sourceGlb": {
+      "bytes": 40336,
+      "sha256": "6d89ad50bef8347d4524a7947aa581d881e1cf989d2f8657b684320a391ada3c",
+      "uri": "place_aftermath_wreck_liner_drum__derelict.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 112436,
+    "sha256": "a4d530f8605b5499ef2fff7c6de61a82142edabd2296f3f20be1ae4db06a2781",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.0000019073486328125,
+        0.0000019073486328125,
+        0.0000743865966796875
+      ],
+      "max": [
+        43.315059661865234,
+        36.41147994995117,
+        33.11450958251953
+      ],
+      "min": [
+        -43.3150634765625,
+        -36.411476135253906,
+        -33.11436080932617
+      ],
+      "size": [
+        86.63012313842773,
+        72.82295608520508,
+        66.2288703918457
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          19,
+          6.000001907348633,
+          -12.956387519836426,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 51,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -5.999998092651367,
+          11.043612480163574,
+          1
+        ],
+        "name": "SOCKET_Hazard_Wound",
+        "planIndex": 52,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Wound",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Wound",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-hazard-wound"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -11.999998092651367,
+          -8.956387519836426,
+          1
+        ],
+        "name": "SOCKET_Salvage_Hab",
+        "planIndex": 53,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Hab",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Hab",
+            "recordIds": [
+              "sf.render.aftermath-wreck-liner-drum--derelict.anchor.socket-salvage-hab"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "mechanical": 48
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 54,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_fray_3",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotcore",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotfray_0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_hotfray_2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_-1_peel_2",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_0",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_fray_3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_0",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_spine_1_peel_2",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_ring_crack_0",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_ring_crack_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_4",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_5",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_6",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_frame_7",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_4",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_5",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_6",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_petal_7",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_ring_-28",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_ring_16",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_0",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_10",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_11",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_2",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_3",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_8",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_shell_9",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_0",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_10",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_11",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_2",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_3",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_8",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drum_win_9",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_deck_0",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_spine_-1",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ln_spine_1",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
+  },
+  "runtimeHash": "66c5e6dc459beb038701c572b51717ae4353efe5666ce43b4545e1c66f371a5f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          43.315059661865234,
+          36.41147994995117,
+          33.11450958251953
+        ],
+        "min": [
+          -43.3150634765625,
+          -36.411476135253906,
+          -33.11436080932617
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-liner-drum--derelict.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-0-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-1-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-2-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-fray-3-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotcore",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-hotfray-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-0-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-1-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.break-spine-1-peel-2-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.crack-ring-crack-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-4",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-5",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-6",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-frame-7",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-4",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-5",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-6",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-petal-7",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-16",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-ring-28",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-10",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-11",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-3",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-8",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-shell-9",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-10",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-11",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-3",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-8",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.drum-win-9",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-deck-0",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1",
+        "sf.render.aftermath-wreck-liner-drum--derelict.mesh.ln-spine-1-2",
+        "sf.render.aftermath-wreck-liner-drum--derelict.root"
+      ]
+    }
+  ]
+}

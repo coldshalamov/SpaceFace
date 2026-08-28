@@ -1,0 +1,18 @@
+{
+  "schema": "spaceface.exactSourceEvidence.v1",
+  "shipId": "ranger",
+  "cycle": 32,
+  "source": "assets/ships/fleet_player_bodies_v1/ranger/source/wholeships/ranger_production_v1_lod0.glb",
+  "sourceSha256": "C7A49AC369AB33A19DEF33C9C90066834144029192668EE35C3E3E6077DEDC2A",
+  "renderer": "tools/blender/build_ranger_mtx.py+spaceface_chase_camera.py",
+  "views": [
+    "play_chase.png",
+    "play_chase_abeam.png",
+    "play_chase_close.png",
+    "clay_play_chase.png",
+    "grazing_close.png",
+    "orm_isolation.png",
+    "normal_isolation.png",
+    "id_or_material_id.png"
+  ]
+}

@@ -7,6 +7,7 @@ import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs
 import {
   authoredBootstrapPreloadPlan,
   authoredPreloadPlanForEntity,
+  requiresProductionWholeShipForEntity,
   shipArchetypeKeyForDefId,
   wholeShipVisualForEntity,
 } from '../src/render/partsLibrary.js';
@@ -35,6 +36,21 @@ assert.deepEqual(authoredBootstrapPreloadPlan().hull, ['wholeships/kestrel.glb']
   'fleet remasters must not expand first-frame bootstrap residency');
 assert.equal(wholeShipVisualForEntity(hitch, { requiredWholeShip: true }).file, 'wholeships/kestrel.glb',
   'Hitch must remain the live starter body');
+assert.equal(requiresProductionWholeShipForEntity(hitch), true,
+  'the player starter must retain its strict production body');
+assert.equal(requiresProductionWholeShipForEntity({ ...hitch, isPlayer: false }), false,
+  'a generic Kestrel NPC must not inherit the player-only boot identity');
+
+for (const defId of ['ship_wasp', 'ship_drifter', 'ship_ranger']) {
+  const rebuildEntity = makeShipEntitySpec(defId, { isPlayer: false, team: 0 });
+  assert.equal(requiresProductionWholeShipForEntity(rebuildEntity), true,
+    `${defId} accepted production body must survive a render rebuild without an isPlayer marker`);
+}
+for (const defId of ['ship_pelican', 'ship_mule', 'ship_hornet', 'ship_ironback']) {
+  const notYetPromoted = makeShipEntitySpec(defId, { isPlayer: false, team: 0 });
+  assert.equal(requiresProductionWholeShipForEntity(notYetPromoted), false,
+    `${defId} must stay off the required route until its canonical remaster packet closes`);
+}
 
 for (const [defId, expected] of Object.entries(EXPECTED)) {
   const entity = makeShipEntitySpec(defId, { isPlayer: true, team: 0 });

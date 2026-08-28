@@ -1,0 +1,1132 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-grating-sheet",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f8777ed76c1e4ba84ade86aa5fd748c603df54b4b72da41398ec158d222366d3",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -2.5447232723236084,
+          0.6911169290542603,
+          2.08543062210083
+        ],
+        "min": [
+          -3.0638039112091064,
+          -0.8498528599739075,
+          -2.0156197547912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "99250771b72d18a7d534beb77efadaf23a9b3c9f6a43ba0213387578e3a35245",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.1447232961654663,
+          0.6911169290542603,
+          2.08543062210083
+        ],
+        "min": [
+          -0.6638039350509644,
+          -0.8498528599739075,
+          -2.0156197547912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e1a6f5a59c96987e9afec1ac5c5941823e7bfa95d2eded9f1867a1237d471601",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8552765846252441,
+          0.6911169290542603,
+          2.08543062210083
+        ],
+        "min": [
+          1.336195945739746,
+          -0.8498528599739075,
+          -2.0156197547912598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8640777796727a6dcda608321b87742e399ff85bc8daddfccd20b17c3f7e2c10",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8744111061096191,
+          1.3403583765029907,
+          1.9722259044647217
+        ],
+        "min": [
+          -3.8829383850097656,
+          -1.099094271659851,
+          -1.9024150371551514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d0df9a37717243241e626cf7a965aade69f51314fde3e22897ba1f856d6a47b",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-sheet.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.fg-sheet",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.539057493209839,
+          -0.536459743976593,
+          1.9240658283233643
+        ],
+        "min": [
+          1.8574155569076538,
+          -1.2286090850830078,
+          1.3047029972076416
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2503937882ecbc6577f7aead2b9564deda2d20120986e258a319139232daa15d",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5082390308380127,
+          -2.071589231491089,
+          0.35835540294647217
+        ],
+        "min": [
+          1.856233835220337,
+          -2.888476610183716,
+          -0.45873957872390747
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83382d197d1218d2c66382ee376f11ddc2546a98425eb2c21dd2374af1b15dea",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8911561965942383,
+          -0.2067890763282776,
+          -1.038699984550476
+        ],
+        "min": [
+          1.747316837310791,
+          -0.9476391673088074,
+          -2.085430383682251
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab4316b5bd1c2fb219ec7f7ad952a3c4791447c359dae66a2722c9eff04efd2d",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.882962465286255,
+          2.888484477996826,
+          -0.14159050583839417
+        ],
+        "min": [
+          1.723510503768921,
+          1.6604456901550293,
+          -1.3946524858474731
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a117b1f8bf89e2c22ca29a2737b3e17435fd879e9df28772ffddb86f1858f168",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.08256459236145,
+          2.488027811050415,
+          1.4874075651168823
+        ],
+        "min": [
+          1.797908067703247,
+          1.921580195426941,
+          0.6167863011360168
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "065a3ec7233f6c6f122a3baf4b0a380538347ac156a382bf97871e0d84cee274",
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "355b32a25a315894294be3a06e21cca8f18a96052ec3501ad39a7d1bb7112b7a",
+      "id": "material:355b32a25a315894294be3a0",
+      "name": "wrk_deck_grate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "dc58c1e92573c2f8d4ca110662ddeeadf739d39f87aeba1ce1d8228da3ddbbf7",
+      "id": "material:dc58c1e92573c2f8d4ca1106",
+      "name": "wrk_dust_matte",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fg_bar_0",
+      "nodeName": "fg_bar_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fg_bar_1",
+      "nodeName": "fg_bar_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fg_bar_2",
+      "nodeName": "fg_bar_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.fg-sheet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fg_sheet",
+      "nodeName": "fg_sheet",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tear_0",
+      "nodeName": "tear_tear_0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tear_1",
+      "nodeName": "tear_tear_1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tear_2",
+      "nodeName": "tear_tear_2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tear_3",
+      "nodeName": "tear_tear_3",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tear_4",
+      "nodeName": "tear_tear_4",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-frag-grating-sheet.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-grating-sheet.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_grating_sheet",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d3ea41507168d05601be037d45fdca7ef84428189fcf7e9454689e615e58e922"
+    },
+    "sourceGlb": {
+      "bytes": 12768,
+      "sha256": "c2461b1473c84fa2e27ded4c85bb3fa5c9e13677b79943241385739eb23cd361",
+      "uri": "place_aftermath_frag_grating_sheet.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 24336,
+    "sha256": "7bf132c3d792265c66ad705c08abde614937ba8b6bbe8ee476d92a91cbd2c5d0",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.000012040138244628906,
+        0.000003933906555175781,
+        1.1920928955078125e-7
+      ],
+      "max": [
+        3.882962465286255,
+        2.888484477996826,
+        2.08543062210083
+      ],
+      "min": [
+        -3.8829383850097656,
+        -2.888476610183716,
+        -2.085430383682251
+      ],
+      "size": [
+        7.7659008502960205,
+        5.776961088180542,
+        4.170861005783081
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 11,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fg_bar_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fg_bar_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fg_bar_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fg_sheet",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tear_0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tear_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tear_2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tear_3",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tear_4",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb"
+  },
+  "runtimeHash": "9511a6790ddfaf5f0ed5a82eaaa16a89a646ef2b2f7b11ef54c207d6a1e96b35",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.882962465286255,
+          2.888484477996826,
+          2.08543062210083
+        ],
+        "min": [
+          -3.8829383850097656,
+          -2.888476610183716,
+          -2.085430383682251
+        ]
+      },
+      "id": "sf.render.aftermath-frag-grating-sheet.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-0",
+        "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-1",
+        "sf.render.aftermath-frag-grating-sheet.mesh.fg-bar-2",
+        "sf.render.aftermath-frag-grating-sheet.mesh.fg-sheet",
+        "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-0",
+        "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-1",
+        "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-2",
+        "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-3",
+        "sf.render.aftermath-frag-grating-sheet.mesh.tear-tear-4",
+        "sf.render.aftermath-frag-grating-sheet.root"
+      ]
+    }
+  ]
+}

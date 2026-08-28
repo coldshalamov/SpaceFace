@@ -1,0 +1,6272 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.anchor.socket-hazard-reactor",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5328369140625,
+        -1.3417553901672363,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Reactor",
+      "nodePath": [
+        0,
+        55
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -16.5328369140625,
+        -1.3417553901672363,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.anchor.socket-salvage-drive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -33.5328369140625,
+        -1.3417553901672363,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Drive",
+      "nodePath": [
+        0,
+        56
+      ],
+      "parentNodeId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -33.5328369140625,
+        -1.3417553901672363,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-wreck-corvette-engine",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "93ea149c25ead2cc9f6180926432f98fe936805fb7463e5aa5f16c44cd9b5e48",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          11.562057495117188,
+          5.198052406311035,
+          4.199999809265137
+        ],
+        "min": [
+          3.3722691535949707,
+          2.198436975479126,
+          -4.199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbfe29a7d8327ba296bb5a378a9c52b2b8273b8c67f109bf3ebb59eab5271c33",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-barb.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-barb",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          18.9671630859375,
+          7.821271896362305,
+          0.5498825311660767
+        ],
+        "min": [
+          7.967162132263184,
+          6.7752180099487305,
+          -0.5498825311660767
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ddcf584e836efae8944339371e19b2d88b1ae7435676dba9bec56e38b81d503",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-gun.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-gun",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          10.9671630859375,
+          8.698009490966797,
+          3.0001068115234375
+        ],
+        "min": [
+          3.9671630859375,
+          5.49847936630249,
+          -3.0001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0ceea07e37ccfc962c8665c78e7225d55d3705eef5759776e34d01148b6a7ea",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-house.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-house",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.854549407958984,
+          5.8481268882751465,
+          4.5
+        ],
+        "min": [
+          3.0797765254974365,
+          4.748362064361572,
+          -4.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fd78f56bc5b0233b0a73ecb62396254916ad017a46ac1905a01e0a5f5507eb99",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-ring.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-ring",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          33.20380783081055,
+          -4.262132167816162,
+          2.6010639667510986
+        ],
+        "min": [
+          31.43051528930664,
+          -4.973628520965576,
+          2.2810609340667725
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab069a222ab2e976f5e90111a881cb35d4e1431e59d0a0b3e5319754471fbc3d",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.018",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.730690002441406,
+          -4.704442977905273,
+          2.571075677871704
+        ],
+        "min": [
+          33.1036376953125,
+          -5.771317481994629,
+          2.311049222946167
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ed4275998dfa17e115427c82886091c36fe07403024afb56591bb6d0e01b0fb",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.019",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          33.26884841918945,
+          -3.659339666366577,
+          -2.9161648750305176
+        ],
+        "min": [
+          31.365474700927734,
+          -5.306295394897461,
+          -3.2360849380493164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d9a93c4393e054b01926cf29d8de03460a359bf9fefa008de62418dbf49dc37",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.020",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.78290939331055,
+          -5.123764991760254,
+          -2.946185827255249
+        ],
+        "min": [
+          33.05141830444336,
+          -8.18187141418457,
+          -3.206063985824585
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d401a56618935a03ceb3b3e09e3adecdac40d743ff453be1378e23640e714a76",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.021",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          33.242034912109375,
+          1.8757984638214111,
+          -2.281036376953125
+        ],
+        "min": [
+          31.392288208007812,
+          0.6929404139518738,
+          -2.601088523864746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "71d5905de5c1cd5c47140281cb4b6f782a355b95ffbd454caaf8421fa9f7b21d",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.022",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.76902770996094,
+          0.9152131676673889,
+          -2.3110172748565674
+        ],
+        "min": [
+          33.06529998779297,
+          -1.1364737749099731,
+          -2.5711076259613037
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5498981491606acb27e9a2dbe72ab08dcdacf646b9478b79cff9226548cee16c",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.023",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          33.20380783081055,
+          1.2550551891326904,
+          3.23612642288208
+        ],
+        "min": [
+          31.43051528930664,
+          0.5435587763786316,
+          2.916123390197754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "050bfb1b31c61d85ae8eb4436729a7c1eb98516f097a9577112f285f6aa2f491",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.024",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.730690002441406,
+          0.8127443194389343,
+          3.2061381340026855
+        ],
+        "min": [
+          33.1036376953125,
+          -0.2541303038597107,
+          2.9461116790771484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03527ffbd59593e20c6fcbc31a480242e87b0e52d0e76be5f9926216a779ba64",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.025",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          31.91716957092285,
+          -2.4008545875549316,
+          6.9041523933410645
+        ],
+        "min": [
+          31.417158126831055,
+          -3.080854892730713,
+          6.224152088165283
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "33aede25b498a45511afd02277a7b252dae5e27057c17138140ca671a429f879",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.026",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          31.91716957092285,
+          -7.5659074783325195,
+          -1.0590994358062744
+        ],
+        "min": [
+          31.417158126831055,
+          -8.2459077835083,
+          -1.7390995025634766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9554c01d0fa7f7e54b9e90caf56b8f8944d2e533f984c62a4aed3c617e230115",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-1.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.027",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-1",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          31.91716957092285,
+          0.397344172000885,
+          -6.224152088165283
+        ],
+        "min": [
+          31.417158126831055,
+          -0.2826560139656067,
+          -6.9041523933410645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "674df18aff8f75f490d11c908bacbdf4646ab4037caf150922a7e222ea8b59d1",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.028",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          31.91716957092285,
+          5.562397003173828,
+          1.7390995025634766
+        ],
+        "min": [
+          31.417158126831055,
+          4.882396697998047,
+          1.0590994358062744
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6df5ee8f4f10dfd87fa099ab33e3002aeaf8a4a7b49014f9089361b4849b7ade",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-3.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.029",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-3",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          35.090789794921875,
+          -1.0957114696502686,
+          7.186746597290039
+        ],
+        "min": [
+          31.4515380859375,
+          -1.587799310684204,
+          6.466053009033203
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa4f6bfd0ad72fa642c93a7fc7983774b466aa0b6419d03113c852dab5846b1f",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.749332427978516,
+          -5.365078926086426,
+          5.640148639678955
+        ],
+        "min": [
+          31.45298957824707,
+          -6.121278762817383,
+          4.850677013397217
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c237df3eb03425bc35d802ee5cbe4a448d90aa303507b95d1d9eb0cdb0ac8e8b",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          36.41617965698242,
+          -7.615988731384277,
+          1.5559523105621338
+        ],
+        "min": [
+          31.446147918701172,
+          -8.595627784729004,
+          0.8294179439544678
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f01b39149015813119890d92936b98719fb124cd5768af1b558a0735832a85d",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.419925689697266,
+          -6.886030197143555,
+          -3.087387800216675
+        ],
+        "min": [
+          31.452402114868164,
+          -7.639338493347168,
+          -3.749511957168579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "42d831da877984c49bf5622c205ea23edc2fcbbcad89cb8b00eb6e003c757f72",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          36.08388137817383,
+          -3.3237762451171875,
+          -5.993844032287598
+        ],
+        "min": [
+          31.44844627380371,
+          -4.050814628601074,
+          -6.894791603088379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f4882ce76bf3d990f428a3c59b3b38557a51a39b2200d621dd7a42b3b26465e",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.08985137939453,
+          1.2782609462738037,
+          -6.0612359046936035
+        ],
+        "min": [
+          31.452476501464844,
+          0.7077610492706299,
+          -6.768199443817139
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a872faf49702fd35e820b20cd2cf835130e40d35bc6b7eecb20957118280910e",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.751163482666016,
+          4.99648380279541,
+          -3.064894914627075
+        ],
+        "min": [
+          31.451162338256836,
+          4.180049896240234,
+          -3.7825047969818115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "abd31d72864356cc620cee3b9bcc9b8c59d1cbca8e90dba9dc7f8ef57a47ae4c",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          36.41617965698242,
+          5.912116527557373,
+          1.555951476097107
+        ],
+        "min": [
+          31.44614601135254,
+          4.932479381561279,
+          0.8294188380241394
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9e47be8636f24c03c09166b0740b1b93a9217e8fec31dc97caf9594d49ba141",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.41823959350586,
+          3.4017839431762695,
+          5.601583480834961
+        ],
+        "min": [
+          31.45408821105957,
+          2.7040538787841797,
+          4.873154640197754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a1b1923a2697183669db2552dd790588c40727862e32fb3028187580e3cb3ad",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-8.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.017",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-8",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          32.95779037475586,
+          -3.0384721755981445,
+          7.089974403381348
+        ],
+        "min": [
+          31.406538009643555,
+          -4.627918243408203,
+          5.7570295333862305
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a2635430028dc3512921054448162a56460b9b715ade9380f307c6a25e9b216c",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          35.38706588745117,
+          -6.448818206787109,
+          3.8097074031829834
+        ],
+        "min": [
+          31.265260696411133,
+          -8.109628677368164,
+          1.427902340888977
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd2327c5abac5c75c18a7c4bdb860596a30aea8eea528315548fc82b58f4d325",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          33.80059814453125,
+          -6.645638465881348,
+          -1.4250224828720093
+        ],
+        "min": [
+          31.135725021362305,
+          -8.698225021362305,
+          -3.485461711883545
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77d6a2e0d2962eeb52517ae6f7ab0ef6b08e83887beebabe75d2e7d15dca799f",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          36.00697708129883,
+          -2.824310064315796,
+          -4.07928991317749
+        ],
+        "min": [
+          31.217348098754883,
+          -5.016019344329834,
+          -7.612472057342529
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ed0fc7f6e83ecef0aba655ca40241f0273cacdc58a198f9735c036d0a795e19",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.26636505126953,
+          1.4826117753982544,
+          -5.085132122039795
+        ],
+        "min": [
+          31.241960525512695,
+          0.6719658970832825,
+          -7.3885674476623535
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70d32e6050fc5518e860e1e945ea10daeb3cff1e2acfacb8e7dfabf1c0f46525",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          36.532833099365234,
+          6.01429557800293,
+          -1.6510549783706665
+        ],
+        "min": [
+          31.26349449157715,
+          2.810781478881836,
+          -3.4249720573425293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f6c83b3755058fb63fbf77b5dd83b5e1c5966255504aa14d3c777842604e10ee",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          34.709712982177734,
+          5.58123779296875,
+          3.693845510482788
+        ],
+        "min": [
+          31.370609283447266,
+          4.022299766540527,
+          1.0718475580215454
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cde090cfdf489ce89f615694cb4e1e5792559e81bce52112abf7e20d9a98369",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          33.31776809692383,
+          2.374174118041992,
+          7.526963710784912
+        ],
+        "min": [
+          31.04655647277832,
+          0.5030908584594727,
+          5.080668926239014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e4e2ba309e5080ac4ab0d2352099c515c7467af0ad4c2b44cf7f1e2f5a7bae1",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.523134231567383,
+          -1.6123173236846924,
+          6.729761123657227
+        ],
+        "min": [
+          -26.542539596557617,
+          -2.471193552017212,
+          6.270238876342773
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bc6fc25fcd803353a968ad6758d532fc5da5c13e4d5ff6d60b5911fc69313a6",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.030",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -26.499303817749023,
+          -0.6132674813270569,
+          6.7257490158081055
+        ],
+        "min": [
+          -32.56637191772461,
+          -1.8702433109283447,
+          4.874251365661621
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9b6d852bffa96854c29241ff26e2494bd02adb7672071008d2a06e2ddfefeaa",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.031",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.5328426361084,
+          5.25824499130249,
+          3.200000047683716
+        ],
+        "min": [
+          -36.532833099365234,
+          -1.1417561769485474,
+          -3.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80fd4c920cb4180ef31bff2426425839821de7a1dfaf0b6088419ab94ea77254",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-0",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.5328426361084,
+          -0.34175536036491394,
+          6.800000190734863
+        ],
+        "min": [
+          -36.532833099365234,
+          -6.741756439208984,
+          0.39999985694885254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bb12115493c6ad3a159641e7a37b73a4b2598120eb92f697f2ceea487642c80",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.001",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -30.5328426361084,
+          -0.34175536036491394,
+          -0.39999985694885254
+        ],
+        "min": [
+          -36.532833099365234,
+          -6.741756439208984,
+          -6.800000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1a42918d9fe377b19aafe123f0f9ebe67237e035070bac66c705bb7d72f2124",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.002",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.0328369140625,
+          0.6579089164733887,
+          -6.450075149536133
+        ],
+        "min": [
+          -32.0328369140625,
+          -4.341419696807861,
+          -7.149925231933594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "525b6d3e3e57779fc76c1145a4dc67655014957d33025d563fa501067bf2ff7e",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -19.0328369140625,
+          0.6579089164733887,
+          7.149925231933594
+        ],
+        "min": [
+          -32.0328369140625,
+          -4.341419696807861,
+          6.450075149536133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb397bc4f2507cdc7f4f9447d7a763e9a7d58c1d7c79cf7049132170cf62be7b",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.0328369140625,
+          0.6579089164733887,
+          -6.450075149536133
+        ],
+        "min": [
+          -18.0328369140625,
+          -4.341419696807861,
+          -7.149925231933594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c79497c7b7359c0494a9baad43459b29bf2ae197db6d2b6fa0b3b2a36f09d2d",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.0328369140625,
+          0.6579089164733887,
+          7.149925231933594
+        ],
+        "min": [
+          -18.0328369140625,
+          -4.341419696807861,
+          6.450075149536133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1b4334022e92f7e4373d224d1020a14f8761d41404480a5bf32f5bb182b99615",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.9671630859375,
+          0.6579089164733887,
+          -6.450075149536133
+        ],
+        "min": [
+          -4.0328369140625,
+          -4.341419696807861,
+          -7.149925231933594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8652e8f9bc00b88ceb1c4295ae741d8f30d5ab36ec742ca3cbfd9b3f2d6ad6e4",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.9671630859375,
+          0.6579089164733887,
+          7.149925231933594
+        ],
+        "min": [
+          -4.0328369140625,
+          -4.341419696807861,
+          6.450075149536133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eb801d15277e66052b2d7708d309b43f3808d2f2faaf83cd334755bb85f59a5e",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.9671630859375,
+          0.6579089164733887,
+          -6.450075149536133
+        ],
+        "min": [
+          9.9671630859375,
+          -4.341419696807861,
+          -7.149925231933594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72b6a394740796b8c13ac4267db150da2e82630fdc8b4ad06538a016b5fa8cad",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          22.9671630859375,
+          0.6579089164733887,
+          7.149925231933594
+        ],
+        "min": [
+          9.9671630859375,
+          -4.341419696807861,
+          6.450075149536133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "782fab26018f6811f363b092fd348bee8b8386466b4f9ddff9391661776081ce",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.532289505004883,
+          6.008246421813965,
+          7.349999904632568
+        ],
+        "min": [
+          -30.533384323120117,
+          -8.691757202148438,
+          -7.349999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82f838d2789d7d945b697fc157aa38599da388e0b62b89a8652da48303f8542c",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-drive-block.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-drive-block",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4671630859375,
+          2.943866014480591,
+          -5.282897472381592
+        ],
+        "min": [
+          -17.5328369140625,
+          -7.627377033233643,
+          -9.51710319519043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7c6c8a18a8dc86cbf60b4bc7a584161cbbbf81f30de8c4c5694823385ef0b982",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4671630859375,
+          2.943866014480591,
+          9.51710319519043
+        ],
+        "min": [
+          -17.5328369140625,
+          -7.627377033233643,
+          5.282897472381592
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e551237a39f1a761f861e38a30a09a80492466e5157d0cb37870fbfe7eaa2bb8",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.774796485900879,
+          1.5582447052001953,
+          2.9000000953674316
+        ],
+        "min": [
+          -19.290876388549805,
+          -4.241755485534668,
+          -2.9000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac0c973c3c0666c9737c13962ba339d37b6e54dc007ef8b053fb5bafb7b10349",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fire-r.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fire-r",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          -18.532835006713867,
+          5.6582465171813965,
+          7
+        ],
+        "min": [
+          -32.5328369140625,
+          -8.341756820678711,
+          -7
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f4e9d6a8f90e5ab99cde808044ce0de287d4209f5654ad138d1da925c41c932c",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-0",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.532835006713867,
+          5.6582465171813965,
+          7
+        ],
+        "min": [
+          -18.532838821411133,
+          -8.341756820678711,
+          -7
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "db30b34b3c38823456cdda6e010d65ba2b43688d6ff2d849ed60a24945d780cc",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          9.467164993286133,
+          5.6582465171813965,
+          7
+        ],
+        "min": [
+          -4.532838821411133,
+          -8.341756820678711,
+          -7
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc8e6db45227dfdefe5778a43e6b4ba7749402ce66764d4fe9fb08b5db0d3d0e",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          23.467164993286133,
+          5.6582465171813965,
+          7
+        ],
+        "min": [
+          9.467161178588867,
+          -8.341756820678711,
+          -7
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f31fd8d0e8490778a137a670e50f7ecbbc0d8faacac284a0087bc50d2a423a3f",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-3.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-3",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.032835960388184,
+          1.6583523750305176,
+          3.0001068115234375
+        ],
+        "min": [
+          -20.0328369140625,
+          -4.34186315536499,
+          -3.0001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c621dfe08cf63251a76e53813fbf08377f9e7556079659b9678994b685efe3a1",
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-reactor.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "8b1bd921c7a5f4c6ffeaa77b3038d36cc8e54626d206a7784d61480ee8adb4c0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-reactor",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "id": "material:22334c862d743f3b681c8a34",
+      "name": "wrk_armor",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "2ecdc2543581ee905a24eaa89cd1584cc1a879a552497fa8d908632ed91f06e9",
+      "id": "material:2ecdc2543581ee905a24eaa8",
+      "name": "wrk_cable",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "id": "material:5a08f6356737023df8d0b8c2",
+      "name": "wrk_hull_bare",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "id": "material:6ba64bc230e8b6c479bb16ed",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8b1bd921c7a5f4c6ffeaa77b3038d36cc8e54626d206a7784d61480ee8adb4c0",
+      "id": "material:8b1bd921c7a5f4c6ffeaa77b",
+      "name": "wrk_tank_shell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "acad180edd387403bb1134536e9b2ffb613b7ac222adea53ab865f555b3781b2",
+      "id": "material:acad180edd387403bb113453",
+      "name": "wrk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "d6a50e6ee7951288218a67547cd35c882c53483de1a3594b30b7c3a6308fcfcb",
+      "id": "material:d6a50e6ee7951288218a6754",
+      "name": "wrk_paint_navy_concord",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-barb",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_aft_barb",
+      "nodeName": "barbette_aft_barb",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-gun",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_aft_gun",
+      "nodeName": "barbette_aft_gun",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-house",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_aft_house",
+      "nodeName": "barbette_aft_house",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-ring",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "barbette_aft_ring",
+      "nodeName": "barbette_aft_ring",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_0a",
+      "nodeName": "break_lance_cbl_0a",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_0b",
+      "nodeName": "break_lance_cbl_0b",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_1a",
+      "nodeName": "break_lance_cbl_1a",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_1b",
+      "nodeName": "break_lance_cbl_1b",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_2a",
+      "nodeName": "break_lance_cbl_2a",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_2b",
+      "nodeName": "break_lance_cbl_2b",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_3a",
+      "nodeName": "break_lance_cbl_3a",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_cbl_3b",
+      "nodeName": "break_lance_cbl_3b",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_0",
+      "nodeName": "break_lance_hot_0",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_1",
+      "nodeName": "break_lance_hot_1",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_2",
+      "nodeName": "break_lance_hot_2",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_hot_3",
+      "nodeName": "break_lance_hot_3",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_0",
+      "nodeName": "break_lance_rib_0",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_1",
+      "nodeName": "break_lance_rib_1",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_2",
+      "nodeName": "break_lance_rib_2",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_3",
+      "nodeName": "break_lance_rib_3",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_4",
+      "nodeName": "break_lance_rib_4",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_5",
+      "nodeName": "break_lance_rib_5",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_6",
+      "nodeName": "break_lance_rib_6",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_7",
+      "nodeName": "break_lance_rib_7",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-8",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_rib_8",
+      "nodeName": "break_lance_rib_8",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_0",
+      "nodeName": "break_lance_tear_0",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_1",
+      "nodeName": "break_lance_tear_1",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_2",
+      "nodeName": "break_lance_tear_2",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_3",
+      "nodeName": "break_lance_tear_3",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_4",
+      "nodeName": "break_lance_tear_4",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_5",
+      "nodeName": "break_lance_tear_5",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_6",
+      "nodeName": "break_lance_tear_6",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_lance_tear_7",
+      "nodeName": "break_lance_tear_7",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_drive_crack_0",
+      "nodeName": "crack_drive_crack_0",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crack_drive_crack_1",
+      "nodeName": "crack_drive_crack_1",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_bell_0",
+      "nodeName": "cv_bell_0",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_bell_1",
+      "nodeName": "cv_bell_1",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_bell_2",
+      "nodeName": "cv_bell_2",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_0_-1",
+      "nodeName": "cv_belt_0_-1",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_0_1",
+      "nodeName": "cv_belt_0_1",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_1_-1",
+      "nodeName": "cv_belt_1_-1",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_1_1",
+      "nodeName": "cv_belt_1_1",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_2_-1",
+      "nodeName": "cv_belt_2_-1",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_2_1",
+      "nodeName": "cv_belt_2_1",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_3_-1",
+      "nodeName": "cv_belt_3_-1",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_belt_3_1",
+      "nodeName": "cv_belt_3_1",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-drive-block",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_drive_block",
+      "nodeName": "cv_drive_block",
+      "nodePath": [
+        0,
+        46
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_fin_-1",
+      "nodeName": "cv_fin_-1",
+      "nodePath": [
+        0,
+        47
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_fin_1",
+      "nodeName": "cv_fin_1",
+      "nodePath": [
+        0,
+        48
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fire-r",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_fire_r",
+      "nodeName": "cv_fire_r",
+      "nodePath": [
+        0,
+        49
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_0",
+      "nodeName": "cv_hull_0",
+      "nodePath": [
+        0,
+        50
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_1",
+      "nodeName": "cv_hull_1",
+      "nodePath": [
+        0,
+        51
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_2",
+      "nodeName": "cv_hull_2",
+      "nodePath": [
+        0,
+        52
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_hull_3",
+      "nodeName": "cv_hull_3",
+      "nodePath": [
+        0,
+        53
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.mesh.cv-reactor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cv_reactor",
+      "nodeName": "cv_reactor",
+      "nodePath": [
+        0,
+        54
+      ],
+      "parentId": "sf.render.aftermath-wreck-corvette-engine.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-wreck-corvette-engine.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "wreck_corvette_engine",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4c1e84571947bcf0adaa0f3f871d016c28bf25d2045a8ceb549d81d872738c8d"
+    },
+    "sourceGlb": {
+      "bytes": 53756,
+      "sha256": "b0ce57417c9e5a12f53cbc559353e774a41f5aa443e8077c42d1e2eaae46f0c0",
+      "uri": "place_aftermath_wreck_corvette_engine.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 136808,
+    "sha256": "2fd5daab72759b0c7df686e2675ecc039d63e87566dce64a2eb2aaa016959170",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        -0.00010776519775390625,
+        0
+      ],
+      "max": [
+        36.532833099365234,
+        8.698009490966797,
+        9.51710319519043
+      ],
+      "min": [
+        -36.532833099365234,
+        -8.698225021362305,
+        -9.51710319519043
+      ],
+      "size": [
+        73.06566619873047,
+        17.3962345123291,
+        19.03420639038086
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -16.5328369140625,
+          -1.3417553901672363,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hazard_Reactor",
+        "planIndex": 57,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Reactor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Reactor",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-engine.anchor.socket-hazard-reactor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -33.5328369140625,
+          -1.3417553901672363,
+          0,
+          1
+        ],
+        "name": "SOCKET_Salvage_Drive",
+        "planIndex": 58,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Drive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Drive",
+            "recordIds": [
+              "sf.render.aftermath-wreck-corvette-engine.anchor.socket-salvage-drive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 14,
+      "mechanical": 41
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 59,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_aft_barb",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_aft_gun",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_aft_house",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "barbette_aft_ring",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_0a",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_0b",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_1a",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_1b",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_2a",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_2b",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_3a",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_cbl_3b",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_0",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_2",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_hot_3",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_0",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_2",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_3",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_4",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_5",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_6",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_7",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_rib_8",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_0",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_1",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_2",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_3",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_4",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_5",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_6",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_lance_tear_7",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_drive_crack_0",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crack_drive_crack_1",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_bell_0",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_bell_1",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_bell_2",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_0_-1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_0_1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_1_-1",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_1_1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_2_-1",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_2_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_3_-1",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_belt_3_1",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_drive_block",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_fin_-1",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_fin_1",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_fire_r",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_0",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_1",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_2",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_hull_3",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cv_reactor",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_engine.glb"
+  },
+  "runtimeHash": "49cb0c91d088e29142597a1124365b54456b75de7f6bfe3e8af5d7bbae4ea7e8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          36.532833099365234,
+          8.698009490966797,
+          9.51710319519043
+        ],
+        "min": [
+          -36.532833099365234,
+          -8.698225021362305,
+          -9.51710319519043
+        ]
+      },
+      "id": "sf.render.aftermath-wreck-corvette-engine.body",
+      "nodeIds": [
+        "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-barb",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-gun",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-house",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.barbette-aft-ring",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0a",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-0b",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1a",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-1b",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2a",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-2b",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3a",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-cbl-3b",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-hot-3",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-3",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-4",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-5",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-6",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-7",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-rib-8",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-3",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-4",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-5",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-6",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.break-lance-tear-7",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.crack-drive-crack-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-bell-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-0-1-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-1-1-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-2-1-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-belt-3-1-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-drive-block",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fin-1-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-fire-r",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-0",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-1",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-2",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-hull-3",
+        "sf.render.aftermath-wreck-corvette-engine.mesh.cv-reactor",
+        "sf.render.aftermath-wreck-corvette-engine.root"
+      ]
+    }
+  ]
+}

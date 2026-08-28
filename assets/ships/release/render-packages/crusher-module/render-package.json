@@ -1,0 +1,2414 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.crusher-module.anchor.socket-discharge",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.400000095367432,
+        -2.4000000953674316,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Discharge",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.crusher-module.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.400000095367432,
+        -2.4000000953674316,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.anchor.socket-feed",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        5.599999904632568,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Feed",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.crusher-module.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        5.599999904632568,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.crusher-module",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "330cc54e25c8552ff9f0715496e8708b0dbc09ab2d935bc49f8e2ab492cf7ccb",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2,
+          0.40008544921875,
+          3.550053358078003
+        ],
+        "min": [
+          -0.7999999523162842,
+          -1.2000855207443237,
+          2.8499467372894287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c32e8170cef9faac94b0c2944b593ad494dd98689f6fa2896b08f57812a4df96",
+      "id": "sf.render.crusher-module.mesh.belt-guard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.crusher-module.mesh.belt-guard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5,
+          2.000213623046875,
+          2.5001068115234375
+        ],
+        "min": [
+          -3.5,
+          -2.000213623046875,
+          -2.5001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65fb8eed89bdb024ac0480d52dd5b1a9d8cd51b9740586f78bef917699a97f46",
+      "id": "sf.render.crusher-module.mesh.body.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.crusher-module.mesh.body",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5,
+          1.7999329566955566,
+          -2.4001035690307617
+        ],
+        "min": [
+          -2.5,
+          -1.399932861328125,
+          -2.799896240234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b0ccabdf5a17c9fc2047d97694a87371c5bcfc365a0cbd479d3469fe6c2a5f6e",
+      "id": "sf.render.crusher-module.mesh.cheek-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.crusher-module.mesh.cheek-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.5,
+          1.7999329566955566,
+          2.799896240234375
+        ],
+        "min": [
+          -2.5,
+          -1.399932861328125,
+          2.4001035690307617
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "149ed013382d64c16657001c90a2e39539e171dca6a057113ca5cea14d4355f6",
+      "id": "sf.render.crusher-module.mesh.cheek-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.crusher-module.mesh.cheek-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.690364360809326,
+          -0.50493323802948,
+          1.2999765872955322
+        ],
+        "min": [
+          -6.5096354484558105,
+          -2.6950666904449463,
+          -1.2999765872955322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "926a61b910d40eb056c2c1ccace90f74884fb35cbc1310a8d8d45e5e29c0a08d",
+      "id": "sf.render.crusher-module.mesh.chute.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.crusher-module.mesh.chute",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.141257882118225,
+          5.539994716644287,
+          1.1999999284744263
+        ],
+        "min": [
+          -1.1412580013275146,
+          4.460005283355713,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c64682d2d264ab8c93a0b7cca4f698e3eb1649e0c7f6817678066ed13c7ab40",
+      "id": "sf.render.crusher-module.mesh.feed-0.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.004",
+      "nodeId": "sf.render.crusher-module.mesh.feed-0",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3675800561904907,
+          5.33479642868042,
+          0.3240000903606415
+        ],
+        "min": [
+          -0.04758000746369362,
+          4.66520357131958,
+          -1.1640000343322754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52dcbc3b0ff6000c52283dfb6a67c3005b52eee2440a9b461795d54ab11355c4",
+      "id": "sf.render.crusher-module.mesh.feed-1.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.crusher-module.mesh.feed-1",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.029371114447712898,
+          5.2699971199035645,
+          1.0799999237060547
+        ],
+        "min": [
+          -1.1706290245056152,
+          4.7300028800964355,
+          -0.12000003457069397
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "648cca03037208573d446add7c538df30445c0a1953843c76d53191550710448",
+      "id": "sf.render.crusher-module.mesh.feed-2.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.crusher-module.mesh.feed-2",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1635079383850098,
+          6.338550567626953,
+          3.1635079383850098
+        ],
+        "min": [
+          2.6864919662475586,
+          5.511449813842773,
+          2.6864919662475586
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c49437d7b2236f1ab8299a6838636100eefdaebddab955defebfc5e72b926d84",
+      "id": "sf.render.crusher-module.mesh.hopper-fl-bracket.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.crusher-module.mesh.hopper-fl-bracket",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.4626693725585938,
+          6.5552978515625,
+          3.462580919265747
+        ],
+        "min": [
+          2.737330436706543,
+          6.044702529907227,
+          2.7374188899993896
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0ea299a2eb7504abc54f1bc4cf96d581a4d243f1a370255a0c552496d288f1e4",
+      "id": "sf.render.crusher-module.mesh.hopper-fl-housing.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.crusher-module.mesh.hopper-fl-housing",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2997982501983643,
+          6.3137431144714355,
+          3.300422191619873
+        ],
+        "min": [
+          2.792820692062378,
+          6.050645351409912,
+          2.79301118850708
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4105af086e8aaef859177dac915e024fb6bdafb9a2a934d4e5ebd92173729120",
+      "id": "sf.render.crusher-module.mesh.hopper-fl-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.crusher-module.mesh.hopper-fl-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7223613262176514,
+          5.3997650146484375,
+          2.7223613262176514
+        ],
+        "min": [
+          -2.7223613262176514,
+          2.1002349853515625,
+          -2.7223613262176514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a81eb9d5080a0d233e7522aeb62c47cb72f80d4da4cf8584a62585a0a610b3db",
+      "id": "sf.render.crusher-module.mesh.hopper-shell.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.002",
+      "nodeId": "sf.render.crusher-module.mesh.hopper-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.439518690109253,
+          5.599771022796631,
+          2.439518690109253
+        ],
+        "min": [
+          -2.439518690109253,
+          2.3002288341522217,
+          -2.439518690109253
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0784568f7b30a0f2e4bd6ed40e33ecca2fcbeda31f20b8079ebedde6ccb4833",
+      "id": "sf.render.crusher-module.mesh.hopper-throat.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.003",
+      "nodeId": "sf.render.crusher-module.mesh.hopper-throat",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.500000238418579,
+          0.374950647354126,
+          4.200064182281494
+        ],
+        "min": [
+          0.8999997973442078,
+          -1.5749506950378418,
+          2.1999359130859375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a524ba0654ef9384df1f4f19b6cbc3029188467f864f400116b43209abfa64f0",
+      "id": "sf.render.crusher-module.mesh.motor.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.crusher-module.mesh.motor",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9498658180236816,
+          5.609836101531982,
+          2.950000047683716
+        ],
+        "min": [
+          2.5501341819763184,
+          5.390163898468018,
+          -2.950000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f5e065b0a16355c9c144bbd90f2a2f913703545c72f3678d9eec5d80d58f846",
+      "id": "sf.render.crusher-module.mesh.rim-e.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.crusher-module.mesh.rim-e",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.950000047683716,
+          5.609836101531982,
+          -2.5501341819763184
+        ],
+        "min": [
+          -2.950000047683716,
+          5.390163898468018,
+          -2.9498658180236816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "84a89e6477980d0d3ad76c85beffe279762fd370542b0139bb88a0019f2ba15c",
+      "id": "sf.render.crusher-module.mesh.rim-n.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.crusher-module.mesh.rim-n",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.950000047683716,
+          5.609836101531982,
+          2.9498658180236816
+        ],
+        "min": [
+          -2.950000047683716,
+          5.390163898468018,
+          2.5501341819763184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c91eec5e5afe86330ea1af3cf7268d80d431e7f066366b8d9a9fc962712d470a",
+      "id": "sf.render.crusher-module.mesh.rim-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.crusher-module.mesh.rim-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.5501341819763184,
+          5.609836101531982,
+          2.950000047683716
+        ],
+        "min": [
+          -2.9498658180236816,
+          5.390163898468018,
+          -2.950000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b4a5c56c85e7fdfe1207462927f9be6c23967eab10583824f0530fc56dd41ba",
+      "id": "sf.render.crusher-module.mesh.rim-w.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.crusher-module.mesh.rim-w",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20923064649105072,
+          6.020000457763672,
+          2.9700000286102295
+        ],
+        "min": [
+          -0.2092306762933731,
+          5.579999923706055,
+          2.5299999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "656b9b02ad7a153d106068a59c8081294c06386b1221e23b70692e1d2decf412",
+      "id": "sf.render.crusher-module.mesh.strobe.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.003",
+      "nodeId": "sf.render.crusher-module.mesh.strobe",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1d7c6efa6307449b139dd83feb923de6447203cd647f651c6a4e6bdbe12d049f",
+      "id": "material:1d7c6efa6307449b139dd83f",
+      "name": "esk_paint_industrial_ochre",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "id": "material:710749cab1590f13b764fa15",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "id": "material:bbb53e65a6036da42c05b90e",
+      "name": "esk_armor_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "id": "material:e798a9eeac4b3e2fa59949aa",
+      "name": "esk_light_mining",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e88c4831fbeeb8866e7cac72078068a9f595adb3e56023420bf323357204efc5",
+      "id": "material:e88c4831fbeeb8866e7cac72",
+      "name": "esk_ore_raw",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "id": "material:f28c343cddb4fb2b567b5d96",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.crusher-module.mesh.belt-guard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "belt_guard",
+      "nodeName": "belt_guard",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "body",
+      "nodeName": "body",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.cheek-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cheek_p",
+      "nodeName": "cheek_p",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.cheek-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cheek_s",
+      "nodeName": "cheek_s",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.chute",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "chute",
+      "nodeName": "chute",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.feed-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "feed_0",
+      "nodeName": "feed_0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.feed-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "feed_1",
+      "nodeName": "feed_1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.feed-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "feed_2",
+      "nodeName": "feed_2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.hopper-fl-bracket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hopper_fl_bracket",
+      "nodeName": "hopper_fl_bracket",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.hopper-fl-housing",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hopper_fl_housing",
+      "nodeName": "hopper_fl_housing",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.hopper-fl-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hopper_fl_lens",
+      "nodeName": "hopper_fl_lens",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.hopper-shell",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hopper_shell",
+      "nodeName": "hopper_shell",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.hopper-throat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hopper_throat",
+      "nodeName": "hopper_throat",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.motor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "motor",
+      "nodeName": "motor",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.rim-e",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "rim_e",
+      "nodeName": "rim_e",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.rim-n",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "rim_n",
+      "nodeName": "rim_n",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.rim-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "rim_s",
+      "nodeName": "rim_s",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.rim-w",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "rim_w",
+      "nodeName": "rim_w",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.mesh.strobe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strobe",
+      "nodeName": "strobe",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.crusher-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.crusher-module.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "crusher_module",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "faa8c9b3f2d91522389c7357a189a6d348d6d27f52f2038915bb41288a73ce0d"
+    },
+    "sourceGlb": {
+      "bytes": 29184,
+      "sha256": "c2cd2a830c8da92caa4f244c138dacb98985e3cc7e3641bfb8a311c4379222c3",
+      "uri": "place_crusher_module.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 49672,
+    "sha256": "ef39adcaf29e8fe0588882477b8d38d7e4b3d81ef601e8f99ac5f53f40fdcd13",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -1.5048176050186157,
+        1.9301155805587769,
+        0.6250320672988892
+      ],
+      "max": [
+        3.500000238418579,
+        6.5552978515625,
+        4.200064182281494
+      ],
+      "min": [
+        -6.5096354484558105,
+        -2.6950666904449463,
+        -2.950000047683716
+      ],
+      "size": [
+        10.00963568687439,
+        9.250364542007446,
+        7.15006422996521
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -6.400000095367432,
+          -2.4000000953674316,
+          0,
+          1
+        ],
+        "name": "SOCKET_Discharge",
+        "planIndex": 21,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Discharge",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Discharge",
+            "recordIds": [
+              "sf.render.crusher-module.anchor.socket-discharge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          5.599999904632568,
+          0,
+          1
+        ],
+        "name": "SOCKET_Feed",
+        "planIndex": 22,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Feed",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Feed",
+            "recordIds": [
+              "sf.render.crusher-module.anchor.socket-feed"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 2,
+      "mechanical": 13,
+      "warning": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 24,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "belt_guard",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "body",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cheek_p",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cheek_s",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "chute",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "feed_0",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "feed_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "feed_2",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hopper_fl_bracket",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hopper_fl_housing",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hopper_fl_lens",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hopper_shell",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hopper_throat",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "motor",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rim_e",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rim_n",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rim_s",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rim_w",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "strobe",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_crusher_module.glb"
+  },
+  "runtimeHash": "136d4cb4ce456b06fdff8c3142211146e65575b01b415b70fdf0ab4c2133cb14",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.500000238418579,
+          6.5552978515625,
+          4.200064182281494
+        ],
+        "min": [
+          -6.5096354484558105,
+          -2.6950666904449463,
+          -2.950000047683716
+        ]
+      },
+      "id": "sf.render.crusher-module.body",
+      "nodeIds": [
+        "sf.render.crusher-module.mesh.belt-guard",
+        "sf.render.crusher-module.mesh.body",
+        "sf.render.crusher-module.mesh.cheek-p",
+        "sf.render.crusher-module.mesh.cheek-s",
+        "sf.render.crusher-module.mesh.chute",
+        "sf.render.crusher-module.mesh.feed-0",
+        "sf.render.crusher-module.mesh.feed-1",
+        "sf.render.crusher-module.mesh.feed-2",
+        "sf.render.crusher-module.mesh.hopper-fl-bracket",
+        "sf.render.crusher-module.mesh.hopper-fl-housing",
+        "sf.render.crusher-module.mesh.hopper-fl-lens",
+        "sf.render.crusher-module.mesh.hopper-shell",
+        "sf.render.crusher-module.mesh.hopper-throat",
+        "sf.render.crusher-module.mesh.motor",
+        "sf.render.crusher-module.mesh.rim-e",
+        "sf.render.crusher-module.mesh.rim-n",
+        "sf.render.crusher-module.mesh.rim-s",
+        "sf.render.crusher-module.mesh.rim-w",
+        "sf.render.crusher-module.mesh.strobe",
+        "sf.render.crusher-module.root"
+      ]
+    }
+  ]
+}

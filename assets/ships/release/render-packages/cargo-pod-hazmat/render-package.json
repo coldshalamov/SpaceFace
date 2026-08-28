@@ -1,0 +1,1573 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.cargo-pod-hazmat.anchor.socket-clamp-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Clamp_Dorsal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentNodeId": "sf.render.cargo-pod-hazmat.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.cargo-pod-hazmat",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "233064062d66b514fab0d974851e585fcaad84a9c4d1e9d2c8364385521fa538",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.950097382068634,
+          1.5299999713897705,
+          1.5299999713897705
+        ],
+        "min": [
+          -1.4499026536941528,
+          -1.5299999713897705,
+          -1.5299999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "992eb203c225df89ab0fa776eb77f7f78534df51e075450b7decfd558417c806",
+      "id": "sf.render.cargo-pod-hazmat.mesh.banda.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.banda",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4499026536941528,
+          1.5299999713897705,
+          1.5299999713897705
+        ],
+        "min": [
+          0.950097382068634,
+          -1.5299999713897705,
+          -1.5299999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8db86e700309d0029e19ff8014a445c00199ac9dbf0a0f33723d7230269d9b21",
+      "id": "sf.render.cargo-pod-hazmat.mesh.bandf.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.bandf",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4949747323989868,
+          0.6949747204780579,
+          1.5699700117111206
+        ],
+        "min": [
+          -0.4949747323989868,
+          -0.29497474431991577,
+          1.510029911994934
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f97dc97d08d72f61cb801f0555b8efedc62e20d9a5e52b226b26a1b159715f3",
+      "id": "sf.render.cargo-pod-hazmat.mesh.placard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.placard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          1.5002288818359375,
+          1.5002288818359375
+        ],
+        "min": [
+          -3,
+          -1.5002288818359375,
+          -1.5002288818359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "423494321f15cfea3eae9607930ddf26964b4c058853e1c990b71c62aee5a040",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-body.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-body",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.059999942779541,
+          1.6000866889953613,
+          1.7001969814300537
+        ],
+        "min": [
+          -3.059999942779541,
+          -1.6000866889953613,
+          -1.7001969814300537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93c40b58c8914cd2b0fe41c0198afc864a89e736895be818780c38d1e79d1d43",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-casts.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.018",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-casts",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.774996280670166,
+          1.600000023841858,
+          1.600000023841858
+        ],
+        "min": [
+          -3.0250039100646973,
+          -1.600000023841858,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e92c12ed59357dfb1ec876ad208047973cdbbd8cdb00d408fe333fae842c195c",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-enda.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-enda",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0250039100646973,
+          1.600000023841858,
+          1.600000023841858
+        ],
+        "min": [
+          2.774996280670166,
+          -1.600000023841858,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aec1f9f80c7133b4dc3a727a019745dc45ee2c1375cc76e53e8730497135c325",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-endf.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-endf",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3499999046325684,
+          0.6000335216522217,
+          1.5749945640563965
+        ],
+        "min": [
+          1.0500000715255737,
+          -0.200033500790596,
+          1.5250053405761719
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15e55e93be8c6359410d1f37b5279a60735ad49d5562fb7e682637e27aba9e50",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-plate.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-plate",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          1.6298750638961792,
+          -1.339907169342041
+        ],
+        "min": [
+          -2.700000047683716,
+          1.4901248216629028,
+          -1.5000927448272705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be54c3e4db7b27f14b5c192f9830333afeb7732c63fa4fc0cdb9a90eb63c48fa",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-railp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-railp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          1.6298750638961792,
+          1.5000927448272705
+        ],
+        "min": [
+          -2.700000047683716,
+          1.4901248216629028,
+          1.339907169342041
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "254aa5471a99ac9b6d7d2c4bbcb00b81efcccf2c444c75ff54b6cb8953bda9ca",
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-rails.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.pod-rails",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.467133104801178,
+          1.9500000476837158,
+          0.34999996423721313
+        ],
+        "min": [
+          -1.1328668594360352,
+          1.25,
+          -0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2caf3c1185dde3e73169a1e152cda66a55b54a41076ed4992be2a4bc7cda450e",
+      "id": "sf.render.cargo-pod-hazmat.mesh.relief-a.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.relief-a",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1328669786453247,
+          1.9500000476837158,
+          0.34999996423721313
+        ],
+        "min": [
+          0.46713313460350037,
+          1.25,
+          -0.3500000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53a1f5693681b4719a3365bbb43a37f3a27e0f3d1926c807bbf93793610c19d6",
+      "id": "sf.render.cargo-pod-hazmat.mesh.relief-f.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.cargo-pod-hazmat.mesh.relief-f",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3fc44c487de257deb82cc90330356951909f6039d1888a555f408b88bc53466a",
+      "id": "material:3fc44c487de257deb82cc903",
+      "name": "esk_tank_shell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "id": "material:46712fb83579a8acf05cfb1e",
+      "name": "esk_hazard_volatile",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "name": "esk_id_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.banda",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "banda",
+      "nodeName": "banda",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.bandf",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "bandf",
+      "nodeName": "bandf",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.placard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "placard",
+      "nodeName": "placard",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_body",
+      "nodeName": "pod_body",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-casts",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_casts",
+      "nodeName": "pod_casts",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-enda",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_enda",
+      "nodeName": "pod_enda",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-endf",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_endf",
+      "nodeName": "pod_endf",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-plate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_plate",
+      "nodeName": "pod_plate",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-railp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_railp",
+      "nodeName": "pod_railp",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.pod-rails",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_rails",
+      "nodeName": "pod_rails",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.relief-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "relief_a",
+      "nodeName": "relief_a",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.mesh.relief-f",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "relief_f",
+      "nodeName": "relief_f",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.cargo-pod-hazmat.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-hazmat.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "cargo_pod_hazmat",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-hazmat.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "bcf3db22df3cd4027da2945b0cab0cb9d66f4baf9ef629f325759ccf91c912d5"
+    },
+    "sourceGlb": {
+      "bytes": 17204,
+      "sha256": "4cc4672cdfeef96ea6c55bb8befc0eb333b13c114faf1d7b59f1e34bcfef18b3",
+      "uri": "place_cargo_pod_hazmat.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 31504,
+    "sha256": "43519e74e5a33b55ff0a9964809b8d41c6ce675fe5f5f9ba00320308888b6a53",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.17495667934417725,
+        0
+      ],
+      "max": [
+        3.059999942779541,
+        1.9500000476837158,
+        1.7001969814300537
+      ],
+      "min": [
+        -3.059999942779541,
+        -1.6000866889953613,
+        -1.7001969814300537
+      ],
+      "size": [
+        6.119999885559082,
+        3.550086736679077,
+        3.4003939628601074
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_Clamp_Dorsal",
+        "planIndex": 16,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Clamp_Dorsal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Clamp_Dorsal",
+            "recordIds": [
+              "sf.render.cargo-pod-hazmat.anchor.socket-clamp-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 7,
+      "mechanical": 2,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 17,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "banda",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "bandf",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "placard",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_body",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_casts",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_enda",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_endf",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_plate",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_railp",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_rails",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "relief_a",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "relief_f",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_cargo_pod_hazmat.glb"
+  },
+  "runtimeHash": "c4c16610d25ee46fc2f64332460599d83319cc7c636366720c6918544da24b2f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.059999942779541,
+          1.9500000476837158,
+          1.7001969814300537
+        ],
+        "min": [
+          -3.059999942779541,
+          -1.6000866889953613,
+          -1.7001969814300537
+        ]
+      },
+      "id": "sf.render.cargo-pod-hazmat.body",
+      "nodeIds": [
+        "sf.render.cargo-pod-hazmat.mesh.banda",
+        "sf.render.cargo-pod-hazmat.mesh.bandf",
+        "sf.render.cargo-pod-hazmat.mesh.placard",
+        "sf.render.cargo-pod-hazmat.mesh.pod-body",
+        "sf.render.cargo-pod-hazmat.mesh.pod-casts",
+        "sf.render.cargo-pod-hazmat.mesh.pod-enda",
+        "sf.render.cargo-pod-hazmat.mesh.pod-endf",
+        "sf.render.cargo-pod-hazmat.mesh.pod-plate",
+        "sf.render.cargo-pod-hazmat.mesh.pod-railp",
+        "sf.render.cargo-pod-hazmat.mesh.pod-rails",
+        "sf.render.cargo-pod-hazmat.mesh.relief-a",
+        "sf.render.cargo-pod-hazmat.mesh.relief-f",
+        "sf.render.cargo-pod-hazmat.root"
+      ]
+    }
+  ]
+}

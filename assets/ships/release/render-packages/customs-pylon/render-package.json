@@ -1,0 +1,1339 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.customs-pylon.anchor.socket-scan-emitter",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        12.399999618530273,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Scan_Emitter",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.customs-pylon.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        12.399999618530273,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.customs-pylon",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "c8d6d9913523f357db5561e64d5b99922778aa7e02d2d6afaf2ace347893bc13",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.445003867149353,
+          13.199999809265137,
+          0.25003209710121155
+        ],
+        "min": [
+          1.1949962377548218,
+          11.59999942779541,
+          -0.25003209710121155
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8316dde7067335c027326b2606be6846d22ef8a0a7d38b097a3dbb30c259315d",
+      "id": "sf.render.customs-pylon.mesh.aperture.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.customs-pylon.mesh.aperture",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7000000476837158,
+          1.4500411748886108,
+          1.7000000476837158
+        ],
+        "min": [
+          -1.7000000476837158,
+          1.1499587297439575,
+          -1.7000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "adcf5c1d760050909aefe54e842698a14cd18cd07ce9f19ce27a9e1815677027",
+      "id": "sf.render.customs-pylon.mesh.base-hz.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.customs-pylon.mesh.base-hz",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.600000023841858,
+          1.200067162513733,
+          1.600000023841858
+        ],
+        "min": [
+          -1.600000023841858,
+          -0.00006712377216899768,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ff02907c314395e2e6e9537906af5109aae52f0b9fb3b0fc8c639cc3491fcf6",
+      "id": "sf.render.customs-pylon.mesh.base.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.customs-pylon.mesh.base",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.999786376953125,
+          11.399999618530273,
+          0.999786376953125
+        ],
+        "min": [
+          -0.999786376953125,
+          1.4000000953674316,
+          -0.999786376953125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85d88732c4468691c2c5fa170e87b7ab2fb73c78078720b1a770f7f45aff4192",
+      "id": "sf.render.customs-pylon.mesh.column.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.customs-pylon.mesh.column",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0700302124023438,
+          10,
+          0.6000003814697266
+        ],
+        "min": [
+          1.009969711303711,
+          8.799999237060547,
+          -0.6000003814697266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f2cb836eeb035de8564bf949fc2266baaf6a3cbfb740ffb86bf022a8771862e",
+      "id": "sf.render.customs-pylon.mesh.crest.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.customs-pylon.mesh.crest",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.350000023841858,
+          13.599998474121094,
+          1.350000023841858
+        ],
+        "min": [
+          -1.350000023841858,
+          11.400001525878906,
+          -1.350000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef9c9030988009fbfcbad47d99ff7a23b9d2abdd5b8f80f86a68a86dafa96880",
+      "id": "sf.render.customs-pylon.mesh.head.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.customs-pylon.mesh.head",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.25,
+          12.050000190734863,
+          -0.7999709844589233
+        ],
+        "min": [
+          0.3500000238418579,
+          11.15000057220459,
+          -1.300028920173645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1af60b9adad74de9bbe7b2a23f37bfc68886f412b8f69b8ddb8a487d16fa6e42",
+      "id": "sf.render.customs-pylon.mesh.sensor0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.customs-pylon.mesh.sensor0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.25,
+          12.050000190734863,
+          1.300028920173645
+        ],
+        "min": [
+          0.3500000238418579,
+          11.15000057220459,
+          0.7999709844589233
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bcb1cc68b842d6e9bf68577729e0ce5f4ba4d6322d2953c200383862abf99b04",
+      "id": "sf.render.customs-pylon.mesh.sensor1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.customs-pylon.mesh.sensor1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1299786567687988,
+          8.199999809265137,
+          0.150126650929451
+        ],
+        "min": [
+          0.930021345615387,
+          3,
+          -0.150126650929451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30b3a68d2c4e0f595527594247ddd544fb3e65d6809bc629e64005faf73fa748",
+      "id": "sf.render.customs-pylon.mesh.slot.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.customs-pylon.mesh.slot",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2472725510597229,
+          14.15999984741211,
+          0.25999999046325684
+        ],
+        "min": [
+          -0.2472725510597229,
+          13.639999389648438,
+          -0.25999999046325684
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f8e05eabd6bc306f94f1a130506f4adae2aaf6d04d68a53b659e57ffc699a016",
+      "id": "sf.render.customs-pylon.mesh.top.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.customs-pylon.mesh.top",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "id": "material:b49314b7271e17a69fb54a73",
+      "name": "esk_light_authority",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "ce42ac00f9ecaf9018e12cb80ec0a546f5d7901cc10c22e1f1122050e2d6e682",
+      "id": "material:ce42ac00f9ecaf9018e12cb8",
+      "name": "esk_paint_authority_navy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "name": "esk_id_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "f28c343cddb4fb2b567b5d963e0ec8637eaf8b6263bfc3a4d5ec70b58da03d92",
+      "id": "material:f28c343cddb4fb2b567b5d96",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.customs-pylon.mesh.aperture",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aperture",
+      "nodeName": "aperture",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.base",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base",
+      "nodeName": "base",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.base-hz",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base_hz",
+      "nodeName": "base_hz",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.column",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "column",
+      "nodeName": "column",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.crest",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "crest",
+      "nodeName": "crest",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.head",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "head",
+      "nodeName": "head",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.sensor0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "sensor0",
+      "nodeName": "sensor0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.sensor1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "sensor1",
+      "nodeName": "sensor1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.slot",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "slot",
+      "nodeName": "slot",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.mesh.top",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "top",
+      "nodeName": "top",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.customs-pylon.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.customs-pylon.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "customs_pylon",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.customs-pylon.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a5306d0add1c970716463d180793fb31c69b1e5b6d9aa0fe4a1cda3f847234f6"
+    },
+    "sourceGlb": {
+      "bytes": 15248,
+      "sha256": "bb134430a182fb40c07d64038dd7f04e8cf8358ca6befebe3dc4665542ed4b23",
+      "uri": "place_customs_pylon.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 23724,
+    "sha256": "cfa5cd05f06265afdbc8c36783b2f2658b4f05bc864beaab3dfcff36e7f68cd2",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        7.07996636181997,
+        0
+      ],
+      "max": [
+        1.7000000476837158,
+        14.15999984741211,
+        1.7000000476837158
+      ],
+      "min": [
+        -1.7000000476837158,
+        -0.00006712377216899768,
+        -1.7000000476837158
+      ],
+      "size": [
+        3.4000000953674316,
+        14.160066971184278,
+        3.4000000953674316
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          12.399999618530273,
+          0,
+          1
+        ],
+        "name": "SOCKET_Scan_Emitter",
+        "planIndex": 12,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Scan_Emitter",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Scan_Emitter",
+            "recordIds": [
+              "sf.render.customs-pylon.anchor.socket-scan-emitter"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 9,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 14,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aperture",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "base",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "base_hz",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "column",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "crest",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "head",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "sensor0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "sensor1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "slot",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "top",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_customs_pylon.glb"
+  },
+  "runtimeHash": "b1034fb7e34806529df15f693b78ace2d0e47847e47bdd064d812c930d604493",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.7000000476837158,
+          14.15999984741211,
+          1.7000000476837158
+        ],
+        "min": [
+          -1.7000000476837158,
+          -0.00006712377216899768,
+          -1.7000000476837158
+        ]
+      },
+      "id": "sf.render.customs-pylon.body",
+      "nodeIds": [
+        "sf.render.customs-pylon.mesh.aperture",
+        "sf.render.customs-pylon.mesh.base",
+        "sf.render.customs-pylon.mesh.base-hz",
+        "sf.render.customs-pylon.mesh.column",
+        "sf.render.customs-pylon.mesh.crest",
+        "sf.render.customs-pylon.mesh.head",
+        "sf.render.customs-pylon.mesh.sensor0",
+        "sf.render.customs-pylon.mesh.sensor1",
+        "sf.render.customs-pylon.mesh.slot",
+        "sf.render.customs-pylon.mesh.top",
+        "sf.render.customs-pylon.root"
+      ]
+    }
+  ]
+}

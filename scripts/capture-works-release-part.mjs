@@ -143,9 +143,40 @@ try {
       rendererInfo: hook.rendererInfo(),
     };
   });
-  if (normalSession.worksStats !== null) {
-    fail('normalSession: worksStats() must be null before the proof is armed');
+  // Since the PQ-131.01 wire, a NORMAL session legitimately loads one authored works part — the
+  // rover swap-in — so "no loads before the proof" is stale by design. What replaces it is not
+  // "generic health": this is the exact place the duplicate-mount defect showed itself, as
+  // worksStats.loaded: 2 / released: 0 in this receipt, while every green check stayed green.
+  // A normal session must hold EXACTLY ONE standing works load, and nothing may be adrift.
+  const EXPECTED_STANDING_LOADS = 1;
+  const standing = normalSession.worksStats;
+  if (!standing) {
+    fail('normalSession: worksStats() is null — the authored rover swap never armed');
+  } else {
+    if (standing.loaded !== EXPECTED_STANDING_LOADS) {
+      fail(
+        `normalSession: worksStats().loaded is ${standing.loaded}, expected exactly `
+        + `${EXPECTED_STANDING_LOADS} standing works load for one screen session `
+        + `(${JSON.stringify(standing)})`,
+      );
+    }
+    if (standing.released !== 0) {
+      fail(`normalSession: a standing load was already released: ${JSON.stringify(standing)}`);
+    }
+    if (standing.failed || standing.lastError) {
+      fail(`normalSession: an authored works load failed: ${JSON.stringify(standing)}`);
+    }
+    if (standing.untaggedMeshes) {
+      fail(`normalSession: standing works meshes carry no LOD tag: ${JSON.stringify(standing)}`);
+    }
+    if (standing.standing !== undefined && standing.standing !== EXPECTED_STANDING_LOADS) {
+      fail(
+        `normalSession: worksStats().standing is ${standing.standing}, expected `
+        + `${EXPECTED_STANDING_LOADS}`,
+      );
+    }
   }
+  const standingLoads = standing ? standing.loaded : 0;
   if (normalSession.observerAttached) {
     fail('normalSession: observer must not be attached before the proof is armed');
   }
@@ -171,8 +202,8 @@ try {
   if (!mounted || !mounted.ok) {
     throw new Error('drill_platform did not load: ' + JSON.stringify(mounted));
   }
-  if (!mounted.stats || mounted.stats.loaded !== 1) {
-    throw new Error(`stats().loaded !== 1 (${JSON.stringify(mounted.stats)})`);
+  if (!mounted.stats || mounted.stats.loaded !== standingLoads + 1) {
+    throw new Error(`stats().loaded did not rise by exactly one over the standing ${standingLoads} (${JSON.stringify(mounted.stats)})`);
   }
 
   const inScene = await waitMounted(page);

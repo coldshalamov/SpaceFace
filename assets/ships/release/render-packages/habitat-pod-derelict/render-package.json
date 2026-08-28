@@ -1,0 +1,1909 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.habitat-pod-derelict",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "c15631e2daef407581d3d5cc524f0a82df45b4321b4685560a6bb2059ed6e4d6",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.5,
+          0.40004268288612366,
+          2.499983072280884
+        ],
+        "min": [
+          0.7000000476837158,
+          -1.0000426769256592,
+          2.340017080307007
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d461750d857fcfcdb8262054f6e809dc36bea941739357c29dcd956bd4913e6",
+      "id": "sf.render.habitat-pod-derelict.mesh.breach-patch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.breach-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.000048637390137,
+          1.200000286102295,
+          1.2000000476837158
+        ],
+        "min": [
+          -4.799951553344727,
+          -1.200000286102295,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "978f3d396f32a23f967bb2b22369df9ed6cea42a8bc8472321848ec54e200400",
+      "id": "sf.render.habitat-pod-derelict.mesh.collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.93548583984375,
+          0.5000001192092896,
+          0.0029951410833746195
+        ],
+        "min": [
+          -5.264513969421387,
+          -1.3000000715255737,
+          -1.8029950857162476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4cbf9fc53a8fcb9f2909a33d075b6d95571afea2594f8d7aa30447a9b17e6f0d",
+      "id": "sf.render.habitat-pod-derelict.mesh.hatch-open.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.hatch-open",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.1113115549087524,
+          2.450000047683716,
+          2.4499998092651367
+        ],
+        "min": [
+          -5.888688087463379,
+          -2.450000047683716,
+          -2.450000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f30c74a0c2d700c0f38e1ca6a2902beac408f3b828b1071a894711b3c3039f9",
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-domea.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.hull-domea",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          5.888688564300537,
+          2.450000047683716,
+          2.4499998092651367
+        ],
+        "min": [
+          1.1113117933273315,
+          -2.450000047683716,
+          -2.450000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "acb1fcaf7e877213d2531ca603c09ee9130b970645939defbaeae7d139bc50fb",
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-domef.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.hull-domef",
+      "primitiveIndex": 0,
+      "vertexCount": 420
+    },
+    {
+      "bounds": {
+        "max": [
+          3.5000007152557373,
+          2.4620814323425293,
+          2.5001068115234375
+        ],
+        "min": [
+          -3.5000007152557373,
+          -2.4620814323425293,
+          -2.5001068115234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc7cf00d7765ac39ac8ad5b224c08d37a2b46bfb8adb1fee921b37f84ec5faf9",
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-shell.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.hull-shell",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          0.903946042060852,
+          3.5999999046325684,
+          0.11997435986995697
+        ],
+        "min": [
+          0.6960539817810059,
+          2.299999713897705,
+          -0.11997435986995697
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4dd92b0c29782e157d3a2d0f8831338d8c7fe790335f72a4f73c00a40e33fa32",
+      "id": "sf.render.habitat-pod-derelict.mesh.mast.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.mast",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8019468188285828,
+          0.7000271677970886,
+          2.647838592529297
+        ],
+        "min": [
+          -0.4019468426704407,
+          -0.30002719163894653,
+          2.2721614837646484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2fcb0679f20fe35112bd3f55ca2d4e9fe750c706e1616173449345baf58ecb33",
+      "id": "sf.render.habitat-pod-derelict.mesh.scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.549999952316284,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          -3.450000047683716,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9f588219c23ef49216e80200fff56226ff8b727c65d52704969717c972f9885",
+      "id": "sf.render.habitat-pod-derelict.mesh.win0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.win0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.0499999523162842,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          -1.9500000476837158,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d982e3d51996274f8d8232fada2f01e3188331d551ddbf1df78ee1f3d6ddcbb",
+      "id": "sf.render.habitat-pod-derelict.mesh.win1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.win1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.44999998807907104,
+          0.800018310546875,
+          2.4999871253967285
+        ],
+        "min": [
+          -0.44999998807907104,
+          0.1999817043542862,
+          2.3800129890441895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9da9ddabc51fbddc824bd48a2afc4f49d1aa928c1ca5be105510d91b8c9f43a",
+      "id": "sf.render.habitat-pod-derelict.mesh.win2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.win2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9500000476837158,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          1.0499999523162842,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be2b1cc017782b55440549a004c8afb1e6c980524ae775d988f379eecdb9c3b1",
+      "id": "sf.render.habitat-pod-derelict.mesh.win3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.win3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.450000047683716,
+          0.800018310546875,
+          2.4999873638153076
+        ],
+        "min": [
+          2.549999952316284,
+          0.1999816596508026,
+          2.3800127506256104
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68400092ea39ca8bf83bf9b230671e6ef638da8fe5bcd71e2f92cc792a861f86",
+      "id": "sf.render.habitat-pod-derelict.mesh.win4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.win4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.222712993621826,
+          3.917884349822998,
+          -1.5857465267181396
+        ],
+        "min": [
+          0.5772868990898132,
+          2.2821154594421387,
+          -3.614253282546997
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1354126aff7fe6402537ac0d201083c77235342fa95ece146eaaa63404f242b4",
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-p-snap.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.wing-p-snap",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.600000023841858,
+          3.6500015258789062,
+          -0.4000305235385895
+        ],
+        "min": [
+          0,
+          3.5499982833862305,
+          -1.599969506263733
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e5a7a816b8d6399589834105afb592664285954dc1428a941f72e2408ae6afe",
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-p-stub.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.wing-p-stub",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6000641584396362,
+          3.6500136852264404,
+          3.799999952316284
+        ],
+        "min": [
+          -0.00006410339119611308,
+          3.5499861240386963,
+          0.39999985694885254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2033802796bdc1e6c5aa4c67533a1389c6ca8fc2e5cd00bb264bcb2adbf9661e",
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.habitat-pod-derelict.mesh.wing-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "004d84593ded3a8b8bc566c13c776b4026774b6b2a85ba6d55cc9a0110ff6cda",
+      "id": "material:004d84593ded3a8b8bc566c1",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "76dfa2829c62a55ef4a4f46bd35221d60eb76bd060a1a76db559a2c8272b2b53",
+      "id": "material:76dfa2829c62a55ef4a4f46b",
+      "name": "esk_glass",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "id": "material:fc62ff199e40118baa3f1d37",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fcaae752dff7f4d8d2acc92d3fbc7dc26553eb0175d5ebdf5e2436957dc079ac",
+      "id": "material:fcaae752dff7f4d8d2acc92d",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.breach-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "breach_patch",
+      "nodeName": "breach_patch",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "collar",
+      "nodeName": "collar",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.hatch-open",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hatch_open",
+      "nodeName": "hatch_open",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-domea",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_domea",
+      "nodeName": "hull_domea",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-domef",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_domef",
+      "nodeName": "hull_domef",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.hull-shell",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hull_shell",
+      "nodeName": "hull_shell",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.mast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "mast",
+      "nodeName": "mast",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.scorch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "scorch",
+      "nodeName": "scorch",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.win0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win0",
+      "nodeName": "win0",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.win1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win1",
+      "nodeName": "win1",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.win2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win2",
+      "nodeName": "win2",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.win3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win3",
+      "nodeName": "win3",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.win4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "win4",
+      "nodeName": "win4",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-p-snap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_p_snap",
+      "nodeName": "wing_p_snap",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-p-stub",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_p_stub",
+      "nodeName": "wing_p_stub",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.mesh.wing-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wing_s",
+      "nodeName": "wing_s",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.habitat-pod-derelict.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.habitat-pod-derelict.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "habitat_pod_derelict",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.habitat-pod-derelict.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "02042a3285dc114690416370254683297d8027565c8d9b0bfbdc82464ad67345"
+    },
+    "sourceGlb": {
+      "bytes": 23740,
+      "sha256": "29b0e50ddad3c747599dc1b7cf684b5d91623a7cf306cee435a98675d8fc25c8",
+      "uri": "place_habitat_pod_derelict.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 46312,
+    "sha256": "8a58b98051aeed36c4e50246240c9120db53bc6e6e3f74dcc9d77860f60e769d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.384185791015625e-7,
+        0.7279014587402344,
+        0.09287333488464355
+      ],
+      "max": [
+        5.888688564300537,
+        3.917884349822998,
+        3.799999952316284
+      ],
+      "min": [
+        -5.888688087463379,
+        -2.4620814323425293,
+        -3.614253282546997
+      ],
+      "size": [
+        11.777376651763916,
+        6.379965782165527,
+        7.414253234863281
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 16
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "breach_patch",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "collar",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hatch_open",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_domea",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_domef",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hull_shell",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "mast",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "scorch",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win0",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win1",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win2",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win3",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "win4",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_p_snap",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_p_stub",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wing_s",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_habitat_pod_derelict.glb"
+  },
+  "runtimeHash": "1955128c9a49eed7073e55697098dea012fee0e8d5f8e1e5a9480094b1973261",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.888688564300537,
+          3.917884349822998,
+          3.799999952316284
+        ],
+        "min": [
+          -5.888688087463379,
+          -2.4620814323425293,
+          -3.614253282546997
+        ]
+      },
+      "id": "sf.render.habitat-pod-derelict.body",
+      "nodeIds": [
+        "sf.render.habitat-pod-derelict.mesh.breach-patch",
+        "sf.render.habitat-pod-derelict.mesh.collar",
+        "sf.render.habitat-pod-derelict.mesh.hatch-open",
+        "sf.render.habitat-pod-derelict.mesh.hull-domea",
+        "sf.render.habitat-pod-derelict.mesh.hull-domef",
+        "sf.render.habitat-pod-derelict.mesh.hull-shell",
+        "sf.render.habitat-pod-derelict.mesh.mast",
+        "sf.render.habitat-pod-derelict.mesh.scorch",
+        "sf.render.habitat-pod-derelict.mesh.win0",
+        "sf.render.habitat-pod-derelict.mesh.win1",
+        "sf.render.habitat-pod-derelict.mesh.win2",
+        "sf.render.habitat-pod-derelict.mesh.win3",
+        "sf.render.habitat-pod-derelict.mesh.win4",
+        "sf.render.habitat-pod-derelict.mesh.wing-p-snap",
+        "sf.render.habitat-pod-derelict.mesh.wing-p-stub",
+        "sf.render.habitat-pod-derelict.mesh.wing-s",
+        "sf.render.habitat-pod-derelict.root"
+      ]
+    }
+  ]
+}
