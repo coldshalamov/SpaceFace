@@ -2,14 +2,14 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "place_works_derrick",
   "shipId": "place_works_derrick",
-  "candidateHash": "DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75",
+  "candidateHash": "BBACB1168BB8E697B0F69EF5D5D15D327455964C35B80E6CB5911B356B755865",
   "exportGlb": "assets/ships/parts/works/place_works_derrick.glb",
   "class": "place_station_module",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "not_launched",
   "independentReviewer": null,
-  "cycle": 2,
+  "cycle": 3,
   "disposition": "review_pending",
   "forbidden": {
     "factoryLoftPlusBoxes": false,
@@ -22,7 +22,7 @@
     {
       "id": "MTX-01",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_edge_grazing.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_edge_grazing.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Angle bevel then weighted normals, shade 28\u00b0.",
@@ -32,7 +32,7 @@
     {
       "id": "MTX-03",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top_clay.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Shaft collar is an annulus with wall thickness; the well is empty; drum is offset off the hole."
@@ -40,7 +40,7 @@
     {
       "id": "MTX-16",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Unique non-overlapping UV0 packed per LOD."
@@ -48,7 +48,7 @@
     {
       "id": "MTX-20",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "High duplicate with extra 3 mm bevel as bake source."
@@ -56,7 +56,7 @@
     {
       "id": "MTX-21",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cage extrusion 0.04 wu on selected-to-active normal bake."
@@ -64,7 +64,7 @@
     {
       "id": "MTX-22",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Tangent OpenGL normal from the mesh."
@@ -72,7 +72,7 @@
     {
       "id": "MTX-23",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cycles AO baked to unique UV0."
@@ -80,7 +80,7 @@
     {
       "id": "MTX-24",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Pointiness curvature baked as emit."
@@ -88,7 +88,7 @@
     {
       "id": "MTX-25",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Concave curvature drives cavity dirt."
@@ -96,7 +96,7 @@
     {
       "id": "MTX-30",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/normal_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cited kit stills are construction language only; maps are mesh-derived."
@@ -104,7 +104,7 @@
     {
       "id": "MTX-31",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Paint dielectric, interfaces metallic, winch heat/oil, grating dry, orange marking, cable rubber, lamp glass."
@@ -112,7 +112,7 @@
     {
       "id": "MTX-32",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Authored 2048 albedo from ID \u00d7 AO \u00d7 causal wear, not a tinted sheet."
@@ -120,7 +120,7 @@
     {
       "id": "MTX-33",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/orm_isolation.png",
+      "still": "assets/works/derrick/evidence/cycle_003/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "ORM: R=AO G=rough B=metal, role-varying."
@@ -128,7 +128,7 @@
     {
       "id": "MTX-39",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Dirt in concave AO, oil in winch cavities."
@@ -136,7 +136,7 @@
     {
       "id": "MTX-46",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_top_clay.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "No rover yellow, neon, lattice-as-identity, glowing bar, kit donor, or yellow-black shoe tape."
@@ -152,7 +152,7 @@
     {
       "id": "MTX-52",
       "state": "implemented",
-      "still": "assets/works/derrick/evidence/cycle_002/works_edge.png",
+      "still": "assets/works/derrick/evidence/cycle_003/works_edge.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Macro: open A-legs over a well, offset winch, crown sheave, not a primitive stack or X-grid."
