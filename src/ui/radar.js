@@ -388,8 +388,12 @@ function drawRangePlate(g, metrics, range, expanded) {
   g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
   const width = Math.ceil(g.measureText(text).width) + 12;
   const height = 18;
-  const x = metrics.size - width - 5;
-  const y = metrics.size - height - 4;
+  // The visible radar is a CIRCLE masked out of the square canvas (overflow:hidden on a 50%
+  // radius box). A corner-anchored plate sits outside the inscribed circle, so the mask shears
+  // it to "RANG". Inset the plate's outer corner onto the 45° chord with margin.
+  const inset = Math.round(metrics.size * 0.18);
+  const x = metrics.size - width - inset;
+  const y = metrics.size - height - inset;
   g.fillStyle = 'rgba(5,12,16,0.90)';
   g.fillRect(x, y, width, height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
