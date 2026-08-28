@@ -1,7 +1,8 @@
-"""PQ-131.10 Works inclusion kit — Cycle 01 production builder.
+"""PQ-131.10 Works inclusion kit — Cycle 02 production builder.
 
-Authored geological/process variants for Asteroid Works. Source kit only:
-does not wire runtime, release, or mark the packet complete.
+Geological host/material/site correction. Cycle 01 evidence is immutable and
+must not be overwritten. Source kit only: does not wire runtime, release, or
+mark the packet complete.
 
     blender --background --python tools/blender/build_works_inclusion_kit.py
     blender --background --python tools/blender/build_works_inclusion_kit.py -- --skip-render
@@ -34,13 +35,15 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from spaceface_works_camera import (  # noqa: E402
     apply_works_camera, render_works_still, CELL_WU, FOV_V_DEG,
+    works_frustum, works_edge_offset, PX_PER_CELL_WORK, EDGE_INSET,
 )
 
 FAMILY = ROOT / "assets" / "works" / "inclusion_kit"
 SOURCE = FAMILY / "source"
 TEX_DIR = SOURCE / "textures"
 VAR_DIR = SOURCE / "variants"
-EVIDENCE = FAMILY / "evidence" / "cycle_01"
+EVIDENCE_C1 = FAMILY / "evidence" / "cycle_01"
+EVIDENCE = FAMILY / "evidence" / "cycle_02"
 PARTS = ROOT / "assets" / "ships" / "parts" / "works"
 BLEND_PATH = SOURCE / "inclusion_kit.blend"
 MASTER_GLB = SOURCE / "inclusion_kit.glb"
@@ -48,7 +51,7 @@ PLACE_GLB = PARTS / "place_works_inclusion_kit.glb"
 
 MASTER_ROOT = "SF_WORKS_INCLUSION_KIT_V1"
 ASSET_ID = "place_works_inclusion_kit"
-CYCLE = 1
+CYCLE = 2
 ATLAS = 2048
 TILE_COLS, TILE_ROWS = 8, 4
 TILE = ATLAS // TILE_COLS
@@ -56,6 +59,8 @@ GUTTER = 4
 FOOTPRINT = 0.7 * CELL_WU  # 1.54 wu
 TRI_BUDGET = {0: 3000, 1: 1400, 2: 700}
 TRI_MIN = {0: 900, 1: 180, 2: 50}
+HOST_METAL_MAX = 0.08
+TEXEL_TARGET = 160.0  # px/wu on visible ore / cavity walls
 
 _GLTF_FLOAT = 5126
 _GLTF_NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT2": 4, "MAT3": 9, "MAT4": 16}
@@ -88,9 +93,9 @@ VARIANTS = (
     dict(id="SF_INCL_EXOTIC_HOPPER_CUBE_V1", family="exotic", form="hopper_cube", tile=10,
          host="host_exotic", ore="crystal_exotic"),
     dict(id="SF_INCL_ICE_SHEEN_PLATE_V1", family="ice", form="sheen_plate", tile=11,
-         host="host_silicate", ore="ice_film"),
+         host="host_ice", ore="ice_film"),
     dict(id="SF_INCL_ICE_FRACTURE_VEIN_V1", family="ice", form="fracture_vein", tile=12,
-         host="host_silicate", ore="ice_film"),
+         host="host_ice", ore="ice_film"),
     dict(id="SF_INCL_GAS_FISSURE_RADIAL_V1", family="gas", form="radial_mouth", tile=13,
          host="host_gas", ore="gas_mouth"),
     dict(id="SF_INCL_GAS_FISSURE_BRANCH_V1", family="gas", form="branch_crevice", tile=14,
@@ -100,33 +105,48 @@ VARIANTS = (
     dict(id="SF_INCL_VENTED_SCAR_V1", family="scar", form="vented_split", tile=16,
          host="scar_spent", ore="scar_lip"),
     dict(id="SF_INCL_MK_LOCK_PLATE_V1", family="lock", form="mk_lock_plate", tile=17,
-         host="lock_gasket", ore="lock_steel"),
+         host="host_lock_rock", ore="lock_steel"),
 )
 
-# Role response — not four tints of one cluster.
+# Role response — billed dielectric hosts, metal only on ore facets.
+# Host metallic is clamped to HOST_METAL_MAX at raster time.
 ROLES = {
-    "host_silicate": dict(rgb=(0.62, 0.54, 0.43), rough=0.84, metal=0.05, cavity=0.55),
-    "host_quartz": dict(rgb=(0.78, 0.76, 0.70), rough=0.38, metal=0.02, cavity=0.35),
-    "host_mafic": dict(rgb=(0.55, 0.44, 0.34), rough=0.88, metal=0.12, cavity=0.60),
-    "host_ultramafic": dict(rgb=(0.36, 0.37, 0.40), rough=0.86, metal=0.08, cavity=0.58),
-    "host_exotic": dict(rgb=(0.34, 0.28, 0.42), rough=0.76, metal=0.16, cavity=0.50),
-    "host_gas": dict(rgb=(0.42, 0.42, 0.30), rough=0.94, metal=0.02, cavity=0.70),
-    "metal_silver": dict(rgb=(0.737, 0.776, 0.816), rough=0.20, metal=0.94, cavity=0.18),
-    "metal_gold": dict(rgb=(0.788, 0.600, 0.184), rough=0.28, metal=0.94, cavity=0.16),
-    "metal_iron": dict(rgb=(0.604, 0.435, 0.290), rough=0.42, metal=0.70, cavity=0.22),
-    "metal_iron_spec": dict(rgb=(0.310, 0.255, 0.235), rough=0.30, metal=0.78, cavity=0.20),
-    "metal_nickel": dict(rgb=(0.388, 0.400, 0.424), rough=0.34, metal=0.80, cavity=0.18),
-    "crystal_exotic": dict(rgb=(0.42, 0.34, 0.56), rough=0.28, metal=0.32, cavity=0.22),
-    "ice_film": dict(rgb=(0.725, 0.839, 0.847), rough=0.14, metal=0.00, cavity=0.12),
-    "gas_mouth": dict(rgb=(0.169, 0.176, 0.122), rough=0.98, metal=0.00, cavity=0.85),
-    "gas_lip": dict(rgb=(0.612, 0.667, 0.290), rough=0.90, metal=0.04, cavity=0.40),
-    "scar_spent": dict(rgb=(0.290, 0.275, 0.247), rough=0.96, metal=0.04, cavity=0.65),
-    "scar_lip": dict(rgb=(0.340, 0.322, 0.290), rough=0.92, metal=0.06, cavity=0.45),
-    "lock_steel": dict(rgb=(0.427, 0.388, 0.333), rough=0.40, metal=0.76, cavity=0.20),
-    "lock_pane": dict(rgb=(0.231, 0.200, 0.165), rough=0.48, metal=0.62, cavity=0.30),
-    "lock_engrave": dict(rgb=(0.133, 0.110, 0.082), rough=0.52, metal=0.55, cavity=0.35),
-    "lock_gasket": dict(rgb=(0.090, 0.086, 0.078), rough=0.82, metal=0.08, cavity=0.40),
-    "lock_latch": dict(rgb=(0.520, 0.500, 0.455), rough=0.32, metal=0.82, cavity=0.16),
+    "host_silicate": dict(rgb=(0.478, 0.412, 0.333), rough=0.84, metal=0.04, cavity=0.0, bump="fracture"),
+    "host_quartz": dict(rgb=(0.780, 0.757, 0.698), rough=0.36, metal=0.02, cavity=0.0, bump="quartz"),
+    "host_mafic": dict(rgb=(0.435, 0.357, 0.282), rough=0.88, metal=0.06, cavity=0.0, bump="oxide"),
+    "host_ultramafic": dict(rgb=(0.392, 0.435, 0.392), rough=0.86, metal=0.05, cavity=0.0, bump="fracture"),
+    "host_exotic": dict(rgb=(0.300, 0.245, 0.220), rough=0.88, metal=0.05, cavity=0.0, bump="crust"),
+    "host_ice": dict(rgb=(0.620, 0.640, 0.610), rough=0.80, metal=0.02, cavity=0.0, bump="fracture"),
+    "host_gas": dict(rgb=(0.235, 0.250, 0.174), rough=0.92, metal=0.02, cavity=0.0, bump="fracture"),
+    "host_lock_rock": dict(rgb=(0.365, 0.330, 0.280), rough=0.91, metal=0.05, cavity=0.0, bump="fracture"),
+    "metal_silver": dict(rgb=(0.737, 0.776, 0.816), rough=0.20, metal=0.94, cavity=0.0, bump="facet"),
+    "metal_gold": dict(rgb=(0.788, 0.600, 0.184), rough=0.28, metal=0.94, cavity=0.0, bump="facet"),
+    "metal_iron": dict(rgb=(0.604, 0.435, 0.290), rough=0.42, metal=0.70, cavity=0.0, bump="oxide"),
+    "metal_iron_spec": dict(rgb=(0.310, 0.255, 0.235), rough=0.30, metal=0.78, cavity=0.0, bump="facet"),
+    "metal_nickel": dict(rgb=(0.388, 0.400, 0.424), rough=0.34, metal=0.80, cavity=0.0, bump="facet"),
+    "crystal_exotic": dict(rgb=(0.245, 0.205, 0.300), rough=0.46, metal=0.12, cavity=0.0, bump="facet"),
+    "ice_film": dict(rgb=(0.725, 0.839, 0.847), rough=0.12, metal=0.00, cavity=0.0, bump="ice"),
+    "gas_mouth": dict(rgb=(0.110, 0.115, 0.078), rough=0.98, metal=0.00, cavity=1.0, bump="none"),
+    "gas_lip": dict(rgb=(0.300, 0.335, 0.155), rough=0.92, metal=0.03, cavity=0.0, bump="oxide"),
+    "scar_spent": dict(rgb=(0.290, 0.275, 0.247), rough=0.96, metal=0.04, cavity=0.0, bump="fracture"),
+    "scar_lip": dict(rgb=(0.340, 0.322, 0.290), rough=0.92, metal=0.05, cavity=0.0, bump="fracture"),
+    "scar_depth": dict(rgb=(0.090, 0.080, 0.068), rough=0.98, metal=0.00, cavity=1.0, bump="none"),
+    "lock_steel": dict(rgb=(0.427, 0.388, 0.333), rough=0.40, metal=0.76, cavity=0.0, bump="facet"),
+    "lock_pane": dict(rgb=(0.231, 0.200, 0.165), rough=0.48, metal=0.62, cavity=0.0, bump="facet"),
+    "lock_engrave": dict(rgb=(0.133, 0.110, 0.082), rough=0.52, metal=0.55, cavity=0.0, bump="facet"),
+    "lock_gasket": dict(rgb=(0.090, 0.086, 0.078), rough=0.82, metal=0.06, cavity=0.0, bump="none"),
+    "lock_latch": dict(rgb=(0.520, 0.500, 0.455), rough=0.32, metal=0.82, cavity=0.0, bump="facet"),
+}
+
+HOST_ROLES = {
+    "host_silicate", "host_quartz", "host_mafic", "host_ultramafic",
+    "host_exotic", "host_ice", "host_gas", "host_lock_rock", "scar_spent", "lock_gasket",
+}
+CAVITY_ROLES = {"gas_mouth", "scar_depth"}
+ORE_ROLES = {
+    "metal_silver", "metal_gold", "metal_iron", "metal_iron_spec", "metal_nickel",
+    "crystal_exotic", "ice_film", "lock_steel", "lock_pane", "lock_engrave",
+    "lock_latch", "scar_lip", "gas_lip",
 }
 
 FAMILY_ID_RGB = {
@@ -148,6 +168,11 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest().upper()
+
+
+def write_json_lf(path: Path, payload) -> None:
+    """Deterministic UTF-8 JSON; avoid Windows text-mode CRLF evidence churn."""
+    path.write_bytes((json.dumps(payload, indent=2) + "\n").encode("utf-8"))
 
 
 def h01(i, s=0):
@@ -405,59 +430,144 @@ def add_oct(name, center, r, collection, role, squash=(1, 1, 1)):
     return add_from_pydata(name, v, f, collection, role)
 
 
-def displace_host(obj, seed, amp=0.045, flatten=0.32):
-    mesh = obj.data
-    ax = 0.18 + 0.4 * h01(seed, 1)
-    ay = 0.94 - 0.3 * h01(seed, 2)
-    jx, jy = 0.92, 0.08
-    for i, vert in enumerate(mesh.vertices):
-        x, y, z = vert.co
-        z = abs(z) * flatten
-        strata = math.sin((x * ax + y * ay) * 7.1 + seed * 0.7) * amp
-        plane = abs((x * jx + y * jy) / 0.42 - round((x * jx + y * jy) / 0.42))
-        frac = math.exp(-plane * plane * 36.0) * amp * 0.55
-        nibble = (h01(seed * 17 + i, 3) - 0.5) * amp * 0.35
-        vert.co.z = max(0.0, z + strata - frac + nibble)
-        # keep XY inside footprint with a slight lobe
-        rad = math.hypot(x, y)
-        limit = 0.62 + 0.08 * math.sin(math.atan2(y, x) * 3 + seed)
-        if rad > limit and rad > 1e-6:
-            s = limit / rad
-            vert.co.x *= s
-            vert.co.y *= s
-    mesh.update()
+def is_host_role(role):
+    return role in HOST_ROLES or str(role).startswith("host_")
 
 
-def make_host(name, collection, role, radius, seed, lod, height=0.14):
-    # Blender 5.1 ico-sphere: 1=20, 2=80, 3=320, 4=1280 triangles.
-    subdiv = 4 if lod == 0 else (3 if lod == 1 else 2)
-    if bpy.context.mode != "OBJECT":
-        bpy.ops.object.mode_set(mode="OBJECT")
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdiv, radius=radius, location=(0.0, 0.0, 0.0))
-    obj = bpy.context.object
-    obj.name = name
-    for current in list(obj.users_collection):
-        current.objects.unlink(obj)
-    collection.objects.link(obj)
-    obj["spacefaceRole"] = role
-    obj["sf_role"] = role
-    displace_host(obj, seed, amp=height * 0.35, flatten=0.30)
-    # squash remaining height
-    for v in obj.data.vertices:
-        v.co.z *= height / max(0.08, radius * 0.55)
-        v.co.z = max(0.0, v.co.z)
-    obj.data.update()
-    # Drop the unseen underside so plan-UVs cannot bake dark back-faces onto the cut face.
+def family_outline(family, form, seed, n, rx, ry):
+    """Physically different irregular cut-face silhouette per family/form. Never a circle."""
+    pts = []
+    for i in range(n):
+        a = (i / n) * math.pi * 2.0 + 0.11 * (h01(seed, i) - 0.5)
+        # Low-frequency fracture lobes keep dense LOD0 sampling geological.
+        # Per-vertex white noise made the first recovery render look saw-cut.
+        wave = (0.050 * math.sin(a * 3.0 + seed * 0.17)
+                + 0.035 * math.sin(a * 5.0 - seed * 0.11)
+                + 0.020 * math.cos(a * 7.0 + seed * 0.07))
+        if family in ("silver", "gold"):
+            r = 0.92 + wave
+            # One broad broken edge, not repeated gear teeth.
+            notch = abs(((i / n) - (0.16 if family == "silver" else 0.70) + 0.5) % 1.0 - 0.5)
+            if notch < 0.055:
+                r *= 0.78 + notch * 2.5
+            if form in ("wire_dendrite", "fracture_ribbon", "fracture_vein"):
+                sx, sy = 1.22, 0.74
+            elif form == "leaf_nest":
+                sx, sy = 1.08, 0.92
+            else:
+                sx, sy = 1.10, 0.90
+        elif family == "iron":
+            r = 0.90 + wave + 0.035 * math.cos(a * 4.0 + 0.3)
+            sx, sy = (1.18, 0.86) if form == "chip_ridge" else (1.08, 0.94)
+        elif family == "nickel":
+            ca, sa = abs(math.cos(a)), abs(math.sin(a))
+            r = 0.78 / max(0.42, max(ca, sa))
+            r *= 0.90 + wave * 0.45
+            sx, sy = 1.02, 1.00
+        elif family == "exotic":
+            r = 0.90 + wave
+            if form == "hopper_cube":
+                ca, sa = abs(math.cos(a + 0.2)), abs(math.sin(a + 0.2))
+                r = (0.82 / max(0.45, max(ca, sa))) * (0.95 + wave * 0.3)
+            elif form == "prismatic_truss":
+                r = 0.89 + 0.055 * math.cos(a * 6.0) + wave * 0.35
+            sx, sy = 1.04, 0.96
+        elif family == "ice":
+            r = 0.92 + wave
+            u = i / n
+            chip = min(abs(((u - q) + 0.5) % 1.0 - 0.5) for q in (0.12, 0.58, 0.84))
+            if chip < 0.035:
+                r *= 0.66 + chip * 5.0
+            sx, sy = 1.16, 0.88
+        elif family == "gas":
+            r = 0.91 + wave
+            if form == "radial_mouth":
+                sx, sy = 1.22, 0.78
+            elif form == "branch_crevice":
+                sx, sy = 1.06, 1.08
+                u = i / n
+                if min(abs(u - 0.22), abs(u - 0.72)) < 0.035:
+                    r *= 0.74
+            else:
+                sx, sy = 1.26, 0.70
+        elif family == "scar":
+            r = 0.91 + wave
+            sx, sy = 1.20, 0.76
+            if abs((i / n) - 0.24) < 0.065:
+                r *= 0.76
+        else:
+            ca, sa = abs(math.cos(a)), abs(math.sin(a) * 1.35)
+            r = (0.86 / max(0.40, max(ca, sa))) * (0.96 + wave * 0.25)
+            sx, sy = 1.18, 0.78
+        pts.append((math.cos(a) * rx * r * sx, math.sin(a) * ry * r * sy))
+    return pts
+
+
+def cutface_socket(name, collection, role, family, form, seed, lod, rx=0.62, ry=0.54, height=0.12):
+    """Irregular cut-face socket with +Z top, side walls, no circular cookie, no underside disc."""
+    # Cycle 01's spherical cookie spent most of its LOD0 budget on a generic
+    # 1,280-triangle host. Keep that useful surface density, but put it into
+    # visible geological strata: dense radial sampling at LOD0, materially
+    # cheaper sockets at LOD1/2, and no buried underside cap.
+    n = 32 if lod == 0 else (16 if lod == 1 else 8)
+    outline = family_outline(family, form, seed, n, rx, ry)
+    rings = 17 if lod == 0 else (6 if lod == 1 else 3)
+    aperture = family in ("gas", "scar", "lock") or (family == "exotic" and form == "hopper_cube")
+    inner_t = 0.0
+    if aperture:
+        inner_t = {"gas": 0.34, "scar": 0.30, "lock": 0.42}.get(family, 0.36)
+    verts = [] if aperture else [(0.0, 0.0, height * 0.34)]
+    ring_base = len(verts)
+    for r in range(rings):
+        t = inner_t + (1.0 - inner_t) * (r / (rings - 1))
+        for i, (x, y) in enumerate(outline):
+            px, py = x * t, y * t
+            strata = math.sin((px * 5.3 + py * 2.1) + seed * 0.31) * height * 0.10
+            nibble = (h01(seed, r * 17 + i) - 0.5) * height * 0.08
+            edge = (t - inner_t) / max(1e-6, 1.0 - inner_t)
+            z = max(0.016, height * (0.36 + 0.64 * edge) + strata + nibble)
+            verts.append((px, py, z))
+    faces = []
+    if not aperture:
+        # Shallow geological basin; ore facets sit through rather than on a plate.
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append((0, ring_base + i, ring_base + j))
+    for r in range(rings - 1):
+        b0 = ring_base + r * n
+        b1 = ring_base + (r + 1) * n
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append((b0 + i, b1 + i, b1 + j, b0 + j))
+    # side walls down to the cut face (z=0). No bottom cap — the cell is the face.
+    outer0 = ring_base + (rings - 1) * n
+    wall0 = len(verts)
+    for x, y in outline:
+        verts.append((x, y, 0.0))
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append((outer0 + i, wall0 + i, wall0 + j, outer0 + j))
+    obj = add_from_pydata(name, verts, faces, collection, role)
     bm = bmesh.new()
     bm.from_mesh(obj.data)
-    bm.verts.ensure_lookup_table()
-    kill = [v for v in bm.verts if v.co.z < 0.006]
-    if kill:
-        bmesh.ops.delete(bm, geom=kill, context="VERTS")
-        bm.to_mesh(obj.data)
+    try:
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    except Exception:
+        bm.normal_update()
+    bm.to_mesh(obj.data)
     bm.free()
     obj.data.update()
     return obj
+
+
+def make_host(name, collection, role, radius, seed, lod, height=0.12, family="silver", form=""):
+    rx = radius
+    ry = radius * (0.84 if family in ("silver", "gold", "ice", "gas", "scar", "lock") else 0.92)
+    if family == "nickel":
+        ry = radius * 0.96
+    if family == "iron" and form == "chip_ridge":
+        ry = radius * 0.80
+    return cutface_socket(name, collection, role, family, form, seed, lod, rx=rx, ry=ry, height=height)
 
 
 def ridge_along(name, pts, half_w, height, collection, role, end_cap=True):
@@ -600,7 +710,8 @@ def hopper_cube(name, center, size, steps, collection, role, wall=0.05):
     return add_from_pydata(name, verts, faces, collection, role)
 
 
-def crevice_groove(name, pts, half_w, depth, collection, lip_role, mouth_role, lip=0.018):
+def crevice_groove(name, pts, half_w, depth, collection, lip_role, mouth_role,
+                   lip=0.018, surface_z=0.064):
     """V-groove with inner walls (mouth) and raised lips. Dark because it is a hole."""
     if len(pts) < 2:
         return []
@@ -622,15 +733,15 @@ def crevice_groove(name, pts, half_w, depth, collection, lip_role, mouth_role, l
         nx, ny = nrm(i)
         w = half_w * (0.85 + 0.2 * math.sin(i))
         lip_v.extend([
-            (x + nx * (w + lip), y + ny * (w + lip), 0.012),
-            (x + nx * w, y + ny * w, 0.004),
-            (x - nx * w, y - ny * w, 0.004),
-            (x - nx * (w + lip), y - ny * (w + lip), 0.012),
+            (x + nx * (w + lip), y + ny * (w + lip), surface_z + 0.010),
+            (x + nx * w, y + ny * w, surface_z),
+            (x - nx * w, y - ny * w, surface_z),
+            (x - nx * (w + lip), y - ny * (w + lip), surface_z + 0.010),
         ])
         mouth_v.extend([
-            (x + nx * w, y + ny * w, 0.002),
+            (x + nx * w, y + ny * w, surface_z - 0.004),
             (x, y, -depth),
-            (x - nx * w, y - ny * w, 0.002),
+            (x - nx * w, y - ny * w, surface_z - 0.004),
         ])
     lip_f, mouth_f = [], []
     for i in range(npts - 1):
@@ -650,221 +761,319 @@ def crevice_groove(name, pts, half_w, depth, collection, lip_role, mouth_role, l
 # ---------------------------------------------------------------------------
 def form_wire_dendrite(spec, lod, col):
     seed = 11
-    host_r = 0.58 if lod == 0 else 0.55
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], host_r, seed, lod, 0.13)]
-    trunk = [(-0.48, -0.18), (-0.22, -0.08), (0.02, 0.04), (0.28, 0.10), (0.52, 0.22)]
+    host_r = 0.64 if lod == 0 else 0.60
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], host_r, seed, lod, 0.11,
+                        family=spec["family"], form=spec["form"])]
+    trunk = [(-0.56, -0.16), (-0.28, -0.06), (0.00, 0.06), (0.30, 0.12), (0.56, 0.24)]
     segs = 8 if lod == 0 else (6 if lod == 1 else 4)
-    rad = 0.028 if lod == 0 else 0.034
+    rad = 0.038 if lod == 0 else 0.044
     for i in range(len(trunk) - 1):
         a, b = trunk[i], trunk[i + 1]
-        z = 0.06 + 0.02 * i
-        pieces.append(add_cyl(f"{spec['id']}_t{i}", (a[0], a[1], z), (b[0], b[1], z + 0.02),
-                              rad * (1.0 - i * 0.08), segs, col, spec["ore"]))
+        z0 = 0.055 + 0.012 * i
+        pieces.append(add_cyl(f"{spec['id']}_t{i}", (a[0], a[1], z0), (b[0], b[1], z0 + 0.018),
+                              rad * (1.0 - i * 0.07), segs, col, spec["ore"]))
     branches = [
-        ((-0.22, -0.08), (-0.10, 0.28), (-0.02, 0.46)),
-        ((0.02, 0.04), (0.22, -0.22), (0.34, -0.40)),
-        ((0.28, 0.10), (0.40, 0.34), (0.46, 0.50)),
+        ((-0.28, -0.06), (-0.12, 0.26), (0.02, 0.48)),
+        ((0.00, 0.06), (0.22, -0.20), (0.38, -0.42)),
+        ((0.30, 0.12), (0.44, 0.34), (0.52, 0.52)),
+        ((-0.56, -0.16), (-0.44, -0.36), (-0.34, -0.48)),
     ]
+    if lod == 1:
+        branches = branches[:3]
     if lod == 2:
-        branches = branches[:1]
+        branches = branches[:2]
     for bi, br in enumerate(branches):
         for i in range(len(br) - 1):
             a, b = br[i], br[i + 1]
-            pieces.append(add_cyl(f"{spec['id']}_b{bi}_{i}", (a[0], a[1], 0.07), (b[0], b[1], 0.09),
-                                  rad * 0.7, max(4, segs - 2), col, spec["ore"]))
+            pieces.append(add_cyl(f"{spec['id']}_b{bi}_{i}", (a[0], a[1], 0.062), (b[0], b[1], 0.080),
+                                  rad * 0.68, max(4, segs - 2), col, spec["ore"]))
     if lod == 0:
-        pieces.append(sheet_poly(f"{spec['id']}_fl0", (-0.12, 0.18, 0.05), 0.22, 0.16, 0.012,
-                                 col, spec["ore"], crumple=0.012, rot_z=0.5, seed=3))
-        pieces.append(sheet_poly(f"{spec['id']}_fl1", (0.18, -0.16, 0.05), 0.18, 0.14, 0.010,
-                                 col, spec["ore"], crumple=0.01, rot_z=-0.7, seed=8))
+        pieces.append(sheet_poly(f"{spec['id']}_fl0", (-0.10, 0.20, 0.048), 0.18, 0.13, 0.010,
+                                 col, spec["ore"], crumple=0.010, rot_z=0.5, seed=3))
+        pieces.append(sheet_poly(f"{spec['id']}_fl1", (0.20, -0.14, 0.048), 0.16, 0.11, 0.009,
+                                 col, spec["ore"], crumple=0.008, rot_z=-0.7, seed=8))
     return pieces
 
 
 def form_sheet_flake(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.60, 21, lod, 0.12)]
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 21, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
     flakes = [
-        ((-0.18, 0.12, 0.05), 0.36, 0.28, 0.4),
-        ((0.16, -0.10, 0.06), 0.30, 0.24, -0.6),
-        ((0.02, 0.28, 0.05), 0.22, 0.18, 1.1),
-        ((-0.22, -0.20, 0.05), 0.24, 0.16, 0.2),
-        ((0.28, 0.18, 0.055), 0.20, 0.16, -1.2),
+        ((-0.16, 0.10, 0.055), 0.46, 0.34, 0.35),
+        ((0.18, -0.12, 0.062), 0.40, 0.30, -0.55),
+        ((0.04, 0.26, 0.050), 0.30, 0.24, 1.05),
+        ((-0.24, -0.22, 0.052), 0.32, 0.22, 0.18),
+        ((0.30, 0.16, 0.058), 0.26, 0.20, -1.15),
+        ((-0.02, -0.02, 0.070), 0.28, 0.22, 0.70),
     ]
     if lod == 1:
-        flakes = flakes[:3]
+        flakes = flakes[:4]
     if lod == 2:
-        flakes = flakes[:2]
+        flakes = flakes[:3]
     for i, (c, w, h, rz) in enumerate(flakes):
-        pieces.append(sheet_poly(f"{spec['id']}_s{i}", c, w, h, 0.014, col, spec["ore"],
-                                 crumple=0.016 if lod == 0 else 0.0, rot_z=rz, seed=30 + i))
+        pieces.append(sheet_poly(f"{spec['id']}_s{i}", c, w, h, 0.016, col, spec["ore"],
+                                 crumple=0.018 if lod == 0 else 0.006, rot_z=rz, seed=30 + i))
     return pieces
 
 
 def form_leaf_nest(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.60, 31, lod, 0.11)]
-    # milky quartz sigmoid fill
-    sig = [(-0.40, 0.18), (-0.18, 0.22), (0.02, 0.04), (0.18, -0.18), (0.42, -0.22)]
-    pieces.append(ridge_along(f"{spec['id']}_qtz", sig, 0.11, 0.10, col, spec["host"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 31, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
+    sig = [(-0.46, 0.16), (-0.20, 0.22), (0.04, 0.04), (0.22, -0.18), (0.48, -0.22)]
+    pieces.append(ridge_along(f"{spec['id']}_qtz", sig, 0.13, 0.12, col, spec["host"]))
     leaves = [
-        ((-0.28, 0.08, 0.07), 0.22, 0.16, 0.5),
-        ((-0.08, 0.26, 0.07), 0.18, 0.14, -0.4),
-        ((0.12, -0.06, 0.07), 0.20, 0.15, 1.0),
-        ((0.30, -0.24, 0.07), 0.18, 0.13, 0.2),
-        ((0.22, 0.16, 0.07), 0.16, 0.12, -1.1),
-        ((-0.16, -0.16, 0.065), 0.17, 0.12, 0.8),
+        ((-0.30, 0.06, 0.085), 0.26, 0.18, 0.48),
+        ((-0.08, 0.28, 0.085), 0.22, 0.16, -0.38),
+        ((0.14, -0.06, 0.085), 0.24, 0.17, 0.95),
+        ((0.34, -0.26, 0.085), 0.22, 0.15, 0.22),
+        ((0.24, 0.16, 0.082), 0.20, 0.14, -1.05),
+        ((-0.18, -0.16, 0.080), 0.20, 0.14, 0.75),
+        ((0.02, 0.14, 0.090), 0.18, 0.13, 0.15),
     ]
     if lod >= 1:
-        leaves = leaves[:4]
+        leaves = leaves[:5]
     if lod == 2:
-        leaves = leaves[:2]
+        leaves = leaves[:3]
     for i, (c, w, h, rz) in enumerate(leaves):
-        pieces.append(sheet_poly(f"{spec['id']}_l{i}", c, w, h, 0.011, col, spec["ore"],
-                                 crumple=0.022 if lod == 0 else 0.008, rot_z=rz, seed=40 + i))
+        pieces.append(sheet_poly(f"{spec['id']}_l{i}", c, w, h, 0.012, col, spec["ore"],
+                                 crumple=0.024 if lod == 0 else 0.010, rot_z=rz, seed=40 + i))
     return pieces
 
 
 def form_fracture_ribbon(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.58, 41, lod, 0.10)]
-    ribbon = [(-0.50, -0.22), (-0.28, -0.04), (-0.04, 0.10), (0.22, 0.02), (0.48, 0.20)]
-    pieces.append(ridge_along(f"{spec['id']}_rib", ribbon, 0.09, 0.13, col, spec["ore"]))
-    if lod == 0:
-        pieces.append(sheet_poly(f"{spec['id']}_l0", (-0.22, 0.18, 0.06), 0.16, 0.12, 0.01,
-                                 col, spec["ore"], crumple=0.014, rot_z=0.6, seed=5))
-        pieces.append(sheet_poly(f"{spec['id']}_l1", (0.24, -0.16, 0.06), 0.15, 0.11, 0.01,
-                                 col, spec["ore"], crumple=0.012, rot_z=-0.5, seed=9))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 41, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
+    ribbon = [(-0.56, -0.22), (-0.30, -0.04), (-0.02, 0.12), (0.26, 0.02), (0.54, 0.22)]
+    pieces.append(ridge_along(f"{spec['id']}_rib", ribbon, 0.11, 0.16, col, spec["ore"]))
+    if lod < 2:
+        pieces.append(sheet_poly(f"{spec['id']}_l0", (-0.24, 0.20, 0.07), 0.14, 0.10, 0.010,
+                                 col, spec["ore"], crumple=0.012, rot_z=0.55, seed=5))
+        pieces.append(sheet_poly(f"{spec['id']}_l1", (0.28, -0.18, 0.07), 0.13, 0.10, 0.010,
+                                 col, spec["ore"], crumple=0.010, rot_z=-0.45, seed=9))
     return pieces
 
 
 def form_chip_ridge(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 51, lod, 0.10)]
-    main = [(-0.50, -0.28), (-0.22, -0.08), (0.04, 0.06), (0.32, 0.22), (0.52, 0.38)]
-    br = [(0.04, 0.06), (0.18, -0.16), (0.30, -0.36)]
-    pieces.append(ridge_along(f"{spec['id']}_main", main, 0.07, 0.14, col, spec["host"]))
-    pieces.append(ridge_along(f"{spec['id']}_br", br, 0.055, 0.11, col, spec["host"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.66, 51, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
+    main = [(-0.54, -0.30), (-0.22, -0.08), (0.06, 0.08), (0.34, 0.24), (0.56, 0.40)]
+    br = [(0.06, 0.08), (0.22, -0.16), (0.36, -0.40)]
+    pieces.append(ridge_along(f"{spec['id']}_main", main, 0.085, 0.15, col, spec["host"]))
+    pieces.append(ridge_along(f"{spec['id']}_br", br, 0.065, 0.12, col, spec["host"]))
     chips = [
-        ((-0.22, -0.08, 0.12), 0.09, (1.0, 0.85, 0.70)),
-        ((0.04, 0.06, 0.13), 0.11, (0.9, 1.0, 0.75)),
-        ((0.32, 0.22, 0.12), 0.10, (1.05, 0.8, 0.72)),
-        ((0.18, -0.16, 0.11), 0.08, (0.85, 0.9, 0.65)),
-        ((-0.40, -0.22, 0.10), 0.07, (1.0, 0.75, 0.8)),
-        ((0.44, 0.32, 0.11), 0.08, (0.9, 0.95, 0.7)),
+        ((-0.22, -0.08, 0.14), 0.11, (1.0, 0.82, 0.70)),
+        ((0.06, 0.08, 0.15), 0.13, (0.88, 1.0, 0.74)),
+        ((0.34, 0.24, 0.14), 0.12, (1.05, 0.78, 0.72)),
+        ((0.22, -0.16, 0.13), 0.10, (0.84, 0.92, 0.66)),
+        ((-0.42, -0.24, 0.12), 0.09, (1.0, 0.74, 0.80)),
+        ((0.48, 0.34, 0.13), 0.10, (0.90, 0.95, 0.70)),
+        ((-0.06, 0.02, 0.16), 0.08, (0.92, 0.80, 0.68)),
     ]
     if lod == 1:
-        chips = chips[:4]
+        chips = chips[:5]
     if lod == 2:
-        chips = chips[:2]
+        chips = chips[:3]
     for i, (c, r, sq) in enumerate(chips):
         pieces.append(add_oct(f"{spec['id']}_c{i}", c, r, col, spec["ore"], sq))
     return pieces
 
 
 def form_specular_plate(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.60, 61, lod, 0.09)]
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 61, lod, 0.09,
+                        family=spec["family"], form=spec["form"])]
     plates = [
-        ((-0.06, 0.04, 0.05), 0.46, 0.22, 0.22, 0.08),
-        ((0.04, -0.12, 0.07), 0.40, 0.18, -0.15, 0.10),
-        ((-0.10, 0.20, 0.08), 0.34, 0.16, 0.40, 0.06),
-        ((0.16, 0.10, 0.09), 0.28, 0.14, -0.55, 0.12),
+        ((-0.04, 0.06, 0.055), 0.52, 0.24, 0.18, 0.06),
+        ((0.06, -0.12, 0.078), 0.46, 0.20, -0.12, 0.10),
+        ((-0.12, 0.22, 0.090), 0.38, 0.18, 0.38, 0.05),
+        ((0.18, 0.10, 0.102), 0.32, 0.16, -0.50, 0.11),
+        ((-0.18, -0.04, 0.068), 0.30, 0.14, 0.55, 0.07),
     ]
     if lod >= 1:
-        plates = plates[:3]
+        plates = plates[:4]
     if lod == 2:
-        plates = plates[:2]
+        plates = plates[:3]
     for i, (c, w, h, rz, tilt) in enumerate(plates):
-        obj = add_box(f"{spec['id']}_p{i}", c, (w * 0.5, h * 0.5, 0.012), col, spec["ore"], rz)
-        obj.rotation_euler[0] = tilt * 0.35
+        obj = add_box(f"{spec['id']}_p{i}", c, (w * 0.5, h * 0.5, 0.014), col, spec["ore"], rz)
+        obj.rotation_euler[0] = tilt * 0.40
         pieces.append(obj)
     return pieces
 
 
 def form_cubic_mass(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.58, 71, lod, 0.10)]
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 71, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
     cubes = [
-        ((-0.10, -0.04, 0.14), 0.13), ((0.12, 0.08, 0.13), 0.11),
-        ((0.02, -0.16, 0.11), 0.09), ((-0.20, 0.12, 0.12), 0.10),
-        ((0.22, -0.08, 0.11), 0.08), ((-0.02, 0.20, 0.10), 0.08),
-        ((0.16, 0.22, 0.09), 0.07), ((-0.16, -0.18, 0.09), 0.07),
-        ((0.08, -0.02, 0.20), 0.07), ((-0.08, 0.06, 0.22), 0.06),
+        ((-0.10, -0.04, 0.15), 0.15), ((0.14, 0.08, 0.14), 0.13),
+        ((0.02, -0.18, 0.12), 0.11), ((-0.22, 0.14, 0.13), 0.12),
+        ((0.24, -0.08, 0.12), 0.10), ((-0.02, 0.22, 0.11), 0.10),
+        ((0.16, 0.24, 0.10), 0.08), ((-0.16, -0.20, 0.10), 0.08),
+        ((0.08, -0.02, 0.22), 0.08), ((-0.08, 0.06, 0.24), 0.07),
+        ((-0.28, -0.06, 0.11), 0.08), ((0.30, 0.12, 0.11), 0.08),
     ]
     if lod == 1:
-        cubes = cubes[:6]
+        cubes = cubes[:8]
     if lod == 2:
-        cubes = cubes[:4]
+        cubes = cubes[:5]
     for i, (c, r) in enumerate(cubes):
-        if i % 2 == 0:
-            pieces.append(add_box(f"{spec['id']}_k{i}", c, (r, r * 0.92, r * 0.88), col, spec["ore"],
-                                  rot_z=0.2 * i))
-        else:
-            pieces.append(add_oct(f"{spec['id']}_k{i}", c, r * 1.05, col, spec["ore"], (1, 1, 0.9)))
+        pieces.append(add_box(f"{spec['id']}_k{i}", c, (r, r * 0.94, r * 0.90), col, spec["ore"],
+                              rot_z=0.18 * i))
     return pieces
 
 
 def form_dendrite(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.58, 81, lod, 0.10)]
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 81, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
     nodes = [
-        ((0.0, 0.0, 0.10), 0.10),
-        ((0.22, 0.16, 0.11), 0.08), ((-0.20, 0.18, 0.11), 0.08),
-        ((0.18, -0.20, 0.10), 0.07), ((-0.24, -0.14, 0.10), 0.07),
-        ((0.40, 0.28, 0.10), 0.06), ((-0.38, 0.32, 0.10), 0.06),
-        ((0.34, -0.34, 0.09), 0.055),
+        ((0.0, 0.0, 0.11), 0.09),
+        ((0.24, 0.18, 0.12), 0.08), ((-0.22, 0.20, 0.12), 0.08),
+        ((0.20, -0.22, 0.11), 0.07), ((-0.26, -0.16, 0.11), 0.07),
+        ((0.44, 0.32, 0.11), 0.065), ((-0.42, 0.36, 0.11), 0.065),
+        ((0.38, -0.38, 0.10), 0.060), ((-0.40, -0.32, 0.10), 0.055),
     ]
     if lod == 1:
-        nodes = nodes[:6]
+        nodes = nodes[:7]
     if lod == 2:
-        nodes = nodes[:4]
+        nodes = nodes[:5]
     for i, (c, r) in enumerate(nodes):
-        pieces.append(add_box(f"{spec['id']}_n{i}", c, (r, r * 0.9, r * 0.85), col, spec["ore"],
-                              rot_z=0.3 * i))
+        pieces.append(add_box(f"{spec['id']}_n{i}", c, (r, r * 0.92, r * 0.88), col, spec["ore"],
+                              rot_z=0.28 * i))
     if lod < 2:
-        links = [(0, 1), (0, 2), (0, 3), (0, 4), (1, 5), (2, 6), (3, 7)]
+        links = [(0, 1), (0, 2), (0, 3), (0, 4), (1, 5), (2, 6), (3, 7), (4, 8)]
         if lod == 1:
-            links = links[:5]
+            links = links[:6]
         for i, (a, b) in enumerate(links):
+            if b >= len(nodes):
+                continue
             pa, ra = nodes[a]
             pb, rb = nodes[b]
-            pieces.append(add_cyl(f"{spec['id']}_l{i}", pa, pb, min(ra, rb) * 0.35, 6 if lod == 0 else 4,
+            pieces.append(add_cyl(f"{spec['id']}_l{i}", pa, pb, min(ra, rb) * 0.38, 6 if lod == 0 else 4,
                                   col, spec["ore"]))
     return pieces
 
 
 def form_octahedral_cage(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.50, 91, lod, 0.16)]
-    r = 0.32
-    zc = 0.10
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.56, 91, lod, 0.14,
+                        family=spec["family"], form=spec["form"])]
+    r = 0.36
+    zc = 0.16
     verts = [
-        (r, 0, zc), (-r, 0, zc), (0, r, zc), (0, -r, zc),
-        (0, 0, zc + r * 0.55), (0, 0, max(0.03, zc - r * 0.18)),
+        (r, 0.0, zc), (-r, 0.0, zc), (0.0, r, zc), (0.0, -r, zc),
+        (0.0, 0.0, zc + r * 0.62), (0.0, 0.0, 0.055),
     ]
     edges = [(0, 2), (2, 1), (1, 3), (3, 0), (0, 4), (2, 4), (1, 4), (3, 4),
              (0, 5), (2, 5), (1, 5), (3, 5)]
-    segs = 6 if lod == 0 else 4
-    rad = 0.042 if lod == 0 else 0.048
+    segs = 6 if lod == 0 else 5
+    rad = 0.058 if lod == 0 else 0.062
     if lod == 2:
         edges = edges[:8]
+        rad = 0.070
     for i, (ia, ib) in enumerate(edges):
         pieces.append(add_cyl(f"{spec['id']}_e{i}", verts[ia], verts[ib], rad, segs, col, spec["ore"]))
-    node_ids = range(6 if lod == 0 else 5)
-    for i in node_ids:
-        pieces.append(add_oct(f"{spec['id']}_n{i}", verts[i], 0.07 if lod == 0 else 0.08, col, spec["ore"]))
+    for i, v in enumerate(verts if lod == 0 else verts[:5]):
+        pieces.append(add_box(f"{spec['id']}_j{i}", v, (0.055, 0.055, 0.050), col, spec["ore"],
+                              rot_z=0.2 * i))
+    # four feet seated in the crust
+    for i, (x, y) in enumerate(((0.18, 0.18), (-0.18, 0.18), (0.18, -0.18), (-0.18, -0.18))):
+        pieces.append(add_cyl(f"{spec['id']}_ft{i}", (x, y, 0.02), (x * 0.55, y * 0.55, 0.12),
+                              0.040, segs, col, spec["ore"]))
     return pieces
+
+
+def hollow_hex_truss(name, center, r_out, r_in, z0, z1, collection, role, segs=6):
+    cx, cy, _ = center
+    verts = []
+    for ring_z in (z0, z1):
+        for ring_r in (r_out, r_in):
+            for i in range(segs):
+                a = i / segs * math.pi * 2 + math.pi / segs
+                verts.append((cx + math.cos(a) * ring_r, cy + math.sin(a) * ring_r, ring_z))
+    faces = []
+    # Each z-level contains an outer and inner ring. Keep the indexing
+    # parametric so the same manifold ring works for hex trusses and the
+    # 8–12-sided geological gas mouth.
+    level_stride = segs * 2
+    for zoff in (0, level_stride):
+        for i in range(segs):
+            j = (i + 1) % segs
+            faces.append((zoff + i, zoff + j, zoff + segs + j, zoff + segs + i))
+    for i in range(segs):
+        j = (i + 1) % segs
+        faces.append((i, level_stride + i, level_stride + j, j))
+        faces.append((segs + i, segs + j, level_stride + segs + j, level_stride + segs + i))
+    return add_from_pydata(name, verts, faces, collection, role)
 
 
 def form_prismatic_truss(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.48, 101, lod, 0.14)]
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.54, 101, lod, 0.12,
+                        family=spec["family"], form=spec["form"])]
     segs = 6
-    pieces.append(hex_prism(f"{spec['id']}_hex", (0, 0, 0.04), 0.28, 0.22, 0.16, col, spec["ore"], segs))
+    pieces.append(hollow_hex_truss(f"{spec['id']}_hex", (0, 0, 0), 0.30, 0.20, 0.05, 0.28,
+                                   col, spec["ore"], segs))
     if lod < 2:
-        # internal bars
-        for i in range(0, segs, 2 if lod == 1 else 1):
+        step = 2 if lod == 1 else 1
+        for i in range(0, segs, step):
             a = i / segs * math.pi * 2 + math.pi / segs
-            p = (math.cos(a) * 0.20, math.sin(a) * 0.20, 0.16)
-            pieces.append(add_cyl(f"{spec['id']}_bar{i}", (0, 0, 0.16), p, 0.016, 5, col, spec["ore"]))
+            p0 = (math.cos(a) * 0.20, math.sin(a) * 0.20, 0.08)
+            p1 = (math.cos(a) * 0.20, math.sin(a) * 0.20, 0.26)
+            pieces.append(add_cyl(f"{spec['id']}_up{i}", p0, p1, 0.018, 5, col, spec["ore"]))
+            p2 = (math.cos(a + math.pi) * 0.20, math.sin(a + math.pi) * 0.20, 0.17)
+            pieces.append(add_cyl(f"{spec['id']}_bar{i}", (math.cos(a) * 0.18, math.sin(a) * 0.18, 0.17),
+                                  p2, 0.016, 5, col, spec["ore"]))
+    # Annular mineral collar seats the truss without plugging its hollow core.
+    pieces.append(hollow_hex_truss(f"{spec['id']}_seat", (0, 0, 0), 0.34, 0.235, 0.012, 0.052,
+                                   col, spec["host"], segs))
     return pieces
 
 
+def skeletal_hopper(name, center, size, steps, collection, role, wall=0.055):
+    """Dark stepped skeletal well — walls only, open centre, seated in crust."""
+    cx, cy, cz = center
+    half = size * 0.5
+    verts = []
+    faces = []
+    top_z = cz + 0.08
+    well_depth = size * 0.70
+    for s in range(steps):
+        t0 = s / steps
+        t1 = (s + 1) / steps
+        r0 = half * (0.92 - t0 * 0.62)
+        r1 = half * (0.92 - t1 * 0.62)
+        z0 = top_z - t0 * well_depth
+        z1 = top_z - t1 * well_depth
+        w0, w1 = wall * (1.0 - t0 * 0.25), wall * (1.0 - t1 * 0.25)
+        outer0 = [(cx - r0, cy - r0, z0), (cx + r0, cy - r0, z0),
+                  (cx + r0, cy + r0, z0), (cx - r0, cy + r0, z0)]
+        inner0 = [(cx - (r0 - w0), cy - (r0 - w0), z0), (cx + (r0 - w0), cy - (r0 - w0), z0),
+                  (cx + (r0 - w0), cy + (r0 - w0), z0), (cx - (r0 - w0), cy + (r0 - w0), z0)]
+        outer1 = [(cx - r1, cy - r1, z1), (cx + r1, cy - r1, z1),
+                  (cx + r1, cy + r1, z1), (cx - r1, cy + r1, z1)]
+        inner1 = [(cx - (r1 - w1), cy - (r1 - w1), z1), (cx + (r1 - w1), cy - (r1 - w1), z1),
+                  (cx + (r1 - w1), cy + (r1 - w1), z1), (cx - (r1 - w1), cy + (r1 - w1), z1)]
+        b = len(verts)
+        verts.extend(outer0 + inner0 + outer1 + inner1)
+        for i in range(4):
+            j = (i + 1) % 4
+            faces.append((b + i, b + j, b + 8 + j, b + 8 + i))
+            faces.append((b + 4 + i, b + 12 + i, b + 12 + j, b + 4 + j))
+            faces.append((b + i, b + 4 + i, b + 4 + j, b + j))
+        if s == steps - 1:
+            faces.append((b + 12, b + 13, b + 14, b + 15))
+    return add_from_pydata(name, verts, faces, collection, role)
+
+
 def form_hopper(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.52, 111, lod, 0.12)]
-    steps = 4 if lod == 0 else (3 if lod == 1 else 2)
-    pieces.append(hopper_cube(f"{spec['id']}_hop", (0, 0, 0.02), 0.72, steps, col, spec["ore"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.58, 111, lod, 0.12,
+                        family=spec["family"], form=spec["form"])]
+    steps = 5 if lod == 0 else (4 if lod == 1 else 3)
+    pieces.append(skeletal_hopper(f"{spec['id']}_hop", (0, 0, 0.02), 0.70, steps, col, spec["ore"]))
+    # Four-piece crust collar: real contact around an open stepped well.
+    for suffix, center, half in (
+        ("n", (0.0, 0.36, 0.045), (0.40, 0.055, 0.025)),
+        ("s", (0.0, -0.36, 0.045), (0.40, 0.055, 0.025)),
+        ("e", (0.36, 0.0, 0.045), (0.055, 0.305, 0.025)),
+        ("w", (-0.36, 0.0, 0.045), (0.055, 0.305, 0.025)),
+    ):
+        pieces.append(add_box(f"{spec['id']}_collar_{suffix}", center, half, col, spec["host"]))
     return pieces
 
 
@@ -897,112 +1106,140 @@ def solid_from_outline(name, outline, z0, z1, collection, role, chips=()):
 
 
 def form_sheen_plate(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 121, lod, 0.08)]
-    n = 10 if lod == 0 else (8 if lod == 1 else 6)
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.66, 121, lod, 0.08,
+                        family=spec["family"], form=spec["form"])]
+    n = 11 if lod == 0 else (9 if lod == 1 else 7)
     skip = {2, 6, 7} if lod == 0 else {2, 6}
-    outline = ice_chip_outline(0.58, n, 5, skip)
-    pieces.append(solid_from_outline(f"{spec['id']}_ice", outline, 0.018, 0.055, col, spec["ore"]))
-    # trapped fracture as real slots
+    outline = ice_chip_outline(0.52, n, 5, skip)
+    pieces.append(solid_from_outline(f"{spec['id']}_ice", outline, 0.022, 0.072, col, spec["ore"]))
     if lod < 2:
-        pieces.append(add_box(f"{spec['id']}_fr0", (0.02, 0.04, 0.040), (0.36, 0.008, 0.012),
-                              col, spec["host"], rot_z=0.35))
-        pieces.append(add_box(f"{spec['id']}_fr1", (-0.04, -0.06, 0.040), (0.28, 0.007, 0.011),
-                              col, spec["host"], rot_z=-0.55))
+        pieces.append(add_box(f"{spec['id']}_fr0", (0.02, 0.04, 0.050), (0.34, 0.007, 0.014),
+                              col, spec["host"], rot_z=0.32))
+        pieces.append(add_box(f"{spec['id']}_fr1", (-0.06, -0.08, 0.050), (0.26, 0.006, 0.012),
+                              col, spec["host"], rot_z=-0.50))
+        pieces.append(add_box(f"{spec['id']}_fr2", (0.10, -0.14, 0.048), (0.16, 0.005, 0.010),
+                              col, spec["host"], rot_z=0.90))
     if lod == 0:
-        pieces.append(sheet_poly(f"{spec['id']}_chip", (0.32, -0.18, 0.03), 0.14, 0.10, 0.012,
-                                 col, spec["ore"], crumple=0.0, rot_z=0.8, seed=1))
+        chip_outline = ice_chip_outline(0.14, 6, 9, {1})
+        chip_outline = [(x + 0.34, y - 0.20) for x, y in chip_outline]
+        pieces.append(solid_from_outline(f"{spec['id']}_chip", chip_outline, 0.018, 0.040, col, spec["ore"]))
     return pieces
 
 
 def form_fracture_vein(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.60, 131, lod, 0.08)]
-    vein = [(-0.52, -0.16), (-0.22, -0.04), (0.06, 0.08), (0.30, 0.02), (0.52, 0.14)]
-    pieces.append(ridge_along(f"{spec['id']}_ice", vein, 0.10, 0.07, col, spec["ore"]))
-    # trapped bubbles = real holes as dark host wells
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 131, lod, 0.08,
+                        family=spec["family"], form=spec["form"])]
+    vein = [(-0.56, -0.14), (-0.24, -0.02), (0.06, 0.10), (0.32, 0.02), (0.56, 0.16)]
+    pieces.append(ridge_along(f"{spec['id']}_ice", vein, 0.12, 0.085, col, spec["ore"]))
     if lod < 2:
-        for i, p in enumerate(((-0.18, -0.02, 0.04), (0.10, 0.06, 0.04), (0.32, 0.04, 0.04))):
-            pieces.append(add_cyl(f"{spec['id']}_bub{i}", (p[0], p[1], 0.07), (p[0], p[1], 0.01),
-                                  0.035, 6, col, spec["host"]))
+        for i, p in enumerate(((-0.20, 0.00, 0.05), (0.08, 0.08, 0.05), (0.34, 0.04, 0.05))):
+            pieces.append(add_cyl(f"{spec['id']}_bub{i}", (p[0], p[1], 0.085), (p[0], p[1], 0.012),
+                                  0.040, 6, col, spec["host"]))
     return pieces
 
 
-def form_radial_mouth(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 141, lod, 0.06)]
-    # dark elliptical mouth — a real cavity
-    segs = 10 if lod == 0 else 8
+def cavity_well(name, rx, ry, depth, segs, collection, role, lip_z=0.012):
+    """Deep elliptical well with inner walls and a small dark floor — not a painted disc."""
     verts = []
-    rx, ry, depth = 0.22, 0.16, 0.18
     for i in range(segs):
         a = i / segs * math.pi * 2
-        verts.append((math.cos(a) * rx, math.sin(a) * ry, 0.006))
-    verts.append((0.0, 0.0, -depth))
-    faces = []
-    apex = segs
+        verts.append((math.cos(a) * rx, math.sin(a) * ry, lip_z))
     for i in range(segs):
-        faces.append((i, (i + 1) % segs, apex))
-    pieces.append(add_from_pydata(f"{spec['id']}_mouth", verts, faces, col, spec["ore"]))
-    # stained lip ring
-    pieces.append(add_cyl(f"{spec['id']}_lip", (0, 0, 0.002), (0, 0, 0.016), 0.24, segs, col, "gas_lip"))
-    # radial fissures
-    ncr = 7 if lod == 0 else (5 if lod == 1 else 4)
+        a = i / segs * math.pi * 2
+        verts.append((math.cos(a) * rx * 0.55, math.sin(a) * ry * 0.55, -depth * 0.55))
+    for i in range(segs):
+        a = i / segs * math.pi * 2
+        verts.append((math.cos(a) * rx * 0.18, math.sin(a) * ry * 0.18, -depth))
+    verts.append((0.0, 0.0, -depth - 0.01))
+    faces = []
+    for ring in (0, 1):
+        b = ring * segs
+        for i in range(segs):
+            j = (i + 1) % segs
+            faces.append((b + i, b + j, b + segs + j, b + segs + i))
+    apex = segs * 3
+    floor = segs * 2
+    for i in range(segs):
+        j = (i + 1) % segs
+        faces.append((floor + i, floor + j, apex))
+    return add_from_pydata(name, verts, faces, collection, role)
+
+
+def form_radial_mouth(spec, lod, col):
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.66, 141, lod, 0.08,
+                        family=spec["family"], form=spec["form"])]
+    segs = 12 if lod == 0 else (10 if lod == 1 else 8)
+    pieces.append(cavity_well(f"{spec['id']}_mouth", 0.28, 0.20, 0.22, segs, col, spec["ore"],
+                              lip_z=0.064))
+    pieces.append(hollow_hex_truss(f"{spec['id']}_lip", (0, 0, 0), 0.31, 0.245, 0.052, 0.074,
+                                   col, "gas_lip", segs))
+    ncr = 8 if lod == 0 else (6 if lod == 1 else 4)
     for i in range(ncr):
-        a0 = i / ncr * math.pi * 2 + 0.18
-        pts = [(math.cos(a0) * 0.20, math.sin(a0) * 0.16)]
+        a0 = i / ncr * math.pi * 2 + 0.12
+        pts = [(math.cos(a0) * 0.26, math.sin(a0) * 0.18)]
         a = a0
-        rr = 0.26
+        rr = 0.32
         for k in range(3 if lod == 0 else 2):
-            a += (h01(i, k) - 0.5) * 0.45
-            rr += 0.10
-            pts.append((math.cos(a) * min(0.62, rr), math.sin(a) * min(0.58, rr)))
-        pieces.extend(crevice_groove(f"{spec['id']}_c{i}", pts, 0.018, 0.05, col, "gas_lip", spec["ore"]))
+            a += (h01(i, k) - 0.5) * 0.35
+            rr += 0.11
+            pts.append((math.cos(a) * min(0.64, rr), math.sin(a) * min(0.52, rr * 0.82)))
+        pieces.extend(crevice_groove(f"{spec['id']}_c{i}", pts, 0.022, 0.07, col, "gas_lip", spec["ore"]))
     return pieces
 
 
 def form_branch_crevice(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 151, lod, 0.06)]
-    main = [(-0.48, -0.08), (-0.18, 0.00), (0.08, 0.06), (0.36, 0.22)]
-    br = [(0.08, 0.06), (0.18, -0.16), (0.32, -0.34)]
-    pieces.extend(crevice_groove(f"{spec['id']}_m", main, 0.045, 0.14, col, "gas_lip", spec["ore"]))
-    pieces.extend(crevice_groove(f"{spec['id']}_b", br, 0.032, 0.11, col, "gas_lip", spec["ore"]))
-    # two dark mouths
-    for i, c in enumerate(((-0.10, 0.02), (0.16, -0.14))):
-        pieces.append(add_cyl(f"{spec['id']}_mh{i}", (c[0], c[1], 0.01), (c[0], c[1], -0.12),
-                              0.07, 8 if lod == 0 else 6, col, spec["ore"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 151, lod, 0.08,
+                        family=spec["family"], form=spec["form"])]
+    main = [(-0.54, -0.10), (-0.20, 0.00), (0.10, 0.08), (0.40, 0.26)]
+    br = [(0.10, 0.08), (0.22, -0.18), (0.38, -0.40)]
+    pieces.extend(crevice_groove(f"{spec['id']}_m", main, 0.055, 0.18, col, "gas_lip", spec["ore"]))
+    pieces.extend(crevice_groove(f"{spec['id']}_b", br, 0.040, 0.14, col, "gas_lip", spec["ore"]))
+    segs = 10 if lod == 0 else 8
+    pieces.append(cavity_well(f"{spec['id']}_mh0", 0.10, 0.08, 0.16, segs, col, spec["ore"],
+                              lip_z=0.064))
+    # offset the second mouth by building at origin then translating
+    well = cavity_well(f"{spec['id']}_mh1", 0.09, 0.07, 0.14, segs, col, spec["ore"],
+                       lip_z=0.064)
+    for v in well.data.vertices:
+        v.co.x += 0.18
+        v.co.y -= 0.16
+    well.data.update()
+    pieces.append(well)
     return pieces
 
 
 def form_shear_offset(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.62, 161, lod, 0.06)]
-    a = [(-0.48, 0.10), (-0.10, 0.14), (0.18, 0.18)]
-    b = [(-0.18, -0.16), (0.16, -0.12), (0.50, -0.08)]
-    pieces.extend(crevice_groove(f"{spec['id']}_a", a, 0.04, 0.10, col, "gas_lip", spec["ore"]))
-    pieces.extend(crevice_groove(f"{spec['id']}_b", b, 0.04, 0.10, col, "gas_lip", spec["ore"]))
-    slot = [(-0.08, 0.12), (0.06, -0.02), (0.16, -0.14)]
-    pieces.extend(crevice_groove(f"{spec['id']}_s", slot, 0.028, 0.16, col, "gas_lip", spec["ore"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 161, lod, 0.08,
+                        family=spec["family"], form=spec["form"])]
+    a = [(-0.54, 0.14), (-0.12, 0.18), (0.22, 0.22)]
+    b = [(-0.22, -0.20), (0.18, -0.14), (0.56, -0.08)]
+    pieces.extend(crevice_groove(f"{spec['id']}_a", a, 0.048, 0.14, col, "gas_lip", spec["ore"]))
+    pieces.extend(crevice_groove(f"{spec['id']}_b", b, 0.048, 0.14, col, "gas_lip", spec["ore"]))
+    slot = [(-0.10, 0.16), (0.08, -0.02), (0.20, -0.16)]
+    pieces.extend(crevice_groove(f"{spec['id']}_s", slot, 0.034, 0.20, col, "gas_lip", spec["ore"]))
     return pieces
 
 
 def form_vented_split(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.60, 171, lod, 0.07)]
-    # two levered lips
-    for i, side in enumerate((-1, 1)):
-        pieces.append(add_box(f"{spec['id']}_lip{i}", (0.0, side * 0.22, 0.04),
-                              (0.48, 0.14, 0.035), col, spec["ore"]))
-        obj = pieces[-1]
-        obj.rotation_euler[0] = side * 0.38
-    # dead gap floor
-    pieces.append(add_box(f"{spec['id']}_gap", (0, 0, -0.02), (0.42, 0.10, 0.03), col, spec["host"]))
-    shards = [
-        ((-0.32, 0.34, 0.05), 0.07), ((0.02, 0.38, 0.05), 0.06), ((0.30, 0.34, 0.05), 0.07),
-        ((-0.28, -0.34, 0.05), 0.06), ((0.08, -0.38, 0.05), 0.07), ((0.32, -0.32, 0.05), 0.06),
-    ]
-    if lod >= 1:
-        shards = shards[:4]
-    if lod == 2:
-        shards = shards[:2]
-    for i, (c, r) in enumerate(shards):
-        v, f = octahedron(c, r, (1.0, 0.7, 0.45))
-        pieces.append(add_from_pydata(f"{spec['id']}_sh{i}", v, f, col, spec["ore"]))
+    pieces = [make_host(f"{spec['id']}_host", col, spec["host"], 0.64, 171, lod, 0.09,
+                        family=spec["family"], form=spec["form"])]
+    # Broken displaced strata — asymmetric ridges, never rectangular slabs.
+    north = [(-0.48, 0.13), (-0.24, 0.25), (0.02, 0.19), (0.27, 0.29), (0.48, 0.15)]
+    south = [(-0.44, -0.14), (-0.22, -0.27), (0.03, -0.19), (0.24, -0.30), (0.43, -0.16)]
+    pieces.append(ridge_along(f"{spec['id']}_lipN", north, 0.105, 0.12, col, spec["ore"]))
+    pieces.append(ridge_along(f"{spec['id']}_lipS", south, 0.090, 0.085, col, spec["ore"]))
+    # dark depth and asymmetric vent path
+    pieces.append(cavity_well(f"{spec['id']}_depth", 0.22, 0.10, 0.18, 8 if lod == 0 else 6,
+                              col, "scar_depth", lip_z=0.060))
+    vent = [(-0.08, 0.08), (0.16, -0.02), (0.40, -0.18)]
+    pieces.extend(crevice_groove(f"{spec['id']}_vent", vent, 0.030, 0.12, col,
+                                 spec["ore"], "scar_depth", surface_z=0.060))
+    # attached broken lip fragments — not floating shards
+    if lod == 0:
+        pieces.append(add_box(f"{spec['id']}_chip0", (0.36, 0.30, 0.06), (0.08, 0.05, 0.018),
+                              col, spec["ore"], rot_z=0.6))
+        pieces.append(add_box(f"{spec['id']}_chip1", (-0.38, -0.28, 0.04), (0.07, 0.04, 0.014),
+                              col, spec["ore"], rot_z=-0.4))
     return pieces
 
 
@@ -1040,40 +1277,40 @@ def mk2_strokes():
 
 
 def form_lock_plate(spec, lod, col):
-    pieces = [make_host(f"{spec['id']}_rock", col, spec["host"], 0.58, 181, lod, 0.06)]
-    # gasket / rock contact
-    pieces.append(add_box(f"{spec['id']}_gasket", (0, 0, 0.010), (0.62, 0.42, 0.012),
+    pieces = [make_host(f"{spec['id']}_rock", col, spec["host"], 0.64, 181, lod, 0.10,
+                        family=spec["family"], form=spec["form"])]
+    # recessed rectangular socket in the cut face
+    pieces.append(add_box(f"{spec['id']}_well", (0, 0, 0.018), (0.60, 0.40, 0.022),
+                          col, spec["host"]))
+    # gasket seated in the well
+    pieces.append(add_box(f"{spec['id']}_gasket", (0, 0, 0.028), (0.58, 0.38, 0.010),
                           col, "lock_gasket"))
-    # chamfered plate approximated as plate + inset pane
-    pieces.append(add_box(f"{spec['id']}_plate", (0, 0, 0.038), (0.56, 0.36, 0.022),
+    # plate sits in the gasketed socket, not on a cookie
+    pieces.append(add_box(f"{spec['id']}_plate", (0, 0, 0.046), (0.52, 0.33, 0.016),
                           col, "lock_steel"))
-    pieces.append(add_box(f"{spec['id']}_pane", (0, 0, 0.058), (0.28, 0.16, 0.010),
+    pieces.append(add_box(f"{spec['id']}_pane", (0, 0, 0.062), (0.26, 0.15, 0.008),
                           col, "lock_pane"))
-    # anchors
-    anchors = [(-0.42, 0.24), (0.42, 0.24), (-0.42, -0.24), (0.42, -0.24)]
+    anchors = [(-0.38, 0.22), (0.38, 0.22), (-0.38, -0.22), (0.38, -0.22)]
     for i, (x, y) in enumerate(anchors):
-        pieces.append(add_cyl(f"{spec['id']}_wash{i}", (x, y, 0.052), (x, y, 0.062),
-                              0.055, 8 if lod == 0 else 6, col, "lock_steel"))
-        pieces.append(hex_head(f"{spec['id']}_hex{i}", (x, y, 0.062), 0.038, col, "lock_latch"))
-    # hinge (port, -X)
+        pieces.append(add_cyl(f"{spec['id']}_wash{i}", (x, y, 0.056), (x, y, 0.068),
+                              0.052, 8 if lod == 0 else 6, col, "lock_steel"))
+        pieces.append(hex_head(f"{spec['id']}_hex{i}", (x, y, 0.068), 0.036, col, "lock_latch"))
     if lod < 2:
-        for i, y in enumerate((-0.16, 0.0, 0.16) if lod == 0 else (-0.14, 0.14)):
-            pieces.append(add_cyl(f"{spec['id']}_hk{i}", (-0.58, y, 0.04), (-0.46, y, 0.04),
-                                  0.028, 8 if lod == 0 else 6, col, "lock_latch"))
-        pieces.append(add_cyl(f"{spec['id']}_pin", (-0.52, -0.22, 0.04), (-0.52, 0.22, 0.04),
+        for i, y in enumerate((-0.14, 0.0, 0.14) if lod == 0 else (-0.12, 0.12)):
+            pieces.append(add_cyl(f"{spec['id']}_hk{i}", (-0.56, y, 0.046), (-0.44, y, 0.046),
+                                  0.026, 8 if lod == 0 else 6, col, "lock_latch"))
+        pieces.append(add_cyl(f"{spec['id']}_pin", (-0.50, -0.20, 0.046), (-0.50, 0.20, 0.046),
                               0.012, 6, col, "lock_steel"))
-    # latch (starboard, +X)
-    pieces.append(add_box(f"{spec['id']}_latch", (0.58, 0.0, 0.048), (0.08, 0.045, 0.016),
+    pieces.append(add_box(f"{spec['id']}_latch", (0.56, 0.0, 0.054), (0.08, 0.042, 0.014),
                           col, "lock_latch"))
-    pieces.append(add_box(f"{spec['id']}_keeper", (0.50, 0.0, 0.058), (0.04, 0.06, 0.012),
+    pieces.append(add_box(f"{spec['id']}_keeper", (0.48, 0.0, 0.062), (0.04, 0.055, 0.010),
                           col, "lock_steel"))
-    # MK2 grooves
     if lod == 0:
         for i, (x, y, sx, sy) in enumerate(mk2_strokes()):
-            pieces.append(add_box(f"{spec['id']}_mk{i}", (x, y, 0.070), (sx, sy, 0.008),
+            pieces.append(add_box(f"{spec['id']}_mk{i}", (x, y, 0.072), (sx, sy, 0.007),
                                   col, "lock_engrave"))
     elif lod == 1:
-        pieces.append(add_box(f"{spec['id']}_mk", (0.0, 0.0, 0.070), (0.20, 0.06, 0.006),
+        pieces.append(add_box(f"{spec['id']}_mk", (0.0, 0.0, 0.072), (0.18, 0.055, 0.006),
                               col, "lock_engrave"))
     return pieces
 
@@ -1116,29 +1353,18 @@ def footprint_ok(obj):
     return span, span <= FOOTPRINT + 0.02
 
 
-def assign_unique_uv(obj, tile_index, piece_i, piece_n):
+def piece_span(obj):
+    xs = [v.co.x for v in obj.data.vertices]
+    ys = [v.co.y for v in obj.data.vertices]
+    zs = [v.co.z for v in obj.data.vertices]
+    return max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 0.04)
+
+
+def assign_island_uv(obj, su, sv, suw, svh):
     mesh = obj.data
     if not mesh.uv_layers:
         mesh.uv_layers.new(name="UVMap")
     uv = mesh.uv_layers.active
-    u0, v0, scale = tile_uv_rect(tile_index)
-    if piece_n == 1:
-        su, sv, suw, svh = u0 + scale * 0.04, v0 + scale * 0.04, scale * 0.92, scale * 0.92
-    elif piece_i == 0:
-        su, sv, suw, svh = u0 + scale * 0.03, v0 + scale * 0.03, scale * 0.52, scale * 0.94
-    else:
-        rest = piece_n - 1
-        cols = 2 if rest > 1 else 1
-        rows = int(math.ceil(rest / cols))
-        idx = piece_i - 1
-        c = idx % cols
-        r = idx // cols
-        du = (scale * 0.42) / cols
-        dv = scale / rows
-        su = u0 + scale * 0.56 + c * du + du * 0.06
-        sv = v0 + r * dv + dv * 0.06
-        suw = du * 0.88
-        svh = dv * 0.88
     xs = [v.co.x for v in mesh.vertices]
     ys = [v.co.y for v in mesh.vertices]
     zs = [v.co.z for v in mesh.vertices]
@@ -1148,18 +1374,78 @@ def assign_unique_uv(obj, tile_index, piece_i, piece_n):
     sx = max(1e-5, xmax - xmin)
     sy = max(1e-5, ymax - ymin)
     sz = max(1e-5, zmax - zmin)
-    # plan XY for top-facing, mix in Z so walls get unique texels
     for li, loop in enumerate(mesh.loops):
         v = mesh.vertices[loop.vertex_index]
         u = (v.co.x - xmin) / sx
         vv = (v.co.y - ymin) / sy
-        if sy < 0.04 and sz > sy:
+        if sy < 0.05 and sz > sy:
+            vv = (v.co.z - zmin) / sz
+        elif sz > sy * 1.4 and abs(v.normal.z) < 0.45:
             vv = (v.co.z - zmin) / sz
         uv.data[li].uv = (su + u * suw, sv + vv * svh)
 
 
+def assign_unique_uv(obj, tile_index, piece_i, piece_n):
+    """Back-compat single-piece mapper. Prefer pack_variant_uvs."""
+    u0, v0, scale = tile_uv_rect(tile_index)
+    role = obj.get("sf_role") or ""
+    if is_host_role(role):
+        su, sv, suw, svh = u0 + scale * 0.03, v0 + scale * 0.03, scale * 0.36, scale * 0.94
+    else:
+        rest = max(1, piece_n - 1)
+        cols = 2 if rest > 1 else 1
+        rows = int(math.ceil(rest / cols))
+        idx = max(0, piece_i - 1) if is_host_role(role) is False else piece_i
+        c = idx % cols
+        r = idx // cols
+        du = (scale * 0.58) / cols
+        dv = scale / rows
+        su = u0 + scale * 0.40 + c * du + du * 0.04
+        sv = v0 + r * dv + dv * 0.04
+        suw = du * 0.90
+        svh = dv * 0.90
+    assign_island_uv(obj, su, sv, suw, svh)
+
+
+def pack_variant_uvs(pieces, tile_index):
+    """Host strip + large ore/cavity islands targeting ~160 px/wu on visible walls."""
+    u0, v0, scale = tile_uv_rect(tile_index)
+    hosts = [p for p in pieces if p is not None and is_host_role(p.get("sf_role") or "")]
+    ores = [p for p in pieces if p is not None and p not in hosts]
+    # host: left 34% of the tile
+    if hosts:
+        for i, obj in enumerate(hosts):
+            rows = max(1, len(hosts))
+            dv = scale * 0.94 / rows
+            su = u0 + scale * 0.02
+            sv = v0 + scale * 0.03 + i * dv
+            assign_island_uv(obj, su, sv + dv * 0.04, scale * 0.32, dv * 0.90)
+    # ore / cavity: remaining 62% split by span so walls keep texel density
+    if ores:
+        weights = [piece_span(o) for o in ores]
+        total = sum(weights) or 1.0
+        ore_u0 = u0 + scale * 0.36
+        ore_w = scale * 0.62
+        # pack as rows of 1–2 islands, taller pieces get more height
+        n = len(ores)
+        cols = 2 if n > 2 else 1
+        rows = int(math.ceil(n / cols))
+        for i, obj in enumerate(ores):
+            c = i % cols
+            r = i // cols
+            du = ore_w / cols
+            dv = scale / rows
+            # bias island size by span, keep a usable minimum
+            frac = max(0.55, min(1.0, weights[i] / (total / n)))
+            su = ore_u0 + c * du + du * 0.04
+            sv = v0 + r * dv + dv * 0.04
+            assign_island_uv(obj, su, sv, du * 0.90 * frac, dv * 0.90)
+
+
 def vertex_ao_curv(obj):
+    """AO only at ore/host contacts and true cavity interiors. Exposed facets stay 1.0."""
     mesh = obj.data
+    role = obj.get("sf_role") or obj.get("spacefaceRole") or ""
     n = len(mesh.vertices)
     ao = np.ones(n, dtype=np.float32)
     curv = np.zeros(n, dtype=np.float32)
@@ -1168,7 +1454,6 @@ def vertex_ao_curv(obj):
         mesh.calc_normals_split()
     except Exception:
         mesh.update()
-    # adjacency
     adj = [[] for _ in range(n)]
     for tri in mesh.loop_triangles:
         idx = list(tri.vertices)
@@ -1176,13 +1461,11 @@ def vertex_ao_curv(obj):
             adj[idx[a]].append(idx[(a + 1) % 3])
             adj[idx[a]].append(idx[(a + 2) % 3])
     normals = np.zeros((n, 3), dtype=np.float32)
+    hostish = is_host_role(role)
+    cavity = role in CAVITY_ROLES or role == "gas_mouth"
     for i, v in enumerate(mesh.vertices):
         normals[i] = v.normal
         z = v.co.z
-        if z < 0.0:
-            ao[i] *= 0.32
-        elif z < 0.02:
-            ao[i] *= 0.70 + 0.30 * (z / 0.02)
         occ = 0.0
         k = 0
         for j in adj[i]:
@@ -1196,8 +1479,19 @@ def vertex_ao_curv(obj):
         if k:
             occ /= k
             curv[i] /= k
-        ao[i] *= 1.0 - 0.62 * occ
-        ao[i] = float(max(0.16, min(1.0, ao[i])))
+        ao[i] = 1.0
+        if cavity or z < -0.02:
+            depth = min(1.0, max(0.0, (-z) / 0.22))
+            ao[i] = 0.22 + 0.28 * (1.0 - depth)
+        elif hostish:
+            if occ > 0.62:
+                ao[i] = 1.0 - 0.28 * min(1.0, (occ - 0.62) / 0.38)
+        else:
+            if z < 0.028:
+                ao[i] = 0.58 + 0.42 * max(0.0, z / 0.028)
+            elif occ > 0.58:
+                ao[i] = 1.0 - 0.30 * min(1.0, (occ - 0.58) / 0.42)
+        ao[i] = float(max(0.18, min(1.0, ao[i])))
     return ao, curv, normals
 
 
@@ -1300,13 +1594,50 @@ def rasterize_object(obj, albedo, orm, nrm):
     return
 
 
+def _bump_field(wx, wy, wz, kind):
+    """Surface-scale fracture / oxide / ice normals. Not family-ID flat color."""
+    if kind in (None, "none", "facet"):
+        return np.zeros_like(wx), np.zeros_like(wy)
+    if kind == "fracture":
+        bx = 0.22 * np.sin(wx * 18.0 + wy * 3.4) * np.cos(wy * 14.0)
+        by = 0.18 * np.cos(wx * 11.0 - wy * 16.0)
+        seam = np.exp(-((wx * 0.9 + wy * 0.2) * 6.0 - np.round((wx * 0.9 + wy * 0.2) * 6.0)) ** 2 * 40.0)
+        bx += 0.16 * seam
+    elif kind == "quartz":
+        bx = 0.12 * np.sin(wx * 22.0) * np.cos(wy * 19.0)
+        by = 0.12 * np.cos(wx * 17.0 + wy * 21.0)
+    elif kind == "oxide":
+        bx = 0.20 * np.sin(wx * 9.5 + wy * 7.0) + 0.10 * np.sin(wx * 28.0)
+        by = 0.16 * np.cos(wy * 10.0 - wx * 6.0)
+    elif kind == "crust":
+        bx = 0.18 * np.sin(wx * 13.0 + wy * 15.0)
+        by = 0.18 * np.cos(wx * 16.0 - wy * 12.0)
+    elif kind == "ice":
+        crack = np.exp(-((wy * 5.5) - np.round(wy * 5.5)) ** 2 * 80.0)
+        crack2 = np.exp(-((wx * 4.2 + wy * 1.1) - np.round(wx * 4.2 + wy * 1.1)) ** 2 * 70.0)
+        bx = 0.28 * crack - 0.14 * crack2
+        by = 0.22 * crack2 + 0.10 * np.sin(wx * 30.0 + wz * 8.0)
+    else:
+        bx = 0.10 * np.sin(wx * 12.0)
+        by = 0.10 * np.cos(wy * 12.0)
+    return bx.astype(np.float32), by.astype(np.float32)
+
+
 def rasterize_object_fixed(obj, albedo, orm, nrm):
     mesh = obj.data
     role = obj.get("sf_role") or obj.get("spacefaceRole") or "host_silicate"
     spec = ROLES.get(role, ROLES["host_silicate"])
     base = np.array(spec["rgb"], dtype=np.float32)
+    host_rgb = np.array(ROLES["host_ice"]["rgb"] if role == "ice_film" else ROLES.get("host_silicate")["rgb"],
+                        dtype=np.float32)
+    if role == "ice_film":
+        host_rgb = np.array(ROLES["host_ice"]["rgb"], dtype=np.float32)
     rough0 = spec["rough"]
     metal0 = spec["metal"]
+    hostish = is_host_role(role)
+    if hostish:
+        metal0 = min(HOST_METAL_MAX, metal0)
+    bump_kind = spec.get("bump", "none")
     if not mesh.uv_layers:
         return
     uv_layer = mesh.uv_layers.active
@@ -1363,21 +1694,44 @@ def rasterize_object_fixed(obj, albedo, orm, nrm):
         ww0, ww1, ww2 = w0[mask], w1[mask], w2[mask]
         aov = ww0 * ao[ids[0]] + ww1 * ao[ids[1]] + ww2 * ao[ids[2]]
         cv = ww0 * curv[ids[0]] + ww1 * curv[ids[1]] + ww2 * curv[ids[2]]
+        wx = ww0 * p[0].x + ww1 * p[1].x + ww2 * p[2].x
+        wy = ww0 * p[0].y + ww1 * p[1].y + ww2 * p[2].y
+        wz = ww0 * p[0].z + ww1 * p[1].z + ww2 * p[2].z
         nx = ww0 * nrm_v[0].x + ww1 * nrm_v[1].x + ww2 * nrm_v[2].x
         ny = ww0 * nrm_v[0].y + ww1 * nrm_v[1].y + ww2 * nrm_v[2].y
         nz = ww0 * nrm_v[0].z + ww1 * nrm_v[1].z + ww2 * nrm_v[2].z
-        nts_x = nx * T.x + ny * T.y + nz * T.z
-        nts_y = nx * B.x + ny * B.y + nz * B.z
-        nts_z = nx * N.x + ny * N.y + nz * N.z
+        # The mesh already carries its geometric normal. Baking that normal a
+        # second time into tangent space made broad ice/exotic faces shade black
+        # when planar-projected side islands shared an atlas sub-rect. The map
+        # carries only authored micro-relief; geometry supplies macro form.
+        nts_x = np.zeros_like(nx)
+        nts_y = np.zeros_like(ny)
+        nts_z = np.ones_like(nz)
+        bx, by = _bump_field(wx, wy, wz, bump_kind)
+        nts_x = nts_x + bx
+        nts_y = nts_y + by
         length = np.sqrt(nts_x * nts_x + nts_y * nts_y + nts_z * nts_z)
         length = np.maximum(length, 1e-6)
         nts_x, nts_y, nts_z = nts_x / length, nts_y / length, nts_z / length
         iy = yy[mask].astype(np.int32)
         ix = xx[mask].astype(np.int32)
-        exposed = np.clip(aov, 0.16, 1.0)
-        col = base[None, :] * (0.78 + 0.22 * exposed[:, None])
-        rough = np.clip(rough0 + cv * 0.18 - (exposed - 0.6) * 0.12, 0.04, 0.98)
-        metal = np.clip(metal0 * (0.72 + 0.28 * exposed) - cv * 0.08, 0.0, 1.0)
+        exposed = np.clip(aov, 0.18, 1.0)
+        if role == "ice_film":
+            thick = np.clip((wz - 0.018) / 0.055, 0.15, 1.0)
+            sheen = np.array((0.902, 0.961, 0.965), dtype=np.float32)
+            col = host_rgb[None, :] * (1.0 - thick[:, None]) + base[None, :] * thick[:, None]
+            col = col * (0.82 + 0.18 * thick[:, None]) + sheen[None, :] * (0.10 * thick[:, None])
+            metal = np.zeros_like(exposed)
+            rough = np.clip(rough0 + (1.0 - thick) * 0.12 + cv * 0.08, 0.06, 0.55)
+        elif hostish:
+            grain = 0.04 * np.sin(wx * 9.0 + wy * 7.0)
+            col = base[None, :] * (0.96 + grain[:, None])
+            metal = np.full_like(exposed, metal0)
+            rough = np.clip(rough0 + cv * 0.10, 0.30, 0.98)
+        else:
+            col = base[None, :] * (0.92 + 0.08 * exposed[:, None])
+            metal = np.clip(metal0, 0.0, 1.0)
+            rough = np.clip(rough0 + cv * 0.14 - (exposed - 0.7) * 0.08, 0.04, 0.98)
         albedo[iy, ix, :3] = col
         albedo[iy, ix, 3] = 1.0
         orm[iy, ix, 0] = exposed
@@ -1746,7 +2100,7 @@ def build_kit():
     orm[..., 0] = 1.0
     orm[..., 1] = 0.8
     orm[..., 3] = 1.0
-    albedo[..., :3] = (0.35, 0.30, 0.24)
+    albedo[..., :3] = (0.478, 0.412, 0.333)
     albedo[..., 3] = 1.0
 
     records = []
@@ -1768,12 +2122,12 @@ def build_kit():
             pieces = BUILDERS[spec["form"]](spec, lod, kit)
             live = []
             authored = [p for p in pieces if p is not None]
-            for pi, obj in enumerate(authored):
+            for obj in authored:
                 apply_transforms(obj)
-                assign_unique_uv(obj, spec["tile"], pi, max(1, len(authored)))
                 obj.parent = empty
                 obj.location = (0, 0, 0)
                 live.append(obj)
+            pack_variant_uvs(live, spec["tile"])
             if lod == 0:
                 for obj in live:
                     rasterize_object_fixed(obj, albedo, orm, nrm)
@@ -1821,11 +2175,8 @@ def build_kit():
         }))
 
     print(f"atlas rasterized from {len(lod0_pieces_for_bake)} LOD0 pieces")
-    # AO into albedo
-    albedo[..., 0] *= 0.90 + 0.10 * orm[..., 0]
-    albedo[..., 1] *= 0.90 + 0.10 * orm[..., 0]
-    albedo[..., 2] *= 0.90 + 0.10 * orm[..., 0]
     np.clip(albedo, 0.0, 1.0, out=albedo)
+    np.clip(orm, 0.0, 1.0, out=orm)
 
     img_a, path_a = write_pixels("inclusion_kit_atlas_basecolor", albedo, ATLAS, "sRGB")
     img_o, path_o = write_pixels("inclusion_kit_atlas_orm", orm, ATLAS, "Non-Color")
@@ -1927,6 +2278,40 @@ def build_kit():
     }
 
 
+def kit_bbox_xy(variant_roots):
+    xs, ys = [], []
+    margin = FOOTPRINT * 0.52
+    for empty, _ in variant_roots:
+        xs.append(empty.location.x)
+        ys.append(empty.location.y)
+    return min(xs) - margin, max(xs) + margin, min(ys) - margin, max(ys) + margin
+
+
+def edge_grid_preoffset(variant_roots):
+    """Reposition the review grid so the legal works_edge camera keeps all 18 in frame.
+
+    Does not change object size or the 120 px/cell camera. The shared camera still
+    applies its object_offset; we slide the kit first so the combined result fits.
+    """
+    xmin, xmax, ymin, ymax = kit_bbox_xy(variant_roots)
+    extent_x, extent_y = works_frustum(PX_PER_CELL_WORK)
+    ox, oy, _ = works_edge_offset((1.0, 0.0), PX_PER_CELL_WORK)
+    bbox_cx = 0.5 * (xmin + xmax)
+    bbox_cy = 0.5 * (ymin + ymax)
+    bbox_hx = 0.5 * (xmax - xmin)
+    bbox_hy = 0.5 * (ymax - ymin)
+    pad = 0.20
+    desired_cx = extent_x * 0.5 * EDGE_INSET - bbox_hx - pad
+    desired_cy = 0.0
+    # After render_works_still adds (ox, oy), we want bbox centre at (desired_cx, desired_cy).
+    extra_x = desired_cx - ox - bbox_cx
+    extra_y = desired_cy - oy - bbox_cy
+    # Keep vertical span inside the frustum too.
+    if bbox_hy + abs(extra_y + oy) > extent_y * 0.46:
+        extra_y = -oy - bbox_cy
+    return extra_x, extra_y
+
+
 def render_evidence(built):
     cam = setup_works_world()
     pad = make_pad()
@@ -1939,7 +2324,20 @@ def render_evidence(built):
     # kit sheets: LOD0 for top/edge, LOD1 for site
     set_lod_visibility(variant_roots, 0)
     render_named(cam, EVIDENCE / "works_top_kit.png", "works_top", (0, 0, 0.08), targets)
+    extra_x, extra_y = edge_grid_preoffset(variant_roots)
+    saved = [(e, e.location.copy()) for e, _ in variant_roots]
+    pad_saved = pad.location.copy()
+    for empty, _ in variant_roots:
+        empty.location.x += extra_x
+        empty.location.y += extra_y
+    pad.location.x += extra_x
+    pad.location.y += extra_y
+    bpy.context.view_layer.update()
     render_named(cam, EVIDENCE / "works_edge_kit.png", "works_edge", (0, 0, 0.08), targets, (1, 0))
+    for empty, loc in saved:
+        empty.location = loc
+    pad.location = pad_saved
+    bpy.context.view_layer.update()
     set_lod_visibility(variant_roots, 1)
     render_named(cam, EVIDENCE / "works_site_kit.png", "works_site", (0, 0, 0.08), targets)
 
@@ -2055,9 +2453,9 @@ def write_hashes_and_inventory(built, evidence_names):
     inv["bytes"] = MASTER_GLB.stat().st_size
     inv["sha256"] = hashes["masterGlb"]
     inv["placeSha256"] = hashes["placeGlb"]
-    (SOURCE / "inclusion_kit_inventory.json").write_text(json.dumps(inv, indent=2) + "\n", encoding="utf-8")
-    (SOURCE / "HASHES.json").write_text(json.dumps(hashes, indent=2) + "\n", encoding="utf-8")
-    (EVIDENCE / "HASHES.json").write_text(json.dumps(hashes["evidence"], indent=2) + "\n", encoding="utf-8")
+    write_json_lf(SOURCE / "inclusion_kit_inventory.json", inv)
+    write_json_lf(SOURCE / "HASHES.json", hashes)
+    write_json_lf(EVIDENCE / "HASHES.json", hashes["evidence"])
     ledger = {
         "assetId": ASSET_ID,
         "cycle": CYCLE,
@@ -2069,20 +2467,67 @@ def write_hashes_and_inventory(built, evidence_names):
             "G4": "open",
             "G7": "open",
         },
-        "scope": "kit_cycle_01",
-        "notes": "Cycle 01 source kit. Not wired. Independent review required before G1/G2/G4.",
+        "scope": "kit_cycle_02",
+        "notes": "Cycle 02 geological host/material/site correction. Cycle 01 evidence preserved. Not wired. Independent review required before G1/G2/G4.",
+        "cycle01MasterGlb": "473A81F922168DEE8C3A622465205B9D68E2F8622F66EC499FD57D672A166D96",
+        "hostMetalMax": HOST_METAL_MAX,
+        "texelTargetPxPerWu": TEXEL_TARGET,
     }
-    (FAMILY / "TECHNIQUE_LEDGER.json").write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+    write_json_lf(FAMILY / "TECHNIQUE_LEDGER.json", ledger)
     return hashes, inv
+
+
+def glb_node_names(path: Path):
+    data = path.read_bytes()
+    if data[:4] != b"glTF" or len(data) < 20:
+        return []
+    json_len = struct.unpack_from("<I", data, 12)[0]
+    payload = bytes(data[20:20 + json_len]).rstrip(b" \x00")
+    gltf = json.loads(payload)
+    return [n.get("name", "") for n in gltf.get("nodes", [])]
+
+
+def freeze_cycle_01(errors):
+    hash_path = EVIDENCE_C1 / "HASHES.json"
+    if not hash_path.exists():
+        errors.append("cycle_01 HASHES.json missing")
+        return
+    frozen = json.loads(hash_path.read_text(encoding="utf-8"))
+    for name, digest in frozen.items():
+        p = EVIDENCE_C1 / name
+        if not p.exists():
+            errors.append(f"cycle_01 evidence missing {name}")
+            continue
+        got = sha256(p)
+        if got != digest:
+            errors.append(f"cycle_01 evidence mutated {name}")
 
 
 def run_checks(inv, hashes, require_stills=True):
     errors = []
+
+    def check_digest(label, path, expected):
+        if not expected:
+            errors.append(f"missing recorded hash {label}")
+            return
+        if not path.exists():
+            errors.append(f"missing hashed file {label}: {path}")
+            return
+        got = sha256(path)
+        if got != expected:
+            errors.append(f"hash mismatch {label}: {got} != {expected}")
+
+    if inv.get("cycle") != CYCLE:
+        errors.append(f"inventory cycle {inv.get('cycle')} != {CYCLE}")
     names = [v["id"] for v in inv["variants"]]
+    expected = [v["id"] for v in VARIANTS]
+    if names != expected:
+        errors.append("variant id order/set mismatch")
     if len(names) != len(set(names)):
         errors.append("duplicate variant ids")
-    if len(names) < 18:
-        errors.append("need >= 18 variants")
+    if len(names) != 18:
+        errors.append("need exactly 18 variants")
+    freeze_cycle_01(errors)
     families = {}
     for v in inv["variants"]:
         families.setdefault(v["family"], []).append(v)
@@ -2117,12 +2562,33 @@ def run_checks(inv, hashes, require_stills=True):
         glb = VAR_DIR / f"{v['id']}.glb"
         if not glb.exists():
             errors.append(f"missing {glb}")
+        else:
+            check_digest(f"variant {v['id']}", glb, hashes.get("variants", {}).get(v["id"]))
+            nodes = glb_node_names(glb)
+            if v["id"] not in nodes:
+                errors.append(f"{v['id']} missing local root")
+            for lod in (0, 1, 2):
+                want = f"LOD{lod}_{v['id']}"
+                if want not in nodes:
+                    errors.append(f"{v['id']} missing {want}")
     for p in (MASTER_GLB, PLACE_GLB, BLEND_PATH):
         if not p.exists():
             errors.append(f"missing {p}")
+    check_digest("masterGlb", MASTER_GLB, hashes.get("masterGlb"))
+    check_digest("placeGlb", PLACE_GLB, hashes.get("placeGlb"))
+    check_digest("blend", BLEND_PATH, hashes.get("blend"))
+    master_nodes = glb_node_names(MASTER_GLB) if MASTER_GLB.exists() else []
+    if MASTER_ROOT not in master_nodes:
+        errors.append("master missing kit root")
+    for v in VARIANTS:
+        if f"LOD0_{v['id']}" not in master_nodes:
+            errors.append(f"master missing LOD0_{v['id']}")
     for key in ("basecolor", "orm", "normal"):
-        if not (ROOT / inv["atlas"][key]).exists():
+        atlas_path = ROOT / inv["atlas"][key]
+        if not atlas_path.exists():
             errors.append(f"missing atlas {key}")
+        else:
+            check_digest(f"atlas {key}", atlas_path, hashes.get("atlas", {}).get(key))
     if hashes["masterGlb"] != hashes["placeGlb"]:
         errors.append("place glb hash != master")
     required_stills = [
@@ -2139,8 +2605,10 @@ def run_checks(inv, hashes, require_stills=True):
         for name in required_stills:
             if not (EVIDENCE / name).exists():
                 errors.append(f"missing still {name}")
+    for name, expected in hashes.get("evidence", {}).items():
+        check_digest(f"evidence {name}", EVIDENCE / name, expected)
     report = {"ok": not errors, "errors": errors, "variants": len(names)}
-    (SOURCE / "CHECK_REPORT.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    write_json_lf(SOURCE / "CHECK_REPORT.json", report)
     if errors:
         raise RuntimeError("checks failed: " + "; ".join(errors))
     return report
