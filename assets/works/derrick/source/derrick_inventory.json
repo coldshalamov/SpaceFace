@@ -5,9 +5,9 @@
   "partsSource": "assets/ships/parts/works/place_works_derrick.glb",
   "blend": "assets/works/derrick/source/derrick.blend",
   "lodTriangles": {
-    "lod0": 6696,
-    "lod1": 1232,
-    "lod2": 856
+    "lod0": 7072,
+    "lod1": 1304,
+    "lod2": 896
   },
   "hooks": [
     "drum_spin",
@@ -55,7 +55,7 @@
       6.49
     ]
   },
-  "bytes": 16121924,
-  "sha256": "DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75",
-  "partsSha256": "DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75"
+  "bytes": 15605772,
+  "sha256": "BBACB1168BB8E697B0F69EF5D5D15D327455964C35B80E6CB5911B356B755865",
+  "partsSha256": "BBACB1168BB8E697B0F69EF5D5D15D327455964C35B80E6CB5911B356B755865"
 }

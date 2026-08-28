@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""PQ-131.05 Cycle 02 focused checks: JSON, Python, root, hook, LOD, hash, freeze.
+"""PQ-131.05 Cycle 03 focused checks: JSON, Python, root, hook, LOD, hash, freeze.
 
-Run from repo root after the Cycle 02 builder:
+Run from repo root after the Cycle 03 builder:
 
-    python assets/works/derrick/check_cycle02.py
+    python assets/works/derrick/check_cycle03.py
 """
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ FAMILY = ROOT / "assets" / "works" / "derrick"
 SOURCE = FAMILY / "source"
 CYCLE1 = FAMILY / "evidence" / "cycle_001"
 CYCLE2 = FAMILY / "evidence" / "cycle_002"
-DIAG = CYCLE2 / "diagnostics"
+CYCLE3 = FAMILY / "evidence" / "cycle_003"
+DIAG = CYCLE3 / "diagnostics"
 BUILDER = ROOT / "tools" / "blender" / "build_works_derrick.py"
 PART = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_derrick.glb"
 ROOT_NAME = "SF_WORKS_DERRICK_V1"
@@ -88,7 +89,7 @@ def crop_stills():
         "works_top.png", "works_top_clay.png", "works_edge.png",
         "works_edge_grazing.png", "works_site.png", "hook_identity.png",
     ):
-        path = CYCLE2 / name
+        path = CYCLE3 / name
         if not path.exists():
             report[name] = {"missing": True}
             continue
@@ -149,7 +150,8 @@ def main() -> int:
         SOURCE / "derrick_inventory.json",
         CYCLE1 / "HASHES.json",
         CYCLE1 / "EPOCH.json",
-        CYCLE2 / "EPOCH.json",
+        CYCLE2 / "HASHES.json",
+        CYCLE3 / "EPOCH.json",
         FAMILY / "reference" / "CONTACT_SHEET_LABELS.json",
     ]
     parsed = {}
@@ -167,7 +169,7 @@ def main() -> int:
         errors.append(f"Python syntax: {exc}")
 
     inv = parsed.get(SOURCE / "derrick_inventory.json") or {}
-    epoch = parsed.get(CYCLE2 / "EPOCH.json") or {}
+    epoch = parsed.get(CYCLE3 / "EPOCH.json") or {}
     contract = parsed.get(FAMILY / "MATERIAL_CONTRACT.json") or {}
     hashes = parsed.get(FAMILY / "HASHES.json") or {}
     freeze = parsed.get(CYCLE1 / "HASHES.json") or {}
@@ -176,10 +178,10 @@ def main() -> int:
         errors.append(f"root {inv.get('root')} != {ROOT_NAME}")
     if contract.get("root") != ROOT_NAME:
         errors.append("MATERIAL_CONTRACT root mismatch")
-    if epoch.get("cycle") != 2:
-        errors.append(f"epoch cycle {epoch.get('cycle')} != 2")
-    if hashes.get("cycle") != 2:
-        errors.append(f"HASHES cycle {hashes.get('cycle')} != 2")
+    if epoch.get("cycle") != 3:
+        errors.append(f"epoch cycle {epoch.get('cycle')} != 3")
+    if hashes.get("cycle") != 3:
+        errors.append(f"HASHES cycle {hashes.get('cycle')} != 3")
 
     found_hooks = list(inv.get("hooks") or [])
     missing_hooks = [h for h in HOOKS if h not in found_hooks]
@@ -227,6 +229,17 @@ def main() -> int:
         if actual != expected:
             errors.append(f"cycle_001 mutated {name}")
 
+    frozen_cycle2 = parsed.get(CYCLE2 / "HASHES.json") or {}
+    if frozen_cycle2.get("cycle") != 2:
+        errors.append("cycle_002 HASHES freeze missing or invalid")
+    for name, expected in (frozen_cycle2.get("stills") or {}).items():
+        path = CYCLE2 / name
+        if not path.exists():
+            errors.append(f"cycle_002 missing {name}")
+            continue
+        if sha256(path) != expected:
+            errors.append(f"cycle_002 mutated {name}")
+
     if hashes.get("combinedSha256") and inv.get("sha256") and hashes["combinedSha256"] != inv["sha256"]:
         errors.append("HASHES combinedSha256 != inventory sha256")
 
@@ -235,7 +248,7 @@ def main() -> int:
         errors.append("joined cable/drum LOD0 meshes missing")
 
     crops = {}
-    if CYCLE2.exists():
+    if CYCLE3.exists():
         crops = crop_stills()
         site = crops.get("works_site.png") or {}
         if site.get("crop") and max(site["crop"]) > 80:

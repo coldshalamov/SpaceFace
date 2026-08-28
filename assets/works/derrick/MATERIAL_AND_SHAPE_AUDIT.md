@@ -1,10 +1,11 @@
-# Surface derrick — material and shape audit (Cycle 02)
+# Surface derrick — material and shape audit (Cycle 03)
 
-Candidate `DD5349314927145925C84D42E27776DF650CEBE999801416630752C6EEDE5C75` · root `SF_WORKS_DERRICK_V1` · disposition `review_pending`.
+Candidate `BBACB1168BB8E697B0F69EF5D5D15D327455964C35B80E6CB5911B356B755865` · root `SF_WORKS_DERRICK_V1` · disposition `review_pending`.
 
-Cycle 01 edge construction is retained: planted shoes, I-beam web/flanges, splice plates,
-crown portal, open well, offset grated deck and ladder. Cycle 02 removes A-plane rung fill,
-offsets the winch, and routes the cable over a crown sheave into the empty shaft.
+Cycle 01/02 construction is retained: planted shoes, open I-beam A-frames, crown portal,
+open well, offset winch/cable path, grated deck and ladder. Cycle 03 replaces the capped
+lamp-cone read with hollow cast hoods and recessed lenses, and gives each physical shoe an
+exposed anchor plate that survives the legal site register.
 
 ## Shape grammar
 
@@ -17,7 +18,7 @@ offsets the winch, and routes the cable over a crown sheave into the empty shaft
 | Head sheave | Grooved wheel in cheek plates on the crown | Cable turns from rise to drop | works_top / edge |
 | Cable | Coils + rise loft + drop loft | Leaves `cable_anchor` tangent, over sheave, down the well | works_top |
 | Platform | Frame + modelled grate bars | Guarded, offset +X, not a roof | works_top / edge |
-| Lamps | Socket + tilted hood + recessed lens | Hood/mouth readable at 120 px, emission off | works_top / edge |
+| Lamps | Socket + hollow tilted casting + recessed lens | Dark hood/mouth readable at 120 px before warm glass | works_top / edge |
 
 Unresolved blockout risk: grate bars are rectangular stock; a later cycle may add checker-plate
 nosing if reviewers call the deck a comb.
@@ -32,13 +33,13 @@ Maps are mesh-derived AO / tangent normal / pointiness curvature, composited int
 
 ## LOD
 
-LOD0 6696 / 12000. LOD1 1232 / 3000.
-LOD2 856 / 900. Four shoe corners, open shaft marker, A-planform,
+LOD0 7072 / 12000. LOD1 1304 / 3000.
+LOD2 896 / 900. Four materially separated shoe corners, open shaft marker, A-planform,
 drum/sheave path, platform, and both lamps survive. Hidden faces evaluated per LOD only.
 
 ## Remaining visual risk (honest)
 
-- Site register (~19 px/cell, straight down) still flattens three-cell height; identity is the
-  four-shoe diamond, the dark collar hole, and the head-frame mass — not a filled rounded square.
+- Site register (~19 px/cell, straight down) still flattens three-cell height; the four exposed
+  anchor plates must remain visually separate around the dark collar hole.
 - I-beam webs may alias at 120 px.
 - Independent G1/G2/G4 review has not run.

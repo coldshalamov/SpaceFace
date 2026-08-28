@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "assetId": "place_works_derrick",
   "packet": "PQ-131.05",
-  "cycle": 2,
+  "cycle": 3,
   "applicability": "required_for_all_changed_camera_visible_3d",
   "componentReferenceDecision": "not_needed",
   "workingScene": "tools/blender/build_works_derrick.py",
@@ -37,10 +37,18 @@
       {
         "component": "hooded work lamps",
         "functionOriginAndServiceContext": "Paired fixtures on the crown looking into the shaft.",
-        "substrateManufactureAndFinish": "Cast hood, socket, recessed warm glass lens.",
-        "interfacesLoadAccessAndHeatPaths": "Arm from crown beam; hood mouth tilted toward the well so the rim reads from works_top.",
-        "expectedOpticalResponse": "Hood/socket/mouth with emission off; only the lens emits.",
+        "substrateManufactureAndFinish": "Hollow cast dark-steel hood, socket, physically recessed warm glass lens.",
+        "interfacesLoadAccessAndHeatPaths": "Arm from crown beam; open hood mouth tilted toward the well so its thick dark rim survives works_top before the smaller lens.",
+        "expectedOpticalResponse": "Two dark hood/socket masses with smaller restrained lenses; fixture remains legible with emission off.",
         "forbiddenReads": ["pinprick", "glowing sphere", "emissive bar"]
+      },
+      {
+        "component": "four planted shoe interfaces",
+        "functionOriginAndServiceContext": "Four folded pads transfer the A-frame load into the asteroid crust.",
+        "substrateManufactureAndFinish": "Dark alkyd folded steel shoe with a smaller exposed metallic anchor plate and interface bolts.",
+        "interfacesLoadAccessAndHeatPaths": "Each leg terminates through gussets into its own plate; the exposed plate stays inside the physical shoe footprint.",
+        "expectedOpticalResponse": "Four separate corner masses at works_site, materially separated from the dark frame without glow, stripe, outline, or padding.",
+        "forbiddenReads": ["dark square frame", "silhouette padding", "yellow-black stripe", "outline"]
       }
     ]
   },

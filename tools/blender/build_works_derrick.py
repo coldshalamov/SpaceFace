@@ -1,14 +1,15 @@
-"""PQ-131.05 Works surface derrick / head-frame — Cycle 02 source candidate.
+"""PQ-131.05 Works surface derrick / head-frame — Cycle 03 source candidate.
 
 Cycle 01 edge load-path is preserved: four planted shoes, I-beam web/flanges/
 splice plates, crown portal, open well, offset grated service deck and ladder.
 
-Cycle 02 revises top and site identity:
+Cycle 02 established the accepted head-frame, winch path, open well, and LOD
+silhouette. Cycle 03 preserves those reads and repairs two exact review defects:
   * A-planes are open A-leg pairs (no rung/ladder-truss fill, no X-grid)
   * winch drum -> visible tangent -> head sheave -> descent into the shaft
   * well/collar stays empty; tower-over-hole reads at 120 px/cell
-  * lamp hood/socket response, not pinpricks
-  * LOD1/2 site silhouette: four shoe corners, open central shaft, tall head-frame
+  * hollow dark lamp hoods with genuinely recessed, restrained warm lenses
+  * four load-bearing shoe plates that remain distinct at the legal site register
   * restrained orange edge wear; no yellow-black shoe stripes
 
 Exact write set:
@@ -18,7 +19,7 @@ Exact write set:
 
     blender --background --python tools/blender/build_works_derrick.py
 
-Not wired, not released, not promoted. Cycle 01 evidence is frozen in place.
+Not wired, not released, not promoted. Cycle 01/02 evidence is frozen in place.
 Kit GLBs are cited shape references only and are never imported.
 """
 from __future__ import annotations
@@ -54,7 +55,8 @@ SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 REF_DIR = FAMILY / "reference"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
+CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_003"
 DIAG_DIR = EVIDENCE_DIR / "diagnostics"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 BLEND_PATH = SOURCE_DIR / "derrick.blend"
@@ -63,7 +65,7 @@ ASSET_ID = "place_works_derrick"
 ROOT_NAME = "SF_WORKS_DERRICK_V1"
 HOOK_NAMES = ("drum_spin", "cable_anchor", "lamp_L", "lamp_R")
 LOD_ROOTS = ("LOD0_derrick", "LOD1_derrick", "LOD2_derrick")
-CYCLE = 2
+CYCLE = 3
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 12000, 1: 3000, 2: 900}
 TEX_SIZE = {0: 2048, 1: 1024, 2: 512}
@@ -78,6 +80,12 @@ CROWN_Z = 6.22
 SHOE_H = 0.10
 SHOE_XY = (0.36, 0.30)
 SHOE_XY_SITE = (0.40, 0.34)
+SHOE_CAP_XY = {
+    0: (0.30, 0.24),
+    1: (0.34, 0.28),
+    2: (0.34, 0.28),
+}
+SHOE_CAP_H = {0: 0.018, 1: 0.032, 2: 0.032}
 COLLAR_R0, COLLAR_R1 = 0.38, 0.56
 COLLAR_Z0, COLLAR_Z1 = 0.012, 0.16
 
@@ -395,6 +403,38 @@ def add_annulus(name, r0, r1, z0, z1, n, role, collection, bevel=0.004):
         b = ((s + 1) % 4) * n
         for i in range(n):
             j = (i + 1) % n
+            faces.append((a + i, a + j, b + j, b + i))
+    return add_mesh(name, verts, faces, role, collection, bevel)
+
+
+def add_frustum_shell(name, back, mouth, neck_outer, neck_inner, mouth_outer,
+                      mouth_inner, role, collection, sides=12, bevel=0.003):
+    """Build an open cast hood with real wall thickness along an arbitrary axis."""
+    back = Vector(back)
+    mouth = Vector(mouth)
+    tangent = mouth - back
+    if tangent.length < 1e-8:
+        raise ValueError(f"{name}: hood axis is degenerate")
+    circles = []
+    for centre, radius in (
+        (back, neck_outer),
+        (mouth, mouth_outer),
+        (mouth, mouth_inner),
+        (back, neck_inner),
+    ):
+        pts = [
+            (radius * math.cos(i * 2.0 * math.pi / sides),
+             radius * math.sin(i * 2.0 * math.pi / sides))
+            for i in range(sides)
+        ]
+        circles.append(ring_at(centre, tangent, (0, 1, 0), pts))
+    verts = [point for ring in circles for point in ring]
+    faces = []
+    for ring_a, ring_b in ((0, 1), (1, 2), (2, 3), (3, 0)):
+        a = ring_a * sides
+        b = ring_b * sides
+        for i in range(sides):
+            j = (i + 1) % sides
             faces.append((a + i, a + j, b + j, b + i))
     return add_mesh(name, verts, faces, role, collection, bevel)
 
@@ -857,7 +897,7 @@ def atlas_material(maps, lod, emissive=False):
         if key in bsdf.inputs:
             nt.links.new(tex_c.outputs["Color"], bsdf.inputs[key])
         if "Emission Strength" in bsdf.inputs:
-            bsdf.inputs["Emission Strength"].default_value = 2.4
+            bsdf.inputs["Emission Strength"].default_value = 1.35
     mat["spacefaceRole"] = "atlas"
     return mat
 
@@ -895,15 +935,18 @@ def build_aframes(lod, collection):
                 f"shoe_{side}_{tag}", shoe_loc,
                 (shoe_xy[0], shoe_xy[1], SHOE_H), "structure", collection, bevel=bevel,
             ))
-            if lod >= 1:
-                # A real exposed anchor plate gives each planted shoe one stable
-                # site-register pixel. This is the load interface, not a livery
-                # stripe or silhouette pad.
-                objs.append(add_box(
-                    f"shoe_cap_{side}_{tag}",
-                    (sx * FOOT_X, sy * Y_FRAME, SHOE_H + 0.006),
-                    (0.22, 0.18, 0.012), "interface", collection, bevel=0.0,
-                ))
+            # A real exposed anchor plate separates the four load interfaces at
+            # both legal registers. The site LOD spends two-to-three pixels on
+            # each plate while remaining inside the physical folded shoe; this
+            # is material/load-path preservation, never outline padding.
+            cap_xy = SHOE_CAP_XY[lod]
+            cap_h = SHOE_CAP_H[lod]
+            objs.append(add_box(
+                f"shoe_cap_{side}_{tag}",
+                (sx * FOOT_X, sy * Y_FRAME, SHOE_H + cap_h * 0.5),
+                (cap_xy[0], cap_xy[1], cap_h), "interface", collection,
+                bevel=0.002 if lod == 0 else 0.0,
+            ))
             if lod < 2:
                 inward = Vector((-sx * 0.16, 0.0, 0.22))
                 p0 = Vector((sx * FOOT_X - sx * 0.12, sy * Y_FRAME, SHOE_H))
@@ -1228,15 +1271,17 @@ def build_platform(lod, collection):
 
 def build_lamps(lod, collection):
     bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
-    segs = {0: 12, 1: 8, 2: 6}[lod]
+    # Five cast facets at LOD2 preserve the far hood mass while keeping the
+    # complete authored representation inside its fixed 900-triangle budget.
+    segs = {0: 12, 1: 8, 2: 5}[lod]
     housings = {"L": [], "R": []}
     lenses = {}
-    mouth = {0: 0.13, 1: 0.14, 2: 0.16}[lod]
-    neck = {0: 0.048, 1: 0.055, 2: 0.07}[lod]
-    depth = {0: 0.15, 1: 0.14, 2: 0.13}[lod]
+    mouth = {0: 0.18, 1: 0.18, 2: 0.17}[lod]
+    neck = {0: 0.065, 1: 0.070, 2: 0.075}[lod]
+    depth = {0: 0.22, 1: 0.20, 2: 0.18}[lod]
     for tag, loc, ysign in (("L", LAMP_L, 1.0), ("R", LAMP_R, -1.0)):
-        # Tip the hood toward the well so works_top sees a rim and a dark mouth,
-        # not a pinprick on the crown.
+        # Tip the mouth toward the well. Unlike the previous capped cone, this
+        # is a hollow casting: works_top sees a dark wall/rim before the lens.
         rot = (math.radians(40.0 * ysign), math.radians(26.0), 0.0)
         housings[tag].append(add_box(
             f"lamp_arm_{tag}", (0.0, loc.y * 0.55, loc.z - 0.02),
@@ -1247,22 +1292,26 @@ def build_lamps(lod, collection):
             0.055 if lod else 0.050, 0.08, "structure", collection,
             verts=segs, bevel=bevel, rot=rot,
         ))
-        hood_off = Vector((
+        direction = Vector((
             math.sin(rot[1]) * (depth * 0.38),
             -math.sin(rot[0]) * (depth * 0.38),
             -math.cos(rot[1]) * math.cos(rot[0]) * (depth * 0.38),
+        )).normalized()
+        hood_back = Vector(loc) + direction * 0.025
+        hood_mouth = hood_back + direction * depth
+        housings[tag].append(add_frustum_shell(
+            f"lamp_hood_{tag}", hood_back, hood_mouth,
+            neck, neck * 0.55, mouth, mouth * 0.72,
+            "structure", collection, sides=segs, bevel=bevel,
         ))
-        hood_loc = (loc.x + hood_off.x, loc.y + hood_off.y, loc.z + hood_off.z)
-        housings[tag].append(add_cone(
-            f"lamp_hood_{tag}", hood_loc,
-            mouth, neck, depth, "structure", collection, verts=segs, bevel=bevel, rot=rot,
-        ))
-        lens_off = hood_off * 1.55
+        # The glass sits behind the mouth plane, leaving a physically dark
+        # annulus even when emission is on. Its face tracks the cast hood axis.
+        lens_c = hood_back + direction * (depth * 0.66)
+        lens_rot = direction.to_track_quat("Z", "Y").to_euler()
         lens = add_cyl(
             f"lamp_lens_{tag}",
-            (loc.x + lens_off.x, loc.y + lens_off.y, loc.z + lens_off.z),
-            mouth * 0.42, 0.018, "lamp", collection,
-            verts=max(6, segs - 2), bevel=0.0, rot=rot,
+            tuple(lens_c), mouth * 0.48, 0.016, "lamp", collection,
+            verts=max(6, segs - 2), bevel=0.0, rot=tuple(lens_rot),
         )
         lenses[tag] = lens
     return housings, lenses
@@ -2057,12 +2106,13 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
     epoch = {
         "schema": "spaceface.worksDerrickCycleEpoch.v1",
         "cycle": CYCLE,
-        "epoch": "cycle_002",
+        "epoch": "cycle_003",
         "disposition": "review_pending",
         "state": "design_candidate",
         "gates": {"G0": "evidence_ready", "G1": "open", "G2": "open", "G4": "open", "G7": "open"},
         "independentReview": "not_launched",
         "cycle01Preserved": True,
+        "cycle02Preserved": True,
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -2093,8 +2143,9 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         "bboxBlenderZUp": inventory["bbox"],
         "camera": stills,
         "notes": [
-            "Cycle 02 source candidate only. Not wired, not released, not accepted.",
-            "Cycle 01 evidence under evidence/cycle_001/ is frozen and was not rewritten.",
+            "Cycle 03 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 01/02 evidence is frozen and was not rewritten.",
+            "Cycle 03 repairs the Cycle 02 review's two defects: lamp fixture readability and distinct site-register shoe masses.",
             "A-planes are open A-leg pairs: one A-bar and splice plates, no rung/X-grid fill.",
             "Causal cable path: drum tangent -> crown sheave -> drop through the empty well.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
@@ -2104,13 +2155,14 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
     }
     write_text_lf(EVIDENCE_DIR / "EPOCH.json", json.dumps(epoch, indent=2) + "\n")
 
-    audit = f"""# Surface derrick — material and shape audit (Cycle 02)
+    audit = f"""# Surface derrick — material and shape audit (Cycle 03)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
 
-Cycle 01 edge construction is retained: planted shoes, I-beam web/flanges, splice plates,
-crown portal, open well, offset grated deck and ladder. Cycle 02 removes A-plane rung fill,
-offsets the winch, and routes the cable over a crown sheave into the empty shaft.
+Cycle 01/02 construction is retained: planted shoes, open I-beam A-frames, crown portal,
+open well, offset winch/cable path, grated deck and ladder. Cycle 03 replaces the capped
+lamp-cone read with hollow cast hoods and recessed lenses, and gives each physical shoe an
+exposed anchor plate that survives the legal site register.
 
 ## Shape grammar
 
@@ -2123,7 +2175,7 @@ offsets the winch, and routes the cable over a crown sheave into the empty shaft
 | Head sheave | Grooved wheel in cheek plates on the crown | Cable turns from rise to drop | works_top / edge |
 | Cable | Coils + rise loft + drop loft | Leaves `cable_anchor` tangent, over sheave, down the well | works_top |
 | Platform | Frame + modelled grate bars | Guarded, offset +X, not a roof | works_top / edge |
-| Lamps | Socket + tilted hood + recessed lens | Hood/mouth readable at 120 px, emission off | works_top / edge |
+| Lamps | Socket + hollow tilted casting + recessed lens | Dark hood/mouth readable at 120 px before warm glass | works_top / edge |
 
 Unresolved blockout risk: grate bars are rectangular stock; a later cycle may add checker-plate
 nosing if reviewers call the deck a comb.
@@ -2139,13 +2191,13 @@ Maps are mesh-derived AO / tangent normal / pointiness curvature, composited int
 ## LOD
 
 LOD0 {inspect['lodTriangles']['lod0']} / 12000. LOD1 {inspect['lodTriangles']['lod1']} / 3000.
-LOD2 {inspect['lodTriangles']['lod2']} / 900. Four shoe corners, open shaft marker, A-planform,
+LOD2 {inspect['lodTriangles']['lod2']} / 900. Four materially separated shoe corners, open shaft marker, A-planform,
 drum/sheave path, platform, and both lamps survive. Hidden faces evaluated per LOD only.
 
 ## Remaining visual risk (honest)
 
-- Site register (~19 px/cell, straight down) still flattens three-cell height; identity is the
-  four-shoe diamond, the dark collar hole, and the head-frame mass — not a filled rounded square.
+- Site register (~19 px/cell, straight down) still flattens three-cell height; the four exposed
+  anchor plates must remain visually separate around the dark collar hole.
 - I-beam webs may alias at 120 px.
 - Independent G1/G2/G4 review has not run.
 """
@@ -2312,12 +2364,24 @@ def freeze_cycle_001() -> None:
         shutil.copy2(family_hashes, freeze)
 
 
+def freeze_cycle_002() -> None:
+    """Snapshot the reviewed Cycle 02 hashes before Cycle 03 replaces family HASHES."""
+    CYCLE_002_DIR.mkdir(parents=True, exist_ok=True)
+    freeze = CYCLE_002_DIR / "HASHES.json"
+    family_hashes = FAMILY / "HASHES.json"
+    if not freeze.exists() and family_hashes.exists():
+        current = json.loads(family_hashes.read_text(encoding="utf-8"))
+        if current.get("cycle") == 2:
+            shutil.copy2(family_hashes, freeze)
+
+
 def main():
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     REF_DIR.mkdir(parents=True, exist_ok=True)
     freeze_cycle_001()
+    freeze_cycle_002()
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     DIAG_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,9 +1,12 @@
-# Works surface derrick / head-frame — Cycle 02 reference brief
+# Works surface derrick / head-frame — Cycle 03 reference brief
 
 **Asset:** `place_works_derrick` (PQ-131.05). **Class:** place / station module, works camera only.
-**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 02 of ≥5.
-G1/G2/G4 whole-asset stay open; this cycle records `review_pending` and does not launch reviewers.
-Cycle 01 evidence under `evidence/cycle_001/` is frozen.
+**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 03 of ≥5.
+The exact-hash Cycle 02 review accepted structure, role, and load path, then returned `REVISE` for
+two normal-camera defects only: lamp fixtures read as warm pinpricks at `works_top`, and the four
+shoes collapsed into a dark square frame at `works_site`. Cycle 03 changes only those outcomes.
+G1/G2/G4 whole-asset stay open; the Cycle 03 exact candidate remains `review_pending`.
+Cycle 01/02 evidence is frozen.
 
 Supported cameras (live `tools/blender/spaceface_works_camera.py`, never a studio three-quarter):
 
@@ -71,13 +74,13 @@ shaft. Orange exists only as restrained edge wear and one kick-plate mark; never
 | A-frame legs | Wide-flange I-beam (rolled section), splice plates at mid-height, gusseted into shoes and into a crown knee. Dark alkyd over zinc phosphate. |
 | A-bar / splice | One I-strut per A-plane at mid-height; splice plates on the web at the joints. No diagonals, no rungs. |
 | Portal | Crown beam plus one platform-side portal. Nothing crosses or fills the well. |
-| Base shoes | Folded plate pads with stiffener gussets and a bolt circle into the crust. Underside at z = 0. No yellow-black stripe. |
+| Base shoes | Folded plate pads with stiffener gussets, exposed metallic anchor plates, and a bolt circle into the crust. Underside at z = 0. No yellow-black stripe or outline padding. |
 | Shaft collar | Short circular curb around the open well; the hole is empty; the drum does not sit on it. |
 | Winch / drum | Machined drum with flanges, through-spindle, two pillow-block bearings on a −X skid. Heat/oil around the gearbox. Parent: `drum_spin`. |
 | Head sheave | Grooved wheel in cheek plates on the crown beam. Turns the cable from the rise into the shaft. |
 | Cable / umbilical | Coils on the drum; leaves at the **payout tangent** (`cable_anchor`); rises to the sheave; drops through the collar. Greasy jacket, not a laser. |
 | Service platform | Grated floor (modelled bars), kick plate, two-rail guard, ladder from a +X shoe. Dry galvanised / dusty. |
-| Lamps | Cast hood + socket + recessed lens, one port, one starboard on the crown. Only the lens emits. Parents: `lamp_L`, `lamp_R`. |
+| Lamps | Hollow cast hood + socket + physically recessed lens, one port, one starboard on the crown. The dark rim is readable before the restrained lens; only the lens emits. Parents: `lamp_L`, `lamp_R`. |
 | Fasteners | Modelled hex heads at shoe/leg, bearing/skid, and platform brackets. Not texture studs. |
 
 ---
@@ -156,7 +159,7 @@ Working scene: `tools/blender/build_works_derrick.py`.
 World: dark. Key `0xffdcbc` raking, real shadows. Rim `0x9db8f0` weak. Fill `0xd8c3a8` weak.
 ≈5:1 key:fill. Bevels must exist. Cavities must be real. Orange is a marking, not a light.
 
-G0–G7: Cycle 02 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
+G0–G7: Cycle 03 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
 
 ---
 
@@ -175,9 +178,10 @@ before any surface row is `implemented`.
 3. **Clay vs textured** — form holds in `works_top_clay.png`.
 4. **Causal winch path** — flanges, spindle, pillow blocks, visible tangent, crown sheave, drop into the hole.
 5. **Platform is grated and guarded** — bars, kick, rails, ladder; not a slab roof.
-6. **Lamps are fixtures** — hood / socket / recessed lens; readable with emission off at 120 px.
+6. **Lamps are fixtures** — hollow dark hood / socket / recessed lens; readable with emission off at 120 px, not a warm pinprick.
 7. **Orange discipline** — edge wear + one kick mark; never rover yellow; never yellow-black shoe tape.
-8. **Hooks / envelope / LOD** — 4/4 names; bbox inside the cell; LOD1/2 keep four shoes, open shaft, A, drum/sheave, platform, lamps.
+8. **Hooks / envelope / LOD** — 4/4 names; bbox inside the cell; LOD1/2 keep four distinct physical shoe/anchor masses, open shaft, A, drum/sheave, platform, lamps.
 
-Cycle 02 weakest expected: site-register height (top-down 19 px will flatten the tower — identity
-then depends on four shoe corners, the dark collar hole, and the head-frame mass).
+Cycle 03 close conditions: `works_top` must show two dark hood masses surrounding smaller recessed
+warm lenses; `works_site` must show four separate corner shoes around the dark collar hole. Neither
+result may come from camera enlargement, glow, outline, or footprint padding.
