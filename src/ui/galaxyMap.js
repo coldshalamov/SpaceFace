@@ -5262,7 +5262,7 @@ export const galaxyMapScreen = {
           <div class="gm-stamp">Nav chart / Survey table</div>
         </div>
         <div class="gm-search-container">
-          <input type="text" class="gm-search-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" />
+          <input type="text" class="gm-search-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" spellcheck="false" autocomplete="off" />
           <span class="gm-search-kbd" aria-hidden="true">/</span>
           <div class="gm-search-results" hidden></div>
         </div>

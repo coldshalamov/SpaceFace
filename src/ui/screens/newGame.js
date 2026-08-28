@@ -226,7 +226,10 @@ export const newGameScreen = {
     nameLabel.htmlFor = 'sf-ng-pilot-name';
     nameRow.appendChild(nameLabel);
     const nameCtl = el('div', 'sf-ctl');
+    // spellcheck/autocapitalize off: a pilot callsign is not prose — the browser's red squiggle
+    // and capitalization suggestions are noise on a name field.
     const name = el('input'); name.id = 'sf-ng-pilot-name'; name.type = 'text'; name.maxLength = 20; name.value = 'Wren'; name.style.flex = '1';
+    name.spellcheck = false; name.autocapitalize = 'off'; name.autocomplete = 'off';
     nameCtl.appendChild(name); nameRow.appendChild(nameCtl); body.appendChild(nameRow);
 
     // Difficulty
@@ -264,6 +267,7 @@ export const newGameScreen = {
     seed.inputMode = 'numeric';
     seed.maxLength = 10;
     seed.placeholder = 'Random';
+    seed.spellcheck = false; seed.autocomplete = 'off';
     seed.setAttribute('aria-describedby', 'sf-ng-seed-desc');
     seed.style.flex = '1';
     seedCtl.appendChild(seed); seedRow.appendChild(seedCtl); body.appendChild(seedRow);

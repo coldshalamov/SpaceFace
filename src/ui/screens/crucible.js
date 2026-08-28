@@ -385,6 +385,7 @@ export const crucibleScreen = {
     const seedInput = document.createElement('input');
     seedInput.type = 'text';
     seedInput.inputMode = 'numeric';
+    seedInput.spellcheck = false; seedInput.autocomplete = 'off';
     seedInput.setAttribute('aria-label', 'Run seed');
     seedInput.value = String(previous ? previous.seed : freshSeed());
     seedRow.appendChild(seedInput);

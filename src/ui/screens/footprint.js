@@ -854,13 +854,13 @@ export const footprintScreen = {
 
     this._drawerControls.innerHTML = `
       <label class="fp-control">Outcome filter
-        <input type="text" data-fp-filter="outcome" value="${escapeAttr(this._drawerFilters.outcome || '')}" placeholder="destroyed / surrendered / ...">
+        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="outcome" value="${escapeAttr(this._drawerFilters.outcome || '')}" placeholder="destroyed / surrendered / ...">
       </label>
       <label class="fp-control">Faction filter
-        <input type="text" data-fp-filter="faction" value="${escapeAttr(this._drawerFilters.faction || '')}" placeholder="Concord / Reach / ...">
+        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="faction" value="${escapeAttr(this._drawerFilters.faction || '')}" placeholder="Concord / Reach / ...">
       </label>
       <label class="fp-control">Sector filter
-        <input type="text" data-fp-filter="sector" value="${escapeAttr(this._drawerFilters.sector || '')}" placeholder="sector id">
+        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="sector" value="${escapeAttr(this._drawerFilters.sector || '')}" placeholder="sector id">
       </label>
       <button type="button" class="fp-sort" data-fp-act="toggle-sort">Sort: ${sort === 'time' ? 'time' : '|delta|'}</button>`;
 
