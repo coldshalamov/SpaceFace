@@ -19,6 +19,7 @@
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { admitReceipt, RECEIPT_MAX } from './hudAttention.js';
+import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 
 const MAX = RECEIPT_MAX;
@@ -34,12 +35,43 @@ export function createToasts(ctx) {
     hud.appendChild(root);
   }
   if (root && root.classList) root.classList.add('sf-receipts');
-  const liveRegion = document.getElementById('toast-live');
+  let liveRegion = document.getElementById('toast-live');
   const live = []; // { el, born, ttl }
   let nextWakeAt = Infinity;
   let lastAnnounced = '';
   // Last focus outside the toast feed — restored when the final focused toast leaves.
   let lastExternalFocus = null;
+
+  // createHud() wipes #hud with innerHTML='' AFTER this module moves the feed into it (uiRoot
+  // creates toasts before it builds the hud), which used to leave push() writing into a detached
+  // node — every receipt in the game silently invisible, live region included. Re-attach on first
+  // use and re-resolve the live region, then take the reserved receipt lane immediately so the
+  // first card never flashes at the CSS fallback position over the command deck.
+  function ensureConnected() {
+    if (root && !root.isConnected) {
+      (hud || document.body).appendChild(root);
+      liveRegion = document.getElementById('toast-live');
+      positionLane();
+    }
+  }
+
+  function positionLane() {
+    // Mirrors hud.js placeReceiptLane: the reserved receipt lane, bottom-anchored above the
+    // command-deck readout band so cards grow upward and never fight the speed/weapon row for
+    // hover. Imported lazily via the layout resolver to avoid pulling the whole hud module graph
+    // at boot.
+    if (!root) return;
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
+    const lane = resolveObjectiveHudLayout(w, h).receipt;
+    if (!lane) return;
+    root.style.left = `${Math.round(lane.x)}px`;
+    root.style.top = 'auto';
+    root.style.width = `${Math.round(lane.width)}px`;
+    root.style.bottom = `${Math.round(lane.bottomInset)}px`;
+    root.style.right = 'auto';
+    root.style.transform = 'none';
+  }
 
   function announceStatus(text, count = 1) {
     if (!liveRegion || !text) return;
@@ -140,6 +172,7 @@ export function createToasts(ctx) {
 
   function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false } = {}) {
     if (!root || !text) return;
+    ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no

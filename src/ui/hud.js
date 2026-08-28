@@ -4574,9 +4574,11 @@ export function createHud(ctx, alerts) {
     const lane = layout.receipt;
     if (!lane) return;
     setStyle(laneRoot, 'left', `${Math.round(lane.x)}px`);
-    setStyle(laneRoot, 'top', `${Math.round(lane.y)}px`);
+    setStyle(laneRoot, 'top', 'auto');
     setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
-    setStyle(laneRoot, 'bottom', 'auto');
+    // Bottom-anchored: the stack must clear the command-deck readout band (see
+    // receiptLaneRect) and grow upward, never down into the speed/weapon row.
+    setStyle(laneRoot, 'bottom', `${Math.round(lane.bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
   }

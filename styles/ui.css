@@ -131,7 +131,10 @@ body.sf-flight-cursor #hud { cursor: none; }
   opacity: 0; transition: opacity 0.4s ease-in-out; }
 #sf-dock-overlay[hidden] { display: none !important; }
 #sf-dock-overlay.active { opacity: 1; }
-#toasts { left: calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom: 96px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
+/* #toasts is absolutely placed; it is usually re-parented into #hud by toasts.js, so it cannot
+   rely on the `#ui-root > div` absolute rule — without an explicit position its left/top are
+   inert and the receipt lane renders at the top of #hud's flow. */
+#toasts { position: absolute; left: calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom: 155px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
 #alerts { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; transform: none; z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }

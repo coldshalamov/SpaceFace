@@ -190,11 +190,18 @@ export function receiptLaneRect(layout) {
   const action = layout.action;
   const width = Math.min(action.width, 360);
   const height = 44;
+  // The command-deck readout band (.sf-cluster: bottom:92px + ~55px tall) sits directly above the
+  // action row. A lane anchored to action.y lands inside that band, which is where receipts and
+  // the speed/weapon readouts used to fight for hover. Anchor the stack ABOVE the band instead —
+  // appliers pin `bottom: bottomInset` and cards flow upward.
+  // 155 = cluster bottom offset (92) + measured band height (~55) + 8px gap.
+  const bottomInset = 155;
   return {
     x: action.x + (action.width - width) / 2,
-    y: Math.max(layout.viewport.y + 8, action.y - height - 8),
+    y: Math.max(layout.viewport.y + 8, action.y - height - 8 - 59),
     width,
     height,
+    bottomInset,
   };
 }
 
