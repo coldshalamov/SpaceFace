@@ -19,9 +19,12 @@
 
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { admitReceipt, RECEIPT_MAX } from './hudAttention.js';
+import { glyphSvg } from './glyphs.js';
 
 const MAX = RECEIPT_MAX;
-const KIND_ICON = { success: '✓', good: '✓', error: '✕', danger: '✕', warn: '!', info: '›', credits: '¢', rep: '◈' };
+// Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
+// font-specific glyph coverage and read as a different visual language from the HUD line set).
+const KIND_ICON = { success: 'ok', good: 'ok', error: 'err', danger: 'err', warn: 'warn', info: 'info', credits: 'credits', rep: 'rep' };
 
 export function createToasts(ctx) {
   const { bus } = ctx;
@@ -182,7 +185,7 @@ export function createToasts(ctx) {
     const icon = document.createElement('span');
     icon.className = 'sf-toast__icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = KIND_ICON[kind] || '›';
+    icon.innerHTML = glyphSvg(KIND_ICON[kind] || 'info', 12);
     const body = document.createElement('span');
     body.className = 'sf-toast__text';
     body.textContent = text;

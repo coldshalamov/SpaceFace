@@ -26,6 +26,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
+import { glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 
@@ -359,12 +360,12 @@ export function createTargetPanel(ctx) {
       <span class="sf-target__dist mono">0 wu</span>
     </div>
     <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
-      style="display:none;margin-top:2px;font-size:12px;line-height:1.3;letter-spacing:.05em;color:var(--visor-amber);"></div>
+      style="display:none;margin-top:2px;font-size:12px;line-height:1.3;letter-spacing:.05em;color:var(--visor-amber);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__identity mono" style="display:none"></div>
     <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:12px;line-height:1.3;letter-spacing:.04em;color:var(--text-primary);"></div>
     <div class="sf-target__meta">
       <span class="sf-target__range mono" style="color:var(--visor-amber);"></span>
-      <span class="sf-target__closing mono"></span>
+      <span class="sf-target__closing mono"><span data-glyph aria-hidden="true"></span><span data-txt></span></span>
     </div>
     <div class="sf-target__triangle" style="display:none">
       <span class="sf-target__tri-label mono">VULN</span>
@@ -373,9 +374,9 @@ export function createTargetPanel(ctx) {
       <span class="sf-tri sf-tri--x" tabindex="0" role="img" aria-label="Vulnerability to explosives" data-why="Explosive"><span class="sf-tri__k">X</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
       <span class="sf-target__tri-layer mono"></span>
     </div>
-    <div class="sf-target__weak mono" style="display:none"></div>
+    <div class="sf-target__weak mono" style="display:none"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__component mono" role="button" tabindex="0" aria-label="Cycle target component"
-      style="display:none;margin-top:3px;font-size:12px;letter-spacing:.05em;pointer-events:auto;cursor:pointer;padding:2px 6px;border:1px solid var(--console-edge,rgba(120,160,200,.35));border-radius:4px;color:var(--text-primary);"></div>
+      style="display:none;margin-top:3px;font-size:12px;letter-spacing:.05em;pointer-events:auto;cursor:pointer;padding:2px 6px;border:1px solid var(--console-edge,rgba(120,160,200,.35));border-radius:4px;color:var(--text-primary);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__gimmick mono" style="display:none"></div>`;
 
   const elName = el.querySelector('.sf-target__name');
@@ -386,6 +387,8 @@ export function createTargetPanel(ctx) {
   const elRangeFill = el.querySelector('.sf-target__rangefill');
   const elDist = el.querySelector('.sf-target__dist');
   const elClose = el.querySelector('.sf-target__closing');
+  const elCloseGlyph = elClose.querySelector('[data-glyph]');
+  const elCloseTxt = elClose.querySelector('[data-txt]');
   const elGimmick = el.querySelector('.sf-target__gimmick');
   const elTriangle = el.querySelector('.sf-target__triangle');
   const triE = el.querySelector('.sf-tri--e');
@@ -397,10 +400,18 @@ export function createTargetPanel(ctx) {
   const elTriLayer = el.querySelector('.sf-target__tri-layer');
   const elWeak = el.querySelector('.sf-target__weak');
   const elComponent = el.querySelector('.sf-target__component');
+  // Engagement marks render as SVG glyphs (src/ui/glyphs.js) beside text spans, so game-data
+  // strings keep flowing through the textContent-only channel (never innerHTML).
+  const elWeakGlyph = elWeak.querySelector('[data-glyph]');
+  const elWeakTxt = elWeak.querySelector('[data-txt]');
+  const elComponentGlyph = elComponent.querySelector('[data-glyph]');
+  const elComponentTxt = elComponent.querySelector('[data-txt]');
   const elIdentity = el.querySelector('.sf-target__identity');
   const elIntent = el.querySelector('.sf-target__intent');
   const elRange = el.querySelector('.sf-target__range');
   const elEngaged = el.querySelector('.sf-target__engaged');
+  const elEngagedGlyph = elEngaged.querySelector('[data-glyph]');
+  const elEngagedTxt = elEngaged.querySelector('[data-txt]');
   let lastEngagedKey = null;
   let lastTriKey = null;
   let lastIdentityKey = null;
@@ -427,6 +438,7 @@ export function createTargetPanel(ctx) {
   let lastRangeScale = '';
   let lastCloseText = '';
   let lastCloseColor = '';
+  let lastCloseGlyph = '';
   let tickN = 0;
 
   function setText(node, text) {
@@ -458,7 +470,8 @@ export function createTargetPanel(ctx) {
     // The divergence row: the one thing the panel could not previously say.
     if (gunRead.text !== lastEngagedKey) {
       lastEngagedKey = gunRead.text;
-      setText(elEngaged, gunRead.text);
+      if (!elEngagedGlyph.firstChild) elEngagedGlyph.innerHTML = glyphSvg('guns_lock', 11);
+      setText(elEngagedTxt, gunRead.text.replace('⌖ ', ''));
       const show = gunRead.text ? 'block' : 'none';
       if (elEngaged.style.display !== show) elEngaged.style.display = show;
     }
@@ -541,7 +554,8 @@ export function createTargetPanel(ctx) {
     // the revealed entry in options.weakPoint). Tells the player what to hit and roughly where.
     const wp = options.weakPoint;
     if (wp && wp.label && (t.type === 'ship' || t.type === 'drone')) {
-      setText(elWeak, `◈ WEAK: ${wp.label}${wp.hint ? ' · ' + wp.hint : ''}`);
+      if (!elWeakGlyph.firstChild) elWeakGlyph.innerHTML = glyphSvg('weakpoint', 11);
+      setText(elWeakTxt, `WEAK: ${wp.label}${wp.hint ? ' · ' + wp.hint : ''}`);
       if (elWeak.style.display !== 'block') elWeak.style.display = 'block';
     } else if (elWeak.style.display !== 'none') {
       elWeak.style.display = 'none';
@@ -558,7 +572,8 @@ export function createTargetPanel(ctx) {
       const compKey = `${tid}:${comps.length}:${selLabel || ''}`;
       if (compKey !== lastComponentKey) {
         lastComponentKey = compKey;
-        setText(elComponent, selLabel ? `◎ COMPONENT: ${selLabel}` : `◎ COMPONENT · ${comps.length} · click to target`);
+        if (!elComponentGlyph.firstChild) elComponentGlyph.innerHTML = glyphSvg('component', 11);
+        setText(elComponentTxt, selLabel ? `COMPONENT: ${selLabel}` : `COMPONENT · ${comps.length} · click to target`);
         const active = !!selLabel;
         if (elComponent.style.borderColor !== (active ? 'var(--visor-amber)' : '')) {
           elComponent.style.borderColor = active ? 'var(--visor-amber)' : '';
@@ -644,9 +659,11 @@ export function createTargetPanel(ctx) {
       const rvx = t.vel.x - p.vel.x, rvz = t.vel.z - p.vel.z;
       const inv = dist > 0.001 ? 1 / dist : 0;
       const closing = -((rvx * dx + rvz * dz) * inv);
-      const closeText = (closing >= 0 ? '▲' : '▼') + ' ' + Math.abs(Math.round(closing)) + ' wu/s';
+      const closeText = Math.abs(Math.round(closing)) + ' wu/s';
+      const closeGlyph = closing >= 0 ? 'closing' : 'opening';
       const closeColor = closing >= 0 ? 'var(--danger)' : 'var(--good)';
-      if (closeText !== lastCloseText) { elClose.textContent = closeText; lastCloseText = closeText; }
+      if (closeGlyph !== lastCloseGlyph) { elCloseGlyph.innerHTML = glyphSvg(closeGlyph, 10); lastCloseGlyph = closeGlyph; }
+      if (closeText !== lastCloseText) { elCloseTxt.textContent = closeText; lastCloseText = closeText; }
       if (closeColor !== lastCloseColor) { elClose.style.color = closeColor; lastCloseColor = closeColor; }
     }
   }

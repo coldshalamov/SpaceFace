@@ -1625,7 +1625,10 @@ function injectHudCss() {
   body.ui-modal-open .sf-toast { pointer-events:none; cursor:default; }
   .sf-toast--in { transform:none; opacity:1; }
   .sf-toast--out { transform:none; opacity:0; }
-  .sf-toast__icon { font-family:var(--mono); font-size:13px; color:var(--accent); }
+  .sf-toast__icon { display:flex; align-items:center; font-family:var(--mono); font-size:13px; color:var(--accent); }
+  /* Shared inline-SVG glyphs (src/ui/glyphs.js): sit on the text baseline like the marks they
+     replaced and never stretch inside flex rows. */
+  svg.sf-glyph { display:inline-block; vertical-align:-0.15em; flex:none; }
   .sf-toast--success, .sf-toast--good { border-left-color:var(--good); }
   .sf-toast--success .sf-toast__icon, .sf-toast--good .sf-toast__icon { color:var(--good); }
   .sf-toast--error, .sf-toast--danger { border-left-color:var(--danger); }

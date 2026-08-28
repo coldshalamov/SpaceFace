@@ -21,6 +21,7 @@ import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
+import { glyphSvg } from './glyphs.js';
 import { SHIPS } from '../data/ships.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -3542,13 +3543,9 @@ export function createHud(ctx, alerts) {
     }
     const isGhost = e.data && (e.data.isGhost || e.data.ghost || e.data.kind === 'unknown');
     const data = SEMANTIC_PALETTE[iff] || SEMANTIC_PALETTE.neutral;
-    let icon = data.icon;
-    if (isGhost) {
-      if (iff === 'hostile') icon = '△';
-      else if (iff === 'friendly') icon = '◇';
-      else if (iff === 'neutral') icon = '□';
-      else if (iff === 'ally') icon = '▽';
-    }
+    // Roster glyphs render through src/ui/glyphs.js (inline SVG), keyed to the same silhouettes as
+    // SEMANTIC_PALETTE.shape; the dashed ghost_* variants mark unconfirmed contacts.
+    const icon = isGhost ? `ghost_${iff}` : `iff_${iff}`;
     return {
       iff,
       color: `var(${data.cssVar})`,
@@ -3557,32 +3554,34 @@ export function createHud(ctx, alerts) {
     };
   }
 
+  // Contact-roster class glyphs — names in src/ui/glyphs.js, rendered as inline SVG. The old
+  // ⚔ ⛏ ▲ ⚹ ⎔ ⌃ text stand-ins rendered at mixed weights and depended on emoji-presentation
+  // workarounds; the SVG set reads as one coherent size/complexity ladder (scout..capital).
   function getClassGlyph(e) {
-    if (!e) return '·';
-    if (e.type === 'station') return '◆';
-    if (e.type === 'wreck') return '⛶';
-    if (e.type === 'asteroid') return '●';
-    
+    if (!e) return 'unknown';
+    if (e.type === 'station') return 'station';
+    if (e.type === 'wreck') return 'wreck';
+    if (e.type === 'asteroid') return 'asteroid';
+
     const def = e.data && e.data.defId ? SHIP_BY_ID.get(e.data.defId) : null;
     const family = (def && def.visuals && def.visuals.family) || '';
     const role = (e.role || (def && def.role) || '').toLowerCase();
-    
-    if (family === 'scout' || role.includes('scout') || role.includes('starter')) return '⌃';
-    // ⚔ defaults to color emoji on emoji-font platforms; \uFE0E keeps the roster monochrome.
-    if (family === 'fighter' || role.includes('fighter')) return '⚔\uFE0E';
-    if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return '⛃';
-    if (family === 'miner' || role.includes('miner')) return '⛏\uFE0E';
-    if (family === 'frigate' || role.includes('frigate')) return '▲';
-    if (family === 'capital' || role.includes('capital')) return '⚹';
-    if (role.includes('gunship')) return '⎔';
-    
+
+    if (family === 'scout' || role.includes('scout') || role.includes('starter')) return 'scout';
+    if (family === 'fighter' || role.includes('fighter')) return 'fighter';
+    if (family === 'freighter' || role.includes('freighter') || role.includes('cargo')) return 'freighter';
+    if (family === 'miner' || role.includes('miner')) return 'miner';
+    if (family === 'frigate' || role.includes('frigate')) return 'frigate';
+    if (family === 'capital' || role.includes('capital')) return 'capital';
+    if (role.includes('gunship')) return 'gunship';
+
     const sClass = (e.shipClass || '').toLowerCase();
-    if (sClass === 'fighter') return '⚔\uFE0E';
-    if (sClass === 'gunship') return '⎔';
-    if (sClass === 'frigate') return '▲';
-    if (sClass === 'capital') return '⚹';
-    
-    return '⌃';
+    if (sClass === 'fighter') return 'fighter';
+    if (sClass === 'gunship') return 'gunship';
+    if (sClass === 'frigate') return 'frigate';
+    if (sClass === 'capital') return 'capital';
+
+    return 'scout';
   }
 
   const overviewClock = createContactRosterClock();
@@ -3745,8 +3744,8 @@ export function createHud(ctx, alerts) {
       rec.iffIcon.style.setProperty('color', iff.color);
       rec.iffColor = iff.color;
     }
-    if (rec.icon !== iff.icon) { rec.iffIcon.textContent = iff.icon; rec.icon = iff.icon; }
-    if (rec.glyph !== glyph) { rec.glyphEl.textContent = glyph; rec.glyph = glyph; }
+    if (rec.icon !== iff.icon) { rec.iffIcon.innerHTML = glyphSvg(iff.icon, 11); rec.icon = iff.icon; }
+    if (rec.glyph !== glyph) { rec.glyphEl.innerHTML = glyphSvg(glyph, 13); rec.glyph = glyph; }
     if (rec.name !== name) { rec.nameEl.textContent = name; rec.name = name; }
     if (rec.stateWord !== sword) { rec.stateEl.textContent = sword; rec.stateWord = sword; }
     if (rec.stateCls !== stateCls) {

@@ -21,6 +21,7 @@ import { isHostileToPlayer } from '../../systems/scanner.js';
 import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
+import { drawGlyph } from '../glyphs.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -763,18 +764,9 @@ export const localmapScreen = {
     for (const ping of pings) {
       if (!ping || !ping.pos) continue;
       const x = wx(ping.pos.x), y = wz(ping.pos.z);
-      g.save();
-      g.strokeStyle = ink.goal;
-      g.fillStyle = ink.goal;
-      g.lineWidth = 1.6;
-      g.beginPath();
-      g.moveTo(x, y - 7); g.lineTo(x + 7, y); g.lineTo(x, y + 7); g.lineTo(x - 7, y); g.closePath();
-      g.stroke();
-      g.font = canvasFont(700, 12, 'data');
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText('?', x, y + 0.5);
-      g.restore();
+      // Unresolved-contact mark: dashed diamond + "?" glyph from the shared set (was a stroked
+      // diamond with a fillText '?' inside — two visual languages for one idea).
+      drawGlyph(g, 'unknown', x, y, 16, { color: ink.goal });
     }
   },
 

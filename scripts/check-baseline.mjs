@@ -100,6 +100,13 @@ const LINKS = [
     why: 'A screen that imports the wrong module boots to a blank panel. Cheapest real gate we have.',
   },
   {
+    id: 'ui-glyphs',
+    costHintMs: 300,
+    command: 'node scripts/check-ui-glyphs.mjs',
+    why: 'The shared roster/receipt/hazard/engagement glyph table feeds five HUD surfaces through '
+      + 'two channels (inline SVG + canvas Path2D); a broken entry is an invisible mark mid-flight.',
+  },
+  {
     id: 'vfx-techniques',
     costHintMs: 400,
     command: 'node scripts/check-vfx-techniques.mjs',

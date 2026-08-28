@@ -20,6 +20,7 @@
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { drawGlyph } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
@@ -9267,11 +9268,8 @@ export const galaxyMapScreen = {
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2);
         g.strokeStyle = INK.red; g.lineWidth = 1.8; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
         g.fillStyle = hexToRgba(INK.red, 0.05); g.fill();
-        const hazardGlyph = hazardTypeGlyph(z.type);
-        g.save();
-        g.fillStyle = '#f0908a'; g.font = FONT_UI(700, 12); g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(hazardGlyph, x, y);
-        g.restore();
+        const hazardGlyph = HAZARD_CANVAS_GLYPHS[z.type] || 'warn';
+        drawGlyph(g, hazardGlyph, x, y, 14, { color: '#f0908a' });
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'hazard',
@@ -10798,6 +10796,16 @@ function hazardTypeGlyph(type) {
     default: return '!';
   }
 }
+
+// Canvas channel for the same hazard marks: path-stroked glyphs (src/ui/glyphs.js) instead of
+// font text, so the map layer matches the HUD icon language. hazardTypeGlyph above stays for the
+// HTML info lists, where the marks render inline in label text.
+const HAZARD_CANVAS_GLYPHS = {
+  radiation: 'radiation',
+  nebula: 'nebula',
+  dense_asteroid: 'dense_asteroid',
+  debris: 'debris',
+};
 
 function asteroidOreGlyph(typeId) {
   switch (typeId) {
