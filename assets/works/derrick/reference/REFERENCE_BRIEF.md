@@ -1,12 +1,13 @@
-# Works surface derrick / head-frame — Cycle 03 reference brief
+# Works surface derrick / head-frame — Cycle 04 reference brief
 
 **Asset:** `place_works_derrick` (PQ-131.05). **Class:** place / station module, works camera only.
-**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 03 of ≥5.
-The exact-hash Cycle 02 review accepted structure, role, and load path, then returned `REVISE` for
-two normal-camera defects only: lamp fixtures read as warm pinpricks at `works_top`, and the four
-shoes collapsed into a dark square frame at `works_site`. Cycle 03 changes only those outcomes.
-G1/G2/G4 whole-asset stay open; the Cycle 03 exact candidate remains `review_pending`.
-Cycle 01/02 evidence is frozen.
+**Tier:** B (surface gateway of the mine). **State:** `design_candidate`. Cycle 04 of ≥5.
+The exact-hash Cycle 03 review returned `KEEP` for the lamp and four-shoe visual repairs but found
+one load-bearing export defect: all functional empties and collision exported at identity while
+their children retained world offsets. Cycle 04 changes only the final GLB hierarchy. Drum, cable,
+and lamp meshes must be pivot-local beneath correctly positioned hooks; collision must retain its
+authored transform and bounds. G1/G2/G4 whole-asset stay open and Cycle 04 remains `review_pending`.
+Cycle 01/02/03 evidence is frozen.
 
 Supported cameras (live `tools/blender/spaceface_works_camera.py`, never a studio three-quarter):
 
@@ -159,7 +160,7 @@ Working scene: `tools/blender/build_works_derrick.py`.
 World: dark. Key `0xffdcbc` raking, real shadows. Rim `0x9db8f0` weak. Fill `0xd8c3a8` weak.
 ≈5:1 key:fill. Bevels must exist. Cavities must be real. Orange is a marking, not a light.
 
-G0–G7: Cycle 03 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
+G0–G7: Cycle 04 is `evidence_ready` / `review_pending` only. G1/G2/G4 whole-asset remain open.
 
 ---
 
@@ -180,8 +181,9 @@ before any surface row is `implemented`.
 5. **Platform is grated and guarded** — bars, kick, rails, ladder; not a slab roof.
 6. **Lamps are fixtures** — hollow dark hood / socket / recessed lens; readable with emission off at 120 px, not a warm pinprick.
 7. **Orange discipline** — edge wear + one kick mark; never rover yellow; never yellow-black shoe tape.
-8. **Hooks / envelope / LOD** — 4/4 names; bbox inside the cell; LOD1/2 keep four distinct physical shoe/anchor masses, open shaft, A, drum/sheave, platform, lamps.
+8. **Hooks / envelope / LOD** — 4/4 names at their authored exported positions; every child mesh is pivot-local; collision exports its authored centre/half-extents; bbox stays inside the cell; LOD1/2 keep four distinct physical shoe/anchor masses, open shaft, A, drum/sheave, platform, lamps.
 
-Cycle 03 close conditions: `works_top` must show two dark hood masses surrounding smaller recessed
-warm lenses; `works_site` must show four separate corner shoes around the dark collar hole. Neither
-result may come from camera enlargement, glow, outline, or footprint padding.
+Cycle 04 close conditions: the final GLB must encode `drum_spin`, `cable_anchor`, `lamp_L`, and
+`lamp_R` at their authored non-identity transforms; rotating each hook must act around its own
+pivot; collision bounds must be computed from the exported transform; the legal Cycle 03 picture
+must remain unchanged in role and composition.
