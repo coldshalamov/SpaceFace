@@ -1753,6 +1753,8 @@ button:active { translate: 0 1px; }
   padding: 6px 8px;
   font: 500 13px/1.2 var(--sf-body-face);
 }
+/* Authored placeholder tint — the browser default gray reads low-contrast on the dark face. */
+.fp-control input::placeholder { color: var(--ink-mute); }
 .fp-sort {
   align-self: end;
   cursor: pointer;

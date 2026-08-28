@@ -31,6 +31,8 @@ function injectStyle() {
     pointer-events:auto; transition:border-color var(--dur) var(--ease); }
   .sf-lc__search:focus { outline:none; border-color:var(--accent);
     box-shadow:0 0 0 2px rgba(57,208,255,.18); }
+  /* Authored placeholder tint — the browser default gray reads low-contrast on the dark face. */
+  .sf-lc__search::placeholder { color:var(--ink-mute); }
   .sf-lc__chips { display:flex; gap:var(--sp-1); flex-wrap:wrap; }
   .sf-lc__chip { font-family:inherit; cursor:pointer; pointer-events:auto; border-radius:var(--r-pill);
     padding:3px 11px; font-size:var(--t-xs); letter-spacing:.04em; text-transform:uppercase;
