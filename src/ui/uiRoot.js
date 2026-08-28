@@ -2387,7 +2387,10 @@ function injectHudCss() {
      the rail labels ran into each other ("ORDNANCE ORDNANCE ORDNANCE"), the law receipt's headline
      wrapped into the band pill, and the target card's range numeral collided with its band word. */
   #hud .sf-pslot__name {
-    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;
+    /* Slot names are authored to fit now (longest: "Repel"); the old max-width+ellipsis cap is
+       what truncated "Repulsor" into "REP_" junk under the rail. The reserved sockets render no
+       name at all, so the neighbor collision that motivated the cap cannot return. */
+    max-width:none;
   }
   #hud .sf-prail__label { white-space:nowrap; }
   #hud .sf-law__head { flex-wrap:wrap; row-gap:2px; }

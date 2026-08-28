@@ -57,12 +57,16 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // (a slot the design reserves but nothing fills yet) — deliberately visible, because a gap the
 // player can SEE reads as "this fills in later", while a hidden gap reads as "there is nothing".
 export const RAIL_SLOTS = Object.freeze([
-  { index: 1, band: BAND_ORDNANCE, action: null, name: 'Ordnance', glyph: 'slot_weapon' },
-  { index: 2, band: BAND_ORDNANCE, action: null, name: 'Ordnance', glyph: 'slot_weapon' },
-  { index: 3, band: BAND_ORDNANCE, action: null, name: 'Ordnance', glyph: 'slot_weapon' },
+  // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
+  // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
+  { index: 1, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
+  { index: 2, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
+  { index: 3, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
   { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'target' },
   { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'danger' },
-  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repulsor', glyph: 'boost' },
+  // Display name shortened to fit the slot's 38px label row untruncated; the verb family
+  // (deployRepulsor, help text) keeps the full "Repulsor" name.
+  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'boost' },
   { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'slot_mining' },
   { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'slot_cargo' },
   { index: 9, band: BAND_RIG, action: null, name: 'Rig', glyph: 'slot_utility' },
@@ -218,12 +222,15 @@ function sweepSvg() {
 function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
   const art = slot.answer != null ? '' : icon(slot.glyph, 18);
+  const described = name
+    ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
+    : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
-    + ` data-band="${slot.band}" tabindex="-1" aria-label="${name}${label ? `, key ${label}` : ''}, ${slot.state}">`
+    + ` data-band="${slot.band}" tabindex="-1" aria-label="${described}">`
     + `<span class="sf-pslot__key" aria-hidden="true">${label || '·'}</span>`
     + `<span class="sf-pslot__art" aria-hidden="true">${art}</span>`
     + sweepSvg()
-    + `<span class="sf-pslot__name">${name}</span>`
+    + (name ? `<span class="sf-pslot__name">${name}</span>` : '')
     + `</button>`;
 }
 
