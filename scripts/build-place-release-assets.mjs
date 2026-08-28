@@ -126,17 +126,21 @@ export function resolveSelectedPlaceAssets(partManifest, selectedIds) {
   return selectedIds.map((id) => {
     const part = byId.get(id);
     if (!part) throw new Error(`unknown place asset id: ${id}`);
-    if (part.category !== 'places') {
+    if (part.category !== 'places' && part.category !== 'works') {
       throw new Error(`selected id is not a place asset: ${id} (${part.category || 'uncategorized'})`);
     }
     if (part.status === 'blocked') throw new Error(`blocked place asset cannot be released: ${id}`);
     const file = String(part.file || '').replace(/\\/g, '/');
-    if (!/^places\/[a-z0-9_/-]+\.glb$/.test(file) || file.includes('..')) {
-      throw new Error(`invalid place source path for ${id}: ${part.file || '<missing>'}`);
+    const works = part.category === 'works';
+    const pathPattern = works
+      ? /^works\/[a-z0-9_/-]+\.glb$/
+      : /^places\/[a-z0-9_/-]+\.glb$/;
+    if (!pathPattern.test(file) || file.includes('..')) {
+      throw new Error(`invalid ${works ? 'works' : 'place'} source path for ${id}: ${part.file || '<missing>'}`);
     }
     return {
       id,
-      kind: 'part:places',
+      kind: works ? 'part:works' : 'part:places',
       source: `assets/ships/parts/${file}`,
       release: `assets/ships/release/parts/${file}`,
     };
@@ -410,7 +414,13 @@ export function validateSelectedPlaceBuild(selectedAssets, builtEntries) {
   const selectedById = new Map(selectedAssets.map((entry) => [entry.id, entry]));
   for (const entry of builtEntries) {
     const selected = selectedById.get(entry.id);
-    if (entry.kind !== 'part:places') {
+    if (entry.kind !== selected.kind) {
+      throw new Error(
+        `selected place release kind mismatch for ${entry.id}: `
+        + `${selected.kind} -> ${entry.kind}`,
+      );
+    }
+    if (entry.kind !== 'part:places' && entry.kind !== 'part:works') {
       throw new Error(`selected place release has invalid kind for ${entry.id}: ${entry.kind}`);
     }
     if (entry.source !== selected.source) {
@@ -470,10 +480,15 @@ export function patchPlaceManifestRows(manifest, builtEntries) {
     throw new Error('place manifest patch requires at least one built entry');
   }
   const next = structuredClone(manifest);
+  const append = [];
   for (const entry of builtEntries) {
     const matchingIndices = [];
     for (const [index, asset] of next.assets.entries()) {
       if (asset?.id === entry.id) matchingIndices.push(index);
+    }
+    if (matchingIndices.length === 0 && entry.kind === 'part:works') {
+      append.push(placeManifestRow(entry));
+      continue;
     }
     if (matchingIndices.length !== 1) {
       throw new Error(
@@ -483,6 +498,7 @@ export function patchPlaceManifestRows(manifest, builtEntries) {
     }
     next.assets[matchingIndices[0]] = placeManifestRow(entry);
   }
+  for (const row of append) next.assets.push(row);
   return next;
 }
 
@@ -493,12 +509,20 @@ export function validatePatchedPlaceManifest(previousManifest, nextManifest, bui
   }
   const previousIds = previousManifest.assets.map((asset) => asset?.id);
   const nextIds = nextManifest.assets.map((asset) => asset?.id);
-  if (JSON.stringify(nextIds) !== JSON.stringify(previousIds)) {
+  const prefix = nextIds.slice(0, previousIds.length);
+  if (JSON.stringify(prefix) !== JSON.stringify(previousIds)) {
     throw new Error('patched release manifest changed asset row order or membership');
   }
   const expectedRows = new Map(builtEntries.map((entry) => [entry.id, placeManifestRow(entry)]));
   if (expectedRows.size !== builtEntries.length) {
     throw new Error('patched release manifest build contains duplicate ids');
+  }
+  const appendedIds = nextIds.slice(previousIds.length);
+  for (const extraId of appendedIds) {
+    const expected = expectedRows.get(extraId);
+    if (!expected || expected.kind !== 'part:works') {
+      throw new Error(`patched release manifest appended a non-works row: ${extraId}`);
+    }
   }
   for (const [index, previousRow] of previousManifest.assets.entries()) {
     const expected = expectedRows.get(previousRow?.id);
@@ -508,6 +532,14 @@ export function validatePatchedPlaceManifest(previousManifest, nextManifest, bui
       }
     } else if (JSON.stringify(nextManifest.assets[index]) !== JSON.stringify(previousRow)) {
       throw new Error(`patched release manifest changed untouched row ${previousRow?.id ?? index}`);
+    }
+  }
+  for (let offset = 0; offset < appendedIds.length; offset++) {
+    const id = appendedIds[offset];
+    const index = previousIds.length + offset;
+    const expected = expectedRows.get(id);
+    if (JSON.stringify(nextManifest.assets[index]) !== JSON.stringify(expected)) {
+      throw new Error(`patched release manifest row mismatch for ${id}`);
     }
   }
   return true;

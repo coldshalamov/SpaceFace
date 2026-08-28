@@ -5649,6 +5649,55 @@
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Apron Shuttle, live traffic role shuttle; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3456/410/174 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "place_works_rover",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_rover.glb",
+      "tris": 11846,
+      "bytes": 16875252,
+      "textureSize": 2048,
+      "tintable": {
+        "hull": "Material_Atlas_LOD0"
+      },
+      "note": "PQ-131.01 — Asteroid Works gallery crawler, the only safety-yellow object in the mine. Authored at works scale with explicit 11846/1914/1158-triangle LODs. Runtime hooks: boom_pivot, bit_tip, hopper_fill_0..4, hopper_lid, lamp_socket, vent_stack, track_L, track_R, scar_plate. Cycle 80 whole-asset top, edge, and live-scale site views independently reviewed KEEP.",
+      "hooks": [
+        "boom_pivot",
+        "bit_tip",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "vent_stack",
+        "track_L",
+        "track_R",
+        "scar_plate"
+      ],
+      "sockets": [
+        "boom_pivot",
+        "bit_tip",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "vent_stack",
+        "track_L",
+        "track_R",
+        "scar_plate"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.9132, -0.8635, 0],
+        "max": [0.9923, 0.8635, 1.02],
+        "dimensionsM": [1.9056, 1.727, 1.02]
+      }
     }
   ],
   "runtimeSlots": {

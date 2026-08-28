@@ -1,0 +1,2735 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.tanker-coupling.anchor.socket-berth-tanker",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        3,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Berth_Tanker",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.tanker-coupling.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        3,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.anchor.socket-coupler",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.199999809265137,
+        2.700000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Coupler",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.tanker-coupling.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.199999809265137,
+        2.700000047683716,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.tanker-coupling",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "1a8e1e2f6ba21b50a01240c97d5b851d9c24e2b115ab049c3382de353f0d61bb",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.099999904632568,
+          0.7751258611679077,
+          -2.7997984886169434
+        ],
+        "min": [
+          -4.099999904632568,
+          0.5248740911483765,
+          -3.2002015113830566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e13c67e34441aa03f1cb5c539d51ebd36d0f74d8f3af8cebf0f9b344c12fb683",
+      "id": "sf.render.tanker-coupling.mesh.base-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.tanker-coupling.mesh.base-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4,
+          0.5998138189315796,
+          2.999847412109375
+        ],
+        "min": [
+          -4,
+          0.00018617510795593262,
+          -2.999847412109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b9ed7be40d213977f40b0f37b457a2f935beb2e505ed1b03e886c39e8534d6f",
+      "id": "sf.render.tanker-coupling.mesh.base.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.tanker-coupling.mesh.base",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.437263488769531,
+          7.616804122924805,
+          0.19065159559249878
+        ],
+        "min": [
+          -2.0372631549835205,
+          6.083196640014648,
+          -0.19065159559249878
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4f385cf9c802a030c43e0827d51745b4a86cff080744830f7a9e93654c0e5622",
+      "id": "sf.render.tanker-coupling.mesh.boom.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.tanker-coupling.mesh.boom",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          4.2822465896606445,
+          6.80912446975708,
+          -1.3226804733276367
+        ],
+        "min": [
+          3.7177534103393555,
+          6.390875339508057,
+          -1.877319574356079
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f9512cd9ec4962285232c9ae5b4fdf994ed3afa4e1c7c80cf1f3b9dce59316f",
+      "id": "sf.render.tanker-coupling.mesh.coupler-flood-housing.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.tanker-coupling.mesh.coupler-flood-housing",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.2464919090271,
+          6.6244659423828125,
+          -1.3668386936187744
+        ],
+        "min": [
+          3.8757030963897705,
+          6.400068283081055,
+          -1.7664058208465576
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9c1c925504d771526e8d61c4b74902fec150d8bcb1536f86e2e93d45015c40ab",
+      "id": "sf.render.tanker-coupling.mesh.coupler-flood-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.tanker-coupling.mesh.coupler-flood-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.699999809265137,
+          3.450016736984253,
+          0.5
+        ],
+        "min": [
+          6.699999809265137,
+          2.749983072280884,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d477164c7303643d8ae6ecf17791753a3273b0a7e47e1a08d003a026baba8c8",
+      "id": "sf.render.tanker-coupling.mesh.coupler.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.tanker-coupling.mesh.coupler",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          8.100000381469727,
+          1.275063395500183,
+          1.1000428199768066
+        ],
+        "min": [
+          5.5,
+          1.1249366998672485,
+          -1.1000428199768066
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "42be2a9260faa597b67790a3da119337868644c1103995681ed159094b40b0bf",
+      "id": "sf.render.tanker-coupling.mesh.drip-shield.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.tanker-coupling.mesh.drip-shield",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.562407493591309,
+          7.403008937835693,
+          0.2251167595386505
+        ],
+        "min": [
+          4.237592697143555,
+          5.3969902992248535,
+          -0.2251167595386505
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7e80f42c129c0ce4d119a698791d0f2b1ad80fe3ff10304487b032dda19d1a3c",
+      "id": "sf.render.tanker-coupling.mesh.hose-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.tanker-coupling.mesh.hose-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          7.441340446472168,
+          5.696536064147949,
+          0.22508999705314636
+        ],
+        "min": [
+          6.158659934997559,
+          3.5034637451171875,
+          -0.22508999705314636
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "401f923854bbbee8bdcbef55e77367e062db4e06e00e5e176eceaadb2f7c6956",
+      "id": "sf.render.tanker-coupling.mesh.hose-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.tanker-coupling.mesh.hose-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5998841524124146,
+          6.400063991546631,
+          2.200000047683716
+        ],
+        "min": [
+          -3.2001161575317383,
+          5.399936199188232,
+          -2.200000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e0bcdf615e4ecdf8198ad5d40fd744ebe29fb49e2ff234f3e3b4ae8a9c8b5b8",
+      "id": "sf.render.tanker-coupling.mesh.manifold.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.tanker-coupling.mesh.manifold",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.049952745437622,
+          5.599999904632568,
+          1.9500473737716675
+        ],
+        "min": [
+          -2.750047445297241,
+          0.5999999046325684,
+          1.2499526739120483
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79d23ade500c26dbb7dff8c0e6d2ff5c6113eb89de0bb6163e9837a7642d93cf",
+      "id": "sf.render.tanker-coupling.mesh.riser0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.tanker-coupling.mesh.riser0",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.049952745437622,
+          5.599999904632568,
+          0.3500473201274872
+        ],
+        "min": [
+          -2.750047445297241,
+          0.5999999046325684,
+          -0.3500473201274872
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3bb6e4236105cea3416f01ea4be66011944bd7b78980fa8517cf979506cfd3f",
+      "id": "sf.render.tanker-coupling.mesh.riser1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.016",
+      "nodeId": "sf.render.tanker-coupling.mesh.riser1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.049952745437622,
+          5.599999904632568,
+          -1.2499526739120483
+        ],
+        "min": [
+          -2.750047445297241,
+          0.5999999046325684,
+          -1.9500473737716675
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9549f36f7105503fa3f5612c00d41cfb5e6bd5087a0f7b6080a8f6ba72caffbf",
+      "id": "sf.render.tanker-coupling.mesh.riser2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.tanker-coupling.mesh.riser2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          6.8524017333984375,
+          1.1804633140563965,
+          -0.7307477593421936
+        ],
+        "min": [
+          6.1475982666015625,
+          0.539536714553833,
+          -0.8692522644996643
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae2474377277ea89ceccd1b35d2f2125003cc1e5cd1feca6f860282e7432aaa1",
+      "id": "sf.render.tanker-coupling.mesh.shield-strut-p.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.tanker-coupling.mesh.shield-strut-p",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          6.8524017333984375,
+          1.1804633140563965,
+          0.8692522644996643
+        ],
+        "min": [
+          6.1475982666015625,
+          0.539536714553833,
+          0.7307477593421936
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf55bf4291fa729d0704aba230ef19494fce23cecd55cd734c789e8bb8289c36",
+      "id": "sf.render.tanker-coupling.mesh.shield-strut-s.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.tanker-coupling.mesh.shield-strut-s",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2097904682159424,
+          6.899999618530273,
+          0.20000000298023224
+        ],
+        "min": [
+          -2.590209722518921,
+          6.5,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb6f3e72cb8d87b626f5aa4338ed11e495afe12749d2fff4073f15b3b473e1f0",
+      "id": "sf.render.tanker-coupling.mesh.top-strobe.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.tanker-coupling.mesh.top-strobe",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2749838829040527,
+          4.75,
+          2.1500000953674316
+        ],
+        "min": [
+          -2.5250163078308105,
+          3.6499996185302734,
+          1.0499999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1ae3225ad8e935f078ee60bc3b4da2beb505622f0ec855e85c7190c9afdf6600",
+      "id": "sf.render.tanker-coupling.mesh.valve0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.tanker-coupling.mesh.valve0",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2749838829040527,
+          4.75,
+          0.550000011920929
+        ],
+        "min": [
+          -2.5250163078308105,
+          3.6499996185302734,
+          -0.550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49e212466f817bd519b3e8065da0315ba1a57d0173b381d6c602833126624103",
+      "id": "sf.render.tanker-coupling.mesh.valve1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.tanker-coupling.mesh.valve1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2749838829040527,
+          4.75,
+          -1.0499999523162842
+        ],
+        "min": [
+          -2.5250163078308105,
+          3.6499996185302734,
+          -2.1500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f610443c4494803dcb8940a0114c285dcb48e807d8d54994a1f73d731fa43013",
+      "id": "sf.render.tanker-coupling.mesh.valve2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.tanker-coupling.mesh.valve2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9800165891647339,
+          2.799999952316284,
+          2.0199835300445557
+        ],
+        "min": [
+          -2.819983720779419,
+          1.2000000476837158,
+          1.1800165176391602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21faaa1e18873651cae340859a88c790e5bd1b5eda0bb872bbf6fcfb6bc15064",
+      "id": "sf.render.tanker-coupling.mesh.wrap0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.tanker-coupling.mesh.wrap0",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9800165891647339,
+          2.799999952316284,
+          0.41998353600502014
+        ],
+        "min": [
+          -2.819983720779419,
+          1.2000000476837158,
+          -0.41998353600502014
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aed5b31b93da13bfa4161fb5e31ff6348dc012ce6d9d1af37f2453ee1a20a5ab",
+      "id": "sf.render.tanker-coupling.mesh.wrap1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.tanker-coupling.mesh.wrap1",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9800165891647339,
+          2.799999952316284,
+          -1.1800165176391602
+        ],
+        "min": [
+          -2.819983720779419,
+          1.2000000476837158,
+          -2.0199835300445557
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "304aebfdd319e13d28c03602e53fc56a42f07fff867e0bbbdfcccc01a432c6be",
+      "id": "sf.render.tanker-coupling.mesh.wrap2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.tanker-coupling.mesh.wrap2",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "46712fb83579a8acf05cfb1ea44ecbd718b0029fac5a24316b5139c645395d22",
+      "id": "material:46712fb83579a8acf05cfb1e",
+      "name": "esk_hazard_volatile",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "id": "material:53eb4ca876098f910744724d",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
+      "id": "material:83ea3b840f24c4d8125de80d",
+      "name": "esk_light_flood",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "89aa455ad9dafe2ba6454b2eca9192f2b9a6bd659ab628f286fbd1304ad11a8a",
+      "id": "material:89aa455ad9dafe2ba6454b2e",
+      "name": "esk_deck_grate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9fa79dff52bb40d2527e0c9a22f3a7510d7c6b5dbfe66621d475cee0294170d8",
+      "id": "material:9fa79dff52bb40d2527e0c9a",
+      "name": "esk_tank_insulation",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "bbb53e65a6036da42c05b90eb0ec8bb992d3a644fd64f77e6c66ad5a85385ec9",
+      "id": "material:bbb53e65a6036da42c05b90e",
+      "name": "esk_armor_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.tanker-coupling.mesh.base",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base",
+      "nodeName": "base",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.base-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base_hazard",
+      "nodeName": "base_hazard",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.boom",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "boom",
+      "nodeName": "boom",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.coupler",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "coupler",
+      "nodeName": "coupler",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.coupler-flood-housing",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "coupler_flood_housing",
+      "nodeName": "coupler_flood_housing",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.coupler-flood-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "coupler_flood_lens",
+      "nodeName": "coupler_flood_lens",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.drip-shield",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drip_shield",
+      "nodeName": "drip_shield",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.hose-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hose_a",
+      "nodeName": "hose_a",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.hose-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hose_b",
+      "nodeName": "hose_b",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.manifold",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "manifold",
+      "nodeName": "manifold",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.riser0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "riser0",
+      "nodeName": "riser0",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.riser1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "riser1",
+      "nodeName": "riser1",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.riser2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "riser2",
+      "nodeName": "riser2",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.shield-strut-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "shield_strut_p",
+      "nodeName": "shield_strut_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.shield-strut-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "shield_strut_s",
+      "nodeName": "shield_strut_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.top-strobe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "top_strobe",
+      "nodeName": "top_strobe",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.valve0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "valve0",
+      "nodeName": "valve0",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.valve1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "valve1",
+      "nodeName": "valve1",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.valve2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "valve2",
+      "nodeName": "valve2",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.wrap0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wrap0",
+      "nodeName": "wrap0",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.wrap1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wrap1",
+      "nodeName": "wrap1",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.mesh.wrap2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "wrap2",
+      "nodeName": "wrap2",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.tanker-coupling.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tanker-coupling.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "tanker_coupling",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tanker-coupling.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d88a2d18db6047d9a7f046aef77422387a573f3ce417dc4d60f63d94d4be489c"
+    },
+    "sourceGlb": {
+      "bytes": 25940,
+      "sha256": "5b1418b1e03fb69b685c9d11ec3922d5a08a1306331cf8246ab8ed2e454b8669",
+      "uri": "place_tanker_coupling.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 50680,
+    "sha256": "65c9601d799e70ee5aa7ef950c3a90fab8539c9c59f8168c2629fe6ce68b9311",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.000000238418579,
+        3.8084951490163803,
+        -0.10017704963684082
+      ],
+      "max": [
+        8.100000381469727,
+        7.616804122924805,
+        2.999847412109375
+      ],
+      "min": [
+        -4.099999904632568,
+        0.00018617510795593262,
+        -3.2002015113830566
+      ],
+      "size": [
+        12.200000286102295,
+        7.616617947816849,
+        6.200048923492432
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12,
+          3,
+          0,
+          1
+        ],
+        "name": "SOCKET_Berth_Tanker",
+        "planIndex": 18,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Berth_Tanker",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Berth_Tanker",
+            "recordIds": [
+              "sf.render.tanker-coupling.anchor.socket-berth-tanker"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.199999809265137,
+          2.700000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Coupler",
+        "planIndex": 19,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Coupler",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Coupler",
+            "recordIds": [
+              "sf.render.tanker-coupling.anchor.socket-coupler"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 18,
+      "mechanical": 3,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 26,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 27,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "base",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "base_hazard",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "boom",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "coupler",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "coupler_flood_housing",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "coupler_flood_lens",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drip_shield",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hose_a",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hose_b",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "manifold",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "riser0",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "riser1",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "riser2",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "shield_strut_p",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "shield_strut_s",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "top_strobe",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "valve0",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "valve1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "valve2",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wrap0",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wrap1",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "wrap2",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
+  },
+  "runtimeHash": "26a9d3d7e386c74f3b65d613f40c57f84902792dc544d6d6e100403bfe419d1d",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.100000381469727,
+          7.616804122924805,
+          2.999847412109375
+        ],
+        "min": [
+          -4.099999904632568,
+          0.00018617510795593262,
+          -3.2002015113830566
+        ]
+      },
+      "id": "sf.render.tanker-coupling.body",
+      "nodeIds": [
+        "sf.render.tanker-coupling.mesh.base",
+        "sf.render.tanker-coupling.mesh.base-hazard",
+        "sf.render.tanker-coupling.mesh.boom",
+        "sf.render.tanker-coupling.mesh.coupler",
+        "sf.render.tanker-coupling.mesh.coupler-flood-housing",
+        "sf.render.tanker-coupling.mesh.coupler-flood-lens",
+        "sf.render.tanker-coupling.mesh.drip-shield",
+        "sf.render.tanker-coupling.mesh.hose-a",
+        "sf.render.tanker-coupling.mesh.hose-b",
+        "sf.render.tanker-coupling.mesh.manifold",
+        "sf.render.tanker-coupling.mesh.riser0",
+        "sf.render.tanker-coupling.mesh.riser1",
+        "sf.render.tanker-coupling.mesh.riser2",
+        "sf.render.tanker-coupling.mesh.shield-strut-p",
+        "sf.render.tanker-coupling.mesh.shield-strut-s",
+        "sf.render.tanker-coupling.mesh.top-strobe",
+        "sf.render.tanker-coupling.mesh.valve0",
+        "sf.render.tanker-coupling.mesh.valve1",
+        "sf.render.tanker-coupling.mesh.valve2",
+        "sf.render.tanker-coupling.mesh.wrap0",
+        "sf.render.tanker-coupling.mesh.wrap1",
+        "sf.render.tanker-coupling.mesh.wrap2",
+        "sf.render.tanker-coupling.root"
+      ]
+    }
+  ]
+}

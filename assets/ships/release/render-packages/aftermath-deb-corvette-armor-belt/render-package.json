@@ -1,0 +1,1881 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-corvette-armor-belt",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8c4ef94bd2365c7482008644f1f715e4355a8908eeae8ed8db17da3fe77a4ec1",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -4.990983009338379,
+          2.300899028778076,
+          -0.05526731535792351
+        ],
+        "min": [
+          -5.891132354736328,
+          -2.299100875854492,
+          -1.6552367210388184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f0eab497468558bb4e841cdefdcad6adc5b9fc10117c6084add3801eeb84c05",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5090171098709106,
+          2.300899028778076,
+          -0.05526731535792351
+        ],
+        "min": [
+          -0.3911324441432953,
+          -2.299100875854492,
+          -1.6552367210388184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67f9636f28d70c70c6293e562a4ff59b3a888717c42c77b59c3e59ff516097f1",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.509016990661621,
+          2.300899028778076,
+          -0.05526731535792351
+        ],
+        "min": [
+          4.608867645263672,
+          -2.299100875854492,
+          -1.6552367210388184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8de166ce565c815c55ebea1ea326d98e24228f7d5737ecc3363e6cf4e8449c2c",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.0589423179626465,
+          2.500593900680542,
+          0.44484561681747437
+        ],
+        "min": [
+          -7.9410576820373535,
+          -2.498795747756958,
+          -0.35534971952438354
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b3ddf77becb46611ebf2881f6329838ec830c7ce3e6aa226cdac52125818bfc",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-slab.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-slab",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.309284210205078,
+          -1.1249945163726807,
+          2.7994086742401123
+        ],
+        "min": [
+          7.1085991859436035,
+          -2.3067455291748047,
+          1.779242753982544
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a34fa9f104f425d370f8ffd875d8182ec89fb0b2c7553e249a9736ac0bc65f0",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.118943214416504,
+          -3.704508066177368,
+          1.1294174194335938
+        ],
+        "min": [
+          7.058939456939697,
+          -5.068160533905029,
+          -0.3974933624267578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cdff098645d255663a43330e606003cb4177e31c589d51d7546a93eb27e2280c",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          8.968545913696289,
+          -2.218668222427368,
+          -0.9180904626846313
+        ],
+        "min": [
+          6.889338493347168,
+          -3.6327106952667236,
+          -2.6248788833618164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bf382304ddcbb6e0d9d07872aa1043a209de2b63ed06673d75418d571eeb4a77",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.766352653503418,
+          2.3805673122406006,
+          -0.5463029146194458
+        ],
+        "min": [
+          6.851532936096191,
+          0.7763248682022095,
+          -3.135465145111084
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5df90035034bf6d33e779f9dc8bb48de6ddc43ab7c28d554b586f44c1ae82fa6",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.174636840820312,
+          5.068266868591309,
+          0.3143925070762634
+        ],
+        "min": [
+          7.123249530792236,
+          4.012372016906738,
+          -0.9144473671913147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b4872cef1759e4f792ef4b01428c70c83a42b6bfda7060d6794db1d05b005151",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.115738868713379,
+          3.7197580337524414,
+          2.4173026084899902
+        ],
+        "min": [
+          6.942145347595215,
+          1.6527265310287476,
+          0.7045729756355286
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "46e907688a773f60dce1b79513f3aa0b20a041a0da94fcd115a54468d00a2f92",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.994144916534424,
+          -1.206890344619751,
+          -1.7777705192565918
+        ],
+        "min": [
+          -9.022972106933594,
+          -2.2457330226898193,
+          -2.675732135772705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "56271fe63f79727ec84a05a9ccd14f5d916e441c129f775ad39298ee51ed3a32",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.950838565826416,
+          -3.8681492805480957,
+          0.3798932135105133
+        ],
+        "min": [
+          -10.562276840209961,
+          -5.052901744842529,
+          -0.9557977914810181
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0b9a93ac159065e3007c2280445385d1bf9aa6b0db369667d6404ff5f6d8ca5",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.805151462554932,
+          -2.3298146724700928,
+          2.6394259929656982
+        ],
+        "min": [
+          -9.585966110229492,
+          -3.5722262859344482,
+          1.1455440521240234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f137826c60e5c7f4b5848739080494837cce2a78babd99db111b7cc87c0db0f0",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.771340370178223,
+          2.313537836074829,
+          3.1354641914367676
+        ],
+        "min": [
+          -11.115775108337402,
+          0.9060044884681702,
+          0.8868213891983032
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "020bc6eee3c4b747e5e62737252ac9a4336deb36a4823601cae06cffdb6af8c6",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.0069580078125,
+          5.0530877113342285,
+          0.9356454610824585
+        ],
+        "min": [
+          -9.758155822753906,
+          4.130277156829834,
+          -0.14069484174251556
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1481dcd9a35bd635c57bab3f6e7adc834444018f651d84abbe32451a74eb41c6",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.85015869140625,
+          3.6459922790527344,
+          -0.8037304282188416
+        ],
+        "min": [
+          -11.410957336425781,
+          1.8495274782180786,
+          -2.292175054550171
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24dd62ce5c11ad5101c92316cd3b1aa97f37db3b882e4bb271d2ee54dbfa1298",
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "id": "material:22334c862d743f3b681c8a34",
+      "name": "wrk_armor",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "belt_rib_0",
+      "nodeName": "belt_rib_0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "belt_rib_1",
+      "nodeName": "belt_rib_1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "belt_rib_2",
+      "nodeName": "belt_rib_2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-slab",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "belt_slab",
+      "nodeName": "belt_slab",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_0",
+      "nodeName": "tear_a_tear_0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_1",
+      "nodeName": "tear_a_tear_1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_2",
+      "nodeName": "tear_a_tear_2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_3",
+      "nodeName": "tear_a_tear_3",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_4",
+      "nodeName": "tear_a_tear_4",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_a_tear_5",
+      "nodeName": "tear_a_tear_5",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_0",
+      "nodeName": "tear_b_tear_0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_1",
+      "nodeName": "tear_b_tear_1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_2",
+      "nodeName": "tear_b_tear_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_3",
+      "nodeName": "tear_b_tear_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_4",
+      "nodeName": "tear_b_tear_4",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_b_tear_5",
+      "nodeName": "tear_b_tear_5",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "deb_corvette_armor_belt",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e4afae0d9ecf6b3e8f0c767a110c10a56b93a31392f7f8389eefa8fab162e414"
+    },
+    "sourceGlb": {
+      "bytes": 18664,
+      "sha256": "c4765b77d02ced6acddd160f89253f56f8634ac18ad8ca2ad4ff8cc51c03750a",
+      "uri": "place_aftermath_deb_corvette_armor_belt.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 38920,
+    "sha256": "47f51d16dcbfd6a300f4f75e6c7ca83ef8d6594c8abd6bba81dbe801f8ac38bc",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.14760923385620117,
+        0.00005316734313964844,
+        -4.76837158203125e-7
+      ],
+      "max": [
+        11.115738868713379,
+        5.068266868591309,
+        3.1354641914367676
+      ],
+      "min": [
+        -11.410957336425781,
+        -5.068160533905029,
+        -3.135465145111084
+      ],
+      "size": [
+        22.52669620513916,
+        10.136427402496338,
+        6.270929336547852
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 16
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "belt_rib_0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "belt_rib_1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "belt_rib_2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "belt_slab",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_3",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_4",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_a_tear_5",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_0",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_4",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_b_tear_5",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb"
+  },
+  "runtimeHash": "e0f4df56597a096bfa45c814c12e44b2093ac6245d834a318c19c9b5c519b884",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          11.115738868713379,
+          5.068266868591309,
+          3.1354641914367676
+        ],
+        "min": [
+          -11.410957336425781,
+          -5.068160533905029,
+          -3.135465145111084
+        ]
+      },
+      "id": "sf.render.aftermath-deb-corvette-armor-belt.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-0",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-1",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-rib-2",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt-slab",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-0",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-1",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-2",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-3",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-4",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-a-tear-5",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-0",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-1",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-2",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-3",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-4",
+        "sf.render.aftermath-deb-corvette-armor-belt.mesh.tear-b-tear-5",
+        "sf.render.aftermath-deb-corvette-armor-belt.root"
+      ]
+    }
+  ]
+}

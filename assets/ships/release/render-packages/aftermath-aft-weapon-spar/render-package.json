@@ -1,0 +1,2630 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.anchor.socket-salvage-weapon",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.9311556816101074,
+        1.8625922203063965,
+        0.4205451011657715,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Weapon",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-weapon-spar.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.9311556816101074,
+        1.8625922203063965,
+        0.4205451011657715,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-aft-weapon-spar",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "3378eedacb378b8a49647668308ce0a0b95e668407a7e22823cd83d48185788e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -2.931155204772949,
+          1.6907063722610474,
+          0.8704489469528198
+        ],
+        "min": [
+          -9.931156158447266,
+          0.8344780206680298,
+          -0.029358752071857452
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d56b22021328fa3669a8e93503c9f36a9b42f8f82e0576da9c6a3ea1dcf196e4",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-barrel.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-barrel",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2688443660736084,
+          2.3626136779785156,
+          1.4204719066619873
+        ],
+        "min": [
+          -4.131155967712402,
+          0.5625708699226379,
+          -0.5793816447257996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8fb8c10f4cc0dc92a56ee4302c33120187555806cca5c56e4689f822179c60ad",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-housing.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-housing",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.995416641235352,
+          1.9626350402832031,
+          1.9205451011657715
+        ],
+        "min": [
+          3.1422717571258545,
+          -0.6374505162239075,
+          -1.0794548988342285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5c1f47d8e825a50f12f0edca3800aaecd9dff62623659750ac569dff2f3df46",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-mount.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-mount",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.131219863891602,
+          -0.03749015927314758,
+          1.9205451011657715
+        ],
+        "min": [
+          -8.73109245300293,
+          -1.2373254299163818,
+          -1.0794548988342285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c285f3ae29c3a4c08fc57ea5865ec444c5a6431e0bc3c8b713d854493a0c1e6f",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.1312198638916016,
+          -0.03749015927314758,
+          1.9205451011657715
+        ],
+        "min": [
+          -3.7310914993286133,
+          -1.2373254299163818,
+          -1.0794548988342285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "71e4e577a4838505048809dd8fb9037aa39922f4f6882fe628fdb8c107f27e38",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.868780255317688,
+          -0.03749015927314758,
+          1.9205451011657715
+        ],
+        "min": [
+          1.2689083814620972,
+          -1.2373254299163818,
+          -1.0794548988342285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fe8b34ec31c771dddc2e2eb8fa5bd072a9ad85176fc47b2ddc953adc2fd371fc",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.068844318389893,
+          0.6626044511795044,
+          1.6200445890426636
+        ],
+        "min": [
+          -10.931156158447266,
+          -0.9374200105667114,
+          -0.7789543867111206
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "021ff65443de963ee1f1c976ce964409fb601339df0ce76802b20bb947ab803a",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-spar.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.as-spar",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          9.017256736755371,
+          0.16586995124816895,
+          1.967188835144043
+        ],
+        "min": [
+          6.088634490966797,
+          -0.8763344883918762,
+          0.5231645703315735
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1c1225fc0208b6aa5cbd7747fe5e4a6e5fc4798b3fb70a6ca02adc496d95bc9",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          11.476848602294922,
+          0.09807431697845459,
+          1.0008094310760498
+        ],
+        "min": [
+          6.010608673095703,
+          -2.3624494075775146,
+          -0.851338267326355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ea8a11dcf15272d7a3709c1798f5ab8344e0e99fb3626ecc13e910af75c1772",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          13.827865600585938,
+          1.1687853336334229,
+          0.471118301153183
+        ],
+        "min": [
+          6.035124778747559,
+          -0.47819414734840393,
+          -2.2580151557922363
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cd74d0076aee51d3199104349ae05f0c67b2fcadfc8008060e0aff0b81c066b2",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          10.244850158691406,
+          1.834014654159546,
+          1.4560073614120483
+        ],
+        "min": [
+          6.0430145263671875,
+          -0.09651923924684525,
+          -0.013723370619118214
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "301ba101df545ddae062aa698a3a46b28d8cd247303a944f1dbeebb2e73e2dd1",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-3.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-3",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          6.758735656738281,
+          1.3345924615859985,
+          1.8925451040267944
+        ],
+        "min": [
+          6.27895450592041,
+          -1.6094080209732056,
+          -1.0514549016952515
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4ca77bfdea4e9028ba2ed0db5a1b77c73044ef49bda8837a6f1082b1dfb7d74",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotcore.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotcore",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          9.098052978515625,
+          -0.23283526301383972,
+          1.7736334800720215
+        ],
+        "min": [
+          8.739635467529297,
+          -0.744835376739502,
+          1.2616333961486816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62b6f8ace9408ec8426ffa86ad49989319a7ea188e2c446d514a41283d43c794",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-0.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-0",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          13.898054122924805,
+          0.7863045930862427,
+          -1.4079227447509766
+        ],
+        "min": [
+          13.539636611938477,
+          0.27430447936058044,
+          -1.9199228286743164
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b51a8abdc612e5d093f5a717f5e9f5b673c2d62ab3134dd347f51a9072ed2daf",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-2.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-2",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          8.965409278869629,
+          0.6521119475364685,
+          1.806226372718811
+        ],
+        "min": [
+          6.012279510498047,
+          -1.860653042793274,
+          -0.22417710721492767
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e063ff1b5f195c4b2011174525ea9998a04b9551cdb42a7c0f566f39f7b95f84",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          11.704333305358887,
+          0.42358824610710144,
+          1.4293627738952637
+        ],
+        "min": [
+          5.913357734680176,
+          -0.8732303380966187,
+          -1.767382264137268
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03b09adb9b66e66e8381591cd562ed651e6fb7e4555966fed364bf10c5245581",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.356605529785156,
+          1.4230005741119385,
+          1.9600425958633423
+        ],
+        "min": [
+          5.941081523895264,
+          -0.589263916015625,
+          -0.6808017492294312
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4bb48d1c2202f1e73400ba96b89eca5bad5ff9941777748b6113dbfec839f71",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.987683296203613,
+          -0.3355163037776947,
+          -0.33530929684638977
+        ],
+        "min": [
+          -11.954630851745605,
+          -1.24545419216156,
+          -1.1469602584838867
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22f73deefc06a1a9893291d7708a5cd8596b5e6719ffd66ccad5e396c6213c60",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.986126899719238,
+          -1.1383000612258911,
+          1.018690586090088
+        ],
+        "min": [
+          -13.364184379577637,
+          -2.2508533000946045,
+          -0.06602156162261963
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5ce25dbf27632976915a6af4c50a26cdadd976acae32ec24e2351c97f16baf4",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.836299896240234,
+          -0.10298590362071991,
+          2.2669837474823
+        ],
+        "min": [
+          -12.458011627197266,
+          -1.0630619525909424,
+          0.8643118739128113
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9651bef4dcf5a3beb74a18584d90711882f94673e429adfd955018585d841b25",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.804245948791504,
+          1.9544743299484253,
+          1.7708386182785034
+        ],
+        "min": [
+          -13.898066520690918,
+          0.28903138637542725,
+          0.08651147037744522
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "012e19f7b6210b77ba8e74a438403ec8f22f2ab9df6dcb375cf3c782f6bafe8d",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.905257225036621,
+          1.5402135848999023,
+          0.29942652583122253
+        ],
+        "min": [
+          -12.741055488586426,
+          0.793144702911377,
+          -0.8776041865348816
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aaf97932228a951847ab3ee494208ec22c8db0d516711323726d109f4bbbcf32",
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "22334c862d743f3b681c8a3464a1fd5340d7eaaf5bf5e2f68d02694d57423460",
+      "id": "material:22334c862d743f3b681c8a34",
+      "name": "wrk_armor",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5a08f6356737023df8d0b8c200b3cddba90c6179f5beaeccf9db2e4c227b9b15",
+      "id": "material:5a08f6356737023df8d0b8c2",
+      "name": "wrk_hull_bare",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6ba64bc230e8b6c479bb16ed624491b2e22e1bc53e964107d44ebd921da39ab6",
+      "id": "material:6ba64bc230e8b6c479bb16ed",
+      "name": "wrk_hot_deep_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-barrel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_barrel",
+      "nodeName": "as_barrel",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-housing",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_housing",
+      "nodeName": "as_housing",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-mount",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_mount",
+      "nodeName": "as_mount",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_rib_0",
+      "nodeName": "as_rib_0",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_rib_1",
+      "nodeName": "as_rib_1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_rib_2",
+      "nodeName": "as_rib_2",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.as-spar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "as_spar",
+      "nodeName": "as_spar",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_fray_0",
+      "nodeName": "break_root_fray_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_fray_1",
+      "nodeName": "break_root_fray_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_fray_2",
+      "nodeName": "break_root_fray_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_fray_3",
+      "nodeName": "break_root_fray_3",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotcore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_hotcore",
+      "nodeName": "break_root_hotcore",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_hotfray_0",
+      "nodeName": "break_root_hotfray_0",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_hotfray_2",
+      "nodeName": "break_root_hotfray_2",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_peel_0",
+      "nodeName": "break_root_peel_0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_peel_1",
+      "nodeName": "break_root_peel_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "break_root_peel_2",
+      "nodeName": "break_root_peel_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tip_tear_0",
+      "nodeName": "tear_tip_tear_0",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tip_tear_1",
+      "nodeName": "tear_tip_tear_1",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tip_tear_2",
+      "nodeName": "tear_tip_tear_2",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tip_tear_3",
+      "nodeName": "tear_tip_tear_3",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_tip_tear_4",
+      "nodeName": "tear_tip_tear_4",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.aftermath-aft-weapon-spar.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-weapon-spar.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "aft_weapon_spar",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6aaaff33b233ae5043ebbeefc0966c01482652769e17868fe6658d5b6fa618d2"
+    },
+    "sourceGlb": {
+      "bytes": 29380,
+      "sha256": "7513fb992ae9d59657932c7f5eefa9164fdd6fa75898a76cb8c01194d781944e",
+      "uri": "place_aftermath_aft_weapon_spar.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 54940,
+    "sha256": "df7103ac27d9f9f7cad5aa3f4918cf72268d04b158a0582f1d02e79d9bf93760",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.000006198883056640625,
+        0.00008213520050048828,
+        0.004484295845031738
+      ],
+      "max": [
+        13.898054122924805,
+        2.3626136779785156,
+        2.2669837474823
+      ],
+      "min": [
+        -13.898066520690918,
+        -2.3624494075775146,
+        -2.2580151557922363
+      ],
+      "size": [
+        27.796120643615723,
+        4.72506308555603,
+        4.524998903274536
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.9311556816101074,
+          1.8625922203063965,
+          0.4205451011657715,
+          1
+        ],
+        "name": "SOCKET_Salvage_Weapon",
+        "planIndex": 19,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Weapon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Weapon",
+            "recordIds": [
+              "sf.render.aftermath-aft-weapon-spar.anchor.socket-salvage-weapon"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 2,
+      "mechanical": 20
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 25,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_barrel",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_housing",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_mount",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_rib_0",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_rib_1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_rib_2",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "as_spar",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_fray_0",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_fray_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_fray_2",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_fray_3",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_hotcore",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_hotfray_0",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_hotfray_2",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_peel_0",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_peel_1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "break_root_peel_2",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tip_tear_0",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tip_tear_1",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tip_tear_2",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tip_tear_3",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_tip_tear_4",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
+  },
+  "runtimeHash": "67b2415a12989157e4387f8e23db2e14b447a6e18bc00a1c860ba6be10f26e80",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.898054122924805,
+          2.3626136779785156,
+          2.2669837474823
+        ],
+        "min": [
+          -13.898066520690918,
+          -2.3624494075775146,
+          -2.2580151557922363
+        ]
+      },
+      "id": "sf.render.aftermath-aft-weapon-spar.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-barrel",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-housing",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-mount",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-0",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-1",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-rib-2",
+        "sf.render.aftermath-aft-weapon-spar.mesh.as-spar",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-0",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-1",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-2",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-fray-3",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotcore",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-0",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-hotfray-2",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-0",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-1",
+        "sf.render.aftermath-aft-weapon-spar.mesh.break-root-peel-2",
+        "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-0",
+        "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-1",
+        "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-2",
+        "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-3",
+        "sf.render.aftermath-aft-weapon-spar.mesh.tear-tip-tear-4",
+        "sf.render.aftermath-aft-weapon-spar.root"
+      ]
+    }
+  ]
+}

@@ -592,8 +592,16 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
   const sailAccel = positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle);
   const sailWorld = scale2(fieldDir, sailAccel);
 
+  // A player-flyable sail cannot become a dead hull in ordinary sectors where no authored field
+  // exists, or while its nose is fully outside an authored field's usable hemisphere. Use the
+  // family-authored low-power trim thruster for positive throttle only when environmental coupling
+  // is exactly absent. Any real coupling keeps the original sail-only acceleration and balance.
+  const fieldCoupled = fieldStrength > 0 && deployed > 0 && alignment > 0;
+  const trimForward = fieldCoupled
+    ? Math.min(0, input.throttle)
+    : input.throttle;
   const trim = localToWorld({
-    forward: Math.min(0, input.throttle) * positive(profile.trimAccel, 2),
+    forward: trimForward * positive(profile.trimAccel, 2),
     lateral: input.strafe * positive(profile.trimAccel, 2),
   }, axes);
   let accel = add2(add2(sailWorld, trim), environmentalDragAcceleration(body, environment));

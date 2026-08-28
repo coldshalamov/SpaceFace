@@ -1,0 +1,2080 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.anchor.socket-salvage-cargo",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18416690826416016,
+        3.4244062900543213,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Cargo",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-cargo-module.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18416690826416016,
+        3.4244062900543213,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-aft-cargo-module",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f0b5a8011988834ec424de2946bc9adb988b54a25d19b7298081556196d4473f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          6.31583309173584,
+          6.623920917510986,
+          3.199514865875244
+        ],
+        "min": [
+          -6.68416690826416,
+          0.2248915433883667,
+          -3.199514865875244
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c24093ca558ab023eea8e37b5397c1f6bc9d7263bc07bacc567c16e5d5dda7e",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-box.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-box",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9158331155776978,
+          -1.6955466270446777,
+          -0.11995295435190201
+        ],
+        "min": [
+          -0.28416693210601807,
+          -3.4556407928466797,
+          -1.880047082901001
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "832411ac343d6746416931d7528192eadca3a158e7e865ea2da8794a6e209f61",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.356832027435303,
+          -3.408174514770508,
+          3.0731282234191895
+        ],
+        "min": [
+          2.0748345851898193,
+          -5.743013381958008,
+          0.9268717169761658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "383dfd8a539e82ca62c565faad46e63bdfee0894505b2aee2297dbd721e43826",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.8356817960739136,
+          -4.726746082305908,
+          -1.6430721282958984
+        ],
+        "min": [
+          -2.732652187347412,
+          -6.824441432952881,
+          -3.5569276809692383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27bdc99d5661d3b9b6efd9eb0a4c140d0a631312333cc2f32bcebeef976a23e9",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.237592697143555,
+          2.081744909286499,
+          -2.0030863285064697
+        ],
+        "min": [
+          -3.605926752090454,
+          -4.432932376861572,
+          -7.596913814544678
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95a0365d378af9c6addb06537f746cab893589fda6dcd72626adb1a3361d005b",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.237593173980713,
+          2.0817461013793945,
+          7.5969133377075195
+        ],
+        "min": [
+          -3.605926990509033,
+          -4.432933330535889,
+          2.003087043762207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63290ddfc40e5d10c70815d1b844dd6efbf66ff308125b3a81719e28201e3a3e",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.334305763244629,
+          6.824406623840332,
+          3.4000000953674316
+        ],
+        "min": [
+          -4.834028244018555,
+          0.02440619468688965,
+          -3.4000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c1dd291951a36957e73c54887ace03d5435b19abf1850b2d01a9cd39c842a899",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06569424271583557,
+          6.824406623840332,
+          3.4000000953674316
+        ],
+        "min": [
+          -0.4340280592441559,
+          0.02440619468688965,
+          -3.4000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "692b70f21526ea38701c62f54c205c46e8d12cb3565df00d733c02db696df727",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.465694427490234,
+          6.824406623840332,
+          3.4000000953674316
+        ],
+        "min": [
+          3.9659719467163086,
+          0.02440619468688965,
+          -3.4000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "929d0884ac418b09160d2ceb9b32c2658505a727e9898677953241c107a2edcd",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.279491424560547,
+          0.4181501567363739,
+          2.4688892364501953
+        ],
+        "min": [
+          5.026470184326172,
+          -1.1793372631072998,
+          1.283413052558899
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b3fbde21bdfc399d800ccf7a16fca214bce32c161698e6b218cb5ee57c0ed5aa",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.760103940963745,
+          0.2951999604701996,
+          5.186484336853027
+        ],
+        "min": [
+          1.7855947017669678,
+          -2.992386817932129,
+          3.687580108642578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4c0892ae722ae5379fb7ff22fddebea15b7190a3ed80807e8e320f379bbafa15",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.031191520392894745,
+          0.42653700709342957,
+          5.324235439300537
+        ],
+        "min": [
+          -2.0281870365142822,
+          -1.6717243194580078,
+          4.192123889923096
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bcf52af63fbf343d8bf7dd251878620a8d69a61a1f40f69800fc35b75ed67acd",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.7234439849853516,
+          0.44412776827812195,
+          3.2224080562591553
+        ],
+        "min": [
+          -4.3639607429504395,
+          -3.625314950942993,
+          0.6232624650001526
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49e96fec3f0f0910670bd2fe755d6c58c1c12616e496df5bdd00fc25bfc951ac",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.347295045852661,
+          0.29453179240226746,
+          -1.0476807355880737
+        ],
+        "min": [
+          -4.37946081161499,
+          -2.023719310760498,
+          -2.582106113433838
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45e6579bffe84019b56c9b2562981ec5cbc883647763c7810bc5cfc3389e5d57",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-4.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-4",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.6325318217277527,
+          0.4598742425441742,
+          -2.882800817489624
+        ],
+        "min": [
+          -1.5131101608276367,
+          -4.125061511993408,
+          -5.681276321411133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c74dc3b06e0ab9e592523551ba0640897275b1bbe07f77956f592fe6c5e23941",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-5.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-5",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.585970878601074,
+          0.3041728436946869,
+          -3.632175922393799
+        ],
+        "min": [
+          1.6142244338989258,
+          -2.5173604488372803,
+          -5.568310260772705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1af83145154f01d4a9b161f2b4674188e6e3a5818123cb8198e67f1848751cfe",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-6.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-6",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          6.684179782867432,
+          0.455377995967865,
+          -1.4202536344528198
+        ],
+        "min": [
+          4.441524982452393,
+          -1.2165650129318237,
+          -2.7672271728515625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c0f74f53cc4cef777535d7a1cb5e70e5ade9dca9f677bb0434784697a262fd3",
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-7.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-7",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3d43233b1e4b6f8b5f438e39b88e27bc6d3be6d2b2916265416472d6637d19e2",
+      "id": "material:3d43233b1e4b6f8b5f438e39",
+      "name": "wrk_torn_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "543629edf101c89ef59f8a0b142dc67811f52e674464d293243ccdf61dd18ef9",
+      "id": "material:543629edf101c89ef59f8a0b",
+      "name": "wrk_paint_freight_ochre",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "8c682904cd449a1872aaaa7a96eece0272241069e513e601dcc3fc40c38c3836",
+      "id": "material:8c682904cd449a1872aaaa7a",
+      "name": "wrk_frame_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e4ff96995aa92d7316acce8e3f27b5e37b8b9b590cc83a967f1288a0bd4f90ce",
+      "id": "material:e4ff96995aa92d7316acce8e",
+      "name": "wrk_scorch_edge",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-box",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_box",
+      "nodeName": "ac_box",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_crate_0",
+      "nodeName": "ac_crate_0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_crate_1",
+      "nodeName": "ac_crate_1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_crate_2",
+      "nodeName": "ac_crate_2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_petal_0",
+      "nodeName": "ac_petal_0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_petal_1",
+      "nodeName": "ac_petal_1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_rib_0",
+      "nodeName": "ac_rib_0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_rib_1",
+      "nodeName": "ac_rib_1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "ac_rib_2",
+      "nodeName": "ac_rib_2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_0",
+      "nodeName": "tear_seam_tear_0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_1",
+      "nodeName": "tear_seam_tear_1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_2",
+      "nodeName": "tear_seam_tear_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_3",
+      "nodeName": "tear_seam_tear_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_4",
+      "nodeName": "tear_seam_tear_4",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_5",
+      "nodeName": "tear_seam_tear_5",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_6",
+      "nodeName": "tear_seam_tear_6",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tear_seam_tear_7",
+      "nodeName": "tear_seam_tear_7",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.aftermath-aft-cargo-module.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-cargo-module.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "aft_cargo_module",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-cargo-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "b13b7d027c04de6267c201d16d9002dd00d18fd960291df752b8673b1619f91a"
+    },
+    "sourceGlb": {
+      "bytes": 18176,
+      "sha256": "9d1a3b6be6f2216ce595fe33b388ac1918ccf1c17c5b3f626e596f4afd8c5f0e",
+      "uri": "place_aftermath_aft_cargo_module.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 41228,
+    "sha256": "f86ff7436d581d5d88a7b13fcb40a0816f3f782d63f916c642345cf7ca7643a4",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.0000064373016357421875,
+        -0.000017404556274414062,
+        -2.384185791015625e-7
+      ],
+      "max": [
+        6.684179782867432,
+        6.824406623840332,
+        7.5969133377075195
+      ],
+      "min": [
+        -6.68416690826416,
+        -6.824441432952881,
+        -7.596913814544678
+      ],
+      "size": [
+        13.368346691131592,
+        13.648848056793213,
+        15.193827152252197
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.18416690826416016,
+          3.4244062900543213,
+          0,
+          1
+        ],
+        "name": "SOCKET_Salvage_Cargo",
+        "planIndex": 11,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Cargo",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Cargo",
+            "recordIds": [
+              "sf.render.aftermath-aft-cargo-module.anchor.socket-salvage-cargo"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "mechanical": 17
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 20,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_box",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_crate_0",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_crate_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_crate_2",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_petal_0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_petal_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_rib_0",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_rib_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "ac_rib_2",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_0",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_2",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_4",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_5",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_6",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tear_seam_tear_7",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb"
+  },
+  "runtimeHash": "c2b46b791aa17a0b64c3d69ce82451c285257f0d3fc28302c5a2ff13261ce8eb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.684179782867432,
+          6.824406623840332,
+          7.5969133377075195
+        ],
+        "min": [
+          -6.68416690826416,
+          -6.824441432952881,
+          -7.596913814544678
+        ]
+      },
+      "id": "sf.render.aftermath-aft-cargo-module.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-box",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-0",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-1",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-crate-2",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-0",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-petal-1",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-0",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-1",
+        "sf.render.aftermath-aft-cargo-module.mesh.ac-rib-2",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-0",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-1",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-2",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-3",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-4",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-5",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-6",
+        "sf.render.aftermath-aft-cargo-module.mesh.tear-seam-tear-7",
+        "sf.render.aftermath-aft-cargo-module.root"
+      ]
+    }
+  ]
+}

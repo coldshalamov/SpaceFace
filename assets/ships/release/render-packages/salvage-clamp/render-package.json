@@ -1,0 +1,2197 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.salvage-clamp.anchor.socket-jaw",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8999999761581421,
+        2.799999952316284,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Jaw",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.salvage-clamp.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.8999999761581421,
+        2.799999952316284,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.salvage-clamp",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "bc23ec4ca4ad762f23649a63694ec6d70eadd75559b44c6f3c89aee8d9e07858",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.342435359954834,
+          7.051770210266113,
+          -0.04347391799092293
+        ],
+        "min": [
+          0.25756481289863586,
+          0.44822967052459717,
+          -1.6565260887145996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd5bc636f8239b03c437b5e8ac959aae1281829713e62532e6673a72ca66b1f1",
+      "id": "sf.render.salvage-clamp.mesh.aframe-p.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-p",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.342435121536255,
+          7.0517706871032715,
+          1.6565263271331787
+        ],
+        "min": [
+          0.2575649917125702,
+          0.4482295513153076,
+          0.0434737391769886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5941cbcc59772343e31f61f27cc8fe1da175ca15a8741f1c57f399813f33926",
+      "id": "sf.render.salvage-clamp.mesh.aframe-s.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.salvage-clamp.mesh.aframe-s",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7000183463096619,
+          7.200009346008301,
+          0.550000011920929
+        ],
+        "min": [
+          0.09998171031475067,
+          6.899991035461426,
+          -0.550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63c7e79363bdecaaa46b5d5233c83ed1ec0c47254314714d35c2106cc8feb488",
+      "id": "sf.render.salvage-clamp.mesh.apex-cap.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.salvage-clamp.mesh.apex-cap",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.46854621171951294,
+          6.853194236755371,
+          0.11245308816432953
+        ],
+        "min": [
+          -1.518546223640442,
+          2.846806526184082,
+          -0.11245308816432953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4bf4ef84c88425d6aa69816a47431c7adc2c3cf011cefbc252c921127ba7f548",
+      "id": "sf.render.salvage-clamp.mesh.brace.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.salvage-clamp.mesh.brace",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5454896092414856,
+          6.620707035064697,
+          -0.20498521625995636
+        ],
+        "min": [
+          -1.4454896450042725,
+          2.379293203353882,
+          -0.44501474499702454
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a35b66a6824fabaae73837b4142c110404376f6dbb037efe50bbbdb9b3adbbbc",
+      "id": "sf.render.salvage-clamp.mesh.cable-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.salvage-clamp.mesh.cable-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6498062014579773,
+          6.904482364654541,
+          -0.10673311352729797
+        ],
+        "min": [
+          0.3701937794685364,
+          4.895517826080322,
+          -0.19326689839363098
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b9ec3a424c9905e3584d1b3a993f2836c95733e1d6777182bb7f467b0ec71aff",
+      "id": "sf.render.salvage-clamp.mesh.drop-a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.salvage-clamp.mesh.drop-a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6498062014579773,
+          6.904482364654541,
+          0.19326689839363098
+        ],
+        "min": [
+          0.3701937794685364,
+          4.895517826080322,
+          0.10673311352729797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac4f0e2e502d7eae43de71ec2a047db93e4885c250ed8c57ebd349c8ca0467ef",
+      "id": "sf.render.salvage-clamp.mesh.drop-b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.salvage-clamp.mesh.drop-b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9328272342681885,
+          5.049948215484619,
+          0.7500001192092896
+        ],
+        "min": [
+          0.26717281341552734,
+          4.350051403045654,
+          -0.7500001192092896
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53f002f1fa8115cb1bd76e72a6cb0d56217d2cedb2ef918032eb43695401fb82",
+      "id": "sf.render.salvage-clamp.mesh.hinge.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.salvage-clamp.mesh.hinge",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6000000089406967,
+          7.29999166727066,
+          0.20000000298023224
+        ],
+        "min": [
+          0.20000000298023224,
+          7.2200087532401085,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "488e877b29ec013176d56f4e1d6c446ab4e1702bcb736baaecc8e260775c1a0d",
+      "id": "sf.render.salvage-clamp.mesh.hood-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.salvage-clamp.mesh.hood-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.75,
+          7.474984183907509,
+          0.3499999940395355
+        ],
+        "min": [
+          0.050000011920928955,
+          7.325016226619482,
+          -0.3499999940395355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b3055677d86d68855fffa32e8a3fd4b40f08a9e0916ade5daf9b5a219a79282",
+      "id": "sf.render.salvage-clamp.mesh.hood-shade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.salvage-clamp.mesh.hood-shade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8944106101989746,
+          4.695906639099121,
+          -0.25778353214263916
+        ],
+        "min": [
+          -0.09441060572862625,
+          2.4040935039520264,
+          -1.1822165250778198
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2019e57023898fc4dbd1258d5f357d412bc21cbb57d0a83aae9c235878daba71",
+      "id": "sf.render.salvage-clamp.mesh.jaw-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.salvage-clamp.mesh.jaw-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8944106101989746,
+          4.695906639099121,
+          1.1822165250778198
+        ],
+        "min": [
+          -0.09441060572862625,
+          2.4040935039520264,
+          0.25778353214263916
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01d7c38fa9793101fa6d8188bdc59aa69911876a6ca0b1eb054411a22d9568b3",
+      "id": "sf.render.salvage-clamp.mesh.jaw-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.salvage-clamp.mesh.jaw-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          0.4998611509799957,
+          1.8001281023025513
+        ],
+        "min": [
+          -2.799999952316284,
+          0.00013885326916351914,
+          -1.8001281023025513
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2762c92723077534833c9ba022b9dfb3f53a227d05a2f23f6c208e4165766b98",
+      "id": "sf.render.salvage-clamp.mesh.skid.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.salvage-clamp.mesh.skid",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5329291820526123,
+          2.9356703758239746,
+          -0.3490767776966095
+        ],
+        "min": [
+          -0.032929182052612305,
+          2.1643295288085938,
+          -0.7509232759475708
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29d6e85d6d1fd7f691ef9d1c396900de6897f5210bb2561e2a15004bb5cb1782",
+      "id": "sf.render.salvage-clamp.mesh.tooth-p.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.salvage-clamp.mesh.tooth-p",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5329291820526123,
+          2.9356703758239746,
+          0.7509232759475708
+        ],
+        "min": [
+          -0.032929182052612305,
+          2.1643295288085938,
+          0.3490767776966095
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5ede81195e4da1eb5300fdbcf6acf9f3160935b1574e3fc75e6133e09c46adc",
+      "id": "sf.render.salvage-clamp.mesh.tooth-s.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.salvage-clamp.mesh.tooth-s",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6999938488006592,
+          1.4000625610351562,
+          1.600000023841858
+        ],
+        "min": [
+          -2.100006103515625,
+          0.49993741512298584,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "95ecd53e6321d1a01732a07e24353030d396904900d1c3acae119ef9d75f6c65",
+      "id": "sf.render.salvage-clamp.mesh.winch-stand-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.salvage-clamp.mesh.winch-stand-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.699993908405304,
+          1.4000625610351562,
+          1.600000023841858
+        ],
+        "min": [
+          -1.100006103515625,
+          0.49993741512298584,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "814a128319ea5d19cdaff4139118762eb7c2508af750e0620f3521039db8db9a",
+      "id": "sf.render.salvage-clamp.mesh.winch-stand-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.salvage-clamp.mesh.winch-stand-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.32762232422828674,
+          2.850064277648926,
+          1.4000003337860107
+        ],
+        "min": [
+          -2.4723775386810303,
+          0.6499356031417847,
+          -1.4000003337860107
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "828cc4c5488f71ef01688a0534cb9a97e2ada79e403bdd6dfcddeff58dcb5aad",
+      "id": "sf.render.salvage-clamp.mesh.winch.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.salvage-clamp.mesh.winch",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "id": "material:5c25af379243dc87acccdd2f",
+      "name": "esk_light_hooded_red",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "5fe8bb7367a585546306a7e07adb83a1aa20eeb8d6e71836a47cfe9d53d2ab63",
+      "id": "material:5fe8bb7367a585546306a7e0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fca50b48f8068519278f5ec97787b58cb6abf7b2909bed7c6a2be53372971804",
+      "id": "material:fca50b48f8068519278f5ec9",
+      "name": "esk_paint_rust",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.salvage-clamp.mesh.aframe-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aframe_p",
+      "nodeName": "aframe_p",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.aframe-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "aframe_s",
+      "nodeName": "aframe_s",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.apex-cap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "apex_cap",
+      "nodeName": "apex_cap",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.brace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "brace",
+      "nodeName": "brace",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.cable-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "cable_a",
+      "nodeName": "cable_a",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.drop-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drop_a",
+      "nodeName": "drop_a",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.drop-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drop_b",
+      "nodeName": "drop_b",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.hinge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hinge",
+      "nodeName": "hinge",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.hood-lens",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_lens",
+      "nodeName": "hood_lens",
+      "nodePath": [
+        0,
+        9,
+        0
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        7.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.hood-shade",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_shade",
+      "nodeName": "hood_shade",
+      "nodePath": [
+        0,
+        9,
+        1
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        7.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.jaw-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "jaw_p",
+      "nodeName": "jaw_p",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.jaw-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "jaw_s",
+      "nodeName": "jaw_s",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.skid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid",
+      "nodeName": "skid",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.tooth-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tooth_p",
+      "nodeName": "tooth_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.tooth-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tooth_s",
+      "nodeName": "tooth_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.winch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "winch",
+      "nodeName": "winch",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.winch-stand-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "winch_stand_a",
+      "nodeName": "winch_stand_a",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.mesh.winch-stand-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "winch_stand_b",
+      "nodeName": "winch_stand_b",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.salvage-clamp.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.salvage-clamp.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "salvage_clamp",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.salvage-clamp.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a93a8258bb4f91911a7b95d91a46c218fa76d808a0005d299b69f4873e069907"
+    },
+    "sourceGlb": {
+      "bytes": 22356,
+      "sha256": "470c910e785d8494024bf32a9c1058411c694f07f7a0191e745ccb3680b57689",
+      "uri": "place_salvage_clamp.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 36956,
+    "sha256": "a2d4f2517d420cec9268a26a2b7e7d64958efb6595613c263188c3a648fe5c82",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        3.737561518588336,
+        0
+      ],
+      "max": [
+        2.799999952316284,
+        7.474984183907509,
+        1.8001281023025513
+      ],
+      "min": [
+        -2.799999952316284,
+        0.00013885326916351914,
+        -1.8001281023025513
+      ],
+      "size": [
+        5.599999904632568,
+        7.474845330638345,
+        3.6002562046051025
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.8999999761581421,
+          2.799999952316284,
+          0,
+          1
+        ],
+        "name": "SOCKET_Jaw",
+        "planIndex": 17,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Jaw",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Jaw",
+            "recordIds": [
+              "sf.render.salvage-clamp.anchor.socket-jaw"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 15,
+      "mechanical": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 23,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aframe_p",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "aframe_s",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "apex_cap",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "brace",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "cable_a",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drop_a",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "drop_b",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "hinge",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          7.28000020980835,
+          0,
+          1
+        ],
+        "name": "hood_lens",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          7.28000020980835,
+          0,
+          1
+        ],
+        "name": "hood_shade",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "jaw_p",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "jaw_s",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "skid",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tooth_p",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tooth_s",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "winch",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "winch_stand_a",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "winch_stand_b",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
+  },
+  "runtimeHash": "8b8107dbfbe451d1d29469b7e9a140987a9efc97250a64bc1a34310aa1ff3348",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          7.474984183907509,
+          1.8001281023025513
+        ],
+        "min": [
+          -2.799999952316284,
+          0.00013885326916351914,
+          -1.8001281023025513
+        ]
+      },
+      "id": "sf.render.salvage-clamp.body",
+      "nodeIds": [
+        "sf.render.salvage-clamp.mesh.aframe-p",
+        "sf.render.salvage-clamp.mesh.aframe-s",
+        "sf.render.salvage-clamp.mesh.apex-cap",
+        "sf.render.salvage-clamp.mesh.brace",
+        "sf.render.salvage-clamp.mesh.cable-a",
+        "sf.render.salvage-clamp.mesh.drop-a",
+        "sf.render.salvage-clamp.mesh.drop-b",
+        "sf.render.salvage-clamp.mesh.hinge",
+        "sf.render.salvage-clamp.mesh.hood-lens",
+        "sf.render.salvage-clamp.mesh.hood-shade",
+        "sf.render.salvage-clamp.mesh.jaw-p",
+        "sf.render.salvage-clamp.mesh.jaw-s",
+        "sf.render.salvage-clamp.mesh.skid",
+        "sf.render.salvage-clamp.mesh.tooth-p",
+        "sf.render.salvage-clamp.mesh.tooth-s",
+        "sf.render.salvage-clamp.mesh.winch",
+        "sf.render.salvage-clamp.mesh.winch-stand-a",
+        "sf.render.salvage-clamp.mesh.winch-stand-b",
+        "sf.render.salvage-clamp.root"
+      ]
+    }
+  ]
+}

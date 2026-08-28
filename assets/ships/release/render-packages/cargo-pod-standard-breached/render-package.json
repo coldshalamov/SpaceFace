@@ -1,0 +1,1810 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.cargo-pod-standard-breached",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "149af9d04da57a0f3e68586f25e7871ee918d5eddf5edd1b0d9e954cf80f5134",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.5,
+          0.6499679684638977,
+          1.5899685621261597
+        ],
+        "min": [
+          -1.7000000476837158,
+          -1.0499680042266846,
+          1.4100314378738403
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "615c8df55f39d9cf6ffa9ee902797f4aa58e49e7d101a79f172c14bcd8db14e2",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.breach.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.022",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.breach",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.0583467483520508,
+          0.5600665807723999,
+          2.2823381423950195
+        ],
+        "min": [
+          -2.341653347015381,
+          -0.36006662249565125,
+          1.4176619052886963
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c3f9424f7c060dd1cb05845dca395542860fe32fd585932c5321d2bb1d722f6c",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.flap-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.flap-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9427692890167236,
+          -0.13236737251281738,
+          2.251068115234375
+        ],
+        "min": [
+          -0.14276930689811707,
+          -1.0676326751708984,
+          1.5489317178726196
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f27920bb6d7d08e743f59dc461461e9ff3f07f884e48afb4d5b264ab12bd6b9c",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.flap-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.flap-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          1.5002288818359375,
+          1.5002288818359375
+        ],
+        "min": [
+          -3,
+          -1.5002288818359375,
+          -1.5002288818359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "423494321f15cfea3eae9607930ddf26964b4c058853e1c990b71c62aee5a040",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-body.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "3557f0fcc5846051d68533b6cb563b7a947a1f79777f797c960a94bec1f609d8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-body",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.059999942779541,
+          1.6000866889953613,
+          1.7001969814300537
+        ],
+        "min": [
+          -3.059999942779541,
+          -1.6000866889953613,
+          -1.7001969814300537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93c40b58c8914cd2b0fe41c0198afc864a89e736895be818780c38d1e79d1d43",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-casts.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.023",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-casts",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.774996280670166,
+          1.600000023841858,
+          1.600000023841858
+        ],
+        "min": [
+          -3.0250039100646973,
+          -1.600000023841858,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e92c12ed59357dfb1ec876ad208047973cdbbd8cdb00d408fe333fae842c195c",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-enda.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-enda",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0250039100646973,
+          1.600000023841858,
+          1.600000023841858
+        ],
+        "min": [
+          2.774996280670166,
+          -1.600000023841858,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aec1f9f80c7133b4dc3a727a019745dc45ee2c1375cc76e53e8730497135c325",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-endf.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-endf",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3499999046325684,
+          0.6000335216522217,
+          1.5749945640563965
+        ],
+        "min": [
+          1.0500000715255737,
+          -0.200033500790596,
+          1.5250053405761719
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15e55e93be8c6359410d1f37b5279a60735ad49d5562fb7e682637e27aba9e50",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-plate.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-plate",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          1.6298750638961792,
+          -1.339907169342041
+        ],
+        "min": [
+          -2.700000047683716,
+          1.4901248216629028,
+          -1.5000927448272705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be54c3e4db7b27f14b5c192f9830333afeb7732c63fa4fc0cdb9a90eb63c48fa",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-railp.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-railp",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          1.6298750638961792,
+          1.5000927448272705
+        ],
+        "min": [
+          -2.700000047683716,
+          1.4901248216629028,
+          1.339907169342041
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "254aa5471a99ac9b6d7d2c4bbcb00b81efcccf2c444c75ff54b6cb8953bda9ca",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-rails.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.pod-rails",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2097756713628769,
+          -0.02280956506729126,
+          3.861621379852295
+        ],
+        "min": [
+          -1.3902243375778198,
+          -1.377190351486206,
+          2.7383785247802734
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55e6461c87c707a26ef97e21337aab1e2226a50760807f13d9543ba90694b812",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.spill0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0571304559707642,
+          0.8817352056503296,
+          4.270784378051758
+        ],
+        "min": [
+          0.3428695797920227,
+          0.11826476454734802,
+          3.5292160511016846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "86e6d3e4c8d573b6b0548b548bb3b264e339b21fdcf01c361b4e7ca054022c10",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.spill1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.9884302616119385,
+          -1.221256136894226,
+          4.735707759857178
+        ],
+        "min": [
+          -2.61156964302063,
+          -1.778743863105774,
+          4.0642924308776855
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28ff206df621dfe93d6de0aabb75e9aa54c1e4ab99e565257a0d72b38117d8c9",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.spill2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.4908302128314972,
+          1.0000370740890503,
+          1.720633864402771
+        ],
+        "min": [
+          -1.2908302545547485,
+          0.4999628961086273,
+          1.33936607837677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98a4249d53bae62de5c1ba3d45c672ce24ef74c6ee1ec5c5ae1b7723b4e670b3",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.streak-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.021",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.streak-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.482067584991455,
+          -0.824972927570343,
+          1.7359360456466675
+        ],
+        "min": [
+          0.3179324269294739,
+          -1.1750270128250122,
+          1.3240638971328735
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a0ef4d0ee12e1bed7be10e6f2807fc9a661eec8549bae153f43cde64ba784b81",
+      "id": "sf.render.cargo-pod-standard-breached.mesh.streak-b.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.017",
+      "nodeId": "sf.render.cargo-pod-standard-breached.mesh.streak-b",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "3557f0fcc5846051d68533b6cb563b7a947a1f79777f797c960a94bec1f609d8",
+      "id": "material:3557f0fcc5846051d68533b6",
+      "name": "esk_paint_logistics_teal",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "66a89e4576e5df116e40f4c32c3ab6af5bfaac0f4b15e90bd99c60ffcdea5981",
+      "id": "material:66a89e4576e5df116e40f4c3",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6dfd2f8b3a36135cb14fa123a5efe069f2d06db6bdeacbd8e10363ce9db42bd0",
+      "id": "material:6dfd2f8b3a36135cb14fa123",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "9dfc701728dc33faaa6f1ce7010a11155bdc4a9bda4aa88b0f0021d2ba8ae007",
+      "id": "material:9dfc701728dc33faaa6f1ce7",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "e6f069a3dc5923ebcb0ed51c3398bb7098d7c48045ff8753f14014eb81c3a48f",
+      "id": "material:e6f069a3dc5923ebcb0ed51c",
+      "name": "esk_id_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "fc62ff199e40118baa3f1d37030de3a53a34bd78aadd3711237db003b73c9e0e",
+      "id": "material:fc62ff199e40118baa3f1d37",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.breach",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "breach",
+      "nodeName": "breach",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.flap-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "flap_a",
+      "nodeName": "flap_a",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.flap-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "flap_b",
+      "nodeName": "flap_b",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_body",
+      "nodeName": "pod_body",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-casts",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_casts",
+      "nodeName": "pod_casts",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-enda",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_enda",
+      "nodeName": "pod_enda",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-endf",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_endf",
+      "nodeName": "pod_endf",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-plate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_plate",
+      "nodeName": "pod_plate",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-railp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_railp",
+      "nodeName": "pod_railp",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.pod-rails",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "pod_rails",
+      "nodeName": "pod_rails",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spill0",
+      "nodeName": "spill0",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spill1",
+      "nodeName": "spill1",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.spill2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spill2",
+      "nodeName": "spill2",
+      "nodePath": [
+        0,
+        1,
+        12
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.streak-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "streak_a",
+      "nodeName": "streak_a",
+      "nodePath": [
+        0,
+        1,
+        13
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.mesh.streak-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "streak_b",
+      "nodeName": "streak_b",
+      "nodePath": [
+        0,
+        1,
+        14
+      ],
+      "parentId": "sf.render.cargo-pod-standard-breached.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.cargo-pod-standard-breached.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "cargo_pod_standard_breached",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.cargo-pod-standard-breached.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "37237ee1e00333e18503ae931b684a45e3bdb4982129c53d9d8d5f575699653a"
+    },
+    "sourceGlb": {
+      "bytes": 21524,
+      "sha256": "6f907f52f1b0eb6949363fa32532c316038b4b5e9c454afd50c977d4b38089ed",
+      "uri": "place_cargo_pod_standard_breached.glb"
+    },
+    "sourceManifest": {
+      "bytes": 137851,
+      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 31428,
+    "sha256": "b52879d9c2f22608afa5a5af9bdb3355a4d510e8731b3157375240e507f9b528",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        -0.07443439960479736,
+        1.517755389213562
+      ],
+      "max": [
+        3.059999942779541,
+        1.6298750638961792,
+        4.735707759857178
+      ],
+      "min": [
+        -3.059999942779541,
+        -1.778743863105774,
+        -1.7001969814300537
+      ],
+      "size": [
+        6.119999885559082,
+        3.408618927001953,
+        6.4359047412872314
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 15
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 19,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "breach",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "flap_a",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "flap_b",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_body",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_casts",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_enda",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_endf",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_plate",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_railp",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "pod_rails",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spill0",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spill1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "spill2",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "streak_a",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "streak_b",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_cargo_pod_standard_breached.glb"
+  },
+  "runtimeHash": "adb657013cda64ca9622dde879c491a5a305e64d7bffdec1642ca10120bd380f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.059999942779541,
+          1.6298750638961792,
+          4.735707759857178
+        ],
+        "min": [
+          -3.059999942779541,
+          -1.778743863105774,
+          -1.7001969814300537
+        ]
+      },
+      "id": "sf.render.cargo-pod-standard-breached.body",
+      "nodeIds": [
+        "sf.render.cargo-pod-standard-breached.mesh.breach",
+        "sf.render.cargo-pod-standard-breached.mesh.flap-a",
+        "sf.render.cargo-pod-standard-breached.mesh.flap-b",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-body",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-casts",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-enda",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-endf",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-plate",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-railp",
+        "sf.render.cargo-pod-standard-breached.mesh.pod-rails",
+        "sf.render.cargo-pod-standard-breached.mesh.spill0",
+        "sf.render.cargo-pod-standard-breached.mesh.spill1",
+        "sf.render.cargo-pod-standard-breached.mesh.spill2",
+        "sf.render.cargo-pod-standard-breached.mesh.streak-a",
+        "sf.render.cargo-pod-standard-breached.mesh.streak-b",
+        "sf.render.cargo-pod-standard-breached.root"
+      ]
+    }
+  ]
+}
