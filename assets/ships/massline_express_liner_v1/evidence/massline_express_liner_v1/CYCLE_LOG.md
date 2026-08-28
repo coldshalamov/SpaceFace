@@ -13,5 +13,6 @@
 | 31 | review_pending | review_pending | review_pending | Stepped octagonal body (40.67 x 22.41 x 11.05 m, L/B 1.81). Abeam 9.77%. Hollow corridors, boarding vestibule, rooted drive plant, civic spine. Unique maps; yellow wedges gone. |
 | 32 | review_pending | review_pending | review_pending | Three inhabited stations (40.67 x 22.45 x 10.99 m, L/B 1.81). Abeam 9.75%. Hat-section rings, integrated corridor shells, port boarding cut, drive housings from the aft bulkhead. Box unwrap; AO in ORM only. |
 | 33 | REVISE | REVISE | REVISE | Hollow passenger galleries, real hat returns, dry matched drive throats, role-aware curved UVs, and three chase-visible recessed observation bays. Passenger glazing now survives D=144, but the pale central course still reads too slab-like and the outboard drives still separate into fork appendages at play distance. |
+| 34 | REVISE | REVISE | REVISE | Three stepped pressure sections, six paired deck-edge gallery wells, semantic exported materials, and twin cases grown through a widened load shoulder. Default passenger rhythm and material hierarchy now survive all LODs; residual risk is the long prong-like drive pair and broad abeam belt. |
 
 Whole-asset G1/G2/G4 stay open. Source candidate only.

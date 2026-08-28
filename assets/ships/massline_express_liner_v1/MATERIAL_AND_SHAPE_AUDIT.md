@@ -2,20 +2,20 @@
 
 Planned asset identity: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
 Scope: PQ-049.01 source candidate, chase-camera evidence
-Whole-asset G1/G2/G4 status: **open — cycle 33 source candidate; controller verdict is REVISE / evidence_ready**
-Candidate LOD0: `74F9B8DA216010D1AACC9FA50B548255BA0683B540D633F50BB836C9A7875055`
+Whole-asset G1/G2/G4 status: **open — Cycle 34 source candidate; implementing verdict is REVISE / evidence_ready**
+Candidate LOD0: `256454E3CF02C4EB34AEE1069C6047DBF336351E94041A196DC94D818FA85208`
 
 ## Visible-zone preflight
 
 `MATERIAL_CONTRACT.json` is the visible-zone register. Every candidate-visible zone is `billed`.
 The register remains `allSupportedViewZonesClassified: false` until an independent reviewer
-confirms matched-camera coverage of the exact cycle-33 candidate hash.
+confirms matched-camera coverage of the exact Cycle 34 candidate hash.
 
 ## Shape grammar
 
 | Camera-prominent form | Primitive risk | Required manufactured profile and function | Required rooted interface / later visible evidence | Disposition |
 |---|---|---|---|---|
-| Central passenger drum | A generic cylinder or uninterrupted deck would read as a tube/slab. | Three separate octagonal stations: operations/boarding shoulder, parallel passenger course, aft machinery bulkhead. Cycle 33 adds three physically recessed observation bays to the legal chase-visible deck without changing the 1.81:1 envelope. | Ceramic shell bridges to hat-section rings, corridor and clerestory frames, dock jambs, keel brackets, and dorsal well. | Billed; `REVISE` because the pale course still dominates at D=144. |
+| Central passenger drum | A generic cylinder or uninterrupted deck would read as a tube/slab. | Three visibly stepped octagonal passenger sections with sharp manufactured shoulders and six paired, physically recessed deck-edge gallery wells. Cycle 34 preserves the 1.81:1 envelope while changing the legal D=144 hierarchy. | Ceramic shell bridges to five full-height hat stations, corridor/gallery frames, dock jambs, keel brackets, and dorsal well. | Billed; hierarchy improved, independent verdict pending. |
 | Operations wedge | A black cuboid or fighter canopy would read as a pasted-on cockpit. | Tapered, six-plane glazed boarding/operations volume with a pressure-shoulder frame and split pane geometry. | Dark rails return into the forward bulkhead; glazing is inset inside frame planes. | Billed. |
 | Service cassette | A long box would read as a container. | Low folded-shell cassette with tapered end caps, twin removable bays, latches, drain/inspection plates, and no cargo aperture. | Suspended under pressure bulkhead/keel interfaces. | Billed. |
 | Keel | A rectangular bar would read as a floating slab. | Four-station forged beam with a deeper tether station and paired boom-root shoes. | Gusset cheeks visibly bridge to pressure stations; cassette seats under it. | Billed. |
@@ -23,7 +23,7 @@ confirms matched-camera coverage of the exact cycle-33 candidate hash.
 | Dock/service interfaces | A painted rectangle would be a fake hatch. | Recess floor, ceramic jamb, dark bolt frame, flush conduit cover, and small embedded indicator fixture. | Separate port and starboard bulkhead positions; roots match nearby seams/spine feeds. | Billed. |
 | Dorsal spine | Repeated cubes/fins would be generic greeble. | One hat-section equipment well, two differently sized radiator modules, and one offset repair plate. | Stays on the upper pressure stations; ends enter the aft load ring. | Billed. |
 | Side passenger corridors | Flat wings or cards would fake occupancy. | Hollow equatorial corridor shells grown from the passenger station, with inner wall, formed sill/header, four pane/door bays, mullions, and returns into hat-section collars. | Outer faces carry dock/service contacts; load returns through chine roots and bulkhead collars. | Billed. |
-| Aft drive housings | Stick booms and hanging cans would fail. | Short tapered housings grown from the aft bulkhead through gusseted load-ring saddles, thick dark-metal throats, dry refractory liners, and six thin rooted stator blades. | Paired roots tie into the load ring with intentionally visible centerline negative space. | Billed. |
+| Aft drive housings | Stick booms and hanging cans would fail. | Thick tapered cases overlap the widened aft load shoulder, cross the outboard transition in 2.75 m rather than 4.55 m, and retain thick dark-metal throats, dry refractory liners, and six rooted stator blades. Pale shoulder armor identifies the case before the bore. | Paired roots tie into the 6.40 m load ring through enlarged shoes and gussets while retaining centerline negative space. | Billed; improved but long cases remain an independent-review risk at D=144. |
 
 ## Edge and normal policy
 
@@ -57,15 +57,19 @@ render remains required because node names and modifier presence are not visual 
 | LOD1 | 90–220 px, ordinary traffic | Must retain wedge/frame hierarchy, stepped drum, cassette/keel relation, dock recess blocks, dorsal spine, and twin cavities. | May merge latch/bolt and narrow cooling repetition into broader construction planes. |
 | LOD2 | ≤90 px, including `probe_32px` far traffic | Must retain wedge, stepped pressure drum, lower dark keel/cassette line, and two aft drive masses. | May collapse internal throat facets and small docking fixture detail while drive separation remains. |
 
-## Defect posture after cycle 33
+## Defect posture after Cycle 34
 
-Cycle 33 preserves the three inhabited stations and replaces the blank-card intent with hollow
-side galleries, true frame returns, set-back dielectric panes, dry matched drive throats, and
-role-aware cylindrical UVs. The first Cycle 33 render still hid the gallery below the legal chase
-sightline, so three actual cut wells with framed observation panes were added to the passenger deck.
-They survive D=144 and remove the completely blank-deck failure. The dominant pale course still reads
-too slab-like, the abeam glazing compresses into a central grid, and the outboard drives detach into
-fork-like appendages before their bore construction can read. Bounds remain 40.67 x 22.45 x 10.99 m
-(L/B 1.81); occupancy is 17.45%, 9.80%, and 44.96%, all uncropped. Every LOD now exports canonical
-unsuffixed semantic nodes, materials, and all 13 sockets. Whole-asset G1/G2/G4 remain open; no technical
-build report is treated as a pass.
+Cycle 34 changes the broad parallel course into three stepped pressure sections with width/height
+shoulders at 9.25, 6.50, 2.20, and -1.20 m. Six paired gallery wells move the inhabited rhythm toward
+the deck edges, so the default chase and abeam frames show large dark glazing rather than tiny central
+cards. Five full-height hat sections make the passenger bulkheads legible in clay. The aft body now
+terminates in a 6.25 m pressure shoulder and 6.40 m dark load ring; each 2.30 m-root drive case overlaps
+that shoulder, reaches its outboard line over a 2.75 m transition, and carries visible ceramic shoulder
+armor before the bore.
+
+Ceramic, anodized frame, smoked glazing, service primer, and forged keel now use separated gameplay
+values. All three GLBs export the exact unsuffixed semantic material names recorded here, all 13 socket
+empties, and `COLLISION_HULL`. Bounds remain 40.67 x 22.45 x 10.99 m (L/B 1.81); LOD0/1 occupancy is
+17.45%, 9.80%, and 44.96%, all uncropped. Matched LOD2 evidence is also in band. Implementing review
+keeps the whole asset at `REVISE`: the drive pair may still read as long prongs at D=144 and the abeam
+passenger belt remains broad. Whole-asset G1/G2/G4 remain open; no technical report is a visual pass.
