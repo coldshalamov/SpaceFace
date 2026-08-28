@@ -535,6 +535,8 @@ export const automationScreen = {
     const tabs = (this._els && this._els.tabs) || [];
     for (const b of tabs) {
       b.classList.toggle('active', b.dataset.tab === this._tab);
+      // The .active class is the only pressed-state channel otherwise; expose it to assistive tech.
+      b.setAttribute('aria-pressed', String(b.dataset.tab === this._tab));
     }
   },
 
@@ -1435,7 +1437,8 @@ function emptyEl(text) {
 function lockedEl(text) {
   const d = document.createElement('div');
   d.className = 'au-locked';
-  d.textContent = '⛔ ' + text;
+  // \uFE0E keeps ⛔ monochrome (it defaults to color emoji on emoji-font platforms).
+  d.textContent = '\u26D4\uFE0E ' + text;
   return d;
 }
 
