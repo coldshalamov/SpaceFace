@@ -1,0 +1,190 @@
+{
+  "glb": "assets/ships/parts/works/place_works_extractor.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_belt",
+      "lod": 0,
+      "faces": 580,
+      "visible": 6,
+      "hidden": 574,
+      "hiddenFrac": 0.9897
+    },
+    {
+      "object": "LOD1_belt.001",
+      "lod": 1,
+      "faces": 252,
+      "visible": 1,
+      "hidden": 251,
+      "hiddenFrac": 0.996
+    },
+    {
+      "object": "LOD2_belt.001",
+      "lod": 2,
+      "faces": 88,
+      "visible": 1,
+      "hidden": 87,
+      "hiddenFrac": 0.9886
+    },
+    {
+      "object": "LOD0_head",
+      "lod": 0,
+      "faces": 1216,
+      "visible": 18,
+      "hidden": 1198,
+      "hiddenFrac": 0.9852
+    },
+    {
+      "object": "LOD1_head.001",
+      "lod": 1,
+      "faces": 276,
+      "visible": 0,
+      "hidden": 276,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_head.001",
+      "lod": 2,
+      "faces": 216,
+      "visible": 0,
+      "hidden": 216,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_lamp",
+      "lod": 0,
+      "faces": 196,
+      "visible": 0,
+      "hidden": 196,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_lamp_lens",
+      "lod": 0,
+      "faces": 92,
+      "visible": 0,
+      "hidden": 92,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_lamp.001",
+      "lod": 1,
+      "faces": 68,
+      "visible": 0,
+      "hidden": 68,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_lamp_lens.001",
+      "lod": 1,
+      "faces": 20,
+      "visible": 0,
+      "hidden": 20,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_lamp.001",
+      "lod": 2,
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_lamp_lens.001",
+      "lod": 2,
+      "faces": 20,
+      "visible": 0,
+      "hidden": 20,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_extractor",
+      "lod": 0,
+      "faces": 1044,
+      "visible": 17,
+      "hidden": 1027,
+      "hiddenFrac": 0.9837
+    },
+    {
+      "object": "LOD1_extractor.001",
+      "lod": 1,
+      "faces": 300,
+      "visible": 0,
+      "hidden": 300,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_extractor.001",
+      "lod": 2,
+      "faces": 144,
+      "visible": 0,
+      "hidden": 144,
+      "hiddenFrac": 1.0
+    }
+  ],
+  "hiddenFaces": 4521,
+  "faces": 4564,
+  "hiddenFrac": 0.9906,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+}

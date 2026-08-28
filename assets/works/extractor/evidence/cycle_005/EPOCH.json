@@ -1,0 +1,586 @@
+{
+  "schema": "spaceface.worksExtractorCycleEpoch.v1",
+  "cycle": 5,
+  "epoch": "cycle_005",
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "G7": "open"
+  },
+  "independentReview": "not_launched",
+  "cycle01Frozen": true,
+  "cycle02Frozen": true,
+  "cycle03Frozen": true,
+  "cycle04Frozen": true,
+  "cycle03IndependentVerdict": "revise",
+  "cycle04IndependentVerdict": "revise",
+  "candidate": {
+    "root": "SF_WORKS_EXTRACTOR_V1",
+    "partGlb": "assets/ships/parts/works/place_works_extractor.glb",
+    "sourceGlb": "assets/works/extractor/source/extractor.glb",
+    "blend": "assets/works/extractor/source/extractor.blend",
+    "sha256": "009AF84FAE250F84E218980E8F30FCDCB506B23FC7CAC2B673936D73A162658F",
+    "partsSha256": "009AF84FAE250F84E218980E8F30FCDCB506B23FC7CAC2B673936D73A162658F"
+  },
+  "hooks": {
+    "required": [
+      "head_face",
+      "belt",
+      "lamp"
+    ],
+    "found": [
+      "belt",
+      "head_face",
+      "lamp"
+    ],
+    "missing": [],
+    "exported_gltf_translations": {
+      "belt": [
+        -0.07999999821186066,
+        0.17000000178813934,
+        0
+      ],
+      "head_face": [
+        0.41999998688697815,
+        0.30000001192092896,
+        0
+      ],
+      "lamp": [
+        0.2800000011920929,
+        0.550000011920929,
+        -0.7300000190734863
+      ]
+    },
+    "invalid_exported_translations": [],
+    "pivot_head_face_blender": [
+      0.41999998688697815,
+      0.0,
+      0.30000001192092896
+    ],
+    "lamp_blender": [
+      0.2800000011920929,
+      0.7300000190734863,
+      0.550000011920929
+    ],
+    "belt_blender": [
+      -0.07999999821186066,
+      0.0,
+      0.17000000178813934
+    ]
+  },
+  "lod": {
+    "budgets": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "triangles": {
+      "lod0": 3128,
+      "lod1": 916,
+      "lod2": 520
+    },
+    "draws": 15,
+    "materials": 6,
+    "hulls": 15,
+    "roots": [
+      "LOD0_extractor",
+      "LOD1_extractor",
+      "LOD2_extractor"
+    ],
+    "missingRoots": []
+  },
+  "bboxBlenderZUp": {
+    "min": [
+      -0.945,
+      -0.7976,
+      0.0
+    ],
+    "max": [
+      1.03,
+      0.7976,
+      0.8
+    ],
+    "size": [
+      1.975,
+      1.5952,
+      0.8
+    ]
+  },
+  "camera": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_top.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_edge.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "lod0_matched": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod0_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 0,
+      "label": "LOD0 matched works_top 120 px/cell"
+    },
+    "lod1_matched": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod1_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 1,
+      "label": "LOD1 matched works_top 120 px/cell"
+    },
+    "lod2_matched": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod2_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 matched works_top 120 px/cell"
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_top_clay.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge_grazing": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_edge_grazing.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        13.833184353181752,
+        3.204009611214891,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_site.png",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "normal": {
+      "path": "assets/works/extractor/evidence/cycle_005/normal_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "orm": {
+      "path": "assets/works/extractor/evidence/cycle_005/orm_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "id": {
+      "path": "assets/works/extractor/evidence/cycle_005/id_or_material_id.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "hook_identity": {
+      "path": "assets/works/extractor/evidence/cycle_005/hook_identity.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "pixels": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_top.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.012307692307692308,
+      "plus_x_mean": 0.2447320520877838,
+      "plus_x_dark_mean": 0.06822662055492401,
+      "rail_mean": 0.2183520793914795,
+      "belt_inboard_mean": 0.15459881722927094,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.14398382604122162,
+      "pad_mean": 0.19763071835041046,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_site.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 19.0,
+      "machine_bbox_px": [
+        949,
+        529,
+        970,
+        550
+      ],
+      "machine_size_px": [
+        22,
+        22
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.010101010101010102,
+      "plus_x_mean": 0.25412988662719727,
+      "plus_x_dark_mean": 0.06194392591714859,
+      "rail_mean": 0.16978202760219574,
+      "belt_inboard_mean": 0.19729672372341156,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": false,
+      "tan_bite_px": 2,
+      "tan_bite_mean": 0.2549019753932953,
+      "pad_mean": 0.17079252004623413,
+      "tan_bite_target": null
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_top_clay.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.0,
+      "plus_x_mean": 0.31616663932800293,
+      "plus_x_dark_mean": 0.31616663932800293,
+      "rail_mean": 0.2183520793914795,
+      "belt_inboard_mean": 0.3592509627342224,
+      "well_darker_than_rails": false,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.15271086990833282,
+      "pad_mean": 0.19763071835041046,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    }
+  },
+  "inspectCrops": {
+    "works_top": "assets/works/extractor/evidence/cycle_005/inspect/works_top_crop.png",
+    "works_top_clay": "assets/works/extractor/evidence/cycle_005/inspect/works_top_clay_crop.png",
+    "works_site": "assets/works/extractor/evidence/cycle_005/inspect/works_site_crop.png",
+    "works_edge": "assets/works/extractor/evidence/cycle_005/inspect/works_edge_crop.png",
+    "lod0_matched": "assets/works/extractor/evidence/cycle_005/inspect/lod0_matched_crop.png",
+    "lod1_matched": "assets/works/extractor/evidence/cycle_005/inspect/lod1_matched_crop.png",
+    "lod2_matched": "assets/works/extractor/evidence/cycle_005/inspect/lod2_matched_crop.png"
+  },
+  "visibleZoneRegister": "assets/works/extractor/evidence/cycle_005/SUPPORTED_VIEW_ZONE_REGISTER.json",
+  "matchedLodEvidence": {
+    "0": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod0_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 0,
+      "label": "LOD0 matched works_top 120 px/cell"
+    },
+    "1": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod1_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 1,
+      "label": "LOD1 matched works_top 120 px/cell"
+    },
+    "2": {
+      "path": "assets/works/extractor/evidence/cycle_005/lod2_matched_120px.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 matched works_top 120 px/cell"
+    }
+  },
+  "normalRouteEvidence": {
+    "status": "unavailable_unintegrated_candidate",
+    "bestAvailableWorksContext": {
+      "path": "assets/works/extractor/evidence/cycle_005/works_site.png",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "limitations": "assets/works/extractor/evidence/cycle_005/NORMAL_ROUTE_LIMITATIONS.md"
+  },
+  "firstRenderCorrection": {
+    "observedFailure": "LOD1 and LOD2 steel cutter crown reflected too dark to preserve the transverse head hierarchy.",
+    "correction": "Added segmented bonded refractory hardface blocks attached to the physical crown; no emission, outline, or camera change.",
+    "finalEvidence": [
+      {
+        "path": "assets/works/extractor/evidence/cycle_005/works_site.png",
+        "framing": "works_site",
+        "distance": 225.46261096883785,
+        "px_per_cell_target": 19.0,
+        "px_per_cell_measured": 18.999999999999996,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ]
+      },
+      {
+        "path": "assets/works/extractor/evidence/cycle_005/lod1_matched_120px.png",
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "px_per_cell_target": 120.0,
+        "px_per_cell_measured": 120.0,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "lod": 1,
+        "label": "LOD1 matched works_top 120 px/cell"
+      },
+      {
+        "path": "assets/works/extractor/evidence/cycle_005/lod2_matched_120px.png",
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "px_per_cell_target": 120.0,
+        "px_per_cell_measured": 120.0,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "lod": 2,
+        "label": "LOD2 matched works_top 120 px/cell"
+      }
+    ]
+  },
+  "notes": [
+    "Cycle 05 correction candidate only. Not wired, not released, not accepted.",
+    "Cycle 01 through Cycle 04 evidence folders are byte-frozen.",
+    "Cycle 04 independent exact-hash verdict was REVISE; Cycle 05 does not overwrite that result.",
+    "Open +X aperture is framed by two short broad-rooted splayed refractory cheeks; no parallel tines, closing floor, wall, roof, or grate.",
+    "Long dark belt leads into a real transverse steel cutter crown; warm drive hatch and rooted warm lamp survive every LOD.",
+    "Matched LOD0/1/2 stills use one legal 120 px/cell camera without per-LOD reframing.",
+    "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
+    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "No Cycle 05 independent reviewer has run. G1/G2/G4/G7 remain open.",
+    "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture."
+  ]
+}

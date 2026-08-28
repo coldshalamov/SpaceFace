@@ -2,7 +2,7 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "place_works_extractor",
   "shipId": "place_works_extractor",
-  "candidateHash": "305E23833198CDA9EB1BBFDCAEA47E9C070B25049A31EA9A079F1DD1536A9A4B",
+  "candidateHash": "009AF84FAE250F84E218980E8F30FCDCB506B23FC7CAC2B673936D73A162658F",
   "exportGlb": "assets/ships/parts/works/place_works_extractor.glb",
   "class": "place",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
@@ -20,7 +20,7 @@
     {
       "id": "MTX-01",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_edge_grazing.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_edge_grazing.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Angle bevel 6\u201312 mm then weighted normals, shade 28\u00b0.",
@@ -30,15 +30,15 @@
     {
       "id": "MTX-03",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top_clay.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Cycle 04: open +X aperture with two splayed refractory feed noses; no bite floor, wall, roof, or grate."
+      "notes": "Cycle 05: open +X aperture with two short broad-rooted splayed refractory cheeks; no parallel tines, bite floor, wall, roof, or grate."
     },
     {
       "id": "MTX-16",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Unique non-overlapping UV0 packed per LOD."
@@ -46,7 +46,7 @@
     {
       "id": "MTX-20",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/normal_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "High duplicate with extra 3 mm bevel as bake source."
@@ -54,7 +54,7 @@
     {
       "id": "MTX-21",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/normal_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cage extrusion 0.03 wu on selected-to-active normal bake."
@@ -62,7 +62,7 @@
     {
       "id": "MTX-22",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/normal_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Tangent OpenGL normal from the mesh."
@@ -70,7 +70,7 @@
     {
       "id": "MTX-23",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/orm_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cycles AO baked to unique UV0."
@@ -78,7 +78,7 @@
     {
       "id": "MTX-24",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/orm_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Pointiness curvature baked as emit."
@@ -86,7 +86,7 @@
     {
       "id": "MTX-25",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/orm_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Concave curvature drives cavity dirt."
@@ -94,7 +94,7 @@
     {
       "id": "MTX-30",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/normal_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/normal_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Generated refs are construction studies only; maps are mesh-derived."
@@ -102,7 +102,7 @@
     {
       "id": "MTX-31",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Cool blue-grey dielectric paint, bright machined steel, dry ochre refractory, near-black rubber, warm drive enamel, and recessed lamp glass are value-separated."
@@ -110,7 +110,7 @@
     {
       "id": "MTX-32",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Authored 1024 albedo from ID \u00d7 AO \u00d7 causal wear, not a tinted sheet."
@@ -118,7 +118,7 @@
     {
       "id": "MTX-33",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/orm_isolation.png",
+      "still": "assets/works/extractor/evidence/cycle_005/orm_isolation.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "ORM: R=AO G=rough B=metal, role-varying."
@@ -126,7 +126,7 @@
     {
       "id": "MTX-39",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Restrained cavity dirt and drive-side heat only; no rail AO split, uniform dirt, or copper wash."
@@ -134,7 +134,7 @@
     {
       "id": "MTX-46",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top_clay.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "No yellow, neon, leather, glowing bar, or kit donor."
@@ -150,7 +150,7 @@
     {
       "id": "MTX-52",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top_clay.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top_clay.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
       "notes": "Macro from cited kit shape language + construction studies, not a cube."
@@ -166,10 +166,10 @@
     {
       "id": "MTX-54",
       "state": "implemented",
-      "still": "assets/works/extractor/evidence/cycle_004/works_top.png",
+      "still": "assets/works/extractor/evidence/cycle_005/works_top.png",
       "clayConfirm": "pass",
       "forbiddenFakeAbsent": true,
-      "notes": "Cycle 04 preserves footprint, hooks, and process identity while addressing the exact Cycle 03 REVISE findings; prior evidence is frozen."
+      "notes": "Cycle 05 preserves footprint, hooks, process identity, and Cycle 04 UV/material repairs while addressing the exact Cycle 04 REVISE findings; prior evidence is frozen."
     }
   ]
 }

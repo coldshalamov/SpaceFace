@@ -3,9 +3,9 @@
   "assetId": "place_works_extractor",
   "root": "SF_WORKS_EXTRACTOR_V1",
   "packet": "PQ-131.03",
-  "cycle": 4,
+  "cycle": 5,
   "currentState": "design_candidate",
-  "candidateHash": "305E23833198CDA9EB1BBFDCAEA47E9C070B25049A31EA9A079F1DD1536A9A4B",
+  "candidateHash": "009AF84FAE250F84E218980E8F30FCDCB506B23FC7CAC2B673936D73A162658F",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -106,7 +106,7 @@
   "visibleZoneCoverage": {
     "authorInventory": "complete",
     "reviewerConfirmed": false,
-    "register": "assets/works/extractor/evidence/cycle_004/SUPPORTED_VIEW_ZONE_REGISTER.json",
+    "register": "assets/works/extractor/evidence/cycle_005/SUPPORTED_VIEW_ZONE_REGISTER.json",
     "supportedViews": [
       "works_top",
       "works_edge",
@@ -117,6 +117,7 @@
       "drive_case_and_service_hatch",
       "cutting_head_and_bearings",
       "refractory_feed_jaws",
+      "cutter_hardface_blocks",
       "inboard_belt",
       "hooded_work_lamp"
     ],
