@@ -1,5 +1,17 @@
 # Visual bug sweep — 2026-08-27
 
+> **2026-08-28 update 2 (ten more fixes, commit 8783df57+da749dc6):** chart inspector nav-row
+> label overlap (fixed — content-sized track); bar leads clip (fixed — panels scroll); industry
+> spindle invisible scroll (fixed — thin visible bar); market driver-ribbon clip (fixed —
+> flex:none); market chart hint strike-through (fixed — backing plate); market filter "RESTRI"
+> cut (fixed — filters wrap); shipworks chooser left accent + blind scroll (fixed); factions
+> jurisdiction three-letter fragments (fixed — the sf-crest ROW squeezed the paragraph; now a
+> stack); factions dial caption under the arc (fixed — backing plate); dockside notice painting
+> over the buy/sell stats (anchored into the reserved padding zone; residual stage overflow at
+> 900px height is the known station height-budget family, still open). MissionLog progress clamp
+> added. Missions active-strip sliver and the 2560 ship-dial clip remain open (need live
+> measurement of the station/ship grid budgets).
+
 > **2026-08-28 update (flight-HUD popup pass):** the player-reported popup complaints produced a
 > root-cause batch, all fixed and shipped (commits aad903d6..0c5f5718):
 > the receipts/toast channel was DEAD in flight (createHud wiped the re-parented feed; then the
