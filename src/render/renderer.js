@@ -3827,6 +3827,18 @@ export const render = {
         try {
           sectorResult = await precompilePipelines(renderer, scene, cam.obj, {
             sector,
+            // The global warmup — projectile, beam, plume, trail, VFX salvo, common rock, ship aux,
+            // canopy and late-world families — is gated on `!sector || includeGlobalPipelines`, and
+            // EVERY boot-time caller passes a sector. It therefore used to run only after a WebGL
+            // context loss, and on an ordinary session those families linked at DRAW time instead:
+            // measured 2026-08-28, eight bricks totalling 1.37 s of frozen frames in a 60 s flight,
+            // owned by exactly these producers (plume families, trail streaks, common rock, the
+            // space-background and parallax layers, VFX sprite instances).
+            //
+            // It is affordable here because the whole warmup group is handed to ONE
+            // `renderer.compile()` call, so its programs link concurrently and cost about one link
+            // rather than the sum. Behind the loading shell, before the player has control.
+            includeGlobalPipelines: true,
             incremental: true,
             yieldToMain: yieldToBrowser,
             preparePipelines: (subject) => Promise.resolve(

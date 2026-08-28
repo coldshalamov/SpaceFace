@@ -871,7 +871,55 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // Program identities seen as of the last brick. Carried BETWEEN slow frames instead of rebuilt
   // every frame, so the diff costs nothing until something is already wrong. Seeded once on the
   // first scene pass so the FIRST brick still reports a real delta.
-  let brickSeenKeys = null;
+
+  // The programs this render call acquired, and only those.
+  function exactNewProgramKeys(before) {
+    const programs = renderer && renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs) || !Number.isFinite(before) || before < 0) return [];
+    return programs.slice(before)
+      .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
+      .filter(Boolean);
+  }
+
+  // Map each newly-linked program key back to the live object using it.
+  // A cache key names a program, not a producer, and "+3 programs" is not actionable until you know
+  // WHICH object dragged them in — this is what turned an unattributed 498 ms freeze into
+  // "common rock spawned and nothing warmed it". Runs ONLY on a frame that already blew the
+  // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
+  // warning itself is always armed.
+  function describeNewProgramOwners(scene, seenKeys) {
+    if (!scene || typeof scene.traverse !== 'function') return null;
+    const rows = [];
+    const props = renderer && renderer.properties;
+    if (!props || typeof props.get !== 'function') return null;
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const materials = Array.isArray(object?.material)
+          ? object.material
+          : (object?.material ? [object.material] : []);
+        for (const material of materials) {
+          let program = null;
+          try { program = props.get(material)?.currentProgram || null; } catch (_) { continue; }
+          const key = String(program && (program.cacheKey || program.name) || '');
+          if (!key || seenKeys.has(key)) continue;
+          rows.push({
+            key: key.slice(0, 40),
+            object: String(object.name || object.type || 'unnamed'),
+            material: String(material.name || material.type || 'unnamed'),
+            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+            visible: object.visible === true,
+          });
+        }
+      });
+    } catch (_) { return null; }
+    return rows;
+  }
 
   function renderScenePass(scene, camera, tier1) {
     const prevAutoClear = renderer.autoClear;
@@ -881,16 +929,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // never fired for the one frame anyone cared about. Three attempts at the entering-flight brick
     // were aimed by evidence this blind spot had already filtered. Do not re-gate it.
     //
-    // The per-frame cost is one performance.now() pair and one array-length read. The expensive part
-    // — snapshotting program identities — happens ONLY on a frame that already blew the threshold,
-    // by diffing against a Set carried between slow frames rather than rebuilt every frame.
+    // The per-frame cost is one performance.now() pair and one array-length read. Naming the
+    // programs happens ONLY on a frame that already blew the threshold, and reads the tail of
+    // info.programs past the pre-render length — no per-frame Set is carried or rebuilt.
     const info = renderer.info;
     const programsBefore = Array.isArray(info?.programs) ? info.programs.length : null;
-    // Seed the baseline ONCE, on the very first scene pass. Without this the FIRST brick reports no
-    // delta — and the first brick is the entering-flight one, i.e. exactly the event being chased.
-    if (brickSeenKeys === null && Array.isArray(info?.programs)) {
-      brickSeenKeys = new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')));
-    }
     const geometriesBefore = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
     const texturesBefore = Number.isFinite(info?.memory?.textures) ? info.memory.textures : null;
     const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -915,17 +958,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             geometriesAfter: Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null,
             texturesBefore,
             texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
-            newPrograms: brickSeenKeys && Array.isArray(info?.programs)
-              ? info.programs
-                .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
-                .filter((key) => !brickSeenKeys.has(key))
-                .map((key) => key.slice(0, 120))
-              : null,
+            // Three appends to info.programs as it acquires them, so the tail beyond
+            // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
+            // previous-brick set reported every program acquired since the last brick — dozens of
+            // legitimately warm ones — which made the payload unusable for naming a producer.
+            newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 120)),
+            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
           })}`);
-        }
-        // Refresh AFTER reporting, so the next brick reports what arrived since this one.
-        if (elapsedMs > BRICK_WARN_MS && Array.isArray(info?.programs)) {
-          brickSeenKeys = new Set(info.programs.map((prog) => String(prog && (prog.cacheKey || prog.name) || '')));
         }
       }
     }
