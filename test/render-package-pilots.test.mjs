@@ -1505,18 +1505,23 @@ test('package pool allocation failure leaves the accepted first surface direct a
   try {
     const first = await admitPackageShip('package-failure-a', 0, renderer, scene, options);
     const firstEligible = authoredPackageInstance(first).nodes.get('eligible');
-    const descriptor = Object.getOwnPropertyDescriptor(fixture.geometry, 'uuid');
+    const batchIdentity = fixture.geometry.userData;
+    const descriptor = Object.getOwnPropertyDescriptor(batchIdentity, 'spacefaceBatchKey');
     let reads = 0;
-    Object.defineProperty(fixture.geometry, 'uuid', {
+    Object.defineProperty(batchIdentity, 'spacefaceBatchKey', {
       configurable: true,
       get() {
         reads++;
-        if (reads === 3) throw new Error('injected second-slot allocation failure');
+        if (reads === 4) throw new Error('injected second-slot allocation failure');
         return descriptor.value;
       },
     });
-    const failed = await requestPackageShip('package-failure-b', 40, renderer, scene, options);
-    Object.defineProperty(fixture.geometry, 'uuid', descriptor);
+    let failed;
+    try {
+      failed = await requestPackageShip('package-failure-b', 40, renderer, scene, options);
+    } finally {
+      Object.defineProperty(batchIdentity, 'spacefaceBatchKey', descriptor);
+    }
 
     assert.equal(failed.userData.authoredAssetState, 'unavailable');
     assert.equal(firstEligible.isMesh, true, 'failed repetition never suppresses the accepted direct mesh');
@@ -1673,7 +1678,10 @@ test('removing one owner during package pool admission restores the live direct 
     const first = await admitPackageShip('package-pending-a', 0, renderer, scene, options);
     const gpuResidencyCallsBeforeIncoming = gpuResidencyCalls;
     const firstEligible = authoredPackageInstance(first).nodes.get('eligible');
-    const pending = startPackageShip('package-pending-b', 40, renderer, scene, options);
+    let ownerActive = true;
+    const pending = startPackageShip('package-pending-b', 40, renderer, scene, options, {
+      isResidencyOwnerActive: () => ownerActive,
+    });
     for (let turn = 0; turn < 80 && !exactTarget; turn++) {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
@@ -1688,6 +1696,7 @@ test('removing one owner during package pool admission restores the live direct 
     };
     exactTarget.addEventListener('dispose', contextDisposeListener);
 
+    ownerActive = false;
     scene.remove(pending);
     assert.equal(firstEligible.isMesh, true);
     assert.equal(firstEligible.visible, true);
@@ -1748,6 +1757,7 @@ test('deferred pool retirement remains discoverable and retryable after object c
 
   try {
     const current = await admitPackageShip('package-retirement-current', 0, renderer, scene, options);
+    let ownerActive = true;
     const pending = startPackageShip(
       'package-retirement-pending',
       40,
@@ -1758,6 +1768,7 @@ test('deferred pool retirement remains discoverable and retryable after object c
         deferPackagePoolActivation: true,
         deferBoundaryPublication: true,
         overlapAuthoredPipelineCompile: false,
+        isResidencyOwnerActive: () => ownerActive,
       },
     );
     pending.visible = false;
@@ -1773,6 +1784,7 @@ test('deferred pool retirement remains discoverable and retryable after object c
       return realDispose();
     };
 
+    ownerActive = false;
     scene.remove(pending);
     poolPreparation.resolve();
     const receipt = await pending.userData.authoredUpgradePromise;
@@ -1964,7 +1976,10 @@ function startPackageShip(id, x, renderer, scene, options, requestOptions = {}) 
   entity.mesh = boundary;
   boundary.position.x = x;
   scene.add(boundary);
-  boundary.userData.requestAuthoredUpgrade(renderer, scene, requestOptions);
+  boundary.userData.requestAuthoredUpgrade(renderer, scene, {
+    residencyRole: 'sector-prewarm',
+    ...requestOptions,
+  });
   return boundary;
 }
 
@@ -1983,7 +1998,10 @@ function installAuthoredAdmissionRuntime(scene, options) {
     ...(previousWindow || {}),
     SF: {
       state: {
-        mode: 'flight',
+        // These fixtures exercise the hidden-sector/opening preparation transaction. Current-sector
+        // flight intentionally publishes readable procedural fallback instead of composing a new
+        // authored root synchronously, while loading/prewarm owns detached pool GPU admission.
+        mode: 'loading',
         render: {
           scene,
           compileObjectPipelines: options.prepareAuthoredPipelines,

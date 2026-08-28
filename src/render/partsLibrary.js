@@ -5679,7 +5679,9 @@ function instantiateFlightRootTemplate(
     const objectMaterials = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
       : EMPTY_ARRAY;
-    for (const material of objectMaterials) if (material) ownerLocalMaterials.add(material);
+    for (const material of objectMaterials) {
+      if (material && material.userData?.spacefaceSharedAsset !== true) ownerLocalMaterials.add(material);
+    }
     const instance = object.userData?.renderPackageInstance;
     if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
   });
