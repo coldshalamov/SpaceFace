@@ -1,20 +1,20 @@
-"""PQ-049.01 Massline express-liner source builder — cycle 33.
+"""PQ-049.01 Massline express-liner source builder — cycle 34.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
 
-Cycle 33 form correction: Cycle 32 kept the three-station civic body but
-the passenger course still read as a blank rectangular card, hat rings as
-black hoop tape, boarding glass as opaque cards, and drive bores as
-plywood/chrome with shelf baffles. Rebuild the mid-course as a hollow
-manufactured corridor shell with recessed pane bays, true hat-section
-rings, dark-blue dielectric glass over inner volume, and matched dry
-refractory throats. Same envelope. Cylinder UVs on drums/rings/housings.
+Cycle 34 form correction: Cycle 33 established real passenger galleries and
+dry drive bores, but the legal chase view still collapsed into one broad pale
+course and two detached fork arms. Rebuild the course as three stepped
+pressure sections with paired chase-visible gallery wells, grow both drive
+cases continuously from a wider aft load shoulder, and separate ceramic,
+frame, glazing, and keel values at gameplay exposure. Preserve sockets,
+collision, civic identity, and the reproducible source/export path.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=33
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=34
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ import json
 import math
 import re
 import shutil
+import struct
 import sys
 import time
 from pathlib import Path
@@ -61,7 +62,7 @@ from spaceface_chase_camera import (  # noqa: E402
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
 TEX = 1024
-CYCLE = 33
+CYCLE = 34
 PROBE_OCCUPANCY = False
 RENDER_ONLY = False
 for i, tok in enumerate(sys.argv):
@@ -78,7 +79,7 @@ for i, tok in enumerate(sys.argv):
     elif tok in ("--render-only", "--stills-only"):
         RENDER_ONLY = True
 
-# Cycle 33 manufactured envelope. Metres, +X forward.
+# Cycle 34 manufactured envelope. Metres, +X forward.
 # Keep 40.67 x 22.45 x 10.99 m, L/B 1.81. Width from the passenger
 # station's inhabited equator, not hanging cards or occupancy padding.
 DRIVE_Y = 8.55
@@ -108,11 +109,11 @@ CAGE_INFLATE = 0.038
 BAKE_AO_SAMPLES = 16
 
 ROLE_RGB = {
-    "ceramic": (0.70, 0.68, 0.63),
-    "frame": (0.36, 0.38, 0.42),
-    "keel": (0.22, 0.23, 0.25),
-    "glass": (0.035, 0.065, 0.110),
-    "primer": (0.40, 0.42, 0.36),
+    "ceramic": (0.86, 0.80, 0.68),
+    "frame": (0.18, 0.22, 0.27),
+    "keel": (0.055, 0.070, 0.090),
+    "glass": (0.012, 0.035, 0.085),
+    "primer": (0.32, 0.36, 0.34),
     "refractory": (0.16, 0.145, 0.130),
     "cyan": (0.10, 0.58, 0.62),
     "amber": (0.74, 0.44, 0.12),
@@ -126,6 +127,54 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest().upper()
+
+
+def spaceface_asset_metadata(lod: int) -> dict:
+    return {
+        "contractVersion": 1,
+        "assetId": ASSET_ID,
+        "partId": PART_ID,
+        "lod": f"lod{lod}",
+        "slot": "hull",
+        "category": "wholeships",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "PNG-source",
+        "embeddedPlume": False,
+        "role": "civic_pressure_drum_liner",
+    }
+
+
+def stamp_glb_asset_extras(path: Path, lod: int) -> None:
+    """Bind the sanctioned SpaceFace metadata at GLB asset scope.
+
+    Blender exports scene/object custom properties as node extras. The
+    repository validator also requires the identical record under
+    `asset.extras.spacefaceAsset`, so the reproducible builder stamps that
+    JSON chunk before its transactional publish.
+    """
+    data = path.read_bytes()
+    if len(data) < 20 or data[:4] != b"glTF":
+        raise RuntimeError(f"invalid GLB header: {path}")
+    json_length, json_type = struct.unpack_from("<II", data, 12)
+    if json_type != 0x4E4F534A:
+        raise RuntimeError(f"GLB first chunk is not JSON: {path}")
+    json_start = 20
+    json_end = json_start + json_length
+    document = json.loads(data[json_start:json_end].decode("utf-8").rstrip(" \t\r\n\x00"))
+    document.setdefault("asset", {}).setdefault("extras", {})["spacefaceAsset"] = spaceface_asset_metadata(lod)
+    encoded = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    encoded += b" " * ((4 - len(encoded) % 4) % 4)
+    remainder = data[json_end:]
+    total_length = 20 + len(encoded) + len(remainder)
+    rebuilt = data[:8] + struct.pack("<I", total_length) + struct.pack("<II", len(encoded), json_type) + encoded + remainder
+    stamped = path.with_suffix(".stamp.glb")
+    stamped.write_bytes(rebuilt)
+    stamped.replace(path)
 
 
 def reset_scene() -> None:
@@ -321,19 +370,19 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, transmission=0.0):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.70, 0.68, 0.63), "ceramic", 0.0, None, 0.0, "ceramic"),
-        "Material_Armor": ((0.36, 0.38, 0.42), "frame", 0.05, None, 0.0, "frame"),
-        "Material_Mechanical": ((0.22, 0.23, 0.25), "keel", 0.0, None, 0.0, "keel"),
-        "Material_Canopy": ((0.035, 0.065, 0.110), "glass", 0.04, None, 0.78, "glass"),
-        "Material_Radiator": ((0.40, 0.42, 0.36), "primer", 0.0, None, 0.0, "primer"),
-        "Material_Ceramic": ((0.32, 0.28, 0.24), "refractory", 0.0, None, 0.0, "refractory"),
-        "Material_Accent": ((0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.18), 0.0, "cyan"),
-        "Material_Warning": ((0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.16), 0.0, "amber"),
-        "Material_Thruster": ((0.16, 0.16, 0.17), "throat", 0.0, None, 0.0, "throat"),
+        "Material_Hull": ("MAT_SF_Massline_CeramicPaint_WarmIvory", ROLE_RGB["ceramic"], "ceramic", 0.0, None, 0.0, "ceramic"),
+        "Material_Armor": ("MAT_SF_Massline_Frame_DarkAnodized", ROLE_RGB["frame"], "frame", 0.05, None, 0.0, "frame"),
+        "Material_Mechanical": ("MAT_SF_Massline_Keel_ForgedDark", ROLE_RGB["keel"], "keel", 0.0, None, 0.0, "keel"),
+        "Material_Canopy": ("MAT_SF_Massline_Glazing_SmokedSafety", ROLE_RGB["glass"], "glass", 0.04, None, 0.78, "glass"),
+        "Material_Radiator": ("MAT_SF_Massline_ServicePrimer_Galvanized", ROLE_RGB["primer"], "primer", 0.0, None, 0.0, "primer"),
+        "Material_Ceramic": ("MAT_SF_Massline_RefractoryHeatAlloy", (0.32, 0.28, 0.24), "refractory", 0.0, None, 0.0, "refractory"),
+        "Material_Accent": ("MAT_SF_Massline_WayfindingCyan", (0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.18), 0.0, "cyan"),
+        "Material_Warning": ("MAT_SF_Massline_WayfindingAmber", (0.74, 0.44, 0.12), "amber", 0.0, ((0.78, 0.42, 0.10), 0.16), 0.0, "amber"),
+        "Material_Thruster": ("MAT_SF_Massline_Throat_OxidizedDark", (0.16, 0.16, 0.17), "throat", 0.0, None, 0.0, "throat"),
     }
     mats = {}
-    for name, (rgb, role, coat, emit, trans, prefix) in specs.items():
-        material = bpy.data.materials.new(name)
+    for lookup_name, (export_name, rgb, role, coat, emit, trans, prefix) in specs.items():
+        material = bpy.data.materials.new(export_name)
         bsdf = principled(material)
         bsdf.inputs["Base Color"].default_value = (*rgb, 1)
         if not PROBE_OCCUPANCY:
@@ -343,7 +392,7 @@ def create_materials():
             bsdf.inputs["Roughness"].default_value = 0.52 if role == "ceramic" else 0.32
             bsdf.inputs["Metallic"].default_value = 0.02 if role in ("ceramic", "glass", "refractory") else 0.82
         material["spacefaceRole"] = role
-        if name == "Material_Canopy":
+        if lookup_name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
                 bsdf.inputs["Transmission Weight"].default_value = 0.78
             if "Alpha" in bsdf.inputs:
@@ -371,7 +420,7 @@ def create_materials():
                 material.use_raytrace_refraction = True
             if hasattr(material, "use_backface_culling"):
                 material.use_backface_culling = False
-        mats[name] = material
+        mats[lookup_name] = material
     return mats
 
 
@@ -900,44 +949,65 @@ def add_passenger_corridors(lod, mats, collection, passenger_hull=None):
 
 
 def add_passenger_clerestory(lod, mats, collection, passenger_hull):
-    """Three recessed observation bays on the legal chase-visible deck.
+    """Paired stepped-deck galleries visible at the legal chase and abeam poses.
 
-    The first Cycle 33 build put credible side galleries below the dominant
-    60-degree sightline, so the passenger course still presented as a blank
-    slab.  These are real cut wells with set-back dielectric panes and load
-    frames, not decals or emissive window cards.
+    Each pressure section owns two large recessed panes near its deck edge.
+    The staggered heights and dark hat frames replace the Cycle 33 run of tiny
+    central cards with an inhabited window rhythm that survives D=144.
     """
-    if lod >= 2 or passenger_hull is None:
+    if passenger_hull is None:
         return
     frame = mats["Material_Armor"]
     glass = mats["Material_Canopy"]
     inner = mats["Material_Mechanical"]
-    deck_z = 0.38 + PASS_HH
-    for i, px in enumerate((7.55, 4.20, 0.85)):
-        cy = -0.42
-        hx, hy = 1.18, 1.62
-        boolean_cut_box(
-            passenger_hull, f"ClerestoryCut_{i}",
-            (px, cy, deck_z + 0.02),
-            (hx, hy, 0.34),
-        )
-        add_box(
-            f"ClerestoryWell_{i}",
-            (px, cy, deck_z - 0.18),
-            (hx - 0.13, hy - 0.13, 0.07),
-            inner, collection, 0.002,
-        )
-        add_box(
-            f"ClerestoryGlass_{i}",
-            (px, cy, deck_z - 0.075),
-            (hx - 0.18, hy - 0.18, 0.025),
-            glass, collection, 0.001,
-        )
-        add_box(f"ClerestoryFrameFore_{i}", (px + hx - 0.07, cy, deck_z + 0.01), (0.07, hy, 0.08), frame, collection, 0.002)
-        add_box(f"ClerestoryFrameAft_{i}", (px - hx + 0.07, cy, deck_z + 0.01), (0.07, hy, 0.08), frame, collection, 0.002)
-        add_box(f"ClerestoryFramePort_{i}", (px, cy - hy + 0.07, deck_z + 0.01), (hx, 0.07, 0.08), frame, collection, 0.002)
-        add_box(f"ClerestoryFrameStbd_{i}", (px, cy + hy - 0.07, deck_z + 0.01), (hx, 0.07, 0.08), frame, collection, 0.002)
-        add_box(f"ClerestoryMull_{i}", (px, cy, deck_z + 0.005), (0.055, hy - 0.12, 0.07), frame, collection, 0.001)
+    sections = (
+        ("Fore", 8.10, 1.20, 2.95, 4.76),
+        ("Mid", 4.35, 1.42, 3.55, 5.10),
+        ("Aft", 0.45, 1.20, 2.95, 4.76),
+    )
+    if lod >= 2:
+        for section, px, hx, gallery_y, deck_z in sections:
+            for side, sign in (("P", -1.0), ("S", 1.0)):
+                cy = sign * gallery_y
+                add_box(
+                    f"GalleryBandLOD2_{section}_{side}",
+                    (px, cy, deck_z + 0.015),
+                    (hx, 0.78, 0.045),
+                    glass, collection, 0.001,
+                )
+                add_box(
+                    f"GalleryMullLOD2_{section}_{side}",
+                    (px, cy, deck_z + 0.065),
+                    (0.075, 0.80, 0.055),
+                    frame, collection, 0.001,
+                )
+        return
+    for section, px, hx, gallery_y, deck_z in sections:
+        for side, sign in (("P", -1.0), ("S", 1.0)):
+            cy = sign * gallery_y
+            hy = 0.92
+            boolean_cut_box(
+                passenger_hull, f"GalleryCut_{section}_{side}",
+                (px, cy, deck_z + 0.02),
+                (hx, hy, 0.36),
+            )
+            add_box(
+                f"GalleryWell_{section}_{side}",
+                (px, cy, deck_z - 0.20),
+                (hx - 0.14, hy - 0.13, 0.08),
+                inner, collection, 0.002,
+            )
+            add_box(
+                f"GalleryGlass_{section}_{side}",
+                (px, cy, deck_z - 0.080),
+                (hx - 0.19, hy - 0.18, 0.030),
+                glass, collection, 0.001,
+            )
+            add_box(f"GalleryFrameFore_{section}_{side}", (px + hx - 0.075, cy, deck_z + 0.015), (0.075, hy, 0.10), frame, collection, 0.002)
+            add_box(f"GalleryFrameAft_{section}_{side}", (px - hx + 0.075, cy, deck_z + 0.015), (0.075, hy, 0.10), frame, collection, 0.002)
+            add_box(f"GalleryFrameInner_{section}_{side}", (px, cy - sign * (hy - 0.075), deck_z + 0.015), (hx, 0.075, 0.10), frame, collection, 0.002)
+            add_box(f"GalleryFrameOuter_{section}_{side}", (px, cy + sign * (hy - 0.075), deck_z + 0.015), (hx, 0.075, 0.10), frame, collection, 0.002)
+            add_box(f"GalleryMull_{section}_{side}", (px, cy, deck_z + 0.010), (0.065, hy - 0.12, 0.085), frame, collection, 0.001)
 
 
 def add_drive_saddle(tag, y, lod, mats, collection):
@@ -945,41 +1015,41 @@ def add_drive_saddle(tag, y, lod, mats, collection):
     frame, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     sign = 1.0 if y > 0 else -1.0
     z = DRIVE_Z
-    root_y = sign * 4.85
+    root_y = sign * 5.70
     loft_from_rings(f"DriveSaddle_{tag}", [
         [
-            (HAT_LOAD_X + 0.35, root_y - sign * 1.15, 1.55),
-            (HAT_LOAD_X + 0.35, root_y + sign * 1.35, 1.45),
-            (HAT_LOAD_X + 0.35, root_y + sign * 1.35, -1.05),
-            (HAT_LOAD_X + 0.35, root_y - sign * 1.15, -1.15),
+            (HAT_LOAD_X + 0.35, root_y - sign * 1.55, 1.88),
+            (HAT_LOAD_X + 0.35, root_y + sign * 1.70, 1.76),
+            (HAT_LOAD_X + 0.35, root_y + sign * 1.70, -1.34),
+            (HAT_LOAD_X + 0.35, root_y - sign * 1.55, -1.46),
         ],
         [
-            (HAT_LOAD_X - 1.15, y - sign * 1.05, z + 1.25),
-            (HAT_LOAD_X - 1.15, y + sign * 0.55, z + 1.15),
-            (HAT_LOAD_X - 1.15, y + sign * 0.55, z - 0.95),
-            (HAT_LOAD_X - 1.15, y - sign * 1.05, z - 1.05),
+            (HAT_LOAD_X - 1.15, sign * 6.55 - sign * 1.55, z + 1.68),
+            (HAT_LOAD_X - 1.15, sign * 6.55 + sign * 1.35, z + 1.58),
+            (HAT_LOAD_X - 1.15, sign * 6.55 + sign * 1.35, z - 1.26),
+            (HAT_LOAD_X - 1.15, sign * 6.55 - sign * 1.55, z - 1.36),
         ],
     ], frame, collection, 0.006, cap="both")
     add_folded_sheet(
         f"DriveGusset_{tag}",
-        (HAT_LOAD_X + 0.15, root_y - sign * 0.15, 1.65),
-        (HAT_LOAD_X + 0.15, root_y - sign * 0.15, -1.15),
-        (HAT_LOAD_X - 1.35, y - sign * 0.55, z - 0.85),
-        (HAT_LOAD_X - 1.35, y - sign * 0.55, z + 1.05),
+        (HAT_LOAD_X + 0.15, root_y - sign * 0.25, 1.98),
+        (HAT_LOAD_X + 0.15, root_y - sign * 0.25, -1.45),
+        (HAT_LOAD_X - 1.35, sign * 6.55 - sign * 0.65, z - 1.16),
+        (HAT_LOAD_X - 1.35, sign * 6.55 - sign * 0.65, z + 1.46),
         0.090, frame, collection, 0.004,
     )
     add_folded_sheet(
         f"DriveGussetOut_{tag}",
-        (HAT_LOAD_X + 0.05, root_y + sign * 1.15, 1.35),
-        (HAT_LOAD_X + 0.05, root_y + sign * 1.15, -0.95),
-        (HAT_LOAD_X - 1.05, y + sign * 0.35, z - 0.75),
-        (HAT_LOAD_X - 1.05, y + sign * 0.35, z + 0.95),
+        (HAT_LOAD_X + 0.05, root_y + sign * 1.45, 1.72),
+        (HAT_LOAD_X + 0.05, root_y + sign * 1.45, -1.22),
+        (HAT_LOAD_X - 1.05, sign * 6.55 + sign * 1.10, z - 1.02),
+        (HAT_LOAD_X - 1.05, sign * 6.55 + sign * 1.10, z + 1.32),
         0.070, frame, collection, 0.004,
     )
-    add_box(f"DriveShoe_{tag}", (HAT_LOAD_X + 0.05, root_y, 0.22), (0.42, 0.85, 1.05), frame, collection, 0.004)
-    add_box(f"DriveClampBar_{tag}", (HAT_LOAD_X - 1.55, y - sign * 0.12, z + 1.22), (0.85, 0.18, 0.10), frame, collection, 0.003)
+    add_box(f"DriveShoe_{tag}", (HAT_LOAD_X + 0.05, root_y, 0.22), (0.52, 1.22, 1.38), frame, collection, 0.004)
+    add_box(f"DriveClampBar_{tag}", (HAT_LOAD_X - 1.55, sign * 6.55, z + 1.62), (0.90, 0.28, 0.12), frame, collection, 0.003)
     if lod == 0:
-        add_box(f"DriveClampBolt_{tag}", (HAT_LOAD_X - 1.25, y - sign * 0.12, z + 1.30), (0.06, 0.05, 0.05), mech, collection, 0.001)
+        add_box(f"DriveClampBolt_{tag}", (HAT_LOAD_X - 1.25, sign * 6.55, z + 1.72), (0.07, 0.07, 0.06), mech, collection, 0.001)
 
 
 def add_rooted_vane(name, origin, material, collection, angle, inner=0.22, outer=0.68):
@@ -1017,7 +1087,8 @@ def add_rooted_vane(name, origin, material, collection, angle, inner=0.22, outer
 
 
 def add_civic_drive(tag, y, lod, mats, collection):
-    """Short tapered housing grown from the aft bulkhead. Dry refractory bore, dark hub."""
+    """Continuous load-shoulder drive case with a dry refractory bore and dark hub."""
+    hull = mats["Material_Hull"]
     frame = mats["Material_Armor"]
     mech = mats["Material_Mechanical"]
     refractory = mats["Material_Ceramic"]
@@ -1025,25 +1096,46 @@ def add_civic_drive(tag, y, lod, mats, collection):
     core = mats["Material_Accent"]
     z = DRIVE_Z
     sign = 1.0 if y > 0 else -1.0
-    y0 = sign * 5.35
-    x0, x1, x2, x3, x4 = HAT_LOAD_X - 0.15, -14.85, -17.15, -19.05, -20.85
+    y0 = sign * 5.70
+    x0, x1, x2, x3, x4 = HAT_LOAD_X - 0.15, -13.65, -15.35, -18.05, -20.85
     case = loft_hollow(
         f"DriveHouse_{tag}",
         [
-            drive_case_ring(x0, y0, 0.22, 1.85, 1.55, 8),
-            drive_case_ring(x1, sign * 7.15, z, 1.48, 1.28, 8),
-            drive_case_ring(x2, y, z, 1.28, 1.14, 8),
-            drive_case_ring(x3, y, z, 1.18, 1.06, 8),
+            drive_case_ring(x0, y0, 0.22, 2.30, 1.95, 8),
+            drive_case_ring(x1, sign * 6.55, z, 2.08, 1.78, 8),
+            drive_case_ring(x2, sign * 7.90, z, 1.72, 1.48, 8),
+            drive_case_ring(x3, y, z, 1.34, 1.18, 8),
             drive_case_ring(x4, y, z, DRIVE_R_AFT, DRIVE_R_AFT * 0.92, 8),
         ],
         [
-            drive_case_ring(x0, y0, 0.22, 1.48, 1.22, 8),
-            drive_case_ring(x1, sign * 7.15, z, 1.12, 0.96, 8),
-            drive_case_ring(x2, y, z, 0.94, 0.82, 8),
-            drive_case_ring(x3, y, z, 0.86, 0.76, 8),
+            drive_case_ring(x0, y0, 0.22, 1.84, 1.54, 8),
+            drive_case_ring(x1, sign * 6.55, z, 1.62, 1.36, 8),
+            drive_case_ring(x2, sign * 7.90, z, 1.28, 1.08, 8),
+            drive_case_ring(x3, y, z, 0.98, 0.84, 8),
             drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.28, DRIVE_R_AFT * 0.92 - 0.26, 8),
         ],
         frame, collection, 0.006, close_front=True,
+    )
+    # Pale shoulder armor grows out of the aft pressure ring and rides the
+    # dark case. It shortens the visual fork without closing the twin-bore
+    # centerline negative space.
+    loft_from_rings(
+        f"DriveShoulderDeck_{tag}",
+        [
+            [
+                (HAT_LOAD_X + 0.02, y0 - sign * 1.62, 1.82),
+                (HAT_LOAD_X + 0.02, y0 + sign * 1.62, 1.82),
+                (HAT_LOAD_X + 0.02, y0 + sign * 1.45, 1.42),
+                (HAT_LOAD_X + 0.02, y0 - sign * 1.45, 1.42),
+            ],
+            [
+                (x2 + 0.12, sign * 7.90 - sign * 1.05, 1.70),
+                (x2 + 0.12, sign * 7.90 + sign * 1.05, 1.70),
+                (x2 + 0.12, sign * 7.90 + sign * 0.92, 1.38),
+                (x2 + 0.12, sign * 7.90 - sign * 0.92, 1.38),
+            ],
+        ],
+        hull, collection, 0.004, cap="both",
     )
     # Dry refractory inner wall. Same 8-sided family as the housing, not a 10-gon chrome sleeve.
     loft_hollow(
@@ -1244,39 +1336,60 @@ def forward_stations(lod):
 
 
 def passenger_stations(lod):
-    """Main passenger pressure course. Constant occupied section, wide equator."""
+    """Three visibly stepped passenger pressure sections, not one pale slab."""
     if lod >= 2:
         return [
-            pressure_ring(9.85, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-            pressure_ring(4.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-            pressure_ring(-1.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
+            pressure_ring(9.85, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+            pressure_ring(6.65, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+            pressure_ring(6.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
+            pressure_ring(2.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
+            pressure_ring(2.05, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+            pressure_ring(-1.20, 0, 0.36, 9.10, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
         ]
     return [
-        pressure_ring(9.85, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-        pressure_ring(6.40, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-        pressure_ring(4.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-        pressure_ring(1.10, 0, 0.38, PASS_HW, PASS_HH, **PASS),
-        pressure_ring(-1.20, 0, 0.38, PASS_HW, PASS_HH, **PASS),
+        pressure_ring(9.85, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+        pressure_ring(9.55, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+        pressure_ring(9.25, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(6.65, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(6.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
+        pressure_ring(2.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
+        pressure_ring(2.05, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(-1.20, 0, 0.36, 9.10, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
     ]
 
 
 def passenger_inner_stations(lod):
-    """Inner wall of the hollow passenger course. Same vertex grammar, thinner section."""
-    hw = PASS_HW - PASS_WALL
-    hh = PASS_HH - PASS_WALL
-    if lod >= 2:
-        return [
-            pressure_ring(9.70, 0, 0.38, hw, hh, **PASS),
-            pressure_ring(4.20, 0, 0.38, hw, hh, **PASS),
-            pressure_ring(-1.05, 0, 0.38, hw, hh, **PASS),
-        ]
-    return [
-        pressure_ring(9.70, 0, 0.38, hw, hh, **PASS),
-        pressure_ring(6.40, 0, 0.38, hw, hh, **PASS),
-        pressure_ring(4.20, 0, 0.38, hw, hh, **PASS),
-        pressure_ring(1.10, 0, 0.38, hw, hh, **PASS),
-        pressure_ring(-1.05, 0, 0.38, hw, hh, **PASS),
-    ]
+    """Inner wall follows every Cycle 34 step with a 0.22 m shell."""
+    outer = passenger_stations(lod)
+    result = []
+    for ring in outer:
+        x = ring[0][0]
+        cy = sum(p[1] for p in ring) / len(ring)
+        zc = (max(p[2] for p in ring) + min(p[2] for p in ring)) * 0.5
+        hw = max(abs(p[1] - cy) for p in ring) - PASS_WALL
+        hh = (max(p[2] for p in ring) - min(p[2] for p in ring)) * 0.5 - PASS_WALL
+        top_half = max(abs(p[1] - cy) for p in ring[:2])
+        deck = top_half / max(hw + PASS_WALL, 1e-6)
+        wall_z = max(ring[2][2], ring[7][2])
+        wall = (wall_z - zc) / max(hh + PASS_WALL, 1e-6)
+        chine_z = min(ring[3][2], ring[6][2])
+        chine = max(0.0, (zc - chine_z) / max(hh + PASS_WALL, 1e-6))
+        keel_half = max(abs(p[1] - cy) for p in ring[4:6])
+        belly = 1.0 - max(0.0, (keel_half / max(hw + PASS_WALL, 1e-6) - 0.22) / 0.50)
+        result.append(pressure_ring(x, cy, zc, hw, hh, deck=deck, wall=wall, chine=chine, belly=belly))
+    return result
+
+
+def passenger_liner_stations(lod):
+    """Set-back dark inner volume matching the stepped passenger shell."""
+    result = []
+    for ring in passenger_inner_stations(lod):
+        x = ring[0][0]
+        zc = (max(p[2] for p in ring) + min(p[2] for p in ring)) * 0.5
+        hw = max(abs(p[1]) for p in ring) - 0.12
+        hh = (max(p[2] for p in ring) - min(p[2] for p in ring)) * 0.5 - 0.12
+        result.append(pressure_ring(x, 0, zc, hw, hh, deck=0.35, wall=0.77, chine=0.14, belly=0.35))
+    return result
 
 
 def aft_stations(lod):
@@ -1285,14 +1398,14 @@ def aft_stations(lod):
         return [
             pressure_ring(-1.90, 0, 0.22, AFT_HW, AFT_HH, **MAC),
             pressure_ring(-7.20, 0, 0.16, 6.25, 3.45, **MAC),
-            pressure_ring(HAT_LOAD_X, 0, 0.10, 5.05, 2.45, deck=0.20, wall=0.80, chine=0.16, belly=0.22),
+            pressure_ring(HAT_LOAD_X, 0, 0.10, 6.25, 2.95, deck=0.22, wall=0.82, chine=0.18, belly=0.24),
         ]
     return [
         pressure_ring(-1.90, 0, 0.22, AFT_HW, AFT_HH, **MAC),
         pressure_ring(-4.80, 0, 0.20, 6.45, 3.65, **MAC),
         pressure_ring(-8.20, 0, 0.16, 6.15, 3.35, **MAC),
         pressure_ring(-11.05, 0, 0.12, 5.55, 2.85, deck=0.24, wall=0.84, chine=0.20, belly=0.26),
-        pressure_ring(HAT_LOAD_X, 0, 0.10, 5.05, 2.45, deck=0.20, wall=0.80, chine=0.16, belly=0.22),
+        pressure_ring(HAT_LOAD_X, 0, 0.10, 6.25, 2.95, deck=0.22, wall=0.82, chine=0.18, belly=0.24),
     ]
 
 
@@ -1543,8 +1656,18 @@ def bake_lod0_unique(merged, collection, mats):
     }
     report = {"baked": [], "failed": []}
     leftovers = []
+    key_by_role = {
+        "ceramic": "Hull",
+        "frame": "Armor",
+        "keel": "Mechanical",
+        "refractory": "Ceramic",
+        "primer": "Radiator",
+        "throat": "Thruster",
+        "glass": "Canopy",
+    }
     for obj in list(merged):
-        key = next((name for name in bake_roles if name in obj.name), None)
+        material = obj.data.materials[0] if obj.data.materials else None
+        key = key_by_role.get(material.get("spacefaceRole")) if material else None
         if key is None:
             continue
         role, rgb, material, size = bake_roles[key]
@@ -1615,11 +1738,7 @@ def build_lod(lod, mats):
     bpy.context.scene.collection.children.link(collection)
     hull_mat = mats["Material_Hull"]
     root = add_empty(f"LINER_LOD{lod}_ROOT", (0, 0, 0), collection)
-    root["spacefaceAsset"] = {
-        "assetId": ASSET_ID, "partId": PART_ID, "lod": f"lod{lod}",
-        "slot": "hull", "category": "wholeships", "forward": "+X", "embeddedPlume": False,
-        "role": "civic_pressure_drum_liner",
-    }
+    root["spacefaceAsset"] = spaceface_asset_metadata(lod)
     hull_fore = loft_from_rings("Station_Ops", forward_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
     hull_pass = loft_hollow(
         "Station_Passenger",
@@ -1629,10 +1748,7 @@ def build_lod(lod, mats):
     )
     loft_from_rings(
         "PassLiner",
-        [
-            pressure_ring(ring[0][0], 0, 0.38, PASS_HW - PASS_WALL - 0.10, PASS_HH - PASS_WALL - 0.10, **PASS)
-            for ring in passenger_inner_stations(lod)
-        ],
+        passenger_liner_stations(lod),
         mats["Material_Mechanical"], collection, 0.002, cap="both",
     )
     hull_aft = loft_from_rings("Station_Machinery", aft_stations(lod), hull_mat, collection, BEVEL_HULL, cap="both")
@@ -1648,18 +1764,26 @@ def build_lod(lod, mats):
         add_passenger_corridors(lod, mats, collection, passenger_hull=hull_pass)
         add_passenger_clerestory(lod, mats, collection, hull_pass)
         add_hat_station_ring(
-            "Hat_Shoulder", HAT_FORE_X, PASS_HW, PASS_HH, mats, collection,
-            PASS["deck"], PASS["wall"], PASS["chine"], PASS["belly"],
+            "Hat_Shoulder", HAT_FORE_X, 9.05, 4.18, mats, collection,
+            0.38, 0.76, 0.14, 0.34,
             inner_hw=FORE_HW * 0.98, inner_hh=FORE_HH * 0.98,
         )
         add_hat_station_ring(
-            "Hat_Waist", HAT_AFT_X, PASS_HW, PASS_HH, mats, collection,
-            PASS["deck"], PASS["wall"], PASS["chine"], PASS["belly"],
+            "Hat_GalleryFore", 6.50, PASS_HW, 4.72, mats, collection,
+            0.32, 0.78, 0.14, 0.36, inner_hw=9.48, inner_hh=4.32,
+        )
+        add_hat_station_ring(
+            "Hat_GalleryAft", 2.20, 9.72, 4.48, mats, collection,
+            0.34, 0.77, 0.14, 0.35, inner_hw=9.08, inner_hh=4.08,
+        )
+        add_hat_station_ring(
+            "Hat_Waist", HAT_AFT_X, 9.18, 4.22, mats, collection,
+            0.37, 0.77, 0.14, 0.34,
             inner_hw=AFT_HW * 0.98, inner_hh=AFT_HH * 0.98,
         )
         add_hat_station_ring(
-            "Hat_Load", HAT_LOAD_X, 5.15, 2.55, mats, collection,
-            0.20, 0.80, 0.16, 0.22, inner_hw=3.85, inner_hh=1.85,
+            "Hat_Load", HAT_LOAD_X, 6.40, 3.08, mats, collection,
+            0.22, 0.82, 0.18, 0.24, inner_hw=5.45, inner_hh=2.45,
         )
         roof_z = 0.38 + PASS_HH + 0.05
         for i, rx in enumerate((7.15, 4.20, 1.25)):
@@ -1686,14 +1810,23 @@ def build_lod(lod, mats):
         add_box("Board_CutLOD2", (BOARD_X, -FORE_HW - 0.08, BOARD_Z), (1.35, 0.22, 0.78), mats["Material_Armor"], collection, 0.004)
         add_box("Board_LiteLOD2", (BOARD_X, -FORE_HW - 0.14, BOARD_Z + 0.12), (0.72, 0.04, 0.38), mats["Material_Canopy"], collection, 0.001)
         add_passenger_corridors(lod, mats, collection)
+        add_passenger_clerestory(lod, mats, collection, hull_pass)
         add_hat_station_ring(
-            "Hat_Shoulder", HAT_FORE_X, PASS_HW, PASS_HH, mats, collection,
-            PASS["deck"], PASS["wall"], PASS["chine"], PASS["belly"],
+            "Hat_Shoulder", HAT_FORE_X, 9.05, 4.18, mats, collection,
+            0.38, 0.76, 0.14, 0.34,
             inner_hw=FORE_HW, inner_hh=FORE_HH,
         )
         add_hat_station_ring(
-            "Hat_Waist", HAT_AFT_X, PASS_HW, PASS_HH, mats, collection,
-            PASS["deck"], PASS["wall"], PASS["chine"], PASS["belly"],
+            "Hat_GalleryFore", 6.50, PASS_HW, 4.72, mats, collection,
+            0.32, 0.78, 0.14, 0.36, inner_hw=9.48, inner_hh=4.32,
+        )
+        add_hat_station_ring(
+            "Hat_GalleryAft", 2.20, 9.72, 4.48, mats, collection,
+            0.34, 0.77, 0.14, 0.35, inner_hw=9.08, inner_hh=4.08,
+        )
+        add_hat_station_ring(
+            "Hat_Waist", HAT_AFT_X, 9.18, 4.22, mats, collection,
+            0.37, 0.77, 0.14, 0.34,
             inner_hw=AFT_HW, inner_hh=AFT_HH,
         )
         add_box("NoseCap", (19.62, 0.0, 0.35), (0.16, 0.85, 0.62), hull_mat, collection, 0.003)
@@ -1729,7 +1862,8 @@ def build_lod(lod, mats):
         bpy.context.view_layer.objects.active = active
         if len(objects) > 1:
             bpy.ops.object.join()
-        active.name = f"LOD{lod}_{material_name.replace('Material_', '')}"
+        role_prefix = "Hull_" if active.data.materials and active.data.materials[0].get("spacefaceRole") == "ceramic" else ""
+        active.name = f"LOD{lod}_{role_prefix}{material_name.replace('Material_', '')}"
         active.parent = root
         shade_and_uv(active)
         merged.append(active)
@@ -1765,10 +1899,11 @@ def build_lod(lod, mats):
     collision.hide_render = True
     collision["collision"] = True
     collision["nonRender"] = True
-    hull_tris = next(
-        (sum(max(0, len(p.vertices) - 2) for p in obj.data.polygons) for obj in merged if "Hull" in obj.name),
-        0,
-    )
+    hull_tris = next((
+        sum(max(0, len(p.vertices) - 2) for p in obj.data.polygons)
+        for obj in merged
+        if obj.data.materials and obj.data.materials[0].get("spacefaceRole") == "ceramic"
+    ), 0)
     return collection, {
         "lod": lod,
         "triangles": sum(sum(max(0, len(p.vertices) - 2) for p in obj.data.polygons) for obj in merged),
@@ -1842,6 +1977,7 @@ def export_lod(collection, lod):
             export_materials="EXPORT", export_texcoords=True, export_normals=True,
             export_tangents=True, export_image_format="AUTO",
         )
+        stamp_glb_asset_extras(tmp, lod)
         for attempt in range(6):
             try:
                 if out.exists():
@@ -1922,8 +2058,9 @@ def setup_studio():
     return camera
 
 
-def visible_imported_meshes():
+def visible_imported_meshes(lod=0):
     meshes = []
+    selected_prefix = f"LOD{lod}_"
     for obj in bpy.context.scene.objects:
         if obj.type != "MESH":
             continue
@@ -1931,16 +2068,16 @@ def visible_imported_meshes():
         if "COLLISION" in name or obj.get("collision") or obj.get("nonRender"):
             obj.hide_render = True
             continue
-        if name.startswith("LOD1_") or name.startswith("LOD2_"):
+        if name.startswith("LOD") and not name.startswith(selected_prefix):
             obj.hide_render = True
             continue
         meshes.append(obj)
-    has_lod0 = any(obj.name.upper().startswith("LOD0_") for obj in meshes)
-    if has_lod0:
+    has_selected_lod = any(obj.name.upper().startswith(selected_prefix) for obj in meshes)
+    if has_selected_lod:
         for obj in list(meshes):
-            if not obj.name.upper().startswith("LOD0_"):
+            if not obj.name.upper().startswith(selected_prefix):
                 obj.hide_render = True
-        meshes = [obj for obj in meshes if obj.name.upper().startswith("LOD0_")]
+        meshes = [obj for obj in meshes if obj.name.upper().startswith(selected_prefix)]
     return meshes
 
 
@@ -2119,10 +2256,10 @@ def restore_mats(meshes, backups):
                 obj.material_slots[index].material = material
 
 
-def render_cycle_from_glb(glb_path):
+def render_cycle_from_glb(glb_path, lod=0):
     reset_scene()
     bpy.ops.import_scene.gltf(filepath=str(glb_path))
-    meshes = visible_imported_meshes()
+    meshes = visible_imported_meshes(lod=lod)
     if not meshes:
         raise RuntimeError(f"no visible meshes imported from {glb_path}")
     center, size = mesh_center(meshes)
@@ -2132,6 +2269,8 @@ def render_cycle_from_glb(glb_path):
         lamp.location = Vector(focus) + (lamp.location - Vector((0.4, 0.0, 0.3)))
         look_at(lamp, focus)
     out = FAMILY / "evidence" / "massline_express_liner_v1" / "cycles" / f"cycle_{CYCLE:02d}"
+    if lod:
+        out = out / f"lod{lod}"
     out.mkdir(parents=True, exist_ok=True)
     occupancy, occupancy_failures = measure_supported_occupancy(camera, meshes, focus)
     render_cycle_chase_stills(camera, out, focus=focus)
@@ -2180,9 +2319,15 @@ def render_cycle_from_glb(glb_path):
     bpy.ops.render.render(write_still=True)
 
     ids = {
-        "Hull": (0.70, 0.68, 0.62), "Armor": (0.36, 0.38, 0.42), "Mechanical": (0.22, 0.23, 0.25),
-        "Canopy": (0.12, 0.28, 0.36), "Accent": (0.08, 0.72, 0.76), "Warning": (0.78, 0.42, 0.10),
-        "Ceramic": (0.42, 0.34, 0.26), "Thruster": (0.18, 0.18, 0.20), "Radiator": (0.40, 0.42, 0.34),
+        "CeramicPaint_WarmIvory": (0.86, 0.80, 0.68),
+        "Frame_DarkAnodized": (0.18, 0.22, 0.27),
+        "Keel_ForgedDark": (0.055, 0.070, 0.090),
+        "Glazing_SmokedSafety": (0.08, 0.24, 0.42),
+        "ServicePrimer_Galvanized": (0.32, 0.36, 0.34),
+        "RefractoryHeatAlloy": (0.42, 0.34, 0.26),
+        "WayfindingCyan": (0.08, 0.72, 0.76),
+        "WayfindingAmber": (0.78, 0.42, 0.10),
+        "Throat_OxidizedDark": (0.12, 0.12, 0.15),
     }
 
     def id_color(obj):
@@ -2211,6 +2356,7 @@ def render_cycle_from_glb(glb_path):
         "assetId": ASSET_ID,
         "shipId": PART_ID,
         "cycle": CYCLE,
+        "lod": lod,
         "source": str(glb_path.relative_to(ROOT)).replace("\\", "/"),
         "sourceSha256": sha256(glb_path),
         "renderer": "assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py+tools/blender/spaceface_chase_camera.py",
@@ -2240,7 +2386,7 @@ def render_cycle_from_glb(glb_path):
         "verdict": "revise",
         "gateState": "evidence_ready",
     }
-    (out / "EVIDENCE_IDENTITY.json").write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+    (out / "EVIDENCE_IDENTITY.json").write_bytes((json.dumps(identity, indent=2) + "\n").encode("utf-8"))
     return out, identity
 
 
@@ -2281,7 +2427,7 @@ def main():
     if RENDER_ONLY:
         if not lod0.exists():
             raise FileNotFoundError(lod0)
-        stills, identity = render_cycle_from_glb(lod0)
+        stills, identity = render_cycle_from_glb(lod0, lod=0)
         evidence = FAMILY / "evidence" / "massline_express_liner_v1"
         report_path = evidence / f"cycle_{CYCLE:02d}.json"
         if report_path.exists():
@@ -2291,7 +2437,7 @@ def main():
             report["lengthToBeam"] = identity.get("lengthToBeam")
             report["occupancy"] = identity["occupancy"]
             report["occupancyFailures"] = identity["occupancyFailures"]
-            report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            report_path.write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
         print(json.dumps({k: identity[k] for k in ("sourceSha256", "boundsSizeM", "lengthToBeam")}, indent=2))
         return
     reset_scene()
@@ -2319,7 +2465,15 @@ def main():
         reports.append(report)
         print(f"lod{lod} tris={report['triangles']} hull={report['hullTriangles']} draws={report['draws']}")
     blend = save_blend()
-    stills, identity = render_cycle_from_glb(outputs[0])
+    identities = {}
+    stills = None
+    for lod, output in zip(lods, outputs):
+        lod_stills, lod_identity = render_cycle_from_glb(output, lod=lod)
+        identities[str(lod)] = lod_identity
+        if lod == 0:
+            stills, identity = lod_stills, lod_identity
+    if stills is None:
+        raise RuntimeError("Cycle build produced no LOD0 evidence")
     evidence = FAMILY / "evidence" / "massline_express_liner_v1"
     evidence.mkdir(parents=True, exist_ok=True)
     report = {
@@ -2330,6 +2484,18 @@ def main():
         "blend": str(blend.relative_to(FAMILY)).replace("\\", "/"),
         "lods": reports,
         "stills": str(stills.relative_to(FAMILY)).replace("\\", "/"),
+        "evidenceByLod": {
+            lod: {
+                "sourceSha256": record["sourceSha256"],
+                "stills": str(
+                    (FAMILY / "evidence" / "massline_express_liner_v1" / "cycles" / f"cycle_{CYCLE:02d}" / ("" if lod == "0" else f"lod{lod}"))
+                    .resolve().relative_to(FAMILY.resolve())
+                ).replace("\\", "/").rstrip("/"),
+                "occupancy": record["occupancy"],
+                "occupancyFailures": record["occupancyFailures"],
+            }
+            for lod, record in identities.items()
+        },
         "sourceSha256": identity["sourceSha256"],
         "boundsSizeM": identity.get("boundsSizeM"),
         "lengthToBeam": identity.get("lengthToBeam"),
@@ -2344,7 +2510,7 @@ def main():
         "implementingAgentVerdict": "revise",
         "evidenceState": "evidence_ready",
     }
-    (evidence / f"cycle_{CYCLE:02d}.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (evidence / f"cycle_{CYCLE:02d}.json").write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
     print(json.dumps({k: report[k] for k in ("assetId", "cycle", "stills", "sourceSha256")}, indent=2))
 
 

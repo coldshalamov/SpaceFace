@@ -112,12 +112,22 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the cycle-33 source candidate exists. LOD0 hash
-`74F9B8DA216010D1AACC9FA50B548255BA0683B540D633F50BB836C9A7875055`.
-Chase stills and unique-UV cage-bake isolation are bound in `cycles/cycle_33/`.
-Controller original-resolution review is `REVISE`: the recessed observation bays now survive the legal
-chase view, but the passenger course remains too slab-like and the drives detach into fork appendages.
-Whole-asset G1/G2/G4 remain open. G3, G5, G6, and G7 stay open
-until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
-Source bounds 40.67 x 22.45 x 10.99 m (length-to-beam 1.81). Default occupancy
-17.45%, abeam 9.80%, close 44.96%, all uncropped.
+G0 is written and the Cycle 34 source candidate exists. Exact hashes are:
+
+- LOD0 `256454E3CF02C4EB34AEE1069C6047DBF336351E94041A196DC94D818FA85208`
+- LOD1 `44D9E875194DC8F297E3F830B99D4CF3CBA48646B11D955E8C9E28BC82AA0FBF`
+- LOD2 `A281D0E8E0A6248D8F29984E38C7CF8CE2C5D82532CA04AF5ADBACF563C3BF31`
+- editable Blend `637B0F3AE63464AAADFD95C20E260E706DEFB318E0EA918E8F61940F9ABFE527`
+
+Matched exact-source evidence is bound under `cycles/cycle_34/`, with labeled `lod1/` and `lod2/`
+subsets. Cycle 34 replaces the broad uniform passenger course with three stepped pressure sections,
+six paired deck-edge gallery wells, and full-height hat frames. Both drive cases now overlap a widened
+aft load shoulder, traverse a shorter/thicker outboard transition, and carry pale shoulder armor over
+dark manufactured cases. Semantic contract names now match the exact exported glTF material names.
+
+Implementing-agent original-resolution review remains `REVISE`: all named Cycle 33 defects moved in
+the intended direction, but the long separated drive cases can still read as prongs at D=144 and the
+abeam pressure belt remains visually broad. Whole-asset G1/G2/G4 and independent acceptance stay open.
+G3, G5, G6, and G7 belong to later PQ-049 leaves. No P0/P1 is hidden by a new camera.
+Source bounds remain 40.67 x 22.45 x 10.99 m (length-to-beam 1.81). Default occupancy is 17.45%,
+abeam 9.80%, and close 44.96%, all uncropped for LOD0/1; LOD2 is 17.46%, 9.81%, and 45.09%.
