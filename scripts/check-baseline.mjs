@@ -125,6 +125,14 @@ const LINKS = [
     why: 'A drifted save schema silently breaks every existing save. Sub-second; no reason to ever skip it.',
   },
   {
+    id: 'opening-mesh-defer',
+    costHintMs: 2000,
+    script: 'check:opening-mesh-defer',
+    why: 'A stuck opening mesh defer disabled ship mesh streaming for whole sessions — enemies/NPCs '
+      + 'never gained hulls (live-confirmed on seed 47). Locks the paint-latch release, including the '
+      + 'failed-opening-validation path.',
+  },
+  {
     id: 'flight-v3',
     costHintMs: 1100,
     script: 'check:flight:v3',

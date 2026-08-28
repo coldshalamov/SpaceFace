@@ -303,6 +303,9 @@ const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
+// The opening first-picture hold is a startup latch measured in frames, not seconds. If the paint
+// latch has not ended it after this long, the paint callback is never coming; resume streaming.
+const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
 
 function isDebugRuntime() {
   if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') return false;
@@ -4728,6 +4731,7 @@ export const render = {
         state.render.deferNoncriticalMeshStreaming = false;
         this._pendingPostOpeningSector = null;
         this._openingFirstPicturePrepared = false;
+        this._openingPictureHoldSinceMs = null;
         this._firstPlayablePaintScheduled = false;
       }
       if (mode !== 'flight') return;
@@ -6228,6 +6232,25 @@ export const render = {
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
       && this.state && this.state.mode === 'flight'
       && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+    // Failsafe: the opening hold normally ends in the afterBrowserPaint latch after the first
+    // playable draw. If that callback never fires (lost paint signal, validation-time mode flip),
+    // the hold would freeze syncEntityViews/camera/instance submission for the rest of the session.
+    // Release it after a bounded grace so a missed latch degrades to one stale picture, not a
+    // permanently frozen presentation.
+    if (holdOpeningPicture) {
+      const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+      if (this._openingPictureHoldSinceMs == null) this._openingPictureHoldSinceMs = nowMs;
+      else if (nowMs - this._openingPictureHoldSinceMs > OPENING_PICTURE_HOLD_FAILSAFE_MS) {
+        releaseOpeningMeshDefer(this, this.state.mode);
+        if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+          void this.state.render.resumeDeferredPipelineAdmissions();
+        }
+      }
+    } else {
+      this._openingPictureHoldSinceMs = null;
+    }
     if (!holdOpeningPicture) {
       updateShipPitchPresentation(this.state, frameDt);
       this.syncEntityViews(alpha);
@@ -6504,9 +6527,9 @@ export const render = {
         : receiptValidation;
       this.state.render.openingSubmissionValidation = validation;
       if (!validation.ok) {
-        // This is the post-submit diagnostic for lazy driver variants created by the backend during
-        // the draw. The pre-submit gate already prevented known uncaptured graph identities; retain
-        // this delta as evidence and do not release the opening cohort.
+        // Post-submit diagnostic for late admissions the plan could not name. The evidence stays on
+        // state.render; the mesh defer still releases after the first paint (see afterBrowserPaint
+        // below) — a failed diagnostic must never strand flight without mesh streaming.
         console.error('[render] opening submission post-submit validation failed', validation);
         this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
           this.scene,
@@ -6524,23 +6547,7 @@ export const render = {
         && !this._firstPlayablePaintScheduled) {
       this._firstPlayablePaintScheduled = true;
       afterBrowserPaint(() => {
-        try {
-          if (this.state.mode === 'flight'
-              && this.state.render.openingSubmissionValidation?.ok !== false) {
-            this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
-              ? performance.now()
-              : Date.now();
-          } else if (this.state.render.openingSubmissionValidation?.ok === false) {
-            return;
-          }
-        } finally {
-          if (this.state.render.openingSubmissionValidation?.ok !== false) {
-            releaseOpeningMeshDefer(this, this.state.mode);
-            if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
-              void this.state.render.resumeDeferredPipelineAdmissions();
-            }
-          }
-        }
+        applyFirstPlayablePaintRelease(this);
       });
     }
     return true;
@@ -7103,6 +7110,31 @@ export const render = {
     }
   },
 };
+
+/**
+ * End the opening first-picture hold after its paint latch. Runs on every first playable paint —
+ * including when the opening submission validation failed. The validation evidence is already
+ * retained on state.render for the post-mortem; a failed startup diagnostic must not permanently
+ * park mesh streaming, or every ship spawned or promoted after the first picture stays invisible
+ * for the whole session.
+ */
+export function applyFirstPlayablePaintRelease(owner) {
+  const render = owner && owner.state && owner.state.render;
+  try {
+    if (owner && owner.state.mode === 'flight'
+        && render.openingSubmissionValidation?.ok !== false) {
+      render.firstPlayableFrameAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+    }
+  } finally {
+    releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null);
+    if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
+      void render.resumeDeferredPipelineAdmissions();
+    }
+  }
+  return owner;
+}
 
 /** Opening defer must clear even if the first painted frame is no longer flight. */
 export function releaseOpeningMeshDefer(owner, mode) {

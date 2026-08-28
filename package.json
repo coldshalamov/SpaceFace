@@ -335,6 +335,7 @@
     "build:indexes": "node scripts/build-encounter-index.mjs && node scripts/build-flavor-index.mjs && node scripts/build-code-index.mjs",
     "generate:save-schema": "node scripts/generate-save-schema.mjs --write",
     "check:save-schema": "node scripts/generate-save-schema.mjs --check",
+    "check:opening-mesh-defer": "node --test test/opening-mesh-defer.test.mjs",
     "check:ci:report": "node scripts/check-ci-report.mjs",
     "check:content-census": "node scripts/report-content-census.mjs --check --summary",
     "report:content-census": "node scripts/report-content-census.mjs",
