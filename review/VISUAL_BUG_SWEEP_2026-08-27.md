@@ -1,5 +1,16 @@
 # Visual bug sweep — 2026-08-27
 
+> **2026-08-28 update (flight-HUD popup pass):** the player-reported popup complaints produced a
+> root-cause batch, all fixed and shipped (commits aad903d6..0c5f5718):
+> the receipts/toast channel was DEAD in flight (createHud wiped the re-parented feed; then the
+> feed had no `position`, and its lane rect landed inside the command-deck readout band — the
+> reported "boxes overlapping + hover flicker" mid-bottom); rail slot labels truncated to
+> "ORD_/REP_" (now clean: reserved sockets unnamed, "Repel" fits); the radar RANGE plate was
+> sheared to "RANG" by the circular mask (now inset onto the chord); and the scan-return /
+> pirate-parley / recovery-encounter popups dropped the glass-box + left-accent-bar template for
+> the authored flight-instrument plate. Items 13–15, 22–25 below are covered by that batch; the
+> station scatter-skin clipping items (1–12) remain open by design decision.
+
 Method: read live UI code path-by-path (dead screens excluded per the live/dead map), then
 captured real frames and inspected them: `scripts/capture-station-tabs.mjs` (headless,
 `.devshots/station-restore/`) and `scripts/capture-ui-matrix.mjs` (`.devshots/ui-matrix/`,
