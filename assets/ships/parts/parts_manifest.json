@@ -5698,6 +5698,222 @@
         "max": [0.9923, 0.8635, 1.02],
         "dimensionsM": [1.9056, 1.727, 1.02]
       }
+    },
+    {
+      "id": "place_works_conduit_power_straight",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_straight.glb",
+      "tris": 1234,
+      "bytes": 364936,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power straight with explicit LOD0/1/2, powered runtime hook, cell-face ports, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -0.23999999463558197],
+        "max": [1.100000023841858, 0.20000000298023224, 0.23999999463558197],
+        "dimensionsM": [2.200000047683716, 0.20000000298023224, 0.47999998927116394]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_corner.glb",
+      "tris": 1470,
+      "bytes": 368412,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power corner with explicit LOD0/1/2, powered runtime hook, continuous +X/+Y ports, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.23999999463558197, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.20000000298023224, 0.23999999463558197],
+        "dimensionsM": [1.3400000184774399, 0.20000000298023224, 1.3400000184774399]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_t.glb",
+      "tris": 1772,
+      "bytes": 419516,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power T with explicit LOD0/1/2, powered runtime hook, three cell-face ports, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.22499999403953552, 0.23999999463558197],
+        "dimensionsM": [2.200000047683716, 0.22499999403953552, 1.3400000184774399]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_cross.glb",
+      "tris": 2284,
+      "bytes": 464920,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power cross with explicit LOD0/1/2, powered runtime hook, four cell-face ports, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.22499999403953552, 1.100000023841858],
+        "dimensionsM": [2.200000047683716, 0.22499999403953552, 2.200000047683716]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_end.glb",
+      "tris": 1206,
+      "bytes": 360168,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power end fitting with explicit LOD0/1/2, powered runtime hook, one +X port, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.3100000023841858, -0.019999999552965164, -0.25999999046325684],
+        "max": [1.100000023841858, 0.2199999988079071, 0.25999999046325684],
+        "dimensionsM": [1.4100000262260437, 0.23999999836087227, 0.5199999809265137]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_junction.glb",
+      "tris": 1936,
+      "bytes": 436528,
+      "textureSize": 1024,
+      "note": "PQ-131.06 — accepted armoured power junction with explicit LOD0/1/2, powered runtime hook, four ports, service hardware, and independent whole-kit KEEP review.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.3850000202655792, 1.100000023841858],
+        "dimensionsM": [2.200000047683716, 0.3850000202655792, 2.200000047683716]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_straight.glb",
+      "tris": 1352,
+      "bytes": 355140,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted open C-rail material lane straight with roller return void, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1119999885559082, 0, -0.3873000144958496],
+        "max": [1.1119999885559082, 0.25999999046325684, 0.3873000144958496],
+        "dimensionsM": [2.2239999771118164, 0.25999999046325684, 0.7746000289916992]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_corner.glb",
+      "tris": 2176,
+      "bytes": 399800,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted swept open C-rail material lane corner with continuous ports, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.3873000144958496, 0, -1.1119999885559082],
+        "max": [1.1119999885559082, 0.25999999046325684, 0.3873000144958496],
+        "dimensionsM": [1.4993000030517578, 0.25999999046325684, 1.4993000030517578]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_t.glb",
+      "tris": 2396,
+      "bytes": 448248,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted open C-rail material lane T with rooted drive, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1449999809265137, 0, -1.1449999809265137],
+        "max": [1.1449999809265137, 0.25999999046325684, 0.5999999642372131],
+        "dimensionsM": [2.2899999618530273, 0.25999999046325684, 1.7449999451637268]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_cross.glb",
+      "tris": 2444,
+      "bytes": 459456,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted open C-rail material lane cross with hollow centre, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.138971209526062, 0, -1.1449999809265137],
+        "max": [1.138971209526062, 0.25999999046325684, 1.1449999809265137],
+        "dimensionsM": [2.277942419052124, 0.25999999046325684, 2.2899999618530273]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_end.glb",
+      "tris": 1608,
+      "bytes": 377532,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted open C-rail material lane end with rooted drive, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.4399999976158142, -0.009999999776482582, -0.5799999833106995],
+        "max": [1.1449999809265137, 0.27900001406669617, 0.38999998569488525],
+        "dimensionsM": [1.5849999785423279, 0.28900001384317875, 0.9699999690055847]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_junction.glb",
+      "tris": 2344,
+      "bytes": 458084,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle02 — accepted open C-rail material lane junction with service lid, rooted drive, flow_mesh hook, explicit LOD0/1/2, and independent whole-kit KEEP review.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1449999809265137, 0, -1.1449999809265137],
+        "max": [1.1449999809265137, 0.3109999895095825, 1.1449999809265137],
+        "dimensionsM": [2.2899999618530273, 0.3109999895095825, 2.2899999618530273]
+      }
     }
   ],
   "runtimeSlots": {
@@ -5809,7 +6025,20 @@
       "places/place_claim_outpost_refinery.glb",
       "places/place_claim_outpost_relay.glb",
       "places/place_claim_outpost_bastion.glb",
-      "places/place_landmark_wreck_cathedral.glb"
+      "places/place_landmark_wreck_cathedral.glb",
+      "works/place_works_rover.glb",
+      "works/place_works_conduit_power_straight.glb",
+      "works/place_works_conduit_power_corner.glb",
+      "works/place_works_conduit_power_t.glb",
+      "works/place_works_conduit_power_cross.glb",
+      "works/place_works_conduit_power_end.glb",
+      "works/place_works_conduit_power_junction.glb",
+      "works/place_works_conduit_lane_straight.glb",
+      "works/place_works_conduit_lane_corner.glb",
+      "works/place_works_conduit_lane_t.glb",
+      "works/place_works_conduit_lane_cross.glb",
+      "works/place_works_conduit_lane_end.glb",
+      "works/place_works_conduit_lane_junction.glb"
     ]
   }
 }

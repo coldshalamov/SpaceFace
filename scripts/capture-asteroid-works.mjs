@@ -1041,6 +1041,7 @@ try {
     await shot('11-site-network.png');
     console.log(`11-site-network.png: lens ${before || 'none'} -> ${st.lens.active} · register ${st.net.register}`
       + ` · ${st.net.runs.length} runs (${st.net.islands} dark) · ${st.net.flowDots} flow dots`
+      + ` · ${st.net.authoredCount || 0} authored conduit pieces`
       + ` · crate stage ${st.crates.stage} · armour ${st.net.casings} meshes,`
       + ` lane ${st.net.laneWidthPx}px / cable ${st.net.cableWidthPx}px across`
       + ` · machines [${st.states.join(', ')}]`);
@@ -1068,6 +1069,14 @@ try {
     if (st.lens.active !== 'network') failures.push(`11-site-network.png: V did not reach the Network lens (${st.lens.active})`);
     if (st.net.register !== 'site') failures.push('11-site-network.png: the camera is not at the site register');
     if (!st.net.runs.length) failures.push('11-site-network.png: the site drew no network runs at all');
+    if (!(st.net.authoredCount > 0) || st.net.proceduralFallback) {
+      failures.push('11-site-network.png: accepted authored Conduit pieces did not replace the procedural fallback');
+    } else {
+      const families = new Set(st.net.authoredPieces.map((part) => part.family));
+      if (!families.has('power') || !families.has('lane')) {
+        failures.push(`11-site-network.png: authored Conduit family coverage is incomplete (${[...families].join(', ')})`);
+      }
+    }
     if (!(st.net.casings > 0)) failures.push('11-site-network.png: the runs shed their armour at site zoom — flat lines on the rock');
     if (!(st.net.laneWidthPx >= 6)) {
       failures.push(`11-site-network.png: the lane is ${st.net.laneWidthPx}px across at the site register — a hairline, not a conveyor`);

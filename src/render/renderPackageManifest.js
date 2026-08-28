@@ -1941,6 +1941,126 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "3a0148e3191e4a6258728e5585f246ad2a5ca0c5192f406052f39dfbc048b761",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-straight",
+    "expectedContentHash": "1a2232be033e4d40f3213ee260daae1c610cd2712bdc249b52321caf21194f9b",
+    "key": "works-conduit-power-straight",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-straight/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_straight",
+    "slot": "place",
+    "sourceSha256": "2cae3a4152bb23c62d6498aaecbfee839405e61181e1674ec548ed077f7a4b5b",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_straight.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-corner",
+    "expectedContentHash": "ffde308ccd3ff37ee9b3aacf5bcd1248f4eab74d39f398d86b3a15e08b00d8b5",
+    "key": "works-conduit-power-corner",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_corner",
+    "slot": "place",
+    "sourceSha256": "687f8919f86b11d22256d1c04ccf52e42a84180ef006df7ecde322ba68fd013a",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-t",
+    "expectedContentHash": "f15cbe8d5ce2fd742bef4f952c9221e68a35a522f83e39ebcea0bb2bc96005d4",
+    "key": "works-conduit-power-t",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-t/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_t",
+    "slot": "place",
+    "sourceSha256": "b2db5fd1b85350563d414ca974d2ea3ca75ac325ddd281450c03ecd859652ca6",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_t.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-cross",
+    "expectedContentHash": "1c0d3c6022e5d7f94f4edd030baacd2e343619642f4e5b1f0bf8d6b90d48091b",
+    "key": "works-conduit-power-cross",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-cross/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_cross",
+    "slot": "place",
+    "sourceSha256": "4dd24d0acfe7648af63e629e2abffb0395defdb6ab46e8c7feec1fac8fc48b80",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-end",
+    "expectedContentHash": "b60bdccd689f03008565d56c2ebb2db6d26d2cf528add08ddbc90c554ecd81a9",
+    "key": "works-conduit-power-end",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-end/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_end",
+    "slot": "place",
+    "sourceSha256": "4099d1fa8b7ab9abceb0162c4db37925d47709b50342bc89b03c98a8ecb87f21",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_end.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-power-junction",
+    "expectedContentHash": "ccdfa6d2fa2589ca76a4e1bc5ae177ffc4f17768147d026f7b4b4c1f955e2f71",
+    "key": "works-conduit-power-junction",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-junction/render-package.json",
+    "runtimeAssetId": "place_works_conduit_power_junction",
+    "slot": "place",
+    "sourceSha256": "46c71aed95f7945489c5988861c648f214c6212623beecb7bacf025f77d231a4",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-straight",
+    "expectedContentHash": "0a6d41a7d5eecd305873858512b7168f7953edce6e17cebf2e500912082b1a71",
+    "key": "works-conduit-lane-straight",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-straight/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_straight",
+    "slot": "place",
+    "sourceSha256": "537c8e0ff65fc19e85f562af6339bc2914abbb87370631e98eb22d783832a652",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_straight.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-corner",
+    "expectedContentHash": "847f7b8182139eff86574351b6141436edaea3800461f37e20ab4102a746c89f",
+    "key": "works-conduit-lane-corner",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-corner/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_corner",
+    "slot": "place",
+    "sourceSha256": "7159a36fcd808bbb06323ebdd23a17769696d1cfc6ef98a0554092cfca34db41",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_corner.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-t",
+    "expectedContentHash": "a015db32570cf67f5dc302d0b9f308d6a3e62aeaa9f8994aeb979386561dc56d",
+    "key": "works-conduit-lane-t",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-t/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_t",
+    "slot": "place",
+    "sourceSha256": "f52ecab59d5afe847dc4f5a1ee189d84c45b4a99018c3260bbad0cd34a9894c4",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_t.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-cross",
+    "expectedContentHash": "6b79def33423846fe9e326c8696f87e619885dd90a610ca17da1b0f488b84807",
+    "key": "works-conduit-lane-cross",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-cross/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_cross",
+    "slot": "place",
+    "sourceSha256": "474375998ebdb9f3d0c004763d6b73ebb771b64e971d79226856bb3e6f74d7c7",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-end",
+    "expectedContentHash": "b56cb7627e0cd7dfcc7618105e31d175d55a65413cb936aee1a9d4c35d0a6d4f",
+    "key": "works-conduit-lane-end",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_end",
+    "slot": "place",
+    "sourceSha256": "eebd558e47dad9afd44f01127a2f12f77ba7b25e545aa316ec9e802b8dad7338",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb"
+  },
+  {
+    "assetId": "sf.render.works-conduit-lane-junction",
+    "expectedContentHash": "68f6d65c77ebdb174855bebb453f77696242cb38a2567b5e4476713d1f6ba454",
+    "key": "works-conduit-lane-junction",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json",
+    "runtimeAssetId": "place_works_conduit_lane_junction",
+    "slot": "place",
+    "sourceSha256": "8457beae836ec4f16d78e03615680c30b447eb147e51cdd4257bdbd8ff7fc3f8",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_junction.glb"
   }
 ];
 

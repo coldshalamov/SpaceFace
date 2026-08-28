@@ -55,7 +55,11 @@ import {
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
-import { createWorksPartLoader, recordWorksInstanceResources } from './worksPartLoader.js';
+import {
+  createWorksPartLoader,
+  recordWorksInstanceResources,
+  resolveWorksConduitPiece,
+} from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -864,6 +868,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
   function retireWorksAssets(reason = 'works-screen-exit') {
     if (worksRetirePromise) return worksRetirePromise;
+    disposeAuthoredOverlayParts();
     unmountWorksProof();
     const loader = worksLoader;
     worksLoader = null;
@@ -1948,6 +1953,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const LANE_DEAD = new THREE.Color(0x5b5b5c);    // track bolted to nothing
   const overlayParts = [];       // { kind, key, mat, mesh } — one per NETWORK, state-driven
   const overlayCasings = [];     // shared dark armour, state-free
+  const authoredOverlayParts = []; // per-cell accepted Conduit release pieces
+  let authoredOverlayGeneration = 0;
   const laneFlows = [];          // { key, routes:[{pts,cum,len}], phase }
   const netState = { power: new Map(), lane: new Map() };
   const overlayWidth = { lane: 0, power: 0 };    // cell fractions of the last build, for §7 checks
@@ -3564,7 +3571,117 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return `${h}|${zoomRegister}|${ph}|${Math.round(registerPxPerWu(zoomRegister))}`;
   }
 
+  function setProceduralOverlayVisible(visible) {
+    for (const part of overlayParts) part.mesh.visible = visible;
+    for (const mesh of overlayCasings) mesh.visible = visible;
+  }
+
+  function disposeAuthoredOverlayParts() {
+    authoredOverlayGeneration += 1;
+    const loader = worksLoader;
+    for (let i = 0; i < authoredOverlayParts.length; i++) {
+      const rec = authoredOverlayParts[i];
+      overlayRoot.remove(rec.seat);
+      if (loader) loader.releaseWorksPart(rec.source);
+      else if (rec.source.parent) rec.source.parent.remove(rec.source);
+    }
+    authoredOverlayParts.length = 0;
+    setProceduralOverlayVisible(true);
+  }
+
+  function conduitDynamicMeshes(group, family) {
+    const hook = family === 'power' ? 'powered' : 'flow_mesh';
+    return collectNamedMeshes(group, (name) => {
+      const stem = String(name || '').replace(/^LOD[012]_/, '');
+      return stem === hook;
+    });
+  }
+
+  async function mountAuthoredOverlays(desired) {
+    if (!desired.length || worksTearingDown || disposed || glTeardownDone) return false;
+    const generation = authoredOverlayGeneration;
+    const loader = ensureWorksLoader();
+    if (!loader) return false;
+
+    // A junction is a service variant of a real four-port crossing, never a phantom arm. Pick the
+    // lowest-index cross in each live sim component; all later four-way cells use the plain cross.
+    const serviceCellByNetwork = new Map();
+    for (let i = 0; i < desired.length; i++) {
+      const rec = desired[i];
+      if (rec.mask !== 15) continue;
+      const serviceKey = `${rec.family}:${rec.key}`;
+      const prior = serviceCellByNetwork.get(serviceKey);
+      if (prior == null || rec.idx < prior) serviceCellByNetwork.set(serviceKey, rec.idx);
+    }
+
+    const staged = [];
+    const releaseStaged = () => {
+      for (let i = 0; i < staged.length; i++) {
+        const rec = staged[i];
+        if (rec.seat.parent) rec.seat.parent.remove(rec.seat);
+        loader.releaseWorksPart(rec.source);
+      }
+      staged.length = 0;
+    };
+
+    for (let i = 0; i < desired.length; i++) {
+      if (generation !== authoredOverlayGeneration || worksTearingDown || disposed || glTeardownDone) {
+        releaseStaged();
+        return false;
+      }
+      const rec = desired[i];
+      // A lone painted cell is the existing physical stub: give its end fitting a stable direction
+      // without claiming that it connects to a neighbour in the sim.
+      const visualMask = rec.mask || [1, 2, 4, 8][hash32(rec.idx, rec.family === 'power' ? 61 : 67) & 3];
+      const serviceKey = `${rec.family}:${rec.key}`;
+      const piece = resolveWorksConduitPiece(rec.family, visualMask, {
+        service: rec.mask === 15 && serviceCellByNetwork.get(serviceKey) === rec.idx,
+      });
+      const source = await loader.loadWorksPart(piece.assetId);
+      if (!source || generation !== authoredOverlayGeneration
+          || worksTearingDown || disposed || glTeardownDone) {
+        if (source) loader.releaseWorksPart(source);
+        releaseStaged();
+        return false;
+      }
+
+      const dynamicMeshes = conduitDynamicMeshes(source, rec.family);
+      const owned = [];
+      const mats = isolateWorksMeshMaterials(dynamicMeshes, owned);
+      if (!mats.length) {
+        loader.releaseWorksPart(source);
+        releaseStaged();
+        return false;
+      }
+      recordWorksInstanceResources(source, owned);
+
+      // Source GLBs are Blender Z-up exported as glTF Y-up. The inner +90° X seat maps the
+      // authored mount plane onto the Works XY board; the outer Z rotation maps exact ports.
+      source.position.set(0, 0, 0);
+      source.rotation.set(Math.PI / 2, 0, 0);
+      source.scale.set(1, 1, 1);
+      const seat = new THREE.Group();
+      seat.name = `authored_${piece.assetId}_${rec.idx}`;
+      seat.position.set(worldX(rec.c), worldY(rec.r) + rec.off, Z.overlay);
+      seat.rotation.z = piece.rotation;
+      seat.add(source);
+      staged.push({ ...rec, ...piece, seat, source, mats, dynamicMeshes });
+    }
+
+    if (generation !== authoredOverlayGeneration || worksTearingDown || disposed || glTeardownDone) {
+      releaseStaged();
+      return false;
+    }
+    for (let i = 0; i < staged.length; i++) {
+      overlayRoot.add(staged[i].seat);
+      authoredOverlayParts.push(staged[i]);
+    }
+    setProceduralOverlayVisible(false);
+    return true;
+  }
+
   function disposeOverlayParts() {
+    disposeAuthoredOverlayParts();
     for (const part of overlayParts) {
       overlayRoot.remove(part.mesh);
       part.mesh.geometry.dispose();
@@ -3606,6 +3723,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function rebuildOverlays(site, projection = null) {
     disposeOverlayParts();
     if (!site) return;
+    const authoredDesired = [];
     const siteReg = zoomRegister === 'site';
     const machineCells = new Set(site.machines.map((m) => tileIndex(m.col, m.row)));
     // WHERE THE ISLANDS COME FROM: the projection's own connected components, not a second flood
@@ -3673,6 +3791,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const cy = worldY(r) + off;
         const key = compOf[kind.name].get(idx) || '_';
         const mask = connectivityMask(has, c, r);
+        authoredDesired.push({ family: kind.name, idx, c, r, key, mask, off });
         let any = false;
         for (const [bit, dc, dr] of arms) {
           if (!(mask & bit)) continue;
@@ -3771,6 +3890,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // The flow rides the lane's OWN centreline, so it takes the offset this build actually used —
     // recomputing it here is how the dots ended up beside the tray instead of inside it.
     rebuildLaneFlows(site, projection, shared, kinds[0].off);
+    void mountAuthoredOverlays(authoredDesired);
   }
 
   // ---- lane flow routes (law §7: dots move TOWARD THE PORT) ------------------------------------
@@ -3929,6 +4049,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         part.mat.emissiveIntensity = Math.min(0.9, base * lensK);
       }
     }
+    for (const part of authoredOverlayParts) {
+      const st = part.family === 'power'
+        ? netState.power.get(part.key)
+        : netState.lane.get(part.key);
+      const live = !!(st && st.live);
+      let color = part.family === 'power'
+        ? (live ? CABLE_LIVE : CABLE_DEAD)
+        : (live ? LANE_LIVE : LANE_DEAD);
+      let emissiveIntensity = 0;
+      let emissiveHex = 0x000000;
+      if (part.family === 'power' && live) {
+        emissiveHex = 0xffb648;
+        emissiveIntensity = Math.min(0.55, (st.ratio >= 1 ? 0.18 : 0.03 + st.ratio * 0.12) * lensK);
+      } else if (part.family === 'lane' && live) {
+        // The accepted belt is a physical dark surface; activity is carried primarily by the
+        // existing stock dots. This restrained floor prevents a live belt becoming a neon ribbon.
+        emissiveHex = 0x5c7480;
+        emissiveIntensity = Math.min(0.18, (st.active ? 0.07 : 0.035) * lensK);
+      }
+      for (let i = 0; i < part.mats.length; i++) {
+        const mat = part.mats[i];
+        if (mat.color) mat.color.copy(color);
+        if (mat.emissive) mat.emissive.setHex(emissiveHex);
+        if ('emissiveIntensity' in mat) mat.emissiveIntensity = emissiveIntensity;
+      }
+    }
     syncFlowDots(dt, lensK);
   }
 
@@ -3958,7 +4104,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           if (used >= FLOW_DOT_MAX) break;
           const arc = (flow.phase + i * gap) % route.len;
           const pt = pointOnRoute(route, arc);
-          dummy.position.set(pt[0], pt[1], Z.overlay + 0.115);   // on the tray floor, under the lid
+          // The authored belt sits slightly higher than the procedural tray floor. Keep the stock
+          // beads above that belt but below its narrow guard; the fallback retains its old depth.
+          const flowZ = authoredOverlayParts.length ? Z.overlay + 0.19 : Z.overlay + 0.115;
+          dummy.position.set(pt[0], pt[1], flowZ);
           dummy.rotation.set(0, 0, 0);
           dummy.scale.setScalar(S * dotScale);
           dummy.updateMatrix();
@@ -5166,6 +5315,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       return {
         runs,
+        authoredPieces: authoredOverlayParts.map((part) => ({
+          assetId: part.assetId,
+          family: part.family,
+          kind: part.kind,
+          key: part.key,
+          cell: part.idx,
+          mask: part.mask,
+          rotation: Number(part.rotation.toFixed(4)),
+        })),
+        authoredCount: authoredOverlayParts.length,
+        proceduralFallback: authoredOverlayParts.length === 0,
         lanes,
         power,
         islands: runs.filter((r) => !r.live).length,

@@ -3420,6 +3420,234 @@
       "ktx2Textures": 30,
       "meshoptBufferViews": 53,
       "contractNodeCount": 21
+    },
+    {
+      "id": "place_works_conduit_power_straight",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_straight.glb",
+      "sourceSha256": "ca4d71279f5480d878fae99aa6a3ef4921a6c47f209d743749444808aa8ab74f",
+      "releaseSha256": "2cae3a4152bb23c62d6498aaecbfee839405e61181e1674ec548ed077f7a4b5b",
+      "sourceBytes": 364936,
+      "releaseBytes": 524756,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb",
+      "sourceSha256": "06c41e5a890935a049edd6e42616123c96a66d7cb4432ac76c48281ac2bb8f11",
+      "releaseSha256": "687f8919f86b11d22256d1c04ccf52e42a84180ef006df7ecde322ba68fd013a",
+      "sourceBytes": 368412,
+      "releaseBytes": 527276,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_t.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_t.glb",
+      "sourceSha256": "8f15ce7fe47e011cf6d9c6d52fff4491fb49309aceab48473d30101d272348e8",
+      "releaseSha256": "b2db5fd1b85350563d414ca974d2ea3ca75ac325ddd281450c03ecd859652ca6",
+      "sourceBytes": 419516,
+      "releaseBytes": 536520,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb",
+      "sourceSha256": "8e3d35ddfdc7e91657e27a14562f767b232b94b1c019b183d71aba5f7bea649d",
+      "releaseSha256": "4dd24d0acfe7648af63e629e2abffb0395defdb6ab46e8c7feec1fac8fc48b80",
+      "sourceBytes": 464920,
+      "releaseBytes": 546528,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_end.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_end.glb",
+      "sourceSha256": "bf514fe9d17ccf435d6d3cfcc677b682d584155b1e5da8c19da91c9a499d8f6d",
+      "releaseSha256": "4099d1fa8b7ab9abceb0162c4db37925d47709b50342bc89b03c98a8ecb87f21",
+      "sourceBytes": 360168,
+      "releaseBytes": 523436,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb",
+      "sourceSha256": "7aa12dc794e9427dc3a4d87486ab10fdc773322d2f13fbbea6c65e0c6c05785d",
+      "releaseSha256": "46c71aed95f7945489c5988861c648f214c6212623beecb7bacf025f77d231a4",
+      "sourceBytes": 436528,
+      "releaseBytes": 541676,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_straight.glb",
+      "sourceSha256": "9f6a8a5d97490137104e656ee1bb3f20ef4bcc4ae77d05c98c47b2262ce9775f",
+      "releaseSha256": "537c8e0ff65fc19e85f562af6339bc2914abbb87370631e98eb22d783832a652",
+      "sourceBytes": 355140,
+      "releaseBytes": 496004,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 25,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_corner.glb",
+      "sourceSha256": "428cebb519bd2a6c16325bbb7f51d8be2fd27ad9d74b13e5556e033b80e48a9d",
+      "releaseSha256": "7159a36fcd808bbb06323ebdd23a17769696d1cfc6ef98a0554092cfca34db41",
+      "sourceBytes": 399800,
+      "releaseBytes": 505716,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 25,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_t.glb",
+      "sourceSha256": "2210fe4993057da6ccc63070ea958ac5d63842473b1c0f70d45f9e480e49991c",
+      "releaseSha256": "f52ecab59d5afe847dc4f5a1ee189d84c45b4a99018c3260bbad0cd34a9894c4",
+      "sourceBytes": 448248,
+      "releaseBytes": 515432,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 25,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb",
+      "sourceSha256": "d122adde7d68e759b4da18d007ee0ddd74862d3f12d21b14dbc5171248d3c62e",
+      "releaseSha256": "474375998ebdb9f3d0c004763d6b73ebb771b64e971d79226856bb3e6f74d7c7",
+      "sourceBytes": 459456,
+      "releaseBytes": 516728,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 22,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb",
+      "sourceSha256": "228551a024d8d4289b2731dbd663274e556f592fc52fae9f29bb705c9536124f",
+      "releaseSha256": "eebd558e47dad9afd44f01127a2f12f77ba7b25e545aa316ec9e802b8dad7338",
+      "sourceBytes": 377532,
+      "releaseBytes": 501096,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 25,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
+      "release": "assets/ships/release/parts/works/place_works_conduit_lane_junction.glb",
+      "sourceSha256": "74d4d86b442115db1fceb5a0996c524dbacff4273dc27fbe795d56cb701fe391",
+      "releaseSha256": "8457beae836ec4f16d78e03615680c30b447eb147e51cdd4257bdbd8ff7fc3f8",
+      "sourceBytes": 458084,
+      "releaseBytes": 519564,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 28,
+      "contractNodeCount": 9,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

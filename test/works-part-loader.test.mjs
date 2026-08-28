@@ -13,11 +13,46 @@ import * as THREE from 'three';
 
 import {
   createWorksPartLoader,
+  resolveWorksConduitPiece,
   WORKS_PARTS,
 } from '../src/ui/asteroid/worksPartLoader.js';
 
 const FIXTURE_ID = 'works_loader_fixture';
 const FIXTURE_URL = 'assets/ships/release/parts/places/place_drill_platform.glb';
+
+test('conduit registry names every released family and fitting', () => {
+  for (const family of ['power', 'lane']) {
+    for (const kind of ['straight', 'corner', 't', 'cross', 'end', 'junction']) {
+      const assetId = `place_works_conduit_${family}_${kind}`;
+      const row = WORKS_PARTS[assetId];
+      assert.ok(row, assetId);
+      assert.equal(row.lod0, `assets/ships/release/parts/works/${assetId}.glb`);
+      assert.deepEqual(row.hooks, [family === 'power' ? 'powered' : 'flow_mesh']);
+    }
+  }
+});
+
+test('every nonzero N/E/S/W mask selects exact canonical ports and rotation', () => {
+  const expected = new Map([
+    [1, ['end', Math.PI / 2]], [2, ['end', 0]], [4, ['end', -Math.PI / 2]], [8, ['end', Math.PI]],
+    [5, ['straight', Math.PI / 2]], [10, ['straight', 0]],
+    [3, ['corner', 0]], [6, ['corner', -Math.PI / 2]], [12, ['corner', Math.PI]], [9, ['corner', Math.PI / 2]],
+    [11, ['t', 0]], [7, ['t', -Math.PI / 2]], [14, ['t', Math.PI]], [13, ['t', Math.PI / 2]],
+    [15, ['cross', 0]],
+  ]);
+  for (const family of ['power', 'lane']) {
+    assert.equal(resolveWorksConduitPiece(family, 0), null);
+    for (const [mask, [kind, rotation]] of expected) {
+      const row = resolveWorksConduitPiece(family, mask);
+      assert.equal(row.kind, kind, `${family} mask ${mask}`);
+      assert.equal(row.rotation, rotation, `${family} mask ${mask}`);
+      assert.equal(row.assetId, `place_works_conduit_${family}_${kind}`);
+    }
+    assert.equal(resolveWorksConduitPiece(family, 15, { service: true }).kind, 'junction');
+  }
+  assert.throws(() => resolveWorksConduitPiece('gas', 2), /unknown conduit family/);
+  assert.throws(() => resolveWorksConduitPiece('lane', 16), /integer 0\.\.15/);
+});
 
 function createEventCanvas() {
   const listeners = new Map();
