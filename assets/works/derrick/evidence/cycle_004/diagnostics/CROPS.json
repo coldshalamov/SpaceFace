@@ -1,0 +1,116 @@
+{
+  "works_top.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      891,
+      471,
+      1029,
+      609
+    ],
+    "crop": [
+      138,
+      138
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_top_crop.png",
+    "centreLuma": 30.77,
+    "meanLuma": 38.64
+  },
+  "works_top_clay.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      891,
+      471,
+      1029,
+      609
+    ],
+    "crop": [
+      138,
+      138
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_top_clay_crop.png",
+    "centreLuma": 118.13,
+    "meanLuma": 92.78
+  },
+  "works_edge.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      928,
+      237,
+      1070,
+      401
+    ],
+    "crop": [
+      142,
+      164
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_edge_crop.png",
+    "centreLuma": 34.73,
+    "meanLuma": 32.96
+  },
+  "works_edge_grazing.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      968,
+      241,
+      1118,
+      405
+    ],
+    "crop": [
+      150,
+      164
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_edge_grazing_crop.png",
+    "centreLuma": 20.64,
+    "meanLuma": 18.43
+  },
+  "works_site.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      941,
+      521,
+      979,
+      559
+    ],
+    "crop": [
+      38,
+      38
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_site_crop.png",
+    "centreLuma": 47.37,
+    "meanLuma": 19.09
+  },
+  "hook_identity.png": {
+    "full": [
+      1920,
+      1080
+    ],
+    "bbox": [
+      928,
+      236,
+      1071,
+      401
+    ],
+    "crop": [
+      143,
+      165
+    ],
+    "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/hook_identity_crop.png",
+    "centreLuma": 136.47,
+    "meanLuma": 84.0
+  }
+}

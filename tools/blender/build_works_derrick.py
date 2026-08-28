@@ -1,15 +1,17 @@
-"""PQ-131.05 Works surface derrick / head-frame — Cycle 03 source candidate.
+"""PQ-131.05 Works surface derrick / head-frame — Cycle 04 source candidate.
 
 Cycle 01 edge load-path is preserved: four planted shoes, I-beam web/flanges/
 splice plates, crown portal, open well, offset grated service deck and ladder.
 
-Cycle 02 established the accepted head-frame, winch path, open well, and LOD
-silhouette. Cycle 03 preserves those reads and repairs two exact review defects:
+Cycle 02 established the head-frame, winch path, open well, and LOD silhouette.
+Cycle 03 repaired lamp/shoe reads. Cycle 04 preserves that exact art and repairs
+the exported functional hierarchy:
   * A-planes are open A-leg pairs (no rung/ladder-truss fill, no X-grid)
   * winch drum -> visible tangent -> head sheave -> descent into the shaft
   * well/collar stays empty; tower-over-hole reads at 120 px/cell
-  * hollow dark lamp hoods with genuinely recessed, restrained warm lenses
-  * four load-bearing shoe plates that remain distinct at the legal site register
+  * drum/cable/lamp empties retain their authored pivots in the final GLB
+  * child meshes are encoded in pivot-local space, so animation cannot orbit origin
+  * collision helper retains its authored transform and bounds
   * restrained orange edge wear; no yellow-black shoe stripes
 
 Exact write set:
@@ -19,7 +21,7 @@ Exact write set:
 
     blender --background --python tools/blender/build_works_derrick.py
 
-Not wired, not released, not promoted. Cycle 01/02 evidence is frozen in place.
+Not wired, not released, not promoted. Cycle 01/02/03 evidence is frozen in place.
 Kit GLBs are cited shape references only and are never imported.
 """
 from __future__ import annotations
@@ -34,7 +36,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parents[1]
@@ -56,7 +58,8 @@ TEX_DIR = SOURCE_DIR / "textures"
 REF_DIR = FAMILY / "reference"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_003"
+CYCLE_003_DIR = FAMILY / "evidence" / "cycle_003"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_004"
 DIAG_DIR = EVIDENCE_DIR / "diagnostics"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
 BLEND_PATH = SOURCE_DIR / "derrick.blend"
@@ -65,7 +68,7 @@ ASSET_ID = "place_works_derrick"
 ROOT_NAME = "SF_WORKS_DERRICK_V1"
 HOOK_NAMES = ("drum_spin", "cable_anchor", "lamp_L", "lamp_R")
 LOD_ROOTS = ("LOD0_derrick", "LOD1_derrick", "LOD2_derrick")
-CYCLE = 3
+CYCLE = 4
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 12000, 1: 3000, 2: 900}
 TEX_SIZE = {0: 2048, 1: 1024, 2: 512}
@@ -440,10 +443,30 @@ def add_frustum_shell(name, back, mouth, neck_outer, neck_inner, mouth_outer,
 
 
 def parent_keep(obj, parent):
+    # Blender's dependency graph does not immediately reflect an assigned
+    # location/scale in matrix_world. Capturing before update silently records
+    # identity and was the Cycle 03 pivot/collision regression.
+    bpy.context.view_layer.update()
     mw = obj.matrix_world.copy()
     obj.parent = parent
     obj.matrix_parent_inverse = parent.matrix_world.inverted()
     obj.matrix_world = mw
+
+
+def parent_mesh_local_to_pivot(obj, parent):
+    """Rebase mesh data into a functional parent's local space without moving it."""
+    bpy.context.view_layer.update()
+    world = obj.matrix_world.copy()
+    parent_inverse = parent.matrix_world.inverted_safe()
+    local_from_data = parent_inverse @ world
+    if obj.data.users > 1:
+        obj.data = obj.data.copy()
+    obj.data.transform(local_from_data)
+    obj.parent = parent
+    obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.matrix_basis = Matrix.Identity(4)
+    bpy.context.view_layer.update()
+    return obj
 
 
 def add_empty(name, loc, collection, size=0.08):
@@ -1561,7 +1584,7 @@ def combine_lods(lod_reports):
         }
         for key, (parent, rename) in mapping.items():
             for obj in groups[key]:
-                parent_keep(obj, parent)
+                parent_mesh_local_to_pivot(obj, parent)
                 raw = (obj.get("_sf_raw") or obj.name).lower()
                 if rename:
                     obj.name = rename
@@ -1655,7 +1678,10 @@ def combine_lods(lod_reports):
         filepath=str(tmp),
         export_format="GLB",
         use_selection=True,
-        export_apply=True,
+        # Applying the scene graph bakes empty transforms into children and
+        # collapses functional pivots/collision helpers to identity. Mesh data
+        # is already pivot-local above, so preserve the authored hierarchy.
+        export_apply=False,
         export_yup=True,
         export_extras=True,
         export_animations=False,
@@ -2106,13 +2132,14 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
     epoch = {
         "schema": "spaceface.worksDerrickCycleEpoch.v1",
         "cycle": CYCLE,
-        "epoch": "cycle_003",
+        "epoch": "cycle_004",
         "disposition": "review_pending",
         "state": "design_candidate",
         "gates": {"G0": "evidence_ready", "G1": "open", "G2": "open", "G4": "open", "G7": "open"},
         "independentReview": "not_launched",
         "cycle01Preserved": True,
         "cycle02Preserved": True,
+        "cycle03Preserved": True,
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -2143,9 +2170,9 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         "bboxBlenderZUp": inventory["bbox"],
         "camera": stills,
         "notes": [
-            "Cycle 03 source candidate only. Not wired, not released, not accepted.",
-            "Cycle 01/02 evidence is frozen and was not rewritten.",
-            "Cycle 03 repairs the Cycle 02 review's two defects: lamp fixture readability and distinct site-register shoe masses.",
+            "Cycle 04 source candidate only. Not wired, not released, not accepted.",
+            "Cycle 01/02/03 evidence is frozen and was not rewritten.",
+            "Cycle 04 preserves the Cycle 03 art and repairs exported functional pivots plus collision transform/bounds.",
             "A-planes are open A-leg pairs: one A-bar and splice plates, no rung/X-grid fill.",
             "Causal cable path: drum tangent -> crown sheave -> drop through the empty well.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
@@ -2155,14 +2182,14 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
     }
     write_text_lf(EVIDENCE_DIR / "EPOCH.json", json.dumps(epoch, indent=2) + "\n")
 
-    audit = f"""# Surface derrick — material and shape audit (Cycle 03)
+    audit = f"""# Surface derrick — material and shape audit (Cycle 04)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
 
-Cycle 01/02 construction is retained: planted shoes, open I-beam A-frames, crown portal,
-open well, offset winch/cable path, grated deck and ladder. Cycle 03 replaces the capped
-lamp-cone read with hollow cast hoods and recessed lenses, and gives each physical shoe an
-exposed anchor plate that survives the legal site register.
+Cycle 01/02/03 art is retained: planted shoes, open I-beam A-frames, crown portal,
+open well, offset winch/cable path, grated deck and ladder, hollow lamp hoods and exposed
+anchor plates. Cycle 04 changes only the final exported hierarchy: functional empties retain
+their authored pivots, child meshes are pivot-local, and collision retains authored bounds.
 
 ## Shape grammar
 
@@ -2375,6 +2402,17 @@ def freeze_cycle_002() -> None:
             shutil.copy2(family_hashes, freeze)
 
 
+def freeze_cycle_003() -> None:
+    """Snapshot the reviewed Cycle 03 hashes before Cycle 04 replaces family HASHES."""
+    CYCLE_003_DIR.mkdir(parents=True, exist_ok=True)
+    freeze = CYCLE_003_DIR / "HASHES.json"
+    family_hashes = FAMILY / "HASHES.json"
+    if not freeze.exists() and family_hashes.exists():
+        current = json.loads(family_hashes.read_text(encoding="utf-8"))
+        if current.get("cycle") == 3:
+            shutil.copy2(family_hashes, freeze)
+
+
 def main():
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
@@ -2382,6 +2420,7 @@ def main():
     REF_DIR.mkdir(parents=True, exist_ok=True)
     freeze_cycle_001()
     freeze_cycle_002()
+    freeze_cycle_003()
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     DIAG_DIR.mkdir(parents=True, exist_ok=True)
     PARTS_DIR.mkdir(parents=True, exist_ok=True)

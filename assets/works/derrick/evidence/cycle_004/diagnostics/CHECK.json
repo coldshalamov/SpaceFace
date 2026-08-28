@@ -1,0 +1,285 @@
+{
+  "ok": true,
+  "errors": [],
+  "python": true,
+  "root": true,
+  "hooks": {
+    "drum_spin": true,
+    "cable_anchor": true,
+    "lamp_L": true,
+    "lamp_R": true
+  },
+  "lodTriangles": {
+    "lod0": 7072,
+    "lod1": 1304,
+    "lod2": 896
+  },
+  "bbox": {
+    "min": [
+      -1.08,
+      -0.87,
+      0.0
+    ],
+    "max": [
+      1.08,
+      0.87,
+      6.49
+    ],
+    "size": [
+      2.16,
+      1.74,
+      6.49
+    ]
+  },
+  "exportedHierarchy": {
+    "hooks": {
+      "drum_spin": {
+        "node": 8,
+        "localTranslation": [
+          -0.62,
+          1.38,
+          0.0
+        ],
+        "globalPosition": [
+          -0.62,
+          1.38,
+          0.0
+        ],
+        "children": [
+          "LOD0_drum",
+          "LOD1_drum",
+          "LOD2_drum"
+        ],
+        "childLocalBounds": {
+          "min": [
+            -0.24500000476837158,
+            -0.24500000476837158,
+            -0.44999998807907104
+          ],
+          "max": [
+            0.24500000476837158,
+            0.24500000476837158,
+            0.44999998807907104
+          ]
+        }
+      },
+      "cable_anchor": {
+        "node": 3,
+        "localTranslation": [
+          -0.464,
+          1.504,
+          0.0
+        ],
+        "globalPosition": [
+          -0.464,
+          1.504,
+          0.0
+        ],
+        "children": [
+          "LOD0_cable",
+          "LOD1_cable",
+          "LOD2_cable"
+        ],
+        "childLocalBounds": {
+          "min": [
+            -0.37199997901916504,
+            -1.4840631484985352,
+            -0.1850000023841858
+          ],
+          "max": [
+            0.5020730495452881,
+            4.985409259796143,
+            0.1850000023841858
+          ]
+        }
+      },
+      "lamp_L": {
+        "node": 15,
+        "localTranslation": [
+          0.05,
+          6.3,
+          -0.4
+        ],
+        "globalPosition": [
+          0.05,
+          6.3,
+          -0.4
+        ],
+        "children": [
+          "LOD0_lamp_L",
+          "LOD0_lamp_L_lens",
+          "LOD1_lamp_L",
+          "LOD1_lamp_L_lens",
+          "LOD2_lamp_L",
+          "LOD2_lamp_L_lens"
+        ],
+        "childLocalBounds": {
+          "min": [
+            -0.09000000357627869,
+            -0.2908000946044922,
+            -0.06784394383430481
+          ],
+          "max": [
+            0.26239001750946045,
+            0.06705784797668457,
+            0.2905538082122803
+          ]
+        }
+      },
+      "lamp_R": {
+        "node": 22,
+        "localTranslation": [
+          0.05,
+          6.3,
+          0.4
+        ],
+        "globalPosition": [
+          0.05,
+          6.3,
+          0.4
+        ],
+        "children": [
+          "LOD0_lamp_R",
+          "LOD0_lamp_R_lens",
+          "LOD1_lamp_R",
+          "LOD1_lamp_R_lens",
+          "LOD2_lamp_R",
+          "LOD2_lamp_R_lens"
+        ],
+        "childLocalBounds": {
+          "min": [
+            -0.09000000357627869,
+            -0.2908000946044922,
+            -0.2905538082122803
+          ],
+          "max": [
+            0.26239001750946045,
+            0.06705784797668457,
+            0.06784394383430481
+          ]
+        }
+      }
+    },
+    "collision": {
+      "node": 4,
+      "globalCenter": [
+        0.0,
+        3.2,
+        0.0
+      ],
+      "globalScale": [
+        1.08,
+        3.25,
+        1.0
+      ],
+      "bounds": {
+        "min": [
+          -1.0800000429153442,
+          -0.04999995231628418,
+          -1.0
+        ],
+        "max": [
+          1.0800000429153442,
+          6.450000047683716,
+          1.0
+        ]
+      },
+      "lod0GeometryBounds": {
+        "min": [
+          -1.059999942779541,
+          0.0,
+          -0.8500000238418579
+        ],
+        "max": [
+          1.059999942779541,
+          6.490000247955322,
+          0.8500000238418579
+        ]
+      }
+    }
+  },
+  "cycle001Frozen": true,
+  "cycle002Frozen": true,
+  "cycle003Frozen": true,
+  "candidate": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "crops": {
+    "works_top.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        138,
+        138
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_top_crop.png",
+      "centreLuma": 30.77,
+      "meanLuma": 38.64
+    },
+    "works_top_clay.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        138,
+        138
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_top_clay_crop.png",
+      "centreLuma": 118.13,
+      "meanLuma": 92.78
+    },
+    "works_edge.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        142,
+        164
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_edge_crop.png",
+      "centreLuma": 34.73,
+      "meanLuma": 32.96
+    },
+    "works_edge_grazing.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        150,
+        164
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_edge_grazing_crop.png",
+      "centreLuma": 20.64,
+      "meanLuma": 18.43
+    },
+    "works_site.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        38,
+        38
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/works_site_crop.png",
+      "centreLuma": 47.37,
+      "meanLuma": 19.09
+    },
+    "hook_identity.png": {
+      "full": [
+        1920,
+        1080
+      ],
+      "crop": [
+        143,
+        165
+      ],
+      "cropPath": "assets/works/derrick/evidence/cycle_004/diagnostics/hook_identity_crop.png",
+      "centreLuma": 136.47,
+      "meanLuma": 84.0
+    }
+  }
+}

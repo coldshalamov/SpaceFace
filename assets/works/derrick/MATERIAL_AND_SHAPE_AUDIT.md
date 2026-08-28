@@ -1,11 +1,11 @@
-# Surface derrick — material and shape audit (Cycle 03)
+# Surface derrick — material and shape audit (Cycle 04)
 
-Candidate `BBACB1168BB8E697B0F69EF5D5D15D327455964C35B80E6CB5911B356B755865` · root `SF_WORKS_DERRICK_V1` · disposition `review_pending`.
+Candidate `B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A` · root `SF_WORKS_DERRICK_V1` · disposition `review_pending`.
 
-Cycle 01/02 construction is retained: planted shoes, open I-beam A-frames, crown portal,
-open well, offset winch/cable path, grated deck and ladder. Cycle 03 replaces the capped
-lamp-cone read with hollow cast hoods and recessed lenses, and gives each physical shoe an
-exposed anchor plate that survives the legal site register.
+Cycle 01/02/03 art is retained: planted shoes, open I-beam A-frames, crown portal,
+open well, offset winch/cable path, grated deck and ladder, hollow lamp hoods and exposed
+anchor plates. Cycle 04 changes only the final exported hierarchy: functional empties retain
+their authored pivots, child meshes are pivot-local, and collision retains authored bounds.
 
 ## Shape grammar
 
