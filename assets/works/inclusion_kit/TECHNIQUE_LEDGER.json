@@ -1,7 +1,7 @@
 {
   "assetId": "place_works_inclusion_kit",
-  "cycle": 1,
-  "candidateHash": "473A81F922168DEE8C3A622465205B9D68E2F8622F66EC499FD57D672A166D96",
+  "cycle": 2,
+  "candidateHash": "E690AEA63108D697A2D53FE8BA6EA5136F4E7A1F725572DF6FB5D73F9101CD83",
   "state": "evidence_ready",
   "gates": {
     "G1": "open",
@@ -9,6 +9,9 @@
     "G4": "open",
     "G7": "open"
   },
-  "scope": "kit_cycle_01",
-  "notes": "Cycle 01 source kit. Not wired. Independent review required before G1/G2/G4."
+  "scope": "kit_cycle_02",
+  "notes": "Cycle 02 geological host/material/site correction. Cycle 01 evidence preserved. Not wired. Independent review required before G1/G2/G4.",
+  "cycle01MasterGlb": "473A81F922168DEE8C3A622465205B9D68E2F8622F66EC499FD57D672A166D96",
+  "hostMetalMax": 0.08,
+  "texelTargetPxPerWu": 160.0
 }
