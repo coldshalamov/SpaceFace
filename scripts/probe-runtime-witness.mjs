@@ -456,6 +456,78 @@ function formatLoadingReadinessSection(events, samples) {
   return lines.join('\n');
 }
 
+/**
+ * Always-on long-task witness.
+ *
+ * The hitch classifier can say "the frame took 90 ms but our callback only ran for 39 ms" — it
+ * cannot say WHY the other 51 ms went missing. Two very different causes look identical from
+ * inside the callback: our own main thread was blocked (GC, asset decode, a synchronous parse), or
+ * the browser simply never called us. A `longtask` entry covering the gap means the first; an
+ * unexplained gap with no long task means the second, and no amount of game-side optimization will
+ * touch it. This ran only inside the no-submit diagnostic, which replaces scene submission and so
+ * cannot be used to judge an ordinary flight.
+ */
+async function installLongTaskWitness(targetPage) {
+  await targetPage.evaluate(() => {
+    const prior = window.__SF_LONGTASK_WITNESS__;
+    try { prior?.observer?.disconnect(); } catch (_) {}
+    const trace = { startedWallMs: Date.now(), entries: [], observer: null, supported: false };
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.entries.length >= 4000) break;
+          trace.entries.push({
+            startTime: entry.startTime,
+            duration: entry.duration,
+            name: String(entry.name || ''),
+          });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+      trace.supported = true;
+    } catch (_) {
+      // Not every engine implements the longtask entry type. Absence must read as "not measured",
+      // never as "no long tasks happened".
+      trace.supported = false;
+    }
+    window.__SF_LONGTASK_WITNESS__ = trace;
+  });
+}
+
+async function readLongTaskWitness(targetPage) {
+  return targetPage.evaluate(() => {
+    const trace = window.__SF_LONGTASK_WITNESS__;
+    if (!trace) return null;
+    const entries = trace.entries || [];
+    const durations = entries.map((e) => Number(e.duration) || 0).sort((a, b) => b - a);
+    return {
+      supported: trace.supported === true,
+      count: entries.length,
+      totalMs: durations.reduce((sum, d) => sum + d, 0),
+      maxMs: durations[0] || 0,
+      over50Ms: durations.filter((d) => d >= 50).length,
+      over100Ms: durations.filter((d) => d >= 100).length,
+      top: entries.slice().sort((a, b) => b.duration - a.duration).slice(0, 12)
+        .map((e) => ({ startTime: Math.round(e.startTime), durationMs: Math.round(e.duration), name: e.name })),
+    };
+  }).catch(() => null);
+}
+
+function formatLongTaskSection(trace) {
+  const NL = '\n';
+  const lines = ['## Long tasks (main-thread blocks)'];
+  if (!trace) { lines.push('- not captured'); return lines.join(NL) + NL; }
+  if (!trace.supported) {
+    lines.push('- longtask entry type unsupported on this engine: NOT MEASURED (not "none")');
+    return lines.join(NL) + NL;
+  }
+  lines.push(`- count ${trace.count}; total ${Math.round(trace.totalMs)} ms; max ${Math.round(trace.maxMs)} ms; >=50 ms ${trace.over50Ms}; >=100 ms ${trace.over100Ms}`);
+  for (const entry of trace.top) {
+    lines.push(`- ${entry.durationMs} ms at ${entry.startTime} ms${entry.name ? ` (${entry.name})` : ''}`);
+  }
+  return lines.join(NL) + NL;
+}
+
 async function installLoadingReadinessWitness(targetPage) {
   await targetPage.evaluate(() => {
     const prior = window.__SF_LOADING_READINESS_WITNESS__;
@@ -2454,6 +2526,7 @@ try {
     await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
     await dismissCinematic(page);
     await installLoadingReadinessWitness(page);
+    await installLongTaskWitness(page);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
       if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
@@ -2479,6 +2552,7 @@ try {
   } else {
     log('new game');
     await installLoadingReadinessWitness(page);
+    await installLongTaskWitness(page);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
       if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
@@ -2838,6 +2912,8 @@ const route = {
   executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
   instrumentation: probeInstrumentation,
 };
+// Read before the markdown is assembled: the report template consumes it.
+const longTaskWitness = await readLongTaskWitness(page);
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,
@@ -2845,9 +2921,10 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatLongTaskSection(longTaskWitness)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
+  longTaskWitness,
   verdict,
   sampleCount: snapshots.length,
   first: snapshots[0] || null,
