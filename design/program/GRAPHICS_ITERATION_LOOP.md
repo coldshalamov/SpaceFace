@@ -38,22 +38,42 @@ judged on chase stills. Do not treat the MTX list as the work unit.
    - The ship at default chase is ~10–16% of frame width, not a hero filling the frame.
    - If the ship fills most of the image, or the camera is inside the hull, **that pass did not
      happen**. Studio three-quarter / starboard / rear / bay_interior do not count.
-3. **Review with three subagents, one per angle.** Give each the image path and the prompt in
-   `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` §4. Require: every obvious defect a player would notice,
-   the technique rows failing in that angle, concrete Blender actions rather than adjectives, and a
-   verdict of KEEP / REVISE / REVERT. Tell them "better than last pass" is explicitly not the bar.
-4. **Implement every real revise item**, plus anything you can see that they missed.
-5. **Record the pass**: hash, still paths, what the reviewers said, what you changed.
-6. Repeat. **Seven passes per model**, then move to the next model.
+3. **Review the exported hash at play size.** Use up to three independent reviewers when the
+   current defects are genuinely ambiguous or cross-angle. One strong reviewer may cover all three
+   chase views when the defect is obvious. Give reviewers the prompt in
+   `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` §4 and require concrete Blender actions, not adjectives.
+   "Better than last pass" is explicitly not the bar.
+4. **Implement every real revise item** that is visible at shipping scale, plus anything you can see
+   that the reviewer missed. Do not spend a pass on detail the 144 WU view cannot resolve.
+5. **Record the pass**: hash, still paths, causal defects, what changed, and whether the player's
+   read materially improved.
+6. Repeat only while the next pass has a named, player-visible defect to remove.
 
-Stop before seven only if all three subagents return KEEP on the same hash, the clay is not
-primitives, and every mandatory row is implemented. Keep going past seven if it still loses.
+### Marginal-value stopping law
+
+**Iteration count is not a quality gate.** The old fixed seven-pass rule was a throughput bug: it
+rewarded process volume and could spend days polishing an asset whose remaining differences were
+invisible from the shipping camera.
+
+- Expect roughly **three meaningful chase-camera passes** for an ordinary asset, but this is a sizing
+  heuristic, not a minimum or maximum.
+- Stop early when the exported hash meets the mandatory technique contract, no P0/P1 play-size defect
+  remains, and another pass has no named visible target.
+- Continue past three when a concrete silhouette, aperture, material, socket, identity, or integration
+  defect remains visible at shipping scale.
+- If **two consecutive valid passes do not change the review disposition or remove a named play-size
+  defect**, stop that causal model. Return the asset to the Central Brain quality ranking or rebuild
+  from a different premise instead of adding ornamental detail.
+- An asset never promotes merely because a pass count was reached. A broken L0/L1 asset elsewhere on
+  the same route outranks L3 micro-detail on an already coherent asset unless the former has a real
+  external blocker.
 
 ## What makes a pass not count
 
-Moving the camera. A crop or thumbnail. A seat or cabin kit. "I reviewed it" with no subagent text.
+Moving the camera. A crop or thumbnail. A seat or cabin kit. "I reviewed it" with no defect record.
 Implementing two rows and calling it a pass. Splitting one plan across several passes. Reusing an
-older hash's stills. Capturing studio beauty cameras instead of the chase camera.
+older hash's stills. Capturing studio beauty cameras instead of the chase camera. Making changes that
+cannot be distinguished at shipping scale.
 
 ## Rules paid for in failed passes
 
@@ -90,5 +110,6 @@ as a before/after on the same model.
 
 ## Finishing
 
-Commit each pass. Never wire a model that still loses to the reference bar. Report `DONE` or
-`NOT DONE` in plain language, and say which passes were run.
+Commit each meaningful pass. Never wire a model that still loses to the reference bar. Report `DONE`
+or `NOT DONE` in plain language, the play-size defects removed, and the evidence hash. Do not report
+iteration volume as evidence of quality.
