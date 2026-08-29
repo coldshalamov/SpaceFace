@@ -140,6 +140,54 @@ station visited long after it spawned, which is a design call, and it is the eco
 than the renderer. The measurement is the deliverable; the decision is not this lane's to make.
 Anyone taking it should re-run `--gc-probe` and `--alloc-probe` before and after.
 
+## NEGATIVE RESULT — warming a breakup-profiled stand-in does not close the draw-time links
+
+Recorded because it is a well-motivated idea that looks right on paper and is measurably wrong, and
+because the next person will otherwise have it again.
+
+`npm run probe:shader-timeline` is the campaign's Phase 1 exit instrument (a count, so it is valid
+on a busy machine). On the current build it reports **60 post-boot program links, 36 of them
+`DRAW-TIME-MISS`** — linked inside `renderBufferDirect → setProgram`, i.e. mid-frame. Its
+`keyCensus` gives `missingKeepAliveKeys: 0` with `idleAddedKeys: 6` and `contactAddedKeys: 32`, so
+nothing is being evicted and relinked; these are genuinely new keys. **That retires the root cause
+stated in `MAKE_THE_GAME_FAST.md` Lead 1** (a byte-identical cacheKey released via `usedTimes → 0`),
+which was already fixed in `77c608f9`. The residue is a different defect: first-time compiles of
+program signatures nobody predicted.
+
+Diffing each late key against its nearest warmed key field-by-field pointed at one field:
+
+```
+warmed  …,spaceface-common-rock-geology-pbr-v4
+live    …,onBeforeCompile( /* shaderobject, renderer */ ) {}|spaceface-surface-breakup-v4-file-scope
+```
+
+That is real and worth knowing: `installRoughnessBreakup` sets
+`customProgramCacheKey = () => \`${originalProgramCacheKey}|${ROUGHNESS_BREAKUP_KEY}\``
+(`authoredMaterialProfiles.js:128`), and the captured original is three's **default** —
+the stringified `onBeforeCompile` source. Live authored materials get that hook through
+`applyAuthoredMaterialProfile` (`assetLoader.js:1273`); the precompile stand-ins never did.
+
+**The obvious fix was tried and rejected by measurement.** Adding three breakup-profiled warmup
+materials (hull / mechanical / accent) through the production `applyAuthoredMaterialProfile` entry
+point moved `DRAW-TIME-MISS` **36 → 39** and left `idleAddedKeys` at 6 — no improvement, plus three
+extra programs of load-time cost. The census says why: the three roles collapsed to **one** program
+(role changes uniforms, not the program), and the live key still differs from the warmed one in
+**five** fields, not one — `field[10]` map/uv presence and two packed flag words as well as the
+cache key. The stand-in's map layout and material flags are guesses at what an authored GLB happens
+to carry, and guessing them is not convergent.
+
+**Therefore: do not extend the synthetic stand-in warmups to chase these keys.** The remaining path
+is the other half — route the *actual* authored material through admission before its first draw, so
+the warmed subject IS the live subject and no signature has to be predicted. `addCommonRockPipelineWarmup`
+already demonstrates that shape: it calls `vf.build()` and retains the real material rather than
+rebuilding a lookalike.
+
+Two further notes for whoever takes it: the probe's `coverage` reports `hostileSeen: 0`, so combat
+program families are absent from the 36 entirely and real play is worse than this number; and
+`stepsPerFrame {0:464, 1:1940, 2:172, 3:30, 4:17}` closes `MAKE_THE_GAME_FAST` Lead 6 — the sim
+catch-up cap engages on under 1% of frames on real hardware, exactly as that lead predicted it would
+if the GPU were real.
+
 ## Instrument notes
 
 The witness now reports, always on: long tasks (count/total/max/top with the heavy resources that
