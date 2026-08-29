@@ -1,0 +1,848 @@
+{
+  "packet": "PQ-131.06",
+  "cycle": 3,
+  "producer": {
+    "packet": "PQ-131.06",
+    "cycle": 3,
+    "builder": {
+      "path": "tools/blender/build_works_conduit_kit.py",
+      "sha256": "080F3AAE47A7E4427F7AF35876713F7E4EE929272C68674222368D3C9D86882C"
+    },
+    "camera": {
+      "path": "tools/blender/spaceface_works_camera.py",
+      "sha256": "E404AC4913CDFABB8E2BB38F28B5366167FCA0C8DCFF7CC9F00E1BA4654D8CE9"
+    },
+    "blender": {
+      "version": "5.1.2",
+      "exe": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
+      "sha256": "1E6624AF112B3C936F4B038B025EBD2BF00AE72C4B62881A6787166D71C58FA5"
+    }
+  },
+  "cycle01History": {
+    "place_works_conduit_power_straight": "CA4D71279F5480D878FAE99AA6A3EF4921A6C47F209D743749444808AA8AB74F",
+    "place_works_conduit_power_corner": "06C41E5A890935A049EDD6E42616123C96A66D7CB4432AC76C48281AC2BB8F11",
+    "place_works_conduit_power_t": "8F15CE7FE47E011CF6D9C6D52FFF4491FB49309ACEAB48473D30101D272348E8",
+    "place_works_conduit_power_cross": "8E3D35DDFDC7E91657E27A14562F767B232B94B1C019B183D71ABA5F7BEA649D",
+    "place_works_conduit_power_end": "BF514FE9D17CCF435D6D3CFCC677B682D584155B1E5DA8C19DA91C9A499D8F6D",
+    "place_works_conduit_power_junction": "7AA12DC794E9427DC3A4D87486AB10FDC773322D2F13FBBEA6C65E0C6C05785D",
+    "power_atlas_basecolor.png": "999171C54FA62C9F4FB92CD08344DF6981889ED923CF5DD3FA62ACEBC1D78F0B",
+    "power_atlas_orm.png": "B90AE799A4933BB910083FD7CC5001693399BDCAE14F0092A821895FD4479F21",
+    "power_atlas_normal.png": "E43519CAE553C7DBA53971C31B95DC9095EE85BF71377B96BA1CCE870BB5FE78"
+  },
+  "stills": [
+    {
+      "name": "kit_sheet_works_top.png",
+      "sha256": "6DB58A0C431A73BB6BBE488F004CD6E10D1F989268B51FA7F8A8592C7C1D3871",
+      "bytes": 1730563
+    },
+    {
+      "name": "kit_sheet_works_site.png",
+      "sha256": "C5D47F9446DD9A88362AE43F0812E4259D31286A3608AE839E16ED55FD409899",
+      "bytes": 1500252
+    },
+    {
+      "name": "family_lineup_works_top.png",
+      "sha256": "902FAF6EAB3F35A8E39A1AED5DEF5B1F7F1021544CB16D6C880429CCEF95A394",
+      "bytes": 1730315
+    },
+    {
+      "name": "power_straight_works_top.png",
+      "sha256": "A0044CCFF4A1F773CE07CDD224362F95D5B1326712B9CDADD0DC12B003F79FB0",
+      "bytes": 1646559
+    },
+    {
+      "name": "power_straight_works_edge.png",
+      "sha256": "EB18D162CC7C500011B2A758B308965A9804B13BA3D59DA19DDE5DE6D8EA5594",
+      "bytes": 1647836
+    },
+    {
+      "name": "power_straight_works_site.png",
+      "sha256": "07D302FA5E83CD71FDDF0EFBC5F2276A06EFA3F50ADA29FFE316AB024EBF6450",
+      "bytes": 1494434
+    },
+    {
+      "name": "power_straight_clay.png",
+      "sha256": "8B4CAFD27262F53F27B9129BB5F42DB0379C32BE41F1CF29DF304281EC5E2190",
+      "bytes": 1648419
+    },
+    {
+      "name": "power_straight_material.png",
+      "sha256": "DF9DA0C1EBF3BD48ABA291DB59C4E18F2E64FCFAB321972F1D8AB07E5E258E5D",
+      "bytes": 1646820
+    },
+    {
+      "name": "power_straight_material_id.png",
+      "sha256": "9601577CD74B7E2A4C7B6760FEAAD01F7F1A570921281514C9648815E180842C",
+      "bytes": 1646455
+    },
+    {
+      "name": "power_straight_normal.png",
+      "sha256": "A36153555DE0A97B101F4A0A3F910EB6D2A52BB96E82F9ABC706A66733CF465A",
+      "bytes": 1646294
+    },
+    {
+      "name": "power_straight_orm.png",
+      "sha256": "11FD0F9AF2795C73B13A5C3E5E092B61BBFCD3B14946C0A2583E1A787D7A5A87",
+      "bytes": 1647154
+    },
+    {
+      "name": "power_straight_hooks.png",
+      "sha256": "FAA961FB7104E260886F900133B8ED90532A0E0B9A8EC29E5BFF7E1ECFBF58E1",
+      "bytes": 1643550
+    },
+    {
+      "name": "power_straight_lod0.png",
+      "sha256": "85D16733BD15B7A4EA6EFF4AC5CB4B2C3E9FD2525C6295A7DA0E55C3BCC21A56",
+      "bytes": 1646687
+    },
+    {
+      "name": "power_straight_lod1.png",
+      "sha256": "549D5676417C747A70A6CD3EDB74D687CF9A48AA4BF449BC8CEF14E7B8B26815",
+      "bytes": 1645141
+    },
+    {
+      "name": "power_straight_lod2.png",
+      "sha256": "86C71B0A7FD45507862D1B1750B787907F91C4692AA6C2A03FFEE790DAD490BB",
+      "bytes": 1494342
+    },
+    {
+      "name": "power_corner_works_top.png",
+      "sha256": "DB8622F306F8484BACA5FCCC42845BD2B5A8A45D77FAE3BA8F022D8EF94F495F",
+      "bytes": 1649293
+    },
+    {
+      "name": "power_corner_works_edge.png",
+      "sha256": "0DE0A23ABBDE8277967FF1F1C55BC8778B98410E67DD6BC9E21F3E10DF869982",
+      "bytes": 1650992
+    },
+    {
+      "name": "power_corner_works_site.png",
+      "sha256": "31EB70985FC921FAFF237E59959DEC36715AF6746C4FABA890601BAA7552B78D",
+      "bytes": 1494618
+    },
+    {
+      "name": "power_corner_clay.png",
+      "sha256": "51B1A51594D8B551F573B6B0C33A0663E3F08E88CA7D43AC6DE5A3371CF92AE5",
+      "bytes": 1650485
+    },
+    {
+      "name": "power_corner_material.png",
+      "sha256": "AD6A3846FF4752B8AE41B40A348115444F907E986DCCCE8A2E9513A23C6A2153",
+      "bytes": 1649072
+    },
+    {
+      "name": "power_corner_material_id.png",
+      "sha256": "E9217A8F192B35FAFF6005F98EFD9BFC2858DF3F9B24C97A8344065952F43A4D",
+      "bytes": 1651283
+    },
+    {
+      "name": "power_corner_normal.png",
+      "sha256": "E6E7B7BD14332DAFD4A90B5D36F96FABBB96497A6F8A0D52FC0B20BF8537C8E0",
+      "bytes": 1648804
+    },
+    {
+      "name": "power_corner_orm.png",
+      "sha256": "86C0B3984AB4D3EA846286B5428CCD1DE151C265375B832FD7AD7181E82E64BA",
+      "bytes": 1651460
+    },
+    {
+      "name": "power_corner_hooks.png",
+      "sha256": "A728AA0DA4597E4C4E5CC608DEF388AFD89354B6C3521B860D54E8E41608A474",
+      "bytes": 1643506
+    },
+    {
+      "name": "power_t_works_top.png",
+      "sha256": "851AE98EBCA6FCC9D7DCF332F85B33EB3749AAF7B93D2A8C22869432EB2CA830",
+      "bytes": 1651962
+    },
+    {
+      "name": "power_t_works_edge.png",
+      "sha256": "5A4884D5694DEC4B3E183F9EE9D001B9C66A6D510F4E8B45185F98EDFB086A31",
+      "bytes": 1652920
+    },
+    {
+      "name": "power_t_works_site.png",
+      "sha256": "D573781492B3A79C3665F8D07936855B82732F108BF12078EB56D8380D2026E9",
+      "bytes": 1494881
+    },
+    {
+      "name": "power_t_clay.png",
+      "sha256": "1277B14956F73D8C781C9AD1BEF92DBECD8E4C4482CE9A4DD825FF4960A7057C",
+      "bytes": 1654148
+    },
+    {
+      "name": "power_t_material.png",
+      "sha256": "C826EF0A1D55FFCEED4919C976FCB764B7FC28C62109C25785F49833F7035F71",
+      "bytes": 1652106
+    },
+    {
+      "name": "power_t_material_id.png",
+      "sha256": "732AB34C965397BAD576A56E3437B38568F40CB480BD3A24B7D38B9C4BACCFAA",
+      "bytes": 1652815
+    },
+    {
+      "name": "power_t_normal.png",
+      "sha256": "843CDF122FF1AC884BBE0DDFE87568EE9537AEDBD42C5BA2DA86CB6646D73BF6",
+      "bytes": 1651200
+    },
+    {
+      "name": "power_t_orm.png",
+      "sha256": "26EF556D29D324BB2F5B6FE5318DE6631AFB0E301700F12B1090E3DF88D9CBF2",
+      "bytes": 1653957
+    },
+    {
+      "name": "power_t_hooks.png",
+      "sha256": "D15257875327EC0EFAD6715C71043EDD1DE074FCDC41866212A9348EE96A6AE8",
+      "bytes": 1643334
+    },
+    {
+      "name": "power_cross_works_top.png",
+      "sha256": "3893708DDDE08959E28662ECCC37327AD1673557E8AD74193A569C7FAF4DED94",
+      "bytes": 1655926
+    },
+    {
+      "name": "power_cross_works_edge.png",
+      "sha256": "4FF64891FB76F155296D12D56A29E092C5D4C11A1AF6BABCB13C63A5C45C5120",
+      "bytes": 1656843
+    },
+    {
+      "name": "power_cross_works_site.png",
+      "sha256": "02FA3AF1745031E5A24B50E906C26E787D70316F8F888D5E7156FE0FF550426B",
+      "bytes": 1495356
+    },
+    {
+      "name": "power_cross_clay.png",
+      "sha256": "3F65A5F1535ADCE70C44F19D65E5BB41AEB0E71E64A8311AEDC0D10AB3C1E6B6",
+      "bytes": 1658744
+    },
+    {
+      "name": "power_cross_material.png",
+      "sha256": "FBDFB3F5E6B1B7BEB159EE2375D2B26618436C6E18F21DC6B8B7DC4913E1AB32",
+      "bytes": 1655990
+    },
+    {
+      "name": "power_cross_material_id.png",
+      "sha256": "1291A7A5594988C41E91549DFCB73FD1C18A5EFC7856DD8592A7C997EC1B196E",
+      "bytes": 1657132
+    },
+    {
+      "name": "power_cross_normal.png",
+      "sha256": "44E0B4DDE7342700D1D4EA22C5FB41782AD2363986797BAFBEEF2D78CE2FC1C4",
+      "bytes": 1653757
+    },
+    {
+      "name": "power_cross_orm.png",
+      "sha256": "FF33D8C3239B55B45A01E21FB99B9AFEB43A3C2569A35B0C76255215CDD67062",
+      "bytes": 1657929
+    },
+    {
+      "name": "power_cross_hooks.png",
+      "sha256": "AF290941623747F3534BD45A80ED30E35745A40191DDBE8F3BF6670DB5605C87",
+      "bytes": 1643613
+    },
+    {
+      "name": "power_end_works_top.png",
+      "sha256": "544FB045B32840E308392351E1F58DBFE71F5002DD711FD7601FD9D9308F432B",
+      "bytes": 1647372
+    },
+    {
+      "name": "power_end_works_edge.png",
+      "sha256": "1B99C13C4A9630D2B74AB04839F6988CECB484268A9BD46AF1432AC121D5A884",
+      "bytes": 1647037
+    },
+    {
+      "name": "power_end_works_site.png",
+      "sha256": "68198F5FBEE6CA894BB67D96488A66D25EAD878AB8F4FED437A84074817721FE",
+      "bytes": 1494635
+    },
+    {
+      "name": "power_end_clay.png",
+      "sha256": "9449DB003A8ED64713548B98027428D1B27686F5BDDD373C27750C852F37F8F5",
+      "bytes": 1647959
+    },
+    {
+      "name": "power_end_material.png",
+      "sha256": "7FFE523396205FF67378E555CB33F2B256A6BF8899776129C8E98790413E4BE9",
+      "bytes": 1647227
+    },
+    {
+      "name": "power_end_material_id.png",
+      "sha256": "3A662F81C77AF1BA64497E82B8191793A29D985934C2B4852DF0624822BB0AF8",
+      "bytes": 1647508
+    },
+    {
+      "name": "power_end_normal.png",
+      "sha256": "58144FCAE0E373CDC2038C0A5DEB373C503921D13B16080FC7B3A19BE5A0DD24",
+      "bytes": 1646967
+    },
+    {
+      "name": "power_end_orm.png",
+      "sha256": "064CBEAA4A5B91DB1EC3A4177D929C8F4CF9C3D91B1997BE510A0ED223ED30CC",
+      "bytes": 1647876
+    },
+    {
+      "name": "power_end_hooks.png",
+      "sha256": "E9B032C77F923CE6740FEDDAC246165BDF9E410002C2C745BA4623E35FFA2360",
+      "bytes": 1643476
+    },
+    {
+      "name": "power_junction_works_top.png",
+      "sha256": "B9A32246C87CE5D538B1A2638CF581245DC93271F40250B76B7FB31F696F5756",
+      "bytes": 1653970
+    },
+    {
+      "name": "power_junction_works_edge.png",
+      "sha256": "944C20BF93EBB1FECF6AD5D7D8A397F229463FD79793A83926267DB017AF2BB7",
+      "bytes": 1654577
+    },
+    {
+      "name": "power_junction_works_site.png",
+      "sha256": "5DA50C57EF810F668B650AF009F5F67248A384EB126180067BDA884B46F439B2",
+      "bytes": 1495305
+    },
+    {
+      "name": "power_junction_clay.png",
+      "sha256": "1B1A87F9F334376FB72B1A8DEF5EF321A72971DF4CB6E031975F71D9A4D749A9",
+      "bytes": 1656180
+    },
+    {
+      "name": "power_junction_material.png",
+      "sha256": "B0F51322B74B0009614C8F1F3BB6E9228644EEAF2C9817A4E11593774F388F6F",
+      "bytes": 1653962
+    },
+    {
+      "name": "power_junction_material_id.png",
+      "sha256": "67304A14D00E1871CD5EB0A003FF7138D17E5A3FEFC0B3D725ABEA964EE86594",
+      "bytes": 1654207
+    },
+    {
+      "name": "power_junction_normal.png",
+      "sha256": "0C03CF42BE515F08FE22705CAA95FE6C31B24AE3183A86BB36FFCCF78F403757",
+      "bytes": 1653832
+    },
+    {
+      "name": "power_junction_orm.png",
+      "sha256": "8AABDDD70B9520BADD3575D181EC9DF478F669C41262040498F5903458620C7B",
+      "bytes": 1655568
+    },
+    {
+      "name": "power_junction_hooks.png",
+      "sha256": "8AFA9BB514C3306E7D127C41C11611490CA2C3CB1BC78B34FBC4EC827B8A97D7",
+      "bytes": 1643567
+    },
+    {
+      "name": "lane_straight_works_top.png",
+      "sha256": "3351CE534A582E808770FF3C4049390EAD0ED5E47A5A13E1A0D83BDB5BF2771E",
+      "bytes": 1648221
+    },
+    {
+      "name": "lane_straight_works_edge.png",
+      "sha256": "735649BC6CEF6F2327C88E0B61524CEE5067DB54C14C6EB173B26EE5A65B28A6",
+      "bytes": 1649377
+    },
+    {
+      "name": "lane_straight_works_site.png",
+      "sha256": "156F3C0F8C40FC39C3155DBB73E22B7BD953A8404EA96FE9EEF1773DB803B293",
+      "bytes": 1494446
+    },
+    {
+      "name": "lane_straight_clay.png",
+      "sha256": "B8A045AE09D52CEC83705583926317D4EDA94EC4A5B842B81AB4D87D68334878",
+      "bytes": 1649634
+    },
+    {
+      "name": "lane_straight_material.png",
+      "sha256": "3351CE534A582E808770FF3C4049390EAD0ED5E47A5A13E1A0D83BDB5BF2771E",
+      "bytes": 1648221
+    },
+    {
+      "name": "lane_straight_material_id.png",
+      "sha256": "A1031509CE92264F9C9DA9B4EC86F00A2DB59C3EFE2A19FFAF6C1536DA861258",
+      "bytes": 1648410
+    },
+    {
+      "name": "lane_straight_normal.png",
+      "sha256": "3CDA92B18C4B6CC6AB89C4B0DD52AA637CBD680742745D517ED060EE460CD718",
+      "bytes": 1649743
+    },
+    {
+      "name": "lane_straight_orm.png",
+      "sha256": "A2469552519B50706426C69CC8EA49BE939FEA46700F0B707CC768102DA37879",
+      "bytes": 1650521
+    },
+    {
+      "name": "lane_straight_hooks.png",
+      "sha256": "17D278077FDBE333D810A07692E617491F66DF6F30048E471A9A7B3A7B2F460C",
+      "bytes": 1644004
+    },
+    {
+      "name": "lane_straight_lod0.png",
+      "sha256": "3351CE534A582E808770FF3C4049390EAD0ED5E47A5A13E1A0D83BDB5BF2771E",
+      "bytes": 1648221
+    },
+    {
+      "name": "lane_straight_lod1.png",
+      "sha256": "DD7729EDD760E1FDA623B4EA4B4467068E1F589EDEF1F93069F3093A17901213",
+      "bytes": 1647996
+    },
+    {
+      "name": "lane_straight_lod2.png",
+      "sha256": "6A1DB7D04AB88E844FB82C6FFD38FD732DF92E2C22C8AAB5AD133DE3948910EE",
+      "bytes": 1494236
+    },
+    {
+      "name": "lane_corner_works_top.png",
+      "sha256": "77AD4EAD6203879D9482711BAB81AD6702243B30AA54C7CB46A76A759083F967",
+      "bytes": 1651986
+    },
+    {
+      "name": "lane_corner_works_edge.png",
+      "sha256": "38813ED87C6D0BF0E0FCC1978C185495A2A74CBC8C80A59103FFB561AE839906",
+      "bytes": 1651672
+    },
+    {
+      "name": "lane_corner_works_site.png",
+      "sha256": "EE2AFB08C57E51335F356CA04603AED3A663443FA6F81A9DE6B8D14D059C4CA2",
+      "bytes": 1494811
+    },
+    {
+      "name": "lane_corner_clay.png",
+      "sha256": "8AE64051948D3C0E264FB27905C2FB1C0D7BFCA99A5D969C122B699B7BDBD30F",
+      "bytes": 1654535
+    },
+    {
+      "name": "lane_corner_material.png",
+      "sha256": "77AD4EAD6203879D9482711BAB81AD6702243B30AA54C7CB46A76A759083F967",
+      "bytes": 1651986
+    },
+    {
+      "name": "lane_corner_material_id.png",
+      "sha256": "730130B8F0D1DD36940A099897D33F7D7315E16C9D6F0DD47582E1138E0EBEE8",
+      "bytes": 1655270
+    },
+    {
+      "name": "lane_corner_normal.png",
+      "sha256": "FDD38E2A94B2A4855EC7905260CAFBB510D4BB8E780E5536700216D11546C896",
+      "bytes": 1654424
+    },
+    {
+      "name": "lane_corner_orm.png",
+      "sha256": "0E2B91A77E1904D6B96B07C33CCF4ECCA7CDBEF0C80BE32E1DBC12943E1BA4DF",
+      "bytes": 1656789
+    },
+    {
+      "name": "lane_corner_hooks.png",
+      "sha256": "5DBDDA685A44D1F17B2547EB5F24A13D2F81F95DE331859021DCEA210ADFB303",
+      "bytes": 1644793
+    },
+    {
+      "name": "lane_t_works_top.png",
+      "sha256": "479C4734F70E52457BF4D3DBF553C6E3A6A7D0179540A4AB0797990BD20B2A99",
+      "bytes": 1654272
+    },
+    {
+      "name": "lane_t_works_edge.png",
+      "sha256": "4F99FE4CEC5347B140AE98A6D76CE8B032B9729422243A29CF16CC4712C5AABB",
+      "bytes": 1654991
+    },
+    {
+      "name": "lane_t_works_site.png",
+      "sha256": "FD4474483C87658EE1475CCE1C8C8282CF302CC4A16F667248C48094030E1473",
+      "bytes": 1494953
+    },
+    {
+      "name": "lane_t_clay.png",
+      "sha256": "A6332ECE9ABB6CF6E2A7F82D9699836A117F851C0C8DC0B6AD3A2E5EDF28CDA5",
+      "bytes": 1655760
+    },
+    {
+      "name": "lane_t_material.png",
+      "sha256": "DB5ACFD4724F0F4D78AFAC43636F9519DF1FB76520412D364C05127AA3D41C9C",
+      "bytes": 1654227
+    },
+    {
+      "name": "lane_t_material_id.png",
+      "sha256": "636DE391B92791B1D88C3426FD26B0AFF27D85A02DB43068AC6F61CCAC21F695",
+      "bytes": 1654377
+    },
+    {
+      "name": "lane_t_normal.png",
+      "sha256": "506B35141BA5C59177C279BF86A5B98F17294FE432ED804C2AA18A006DD9BDD5",
+      "bytes": 1654838
+    },
+    {
+      "name": "lane_t_orm.png",
+      "sha256": "2906B776B9B3CE8A6F937F4DBD4B624EF0C6F12C15EA89AF1B12E494583A8ABE",
+      "bytes": 1656274
+    },
+    {
+      "name": "lane_t_hooks.png",
+      "sha256": "13B64243AD977ECE5C15B43AD16407470229C09F59DC47697AE447FC8B336B59",
+      "bytes": 1645634
+    },
+    {
+      "name": "lane_cross_works_top.png",
+      "sha256": "506ECC9F0406E7FCF1C02ADE9EA4349A916F78628DE182ED1CCA8D04C3FBB4F2",
+      "bytes": 1658248
+    },
+    {
+      "name": "lane_cross_works_edge.png",
+      "sha256": "D0268CAD4EAC705D381C2385E798DD149F4060BC9C3131812697D183A7649036",
+      "bytes": 1657822
+    },
+    {
+      "name": "lane_cross_works_site.png",
+      "sha256": "1955D631DF53A568A9726A3A3EEB37BA4658794CBB52A7FB020DC5E6BFE6E6DB",
+      "bytes": 1495434
+    },
+    {
+      "name": "lane_cross_clay.png",
+      "sha256": "839BCF7E14DAA501A2FCE2A7B8FFEA9D134B51C9F5AE67ED0929D04AFABA11B8",
+      "bytes": 1661105
+    },
+    {
+      "name": "lane_cross_material.png",
+      "sha256": "826814CA6A50F501742AE3C4071592AA0646E9218B962069530855AD190550AC",
+      "bytes": 1658243
+    },
+    {
+      "name": "lane_cross_material_id.png",
+      "sha256": "423CEE0F12212B6894677D341BE54A8918E27E7BE72B2DD17A5A1606106B4C41",
+      "bytes": 1660197
+    },
+    {
+      "name": "lane_cross_normal.png",
+      "sha256": "CCA25F4095D3A57783059346A050D1999AFE411CD70A4C793D6D34E7E5DA972C",
+      "bytes": 1659909
+    },
+    {
+      "name": "lane_cross_orm.png",
+      "sha256": "1DBFD153B0ED25B99F9499C05F9259EDF6CF88B85B04C63CC6B25CFFC0D48F9F",
+      "bytes": 1662083
+    },
+    {
+      "name": "lane_cross_hooks.png",
+      "sha256": "47C20F45A8D712A98F50544BB7836217E37A0D28D99C6FE0F1D4C5E561A588A7",
+      "bytes": 1645771
+    },
+    {
+      "name": "lane_end_works_top.png",
+      "sha256": "487B2F5E6D63C9AB31D365753D9684F0DBC34E26806102FDBC027C86963E0FC6",
+      "bytes": 1650343
+    },
+    {
+      "name": "lane_end_works_edge.png",
+      "sha256": "84A405870FB005B814583D9F0B55BA7C94E5728CE6797E2B0EFC06303F8CDAD6",
+      "bytes": 1649935
+    },
+    {
+      "name": "lane_end_works_site.png",
+      "sha256": "81FA3ADB796F181F3A8F6670C2A6E38BF28982D52CBDD5220A5A75DCDCD675A1",
+      "bytes": 1494815
+    },
+    {
+      "name": "lane_end_clay.png",
+      "sha256": "5EA421925B7F3200C77463050EEFD6FED668A3248F244A1F725B14EBE7047CFA",
+      "bytes": 1650880
+    },
+    {
+      "name": "lane_end_material.png",
+      "sha256": "3EAF47E3B2C0856A24899BF57510EE877B5047620DEEEA0C48FB75DE2E1196CC",
+      "bytes": 1650344
+    },
+    {
+      "name": "lane_end_material_id.png",
+      "sha256": "04112511D38F27D65AA9B5E6C08A4C9E617D8DFCC76914F6F2445DC4E147BB03",
+      "bytes": 1650270
+    },
+    {
+      "name": "lane_end_normal.png",
+      "sha256": "15D88760EEC931BABA665D4A06D8C514CF40B131C55E522485049523A7879D18",
+      "bytes": 1650566
+    },
+    {
+      "name": "lane_end_orm.png",
+      "sha256": "F0B414BE84D5C67DD424D36BBB5D702E81051D0AA8AA910006447264778D9AC6",
+      "bytes": 1651253
+    },
+    {
+      "name": "lane_end_hooks.png",
+      "sha256": "3495DB0ABCB89D468C800920716A844D9E1FCB07F1B4FC2C9C2EEB0059D90416",
+      "bytes": 1643890
+    },
+    {
+      "name": "lane_junction_works_top.png",
+      "sha256": "ADF6EDA36EBA2A9C9C373E9ECC6046E24D7AF94042AB3BD42CADBC7C8AACB77C",
+      "bytes": 1657650
+    },
+    {
+      "name": "lane_junction_works_edge.png",
+      "sha256": "D89EABBD005CBF1143F5810ABA13056C75D775BCED615A84A3F08F19C116994B",
+      "bytes": 1657711
+    },
+    {
+      "name": "lane_junction_works_site.png",
+      "sha256": "C193ACD91F53F3EA64BDEF24A65C6F736C7BEF5E57222DEF3084738FC55E9F60",
+      "bytes": 1495788
+    },
+    {
+      "name": "lane_junction_clay.png",
+      "sha256": "24AE0996CFF2804018D9DA1F2092101E2AB0BBA60713925630642D54C73D4A9B",
+      "bytes": 1660384
+    },
+    {
+      "name": "lane_junction_material.png",
+      "sha256": "ADF6EDA36EBA2A9C9C373E9ECC6046E24D7AF94042AB3BD42CADBC7C8AACB77C",
+      "bytes": 1657650
+    },
+    {
+      "name": "lane_junction_material_id.png",
+      "sha256": "7D044DBEB31AD4E737FC4F6BA8E7304E418F773B0E2146DE1EADF5308EAA5F3B",
+      "bytes": 1659701
+    },
+    {
+      "name": "lane_junction_normal.png",
+      "sha256": "D7499939A26E00EC18FB1565F14F3380A68E6F5250B3E864DD1A3BD57D0AFD4E",
+      "bytes": 1659963
+    },
+    {
+      "name": "lane_junction_orm.png",
+      "sha256": "060389B43EC4465FC7765E5773A6BF09E01949A47EF0F8F2B59E2D66ADE9C687",
+      "bytes": 1661700
+    },
+    {
+      "name": "lane_junction_hooks.png",
+      "sha256": "9206D64A4EC358CD9B269A40E9BB8BF71E6DA40AE5C03347752CAA8AF9AB03BA",
+      "bytes": 1644483
+    },
+    {
+      "name": "join_power_straight_straight_works_top.png",
+      "sha256": "A5399B15313A4F39D721E547EF45960E65E4527FDF9DC932EB3423670C9B22F0",
+      "bytes": 1649724
+    },
+    {
+      "name": "join_power_straight_straight_works_edge.png",
+      "sha256": "71CF020F2912E17BEA34128417DD32273980F421A363E7AAFDB20F7FB5926758",
+      "bytes": 1651369
+    },
+    {
+      "name": "join_power_straight_corner_works_top.png",
+      "sha256": "FB6C3D93DD7114DBC0E86AE8F56D94BC6B6FF057A9CAFC26F983BE2CA0B291B4",
+      "bytes": 1653340
+    },
+    {
+      "name": "join_power_straight_corner_works_edge.png",
+      "sha256": "13653F228BBCFE06F2837989B1D685585B089D7F34DCAC76F502A2B83106D936",
+      "bytes": 1647559
+    },
+    {
+      "name": "join_power_straight_t_works_top.png",
+      "sha256": "09160826DBD19095C7F1FF928583414B36AC51D565FECC3A5D6258BC8480C8FA",
+      "bytes": 1654869
+    },
+    {
+      "name": "join_power_straight_t_works_edge.png",
+      "sha256": "2E60CCCFE6205F253CAF7D005D41178600988D7616048F7FDDCDA254A32569C1",
+      "bytes": 1655720
+    },
+    {
+      "name": "join_lane_straight_straight_works_top.png",
+      "sha256": "294DD7BF971072544E97CA53005DDB40D4738D866FEBA7465C42D35038BF4E73",
+      "bytes": 1652051
+    },
+    {
+      "name": "join_lane_straight_straight_works_edge.png",
+      "sha256": "C8BD58BBF9FD2424EEDB9F1F02180418F84273F05891D35324CF0F7405115DF5",
+      "bytes": 1654089
+    },
+    {
+      "name": "join_lane_straight_corner_works_top.png",
+      "sha256": "561F9D538D03EA20D3AFF3907959E4F01A9F0E142BFFFF2B97AFBD1408A31F05",
+      "bytes": 1655941
+    },
+    {
+      "name": "join_lane_straight_corner_works_edge.png",
+      "sha256": "6BEC2C71B02670120A448A28819882733A546B568D120DFB9A7D3307070C8D3B",
+      "bytes": 1649829
+    },
+    {
+      "name": "join_lane_straight_t_works_top.png",
+      "sha256": "8B32A6CC6372E55FFDFD9519481277E2D7611AF4EF7DBF71844090C3133AF188",
+      "bytes": 1658298
+    },
+    {
+      "name": "join_lane_straight_t_works_edge.png",
+      "sha256": "E0AFEA4CF0276FA9D6FDD219269C079BC2EAB5CAB469FCFE0AC0597D31DEA6BD",
+      "bytes": 1658850
+    }
+  ],
+  "pieces": [
+    {
+      "id": "place_works_conduit_power_straight",
+      "sha256": "A939E2FD4A22C63A2D5116B55E237F46A6D06B5CE7C936E4C56B08A07BD1DC85",
+      "lodTriangles": {
+        "lod0": 788,
+        "lod1": 344,
+        "lod2": 44
+      },
+      "bytes": 394432
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "sha256": "0FE74535BC5AA6C09B07B6B10A4D1FFE0AB9E885CF459C54AFB9C89BA6BC1542",
+      "lodTriangles": {
+        "lod0": 912,
+        "lod1": 472,
+        "lod2": 124
+      },
+      "bytes": 412320
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "sha256": "8790991E0B798076E4F2A54C24C18CEDAAD01A6A2ED7A509E9D0860D2330E083",
+      "lodTriangles": {
+        "lod0": 872,
+        "lod1": 492,
+        "lod2": 132
+      },
+      "bytes": 415960
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "sha256": "E070997992AE8CDAE6FF585319ACA7154365294D918F9032E8C54230C19D5CA9",
+      "lodTriangles": {
+        "lod0": 1276,
+        "lod1": 740,
+        "lod2": 164
+      },
+      "bytes": 467708
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "sha256": "0D38BE7A45CE36C45019802E3851C45A030146E1FF015CB39FF96ED0EBAC2D62",
+      "lodTriangles": {
+        "lod0": 952,
+        "lod1": 464,
+        "lod2": 116
+      },
+      "bytes": 427792
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "sha256": "05EC1E15A05BCB6C25B81340AD92A6E06520066510AF6DB05E74116189408608",
+      "lodTriangles": {
+        "lod0": 1620,
+        "lod1": 724,
+        "lod2": 100
+      },
+      "bytes": 522136
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "sha256": "751E55D9E4531D877A408BB38F38698B4E7AE5E26B8929036CDAE86315863C7B",
+      "lodTriangles": {
+        "lod0": 704,
+        "lod1": 340,
+        "lod2": 56
+      },
+      "bytes": 333520
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "sha256": "654281521ED1735DA34054B23E1DBDF9509A68E59A02E8BAB762FAC9BC99F253",
+      "lodTriangles": {
+        "lod0": 924,
+        "lod1": 432,
+        "lod2": 192
+      },
+      "bytes": 360468
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "sha256": "3A447ADD078CA58B573037EBCEB3BA24912ED0553B8007050B263DD96E090222",
+      "lodTriangles": {
+        "lod0": 1210,
+        "lod1": 614,
+        "lod2": 180
+      },
+      "bytes": 405432
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "sha256": "7EA5018BC232498D789B408E2BFD814DEEA69FBAD0F3B75D3133AB66D755EB74",
+      "lodTriangles": {
+        "lod0": 1556,
+        "lod1": 828,
+        "lod2": 252
+      },
+      "bytes": 449632
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "sha256": "BE6A20D98A43A5114034EDF3CCB369BC5F0EE2617587CF5CAAFBE5581091EEB1",
+      "lodTriangles": {
+        "lod0": 868,
+        "lod1": 412,
+        "lod2": 92
+      },
+      "bytes": 358020
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "sha256": "376DC71CD185CB93B9001D40F2D0C2F7A9B6848DBF444D4CD8D633B7DF896E5F",
+      "lodTriangles": {
+        "lod0": 1216,
+        "lod1": 712,
+        "lod2": 276
+      },
+      "bytes": 441156
+    }
+  ],
+  "atlases": {
+    "power": [
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_basecolor.png",
+        "sha256": "52842A77DE6C951EC05B106BC6D879FAF80A5D7A91B66F94B6B6C792C4923BE2"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_orm.png",
+        "sha256": "5F9390728E969D2E7C2A8993A454B7F57AF8C57ED097E22E59A6DCB70434A21D"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_normal.png",
+        "sha256": "2BC1171AF344E8233F01B8622DB963ADB73787725D7D6A7BEDA7A28E6D12DD15"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_id.png",
+        "sha256": "698EC9D292AA9D92F14D190DAB67F2CFCFA38956CF57160E37D880C05068E7AC",
+        "role": "material_id_diagnostic"
+      }
+    ],
+    "lane": [
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_basecolor.png",
+        "sha256": "0E87FD41F2CCBDF9DF3504F77937B75AA9463463BCA409A31A0BA083CB21AA6D"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_orm.png",
+        "sha256": "119155C362D24E8E6972BD6BBA3CBD60818F139C2948CC7B206750BE7EBC083B"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_normal.png",
+        "sha256": "FE95C3230E5689037F8D67C5B900D6158F3C76C5FF7771057C2A916C20A66B95"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_id.png",
+        "sha256": "CFFED5713C0B7746FD616F39F8991F63A7702CA24868084F3B842229B9C9C956",
+        "role": "material_id_diagnostic"
+      }
+    ]
+  },
+  "master": {
+    "glb": "assets/works/conduit_kit/source/works_conduit_kit.glb",
+    "blend": "assets/works/conduit_kit/source/works_conduit_kit.blend",
+    "sha256": "ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B",
+    "bytes": 2380004,
+    "blendSha256": "7731C43CD5917285809E18CE87CF44D313FC14D28AB53639F1DE6351FC31DF91"
+  }
+}

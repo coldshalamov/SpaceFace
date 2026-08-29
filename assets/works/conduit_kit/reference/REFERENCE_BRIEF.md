@@ -1,9 +1,9 @@
-# Works conduit kit — reference brief and Cycle 02 lane correction
+# Works conduit kit — reference brief and Cycle 03 construction correction
 
 **Asset:** `place_works_conduit_*` (PQ-131.06). **Class:** place/prop, works camera only. **Tier:** C
-(repeated manufactured families). **State:** `design_candidate`. Cycle 2 of the kit (lane correction;
-power frozen at Cycle 01 KEEP). This page is the construction contract. Do not import third-party
-geometry or textures.
+(repeated manufactured families). **State:** `design_candidate`. Cycle 3 of the kit (both families
+rebuilt after Cycle 02 was rejected). This page is the construction contract. Do not import
+third-party geometry or textures.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object at frame edge),
 `works_site` (19 px/cell). All 1920×1080, 31° perspective, Blender +Z up, origin at cell centre.
@@ -179,27 +179,35 @@ inside the master kit scene.
 6. **Works camera** — stills are `works_top` / `works_edge` / `works_site`, not a beauty crop.
 7. **Envelope** — every piece inside one 2.2 wu cell.
 
-G0–G7: cycle 2 is `evidence_ready` only. Whole-asset G1/G2/G4 stay open pending independent
-review of `evidence/cycle_02/` at 1:1. Cycle 01 stills stay on disk as the KEEP record for power.
-This candidate is not accepted art.
+G0–G7: cycle 3 is `evidence_ready` only. Whole-asset G1/G2/G4 stay open pending independent
+review of `evidence/cycle_03/` at 1:1. Cycle 01 and Cycle 02 stills stay on disk as history.
+This candidate is not accepted art. Runtime G6 and independent G7 are not claimed.
 
 Working scene: `tools/blender/build_works_conduit_kit.py` →
 `assets/works/conduit_kit/source/` and `assets/ships/parts/works/place_works_conduit_*.glb`.
 
 ---
 
-## Cycle 02 lane correction (this cycle)
+## Cycle 03 construction correction (this cycle)
 
-Independent review: **power KEEP**, freeze geometry/textures/ports/evidence. Lane **REVISE**:
+Independent review of Cycle 02 (`3d2f0395`) rejected the candidate. Nine supported-camera
+failures, both families. Power freeze from Cycle 01 does **not** survive that review.
 
-1. The belt was a wide black ribbon filling the trough. Cycle 02 drops the deck, sweeps two
-   C-channel rails, sits a **narrow raised belt** on roller crowns, and leaves side/under
-   negative space so the pad reads through at 120 px/cell.
-2. Junction was a featureless box. Cycle 02 puts a **removable service lid** (lip, reveal,
-   restrained fasteners, handle) on a smaller enclosure in the hollow, with a **rooted
-   gearmotor** on end, junction, T and cross.
-3. Corner/T/cross read as a seam or two overlapping straights. Cycle 02 keeps **one-piece
-   corner topology**, a through-run plus outside branch on the T, four arms around a hollow
-   cross, and splice lobes instead of a filled slab. Port envelope 0.76 × 0.26 is unchanged.
-4. LOD1/2 keep the hollow gap and the T/cross/junction lobes at 19 px/cell. No glow, labels,
-   or scale inflation. Lanes must not become the power family.
+1. **Junctions are service boxes, not cell cubes.** Power and lane junction enclosures sit in
+   the hollow of four stubs, with a removable lid (lip, fasteners, handle) and glands at the
+   entries. The box is ~0.5 wu, not a 1.1 wu slab.
+2. **T/cross are fittings.** Power: U-channel arms plus inner arcs and a bonded splice — no
+   filled square. Lane T: continuous far rail, gapped near rail, branch rails meeting the
+   opening, thin transfer plate. Lane cross: four arms plus inner fillets. No overlapping
+   full-length straights, no four disconnected stubs.
+3. **Gold jacket is protected.** Tray lips occupy real pixels at 120 px/cell. The jacket sits
+   in the trough and is interrupted by rooted saddles. Armour shows at clamps and glands.
+   Emission stays in the contact window.
+4. **Lane is a roller conveyor.** Thicker C-rails, larger rollers, a narrow belt on the
+   crowns, a smoked cover strip over the product path only. Not a recolored power cable and
+   not a black ribbon.
+5. **Ends are hardware.** Power: bulkhead + gland + short armour pigtail. Lane: return
+   pulley, end stop, motor on the side rail.
+6. Port envelope unchanged: power 0.48 × 0.20, lane 0.76 × 0.26, ports on the cell face.
+
+Cycle 03 does not claim KEEP. Independent review of `evidence/cycle_03/` decides.
