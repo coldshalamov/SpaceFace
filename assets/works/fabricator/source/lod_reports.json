@@ -1,14 +1,14 @@
 [
   {
     "lod": 0,
-    "triangles": 8580,
+    "triangles": 8872,
     "triangleParts": {
-      "LOD0_fabricator": 6344,
-      "LOD0_Gantry": 1976,
-      "LOD0_Lamp": 260
+      "LOD0_fabricator": 6508,
+      "LOD0_Gantry": 2020,
+      "LOD0_Lamp": 344
     },
-    "uvOverlaps": 16049,
-    "atlasCoverage": 0.3071022033691406,
+    "uvOverlaps": 16080,
+    "atlasCoverage": 0.22682476043701172,
     "bbox": {
       "min": [
         -1.02,
@@ -18,37 +18,38 @@
       "max": [
         1.02,
         1.02,
-        0.826
+        0.846
       ],
       "size": [
         2.04,
         2.04,
-        0.826
+        0.846
       ]
     },
     "lamp": [
-      0.62,
-      0.92,
-      0.8
+      0.52,
+      0.9,
+      0.82
     ],
     "textures": {
       "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_basecolor.png",
       "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_normal.png",
       "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_orm.png",
-      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_uv0_layout.png"
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_uv0_layout.png",
+      "id": "assets/works/fabricator/source/textures/fabricator_atlas_lod0_id.png"
     },
-    "sha256": "FD3F94D6AF22B1EE7AB6D567B1A5326E379AF7ED7F5150B87E4593DA1434D97B"
+    "sha256": "D86C26DB7EB43C504E3A1399860CA3D04CFE5F1FBA58C7C97C00ECF76A26FBF7"
   },
   {
     "lod": 1,
-    "triangles": 836,
+    "triangles": 808,
     "triangleParts": {
-      "LOD1_fabricator": 540,
-      "LOD1_Gantry": 256,
-      "LOD1_Lamp": 40
+      "LOD1_fabricator": 516,
+      "LOD1_Gantry": 268,
+      "LOD1_Lamp": 24
     },
-    "uvOverlaps": 1367,
-    "atlasCoverage": 0.43624114990234375,
+    "uvOverlaps": 1280,
+    "atlasCoverage": 0.6247005462646484,
     "bbox": {
       "min": [
         -1.02,
@@ -58,65 +59,67 @@
       "max": [
         1.02,
         1.02,
-        0.826
+        0.842
       ],
       "size": [
         2.04,
         2.04,
-        0.826
+        0.842
       ]
     },
     "lamp": [
-      0.62,
-      0.92,
-      0.8
+      0.52,
+      0.9,
+      0.82
     ],
     "textures": {
       "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_basecolor.png",
       "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_normal.png",
       "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_orm.png",
-      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_uv0_layout.png"
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_uv0_layout.png",
+      "id": "assets/works/fabricator/source/textures/fabricator_atlas_lod1_id.png"
     },
-    "sha256": "CD72EE73E89D896EBB88FC63A70D2946FC776D06B6144ADD55C86F1776615F0A"
+    "sha256": "5342E62B0FC91001C9440380180572CB7975121819CAA5E907CE36ABB33F007A"
   },
   {
     "lod": 2,
-    "triangles": 432,
+    "triangles": 428,
     "triangleParts": {
       "LOD2_fabricator": 248,
-      "LOD2_Gantry": 144,
-      "LOD2_Lamp": 40
+      "LOD2_Gantry": 156,
+      "LOD2_Lamp": 24
     },
-    "uvOverlaps": 640,
-    "atlasCoverage": 0.27638721466064453,
+    "uvOverlaps": 633,
+    "atlasCoverage": 0.7131805419921875,
     "bbox": {
       "min": [
         -1.02,
-        -1.02,
+        -1.03,
         0.0
       ],
       "max": [
         1.02,
-        1.02,
-        0.826
+        1.03,
+        0.842
       ],
       "size": [
         2.04,
-        2.04,
-        0.826
+        2.06,
+        0.842
       ]
     },
     "lamp": [
-      0.62,
-      0.92,
-      0.8
+      0.52,
+      0.9,
+      0.82
     ],
     "textures": {
       "basecolor": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_basecolor.png",
       "normal": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_normal.png",
       "orm": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_orm.png",
-      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_uv0_layout.png"
+      "uv": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_uv0_layout.png",
+      "id": "assets/works/fabricator/source/textures/fabricator_atlas_lod2_id.png"
     },
-    "sha256": "DAED260EA71B833374BDF87E83D3FF019C14DAFA6915696D532DE7E5FA112809"
+    "sha256": "C3BE00C9DC56C10494D79ECAA44941D17A4B2CEB836BA5E0BD678E389B31B885"
   }
 ]

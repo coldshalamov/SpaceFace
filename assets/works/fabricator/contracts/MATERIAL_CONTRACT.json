@@ -1,40 +1,40 @@
 {
   "assetId": "place_works_fabricator",
-  "cycle": 2,
-  "candidateHash": "F14445BFF3A83DA6891A3CBD5A96CC79091C8A395588537F04EE6393E2E3B549",
+  "cycle": 3,
+  "candidateHash": "31E7E0F70CED279B5FFBEFD6A482362688044306BDF4CE68D6A37294E9387B1F",
   "roles": {
     "frame": {
       "rgb": [
-        0.1,
-        0.082,
-        0.062
+        0.09,
+        0.074,
+        0.056
       ],
-      "roughness": 0.64,
+      "roughness": 0.66,
       "metallic": 0.07
     },
     "bed": {
       "rgb": [
-        0.76,
-        0.7,
-        0.56
+        0.604,
+        0.565,
+        0.502
       ],
-      "roughness": 0.34,
-      "metallic": 0.68
+      "roughness": 0.38,
+      "metallic": 0.62
     },
     "rail": {
       "rgb": [
-        0.48,
-        0.5,
-        0.52
+        0.55,
+        0.57,
+        0.59
       ],
-      "roughness": 0.42,
-      "metallic": 0.78
+      "roughness": 0.36,
+      "metallic": 0.82
     },
     "ceramic": {
       "rgb": [
-        0.62,
-        0.53,
-        0.4
+        0.7,
+        0.58,
+        0.42
       ],
       "roughness": 0.8,
       "metallic": 0.02
@@ -50,11 +50,11 @@
     },
     "lamp": {
       "rgb": [
-        0.38,
-        0.32,
-        0.22
+        0.34,
+        0.28,
+        0.18
       ],
-      "roughness": 0.46,
+      "roughness": 0.42,
       "metallic": 0.03
     }
   },

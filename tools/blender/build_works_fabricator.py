@@ -1,9 +1,13 @@
-"""PQ-131.08 Works fabricator — cycle 02 authored gantry source candidate.
+"""PQ-131.08 Works fabricator — cycle 03 open-H form correction.
 
 Cycle 01 travel (one rigid assembly, 0 / 0.5 / 1 over the bed) is preserved.
-Cycle 02 rebuilds the moving hook into a visible carriage/tool, clarifies
-bridge/column load paths, authors LOD1/2 as an open H at 19 px/cell, and
-corrects G4 (no quilt, no chrome rods, dry ceramic, isolated polymer).
+Cycle 02 kept a continuous side wall and a filled plinth, so works_top was a
+dark square around a gold plate and works_site collapsed to a warm block.
+
+Cycle 03 repairs the earliest failed gate (G1 form): drop the cabinet webs
+and cell-filling plinth, root hat-section rails on C-beams and posts, hang
+the ram/tool off the bridge over a raised T-slot bed, hood the lamp toward
+the bed, and stop the sine-quilt that read as diamond plate.
 
     blender --background --python tools/blender/build_works_fabricator.py
     blender --background --python tools/blender/build_works_fabricator.py -- --validate-only
@@ -38,7 +42,7 @@ from spaceface_works_camera import apply_works_camera  # noqa: E402
 FAMILY = ROOT / "assets" / "works" / "fabricator"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_002"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_003"
 AUDIT_DIR = FAMILY / "audits"
 CONTRACT_DIR = FAMILY / "contracts"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
@@ -51,7 +55,7 @@ RAIL_NAME = "rail"
 CELL_WU = 2.2
 ENVELOPE = (2.08, 2.08, 0.90)
 TEX = 1024
-CYCLE = 2
+CYCLE = 3
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 10000, 1: 2500, 2: 800}
 
@@ -61,37 +65,41 @@ TRAVEL_LENGTH = 1.40
 TRAVEL_Y = 0.0
 TRAVEL_Z = 0.70
 HEAD_POS0 = (TRAVEL_X0, TRAVEL_Y, TRAVEL_Z)
+# Hang the ram toward +X so works_top sees ceramic beside the bridge, not under it.
+TOOL_DX = 0.13
+LAMP_POS = (0.52, 0.90, 0.82)
 
 BED_HALF = (0.62, 0.50)
 BED_TOP = 0.22
 BED_BOT = 0.15
 RAIL_Y = 0.86
 RAIL_Z = 0.66
+POST_Y = 0.94
 
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 ROLE_ID = {"frame": 0.0, "bed": 0.2, "rail": 0.4, "ceramic": 0.6, "polymer": 0.8, "lamp": 1.0}
 ROLE_FROM_ID = {v: k for k, v in ROLE_ID.items()}
 
 # sRGB bases. Paint is dielectric; bed/rail are metal; ceramic/polymer/lamp are not.
-# Cycle 02: darker alkyd frame, brighter worn bed, ground steel (not chrome),
-# dry ceramic, isolated polymer, recessed lamp glass (not a warm bead).
+# Cycle 03: cooler worn bed (not gold), darker alkyd frame, ground steel rails
+# that still read as the H, dry ceramic on the hanging ram, recessed lamp glass.
 ROLE_RGB = {
-    "frame": (0.100, 0.082, 0.062),
-    "bed": (0.76, 0.70, 0.56),
-    "rail": (0.48, 0.50, 0.52),
-    "ceramic": (0.62, 0.53, 0.40),
+    "frame": (0.090, 0.074, 0.056),
+    "bed": (0.604, 0.565, 0.502),
+    "rail": (0.55, 0.57, 0.59),
+    "ceramic": (0.70, 0.58, 0.42),
     "polymer": (0.155, 0.138, 0.122),
-    "lamp": (0.38, 0.32, 0.22),
+    "lamp": (0.34, 0.28, 0.18),
 }
-ROLE_ROUGH = {"frame": 0.64, "bed": 0.34, "rail": 0.42, "ceramic": 0.80, "polymer": 0.66, "lamp": 0.46}
-ROLE_METAL = {"frame": 0.07, "bed": 0.68, "rail": 0.78, "ceramic": 0.02, "polymer": 0.03, "lamp": 0.03}
+ROLE_ROUGH = {"frame": 0.66, "bed": 0.38, "rail": 0.36, "ceramic": 0.80, "polymer": 0.66, "lamp": 0.42}
+ROLE_METAL = {"frame": 0.07, "bed": 0.62, "rail": 0.82, "ceramic": 0.02, "polymer": 0.03, "lamp": 0.03}
 ROLE_ID_RGB = {
-    "frame": (0.22, 0.16, 0.10),
-    "bed": (0.82, 0.72, 0.48),
-    "rail": (0.52, 0.56, 0.60),
-    "ceramic": (0.74, 0.58, 0.36),
+    "frame": (0.20, 0.15, 0.10),
+    "bed": (0.72, 0.66, 0.52),
+    "rail": (0.58, 0.62, 0.66),
+    "ceramic": (0.78, 0.60, 0.38),
     "polymer": (0.18, 0.16, 0.14),
-    "lamp": (0.58, 0.46, 0.28),
+    "lamp": (0.62, 0.50, 0.28),
 }
 
 _GLTF_FLOAT = 5126
@@ -368,6 +376,35 @@ def loft_from_rings(name, rings, collection, role, bevel=0.004, cap=True, segmen
     return add_mesh(name, verts, faces, collection, role, bevel, segments)
 
 
+def add_c_beam_x(name, y_outer, z_center, collection, role, *, length=0.92, height=0.08,
+                 web=0.014, flange=0.048, open_sign=-1.0, lod=0, x=0.0):
+    """C-channel extruded on +X, opening toward the bed. Not a cabinet wall."""
+    z_bot = z_center - height * 0.5
+    z_top = z_center + height * 0.5
+    y_inner = y_outer + open_sign * flange
+    y_web = y_outer + open_sign * web
+    profile = [
+        (y_outer, z_bot),
+        (y_inner, z_bot),
+        (y_inner, z_bot + web),
+        (y_web, z_bot + web),
+        (y_web, z_top - web),
+        (y_inner, z_top - web),
+        (y_inner, z_top),
+        (y_outer, z_top),
+    ]
+    x0, x1 = x - length * 0.5, x + length * 0.5
+    if lod == 0:
+        stations = (x0, x0 + length * 0.33, x1 - length * 0.33, x1)
+    else:
+        stations = (x0 + 0.02, x1 - 0.02)
+    rings = [[(sx, y, z) for y, z in profile] for sx in stations]
+    return loft_from_rings(
+        name, rings, collection, role,
+        bevel=0.002 if lod == 0 else 0.0, segments=1,
+    )
+
+
 def paint_role(obj, role):
     mesh = obj.data
     while mesh.vertex_colors:
@@ -573,30 +610,41 @@ def add_tslot_bed(prefix, collection, lod):
             collection, "bed", bevel=0.002 if lod == 0 else 0.0, segments=1,
         ))
     if lod == 0:
-        # Waste gutters / chip pans between bed and side frames.
+        # Waste gutters as U-channels on the bed edge — they must not fill the
+        # open volume between bed and side sills.
         for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
             parts.append(add_box(
                 f"{prefix}Gutter{tag}",
-                (0.0, sign * 0.58, 0.12),
-                (0.58, 0.045, 0.04),
-                collection, "bed", bevel=0.003, segments=1,
+                (0.0, sign * 0.545, 0.175),
+                (0.56, 0.028, 0.018),
+                collection, "bed", bevel=0.002, segments=1,
             ))
             parts.append(add_box(
-                f"{prefix}Pan{tag}",
-                (0.0, sign * 0.58, 0.055),
-                (0.50, 0.055, 0.025),
-                collection, "frame", bevel=0.003, segments=1,
+                f"{prefix}GutterWall{tag}",
+                (0.0, sign * 0.568, 0.155),
+                (0.54, 0.008, 0.028),
+                collection, "bed", bevel=0.001, segments=1,
+            ))
+        # Four stanchions: the bed is a table in open volume, not a lid on a well.
+        for i, (x, y) in enumerate(((-0.50, -0.38), (-0.50, 0.38), (0.50, -0.38), (0.50, 0.38))):
+            parts.append(add_box(
+                f"{prefix}BedLeg{i}", (x, y, 0.085),
+                (0.040, 0.036, 0.065), collection, "frame", bevel=0.003, segments=1,
             ))
     elif lod == 1:
         for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
             parts.append(add_box(
                 f"{prefix}Gutter{tag}",
-                (0.0, sign * 0.58, 0.12),
-                (0.58, 0.04, 0.035),
+                (0.0, sign * 0.545, 0.175),
+                (0.54, 0.024, 0.016),
                 collection, "bed", bevel=0.0, segments=1,
             ))
-    # LOD2 keeps the raised bed plate as the bright mass. A filled well
-    # collapses the site icon into a nested square.
+        for i, (x, y) in enumerate(((-0.48, -0.36), (0.48, 0.36))):
+            parts.append(add_box(
+                f"{prefix}BedLeg{i}", (x, y, 0.085),
+                (0.045, 0.040, 0.060), collection, "frame", bevel=0.0, segments=1,
+            ))
+    # LOD2 keeps only the raised plate as the bright mass.
     return parts
 
 
@@ -642,7 +690,8 @@ def add_clamps_and_fixtures(prefix, collection, lod):
 
 def add_base(prefix, collection, lod):
     parts = []
-    # Grounded feet and a folded sill. z=0 is the cut face.
+    # Grounded feet. z=0 is the cut face. No cell-filling plinth: that square
+    # is what collapsed works_site into a warm machine block.
     foot_xy = ((-0.92, -0.94), (-0.92, 0.94), (0.92, -0.94), (0.92, 0.94))
     for i, (x, y) in enumerate(foot_xy):
         parts.append(add_box(
@@ -650,94 +699,86 @@ def add_base(prefix, collection, lod):
             (0.10, 0.08, 0.025), collection, "frame",
             bevel=0.004 if lod == 0 else 0.0, segments=1,
         ))
-    if lod < 2:
+    for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
+        hy = 0.070 if lod == 0 else (0.080 if lod == 1 else 0.090)
         parts.append(add_box(
-            f"{prefix}Plinth", (0.0, 0.0, 0.04),
-            (0.96, 0.88, 0.03), collection, "frame",
-            bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
+            f"{prefix}Sill{tag}", (0.0, sign * 0.92, 0.030),
+            (0.94 if lod < 2 else 0.90, hy, 0.030), collection, "frame",
+            bevel=0.004 if lod == 0 else 0.0, segments=1,
         ))
-    else:
-        # Preserve two rooted longitudinal sills at site LOD, but leave the
-        # center open. A full rectangular plinth survived as a filled-square
-        # icon even after the obsolete LOD2 bed well was removed.
-        for sign, tag in ((-1.0, "Stbd"), (1.0, "Port")):
-            parts.append(add_box(
-                f"{prefix}Sill{tag}", (0.0, sign * 0.78, 0.04),
-                (0.92, 0.08, 0.03), collection, "frame",
-                bevel=0.0, segments=1,
-            ))
     if lod == 0:
+        # Narrow under-bed spine only — not a floor plate.
         parts.append(add_box(
-            f"{prefix}Spine", (0.0, 0.0, 0.07),
-            (0.90, 0.10, 0.02), collection, "frame", bevel=0.003, segments=1,
+            f"{prefix}Spine", (0.0, 0.0, 0.045),
+            (0.42, 0.08, 0.018), collection, "frame", bevel=0.003, segments=1,
         ))
-        for x, tag in ((-0.70, "Aft"), (0.70, "Fore")):
+        for x, tag in ((-0.50, "Aft"), (0.50, "Fore")):
             parts.append(add_box(
-                f"{prefix}Cross{tag}", (x, 0.0, 0.07),
-                (0.06, 0.78, 0.018), collection, "frame", bevel=0.003, segments=1,
+                f"{prefix}Cross{tag}", (x, 0.0, 0.045),
+                (0.05, 0.36, 0.016), collection, "frame", bevel=0.003, segments=1,
             ))
+    elif lod == 1:
+        parts.append(add_box(
+            f"{prefix}Spine", (0.0, 0.0, 0.040),
+            (0.36, 0.07, 0.016), collection, "frame", bevel=0.0, segments=1,
+        ))
     return parts
 
 
 def add_side_frame(prefix, sign, collection, lod):
+    """Open H upright: posts + C-beam. A continuous web is a cabinet wall."""
     parts = []
-    y = sign * 0.94
+    y = sign * POST_Y
     tag = "Port" if sign > 0 else "Stbd"
-    # C-section wall rooted to the plinth. LOD1/2 keep the H uprights but drop
-    # the wide bright top-cap that collapsed the site icon into a picture frame.
-    web_hy = 0.026 if lod == 0 else 0.022
-    parts.append(add_box(
-        f"{prefix}Web{tag}", (0.0, y, 0.34),
-        (0.98 if lod == 0 else 0.92, web_hy, 0.28 if lod == 0 else 0.24), collection, "frame",
-        bevel=0.005 if lod == 0 else 0.0, segments=1 if lod else 2,
-    ))
-    inner = y - sign * 0.055
-    if lod == 0:
-        parts.append(add_box(
-            f"{prefix}FlangeLow{tag}", (0.0, inner, 0.12),
-            (0.96, 0.030, 0.018), collection, "frame", bevel=0.003, segments=1,
-        ))
-        parts.append(add_box(
-            f"{prefix}FlangeHigh{tag}", (0.0, inner, 0.58),
-            (0.96, 0.030, 0.016), collection, "frame", bevel=0.003, segments=1,
-        ))
-    elif lod == 1:
-        parts.append(add_box(
-            f"{prefix}FlangeHigh{tag}", (0.0, inner, 0.56),
-            (0.70, 0.022, 0.012), collection, "frame", bevel=0.0, segments=1,
-        ))
-    # End posts: column load path, rail seat → gusset → foot.
-    post_hx = 0.085 if lod == 0 else 0.070
-    post_hy = 0.055 if lod == 0 else 0.042
+    open_sign = -1.0 if sign > 0 else 1.0
+    # End posts: column load path, C-beam → gusset → sill → foot.
+    post_hx = 0.080 if lod == 0 else (0.075 if lod == 1 else 0.080)
+    post_hy = 0.055 if lod == 0 else (0.070 if lod == 1 else 0.080)
+    post_hz = 0.30 if lod == 0 else (0.28 if lod == 1 else 0.26)
     for x, end in ((-0.90, "Aft"), (0.90, "Fore")):
         parts.append(add_box(
             f"{prefix}Post{tag}{end}", (x, y, 0.34),
-            (post_hx, post_hy, 0.30 if lod == 0 else 0.26), collection, "frame",
+            (post_hx, post_hy, post_hz), collection, "frame",
             bevel=0.004 if lod == 0 else 0.0, segments=1,
         ))
         if lod == 0:
             parts.append(add_box(
-                f"{prefix}Gusset{tag}{end}", (x, y - sign * 0.08, 0.14),
-                (0.05, 0.06, 0.08), collection, "frame", bevel=0.002, segments=1,
+                f"{prefix}PostFlange{tag}{end}", (x, y - sign * 0.055, 0.34),
+                (0.055, 0.016, 0.26), collection, "frame", bevel=0.002, segments=1,
             ))
             parts.append(add_box(
-                f"{prefix}Cap{tag}{end}", (x, y, 0.66),
-                (0.07, 0.048, 0.018), collection, "frame", bevel=0.002, segments=1,
+                f"{prefix}Gusset{tag}{end}", (x, y - sign * 0.08, 0.12),
+                (0.048, 0.055, 0.07), collection, "frame", bevel=0.002, segments=1,
             ))
             parts.append(add_hex_bolt(
-                f"{prefix}PostBolt{tag}{end}", (x, y, 0.68), collection, "rail", 0.014, 0.016,
-            ))
-        elif lod == 1:
-            parts.append(add_box(
-                f"{prefix}Cap{tag}{end}", (x, y, 0.64),
-                (0.06, 0.038, 0.016), collection, "frame", bevel=0.0, segments=1,
+                f"{prefix}PostBolt{tag}{end}", (x, y, 0.66), collection, "rail", 0.014, 0.016,
             ))
     if lod == 0:
-        # Narrow rail seat, not a continuous bright picture-frame bar.
+        # Mid post so the rail is supported, not floating on a wall.
         parts.append(add_box(
-            f"{prefix}Seat{tag}", (0.0, y, 0.625),
-            (0.88, 0.032, 0.016), collection, "frame",
-            bevel=0.003, segments=1,
+            f"{prefix}Post{tag}Mid", (0.0, y, 0.32),
+            (0.050, 0.048, 0.26), collection, "frame", bevel=0.003, segments=1,
+        ))
+        parts.append(add_c_beam_x(
+            f"{prefix}Beam{tag}", y, 0.62, collection, "frame",
+            length=1.84, height=0.072, web=0.014, flange=0.050,
+            open_sign=open_sign, lod=0,
+        ))
+        # Thin kick stringer — a line, not a wall.
+        parts.append(add_box(
+            f"{prefix}Kick{tag}", (0.0, y, 0.10),
+            (0.78, 0.028, 0.018), collection, "frame", bevel=0.002, segments=1,
+        ))
+    elif lod == 1:
+        # Thicker rail-height bar so the H upright survives 19 px/cell (~1.4 px).
+        parts.append(add_box(
+            f"{prefix}Beam{tag}", (0.0, y, 0.62),
+            (0.88, 0.072, 0.036), collection, "frame", bevel=0.0, segments=1,
+        ))
+    else:
+        parts.append(add_box(
+            f"{prefix}Beam{tag}", (0.0, y, 0.62),
+            (0.86, 0.090, 0.040), collection, "frame", bevel=0.0, segments=1,
         ))
     return parts
 
@@ -746,27 +787,36 @@ def add_profile_rail(prefix, sign, collection, lod):
     parts = []
     y = sign * RAIL_Y
     tag = "Port" if sign > 0 else "Stbd"
-    # Hat-section raceway, not a round rod.
-    parts.append(add_box(
-        f"{prefix}RailWeb{tag}", (0.0, y, RAIL_Z),
-        (0.92, 0.012, 0.018), collection, "rail",
-        bevel=0.002 if lod == 0 else 0.0, segments=1,
-    ))
     if lod == 0:
+        # Hat-section raceway seated on the C-beam, not a round rod.
+        parts.append(add_box(
+            f"{prefix}RailWeb{tag}", (0.0, y, RAIL_Z),
+            (0.90, 0.012, 0.018), collection, "rail", bevel=0.002, segments=1,
+        ))
         parts.append(add_box(
             f"{prefix}RailHead{tag}", (0.0, y, RAIL_Z + 0.016),
-            (0.92, 0.022, 0.008), collection, "rail", bevel=0.001, segments=1,
+            (0.90, 0.022, 0.008), collection, "rail", bevel=0.001, segments=1,
         ))
         parts.append(add_box(
             f"{prefix}RailBase{tag}", (0.0, y, RAIL_Z - 0.016),
-            (0.92, 0.028, 0.006), collection, "rail", bevel=0.001, segments=1,
+            (0.90, 0.028, 0.006), collection, "rail", bevel=0.001, segments=1,
         ))
-    if lod == 0:
-        for x, end in ((-0.92, "Aft"), (0.92, "Fore")):
+        for x, end in ((-0.90, "Aft"), (0.90, "Fore")):
             parts.append(add_box(
-                f"{prefix}Limit{tag}{end}", (x, y, RAIL_Z + 0.01),
+                f"{prefix}Limit{tag}{end}", (x, y, RAIL_Z + 0.012),
                 (0.016, 0.024, 0.018), collection, "frame", bevel=0.002, segments=1,
             ))
+    elif lod == 1:
+        # Ground-steel cap on the H upright so the rail still reads at site.
+        parts.append(add_box(
+            f"{prefix}RailHead{tag}", (0.0, y, RAIL_Z + 0.010),
+            (0.86, 0.050, 0.012), collection, "rail", bevel=0.0, segments=1,
+        ))
+    else:
+        parts.append(add_box(
+            f"{prefix}RailHead{tag}", (0.0, y, RAIL_Z + 0.012),
+            (0.84, 0.070, 0.014), collection, "rail", bevel=0.0, segments=1,
+        ))
     return parts
 
 
@@ -851,29 +901,51 @@ def add_energy_chain(prefix, collection, lod):
 
 def add_lamp(prefix, collection, lod):
     parts = []
-    loc = (0.62, 0.92, 0.80)
-    # Hooded can rooted to the +Y frame. Glass recessed inside the hood so
-    # the lamp cannot read as a warm bead or as the site identity.
-    hood_r = 0.036 if lod == 0 else 0.026
-    parts.append(add_cylinder(
-        f"{prefix}LampHood", (loc[0], loc[1], loc[2] + 0.006), hood_r, 0.040,
-        collection, "frame", vertices=10 if lod == 0 else 6, bevel=0.002 if lod == 0 else 0.0, axis="Z",
-    ))
-    parts.append(add_cylinder(
-        f"{prefix}LampGlass", (loc[0], loc[1], loc[2] - 0.008), hood_r * 0.42, 0.008,
-        collection, "lamp", vertices=8 if lod == 0 else 6, bevel=0.0, axis="Z",
-    ))
+    loc = LAMP_POS
+    lx, ly, lz = loc
+    # Hooded task lamp: closed roof from above, opening toward the bed (−Y).
+    # Glass lives in the mouth so it cannot read as a top-facing warm bead.
     if lod == 0:
         parts.append(add_box(
-            f"{prefix}LampArm", (0.62, 0.90, 0.70),
-            (0.014, 0.034, 0.052), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}LampHoodRoof", (lx, ly, lz + 0.018),
+            (0.042, 0.036, 0.008), collection, "frame", bevel=0.002, segments=1,
         ))
         parts.append(add_box(
-            f"{prefix}LampBracket", (0.62, 0.94, 0.62),
-            (0.026, 0.016, 0.026), collection, "frame", bevel=0.002, segments=1,
+            f"{prefix}LampHoodBack", (lx, ly + 0.030, lz - 0.004),
+            (0.040, 0.008, 0.026), collection, "frame", bevel=0.002, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampHoodL", (lx - 0.034, ly - 0.004, lz - 0.004),
+            (0.008, 0.028, 0.024), collection, "frame", bevel=0.001, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampHoodR", (lx + 0.034, ly - 0.004, lz - 0.004),
+            (0.008, 0.028, 0.024), collection, "frame", bevel=0.001, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampGlass", (lx, ly - 0.022, lz - 0.006),
+            (0.022, 0.006, 0.012), collection, "lamp", bevel=0.0, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampArm", (lx, ly + 0.012, lz - 0.070),
+            (0.014, 0.018, 0.055), collection, "frame", bevel=0.002, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampBracket", (lx, ly + 0.028, 0.64),
+            (0.028, 0.016, 0.022), collection, "frame", bevel=0.002, segments=1,
         ))
         parts.append(add_hex_bolt(
-            f"{prefix}LampBolt", (0.62, 0.94, 0.65), collection, "rail", 0.010, 0.012,
+            f"{prefix}LampBolt", (lx, ly + 0.028, 0.67), collection, "rail", 0.010, 0.012,
+        ))
+    else:
+        parts.append(add_box(
+            f"{prefix}LampHoodRoof", (lx, ly, lz + 0.012),
+            (0.034 if lod == 1 else 0.038, 0.030, 0.010), collection, "frame",
+            bevel=0.0, segments=1,
+        ))
+        parts.append(add_box(
+            f"{prefix}LampGlass", (lx, ly - 0.018, lz - 0.004),
+            (0.016, 0.006, 0.010), collection, "lamp", bevel=0.0, segments=1,
         ))
     return parts, loc
 
@@ -970,38 +1042,45 @@ def add_gantry(prefix, collection, lod):
                 (0.090, 0.024, 0.008), collection, "rail", bevel=0.0, segments=1,
             ))
 
-    # Hanging ram / spindle / dry ceramic shroud. 8–14 px planform at play size.
+    # Hanging ram / spindle / dry ceramic shroud, offset +X of the beam so
+    # works_top sees a tool over the bed rather than a roofed bar.
     # 11 px ≈ 0.202 wu diameter. Tool clearance over bed ≥ 0.10 wu.
+    tx = hx + TOOL_DX
     shroud_r = 0.100 if lod == 0 else (0.090 if lod == 1 else 0.084)
     spindle_r = 0.054 if lod == 0 else 0.046
     ram_z = TRAVEL_Z - 0.20
     shroud_z = ram_z - 0.078
+    parts.append(add_box(
+        f"{prefix}Quill", (hx + TOOL_DX * 0.45, 0.0, TRAVEL_Z - 0.070),
+        (0.070 if lod == 0 else 0.060, 0.055 if lod == 0 else 0.048, 0.055),
+        collection, "frame", bevel=0.003 if lod == 0 else 0.0, segments=1,
+    ))
     parts.append(add_cylinder(
-        f"{prefix}Spindle", (hx, 0.0, ram_z), spindle_r, 0.13 if lod == 0 else 0.11,
+        f"{prefix}Spindle", (tx, 0.0, ram_z), spindle_r, 0.13 if lod == 0 else 0.11,
         collection, "rail", vertices=12 if lod == 0 else (8 if lod == 1 else 6),
         bevel=0.002 if lod == 0 else 0.0,
     ))
     parts.append(add_cylinder(
-        f"{prefix}Shroud", (hx, 0.0, shroud_z), shroud_r, 0.072 if lod == 0 else 0.060,
+        f"{prefix}Shroud", (tx, 0.0, shroud_z), shroud_r, 0.072 if lod == 0 else 0.060,
         collection, "ceramic", vertices=12 if lod == 0 else 8, bevel=0.002 if lod == 0 else 0.0,
     ))
     parts.append(add_box(
-        f"{prefix}RamPlate", (hx, 0.0, TRAVEL_Z - 0.10),
-        (0.078, 0.078, 0.014), collection, "frame",
+        f"{prefix}RamPlate", (hx + TOOL_DX * 0.20, 0.0, TRAVEL_Z - 0.10),
+        (0.090, 0.070, 0.014), collection, "frame",
         bevel=0.002 if lod == 0 else 0.0, segments=1,
     ))
     if lod < 2:
         parts.append(add_cylinder(
-            f"{prefix}Collet", (hx, 0.0, shroud_z - 0.038), 0.026 if lod == 0 else 0.022, 0.032,
+            f"{prefix}Collet", (tx, 0.0, shroud_z - 0.038), 0.026 if lod == 0 else 0.022, 0.032,
             collection, "rail", vertices=10 if lod == 0 else 8, bevel=0.001 if lod == 0 else 0.0,
         ))
         parts.append(add_cylinder(
-            f"{prefix}Nozzle", (hx + 0.108, 0.0, shroud_z), 0.015 if lod == 0 else 0.013, 0.048,
+            f"{prefix}Nozzle", (tx + 0.108, 0.0, shroud_z), 0.015 if lod == 0 else 0.013, 0.048,
             collection, "ceramic", vertices=8, bevel=0.001 if lod == 0 else 0.0, axis="X",
         ))
     if lod == 0:
         parts.append(add_cylinder(
-            f"{prefix}NozzleCollar", (hx + 0.068, 0.0, shroud_z + 0.008), 0.019, 0.036,
+            f"{prefix}NozzleCollar", (tx + 0.068, 0.0, shroud_z + 0.008), 0.019, 0.036,
             collection, "rail", vertices=8, bevel=0.001, axis="X",
         ))
         parts.append(add_box(
@@ -1017,7 +1096,7 @@ def add_gantry(prefix, collection, lod):
             a = i * math.pi * 0.5 + 0.35
             parts.append(add_box(
                 f"{prefix}Fin{i}",
-                (hx + math.cos(a) * 0.058, math.sin(a) * 0.058, ram_z + 0.028),
+                (tx + math.cos(a) * 0.058, math.sin(a) * 0.058, ram_z + 0.028),
                 (0.015, 0.006, 0.026), collection, "rail", bevel=0.0, segments=1,
             ))
         parts.append(add_hex_bolt(
@@ -1053,8 +1132,11 @@ def _barycentric(p, a, b, c):
 
 
 def _hash01(x, y, z, seed=0.0):
-    """Low-frequency 0–1 hash. Must not produce a visible quilt/grid."""
-    n = np.sin((x * 2.17 + y * 1.63 + z * 2.91 + seed) * 12.9898)
+    """Lattice hash. A sine of linear world x/y is a diagonal diamond quilt."""
+    ix = np.floor(x * 4.0 + seed * 1.7)
+    iy = np.floor(y * 4.0 + seed * 2.3)
+    iz = np.floor(z * 7.0 + seed * 0.9)
+    n = np.sin(ix * 127.1 + iy * 311.7 + iz * 74.7 + seed * 19.19) * 43758.5453
     return n - np.floor(n)
 
 
@@ -1119,37 +1201,36 @@ def rasterize_atlas(objects, size=TEX):
             if role == "frame":
                 # Dielectric alkyd. Chips only at feet / contact edges. No quilt.
                 chip = ((wz < 0.13) | (ao < 0.62)) & (h_edge > 0.91)
-                local = base * (0.96 + 0.04 * h_slow[..., None]) * (0.88 + 0.12 * ao[..., None])
+                local = base * (0.98 + 0.02 * h_slow[..., None]) * (0.90 + 0.10 * ao[..., None])
                 steel = np.array((0.40, 0.41, 0.43), dtype=np.float64)
                 local = local * (1.0 - chip[..., None].astype(np.float64)) + steel * chip[..., None]
                 rgb[sel] = local[sel]
                 rough[sel] = ROLE_ROUGH[role] + (1.0 - ao[sel]) * 0.08
                 metal[sel] = ROLE_METAL[role] + chip[sel].astype(np.float64) * 0.62
-                nx[sel] = 0.5 + (h_grain[sel] - 0.5) * 0.018
-                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.014
+                nx[sel] = 0.5 + (h_grain[sel] - 0.5) * 0.008
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.006
             elif role == "bed":
                 # Worn plate. Geometry carries T-slots; albedo is scrape, not a UV grid.
                 lip = (wz > 0.205).astype(np.float64)
                 gutter = (wz < 0.17).astype(np.float64)
-                scrape = 0.97 + 0.03 * np.sin(wx * 6.5)
+                scrape = 0.98 + 0.02 * np.sin(wx * 6.5)
                 local = base * scrape[..., None]
-                local = local * (0.90 + 0.18 * lip[..., None]) * (0.78 + 0.08 * gutter[..., None])
-                local = local * (0.90 + 0.10 * ao[..., None])
+                local = local * (0.94 + 0.10 * lip[..., None]) * (0.82 + 0.08 * gutter[..., None])
+                local = local * (0.92 + 0.08 * ao[..., None])
                 rgb[sel] = local[sel]
                 rough[sel] = ROLE_ROUGH[role] - lip[sel] * 0.08 + gutter[sel] * 0.16 + (1.0 - ao[sel]) * 0.08
                 metal[sel] = ROLE_METAL[role] + lip[sel] * 0.08 - gutter[sel] * 0.18
-                # Signed surface-scale grind along +X only. Amplitude stays below quilt.
-                nx[sel] = 0.5 + 0.028 * np.sin(wx[sel] * 8.0)
-                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.016
+                nx[sel] = 0.5 + 0.016 * np.sin(wx[sel] * 8.0)
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.010
             elif role == "rail":
                 # Ground bearing steel: directional grind, not chrome rods.
                 grind = 0.5 + 0.5 * np.sin(wx * 9.0)
-                local = base * (0.96 + 0.04 * grind[..., None]) * (0.94 + 0.06 * ao[..., None])
+                local = base * (0.97 + 0.03 * grind[..., None]) * (0.94 + 0.06 * ao[..., None])
                 rgb[sel] = local[sel]
-                rough[sel] = ROLE_ROUGH[role] - grind[sel] * 0.05 + (1.0 - ao[sel]) * 0.06
+                rough[sel] = ROLE_ROUGH[role] - grind[sel] * 0.04 + (1.0 - ao[sel]) * 0.06
                 metal[sel] = ROLE_METAL[role]
-                nx[sel] = 0.5 + 0.036 * np.sin(wx[sel] * 9.0)
-                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.012
+                nx[sel] = 0.5 + 0.022 * np.sin(wx[sel] * 9.0)
+                ny[sel] = 0.5 + (h_slow[sel] - 0.5) * 0.008
             elif role == "ceramic":
                 grain = 0.94 + 0.06 * h_grain
                 local = base * grain[..., None] * (0.92 + 0.08 * ao[..., None])
@@ -1188,6 +1269,8 @@ def rasterize_atlas(objects, size=TEX):
         nrm[sl_y, sl_x][mask, 3] = 1.0
         coverage[sl_y, sl_x][mask] = 1.0
         uv_layout[sl_y, sl_x][mask, 0:3] = (0.85, 0.82, 0.74)
+        idmap[sl_y, sl_x][mask, 0:3] = np.clip(id_rgb[mask], 0.0, 1.0)
+        idmap[sl_y, sl_x][mask, 3] = 1.0
 
     for obj in objects:
         mesh = obj.data
@@ -1222,7 +1305,8 @@ def rasterize_atlas(objects, size=TEX):
     fill = np.array((*ROLE_RGB["frame"], 1.0), dtype=np.float32)
     albedo[empty] = fill
     orm[empty] = np.array((0.85, 0.55, 0.08, 1.0), dtype=np.float32)
-    return albedo, orm, nrm, uv_layout, float(coverage.mean())
+    idmap[empty] = np.array((0.08, 0.08, 0.08, 1.0), dtype=np.float32)
+    return albedo, orm, nrm, uv_layout, idmap, float(coverage.mean())
 
 
 def save_rgba_png(path: Path, pixels, width, height, colorspace="sRGB"):
@@ -1325,18 +1409,20 @@ def build_lod(lod):
         weighted_normals(obj)
     unique_unwrap(meshes)
     overlaps = assert_unique_uv(meshes)
-    albedo, orm, nrm, uv_layout, coverage = rasterize_atlas(meshes, TEX)
+    albedo, orm, nrm, uv_layout, idmap, coverage = rasterize_atlas(meshes, TEX)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
     paths = {
         "basecolor": TEX_DIR / f"fabricator_atlas_lod{lod}_basecolor.png",
         "normal": TEX_DIR / f"fabricator_atlas_lod{lod}_normal.png",
         "orm": TEX_DIR / f"fabricator_atlas_lod{lod}_orm.png",
         "uv": TEX_DIR / f"fabricator_atlas_lod{lod}_uv0_layout.png",
+        "id": TEX_DIR / f"fabricator_atlas_lod{lod}_id.png",
     }
     save_rgba_png(paths["basecolor"], albedo, TEX, TEX, "sRGB")
     save_rgba_png(paths["normal"], nrm, TEX, TEX, "Non-Color")
     save_rgba_png(paths["orm"], orm, TEX, TEX, "Non-Color")
     save_rgba_png(paths["uv"], uv_layout, TEX, TEX, "sRGB")
+    save_rgba_png(paths["id"], idmap, TEX, TEX, "sRGB")
     images = {
         "basecolor": load_image(paths["basecolor"], "sRGB"),
         "normal": load_image(paths["normal"], "Non-Color"),
@@ -1616,7 +1702,7 @@ def combine_lods():
                 sockets["gantry_head"] = add_empty("gantry_head", HEAD_POS0, bpy.context.scene.collection, root, 0.10)
                 _stamp_socket(sockets["gantry_head"])
             if "lamp" not in sockets:
-                sockets["lamp"] = add_empty("lamp", (0.62, 0.92, 0.80), bpy.context.scene.collection, root, 0.06)
+                sockets["lamp"] = add_empty("lamp", LAMP_POS, bpy.context.scene.collection, root, 0.06)
                 _stamp_socket(sockets["lamp"])
             if RAIL_NAME not in sockets:
                 sockets[RAIL_NAME] = add_empty(RAIL_NAME, HEAD_POS0, bpy.context.scene.collection, root, 0.10)
@@ -1629,7 +1715,7 @@ def combine_lods():
             sockets["lamp"].parent = root
             sockets["lamp"].matrix_parent_inverse = Matrix.Identity(4)
             if sockets["lamp"].location.length < 0.01:
-                sockets["lamp"].location = Vector((0.62, 0.92, 0.80))
+                sockets["lamp"].location = Vector(LAMP_POS)
 
         for obj in list(imported):
             raw = obj["_sf_raw"]
@@ -1849,15 +1935,17 @@ def setup_mine_lights():
             world.mist_settings.use_mist = False
         except Exception:
             pass
-    bpy.ops.mesh.primitive_plane_add(size=2.4, location=(0, 0, -0.002))
+    # Large gallery floor so works_edge cannot leave a leftover 2.4 wu tile
+    # in the frame centre after the machine is offset.
+    bpy.ops.mesh.primitive_plane_add(size=48.0, location=(0, 0, -0.002))
     pad = bpy.context.object
     pad.name = "MinePad"
     pad_mat = bpy.data.materials.new("MinePadMat")
     pad_mat.use_nodes = True
     pad_bsdf = next(n for n in pad_mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-    pad_bsdf.inputs["Base Color"].default_value = (0.07, 0.055, 0.042, 1)
-    pad_bsdf.inputs["Roughness"].default_value = 0.86
-    pad_bsdf.inputs["Metallic"].default_value = 0.04
+    pad_bsdf.inputs["Base Color"].default_value = (0.046, 0.038, 0.030, 1)
+    pad_bsdf.inputs["Roughness"].default_value = 0.90
+    pad_bsdf.inputs["Metallic"].default_value = 0.02
     pad.data.materials.append(pad_mat)
     pad.hide_select = True
     reach = 4.0
@@ -1981,6 +2069,13 @@ def render_stills(still_dir: Path):
     reset_scene()
     bpy.ops.import_scene.gltf(filepath=str(SOURCE_DIR / "fabricator.glb"))
     camera, pad = setup_mine_lights()
+    for obj in bpy.data.objects:
+        if obj.get("sf_collision") or obj.name == "COLLISION_HULL":
+            obj.hide_render = True
+            try:
+                obj.hide_set(True)
+            except Exception:
+                pass
     meshes = [obj for obj in bpy.data.objects if obj.type == "MESH" and obj.name != "MinePad"]
     hide_other_lods(0)
 
@@ -1988,6 +2083,11 @@ def render_stills(still_dir: Path):
         pose = apply_works_camera(camera, framing=framing, focus=(0.0, 0.0, 0.0), edge_dir=edge_dir)
         offset = Vector(pose["object_offset"])
         moved = []
+        pad_was = pad.hide_render
+        # Site register: a 48 wu pad becomes a 415 px tile and steals the glyph.
+        # Hide it so the 19 px/cell object is the only mass on the legal still.
+        if framing == "works_site":
+            pad.hide_render = True
         if offset.length > 1e-9:
             for obj in bpy.data.objects:
                 if obj.type in {"CAMERA", "LIGHT"} or obj.parent is not None:
@@ -2003,6 +2103,7 @@ def render_stills(still_dir: Path):
         sanitize_png(path)
         for obj in moved:
             obj.location = obj.location - offset
+        pad.hide_render = pad_was
         return str(path.relative_to(ROOT)).replace("\\", "/")
 
     paths = {}
@@ -2018,6 +2119,12 @@ def render_stills(still_dir: Path):
     site_back, _ = override_clay(site_meshes)
     paths["works_site_clay"] = snap("works_site_clay.png", "works_site")
     restore_mats(site_meshes, site_back)
+    hide_other_lods(2)
+    lod2_meshes = [obj for obj in bpy.data.objects if obj.type == "MESH" and obj.name != "MinePad" and not obj.hide_render]
+    paths["works_site_lod2"] = snap("works_site_lod2.png", "works_site")
+    lod2_back, _ = override_clay(lod2_meshes)
+    paths["works_site_lod2_clay"] = snap("works_site_lod2_clay.png", "works_site")
+    restore_mats(lod2_meshes, lod2_back)
     hide_other_lods(0)
 
     # Diagnostic grazing — not a legal works still.
@@ -2069,34 +2176,29 @@ def render_stills(still_dir: Path):
     paths["orm_isolation"] = snap("orm_isolation.png", "works_top")
     restore_mats(meshes, iso_o)
 
-    # Material ID: vertex-color-ish proxy via object name families.
+    # Material ID from the role atlas (six billed substances), not mesh-family tints.
     id_backups = {}
-    id_colors = {
-        "fabricator": (0.18, 0.16, 0.12),
-        "Gantry": (0.72, 0.74, 0.76),
-        "Lamp": (0.92, 0.84, 0.55),
-    }
-    id_mats = {}
-    for key, rgb in id_colors.items():
-        mat = bpy.data.materials.new(f"_ID_{key}")
-        mat.use_nodes = True
-        bsdf = next(n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
-        bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-        if "Emission Color" in bsdf.inputs:
-            bsdf.inputs["Emission Color"].default_value = (*rgb, 1)
-            bsdf.inputs["Emission Strength"].default_value = 0.8
-        bsdf.inputs["Roughness"].default_value = 1.0
-        bsdf.inputs["Metallic"].default_value = 0.0
-        id_mats[key] = mat
+    id_path = TEX_DIR / "fabricator_atlas_lod0_id.png"
+    id_img = load_image(id_path, "sRGB") if id_path.exists() else None
+    id_mat = bpy.data.materials.new("_ID_roles")
+    id_mat.use_nodes = True
+    id_nt = id_mat.node_tree
+    id_bsdf = next(n for n in id_nt.nodes if n.type == "BSDF_PRINCIPLED")
+    if id_img is not None:
+        id_tex = id_nt.nodes.new("ShaderNodeTexImage")
+        id_tex.image = id_img
+        id_nt.links.new(id_tex.outputs["Color"], id_bsdf.inputs["Base Color"])
+        if "Emission Color" in id_bsdf.inputs:
+            id_nt.links.new(id_tex.outputs["Color"], id_bsdf.inputs["Emission Color"])
+            id_bsdf.inputs["Emission Strength"].default_value = 1.1
+    else:
+        id_bsdf.inputs["Base Color"].default_value = (0.5, 0.5, 0.5, 1)
+    id_bsdf.inputs["Roughness"].default_value = 1.0
+    id_bsdf.inputs["Metallic"].default_value = 0.0
     for obj in meshes:
         id_backups[obj.name] = [slot.material for slot in obj.material_slots]
-        key = "fabricator"
-        if "Gantry" in obj.name:
-            key = "Gantry"
-        elif "Lamp" in obj.name:
-            key = "Lamp"
         obj.data.materials.clear()
-        obj.data.materials.append(id_mats[key])
+        obj.data.materials.append(id_mat)
     paths["material_id"] = snap("material_id.png", "works_top")
     restore_mats(meshes, id_backups)
 
@@ -2205,6 +2307,12 @@ def write_records(lod_reports, inventory, contract, evidence):
         "lods": {f"lod{r['lod']}": r["sha256"] for r in lod_reports},
         "textures": {},
         "evidence": {},
+        "producer": {
+            "script": "tools/blender/build_works_fabricator.py",
+            "cycle": CYCLE,
+            "blender": bpy.app.version_string,
+            "engine": "headless",
+        },
     }
     for path in sorted(TEX_DIR.glob("*.png")):
         hashes["textures"][path.name] = sha256(path)
@@ -2229,9 +2337,9 @@ def write_records(lod_reports, inventory, contract, evidence):
         "zones": zones,
     }, indent=2) + "\n")
 
-    still = "assets/works/fabricator/evidence/cycle_001/works_top.png"
-    clay = "assets/works/fabricator/evidence/cycle_001/works_top_clay.png"
-    graze = "assets/works/fabricator/evidence/cycle_001/grazing_close.png"
+    still = "assets/works/fabricator/evidence/cycle_003/works_top.png"
+    clay = "assets/works/fabricator/evidence/cycle_003/works_top_clay.png"
+    graze = "assets/works/fabricator/evidence/cycle_003/grazing_close.png"
     ledger = {
         "assetId": ASSET_ID,
         "candidateHash": inventory["sha256"],
@@ -2239,24 +2347,24 @@ def write_records(lod_reports, inventory, contract, evidence):
         "class": "place",
         "rows": [
             {"id": "MTX-01", "state": "implemented", "still": graze, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Angle-limited bevel 1–2 segments, shade 28°, weighted normals on game mesh."},
-            {"id": "MTX-03", "state": "implemented", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "T-slot trenches, gutter U-channels, and spindle/shroud cavities are holes with thickness, not painted squares."},
-            {"id": "MTX-16", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/uv0_layout.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Smart-project + pack unique UV0 per LOD; overlap sampled on a 1024 occupancy grid."},
-            {"id": "MTX-20", "state": "implemented", "still": graze, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Game mesh carries manufactured bevels and extra LOD0 seals/bolts; not a raw cube."},
+            {"id": "MTX-03", "state": "implemented", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Open H: C-beam + posts, T-slot bed on stanchions, hanging ram cavity; no cabinet web."},
+            {"id": "MTX-16", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/uv0_layout.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Smart-project + pack unique UV0 per LOD; overlap sampled on a 1024 occupancy grid."},
+            {"id": "MTX-20", "state": "implemented", "still": graze, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Game mesh carries C-beam, hat-rail, hanging shroud, hooded lamp; not a raw cube."},
             {"id": "MTX-21", "state": "not_applicable", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Direct-to-game mid-poly; no high-to-low cage this cycle."},
-            {"id": "MTX-22", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/normal_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "OpenGL tangent atlas authored from unique UV0 plus grind/wear; not a generated beauty frame."},
-            {"id": "MTX-23", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Vertex AO from BVH rays packed into ORM red; cavities darker than open plate."},
+            {"id": "MTX-22", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/normal_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "OpenGL tangent atlas from unique UV0 plus grind/wear; lattice hash, not a sine quilt."},
+            {"id": "MTX-23", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Vertex AO from BVH rays packed into ORM red; cavities darker than open plate."},
             {"id": "MTX-24", "state": "implemented", "still": graze, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Wear uses height/edge (bed lips bright, feet chipped); convex edges reveal metal."},
-            {"id": "MTX-25", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Short-ray AO dirt in T-slots, gutters, block lips, chain hinges."},
+            {"id": "MTX-25", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Short-ray AO dirt in T-slots, gutters, block lips, chain hinges."},
             {"id": "MTX-30", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "No imagen. Maps come from mesh UV raster + BVH AO."},
-            {"id": "MTX-31", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/material_id.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Paint dielectric, bed/rail metallic, ceramic dry, polymer dielectric, lamp glass."},
+            {"id": "MTX-31", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/material_id.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Paint dielectric, bed/rail metallic, ceramic dry, polymer dielectric, lamp glass."},
             {"id": "MTX-32", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Unique UV0 atlas for this asset; not a tinted rover/Wasp sheet."},
-            {"id": "MTX-33", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_001/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "ORM R=AO G=rough B=metal with per-role ranges; G is not a flat fill."},
+            {"id": "MTX-33", "state": "implemented", "still": "assets/works/fabricator/evidence/cycle_003/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "ORM R=AO G=rough B=metal with per-role ranges; G is not a flat fill."},
             {"id": "MTX-39", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Cavity dirt multiplied into albedo; brown/gray, not black crayon."},
-            {"id": "MTX-46", "state": "implemented", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Open gantry, not printer/altar/crate/glowing box/flat table/floating nozzle; no rover yellow."},
+            {"id": "MTX-46", "state": "implemented", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Open H-gantry with hanging tool over a raised bed; no cabinet, gold lid, or diamond plate."},
             {"id": "MTX-50", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Modifiers applied, triangulated, weighted normals, extras, Y-up GLB, collision helper."},
             {"id": "MTX-52", "state": "not_applicable", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Manufactured machine, not a rock/wreck mass."},
             {"id": "MTX-53", "state": "not_applicable", "still": clay, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "No sculpt/photogrammetry; industrial plate/rail construction."},
-            {"id": "MTX-54", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "First authored candidate; nothing accepted to revert to."},
+            {"id": "MTX-54", "state": "implemented", "still": still, "clayConfirm": "pass", "forbiddenFakeAbsent": True, "notes": "Cycle 03 form correction of the cycle 02 cabinet/gold-block candidate; G1/G2/G4 remain open."},
         ],
     }
     write_utf8(FAMILY / "TECHNIQUE_LEDGER.json", json.dumps(ledger, indent=2) + "\n")
@@ -2281,20 +2389,31 @@ def write_records(lod_reports, inventory, contract, evidence):
     write_utf8(
         AUDIT_DIR / "MATERIAL_AND_SHAPE_AUDIT.md",
         "\n".join([
-            "# Fabricator cycle 01 — material and shape audit",
+            "# Fabricator cycle 03 — material and shape audit",
             "",
-            f"Candidate `{inventory['sha256']}` root `{ROOT_NAME}`. State: design_candidate. Gates G1/G2/G4 open (`evidence_ready` only).",
+            f"Candidate `{inventory['sha256']}` root `{ROOT_NAME}`. State: design_candidate. Gates G1/G2/G4 open (`evidence_ready` only). No whole-asset KEEP.",
             "",
-            "## Cycle 01 inspect fix",
-            "Original-resolution `works_top` showed the gantry floating beside the bed: mesh data was authored in world space and then parented to `gantry_head`, which already sat at progress 0, so the bridge double-offset along −X. Gantry and lamp meshes are now shifted into hook-local space and parented with identity parent inverse. Travel 0 / 0.5 / 1 must sit on the rail over the bed.",
+            "## Cycle 03 correction",
+            "Independent review of cycle 02 (`F14445BFF3…`) returned REVISE. Original-resolution",
+            "works_top was a dark square around a gold plate; works_site was a generic warm block;",
+            "grazing showed cabinet side walls and a sine-quilt that read as diamond plate; the lamp",
+            "was a top-facing can. Cycle 03 repairs G1 first: remove the continuous side web and the",
+            "cell-filling plinth, root hat-section rails on C-beams and posts, raise the T-slot bed",
+            "on stanchions so the work volume is open, hang the ram/ceramic off the +X face of the",
+            "bridge, hood the lamp toward the bed, and replace the linear-sine hash.",
+            "",
+            "## Cycle 02 leftover",
+            "Travel parenting from cycle 01 remains: gantry/lamp meshes are hook-local. Cycle 02's",
+            "carriage/tool, bearing saddles, and energy-chain trough are kept and re-rooted.",
             "",
             "## Shape grammar",
-            "Stand-in was a sealed box with a glowing pane and a cube head. Replacement is an open H-gantry:",
-            "T-slot bed, two C-section side frames rooted to a plinth, hat-section rails, wrap-around bearing blocks,",
-            "box-section bridge, U-saddle ram with spindle/shroud/nozzle, rooted energy chain, one hooded lamp.",
+            "Open H-gantry: T-slot bed on four legs, two C-beams on posts, hat-section rails,",
+            "wrap-around bearing blocks, box-section bridge, hanging ram with spindle/shroud/nozzle,",
+            "rooted energy chain, one hooded lamp aimed at the bed. No cabinet wall. No floor plate.",
             "",
             "## Load path",
-            "tool → ram plate → U-saddle → bridge → bearing blocks → profile rails → side posts/gussets → plinth → z=0.",
+            "tool → quill → bridge → bearing blocks → hat rails → C-beam → posts/gussets → sills/feet → z=0.",
+            "Bed is a separate table on stanchions in the open cell.",
             "",
             f"## LOD triangles",
             json.dumps(inventory["lodTriangles"], indent=2),
