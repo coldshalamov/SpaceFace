@@ -1877,6 +1877,13 @@ def override_channel(meshes, kind):
     backups = {}
     mat = bpy.data.materials.new(f"Iso_{kind}")
     mat.use_nodes = True
+    explicit_id_image = None
+    if kind == "id":
+        id_path = TEX_DIR / "derrick_atlas_lod0_id.png"
+        if not id_path.is_file():
+            raise FileNotFoundError(f"material-ID isolation atlas missing: {id_path}")
+        explicit_id_image = bpy.data.images.load(str(id_path), check_existing=True)
+        explicit_id_image.colorspace_settings.name = "sRGB"
     for obj in meshes:
         backups[obj.name] = [s.material for s in obj.material_slots]
         src = None
@@ -1890,7 +1897,15 @@ def override_channel(meshes, kind):
         nt = iso.node_tree
         out = next(n for n in nt.nodes if n.type == "OUTPUT_MATERIAL")
         emit = nt.nodes.new("ShaderNodeEmission")
-        if src is not None:
+        if explicit_id_image is not None:
+            # The authored ID atlas is evidence-only and intentionally is not embedded
+            # in the shipping GLB. Bind the canonical atlas explicitly instead of
+            # silently falling through to the emission node's white default.
+            tex = nt.nodes.new("ShaderNodeTexImage")
+            tex.image = explicit_id_image
+            tex.interpolation = "Closest"
+            nt.links.new(tex.outputs["Color"], emit.inputs["Color"])
+        elif src is not None:
             for node in src.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image:
                     name = (node.image.name or "").lower()
@@ -1900,11 +1915,6 @@ def override_channel(meshes, kind):
                         nt.links.new(tex.outputs["Color"], emit.inputs["Color"])
                         break
                     if kind == "orm" and "orm" in name:
-                        tex = nt.nodes.new("ShaderNodeTexImage")
-                        tex.image = node.image
-                        nt.links.new(tex.outputs["Color"], emit.inputs["Color"])
-                        break
-                    if kind == "id" and "id" in name:
                         tex = nt.nodes.new("ShaderNodeTexImage")
                         tex.image = node.image
                         nt.links.new(tex.outputs["Color"], emit.inputs["Color"])
@@ -2127,6 +2137,19 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         hashes["textures"][path.name] = sha256(path)
     for path in sorted(EVIDENCE_DIR.glob("*.png")):
         hashes["stills"][path.name] = sha256(path)
+    material_id_path = EVIDENCE_DIR / "material_id.png"
+    material_id_atlas = TEX_DIR / "derrick_atlas_lod0_id.png"
+    material_id_evidence = {
+        "kind": "flat_material_role_isolation",
+        "producer": "tools/blender/build_works_derrick.py:override_channel",
+        "source": inventory["partsSource"],
+        "sourceSha256": inventory["partsSha256"],
+        "atlas": str(material_id_atlas.relative_to(ROOT)).replace("\\", "/"),
+        "atlasSha256": sha256(material_id_atlas),
+        "output": str(material_id_path.relative_to(ROOT)).replace("\\", "/"),
+        "outputSha256": sha256(material_id_path),
+    }
+    hashes["evidenceProducers"] = {"material_id.png": material_id_evidence}
     write_text_lf(FAMILY / "HASHES.json", json.dumps(hashes, indent=2) + "\n")
 
     epoch = {
@@ -2169,6 +2192,7 @@ def write_docs(inventory, contract, inspect, stills, lod_reports):
         },
         "bboxBlenderZUp": inventory["bbox"],
         "camera": stills,
+        "materialIdEvidence": material_id_evidence,
         "notes": [
             "Cycle 04 source candidate only. Not wired, not released, not accepted.",
             "Cycle 01/02/03 evidence is frozen and was not rewritten.",

@@ -301,6 +301,16 @@
       ]
     }
   },
+  "materialIdEvidence": {
+    "kind": "flat_material_role_isolation",
+    "producer": "tools/blender/build_works_derrick.py:override_channel",
+    "source": "assets/ships/parts/works/place_works_derrick.glb",
+    "sourceSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "atlas": "assets/works/derrick/source/textures/derrick_atlas_lod0_id.png",
+    "atlasSha256": "EE340EB7B04E50489442E97C9D47480E008CD0EFB4BF020967FD2E79A904ABBB",
+    "output": "assets/works/derrick/evidence/cycle_004/material_id.png",
+    "outputSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76"
+  },
   "notes": [
     "Cycle 04 source candidate only. Not wired, not released, not accepted.",
     "Cycle 01/02/03 evidence is frozen and was not rewritten.",
