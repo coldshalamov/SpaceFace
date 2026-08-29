@@ -1,0 +1,798 @@
+{
+  "schema": "spaceface.worksExtractorCycleEpoch.v1",
+  "cycle": 6,
+  "epoch": "cycle_006",
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "G7": "open"
+  },
+  "independentReview": "not_launched",
+  "cycle01Frozen": true,
+  "cycle02Frozen": true,
+  "cycle03Frozen": true,
+  "cycle04Frozen": true,
+  "cycle05Frozen": true,
+  "cycle03IndependentVerdict": "revise",
+  "cycle04IndependentVerdict": "revise",
+  "cycle05IndependentVerdict": "revise",
+  "candidate": {
+    "root": "SF_WORKS_EXTRACTOR_V1",
+    "partGlb": "assets/ships/parts/works/place_works_extractor.glb",
+    "sourceGlb": "assets/works/extractor/source/extractor.glb",
+    "blend": "assets/works/extractor/source/extractor.blend",
+    "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "partsSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8"
+  },
+  "producer": {
+    "builder": {
+      "path": "tools/blender/build_works_extractor.py",
+      "sha256": "6C70D22B4BEFC60149893B0FCE4D01256468501230CF1B277DFB33BFFBA687AA"
+    },
+    "cameraHelper": {
+      "path": "tools/blender/spaceface_works_camera.py",
+      "sha256": "E404AC4913CDFABB8E2BB38F28B5366167FCA0C8DCFF7CC9F00E1BA4654D8CE9"
+    },
+    "blender": {
+      "version": "5.1.2",
+      "binary": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
+      "binarySha256": "1E6624AF112B3C936F4B038B025EBD2BF00AE72C4B62881A6787166D71C58FA5"
+    },
+    "renderFunction": "render_stills",
+    "renderEngine": "BLENDER_EEVEE_NEXT"
+  },
+  "hooks": {
+    "required": [
+      "head_face",
+      "belt",
+      "lamp"
+    ],
+    "found": [
+      "belt",
+      "head_face",
+      "lamp"
+    ],
+    "missing": [],
+    "exported_gltf_translations": {
+      "belt": [
+        -0.07999999821186066,
+        0.17000000178813934,
+        0
+      ],
+      "head_face": [
+        0.41999998688697815,
+        0.30000001192092896,
+        0
+      ],
+      "lamp": [
+        0.2800000011920929,
+        0.550000011920929,
+        -0.7300000190734863
+      ]
+    },
+    "invalid_exported_translations": [],
+    "pivot_head_face_blender": [
+      0.41999998688697815,
+      0.0,
+      0.30000001192092896
+    ],
+    "lamp_blender": [
+      0.2800000011920929,
+      0.7300000190734863,
+      0.550000011920929
+    ],
+    "belt_blender": [
+      -0.07999999821186066,
+      0.0,
+      0.17000000178813934
+    ]
+  },
+  "lod": {
+    "budgets": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "triangles": {
+      "lod0": 3112,
+      "lod1": 916,
+      "lod2": 544
+    },
+    "draws": 15,
+    "materials": 6,
+    "hulls": 15,
+    "roots": [
+      "LOD0_extractor",
+      "LOD1_extractor",
+      "LOD2_extractor"
+    ],
+    "missingRoots": []
+  },
+  "bboxBlenderZUp": {
+    "min": [
+      -0.945,
+      -0.7976,
+      0.0
+    ],
+    "max": [
+      0.73,
+      0.7976,
+      0.8
+    ],
+    "size": [
+      1.675,
+      1.5952,
+      0.8
+    ]
+  },
+  "camera": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_top.png",
+      "sha256": "FE88CE879E9A4175E920B9075592782FEB7787D2EB345C6357C1DD632BDCAFA8",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_edge.png",
+      "sha256": "FCE22B86632BD69099A737BB082A5655F228BD1421D8EFA43B929DADA55699B6",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "lod0_matched": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod0_matched_120px.png",
+      "sha256": "BCE096B17CD8506C42321AED571A012E1B6578561E11857FF7A302FB66685F19",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 0,
+      "label": "LOD0 matched works_top 120 px/cell"
+    },
+    "lod1_matched": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod1_matched_120px.png",
+      "sha256": "2E533CD95F9B271DDFF291821D66628A8C660C3F4BF24DFE7BAE37180E94ABDD",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 1,
+      "label": "LOD1 matched works_top 120 px/cell"
+    },
+    "lod2_matched": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_matched_120px.png",
+      "sha256": "7F448D50961A42DFE96E94651989F4877BC5436B5C84F43ADAC66FD81822DFBE",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 matched works_top 120 px/cell"
+    },
+    "lod2_switch_band": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+      "sha256": "986DCF81D9B2E1BAAD2E1E0A8702D45544A6E9BFC260B60035D0643E531BB058",
+      "framing": "lod2_switch_band",
+      "distance": 115.77809752453835,
+      "px_per_cell_target": 37.0,
+      "px_per_cell_measured": 36.99999999999999,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 projected switch band (~40 px machine)",
+      "projectedMachinePxBand": [
+        34,
+        45
+      ]
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_top_clay.png",
+      "sha256": "922216FB4FACBC7BCE33876ADDE0DD719FF4F842CEADF2E005759F23E5988115",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge_grazing": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_edge_grazing.png",
+      "sha256": "9008AFD2F9DF2C921AE59E62BEBF9237A181318F561302808FC70EEBFE48C622",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        13.833184353181752,
+        3.204009611214891,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_site.png",
+      "sha256": "B7A24B367FA1EF4FFE4EF4B569A44B0B83E01B316B4CF69F5AE283F9BBDEA0E9",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "normal": {
+      "path": "assets/works/extractor/evidence/cycle_006/normal_isolation.png",
+      "sha256": "66D06904076806C91974C778D2A0FEA4D27561849C2DD2706681259901F35D25",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "orm": {
+      "path": "assets/works/extractor/evidence/cycle_006/orm_isolation.png",
+      "sha256": "5E54D181924D68AD741C4D95392FC75C24FBE15C1A48EB7BAD9542C5E4A13079",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "id": {
+      "path": "assets/works/extractor/evidence/cycle_006/id_or_material_id.png",
+      "sha256": "AA592215218994147EE101CDE83ED6D78B21D40180D05C88E1083C9B89FD9024",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "hook_identity": {
+      "path": "assets/works/extractor/evidence/cycle_006/hook_identity.png",
+      "sha256": "6B7AAF0008D50949E0BF1EB581572967BA25AAA925AFA2224EDF7BD320CCF662",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "pixels": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_top.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.01353846153846154,
+      "plus_x_mean": 0.2206447869539261,
+      "plus_x_dark_mean": 0.06906786561012268,
+      "rail_mean": 0.21835236251354218,
+      "belt_inboard_mean": 0.15469911694526672,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.10626828670501709,
+      "pad_mean": 0.19763071835041046,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_site.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 19.0,
+      "machine_bbox_px": [
+        949,
+        529,
+        970,
+        550
+      ],
+      "machine_size_px": [
+        22,
+        22
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.010101010101010102,
+      "plus_x_mean": 0.2658819258213043,
+      "plus_x_dark_mean": 0.06194392591714859,
+      "rail_mean": 0.16978202760219574,
+      "belt_inboard_mean": 0.1999567598104477,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": false,
+      "tan_bite_px": 2,
+      "tan_bite_mean": 0.18496733903884888,
+      "pad_mean": 0.1707516759634018,
+      "tan_bite_target": null
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_top_clay.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.0,
+      "plus_x_mean": 0.29055747389793396,
+      "plus_x_dark_mean": 0.29055747389793396,
+      "rail_mean": 0.21835236251354218,
+      "belt_inboard_mean": 0.3597092926502228,
+      "well_darker_than_rails": false,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.10626828670501709,
+      "pad_mean": 0.19763071835041046,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    },
+    "lod2_switch_band": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 37.0,
+      "machine_bbox_px": [
+        939,
+        519,
+        980,
+        560
+      ],
+      "machine_size_px": [
+        42,
+        42
+      ],
+      "plus_x_dark_span_px": 1,
+      "plus_x_dark_frac": 0.10714285714285714,
+      "plus_x_mean": 0.1945708841085434,
+      "plus_x_dark_mean": 0.06845569610595703,
+      "rail_mean": 0.19448603689670563,
+      "belt_inboard_mean": 0.1682182103395462,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": false,
+      "tan_bite_px": 4,
+      "tan_bite_mean": 0.10924369841814041,
+      "pad_mean": 0.14665035903453827,
+      "tan_bite_target": null
+    }
+  },
+  "materialIdEvidence": {
+    "path": "assets/works/extractor/evidence/cycle_006/id_or_material_id.png",
+    "sha256": "AA592215218994147EE101CDE83ED6D78B21D40180D05C88E1083C9B89FD9024",
+    "resolution": [
+      1920,
+      1080
+    ],
+    "renderMode": "unlit authored ID atlas through exact exported UV0",
+    "roleColors": {
+      "structure": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "cutting": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "drive": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "ceramic": [
+        1.0,
+        1.0,
+        0.0
+      ],
+      "belt": [
+        1.0,
+        0.0,
+        1.0
+      ],
+      "lamp": [
+        0.0,
+        1.0,
+        1.0
+      ],
+      "accent": [
+        1.0,
+        0.4,
+        0.0
+      ]
+    },
+    "rolePixelCounts": {
+      "structure": 3117,
+      "cutting": 1100,
+      "drive": 606,
+      "ceramic": 393,
+      "belt": 307,
+      "lamp": 42,
+      "accent": 141
+    },
+    "missingRoles": [],
+    "allRolesVisible": true
+  },
+  "inspectCrops": {
+    "works_top": "assets/works/extractor/evidence/cycle_006/inspect/works_top_crop.png",
+    "works_top_clay": "assets/works/extractor/evidence/cycle_006/inspect/works_top_clay_crop.png",
+    "works_site": "assets/works/extractor/evidence/cycle_006/inspect/works_site_crop.png",
+    "works_edge": "assets/works/extractor/evidence/cycle_006/inspect/works_edge_crop.png",
+    "lod0_matched": "assets/works/extractor/evidence/cycle_006/inspect/lod0_matched_crop.png",
+    "lod1_matched": "assets/works/extractor/evidence/cycle_006/inspect/lod1_matched_crop.png",
+    "lod2_matched": "assets/works/extractor/evidence/cycle_006/inspect/lod2_matched_crop.png",
+    "lod2_switch_band": "assets/works/extractor/evidence/cycle_006/inspect/lod2_switch_band_crop.png"
+  },
+  "visibleZoneRegister": "assets/works/extractor/evidence/cycle_006/SUPPORTED_VIEW_ZONE_REGISTER.json",
+  "matchedLodEvidence": {
+    "0": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod0_matched_120px.png",
+      "sha256": "BCE096B17CD8506C42321AED571A012E1B6578561E11857FF7A302FB66685F19",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 0,
+      "label": "LOD0 matched works_top 120 px/cell"
+    },
+    "1": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod1_matched_120px.png",
+      "sha256": "2E533CD95F9B271DDFF291821D66628A8C660C3F4BF24DFE7BAE37180E94ABDD",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 1,
+      "label": "LOD1 matched works_top 120 px/cell"
+    },
+    "2": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_matched_120px.png",
+      "sha256": "7F448D50961A42DFE96E94651989F4877BC5436B5C84F43ADAC66FD81822DFBE",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 matched works_top 120 px/cell"
+    }
+  },
+  "lod2ProjectedBandEvidence": {
+    "targetMachinePxBand": [
+      34,
+      45
+    ],
+    "still": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+      "sha256": "986DCF81D9B2E1BAAD2E1E0A8702D45544A6E9BFC260B60035D0643E531BB058",
+      "framing": "lod2_switch_band",
+      "distance": 115.77809752453835,
+      "px_per_cell_target": 37.0,
+      "px_per_cell_measured": 36.99999999999999,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "lod": 2,
+      "label": "LOD2 projected switch band (~40 px machine)",
+      "projectedMachinePxBand": [
+        34,
+        45
+      ]
+    },
+    "measured": {
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 37.0,
+      "machine_bbox_px": [
+        939,
+        519,
+        980,
+        560
+      ],
+      "machine_size_px": [
+        42,
+        42
+      ],
+      "plus_x_dark_span_px": 1,
+      "plus_x_dark_frac": 0.10714285714285714,
+      "plus_x_mean": 0.1945708841085434,
+      "plus_x_dark_mean": 0.06845569610595703,
+      "rail_mean": 0.19448603689670563,
+      "belt_inboard_mean": 0.1682182103395462,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": false,
+      "tan_bite_px": 4,
+      "tan_bite_mean": 0.10924369841814041,
+      "pad_mean": 0.14665035903453827,
+      "tan_bite_target": null
+    }
+  },
+  "normalRouteEvidence": {
+    "status": "unavailable_unintegrated_candidate",
+    "bestAvailableWorksContext": {
+      "path": "assets/works/extractor/evidence/cycle_006/works_site.png",
+      "sha256": "B7A24B367FA1EF4FFE4EF4B569A44B0B83E01B316B4CF69F5AE283F9BBDEA0E9",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "limitations": "assets/works/extractor/evidence/cycle_006/NORMAL_ROUTE_LIMITATIONS.md"
+  },
+  "firstRenderCorrection": {
+    "observedFailure": "LOD1 and LOD2 steel cutter crown reflected too dark to preserve the transverse head hierarchy.",
+    "correction": "Added segmented bonded refractory hardface blocks attached to the physical crown; no emission, outline, or camera change.",
+    "finalEvidence": [
+      {
+        "path": "assets/works/extractor/evidence/cycle_006/works_site.png",
+        "sha256": "B7A24B367FA1EF4FFE4EF4B569A44B0B83E01B316B4CF69F5AE283F9BBDEA0E9",
+        "framing": "works_site",
+        "distance": 225.46261096883785,
+        "px_per_cell_target": 19.0,
+        "px_per_cell_measured": 18.999999999999996,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ]
+      },
+      {
+        "path": "assets/works/extractor/evidence/cycle_006/lod1_matched_120px.png",
+        "sha256": "2E533CD95F9B271DDFF291821D66628A8C660C3F4BF24DFE7BAE37180E94ABDD",
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "px_per_cell_target": 120.0,
+        "px_per_cell_measured": 120.0,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "lod": 1,
+        "label": "LOD1 matched works_top 120 px/cell"
+      },
+      {
+        "path": "assets/works/extractor/evidence/cycle_006/lod2_matched_120px.png",
+        "sha256": "7F448D50961A42DFE96E94651989F4877BC5436B5C84F43ADAC66FD81822DFBE",
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "px_per_cell_target": 120.0,
+        "px_per_cell_measured": 120.0,
+        "object_offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov_v_deg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "lod": 2,
+        "label": "LOD2 matched works_top 120 px/cell"
+      }
+    ]
+  },
+  "notes": [
+    "Cycle 06 correction candidate only. Not wired, not released, not accepted.",
+    "Cycle 01 through Cycle 05 evidence folders are byte-frozen.",
+    "Cycle 05 independent exact-hash verdict was REVISE; Cycle 06 does not overwrite that result.",
+    "Open +X aperture is framed by broad painted lateral shoulders with short inward refractory liners; no pale longitudinal free ends, closing floor, wall, roof, or grate.",
+    "Long dark belt leads into a real transverse steel cutter crown; warm drive hatch and rooted warm lamp survive every LOD.",
+    "Matched LOD0/1/2 stills use one legal 120 px/cell camera without per-LOD reframing.",
+    "LOD2 is also captured at its honest 34\u201345 px projected-machine switch band.",
+    "Material-ID evidence uses the exact exported UV0 with the authored role-color atlas; it is not a grayscale isolation fallback.",
+    "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
+    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "No Cycle 06 independent reviewer has run. G1/G2/G4/G7 remain open.",
+    "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture."
+  ]
+}
