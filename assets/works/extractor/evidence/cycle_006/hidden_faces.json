@@ -1,5 +1,18 @@
 {
+  "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
   "glb": "assets/ships/parts/works/place_works_extractor.glb",
+  "glbSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "generator": {
+    "path": "tools/blender/works_visible_faces.py",
+    "sha256": "C38B611CC7F90371FD7ADB28A489E3F7A5ACCDD678047C1E4340D8455BC784DC",
+    "blenderVersion": "5.1.2"
+  },
+  "authority": {
+    "role": "diagnostic_only",
+    "supportsVisibleFaceObservation": true,
+    "supportsHiddenFaceProof": false,
+    "supportsGeometryDeletion": false
+  },
   "fovV": 31.0,
   "framings": [
     "works_top",
@@ -56,135 +69,373 @@
       -1.0
     ]
   ],
-  "grid": [
-    80,
-    45
+  "resolution": [
+    1920,
+    1080
   ],
+  "sampling": {
+    "method": "one ray per render-pixel centre inside projected active-LOD bounds",
+    "pixelPad": 1,
+    "records": [
+      {
+        "pixelBounds": [
+          906,
+          494,
+          1002,
+          586
+        ],
+        "sampleCount": 8832,
+        "hitCount": 5003,
+        "objectHitCount": {
+          "LOD0_extractor": 3159,
+          "LOD0_lamp": 42,
+          "LOD0_head": 1416,
+          "LOD0_belt": 386
+        },
+        "lod": 0,
+        "framing": "works_top"
+      },
+      {
+        "pixelBounds": [
+          1723,
+          494,
+          1828,
+          586
+        ],
+        "sampleCount": 9660,
+        "hitCount": 5769,
+        "objectHitCount": {
+          "LOD0_extractor": 3813,
+          "LOD0_lamp": 50,
+          "LOD0_head": 1540,
+          "LOD0_belt": 366
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          71,
+          494,
+          183,
+          586
+        ],
+        "sampleCount": 10304,
+        "hitCount": 5407,
+        "objectHitCount": {
+          "LOD0_extractor": 3423,
+          "LOD0_lamp": 43,
+          "LOD0_lamp_lens": 3,
+          "LOD0_head": 1616,
+          "LOD0_belt": 322
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          906,
+          24,
+          1002,
+          126
+        ],
+        "sampleCount": 9792,
+        "hitCount": 5456,
+        "objectHitCount": {
+          "LOD0_lamp": 43,
+          "LOD0_head": 1508,
+          "LOD0_extractor": 3484,
+          "LOD0_belt": 421
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          906,
+          954,
+          1002,
+          1056
+        ],
+        "sampleCount": 9792,
+        "hitCount": 5385,
+        "objectHitCount": {
+          "LOD0_extractor": 3417,
+          "LOD0_head": 1504,
+          "LOD0_lamp": 43,
+          "LOD0_belt": 421
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1484,
+          162,
+          1586,
+          260
+        ],
+        "sampleCount": 9996,
+        "hitCount": 5865,
+        "objectHitCount": {
+          "LOD0_lamp": 51,
+          "LOD0_head": 1547,
+          "LOD0_extractor": 3895,
+          "LOD0_belt": 372
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1484,
+          820,
+          1586,
+          918
+        ],
+        "sampleCount": 9996,
+        "hitCount": 5805,
+        "objectHitCount": {
+          "LOD0_extractor": 3868,
+          "LOD0_head": 1517,
+          "LOD0_lamp": 48,
+          "LOD0_belt": 372
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          316,
+          162,
+          423,
+          260
+        ],
+        "sampleCount": 10486,
+        "hitCount": 5507,
+        "objectHitCount": {
+          "LOD0_lamp": 47,
+          "LOD0_head": 1556,
+          "LOD0_extractor": 3545,
+          "LOD0_belt": 359
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          316,
+          820,
+          423,
+          918
+        ],
+        "sampleCount": 10486,
+        "hitCount": 5479,
+        "objectHitCount": {
+          "LOD0_extractor": 3518,
+          "LOD0_head": 1556,
+          "LOD0_lamp": 46,
+          "LOD0_belt": 359
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          950,
+          532,
+          968,
+          548
+        ],
+        "sampleCount": 288,
+        "hitCount": 120,
+        "objectHitCount": {
+          "LOD1_extractor": 72,
+          "LOD1_lamp": 2,
+          "LOD1_head": 36,
+          "LOD1_belt": 10
+        },
+        "lod": 1,
+        "framing": "works_site"
+      },
+      {
+        "pixelBounds": [
+          950,
+          532,
+          968,
+          548
+        ],
+        "sampleCount": 288,
+        "hitCount": 102,
+        "objectHitCount": {
+          "LOD2_extractor": 60,
+          "LOD2_lamp": 2,
+          "LOD2_head": 30,
+          "LOD2_belt": 10
+        },
+        "lod": 2,
+        "framing": "works_site"
+      }
+    ]
+  },
   "deleted": false,
   "objects": [
     {
       "object": "LOD0_belt",
       "lod": 0,
       "faces": 580,
-      "visible": 6,
-      "hidden": 574,
-      "hiddenFrac": 0.9897
+      "observedVisible": 60,
+      "unobserved": 520,
+      "unobservedFrac": 0.8966
     },
     {
-      "object": "LOD1_belt.001",
+      "object": "LOD1_belt",
       "lod": 1,
       "faces": 252,
-      "visible": 1,
-      "hidden": 251,
-      "hiddenFrac": 0.996
+      "observedVisible": 4,
+      "unobserved": 248,
+      "unobservedFrac": 0.9841
     },
     {
-      "object": "LOD2_belt.001",
+      "object": "LOD2_belt",
       "lod": 2,
       "faces": 88,
-      "visible": 1,
-      "hidden": 87,
-      "hiddenFrac": 0.9886
+      "observedVisible": 4,
+      "unobserved": 84,
+      "unobservedFrac": 0.9545
     },
     {
       "object": "LOD0_head",
       "lod": 0,
       "faces": 1200,
-      "visible": 12,
-      "hidden": 1188,
-      "hiddenFrac": 0.99
+      "observedVisible": 354,
+      "unobserved": 846,
+      "unobservedFrac": 0.705
     },
     {
-      "object": "LOD1_head.001",
+      "object": "LOD1_head",
       "lod": 1,
       "faces": 276,
-      "visible": 0,
-      "hidden": 276,
-      "hiddenFrac": 1.0
+      "observedVisible": 20,
+      "unobserved": 256,
+      "unobservedFrac": 0.9275
     },
     {
-      "object": "LOD2_head.001",
+      "object": "LOD2_head",
       "lod": 2,
       "faces": 240,
-      "visible": 0,
-      "hidden": 240,
-      "hiddenFrac": 1.0
+      "observedVisible": 15,
+      "unobserved": 225,
+      "unobservedFrac": 0.9375
     },
     {
       "object": "LOD0_lamp",
       "lod": 0,
       "faces": 196,
-      "visible": 0,
-      "hidden": 196,
-      "hiddenFrac": 1.0
+      "observedVisible": 57,
+      "unobserved": 139,
+      "unobservedFrac": 0.7092
     },
     {
       "object": "LOD0_lamp_lens",
       "lod": 0,
       "faces": 92,
-      "visible": 0,
-      "hidden": 92,
-      "hiddenFrac": 1.0
+      "observedVisible": 3,
+      "unobserved": 89,
+      "unobservedFrac": 0.9674
     },
     {
-      "object": "LOD1_lamp.001",
+      "object": "LOD1_lamp",
       "lod": 1,
       "faces": 68,
-      "visible": 0,
-      "hidden": 68,
-      "hiddenFrac": 1.0
+      "observedVisible": 2,
+      "unobserved": 66,
+      "unobservedFrac": 0.9706
     },
     {
-      "object": "LOD1_lamp_lens.001",
+      "object": "LOD1_lamp_lens",
       "lod": 1,
       "faces": 20,
-      "visible": 0,
-      "hidden": 20,
-      "hiddenFrac": 1.0
+      "observedVisible": 0,
+      "unobserved": 20,
+      "unobservedFrac": 1.0
     },
     {
-      "object": "LOD2_lamp.001",
+      "object": "LOD2_lamp",
       "lod": 2,
       "faces": 52,
-      "visible": 0,
-      "hidden": 52,
-      "hiddenFrac": 1.0
+      "observedVisible": 2,
+      "unobserved": 50,
+      "unobservedFrac": 0.9615
     },
     {
-      "object": "LOD2_lamp_lens.001",
+      "object": "LOD2_lamp_lens",
       "lod": 2,
       "faces": 20,
-      "visible": 0,
-      "hidden": 20,
-      "hiddenFrac": 1.0
+      "observedVisible": 0,
+      "unobserved": 20,
+      "unobservedFrac": 1.0
     },
     {
       "object": "LOD0_extractor",
       "lod": 0,
       "faces": 1044,
-      "visible": 17,
-      "hidden": 1027,
-      "hiddenFrac": 0.9837
+      "observedVisible": 326,
+      "unobserved": 718,
+      "unobservedFrac": 0.6877
     },
     {
-      "object": "LOD1_extractor.001",
+      "object": "LOD1_extractor",
       "lod": 1,
       "faces": 300,
-      "visible": 0,
-      "hidden": 300,
-      "hiddenFrac": 1.0
+      "observedVisible": 15,
+      "unobserved": 285,
+      "unobservedFrac": 0.95
     },
     {
-      "object": "LOD2_extractor.001",
+      "object": "LOD2_extractor",
       "lod": 2,
       "faces": 144,
-      "visible": 0,
-      "hidden": 144,
-      "hiddenFrac": 1.0
+      "observedVisible": 11,
+      "unobserved": 133,
+      "unobservedFrac": 0.9236
     }
   ],
-  "hiddenFaces": 4535,
+  "observedVisibleFaces": 873,
+  "unobservedFaces": 3699,
   "faces": 4572,
-  "hiddenFrac": 0.9919,
-  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+  "unobservedFrac": 0.8091,
+  "note": "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays can miss subpixel or antialiased coverage. This record cannot authorize culling or geometry deletion. LODs were evaluated one at a time."
 }

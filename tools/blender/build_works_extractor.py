@@ -342,6 +342,11 @@ def producer_binding():
             "path": str(WORKS_CAMERA_PATH.relative_to(ROOT)).replace("\\", "/"),
             "sha256": sha256(WORKS_CAMERA_PATH),
         },
+        "hiddenFaceDiagnostic": {
+            "path": "tools/blender/works_visible_faces.py",
+            "sha256": sha256(ROOT / "tools" / "blender" / "works_visible_faces.py"),
+            "authority": "diagnostic_only_not_culling_proof",
+        },
         "blender": {
             "version": bpy.app.version_string,
             "binary": str(binary),
@@ -2545,6 +2550,14 @@ def write_docs(
 ):
     FAMILY.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+    hidden_path = EVIDENCE_DIR / "hidden_faces.json"
+    hidden_diagnostic = {
+        "path": str(hidden_path.relative_to(ROOT)).replace("\\", "/"),
+        "sha256": sha256(hidden_path),
+        "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
+        "candidateSha256": inventory["sha256"],
+        "authority": "diagnostic_only_not_culling_proof",
+    }
     hashes = {
         "cycle": CYCLE,
         "disposition": "review_pending",
@@ -2561,6 +2574,7 @@ def write_docs(
         "cycle04Sha256": cycle04,
         "cycle05Sha256": cycle05,
         "producer": producer_binding(),
+        "hiddenFaceDiagnostic": hidden_diagnostic,
         "lod": {str(r["lod"] if "lod" in r else i): {"sha256": r.get("sha256"), "triangles": r["triangles"]} for i, r in enumerate(lod_reports)},
         "textures": {},
     }
@@ -2600,6 +2614,7 @@ def write_docs(
             "partsSha256": inventory["partsSha256"],
         },
         "producer": producer_binding(),
+        "hiddenFaceDiagnostic": hidden_diagnostic,
         "hooks": {
             "required": list(HOOK_NAMES),
             "found": inspect["hooksFound"],
@@ -2657,7 +2672,7 @@ def write_docs(
             "LOD2 is also captured at its honest 34–45 px projected-machine switch band.",
             "Material-ID evidence uses the exact exported UV0 with the authored role-color atlas; it is not a grayscale isolation fallback.",
             "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
-            "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+            "Visible-face diagnostic evaluates each LOD independently at supported render-pixel centres; unobserved faces are not proven hidden and cannot authorize culling or deletion.",
             "No Cycle 06 independent reviewer has run. G1/G2/G4/G7 remain open.",
             "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture.",
         ],
@@ -2976,12 +2991,13 @@ def run_hidden_faces(glb_path: Path, dest: Path):
     wvf.wipe_scene()
     wvf.import_glb(str(glb_path))
     meshes = wvf.render_meshes()
-    rows = wvf.classify(meshes)
+    rows, sampling = wvf.classify(meshes)
     rel = str(glb_path.relative_to(ROOT)).replace("\\", "/")
-    report = wvf.report_for(meshes, rows, glb=rel, deleted=False)
+    report = wvf.report_for(meshes, rows, sampling, glb=rel, deleted=False)
     report["note"] = (
-        "dry-run; pass --delete only after inspecting hiddenFrac. "
-        "Do not use this as a quality close. LODs were evaluated one at a time."
+        "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays "
+        "can miss subpixel or antialiased coverage. This record cannot authorize culling "
+        "or geometry deletion. LODs were evaluated one at a time."
     )
     dest.parent.mkdir(parents=True, exist_ok=True)
     write_text_lf(dest, json.dumps(report, indent=2) + "\n")
@@ -3024,7 +3040,9 @@ plus centre crops. Cycle 01 through Cycle 05 evidence are byte-frozen. Cycle
 - Hooks `head_face`, `belt`, `lamp` present. Root `{ROOT_NAME}`.
 - LOD0 {inspect['lodTriangles']['lod0']} / 8000 · LOD1 {inspect['lodTriangles']['lod1']} / 2000 · LOD2 {inspect['lodTriangles']['lod2']} / 600.
 - Envelope {inventory['bbox']['size']} wu, underside z=0, +X feed.
-- Hidden-face dry-run: {hidden.get('hiddenFaces')} / {hidden.get('faces')} hidden (per LOD).
+- Supported-camera diagnostic: {hidden.get('observedVisibleFaces')} / {hidden.get('faces')} faces
+  observed at render-pixel centres (per LOD). Unobserved faces are not proven hidden and this
+  record cannot authorize culling or deletion.
 
 Cycle 06 keeps the non-emissive bonded refractory hardface from Cycle 05 and
 changes only the intake shoulder/liner construction plus evidence binding.

@@ -30,7 +30,7 @@ plus centre crops. Cycle 01 through Cycle 05 evidence are byte-frozen. Cycle
 - Hooks `head_face`, `belt`, `lamp` present. Root `SF_WORKS_EXTRACTOR_V1`.
 - LOD0 3112 / 8000 · LOD1 916 / 2000 · LOD2 544 / 600.
 - Envelope [1.675, 1.5952, 0.8] wu, underside z=0, +X feed.
-- Hidden-face dry-run: 4535 / 4572 hidden (per LOD).
+- Supported-camera diagnostic: 873 / 4572 faces observed at render-pixel centres (per LOD). Unobserved faces are not proven hidden and this record cannot authorize culling or deletion.
 
 Cycle 06 keeps the non-emissive bonded refractory hardface from Cycle 05 and
 changes only the intake shoulder/liner construction plus evidence binding.

@@ -31,11 +31,16 @@
   "producer": {
     "builder": {
       "path": "tools/blender/build_works_extractor.py",
-      "sha256": "6C70D22B4BEFC60149893B0FCE4D01256468501230CF1B277DFB33BFFBA687AA"
+      "sha256": "BC6B45AAE2A0A14738AC81BDD81DDDEF3D95527AEECFA43D97C4E89FB5B4A1D4"
     },
     "cameraHelper": {
       "path": "tools/blender/spaceface_works_camera.py",
       "sha256": "E404AC4913CDFABB8E2BB38F28B5366167FCA0C8DCFF7CC9F00E1BA4654D8CE9"
+    },
+    "hiddenFaceDiagnostic": {
+      "path": "tools/blender/works_visible_faces.py",
+      "sha256": "C38B611CC7F90371FD7ADB28A489E3F7A5ACCDD678047C1E4340D8455BC784DC",
+      "authority": "diagnostic_only_not_culling_proof"
     },
     "blender": {
       "version": "5.1.2",
@@ -44,6 +49,13 @@
     },
     "renderFunction": "render_stills",
     "renderEngine": "BLENDER_EEVEE_NEXT"
+  },
+  "hiddenFaceDiagnostic": {
+    "path": "assets/works/extractor/evidence/cycle_006/hidden_faces.json",
+    "sha256": "E174D8A9481CFD5DA915D6804F76E77C801AF1449366CD2A99EA16DE07F07089",
+    "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
+    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "authority": "diagnostic_only_not_culling_proof"
   },
   "hooks": {
     "required": [
@@ -791,7 +803,7 @@
     "LOD2 is also captured at its honest 34\u201345 px projected-machine switch band.",
     "Material-ID evidence uses the exact exported UV0 with the authored role-color atlas; it is not a grayscale isolation fallback.",
     "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
-    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "Visible-face diagnostic evaluates each LOD independently at supported render-pixel centres; unobserved faces are not proven hidden and cannot authorize culling or deletion.",
     "No Cycle 06 independent reviewer has run. G1/G2/G4/G7 remain open.",
     "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture."
   ]
