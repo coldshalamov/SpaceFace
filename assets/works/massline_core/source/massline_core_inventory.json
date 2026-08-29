@@ -5,9 +5,9 @@
   "partsSource": "assets/ships/parts/works/place_works_massline_core.glb",
   "blend": "assets/works/massline_core/blender/massline_core.blend",
   "lodTriangles": {
-    "lod0": 6454,
-    "lod1": 1740,
-    "lod2": 578
+    "lod0": 5550,
+    "lod1": 1660,
+    "lod2": 486
   },
   "hooks": [
     "ring_spin",
@@ -24,32 +24,32 @@
     "LOD2_massline_core_lamp",
     "LOD2_massline_core_spin"
   ],
-  "bytes": 2806784,
-  "sha256": "2B62F1799FE9021D59680007275BC3F93B29D51B4052F8F04410CEA7A2C54B50",
-  "partsSha256": "2B62F1799FE9021D59680007275BC3F93B29D51B4052F8F04410CEA7A2C54B50",
+  "bytes": 3163528,
+  "sha256": "FEBC60B1E4284242C124E9516C759924567B44740E63751F6CE0D308B2B66687",
+  "partsSha256": "FEBC60B1E4284242C124E9516C759924567B44740E63751F6CE0D308B2B66687",
   "lodReports": [
     {
       "lod": 0,
-      "triangles": 6454,
+      "triangles": 5550,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD0"
       ],
       "bbox": {
         "min": [
-          -1.06,
-          -1.06,
+          -1.04,
+          -1.04,
           0.0
         ],
         "max": [
-          1.06,
-          1.06,
-          0.718
+          1.068,
+          1.04,
+          0.735
         ],
         "size": [
-          2.12,
-          2.12,
-          0.718
+          2.108,
+          2.08,
+          0.735
         ]
       },
       "triBudget": 8000,
@@ -61,9 +61,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png"
       ],
       "lampLoc": [
-        0.0339,
-        0.9694,
-        0.662
+        0.18,
+        0.892,
+        0.362
       ],
       "meshNames": [
         "LOD0_massline_core",
@@ -71,31 +71,31 @@
         "LOD0_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod0.glb",
-      "bytes": 1672832,
-      "sha256": "D78796F07951F5EE41FA07F02EE34C8F2531050EB6AA29A743EDD4007610AF0C"
+      "bytes": 2019456,
+      "sha256": "1421FF5A6A3359A36473FB35C6F1567A82743293EABC0903C8D30D9F0BFA569F"
     },
     {
       "lod": 1,
-      "triangles": 1740,
+      "triangles": 1660,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD1"
       ],
       "bbox": {
         "min": [
-          -1.06,
-          -1.06,
+          -1.04,
+          -1.04,
           0.0
         ],
         "max": [
-          1.06,
-          1.06,
-          0.718
+          1.068,
+          1.04,
+          0.735
         ],
         "size": [
-          2.12,
-          2.12,
-          0.718
+          2.108,
+          2.08,
+          0.735
         ]
       },
       "triBudget": 2000,
@@ -107,9 +107,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod1_normal.png"
       ],
       "lampLoc": [
-        0.0339,
-        0.9694,
-        0.662
+        0.18,
+        0.892,
+        0.362
       ],
       "meshNames": [
         "LOD1_massline_core",
@@ -117,31 +117,31 @@
         "LOD1_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod1.glb",
-      "bytes": 619992,
-      "sha256": "304639783C9D670EC936C4AFF52C9659126787DCA105B96B730511C06BB32F9F"
+      "bytes": 661356,
+      "sha256": "0E188B03962691FEE7DCE5501AEBA1F9A47F0805712AD144BCA5EF80F81DAFE6"
     },
     {
       "lod": 2,
-      "triangles": 578,
+      "triangles": 486,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD2"
       ],
       "bbox": {
         "min": [
-          -1.06,
-          -1.06,
+          -1.04,
+          -1.04,
           0.0
         ],
         "max": [
-          1.06,
-          1.06,
-          0.71
+          1.04,
+          1.04,
+          0.735
         ],
         "size": [
-          2.12,
-          2.12,
-          0.71
+          2.08,
+          2.08,
+          0.735
         ]
       },
       "triBudget": 600,
@@ -153,9 +153,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod2_normal.png"
       ],
       "lampLoc": [
-        0.0339,
-        0.9694,
-        0.662
+        0.18,
+        0.892,
+        0.362
       ],
       "meshNames": [
         "LOD2_massline_core",
@@ -163,8 +163,8 @@
         "LOD2_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod2.glb",
-      "bytes": 195708,
-      "sha256": "67E6692575BE0B4F21352C4289F78CE2A5DAEE7231C7AE9118BAFDE84F38C9CA"
+      "bytes": 179828,
+      "sha256": "F931D07AF5029A74A990B4D18C6BE98E7E13BCB39FE16B59A91DC9233370BFA8"
     }
   ]
 }

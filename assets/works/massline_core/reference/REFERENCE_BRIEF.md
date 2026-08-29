@@ -1,14 +1,15 @@
-# Works Massline Core — reference brief (Cycle 03 square-anchor collar)
+# Works Massline Core — reference brief (Cycle 04 square-flange wellhead)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 3 of ≥5. This page is the
+(signature installed machine). **State:** `design_candidate`. Cycle 4 of ≥5. This page is the
 contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
 `review_pending` / `revise`; this cycle does not launch reviewers.
 
-Three Cycle 02 views still collapsed to a washer/manhole: continuous dark torus, shallow
-brown plug, cube feet, lost lap gaps, round site dot. Cycle 03 keeps identity, hooks,
-envelope, cameras, the open well and the inner race, and rebuilds the collar, shoes, well
-depth and lamp.
+Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four L-arrow shoes
+with diagonal occupancy gussets, a yellow lamp tab, a chrome-coin inner race, and a
+plus-dot site marker. Cycle 04 keeps identity, hooks, envelope, cameras, the open well
+and the inner race, and rebuilds the load-bearing form as a square wellhead flange with
+a round bore and a U-channel that opens upward.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object offset to the
 frame edge so side walls read), `works_site` (19 px/cell). All 1920×1080, 31° perspective, +Z up,
@@ -65,12 +66,12 @@ tells the gallery the well is live. Four corner root plates carry pretension int
 | Assembly | Manufacture |
 |---|---|
 | Well liner | Dry refractory / sintered mineral, thick wall, open through. Dark, dusty, not metal. |
-| Collar courses | Formed hat / U-channel (separated upper + lower flanges, web between), eight segments with pitch-break gaps and directional raised laps. Dark alkyd over zinc primer. |
-| Spin ring | Machined bearing race. Restrained bare steel. Separable. Parent: `ring_spin`. |
-| Radial ribs / bolt lugs | Plate gussets from shoes into the collar web. |
-| Root plates / shoes | Four folded L-plan angle shoes at the cell corners, gusseted into the collar web, hex-bolted at interfaces. Underside at z = 0. |
-| Service hatch | One rectangular access cover on the +X sector, proud, with a strap and two bolts. Breaks the spin symmetry. |
-| Lamp | Arm + socket + hood + small lens, rooted on the collar. Only the lens is emissive. Parent: `lamp`. |
+| Collar | Continuous formed U-channel, cavity opening +Z so the trench reads from above (inner flange / dark floor / outer flange). Four cardinal lap straps. Dark alkyd over zinc primer. |
+| Square flange / deck | Square outer, circular inner. Corner fill is the manufactured square-minus-bore plate. Not a featureless slab; the U-trench and skirt break it. |
+| Spin ring | Machined bearing race nested in a rebate. Restrained dark bare steel. Separable. Parent: `ring_spin`. |
+| Skirt / shoes | Folded-down square angle iron sitting on the rock, plus thickened corner pads of the frame. No diagonal occupancy gussets. Underside at z = 0. |
+| Service hatch | One rectangular access cover on the +X deck, proud, with a strap and two bolts. Breaks the spin symmetry. |
+| Lamp | Arm + socket + hood with a visible cavity + small lens, rooted on the +Y frame. Only the lens is emissive. Parent: `lamp`. |
 | Fasteners | Modelled hex heads at real joints (0.03–0.04 wu). Not texture studs. |
 
 ---
@@ -78,16 +79,16 @@ tells the gallery the well is live. Four corner root plates carry pretension int
 ## Silhouette from directly above (the only view that matters)
 
 At `works_top` the cell is ~264 × 264 px. Five shapes a person resolves. If the outline is a
-torus, coin, tire, halo, or flat icon, the asset has failed.
+torus, coin, tire, halo, compass-rose, plus-dot, or flat icon, the asset has failed.
 
 1. **Dark circular well** — a real open hole, thick liner lip, you can see down it.
-2. **Segmented hat-channel collar** — overlapping plate courses, pitch-break gaps, not a torus.
-3. **Four corner angle shoes** — L-plan pads on the diagonals, breaking the circle into a claimed square.
-4. **Spin ring** — a distinct inner race, separable from the shoes/liner/lamp.
-5. **One rooted hooded lamp** — arm, socket, hood; never a glowing ring or painted tab.
+2. **Square wellhead flange** — square outer, round bore, corner mass as part of the plate.
+3. **U-channel trench** — inner flange / dark floor / outer flange, visible from above.
+4. **Spin ring** — a distinct inner race in a rebate, separable from the flange/liner/lamp.
+5. **One rooted hooded lamp** — arm, socket, hood with a cavity; never a glowing ring or painted tab.
 
-Asymmetry: service hatch on the +X collar sector; lamp on the +X/+Y arm. Clay must read
-the hole, the four shoes, and the hat-channel section without textures.
+Asymmetry: service hatch on the +X deck; lamp on the +Y frame. Clay must read the hole,
+the square skirt, and the U-trench without textures.
 
 ---
 
@@ -96,22 +97,22 @@ the hole, the four shoes, and the hat-channel section without textures.
 1 cell = 2.2 wu. Envelope **2.20 × 2.20 × 1.10 wu**. Origin at cell centre. +Z up. Underside
 on the cut face (z = 0). Footprint stays inside ±1.10.
 
-| Part | wu (Cycle 03) |
+| Part | wu (Cycle 04) |
 |---|---|
 | Envelope X × Y × Z | 2.20 × 2.20 × 1.10 |
-| Well inner radius (open hole) | 0.30 bottom / 0.40 mouth |
-| Liner outer radius / height | 0.50 / 0.012–0.58 |
-| Mouth lip | r 0.39–0.53, z 0.52–0.66 |
-| Inner race (ring_spin) | 0.528–0.612 / z 0.498–0.572 (nested, not a proud cap) |
-| Collar hat-channel | r 0.68–0.90, z 0.155–0.51, 8 courses with pitch-break gaps |
-| Angle-shoe outer corners | (±1.06, ±1.06) |
-| Angle-shoe L | inner 0.60, leg width 0.205, height 0.095 |
-| Lamp | r ≈ 0.97 at 88° (pitch-break), arm + socket + hood + recessed lens |
-| Service hatch | +X sector, ~0.26 × 0.12, proud on collar |
+| Well inner radius (open hole) | 0.30 bottom / 0.42 mouth |
+| Liner outer radius / height | 0.52 / 0.012–0.62 |
+| Mouth lip | r 0.41–0.55, z 0.56–0.74 |
+| Inner race (ring_spin) | 0.500–0.555 / z 0.470–0.535 (nested rebate, not a proud cap) |
+| U-channel collar | r 0.56–0.84, z 0.155–0.455, cavity +Z, continuous |
+| Square flange / skirt | outer ±1.04, deck z 0.125–0.235, skirt height 0.155 |
+| Corner pads | 0.30 square, height 0.145, on the rock |
+| Lamp | +Y frame (0.18, 0.90), arm + socket + hood cavity + recessed lens |
+| Service hatch | +X deck (0.90, −0.22), ~0.31 × 0.17, proud |
 
 Hooks:
 
-- `ring_spin` at the spin-ring origin `(0, 0, 0.716)`. Children rotate. Shoes, liner, hatch, lamp
+- `ring_spin` at the spin-ring origin `(0, 0, 0.502)`. Children rotate. Skirt, liner, hatch, lamp
   do **not** parent here.
 - `lamp` at the hood/lens socket. Children: arm, hood, socket, lens. Only the lens emits.
 
@@ -137,25 +138,26 @@ Working scene: `tools/blender/build_works_massline_core.py`.
 World: dark. Key `0xffdcbc` raking, real shadows, cool rim, weak fill, ≈5:1 key:fill on the
 pad. Bevels must exist. The well must be a hole the key cannot fill.
 
-Shape-grammar failure of Cycle 02: **washer / manhole with nested-square pucks**. Replacement
-sequence: open tapered liner → hat-channel collar with pitch breaks → four gusseted angle
-shoes → separable race → one rooted hooded lamp → one repair hatch. Clay must read that
-without textures.
+Shape-grammar failure of Cycle 03: **nut / compass-rose icon** (pie-wedge collar + L-arrow
+shoes + diagonal occupancy gussets + yellow tab lamp). Replacement sequence: open tapered
+liner → continuous U-channel (cavity +Z) → square deck with round bore → folded angle skirt
+and corner pads on the rock → nested dark race → one hooded lamp on the +Y frame → one
+repair hatch. Clay must read that without textures.
 
 ---
 
 ## Quality axes (grade these, not taste)
 
-1. **Planform at 120 px/cell** — hole + segmented hat-channel collar + four shoes, not a coin/halo.
+1. **Planform at 120 px/cell** — hole + square flange + U-trench, not a coin/halo/compass.
 2. **Clay vs textured** — form holds in `works_top_clay.png`.
 3. **Well is a hole** — open through, thick liner, dark inner wall, no brown plug.
-4. **`works_edge` shows side depth** — hat flanges, shoe thickness, not a decal.
+4. **`works_edge` shows side depth** — skirt, channel web, raised lip, not a decal.
 5. **Yellow discipline** — zero safety-yellow pixels.
-6. **Lamp is a lamp** — hood/socket/arm; emissive off still reads as a fixture.
-7. **`ring_spin` is separable** — rotating the hook does not move shoes, liner, or lamp.
-8. **Manufacture** — courses, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
-9. **LOD** — LOD1/LOD2 keep hole, four-shoe square silhouette, lamp, ring hook at 19 px/cell.
+6. **Lamp is a lamp** — hood cavity / socket / arm; emissive off still reads as a fixture.
+7. **`ring_spin` is separable** — rotating the hook does not move skirt, liner, or lamp.
+8. **Manufacture** — U-section, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
+9. **LOD** — LOD1/LOD2 keep hole, square outer, U-trench, lamp, ring hook at 19 px/cell.
 
-Cycle 03 remaining risk: hat-course pitch breaks at 120 px/cell; four angle shoes holding a
-square site silhouette at legal 19 px/cell without envelope inflation. Independent review
-is still `review_pending`. Do not treat this cycle as KEEP.
+Cycle 04 remaining risk: U-trench and square skirt holding at 120 px/cell; site LOD1 reading
+as a claimed square with a hole rather than a plus-dot or a slab. Independent review is
+still `review_pending`. Do not treat this cycle as KEEP.

@@ -1,20 +1,28 @@
-"""PQ-131.02 Works Massline Core — Cycle 03 square-anchor collar correction.
+"""PQ-131.02 Works Massline Core — Cycle 04 square-flange wellhead correction.
 
-Three Cycle 02 views still collapse to a washer/manhole: continuous dark torus,
-shallow brown plug, cube feet, lost lap gaps, round site dot. Cycle 03 keeps
-the open well, inner race, hooks, envelope and cameras, and rebuilds:
+Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four
+L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, and a
+chrome-coin inner race. Pitch-break gaps read as a dashed torus, not a
+hat-channel. Site silhouette was a plus-dot map marker.
 
-- overlapping hat/U-channel collar courses with separated flanges and pitch breaks
-- folded dark-painted angle shoes claiming all four cell corners
-- a deeper dark refractory well (true inner wall, no brown plug)
-- an asymmetric rooted hooded lamp (hood / socket / arm)
-- LOD1/2 that keep the four-shoe square silhouette at 19 px/cell
+Cycle 04 keeps identity, hooks, envelope, cameras, the open well and the
+inner race, and rebuilds the load-bearing form:
+
+- square wellhead flange with a round bore (claims the cell; not a torus,
+  not four isolated L-arrows, not a featureless slab)
+- U-channel collar opening +Z so works_top sees inner flange / dark trench
+  / outer flange as a real section, not a top-web pancake
+- folded-down square angle skirt sitting on the rock
+- corner pads as thickened frame mass, not compass arrows
+- nested dark machined race in a rebate (not a proud coin)
+- one side-mounted hooded lamp with a visible cavity
+- LOD1/2 keep square outer + open well + collar trench + lamp at 19 px/cell
 
     blender --background --python tools/blender/build_works_massline_core.py
 
 Writes only:
   tools/blender/build_works_massline_core.py
-  assets/works/massline_core/**   (cycle_001 and cycle_002 evidence are never rewritten)
+  assets/works/massline_core/**   (cycle_001, cycle_002, cycle_003 evidence are never rewritten)
   assets/ships/parts/works/place_works_massline_core.glb
 """
 from __future__ import annotations
@@ -50,16 +58,17 @@ SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 BLEND_DIR = FAMILY / "blender"
 REF_DIR = FAMILY / "reference"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_003"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_004"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
+CYCLE_003_DIR = FAMILY / "evidence" / "cycle_003"
 PARTS_GLB = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_massline_core.glb"
 BLEND_PATH = BLEND_DIR / "massline_core.blend"
 
 ASSET_ID = "place_works_massline_core"
 IDENTITY = "SF_WORKS_MASSLINE_CORE_V1"
 PACKET = "PQ-131.02"
-CYCLE = 3
+CYCLE = 4
 HOOK_NAMES = ("ring_spin", "lamp")
 
 CELL = float(CELL_WU)
@@ -71,34 +80,45 @@ KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 _GLTF_FLOAT = 5126
 _GLTF_NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT3": 9, "MAT4": 16}
 
-# Well / collar / spin / shoes. Underside at z=0. Open hole through the liner.
-# Planform (inside → out): tapered dark well, ceramic mouth, inner race, gap,
-# hat-channel collar courses, four world-aligned corner angle-shoes.
+# Square wellhead flange with round bore. Underside at z=0. Open hole through.
+# Planform (inside → out): tapered dark well, refractory mouth, nested race,
+# U-channel (cavity +Z), square deck filling the corners, folded angle skirt.
 WELL_INNER_R_BOT = 0.30
-WELL_INNER_R_TOP = 0.40
+WELL_INNER_R_TOP = 0.42
 WELL_INNER_R = WELL_INNER_R_TOP
-LINER_OUTER_R = 0.50
+LINER_OUTER_R = 0.52
 LINER_Z0 = 0.012
-LINER_Z1 = 0.580
-LIP_Z0, LIP_Z1 = 0.520, 0.655
-COLLAR_R0, COLLAR_R1 = 0.68, 0.90
-COLLAR_Z0, COLLAR_Z1 = 0.155, 0.510
-SPIN_R0, SPIN_R1 = 0.528, 0.612
-SPIN_Z0, SPIN_Z1 = 0.498, 0.572
-FOOT_OUTER = 1.06
-FOOT_INNER = 0.60
-FOOT_LEG_W = 0.205
-FOOT_H = 0.095
-LAMP_ANG = math.radians(88.0)
-LAMP_R = 0.97
-HATCH_ANG = math.radians(-18.0)
+LINER_Z1 = 0.620
+LIP_Z0, LIP_Z1 = 0.560, 0.735
+# U-channel: inner flange / trench floor / outer flange. Cavity opens +Z.
+# Outer radius stays inside the square so mid-sides keep a readable deck band.
+U_R_IN = 0.56
+U_R_WEB0 = 0.64
+U_R_WEB1 = 0.76
+U_R_OUT = 0.84
+U_Z_BOT = 0.155
+U_Z_TOP = 0.455
+U_PLATE = 0.030
+# Nested race sits in the inner rebate, below the mouth lip — not a proud coin.
+SPIN_R0, SPIN_R1 = 0.500, 0.555
+SPIN_Z0, SPIN_Z1 = 0.470, 0.535
+# Square flange / skirt. Axis-aligned envelope stays inside ±1.10.
+FRAME_HALF = 1.04
+DECK_Z0, DECK_Z1 = 0.125, 0.235
+SKIRT_T = 0.055
+SKIRT_H = 0.155
+SHOE_W = 0.30
+SHOE_H = 0.145
+# Lamp lives on the +Y frame, hatch on the +X deck. Both stay inside the cell.
+LAMP_POS = (0.18, 0.90, 0.32)
+HATCH_POS = (0.90, -0.22, DECK_Z1 + 0.018)
 
 ROLES = ("paint", "wear", "liner", "accent", "lamp")
 ATLAS_TILE = {"paint": 0, "wear": 1, "liner": 2, "accent": 3, "lamp": 4}
 ROLE_RGB = {
-    "paint": (0.098, 0.090, 0.082),
-    "wear": (0.142, 0.148, 0.156),
-    "liner": (0.046, 0.040, 0.036),
+    "paint": (0.102, 0.094, 0.086),
+    "wear": (0.088, 0.092, 0.098),
+    "liner": (0.038, 0.032, 0.028),
     "accent": (0.255, 0.168, 0.108),
     "lamp": (0.86, 0.76, 0.52),
 }
@@ -109,8 +129,8 @@ ROLE_FLAT = {
     "accent": (0.70, 0.38, 0.16),
     "lamp": (1.00, 0.92, 0.55),
 }
-ROLE_ROUGH = {"paint": 0.62, "wear": 0.50, "liner": 0.90, "accent": 0.58, "lamp": 0.26}
-ROLE_METAL = {"paint": 0.08, "wear": 0.70, "liner": 0.02, "accent": 0.22, "lamp": 0.02}
+ROLE_ROUGH = {"paint": 0.64, "wear": 0.58, "liner": 0.92, "accent": 0.58, "lamp": 0.26}
+ROLE_METAL = {"paint": 0.08, "wear": 0.58, "liner": 0.02, "accent": 0.22, "lamp": 0.02}
 EMIT_ALPHA = {"lamp": 0.55}
 CITED_REFS = (
     ROOT / "assets" / "concept" / "archetypes" / "concept_station_mining.jpg",
@@ -376,22 +396,30 @@ def apply_modifiers(obj):
 def boolean_difference(host, cutter, solver="EXACT"):
     bpy.context.view_layer.objects.active = host
     host.select_set(True)
-    mod = host.modifiers.new("BoolCut", "BOOLEAN")
-    mod.operation = "DIFFERENCE"
-    mod.object = cutter
-    try:
-        mod.solver = solver
-    except Exception:
-        pass
-    name = mod.name
-    try:
-        bpy.ops.object.modifier_apply(modifier=name)
-    finally:
-        host.select_set(False)
+    applied = False
+    for attempt in (solver, "FAST", "EXACT"):
+        mod = host.modifiers.new("BoolCut", "BOOLEAN")
+        mod.operation = "DIFFERENCE"
+        mod.object = cutter
         try:
-            bpy.data.objects.remove(cutter, do_unlink=True)
+            mod.solver = attempt
         except Exception:
             pass
+        name = mod.name
+        try:
+            bpy.ops.object.modifier_apply(modifier=name)
+            applied = True
+            break
+        except Exception:
+            try:
+                host.modifiers.remove(host.modifiers.get(name) or mod)
+            except Exception:
+                pass
+    host.select_set(False)
+    try:
+        bpy.data.objects.remove(cutter, do_unlink=True)
+    except Exception:
+        pass
     return host
 
 
@@ -695,38 +723,37 @@ def world_bbox(objects):
 # Geometry
 # ---------------------------------------------------------------------------
 
-def hat_channel_arc(name, r_in, r_out, z_bot, z_top, a0, a1, segs, plate_t,
-                    material, collection, bevel=0.006, role="paint", group="static",
-                    kick=0.028):
-    """Hat / inverted-U: top web, inner/outer webs, separated lower flanges.
-    From above: a plate course. Ends stay open so pitch-break gaps show section."""
+def u_channel_arc(name, r_in, r_web0, r_web1, r_out, z_bot, z_top, a0, a1, segs,
+                  plate_t, material, collection, bevel=0.006, role="paint", group="static"):
+    """U-channel with the cavity opening +Z.
+
+    works_top must see three concentric bands: inner flange, dark trench floor,
+    outer flange. A hat with the web on +Z is a pancake and is illegal here.
+    """
     segs = max(1, int(segs))
     t = float(plate_t)
-    r_in, r_out = float(r_in), float(r_out)
-    z_bot, z_top = float(z_bot), float(z_top)
-    inner_web = r_in + t
-    outer_web = r_out - t
-    ceil = z_top - t
-    kick = float(kick)
-    if inner_web >= outer_web or ceil <= z_bot + t:
+    z_floor = float(z_bot) + t
+    z_top = float(z_top)
+    if z_floor >= z_top - t * 0.5 or r_web0 <= r_in or r_web1 <= r_web0 or r_out <= r_web1:
         return annular_segment(
             name, r_in, r_out, z_bot, z_top, a0, a1, segs,
             material, collection, bevel=bevel, role=role, group=group,
         )
-    # 8-vert hat, web on +Z, cavity opening -Z.
     section = (
         (r_in, z_top),
+        (r_web0, z_top),
+        (r_web0, z_floor),
+        (r_web1, z_floor),
+        (r_web1, z_top),
         (r_out, z_top),
-        (r_out + kick, z_bot),
-        (outer_web, z_bot),
-        (outer_web, ceil),
-        (inner_web, ceil),
-        (inner_web, z_bot),
-        (r_in - kick, z_bot),
+        (r_out, z_bot),
+        (r_in, z_bot),
     )
     nsec = len(section)
+    closed = abs((float(a1) - float(a0)) % math.tau) < 1e-4 or abs((float(a1) - float(a0)) - math.tau) < 1e-4
+    stations = segs if closed else segs + 1
     verts = []
-    for i in range(segs + 1):
+    for i in range(stations):
         ang = a0 + (a1 - a0) * (i / float(segs))
         c, s = math.cos(ang), math.sin(ang)
         for radius, z in section:
@@ -734,10 +761,50 @@ def hat_channel_arc(name, r_in, r_out, z_bot, z_top, a0, a1, segs, plate_t,
     faces = []
     for i in range(segs):
         a = i * nsec
-        b = (i + 1) * nsec
+        b = ((i + 1) % stations) * nsec if closed else (i + 1) * nsec
         for k in range(nsec):
             k2 = (k + 1) % nsec
             faces.append((a + k, b + k, b + k2, a + k2))
+    if not closed:
+        faces.append(tuple(range(nsec)))
+        last = segs * nsec
+        faces.append(tuple(range(last + nsec - 1, last - 1, -1)))
+    return add_mesh(name, verts, faces, material, collection, bevel=bevel, role=role, group=group)
+
+
+def square_round_deck(name, half, r_inner, z0, z1, segs, material, collection,
+                      bevel=0.006, role="paint", group="static"):
+    """Square outer, circular inner — the wellhead flange that claims the cell.
+
+    Corner fill is the manufactured square-minus-bore plate, not four L-arrows
+    stuck on a torus. Mid-sides stay a narrow picture-frame so this is not a slab.
+    """
+    segs = max(8, int(segs))
+    half = float(half)
+    r_inner = float(r_inner)
+    verts = []
+    for ring_z in (z0, z1):
+        for i in range(segs):
+            a = (i / float(segs)) * math.tau
+            c, s = math.cos(a), math.sin(a)
+            verts.append((r_inner * c, r_inner * s, ring_z))
+        for i in range(segs):
+            a = (i / float(segs)) * math.tau
+            c, s = math.cos(a), math.sin(a)
+            t = half / max(abs(c), abs(s))
+            verts.append((t * c, t * s, ring_z))
+    # 0: inner z0, segs: outer z0, 2s: inner z1, 3s: outer z1
+    faces = []
+    for i in range(segs):
+        j = (i + 1) % segs
+        i0, o0 = i, segs + i
+        i1, o1 = 2 * segs + i, 3 * segs + i
+        j0, oj0 = j, segs + j
+        j1, oj1 = 2 * segs + j, 3 * segs + j
+        faces.append((i1, j1, oj1, o1))
+        faces.append((o0, oj0, j0, i0))
+        faces.append((i0, j0, j1, i1))
+        faces.append((o1, oj1, oj0, o0))
     return add_mesh(name, verts, faces, material, collection, bevel=bevel, role=role, group=group)
 
 
@@ -769,9 +836,8 @@ def tapered_annulus(name, r0_bot, r0_top, r1_bot, r1_top, z0, z1, segs,
 
 
 def build_liner(mats, collection, lod):
-    segs = {0: 28, 1: 16, 2: 10}[lod]
+    segs = {0: 28, 1: 16, 2: 8}[lod]
     bevel = {0: 0.007, 1: 0.004, 2: 0.0}[lod]
-    # Tapered dark refractory tube — wider mouth, true inner wall, open through.
     body = tapered_annulus(
         "LinerBody",
         WELL_INNER_R_BOT, WELL_INNER_R_TOP,
@@ -781,8 +847,8 @@ def build_liner(mats, collection, lod):
     )
     lip = tapered_annulus(
         "LinerLip",
-        WELL_INNER_R_TOP - 0.010, WELL_INNER_R_TOP - 0.006,
-        LINER_OUTER_R + 0.026, LINER_OUTER_R + 0.018,
+        WELL_INNER_R_TOP - 0.012, WELL_INNER_R_TOP - 0.004,
+        LINER_OUTER_R + 0.028, LINER_OUTER_R + 0.016,
         LIP_Z0, LIP_Z1,
         segs, mats["liner"], collection, bevel=bevel, role="liner",
     )
@@ -790,74 +856,73 @@ def build_liner(mats, collection, lod):
     if lod < 2:
         parts.append(tapered_annulus(
             "LinerThroat",
-            WELL_INNER_R_BOT + 0.006, WELL_INNER_R_TOP - 0.004,
-            WELL_INNER_R_BOT + 0.032, WELL_INNER_R_TOP + 0.012,
-            LINER_Z0 + 0.018, LIP_Z0 + 0.030,
+            WELL_INNER_R_BOT + 0.008, WELL_INNER_R_TOP - 0.006,
+            WELL_INNER_R_BOT + 0.036, WELL_INNER_R_TOP + 0.010,
+            LINER_Z0 + 0.018, LIP_Z0 + 0.028,
             segs, mats["liner"], collection, bevel=0.0, role="liner",
         ))
     if lod == 0:
-        for i, a0 in enumerate((0.40, 2.25)):
+        for i, a0 in enumerate((0.55, 2.40)):
             parts.append(annular_segment(
-                f"LinerJoint{i}", LINER_OUTER_R - 0.006, LINER_OUTER_R + 0.010,
-                LINER_Z0 + 0.08, LIP_Z0 - 0.05, a0, a0 + 0.12, 3,
+                f"LinerJoint{i}", LINER_OUTER_R - 0.006, LINER_OUTER_R + 0.012,
+                LINER_Z0 + 0.10, LIP_Z0 - 0.06, a0, a0 + 0.14, 3,
                 mats["liner"], collection, bevel=0.003, role="liner",
             ))
     return parts
 
 
 def build_collar(mats, collection, lod):
-    nseg = 8
-    sub = {0: 5, 1: 3, 2: 1}[lod]
+    """Continuous U-channel around the well, plus the square deck that turns
+    the circular bore into a claimed square flange. No pie wedges, no L-arrows."""
+    segs = {0: 28, 1: 16, 2: 8}[lod]
     bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
-    plate = {0: 0.028, 1: 0.032, 2: 0.038}[lod]
-    kick = {0: 0.030, 1: 0.024, 2: 0.018}[lod]
-    body = {0: 0.70, 1: 0.74, 2: 0.78}[lod]
-    lap = {0: 0.10, 1: 0.08, 2: 0.06}[lod]
+    plate = {0: U_PLATE, 1: 0.034, 2: 0.040}[lod]
     parts = []
-    span = math.tau / nseg
-    gap_keep = 1.0 - body
-    for i in range(nseg):
-        a0 = i * span + gap_keep * span * 0.45
-        a1 = a0 + body * span
-        z_lift = 0.048 if (i % 2) else 0.0
-        if i == 0:
-            a1 += 0.03
-        elif i == 4:
-            a1 -= 0.022
-        r_in = COLLAR_R0 + (0.010 if i in (2, 6) else 0.0)
-        r_out = COLLAR_R1 - (0.016 if i == 5 else 0.0)
-        parts.append(hat_channel_arc(
-            f"CollarCourse{i}", r_in, r_out,
-            COLLAR_Z0 + z_lift, COLLAR_Z1 + z_lift,
-            a0, a1, sub, plate, mats["paint"], collection,
-            bevel=bevel, role="paint", group="static", kick=kick,
-        ))
-        next_a0 = (i + 1) * span + gap_keep * span * 0.45
-        next_lift = 0.048 if ((i + 1) % 2) else 0.0
-        lap_z = max(z_lift, next_lift) + 0.010
-        if lod <= 1:
+    parts.append(u_channel_arc(
+        "CollarU",
+        U_R_IN, U_R_WEB0, U_R_WEB1, U_R_OUT,
+        U_Z_BOT, U_Z_TOP,
+        0.0, math.tau, segs, plate, mats["paint"], collection,
+        bevel=bevel, role="paint", group="static",
+    ))
+    parts.append(square_round_deck(
+        "FlangeDeck",
+        FRAME_HALF, U_R_OUT - 0.006,
+        DECK_Z0, DECK_Z1, segs, mats["paint"], collection,
+        bevel=bevel, role="paint",
+    ))
+    # Four lap straps at the cardinals — joints, not occupancy cuts.
+    if lod <= 1:
+        lap_w = 0.16 if lod == 0 else 0.12
+        for i in range(4):
+            mid = i * (math.tau / 4.0)
+            a0, a1 = mid - lap_w * 0.5, mid + lap_w * 0.5
             parts.append(annular_segment(
-                f"CollarLap{i}", r_in + 0.018, r_out + 0.008,
-                COLLAR_Z1 + lap_z, COLLAR_Z1 + lap_z + 0.016,
-                next_a0, next_a0 + lap, 2 if lod == 0 else 1,
+                f"CollarLap{i}",
+                U_R_WEB0 + 0.012, U_R_WEB1 - 0.012,
+                U_Z_TOP + 0.004, U_Z_TOP + 0.018,
+                a0, a1, 2 if lod == 0 else 1,
                 mats["paint"], collection,
-                bevel=0.003 if lod == 0 else 0.0, role="paint", group="static",
+                bevel=0.002 if lod == 0 else 0.0, role="paint",
             ))
-        if lod == 0:
-            mid = next_a0 + lap * 0.45
-            c, s = math.cos(mid), math.sin(mid)
+    if lod == 0:
+        nbolts = 8
+        bolt_r = 0.5 * (U_R_IN + U_R_WEB0)
+        for i in range(nbolts):
+            a = (i + 0.5) * (math.tau / nbolts)
+            c, s = math.cos(a), math.sin(a)
             parts.extend(add_hex_bolt(
-                f"CollarLapBolt{i}",
-                ((r_out - 0.030) * c, (r_out - 0.030) * s, COLLAR_Z1 + lap_z + 0.022),
+                f"CollarBolt{i}",
+                (bolt_r * c, bolt_r * s, U_Z_TOP + 0.012),
                 (0, 0, 1), mats["wear"], collection, group="static", lod=lod,
-                head_r=0.015, head_h=0.008, shank_r=0.008, shank_h=0.016,
+                head_r=0.016, head_h=0.008, shank_r=0.009, shank_h=0.018,
             ))
     return parts
 
 
 def build_spin_ring(mats, collection, lod):
-    segs = {0: 24, 1: 16, 2: 10}[lod]
-    bevel = {0: 0.004, 1: 0.0, 2: 0.0}[lod]
+    segs = {0: 24, 1: 16, 2: 8}[lod]
+    bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     race = annular_segment(
         "SpinRace", SPIN_R0, SPIN_R1, SPIN_Z0, SPIN_Z1,
         0.0, math.tau, segs, mats["wear"], collection,
@@ -866,170 +931,166 @@ def build_spin_ring(mats, collection, lod):
     parts = [race]
     if lod < 2:
         parts.append(annular_segment(
-            "SpinShoulder", SPIN_R0 - 0.010, SPIN_R0 + 0.014,
-            SPIN_Z0 + 0.016, SPIN_Z1 - 0.012,
+            "SpinShoulder", SPIN_R0 - 0.008, SPIN_R0 + 0.010,
+            SPIN_Z0 + 0.012, SPIN_Z1 - 0.010,
             0.0, math.tau, segs, mats["wear"], collection,
-            bevel=bevel * 0.5, role="wear", group="spin",
+            bevel=0.0, role="wear", group="spin",
         ))
     if lod == 0:
         parts.append(annular_segment(
-            "SpinOilGroove", SPIN_R0 + 0.024, SPIN_R1 - 0.020,
-            SPIN_Z1 - 0.014, SPIN_Z1 + 0.003,
+            "SpinOilGroove", SPIN_R0 + 0.016, SPIN_R1 - 0.014,
+            SPIN_Z1 - 0.010, SPIN_Z1 + 0.002,
             0.0, math.tau, segs, mats["wear"], collection,
-            bevel=0.002, role="wear", group="spin",
-        ))
-        parts.append(annular_segment(
-            "SpinDrain", SPIN_R1 - 0.016, SPIN_R1 + 0.008,
-            SPIN_Z0 + 0.018, SPIN_Z1 - 0.018,
-            1.12, 1.28, 2, mats["wear"], collection,
-            bevel=0.002, role="wear", group="spin",
+            bevel=0.0, role="wear", group="spin",
         ))
     return parts
 
 
 def build_feet(mats, collection, lod):
-    """Four folded dark-painted angle shoes at the cell corners. L-plan claims
-    the square; mid-sides stay open. No bright wear puck on top."""
+    """Square angle-iron skirt on the rock plus corner pads of the flange.
+
+    The square silhouette is the skirt+deck, not four isolated L-arrows.
+    No diagonal occupancy gussets.
+    """
     parts = []
     bevel = {0: 0.007, 1: 0.0, 2: 0.0}[lod]
-    tw = FOOT_LEG_W if lod < 2 else 0.255
-    h = FOOT_H if lod < 2 else 0.118
-    inner = FOOT_INNER if lod < 2 else 0.56
-    corners = ((1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0))
-    for i, (sx, sy) in enumerate(corners):
-        ox, oy = sx * FOOT_OUTER, sy * FOOT_OUTER
-        ix, iy = sx * inner, sy * inner
-        y_inner = oy - sy * tw
-        x_inner = ox - sx * tw
-        cx = 0.5 * (ix + ox)
-        cy = 0.5 * (y_inner + oy)
+    h = SKIRT_H if lod < 2 else 0.170
+    t = SKIRT_T if lod < 2 else 0.070
+    half = FRAME_HALF
+    # Four side skirts — folded-down angle claiming the cell edges.
+    sides = (
+        ("SkirtXPos", (half - t * 0.5, 0.0, h * 0.5), (t * 0.5, half - t, h * 0.5)),
+        ("SkirtXNeg", (-(half - t * 0.5), 0.0, h * 0.5), (t * 0.5, half - t, h * 0.5)),
+        ("SkirtYPos", (0.0, half - t * 0.5, h * 0.5), (half - t, t * 0.5, h * 0.5)),
+        ("SkirtYNeg", (0.0, -(half - t * 0.5), h * 0.5), (half - t, t * 0.5, h * 0.5)),
+    )
+    for name, loc, scale in sides:
         parts.append(add_box(
-            f"ShoeX{i}", (cx, cy, h * 0.5),
-            (abs(ox - ix) * 0.5, tw * 0.5, h * 0.5),
-            mats["paint"], collection, bevel=bevel, role="paint",
+            name, loc, scale, mats["paint"], collection, bevel=bevel, role="paint",
         ))
-        cx2 = 0.5 * (x_inner + ox)
-        cy2 = 0.5 * (iy + oy)
-        parts.append(add_box(
-            f"ShoeY{i}", (cx2, cy2, h * 0.5),
-            (tw * 0.5, abs(oy - iy) * 0.5, h * 0.5),
-            mats["paint"], collection, bevel=bevel, role="paint",
-        ))
-        if lod == 0:
+    # Inward foot on each skirt so the angle sits on the rock.
+    if lod < 2:
+        foot_w = 0.070
+        foot_h = 0.028
+        feet = (
+            ("SkirtFootXPos", (half - t - foot_w * 0.5, 0.0, foot_h * 0.5),
+             (foot_w * 0.5, half - t - 0.04, foot_h * 0.5)),
+            ("SkirtFootXNeg", (-(half - t - foot_w * 0.5), 0.0, foot_h * 0.5),
+             (foot_w * 0.5, half - t - 0.04, foot_h * 0.5)),
+            ("SkirtFootYPos", (0.0, half - t - foot_w * 0.5, foot_h * 0.5),
+             (half - t - 0.04, foot_w * 0.5, foot_h * 0.5)),
+            ("SkirtFootYNeg", (0.0, -(half - t - foot_w * 0.5), foot_h * 0.5),
+             (half - t - 0.04, foot_w * 0.5, foot_h * 0.5)),
+        )
+        for name, loc, scale in feet:
             parts.append(add_box(
-                f"ShoeReturnX{i}", (cx, y_inner + sy * 0.012, h + 0.020),
-                (abs(ox - ix) * 0.34, 0.012, 0.020),
-                mats["paint"], collection, bevel=bevel * 0.5, role="paint",
+                name, loc, scale, mats["paint"], collection,
+                bevel=bevel * 0.5, role="paint",
             ))
+    # Corner pads: thickened frame mass under the square corners, not L-glyphs.
+    # LOD2 keeps the square via deck+skirt; pads are LOD0/1 construction.
+    if lod < 2:
+        pad = SHOE_W
+        ph = SHOE_H
+        inset = half - pad * 0.52
+        corners = ((1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0))
+        for i, (sx, sy) in enumerate(corners):
+            cx, cy = sx * inset, sy * inset
             parts.append(add_box(
-                f"ShoeReturnY{i}", (x_inner + sx * 0.012, cy2, h + 0.020),
-                (0.012, abs(oy - iy) * 0.34, 0.020),
-                mats["paint"], collection, bevel=bevel * 0.5, role="paint",
+                f"CornerPad{i}", (cx, cy, ph * 0.5),
+                (pad * 0.5, pad * 0.5, ph * 0.5),
+                mats["paint"], collection, bevel=bevel, role="paint",
             ))
-        inner_corner = Vector((x_inner, y_inner, h))
-        collar_hit = Vector((sx, sy, 0.0)).normalized() * (COLLAR_R1 - 0.035)
-        t_perp = Vector((-sy, sx, 0.0)) * (0.048 if lod < 2 else 0.062)
-        parts.append(folded_sheet(
-            f"ShoeGusset{i}",
-            inner_corner - t_perp,
-            inner_corner + t_perp,
-            Vector((collar_hit.x, collar_hit.y, COLLAR_Z0 + 0.14)) + t_perp * 0.65,
-            Vector((collar_hit.x, collar_hit.y, COLLAR_Z0 + 0.14)) - t_perp * 0.65,
-            0.022 if lod < 2 else 0.030,
-            mats["paint"], collection,
-            bevel=bevel * 0.5 if bevel else 0.0, role="paint",
-        ))
-        if lod == 2:
-            continue
-        off = Vector((sx, -sy, 0.0) if i % 2 == 0 else (-sx, sy, 0.0)) * 0.07
-        parts.append(folded_sheet(
-            f"ShoeGussetB{i}",
-            Vector((x_inner, cy, h)) + off * 0.15,
-            Vector((cx, y_inner, h)) + off * 0.15,
-            Vector((collar_hit.x, collar_hit.y, COLLAR_Z0 + 0.20)) + off * 0.12,
-            Vector((collar_hit.x, collar_hit.y, COLLAR_Z0 + 0.10)),
-            0.016, mats["paint"], collection,
-            bevel=0.003 if lod == 0 else 0.0, role="paint",
-        ))
-        if lod == 0:
-            bolt_a = Vector((cx, oy - sy * (tw * 0.42), h + 0.010))
-            bolt_b = Vector((ox - sx * (tw * 0.42), cy2, h + 0.010))
-            for k, world in enumerate((bolt_a, bolt_b)):
+            if lod == 0:
+                parts.append(add_box(
+                    f"CornerCap{i}", (cx, cy, DECK_Z1 + 0.012),
+                    (pad * 0.32, pad * 0.32, 0.012),
+                    mats["paint"], collection, bevel=0.003, role="paint",
+                ))
                 parts.extend(add_hex_bolt(
-                    f"ShoeBolt{i}_{k}", world, (0, 0, 1), mats["wear"], collection,
-                    group="static", lod=lod,
-                    head_r=0.013, head_h=0.007, shank_r=0.007, shank_h=0.014,
+                    f"CornerBolt{i}a",
+                    (cx + sx * 0.06, cy - sy * 0.06, DECK_Z1 + 0.022),
+                    (0, 0, 1), mats["wear"], collection, lod=lod,
+                    head_r=0.014, head_h=0.007, shank_r=0.007, shank_h=0.016,
+                ))
+                parts.extend(add_hex_bolt(
+                    f"CornerBolt{i}b",
+                    (cx - sx * 0.06, cy + sy * 0.06, DECK_Z1 + 0.022),
+                    (0, 0, 1), mats["wear"], collection, lod=lod,
+                    head_r=0.014, head_h=0.007, shank_r=0.007, shank_h=0.016,
                 ))
     return parts
 
 
 def build_hatch(mats, collection, lod):
-    ang = HATCH_ANG
-    c, s = math.cos(ang), math.sin(ang)
-    z = COLLAR_Z1 + 0.028
-    r = 0.78
+    if lod == 2:
+        return []
+    loc = HATCH_POS
     hatch = add_box(
-        "ServiceHatch", (r * c, r * s, z),
-        (0.132, 0.062, 0.012), mats["accent"], collection,
-        bevel=0.003 if lod < 2 else 0.0, rot=(0, 0, ang), role="accent",
+        "ServiceHatch", loc,
+        (0.155, 0.085, 0.014), mats["accent"], collection,
+        bevel=0.003 if lod < 2 else 0.0, role="accent",
     )
     parts = [hatch]
     if lod < 2:
         parts.append(add_box(
-            "HatchStrap", (r * c, r * s, z + 0.010),
-            (0.142, 0.022, 0.006), mats["wear"], collection,
-            bevel=0.002, rot=(0, 0, ang), role="wear",
+            "HatchStrap", (loc[0], loc[1], loc[2] + 0.012),
+            (0.168, 0.028, 0.007), mats["wear"], collection,
+            bevel=0.002, role="wear",
         ))
-    nbolts = 2 if lod == 0 else 0
-    t = Vector((-s, c, 0.0))
-    radial = Vector((c, s, 0.0))
-    for k in range(nbolts):
-        loc = Vector((r * c, r * s, z + 0.016)) + radial * (-0.06 + 0.12 * k) + t * 0.028
-        parts.extend(add_hex_bolt(
-            f"HatchBolt{k}", loc, (0, 0, 1), mats["wear"], collection,
-            head_r=0.011, head_h=0.006, shank_r=0.006, shank_h=0.012, lod=lod,
-        ))
+    if lod == 0:
+        for k, dx in enumerate((-0.08, 0.08)):
+            parts.extend(add_hex_bolt(
+                f"HatchBolt{k}",
+                (loc[0] + dx, loc[1] + 0.032, loc[2] + 0.018),
+                (0, 0, 1), mats["wear"], collection,
+                head_r=0.012, head_h=0.006, shank_r=0.006, shank_h=0.012, lod=lod,
+            ))
     return parts
 
 
 def build_lamp(mats, collection, lod):
-    """Asymmetric rooted service fixture: arm, socket, hood, recessed lens.
-    Only the lens emits, and it is small — not a beacon or painted tab."""
-    ang = LAMP_ANG
-    c, s = math.cos(ang), math.sin(ang)
-    root = Vector((0.72 * c, 0.72 * s, COLLAR_Z1 + 0.01))
-    tip = Vector((LAMP_R * c, LAMP_R * s, COLLAR_Z1 + 0.08))
-    mid = (root + tip) * 0.5
+    """Side-mounted hooded fixture on the +Y frame. Open cavity faces the well
+    so works_top sees a framed dark mouth, not a yellow tab on the ring."""
+    px, py, pz = LAMP_POS
     parts = []
-    arm_len = (tip - root).length
-    parts.append(add_box(
-        "LampArm", (mid.x, mid.y, mid.z),
-        (arm_len * 0.5, 0.038 if lod < 2 else 0.044, 0.022 if lod < 2 else 0.026),
+    arm = add_box(
+        "LampArm",
+        (px, py - 0.055, DECK_Z1 + 0.028),
+        (0.036 if lod < 2 else 0.044, 0.090, 0.018),
         mats["paint"], collection,
-        bevel=0.003 if lod == 0 else 0.0, rot=(0, 0, ang),
-        role="paint", group="lamp",
-    ))
-    sock_z = tip.z + 0.022
+        bevel=0.003 if lod == 0 else 0.0, role="paint", group="lamp",
+    )
+    parts.append(arm)
     if lod < 2:
         parts.append(add_cylinder(
-            "LampSocket", (tip.x, tip.y, sock_z),
-            0.040, 0.040, mats["wear"], collection,
+            "LampSocket", (px, py, pz),
+            0.042, 0.036, mats["wear"], collection,
             vertices=10 if lod == 0 else 8, bevel=0.0, role="wear", group="lamp",
         ))
-    hood_h = 0.048 if lod < 2 else 0.040
+    hood_s = (0.110 if lod < 2 else 0.100, 0.078 if lod < 2 else 0.072, 0.048 if lod < 2 else 0.044)
+    hood_z = pz + 0.052
     hood = add_box(
         "LampHood",
-        (tip.x - c * 0.012, tip.y - s * 0.012, sock_z + 0.058),
-        (0.095 if lod < 2 else 0.088, 0.062 if lod < 2 else 0.058, hood_h),
-        mats["paint"], collection,
-        bevel=0.004 if lod == 0 else 0.0, rot=(0, 0, ang),
-        role="paint", group="lamp",
+        (px, py + 0.012, hood_z),
+        hood_s, mats["paint"], collection,
+        bevel=0.004 if lod == 0 else 0.0, role="paint", group="lamp",
     )
+    if lod < 2:
+        # Cutter starts above the hood and eats through the top so works_top
+        # sees a framed cavity. A cutter entirely inside the hood is a sealed void.
+        cutter = add_box(
+            "LampHoodCutter",
+            (px, py + 0.004, hood_z + 0.028),
+            (hood_s[0] - 0.030, hood_s[1] - 0.022, hood_s[2] + 0.010),
+            None, collection, bevel=0.0, role="paint", group="lamp",
+        )
+        boolean_difference(hood, cutter)
     parts.append(hood)
-    lens_loc = Vector((tip.x, tip.y, sock_z + 0.050))
+    lens_loc = Vector((px, py - 0.008, pz + 0.042))
     parts.append(add_cylinder(
         "LampLens", (lens_loc.x, lens_loc.y, lens_loc.z),
-        0.024 if lod < 2 else 0.026, 0.012, mats["lamp"], collection,
+        0.026 if lod < 2 else 0.028, 0.012, mats["lamp"], collection,
         vertices=10 if lod == 0 else 8, bevel=0.0, role="lamp", group="lamp",
     ))
     return parts, lens_loc
@@ -1689,7 +1750,7 @@ def combine_lods(lod_reports, lamp_loc):
         "family": "asteroid_works",
         "packet": PACKET,
         "cycle": CYCLE,
-        "role": "claim-anchor wellhead — the thing that claims the rock",
+        "role": "claim-anchor wellhead — square flange around a dark open well",
         "forward": "+X",
         "up": "+Y",
         "starboard": "+Z",
@@ -2022,32 +2083,47 @@ def override_atlas_emit(meshes, kind):
 
 
 def override_id(meshes):
+    """Emit RoleAO vertex colours so liner / paint / wear / accent stay distinct
+    after the three bake targets are joined."""
     backups = {}
-    mats = {}
+    mat = bpy.data.materials.new("ID_RoleAO")
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    emit = nt.nodes.new("ShaderNodeEmission")
+    emit.inputs["Strength"].default_value = 1.0
+    attr = nt.nodes.new("ShaderNodeAttribute")
+    attr.attribute_name = "RoleAO"
+    nt.links.new(attr.outputs["Color"], emit.inputs["Color"])
+    nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
+    fallback = {}
     for role, rgb in ROLE_FLAT.items():
-        mat = bpy.data.materials.new(f"ID_{role}")
-        mat.use_nodes = True
-        mat.node_tree.nodes.clear()
-        out = mat.node_tree.nodes.new("ShaderNodeOutputMaterial")
-        emit = mat.node_tree.nodes.new("ShaderNodeEmission")
-        emit.inputs["Color"].default_value = (*rgb, 1.0)
-        emit.inputs["Strength"].default_value = 1.0
-        mat.node_tree.links.new(emit.outputs["Emission"], out.inputs["Surface"])
-        mats[role] = mat
-    default = mats["paint"]
+        fm = bpy.data.materials.new(f"ID_{role}")
+        fm.use_nodes = True
+        fm.node_tree.nodes.clear()
+        fout = fm.node_tree.nodes.new("ShaderNodeOutputMaterial")
+        femit = fm.node_tree.nodes.new("ShaderNodeEmission")
+        femit.inputs["Color"].default_value = (*rgb, 1.0)
+        femit.inputs["Strength"].default_value = 1.0
+        fm.node_tree.links.new(femit.outputs["Emission"], fout.inputs["Surface"])
+        fallback[role] = fm
     for obj in meshes:
         backups[obj.name] = [slot.material for slot in obj.material_slots]
+        has_role = bool(obj.type == "MESH" and obj.data and obj.data.color_attributes.get("RoleAO"))
         name = obj.name.lower()
-        if "lamp" in name and "spin" not in name:
-            mat = mats["lamp"]
+        if has_role:
+            chosen = mat
+        elif "lamp" in name and "spin" not in name:
+            chosen = fallback["lamp"]
         elif "spin" in name:
-            mat = mats["wear"]
+            chosen = fallback["wear"]
         else:
-            mat = default
+            chosen = fallback["paint"]
         if obj.material_slots:
-            obj.material_slots[0].material = mat
+            obj.material_slots[0].material = chosen
         else:
-            obj.data.materials.append(mat)
+            obj.data.materials.append(chosen)
     return backups
 
 
@@ -2315,31 +2391,31 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     audit_md = FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md"
     audit_md.write_text(
         "\n".join([
-            "# Massline Core — material and shape audit (Cycle 03)",
+            "# Massline Core — material and shape audit (Cycle 04)",
             "",
             f"Identity `{IDENTITY}`. Packet `{PACKET}`. State `design_candidate`.",
             "Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.",
             "",
             "## Shape grammar",
             "",
-            "Cycle 02 still collapsed to a washer/manhole: continuous dark torus, shallow",
-            "brown plug, cube feet, lost lap gaps, round site dot. Cycle 03 keeps the open",
-            "well and inner race and rebuilds: eight overlapping hat/U-channel collar",
-            "courses with separated upper/lower flanges, directional laps and shadowed",
-            "pitch breaks; four folded dark-painted angle shoes with gussets into the",
-            "collar web; a tapered dark refractory well with a true inner wall; one",
-            "asymmetric rooted hooded lamp (arm, socket, hood, recessed lens).",
+            "Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four",
+            "L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, a chrome-coin",
+            "inner race, and a plus-dot site marker. Cycle 04 keeps the open well and inner",
+            "race and rebuilds: a square wellhead flange with a round bore; a continuous",
+            "U-channel opening +Z (inner flange / dark trench / outer flange); a folded",
+            "square angle skirt on the rock; corner pads as frame mass; a nested dark race;",
+            "one side-mounted hooded lamp with a visible cavity.",
             "",
-            "Clay must read: dark circular hole, segmented hat-channel collar, four claimed",
-            "corners, a separate inner race, one hooded fixture. A washer / manhole / gear /",
-            "tire / nut / nested-square puck / round site dot is a fail.",
+            "Clay must read: dark circular hole in a squat square machine, U-channel trench,",
+            "skirt thickness, one hooded fixture. A washer / manhole / gear / tire / nut /",
+            "compass-rose / plus-dot / generic slab is a fail.",
             "",
             "## Material bill (billed zones)",
             "",
             "| Zone | Substrate | Finish | Forbidden |",
             "|---|---|---|---|",
-            "| Collar / shoes / hood / arm | formed steel | dark alkyd dielectric, edge wear | safety yellow, plastic, uniform AO dirt |",
-            "| Race / bolts / hatch strap | machined steel | restrained bare steel | chrome, coin highlight |",
+            "| Collar / deck / skirt / hood / arm | formed steel | dark alkyd dielectric, edge wear | safety yellow, plastic, uniform AO dirt |",
+            "| Race / bolts / hatch strap | machined steel | restrained dark bare steel | chrome, coin highlight |",
             "| Well liner | dry refractory | dark mineral, dusty throat | brown disk/plug, metal paint, glowing well |",
             "| Hatch cover | primed steel | restrained warm oxide | yellow brick |",
             "| Lamp lens | recessed dielectric | small warm emissive | beacon, painted tab, emissive ring |",
@@ -2349,12 +2425,12 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "## Construction sequence",
             "",
             "1. Tapered dark liner, real lip, open through, true inner wall.",
-            "2. Eight hat-channel courses with pitch-break gaps and raised directional laps.",
-            "3. Four L-plan angle shoes + gussets into the collar web.",
-            "4. Separate thin inner bearing race (ring_spin).",
-            "5. One hatch, one rooted hooded lamp.",
+            "2. Continuous U-channel collar, cavity +Z, four cardinal lap straps.",
+            "3. Square deck (round bore) + folded angle skirt + corner pads on the rock.",
+            "4. Nested dark inner bearing race (ring_spin) in a rebate.",
+            "5. One hatch on the +X deck, one hooded lamp on the +Y frame.",
             "",
-            "Every visible part has a load path into the liner or a shoe. No occupancy fins.",
+            "Every visible part has a load path into the liner or the skirt. No occupancy fins.",
             "",
         ]),
         encoding="utf-8",
@@ -2408,6 +2484,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "generic grid or noise recipe", "shiny plastic", "uniform edge wear", "leather",
             "billboard", "decal-hole", "flat AO", "chrome", "black plastic", "uniform AO dirt",
             "nested-square puck feet", "brown well plug", "beacon lamp",
+            "pie-wedge collar", "occupancy-arrow shoes", "plus-dot site icon", "chrome coin race",
         ],
         "componentReferenceDecision": "not_needed",
         "citedReferences": [rel(p) for p in CITED_REFS],
@@ -2431,7 +2508,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "Angle-limited bevel ~7 mm, shade_smooth_by_angle 28°, weighted normals keep_sharp.",
         bevelWidthM=0.007, shadeAngleDeg=28.0)
     row("MTX-03", "implemented", "works_top_clay", "pass", True,
-        "Tapered dark refractory liner with a real lip and true inner wall; open through, not a brown plug.")
+        "Tapered dark refractory liner with a real lip and true inner wall; open through a square flange, not a brown plug.")
     row("MTX-16", "implemented", "works_top", "pass", True,
         "Unique UV0 per joined bake target packed into non-overlapping atlas columns (body/spin/lamp).")
     row("MTX-20", "implemented", "normal_isolation", "pass", True,
@@ -2441,11 +2518,11 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-22", "implemented", "normal_isolation", "pass", True,
         "OpenGL tangent normals on unique UV0; isolation is world-space geometric, distinct from ORM.")
     row("MTX-23", "implemented", "orm_isolation", "pass", True,
-        "Vertex hemisphere AO via BVH, rasterized into ORM.R; AO at courses, gussets, feet, race, throat.")
+        "Vertex hemisphere AO via BVH, rasterized into ORM.R; AO at U-trench, skirt, pads, race, throat.")
     row("MTX-24", "implemented", "orm_isolation", "pass", True,
         "Vertex curvature from neighbour-normal angle drives wear; no checker or grid stamp.")
     row("MTX-25", "implemented", "orm_isolation", "pass", True,
-        "Cavity from curvature + short AO darkens liner mouth, course gaps, gusset and foot contacts.")
+        "Cavity from curvature + short AO darkens liner mouth, U-trench floor, skirt and pad contacts.")
     row("MTX-30", "implemented", "works_top", "pass", True,
         "AO/curvature/normal authored from the mesh. Cited concept stills are never sampled as maps.")
     row("MTX-31", "implemented", "material_id", "pass", True,
@@ -2457,15 +2534,15 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-39", "implemented", "works_top", "pass", True,
         "Edge-wear from curvature on alkyd; no uniform AO dirt crayon.")
     row("MTX-46", "implemented", "works_top_clay", "pass", True,
-        "No yellow livery, no emissive torus, no nested-square pucks, no plastic default.")
+        "No yellow livery, no emissive torus, no pie wedges, no occupancy arrows, no plastic default.")
     row("MTX-50", "implemented", "hook_identity", "pass", True,
         "glTF extras stamp identity, LOD prefixes, sockets, collision helper, OpenGL/ORM contract.")
     row("MTX-52", "implemented", "works_top_clay", "pass", True,
-        "Macro: hole + hat-channel collar + four corner angle shoes + separate inner race + rooted lamp.")
+        "Macro: square flange with round bore, U-channel trench, skirt on the rock, nested race, hooded lamp.")
     row("MTX-53", "not_applicable", "works_top", "pass", True,
         "Manufactured wellhead, not a rock/wreck; no sculpt/photogrammetry bake is required.")
     row("MTX-54", "not_applicable", "works_top", "pass", True,
-        "Cycle 03 correction of Cycle 02; Cycle 01 and Cycle 02 evidence bytes are not rewritten.")
+        "Cycle 04 correction of Cycle 03; Cycle 01–03 evidence bytes are not rewritten.")
 
     ledger = {
         "schema": "spaceface.advancedModelTechniqueLedger.v1",
@@ -2524,10 +2601,10 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "citedReferences": [rel(p) for p in CITED_REFS],
         "contactSheet": rel(REF_DIR / "CONTACT_SHEET.png"),
         "notes": (
-            "Cycle 03 square-anchor collar correction. Not wired, not released, not promoted. "
+            "Cycle 04 square-flange wellhead correction. Not wired, not released, not promoted. "
             "Reviewers were not launched. Disposition review_pending/revise. Remaining visual "
-            "risk: whether hat-course pitch breaks hold at 120 px/cell and whether four angle "
-            "shoes keep a square silhouette at legal 19 px/cell without inflating the envelope."
+            "risk: whether the U-trench and square skirt hold at 120 px/cell and whether site "
+            "LOD1 reads as a claimed square with a hole rather than a plus-dot or slab."
         ),
     }
     (EVIDENCE_DIR / "EPOCH.json").write_bytes(
@@ -2535,7 +2612,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     )
     (EVIDENCE_DIR / "CYCLE.md").write_text(
         "\n".join([
-            "# PQ-131.02 Massline Core — Cycle 03 evidence",
+            "# PQ-131.02 Massline Core — Cycle 04 evidence",
             "",
             f"Disposition: **review_pending** / **revise**. State: `design_candidate`. Identity: `{IDENTITY}`.",
             f"Source SHA-256: `{inventory['sha256']}`",
@@ -2545,12 +2622,12 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             f"Hooks: {', '.join(inventory['hooks'])}",
             "",
             "Stills from the exported GLB at 1920×1080, live works camera (31° FOV, +Z up).",
-            "Independent reviewers were not launched this cycle. Cycle 01 and Cycle 02 evidence is immutable.",
+            "Independent reviewers were not launched this cycle. Cycle 01–03 evidence is immutable.",
             "",
-            "Correction vs Cycle 02: hat/U-channel collar with separated flanges, directional",
-            "laps and shadowed pitch breaks; folded dark angle shoes claiming four corners;",
-            "deeper dark well with true inner wall; rooted hooded lamp (hood/socket/arm);",
-            "LOD1/2 keep the square-anchor silhouette at 19 px/cell.",
+            "Correction vs Cycle 03: square wellhead flange with round bore; U-channel opening",
+            "+Z so the trench reads from above; folded square angle skirt on the rock; corner",
+            "pads as frame mass (no L-arrows); nested dark race; side-mounted hooded lamp with",
+            "a visible cavity. LOD1/2 keep square outer + open well + trench + lamp.",
             "",
             "Still `review_pending` / `revise`. Not wired, not released, not promoted.",
             "",
@@ -2612,13 +2689,16 @@ def main(argv=None):
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
     skip_stills, skip_hidden, stills_only = parse_args(argv)
-    if CYCLE != 3 or EVIDENCE_DIR.name != "cycle_003":
-        raise RuntimeError("Cycle 03 builder must write cycle_003 only")
-    if EVIDENCE_DIR.resolve() in {CYCLE_001_DIR.resolve(), CYCLE_002_DIR.resolve()}:
-        raise RuntimeError("refusing to write over Cycle 01/02 evidence")
-    frozen_prev = {**hash_tree(CYCLE_001_DIR), **hash_tree(CYCLE_002_DIR)}
+    if CYCLE != 4 or EVIDENCE_DIR.name != "cycle_004":
+        raise RuntimeError("Cycle 04 builder must write cycle_004 only")
+    frozen_dirs = (CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR)
+    if EVIDENCE_DIR.resolve() in {d.resolve() for d in frozen_dirs}:
+        raise RuntimeError("refusing to write over Cycle 01/02/03 evidence")
+    frozen_prev = {}
+    for folder in frozen_dirs:
+        frozen_prev.update(hash_tree(folder))
     if not frozen_prev:
-        raise RuntimeError("Cycle 01/02 evidence missing; refuse to build Cycle 03 without it")
+        raise RuntimeError("Cycle 01/02/03 evidence missing; refuse to build Cycle 04 without it")
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
@@ -2642,7 +2722,7 @@ def main(argv=None):
         contract = {"identity": IDENTITY, "assetId": ASSET_ID}
     else:
         lod_reports = []
-        lamp_loc = Vector((LAMP_R * math.cos(LAMP_ANG), LAMP_R * math.sin(LAMP_ANG), COLLAR_Z1 + 0.14))
+        lamp_loc = Vector(LAMP_POS)
         for lod in (0, 1, 2):
             report, loc = build_lod(lod)
             lod_reports.append(report)
@@ -2684,11 +2764,13 @@ def main(argv=None):
 
     epoch = write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspect, hidden)
     check_contract(inventory, glb_inspect, camera_facts, occupancy)
-    after_prev = {**hash_tree(CYCLE_001_DIR), **hash_tree(CYCLE_002_DIR)}
+    after_prev = {}
+    for folder in frozen_dirs:
+        after_prev.update(hash_tree(folder))
     if after_prev != frozen_prev:
         mutated = [k for k in after_prev if after_prev.get(k) != frozen_prev.get(k)]
         missing = [k for k in frozen_prev if k not in after_prev]
-        raise RuntimeError(f"Cycle 01/02 evidence mutated: {mutated or missing}")
+        raise RuntimeError(f"Cycle 01/02/03 evidence mutated: {mutated or missing}")
     print(json.dumps({
         "ok": True,
         "cycle": CYCLE,
@@ -2699,7 +2781,11 @@ def main(argv=None):
         "disposition": "review_pending",
         "stills": list(stills.keys()),
         "hiddenExit": hidden.get("exit"),
-        "freeze": {"cycle_001": len(hash_tree(CYCLE_001_DIR)), "cycle_002": len(hash_tree(CYCLE_002_DIR))},
+        "freeze": {
+            "cycle_001": len(hash_tree(CYCLE_001_DIR)),
+            "cycle_002": len(hash_tree(CYCLE_002_DIR)),
+            "cycle_003": len(hash_tree(CYCLE_003_DIR)),
+        },
         "camera": {
             "works_top_D": camera_facts.get("works_top", {}).get("distance"),
             "works_site_D": camera_facts.get("works_site", {}).get("distance"),
