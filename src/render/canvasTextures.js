@@ -38,14 +38,35 @@ function finalize(canvas, { srgb = false, anisotropy = 4, repeat = null } = {}) 
   return tex;
 }
 
+// Scratch buffers for the noise synthesiser.
+//
+// A 1024px tile is a 4 MiB Float32Array, `makeNoiseTexture` sums `octaves` of them (4 by default)
+// and adds an accumulator, so one texture used to allocate ~20 MiB and drop all of it. Measured
+// 2026-08-29 with the probe's typed-array census, this file was the largest attributable GAME
+// allocator in a flight: 49 MB at the field below plus 12.3 MB for the accumulator.
+//
+// Pooling is safe here and deliberately narrow: `valueNoiseField` has exactly ONE caller, its
+// result is consumed by the accumulate loop before the next call, and nothing retains it. Both
+// buffers are fully written before they are read (the field assigns every index; the accumulator is
+// explicitly zeroed), so a reused buffer cannot leak stale values into a texture. These functions
+// are synchronous and non-reentrant, which is what makes a shared scratch legal at all — do not
+// reuse ONE buffer for both, since the accumulator reads the field.
+let _noiseFieldScratch = null;
+let _noiseAccScratch = null;
+let _noiseGridScratch = null;
+
+function scratchFloat32(existing, length) {
+  return (existing && existing.length === length) ? existing : new Float32Array(length);
+}
+
 // Value-noise sampled on an integer lattice with smooth (cosine) interpolation; fbm-summed.
 function valueNoiseField(size, cells, seed) {
   const rnd = mulberry32(seed);
   const g = cells + 1;
-  const grid = new Float32Array(g * g);
+  const grid = _noiseGridScratch = scratchFloat32(_noiseGridScratch, g * g);
   for (let i = 0; i < grid.length; i++) grid[i] = rnd();
   const at = (x, y) => grid[(y % g) * g + (x % g)];
-  const out = new Float32Array(size * size);
+  const out = _noiseFieldScratch = scratchFloat32(_noiseFieldScratch, size * size);
   const scale = cells / size;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -69,7 +90,8 @@ function valueNoiseField(size, cells, seed) {
  */
 export function makeNoiseTexture(opts = {}) {
   const { size = 256, seed = 1, octaves = 4, baseCells = 4, contrast = 1.0, brightness = 0.0, tint = '#ffffff' } = opts;
-  const acc = new Float32Array(size * size);
+  const acc = _noiseAccScratch = scratchFloat32(_noiseAccScratch, size * size);
+  acc.fill(0);
   let amp = 1, totAmp = 0, cells = baseCells;
   for (let o = 0; o < octaves; o++) {
     const field = valueNoiseField(size, Math.max(1, Math.round(cells)), seed + o * 131);
