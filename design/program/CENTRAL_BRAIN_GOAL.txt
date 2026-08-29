@@ -1,0 +1,16 @@
+Start at CANONICAL_BUILD_MAP.md, then read design/program/CENTRAL_BRAIN.md.
+
+Mission: converge SpaceFace toward one professional, coherent player experience instead of accumulating locally complete features. Use the existing PQ queue as work identity and the Central Brain as the manager layer.
+
+Run:
+  python tools/agentic/manager_cycle.py --refresh --limit 1 --format prompt
+
+Take the returned dependency-ready unit. Before editing, reproduce its player-facing defect with the smallest named scenario from tools/agentic/scenarios.json. Reuse src/testing/lab, runtimeWitness, and src/observability before adding instrumentation. Name one causal hypothesis, implement one bounded intervention, then replay the same seed/input policy and compare. Keep only a real improvement.
+
+If no admitted unit attacks the largest observed quality debt, use one bounded INFERENCE 1 unit grounded in evidence; do not invent a second queue or PQ identity.
+
+Prioritize, in order: broken/invisible content and controls; hitches/freezes; flight/combat intentionality; visual/VFX coherence; breadth; fine realism. Do not spend premium-detail passes while frequent L0/L1 defects remain on the same route.
+
+Never rerun an unchanged failure fingerprint. After two failed repair cycles with the same causal model, record the assumption as falsified and choose a narrower scenario or different model. No recursive review campaigns.
+
+Stop after the bounded unit reaches DONE/NOT DONE with exact evidence and a next executable action.
