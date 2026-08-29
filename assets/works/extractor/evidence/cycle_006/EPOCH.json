@@ -2,16 +2,28 @@
   "schema": "spaceface.worksExtractorCycleEpoch.v1",
   "cycle": 6,
   "epoch": "cycle_006",
-  "disposition": "review_pending",
-  "state": "design_candidate",
+  "disposition": "source_keep",
+  "state": "integration_candidate",
   "gates": {
     "G0": "evidence_ready",
-    "G1": "open",
-    "G2": "open",
-    "G4": "open",
+    "G1": "pass",
+    "G2": "pass",
+    "G4": "pass",
+    "G6": "open",
     "G7": "open"
   },
-  "independentReview": "not_launched",
+  "independentReview": {
+    "reviewer": "/root/extractor_cycle06_review",
+    "reviewedCommit": "19acb43172a87a04f553ca99dd87fc64bb762c39",
+    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "p0": 0,
+    "p1": 0,
+    "diagnosticRepairCommit": "050ac8910462aa15556fac99f490e5d4a726b63e",
+    "hiddenFaceDiagnosticSha256": "E174D8A9481CFD5DA915D6804F76E77C801AF1449366CD2A99EA16DE07F07089",
+    "hiddenFaceAuthority": "diagnostic_only_not_culling_proof"
+  },
   "cycle01Frozen": true,
   "cycle02Frozen": true,
   "cycle03Frozen": true,
@@ -708,7 +720,7 @@
     }
   },
   "normalRouteEvidence": {
-    "status": "unavailable_unintegrated_candidate",
+    "status": "open_pending_current_player_route_capture",
     "bestAvailableWorksContext": {
       "path": "assets/works/extractor/evidence/cycle_006/works_site.png",
       "sha256": "B7A24B367FA1EF4FFE4EF4B569A44B0B83E01B316B4CF69F5AE283F9BBDEA0E9",
@@ -794,7 +806,7 @@
     ]
   },
   "notes": [
-    "Cycle 06 correction candidate only. Not wired, not released, not accepted.",
+    "Cycle 06 exact-hash source candidate independently reviewed KEEP; release/runtime G6 and player-route G7 remain open.",
     "Cycle 01 through Cycle 05 evidence folders are byte-frozen.",
     "Cycle 05 independent exact-hash verdict was REVISE; Cycle 06 does not overwrite that result.",
     "Open +X aperture is framed by broad painted lateral shoulders with short inward refractory liners; no pale longitudinal free ends, closing floor, wall, roof, or grate.",
@@ -802,9 +814,9 @@
     "Matched LOD0/1/2 stills use one legal 120 px/cell camera without per-LOD reframing.",
     "LOD2 is also captured at its honest 34\u201345 px projected-machine switch band.",
     "Material-ID evidence uses the exact exported UV0 with the authored role-color atlas; it is not a grayscale isolation fallback.",
-    "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
+    "Author-side visible-zone register is exhaustive and the independent exact-hash source review confirmed the whole-asset picture with no P0/P1 defects.",
     "Visible-face diagnostic evaluates each LOD independently at supported render-pixel centres; unobserved faces are not proven hidden and cannot authorize culling or deletion.",
-    "No Cycle 06 independent reviewer has run. G1/G2/G4/G7 remain open.",
-    "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture."
+    "Reviewer /root/extractor_cycle06_review returned KEEP against source commit 19acb43172a87a04f553ca99dd87fc64bb762c39; the diagnostic-only visible-face repair at 050ac8910462aa15556fac99f490e5d4a726b63e did not change the source GLB.",
+    "The source is released and wired, but no current Browser/Electron player-route capture is claimed here; G6/G7 stay open pending controller acceptance."
   ]
 }

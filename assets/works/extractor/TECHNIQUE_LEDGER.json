@@ -7,8 +7,8 @@
   "class": "place",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "clayStillReadsAsPrimitives": false,
-  "independentReview": "pending",
-  "independentReviewer": null,
+  "independentReview": "KEEP",
+  "independentReviewer": "/root/extractor_cycle06_review",
   "forbidden": {
     "factoryLoftPlusBoxes": false,
     "sharedSheetTint": false,

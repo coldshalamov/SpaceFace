@@ -1,6 +1,6 @@
 {
   "cycle": 6,
-  "disposition": "review_pending",
+  "disposition": "source_keep",
   "combinedSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
   "partsSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
   "cycle01Frozen": true,
@@ -169,5 +169,37 @@
     "extractor_atlas_lod2_id.png": "CC2EA897D079FD0768EA8BBB1C9691E38707E7E5FB726C0919981A182C6053D7",
     "extractor_atlas_lod2_normal.png": "61FA8E11DE10264F74DA39009697FDA8931966A5E4BB6BC7C2B6CB21C42FEA6E",
     "extractor_atlas_lod2_orm.png": "F4DDF2D09F16D3E924E0CB4A56F22F56F22250A69B9D3C0D29F6695FC0E83305"
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_extractor.glb",
+    "sha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
+    "bytes": 2989196,
+    "ktx2Textures": 9,
+    "meshoptBufferViews": 63
+  },
+  "renderPackage": {
+    "key": "works-extractor",
+    "metadataPath": "assets/ships/release/render-packages/works-extractor/render-package.json",
+    "metadataSha256": "89fb0fef40cabb073e0951c0885948dca61b23f9f21b50d832a62ee7b67fb71d",
+    "contentHash": "3b1f56f5da93c6b1895c72a19f58397c1979305a271c32af3c5fcaced1cba224",
+    "runtimeHash": "3da74f0979cb21e8d726231a2b0adf55cfbca1888137db679e7554445068b2cb",
+    "renderGlbPath": "assets/ships/release/render-packages/works-extractor/render.glb",
+    "renderGlbSha256": "d5573dd1b099c742f2eb3fc5f7312f2a9da5e80688ff7f713167580037b9a3be",
+    "renderGlbBytes": 3084696
+  },
+  "independentReview": {
+    "reviewer": "/root/extractor_cycle06_review",
+    "reviewedCommit": "19acb43172a87a04f553ca99dd87fc64bb762c39",
+    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "p0": 0,
+    "p1": 0,
+    "diagnosticRepair": {
+      "commit": "050ac8910462aa15556fac99f490e5d4a726b63e",
+      "hiddenFaceDiagnosticSha256": "E174D8A9481CFD5DA915D6804F76E77C801AF1449366CD2A99EA16DE07F07089",
+      "authority": "diagnostic_only_not_culling_proof"
+    },
+    "openGates": ["G6", "G7"]
   }
 }

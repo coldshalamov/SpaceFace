@@ -5726,6 +5726,32 @@
         "max": [1.08, 0.87, 6.49],
         "dimensionsM": [2.16, 1.74, 6.49]
       }
+    },
+    {
+      "id": "place_works_extractor",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_extractor.glb",
+      "tris": 3112,
+      "bytes": 6453308,
+      "textureSize": 1024,
+      "note": "PQ-131.03 — authored one-cell Asteroid Works gallery extractor with explicit 3112/916/544-triangle LODs. Runtime hooks: head_face, belt, lamp. Cycle 06 whole-asset top, edge, site, clay, matched-LOD, material-isolation, and diagnostic visible-face evidence independently reviewed KEEP against source SHA-256 3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8; hidden-face evidence is diagnostic-only and never culling authority; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "head_face",
+        "belt",
+        "lamp"
+      ],
+      "sockets": [
+        "head_face",
+        "belt",
+        "lamp"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.945, -0.7976, 0],
+        "max": [0.73, 0.7976, 0.8],
+        "dimensionsM": [1.675, 1.5952, 0.8]
+      }
     }
   ],
   "runtimeSlots": {

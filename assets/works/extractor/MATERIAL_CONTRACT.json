@@ -4,7 +4,7 @@
   "root": "SF_WORKS_EXTRACTOR_V1",
   "packet": "PQ-131.03",
   "cycle": 6,
-  "currentState": "design_candidate",
+  "currentState": "integration_candidate",
   "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
@@ -105,7 +105,7 @@
   ],
   "visibleZoneCoverage": {
     "authorInventory": "complete",
-    "reviewerConfirmed": false,
+    "reviewerConfirmed": true,
     "register": "assets/works/extractor/evidence/cycle_006/SUPPORTED_VIEW_ZONE_REGISTER.json",
     "supportedViews": [
       "works_top",
@@ -123,11 +123,17 @@
     ],
     "unclassifiedVisibleZones": []
   },
-  "allSupportedViewZonesClassified": false,
+  "allSupportedViewZonesClassified": true,
   "gatesOpen": [
-    "G1",
-    "G2",
-    "G4",
+    "G6",
     "G7"
-  ]
+  ],
+  "independentSourceReview": {
+    "reviewer": "/root/extractor_cycle06_review",
+    "reviewedCommit": "19acb43172a87a04f553ca99dd87fc64bb762c39",
+    "verdict": "KEEP",
+    "p0": 0,
+    "p1": 0,
+    "scope": "source_candidate_only"
+  }
 }

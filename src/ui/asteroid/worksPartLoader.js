@@ -40,6 +40,12 @@ export const DERRICK_HOOKS = Object.freeze([
   'lamp_R',
 ]);
 
+export const EXTRACTOR_HOOKS = Object.freeze([
+  'head_face',
+  'belt',
+  'lamp',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -58,6 +64,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: DERRICK_HOOKS,
+  }),
+  extractor: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_extractor.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: EXTRACTOR_HOOKS,
   }),
 });
 
@@ -218,13 +230,16 @@ function hookStem(name) {
 
 function hookForMeshStem(stem, hooks) {
   if (hooks[stem]) return hooks[stem];
-  // Render packages flatten authored hierarchy into world matrices. Rebuild the Derrick's
-  // functional children here while keeping their world pose: all LOD drums rotate at drum_spin,
-  // the paid-out cable starts at cable_anchor, and each hood/lens pair stays on its lamp hook.
+  // Render packages flatten authored hierarchy into world matrices. Rebuild each accepted Works
+  // part's functional children while keeping their world pose. Derrick drums/cable/lamps and the
+  // Extractor head/belt/lamp then move from their authored pivots rather than the asset origin.
   if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
   if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
   if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;
   if (/^lamp_R(?:_|$)/.test(stem)) return hooks.lamp_R || null;
+  if (stem === 'head') return hooks.head_face || null;
+  if (stem === 'belt') return hooks.belt || null;
+  if (/^lamp(?:_|$)/.test(stem)) return hooks.lamp || null;
   return null;
 }
 

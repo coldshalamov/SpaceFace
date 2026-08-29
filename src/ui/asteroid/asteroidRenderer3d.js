@@ -58,6 +58,7 @@ import {
 import {
   createWorksPartLoader,
   DERRICK_HOOKS,
+  EXTRACTOR_HOOKS,
   recordWorksInstanceResources,
 } from './worksPartLoader.js';
 
@@ -570,6 +571,83 @@ export function bindAuthoredDerrick(group) {
       lamps: [hooks.lamp_L, hooks.lamp_R],
       lampMats,
       setDrumSpin(theta) { hooks.drum_spin.rotation.z = drumBaseZ + theta; },
+    },
+  };
+}
+
+// PQ-131.03 — bind the accepted Extractor without mutating the lease's shared blueprint. The
+// machine is authored Z-up, exported Y-up, then seated into this renderer's XY cut plane exactly
+// like the accepted rover. Functional meshes are reparented by worksPartLoader before this seam:
+// the cutting head reciprocates from head_face, the belt scrolls on an instance-owned sampler, and
+// the status lens changes without repainting the frame's shared atlas material.
+export function bindAuthoredExtractor(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Extractor group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of EXTRACTOR_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Extractor is missing ${name}`);
+  }
+
+  const seat = new THREE.Group();
+  seat.name = 'extractor_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+
+  const beltMeshes = [];
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    if (/^LOD[012]_belt$/.test(obj.name || '')) beltMeshes.push(obj);
+    if (/^LOD[012]_lamp_lens$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+
+  const instanceOwned = [];
+  const beltMats = isolateWorksMeshMaterials(beltMeshes, instanceOwned);
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  const beltPhaseMaps = [];
+  const textureKeys = ['map', 'normalMap', 'aoMap', 'metalnessMap', 'roughnessMap', 'emissiveMap'];
+  for (let i = 0; i < beltMats.length; i++) {
+    const material = beltMats[i];
+    for (let t = 0; t < textureKeys.length; t++) {
+      const key = textureKeys[t];
+      const source = material[key];
+      if (!source || typeof source.clone !== 'function') continue;
+      const sampler = source.clone();
+      sampler.wrapS = THREE.RepeatWrapping;
+      sampler.wrapT = THREE.RepeatWrapping;
+      material[key] = sampler;
+      beltPhaseMaps.push(sampler);
+      instanceOwned.push(sampler);
+    }
+  }
+
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  recordWorksInstanceResources(group, instanceOwned);
+
+  return {
+    group: seat,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      piston: hooks.head_face,
+      pistonBase: hooks.head_face.position.x,
+      belt: hooks.belt,
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.lamp,
+      setBeltPhase(phase, active = true) {
+        if (!active) return;
+        const offset = phase - Math.floor(phase);
+        for (let i = 0; i < beltPhaseMaps.length; i++) {
+          beltPhaseMaps[i].offset.x = offset;
+          beltPhaseMaps[i].needsUpdate = true;
+        }
+      },
     },
   };
 }
@@ -3390,28 +3468,76 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- machines
+  async function mountAuthoredExtractor(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    let source = null;
+    try {
+      source = await loader.loadWorksPart('extractor');
+      if (!source) {
+        console.error('[asteroidRenderer3d] authored Extractor load failed; the accepted machine is absent');
+        return null;
+      }
+      if (worksTearingDown || disposed || glTeardownDone || !rec.alive
+          || machines.get(rec.machineId) !== rec) {
+        loader.releaseWorksPart(source);
+        return null;
+      }
+      const authored = bindAuthoredExtractor(source);
+      rec.group.add(authored.group);
+      rec.authoredSource = source;
+      rec.authoredSeat = authored.group;
+      rec.dyn = authored.dyn;
+      rec.pulses = authored.pulses || [];
+      return source;
+    } catch (error) {
+      if (source) loader.releaseWorksPart(source);
+      console.error('[asteroidRenderer3d] authored Extractor mount failed; the accepted machine is absent', error);
+      return null;
+    }
+  }
+
+  function releaseAuthoredExtractor(rec) {
+    if (!rec) return;
+    rec.alive = false;
+    if (rec.authoredSeat && rec.authoredSeat.parent) rec.authoredSeat.parent.remove(rec.authoredSeat);
+    const source = rec.authoredSource;
+    rec.authoredSeat = null;
+    rec.authoredSource = null;
+    if (source && worksLoader) worksLoader.releaseWorksPart(source);
+  }
+
   function buildMachineAt(m) {
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
-    const built = makeMachine(kind, S, envMap);
-    built.group.traverse((o) => {
-      if (o.isMesh) {
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const mt of mats) mt._own = true;
-      }
-    });
+    const built = kind === 'extractor'
+      ? { group: new THREE.Group(), dyn: {}, pulses: [] }
+      : makeMachine(kind, S, envMap);
+    if (kind !== 'extractor') {
+      built.group.traverse((o) => {
+        if (o.isMesh) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const mt of mats) mt._own = true;
+        }
+      });
+    }
+    built.group.name = kind === 'extractor' ? 'authored_extractor_mount' : built.group.name;
     built.group.position.set(worldX(m.col), worldY(m.row), 0);
     siteRoot.add(built.group);
     const rec = {
+      machineId: m.id,
       group: built.group, defId: m.defId, dyn: built.dyn || {}, col: m.col, row: m.row,
-      geoSig: '', arms: null, pulses: built.pulses || [],
+      geoSig: '', arms: null, pulses: built.pulses || [], alive: true,
+      authoredSource: null, authoredSeat: null,
     };
     machines.set(m.id, rec);
+    if (kind === 'extractor') void mountAuthoredExtractor(rec);
     return rec;
   }
 
   function removeMachine(id) {
     const rec = machines.get(id);
     if (!rec) return;
+    releaseAuthoredExtractor(rec);
     siteRoot.remove(rec.group);
     disposeGroup(rec.group);
     machines.delete(id);
@@ -3558,6 +3684,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (rec.dyn.piston) {
           const bob = motionReduce || !running ? 0 : Math.abs(Math.sin(timeS * 3.1)) * S * 0.09;
           rec.dyn.piston.position.x = rec.dyn.pistonBase - bob;
+        }
+        if (rec.dyn.setBeltPhase) {
+          rec.dyn.setBeltPhase(timeS * 0.58, running && !motionReduce);
         }
         if (rec.dyn.furnace) {
           const hot = running;
@@ -4367,14 +4496,85 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- ghost
+  function clearGhost() {
+    if (!ghost) return;
+    ghost.alive = false;
+    fxRoot.remove(ghost.group);
+    if (ghost.authoredSource && worksLoader) {
+      worksLoader.releaseWorksPart(ghost.authoredSource);
+    } else if (!ghost.authoredPending) {
+      disposeGroup(ghost.group);
+    }
+    ghost = null;
+  }
+
+  async function mountAuthoredExtractorGhost(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    let source = null;
+    try {
+      source = await loader.loadWorksPart('extractor');
+      if (!source) {
+        console.error('[asteroidRenderer3d] authored Extractor ghost load failed; the build seat stays empty');
+        return null;
+      }
+      if (worksTearingDown || disposed || glTeardownDone || !rec.alive || ghost !== rec) {
+        loader.releaseWorksPart(source);
+        return null;
+      }
+      const instanceOwned = [];
+      source.traverse((obj) => {
+        if (!obj.isMesh || !obj.material) return;
+        const wasArray = Array.isArray(obj.material);
+        const materials = wasArray ? obj.material : [obj.material];
+        const clones = materials.map((material) => {
+          const clone = material.clone();
+          clone.transparent = true;
+          clone.opacity = 0.45;
+          clone.depthWrite = false;
+          instanceOwned.push(clone);
+          return clone;
+        });
+        obj.material = wasArray ? clones : clones[0];
+        obj.castShadow = false;
+      });
+      recordWorksInstanceResources(source, instanceOwned);
+      const seat = new THREE.Group();
+      seat.name = 'extractor_ghost_seat';
+      seat.rotation.x = Math.PI / 2;
+      seat.add(source);
+      rec.group.add(seat);
+      rec.authoredSource = source;
+      rec.authoredPending = false;
+      return source;
+    } catch (error) {
+      if (source) loader.releaseWorksPart(source);
+      rec.authoredPending = false;
+      console.error('[asteroidRenderer3d] authored Extractor ghost mount failed; the build seat stays empty', error);
+      return null;
+    }
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
-    if (ghost) {
-      fxRoot.remove(ghost.group);
-      disposeGroup(ghost.group);
-      ghost = null;
-    }
+    clearGhost();
     if (!defId) return null;
+    if (defId === 'sm_extractor') {
+      const group = new THREE.Group();
+      group.name = 'authored_extractor_ghost_mount';
+      group.renderOrder = 24;
+      fxRoot.add(group);
+      const rec = {
+        defId,
+        group,
+        alive: true,
+        authoredSource: null,
+        authoredPending: true,
+      };
+      ghost = rec;
+      void mountAuthoredExtractorGhost(rec);
+      return rec;
+    }
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -4394,7 +4594,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
     built.group.renderOrder = 24;
     fxRoot.add(built.group);
-    ghost = { defId, group: built.group };
+    ghost = { defId, group: built.group, alive: true, authoredSource: null, authoredPending: false };
     return ghost;
   }
 
@@ -6379,7 +6579,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     gasByCell.clear();
     clearVentedScars();
     for (const id of [...machines.keys()]) removeMachine(id);
-    if (ghost) { fxRoot.remove(ghost.group); disposeGroup(ghost.group); ghost = null; }
+    clearGhost();
     if (umbilical) {
       scene.remove(umbilical.casing, umbilical.core);
       umbilical.casing.geometry.dispose();

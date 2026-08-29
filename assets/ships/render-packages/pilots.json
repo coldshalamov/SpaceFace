@@ -2962,6 +2962,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-derrick",
       "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json"
+    },
+    {
+      "key": "works-extractor",
+      "assetId": "sf.render.works-extractor",
+      "runtimeAssetId": "place_works_extractor",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_extractor",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_extractor.glb",
+      "releaseSha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
+      "releaseBytes": 2989196,
+      "rootNode": "SF_WORKS_EXTRACTOR_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-extractor",
+      "metadataUrl": "assets/ships/release/render-packages/works-extractor/render-package.json"
     }
   ]
 }
