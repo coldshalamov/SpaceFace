@@ -394,6 +394,33 @@ executable route. `GFX-MASSLINE-EXPRESS-LINER` is now admitted as `PQ-049`; its 
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, the massline presentation UVP packet when that is the explicit task, or the tracked worktree-recovery playbook when leftover agent work is the explicit task.
 
+## 1A. Central Brain quality-convergence layer
+
+For the full architecture behind broad autonomous development, read
+[`docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md)
+and its focused plans for
+[observability/replay](./docs/agentic-development/OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md),
+[quality scorecard](./docs/agentic-development/QUALITY_SCORECARD.md),
+[plan convergence](./docs/agentic-development/PLAN_CONVERGENCE_PROTOCOL.md),
+[content factory](./docs/agentic-development/CONTENT_FACTORY_AND_COMPLETENESS.md),
+[bounded INFERENCE](./docs/agentic-development/INFERENCE_PROTOCOL.md),
+[visual/VFX direction](./docs/agentic-development/VISUAL_DIRECTION_AND_VFX_SYSTEM.md),
+[performance governance](./docs/agentic-development/PERFORMANCE_GOVERNANCE.md), and the
+[implementation roadmap](./docs/agentic-development/IMPLEMENTATION_ROADMAP.md).
+
+The manager loop is `observe -> reduce -> rank -> assign -> implement -> replay -> compare -> keep/revert`.
+It consumes the **existing** PQ graph. It never replaces `program-queue.json`, active packets, receipts,
+or user priority. Use screenshots for appearance, deterministic/lifecycle telemetry for temporal truth,
+and one cold reviewer only where subjective judgment adds information. Unknown evidence is not a green
+quality claim. Fixed pass/reviewer counts are not universal quality gates.
+
+For broad unnamed development, start at
+[`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); the ranked selector over the
+existing dependency-ready PQ graph is
+`python tools/agentic/select_next_work.py --format prompt` (one unit) or
+`python tools/agentic/manager_cycle.py --refresh --limit 3` (a campaign slate). It ranks; it does not
+admit, mutate queue truth, or replace the routing doors in this map.
+
 ## 2. Product north star
 
 SpaceFace is an open-source systemic space game with the legible economic and navigational base of games such as Endless Sky, but its distinctive play is physical. Gravity, inertia, collision, Massline attachment, boost, payload mass, fields, recoil, orbital geometry, and improvised physical tricks should produce tactics that are visible, learnable, and surprising.
