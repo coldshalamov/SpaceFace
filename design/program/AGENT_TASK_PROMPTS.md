@@ -2,199 +2,127 @@
 # Copy-ready prompts for SpaceFace agents
 
 ```yaml
-refreshed: 2026-08-09
-baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
-expiresAfterCommits: 10
-expiresAfterDays: 2
+refreshed: 2026-08-29
+baseCommit: 10ff2f7fd97dc4f2ca671a66382b06e5b9c837ab
+expiresAfterCommits: 100
+expiresAfterDays: 30
 ```
 
-These prompts are intentionally plain. The agent obtains technical detail from the canonical map,
-live board, queue row, packet, code owners, and tests. Give one prompt to one thread. A thread finishes
-one task and stops; it does not start an open-ended campaign.
+These prompts are intentionally plain. Technical truth comes from the canonical map, current PQ packet, live owners, tests, and evidence—not from copying a large old status snapshot into the prompt.
 
-## Which door? Exact task vs. develop the game
+## Which door?
 
-- **Finish a known exact task** → use Prompts A/B/C below, or
-  `node scripts/program-dispatch.mjs --next/--ready/--id`. The queue is unchanged.
-- **Spend inference making the game richer** — NPCs, enemies, sectors, economy, story, graphics, VFX,
-  audio, gameplay feel, content, a playable slice → start at
-  [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). It indexes the reusable `WF-01`–`WF-19` workflows with
-  the `1x`/`3x`/`5x` scale shorthand and a copy-ready activation prompt. Concrete implementation work
-  the lane produces still goes through the normal ownership/packet/acceptance system.
+- **Exact PQ / exact bug / exact file / exact outcome** → use Prompt B or C and `node scripts/program-dispatch.mjs --id PQ-XXX`.
+- **NEXT / develop the game / make it professional / broad unnamed work** → start at [`CENTRAL_BRAIN.md`](./CENTRAL_BRAIN.md) and run `python tools/agentic/select_next_work.py --format prompt`.
+- **Campaign / overnight / do all of it** → run `python tools/agentic/manager_cycle.py --refresh --limit 3`, execute one bounded unit, integrate it, then refresh before choosing the next.
+- **Explicit INFERENCE** → use [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) and `design/vision/INFERENCE_CONVERGENCE_METHOD.md`.
+- **Jules/cloud agents** → use [`jules/README.md`](./jules/README.md). Jules is a candidate bank, not the PQ queue or acceptance authority.
 
-## Starting several threads at once
+## Starting several threads
 
-Give Prompt A to each thread, or give different concrete prompts from the bottom of this file. Each
-thread reads the same `NOW.md` and `--ready` list. If two threads initially inspect the same task, the
-first one that actually begins mutation records the short exact-path row; the other chooses the next
-task and keeps working. No coordinator, permanent lane, or worktree is required.
+For broad parallel work, let one manager invocation rank a slate, then dispatch disjoint exact units. `NOW.md` owns only exact paths currently being mutated. Parallelism is capped by write-surface collisions and integration bandwidth, not by how many agents are available.
 
-## Prompt A0-H — orphan harvest / unused models / leftover agent copies
+Do not create permanent subsystem lanes. Do not make every worker a reviewer. One integrator owns publication of each candidate.
 
-Copy `ORPHAN_HARVEST_GOAL.txt` as the whole prompt. Do not paraphrase. The
-playbook and ledger it names are mandatory.
+## Prompt A0 — broad campaign / overnight
 
 ```text
-This is a campaign: harvest leftover agent work and unused models into the live game. Do not use INFERENCE. Do not stop after one unit.
+This is a Central Brain convergence campaign, not one task and not a hard-coded graphics loop.
 
-Law: design/program/ORPHAN_HARVEST_PLAYBOOK.md. Follow it for classify, review, merge, finish, wire, plan updates, and cleanup. The running board is design/program/ORPHAN_HARVEST_LEDGER.md.
+Start at CANONICAL_BUILD_MAP.md, design/program/CENTRAL_BRAIN.md, and design/program/NOW.md. Run:
 
-Mission:
-1. Mine C:\sf-agents and leftover branches. Mark each copy done, near-done, partial, superseded, or junk. Merge only done work, or near-done work after you finish its one missing seam. Checkpoint everything else so it cannot rot. Port onto current master owners. Do not merge a branch wholesale.
-2. Review unused models in the main project. First model unit: rebuild the compressed Hitch the player actually flies from the later polish that was left off the release copy. Never paste uncompressed source over that release. Then other unused ships, traffic, markings, and Ceres props. Polish if they are still wonky. Wire only what beats live and is not broken. A clay tube with boxes does not ship.
-3. After every unit, update the ledger and the owning plan or queue row.
+python tools/agentic/manager_cycle.py --refresh --limit 3
 
-One unit at a time in the main checkout. Do not create worktrees. Classify, finish a near-done seam if there is one, run ONE subagent review panel and ONE focused proof, then MERGE, CHECKPOINT, DROP, or ADAPT. Never merge half-done or failing work. Never re-review the same hash. Never rerun the same failing check unchanged. If the first repair pass is not merge-safe, checkpoint and take the next unit.
+Take the highest-ranked dependency-front admitted unit. Open it through:
 
-Commit and push each merged unit on the current branch by name. Do not delete a copy until its ledger row exists and every port from it is pushed.
+node scripts/program-dispatch.mjs --id PQ-XXX
 
-Keep going until every known copy and unused model has a ledger row, every MERGE is on the main line, every near-done item is finished or honestly checkpointed with a next action, and DROP copies are safe to delete.
+and its exact active packet. The manager ranks the existing queue; it does not replace it.
 
-RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
+Implement one bounded player outcome. Reuse existing owners, deterministic lab, Combat Lab, runtimeWitness, sessionObserver, validation broker, visual capture and asset tooling before inventing infrastructure.
+
+After each integrated unit, replay the relevant scenario/evidence and refresh the manager ranking before selecting another unit. Do not let one prestige-art family consume the whole campaign while actionable integrity, flight/control, combat/AI or severe frame-liveness debt is red.
+
+For feel/performance work: characterize first, make one causal intervention, replay the same seed/input policy, and compare. After two failed repair cycles under the same causal model, change the model instead of looping.
+
+For visual work: review at the shipping camera, use one cold reviewer by default, and continue only for named play-size defects. Fixed pass/reviewer counts are not universal gates.
+
+Do not count scouts, plans, checks, screenshots or reviews as production. Keep going until the user's campaign scope is exhausted, no dependency-front admitted work remains, or the next high-value item requires an explicit product decision/external dependency.
 ```
 
-## Prompt A0-G — 3D objects / same-bar remaster (safe beside hitch work)
-
-Copy `GRAPHICS_3D_GOAL.txt` as the whole prompt. Do not paraphrase. The campaign
-file it names is mandatory. Stay off PQ-129 renderer files.
+## Prompt A0-P — hitching / make the game smooth
 
 ```text
-This is a campaign: raise live 3D objects to one quality bar. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not stop after one unit.
+This is an explicit performance campaign. Start at CANONICAL_BUILD_MAP.md §8.4, design/program/PERF_HITCH_CAMPAIGN.md and the current PQ-129 packet.
 
-Law: design/program/GRAPHICS_3D_CAMPAIGN.md and docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md. Camera is the 60° chase at 144 WU (close 58 WU). Capture with tools/blender/spaceface_chase_camera.py. No seats, no studio three-quarter, no cabin kits.
+Run node scripts/program-dispatch.mjs --id PQ-129. Re-measure the current route/pole before reviving an old optimization hypothesis. Preserve default picture/content quality.
 
-Bar: Hitch / Helios wholeships at chase size. A tube+ring next to a real ship is a fail. Variable quality is worse than a slightly softer house style. Do not dump Hitch down.
+Use runtimeWitness for coarse liveness/hitch ownership and the observatory/replay path where available. Measure distributions and hitch events, not average FPS. Make one causal change, run a matched A/B, KEEP/REVERT/NO_OP, then take the next current owner only if evidence justifies it.
 
-Another thread owns hitch smoothness. Stay off src/render/renderer.js, precompile.js, partsLibrary.js, bloom.js, pipelineReadiness.js, opaqueMaterialBatch.js, visualOverrides.js, scenarioProps47a.js, hitchClassifier.js, program-queue.json, and Hitch/Kestrel files. Author assets. Same-slot GLB replace is allowed. Do not add shader families.
-
-Order:
-1. Nav buoy + lane beacon (repeating satellites).
-2. pod_cargo_container.
-3. 47-A evidence spindle as a candidate GLB only — do not hook scenarioProps47a.js until hitch work is idle.
-4. Mining drone + conveyor barge.
-5. Hornet skin+wells in fleet_player_bodies_v1/hornet only. Do not run the all-fleet promote. Do not model a cabin.
-
-Each unit: reference first (imagen, or existing reference/, or Codex terminal handoff in AGENT_PROMPTS.md § E). One skin with holes, not glued boxes. Join by material. Dry-run chase_visible_faces.py. Chase stills vs Hitch. Commit that unit, then the next.
-
-Default bloom/shadows/particles stay on. Do not pass by making the mesh cheaper-looking.
-
-RESULT: DONE when units 1–4 are on master and Hornet has a chase-camera candidate. Leave 47-A unwired if hitch still owns scenarioProps47a.js.
+Do not start Worker/WebGPU/native work because the local bug is hard. Do not lower population, effects, shadows, draw distance or authored detail as a performance win.
 ```
 
-## Prompt A0-W — Asteroid Works / mining minigame unreadable or ugly
-
-Copy `ASTEROID_WORKS_PLAYFIELD_GOAL.txt` as the whole prompt. Do not paraphrase.
-The design law and campaign files it names are mandatory.
+## Prompt A0-G — explicit fleet / 3D graphics work
 
 ```text
-This is a campaign: put the player inside the asteroid and rebuild the screen's look from the ground up. The mine is the screen. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
+This is an explicit graphics campaign. Start at CANONICAL_BUILD_MAP.md §13, docs/visual-assets/README.md, design/program/GRAPHICS_ITERATION_LOOP.md, and the exact PQ packet/campaign named by the user.
 
-Law: design/ASTEROID_WORKS_DESIGN_LAW.md is the positive target — read §2 rulings and §3 art direction first, then your leaf's sections; its hex, type, px, and ms values are law, and its §11 invariants are how a no-vision agent proves a leaf. Campaign bans: design/program/ASTEROID_WORKS_PLAYFIELD.md §0 spirit and §3 vanilla collapse. Chrome idea: design/frontend/SCREENS_E_ASTEROID_WORKS.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
+Player-camera truth wins. Establish a shipping-camera baseline, make one coherent form/material intervention, recapture, and use one cold composite review by default. Continue only for a named defect still visible at play size. If two valid passes under the same causal model do not change the disposition, stop polishing and return the asset to the manager.
 
-Owner rulings 2026-08-20: the board is a perfect axis-aligned chess grid (zero tilt); fog of war is removed — every cell's material visible from the first frame; the current chrome is "gray, bleak, and vibe-coded, harsh fonts" and is DELETED, not restyled — warm palette, vendored Instrument Sans / Spline Sans Mono / Bricolage, sentence case, no uppercase transforms, soft shapes; events happen on the board with sound, never as a permanent text log; at most 15 visible words in the default drive view; board >= 88% of the glass.
-
-A polished copy of the gunmetal console fails ("a polished turd"). A vanilla collapse fails: shorter CSS bays, zoom-only camera, tan x0.7, bigger sparkles, slower MOVE_COOLDOWN, truncated inspector strings, restyled gray keys. If that is the PR, you have not started.
-
-Order:
-1. PQ-130.01 Theater — board sovereign; crest + rig cluster only; new visual language lands here; flat grid; two zoom registers; one shared render/grading pipeline.
-2. PQ-130.02 Surgical drive — tap seats one cell; hold delay then cruise; visible bore bite; rewrite check-drill-smooth.
-3. PQ-130.03 This asteroid's rock — warm mineral palette; dusk lighting (warm key inside, cool rim outside).
-4. PQ-130.04 Cells speak — three-channel material identity; seams as outlined bodies with counts and split preview; fog gate off.
-5. PQ-130.05 The vehicle — the safety-yellow rover; bit heat glow; visible hopper fill.
-6. PQ-130.06 Hover as instrument — cursor lens beside the pointer; context bay deleted.
-7. PQ-130.07 The sim speaks — every event on the board per law §5; ledger becomes a silent drawer.
-8. PQ-130.08 The mine's voice — own soundscape per law §8; music bus not zeroed on this screen.
-9. PQ-130.09 Build like chess — earned palette keys; ghost placement with valid-face glow and why-glyphs.
-10. PQ-130.10 The site reads — cables/lanes/lamps/want-chips/port crates/courier launch; site-zoom return.
-
-Stay off hitch renderer files, Hitch/Kestrel, Waves 1-4 sim (formations/thermal/signature/cluster), courier economy, claim persistence. No camera-facing soft squares. No quality cuts.
-
-Each leaf: play tether -> Asteroid Works at a normal window. Whole-theater stills, not cube crops. Prove the law §11 invariants that apply. check:playable after implementation. Commit only that leaf, then the next.
-
-RESULT: DONE when a stranger sees warm rock and a vehicle first, tells ore/gas/stone apart with the lens closed, moves one cell on purpose, hears the mine, and the leftover chrome is friendly field equipment they would touch — not a gray console.
+Prioritize silhouette, negative space, canopy/drives/wells, major material grouping and authored identity before microdetail. No cabin/seat work closes a top-down ship unless it actually reads from the shipping camera. Preserve LOD/release/material truth and performance.
 ```
 
-## Prompt A0-WA — Asteroid Works objects are procedural stand-ins
-
-Copy `ASTEROID_WORKS_ART_GOAL.txt` as the whole prompt. Do not paraphrase. The campaign,
-technique contract and review workflow it names are mandatory. Needs Blender (MCP bridge or
-headless). Take `PQ-131.00` (loader + works camera) first; every asset unit depends on it.
+## Prompt A0-W — Asteroid Works playfield
 
 ```text
-This is a campaign: replace every procedural stand-in object in the Asteroid Works mine with an authored asset at the flight ships' bar. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
+This is the explicit Asteroid Works playfield campaign. Start at design/ASTEROID_WORKS_DESIGN_LAW.md and the current PQ-130 packet. Dispatch with node scripts/program-dispatch.mjs --id PQ-130.
 
-Law: design/program/ASTEROID_WORKS_ART_CAMPAIGN.md + docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md + docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md + design/ASTEROID_WORKS_DESIGN_LAW.md section 2.7. Dispatch: node scripts/program-dispatch.mjs --id PQ-131. Take the first claimable unit.
+The board is the game. Preserve the current owner rulings in the design law rather than polishing an obsolete gray console. Execute the first dependency-front leaf, prove its player outcome in the real works route, commit it, then continue only if the user asked for the campaign.
 
-Bar: Hitch / Helios wholeships at play size through the works camera (straight down, 31 degrees, ~120 px per cell at 1080p; 19 px at the site register). A works still beside a flight still must read as the same game. A procedural stand-in is scaffolding, never acceptance.
-
-Order: .00 loader + works camera; .01 rover; .02 Core; .03 extractor; .04 refinery; .05 derrick; .06 conduit kit; .07 gas tap; .08 fabricator; .09 port + crates + pod; .10 inclusion kit.
-
-Each unit: reference first; Blender blockout at works scale; one skin with holes; unique UVs, bakes, authored PBR; LOD0+LOD1; scripts/build-hull-release-assets.mjs; manifest entry; wire through loadWorksPart with the named hooks and delete the procedural builder; works-camera stills beside a flight still; three subagent reviews listing every defect at play size; revise until KEEP; commit only that unit, then the next. check:asteroid-theater and check:playable stay green. No quality cuts, no billboards, no emissive outlines, no scaled box stacks.
-
-RESULT: DONE when every inventory row is an authored, reviewed, wired asset on master.
+Do not substitute the global selector mid-leaf. Do not fold this into fleet graphics or generic performance work.
 ```
 
-## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE
+## Prompt A0-WA — Asteroid Works authored objects
 
 ```text
-This is a campaign, not one task. Start at CANONICAL_BUILD_MAP.md. Do not use
-INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFERENCE.
+This is the explicit Asteroid Works authored-asset campaign. Start at design/program/ASTEROID_WORKS_ART_CAMPAIGN.md, docs/visual-assets/README.md, design/program/GRAPHICS_ITERATION_LOOP.md, and node scripts/program-dispatch.mjs --id PQ-131.
 
-Default unfinished campaign is PQ-050. Run
-`node scripts/program-dispatch.mjs --id PQ-050`, take the first claimable ship, follow
-ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md.
-Each ship: at least five full-job cycles; three valid chase-camera stills per cycle
-(play_chase D=144, play_chase_abeam, play_chase_close D=58 from
-tools/blender/spaceface_chase_camera.py); three subagent reviews that list every
-obvious defect at play size; implement all revises that read on the chase camera;
-then do the whole ship again. Zoomed gray plates, studio three-quarters, and seats
-do not count. Clean up old stills before commit. Wire only that ship, then the next.
-Do not stop after one ship. Do not touch Hitch. Do not model a cabin.
+Use the works camera beside a representative flight frame. Replace procedural stand-ins through the normal authored asset/release/loader path. One shipping-camera composite review is the default; revise only named visible defects and stop on marginal no-gain rather than a fixed review/pass quota.
+
+Do not lower quality by shipping boxes, billboards or emissive-outline stand-ins.
 ```
 
-## Prompt A0-P — hitching / “make the game play smoothly”
+## Prompt A0-H — orphan harvest / unused work
 
 ```text
-This is a campaign, not one task. The game is hitching. Start at
-CANONICAL_BUILD_MAP.md §8.4 and design/program/PERF_HITCH_CAMPAIGN.md.
-Do not use INFERENCE. Do not take PQ-050. Do not lower default quality.
+This is an explicit recovery campaign. Start at CANONICAL_BUILD_MAP.md and design/program/WORKTREE_RECOVERY.md or the currently named orphan-harvest playbook/ledger.
 
-Run node scripts/program-dispatch.mjs --id PQ-129 and take the first
-claimable leaf. Wave A names every >32 ms frame. Wave B removes the
-named compose/compile/upload/admission brick. Wave C crowded 60 fps
-waits until hitch count is halved.
+Classify each candidate against current master owners. Port only complete or bounded-finishable work; never merge a stale branch wholesale. Reuse authored assets when they fit a current role, and record a real disposition for useful work that cannot be fielded now.
 
-One leaf at a time. Headed Electron or headed Chrome on the real GPU.
-flight-compose-gate.test.mjs is not smoothness proof. Run check:playable
-after every implementation leaf. If the classifier names a different
-owner than the claimed leaf, write a reject receipt and take the named
-owner. Keep going until the campaign stop condition is met.
+One focused proof and one review only when needed. Never re-review the same hash or rerun the same unchanged failure. Commit each integrated unit separately.
 ```
 
-## Prompt A — find and finish the next task
+## Prompt A — find and finish one highest-leverage task
 
 ```text
 Finish one SpaceFace task end to end.
 
-Start at CANONICAL_BUILD_MAP.md and design/program/NOW.md. Run
-`node scripts/program-dispatch.mjs --next` and take that first task, then open its exact queue row
-and active packet. Use `--ready` only to select the next result when the first task has an exact
-currently dirty overlapping hunk that another thread has not handed off. Do not create a
-worktree. Add one short NOW.md row only when you begin editing; research, reading, tests, and reviews
-do not reserve files.
+Start at CANONICAL_BUILD_MAP.md, design/program/CENTRAL_BRAIN.md, and design/program/NOW.md. Run:
 
-Implement the selected outcome, run its focused proof, obtain the required review, stage only its
-exact files, commit, fetch, push the current branch explicitly, update its receipt/status truthfully,
-and remove the NOW row. If another thread has an exact dirty hunk, preserve that hunk and continue on
-disjoint work or take the next returned task; do not declare the packet or repo blocked. Do not loop
-on an unchanged failing command.
+python tools/agentic/select_next_work.py --format prompt
 
-Stop after one finished task. Your final response must be exactly understandable as:
+Take the returned dependency-front unit, then open it through node scripts/program-dispatch.mjs --id PQ-XXX and the exact active packet.
+
+Before mutation, characterize the player-visible claim with the packet's narrowest existing deterministic/live scenario. Name one causal hypothesis. Add a NOW row only while actually editing. Preserve foreign dirty hunks; choose a disjoint unit rather than overwriting them.
+
+Implement the bounded outcome. Reuse current owners and instrumentation. After mutation, replay the same scenario/seed/input policy when applicable and keep the change only if the claimed player result improves without a new regression. Do not loop on an unchanged failure fingerprint.
+
+Stop after one finished task. Final report:
 RESULT: DONE or NOT DONE
 PLAYER RESULT: one plain sentence
 COMMIT: hash, or none
 PROOF: checks/evidence actually completed
-REMAINING: none, or the exact missing outcome
+REMAINING: none, or exact missing outcome
 NEXT ACTION: one executable next task
 DIRTY PATHS: every uncommitted path, or none
 ```
@@ -206,114 +134,31 @@ Replace `<UNIT_ID>` once before sending.
 ```text
 Finish exactly `<UNIT_ID>` in SpaceFace and do not start another unit.
 
-Read CANONICAL_BUILD_MAP.md and design/program/NOW.md, then run
-`node scripts/program-dispatch.mjs --ready` and locate `<UNIT_ID>` in
-`design/program/roadmap/program-queue.json`. Run `node scripts/program-dispatch.mjs --id PQ-XXX`
-using the unit's `parentId`, then open that packet, verify the live owner code, and deliver the exact
-unit's player outcome. If the unit is not yet printed by `--ready`, its `dependsOn` list is integration
-order, not permission to forget the task: complete any missing in-repo prerequisite needed to deliver
-the assigned outcome, and do not mark the unit done until the full result is integrated. Do not create
-a worktree and do not stop because another task exists. Record a
-NOW row only during mutation. Preserve any exact foreign dirty hunk; continue the disjoint parts and
-arrange an explicit handoff for a genuinely overlapping hunk.
+Read CANONICAL_BUILD_MAP.md and design/program/NOW.md. Locate `<UNIT_ID>` in the current queue/read view and open its parent through node scripts/program-dispatch.mjs --id PQ-XXX plus its active packet. Exact user scope outranks Central Brain ranking.
 
-Keep working until the outcome is implemented, focused proof is green, required route/review evidence
-is honest, and the exact files are committed and pushed. Update the receipt and task state. End with
-the DONE/NOT DONE template from design/program/02_REMAINING_WORK.md, then stop.
+Deliver the exact player outcome through current owner seams. Record a NOW row only during mutation. Preserve foreign dirty hunks and arrange a real handoff only for an exact overlapping write.
+
+Use the cheapest proof that can falsify the claim. For temporal behavior, replay a named scenario/seed/input policy. For appearance, inspect the shipping camera. Do not create a new framework because validation is inconvenient.
+
+Keep working until the outcome is implemented, focused proof is green, required route/review evidence is honest, and the exact files are committed/pushed. Update the normal packet/receipt/queue truth. Then stop.
 ```
 
 ## Prompt C — finish or discard an existing dirty candidate
 
 ```text
-Take responsibility for the unfinished candidate named below. Do not create a new parallel copy.
+Take responsibility for the named unfinished candidate. Do not create a parallel copy.
 
-Read CANONICAL_BUILD_MAP.md, design/program/NOW.md,
-design/program/DEVELOPMENT_HANDOFF_2026-08-09.md, and the candidate's current diff/evidence. Add a NOW
-row when mutation begins. Determine the exact player outcome it was meant to deliver, then either:
-(1) revise it through the real production owner until it passes its required review and publish it,
-or (2) explicitly discard the candidate while preserving the useful findings and restoring a clean,
-accounted state. A pile of files, passing source tests, or 'handoff ready' is not DONE.
+Read CANONICAL_BUILD_MAP.md, design/program/NOW.md, the candidate diff/evidence, and its current owning packet. Determine the intended player outcome. Either finish it through the real production owner and prove it, or explicitly discard/revert it while retaining valuable causal findings.
 
-Commit and push the finished result or the explicit discard/accounting result. End with the
-DONE/NOT DONE template from design/program/02_REMAINING_WORK.md and list every remaining dirty path.
-Stop after this candidate is accounted for.
+A pile of files, passing source tests or a handoff note is not DONE. Commit/push the finished result or the explicit discard/accounting result. List remaining dirty paths and stop.
 ```
 
-## Current concrete prompts
-
-### 1. Revised refinery route proof
+## Prompt J — directed Jules/cloud task
 
 ```text
-Use Prompt B with UNIT_ID `PQ-022.refinery-reauthor-h1`. Finish the real Browser/Electron refinery
-presentation proof and publish its exact causal result. Stop after this unit.
+Use the existing Jules task bank and dispatcher. Select one candidate whose collision key/write surface does not conflict with current work. One task per cloud branch/PR.
+
+Jules must not edit the task bank, program queue, NOW board, root authority or expected goldens. Its output is a candidate only. A local integrator rebases it onto current master, reviews the diff, runs the authoritative focused proof, and only then merges.
+
+Prefer cloud inference for low-collision test hardening, bug hunts, determinism checks, isolated UI/data/content work and bounded implementation. Do not count requests dispatched as delivery of the current PQ player outcome.
 ```
-
-### 2. Wreck Cathedral re-authoring
-
-```text
-Use Prompt B with UNIT_ID `PQ-018.cathedral-reauthor`. Deliver the revised dominant hull/rupture
-story as an exact-source whole asset that earns KEEP or returns an explicit REVISE. Stop after this
-unit; do not run its later H1 automatically.
-```
-
-### 3. Receiver facilities already present in the checkout
-
-```text
-Use Prompt C for `PQ-019.receiver-facility-reauthor`. The current Phase A candidate is G1/G2/G4
-REVISE. Revise the lawful catcher and covert fence until exact-source review says KEEP, or discard the
-candidate explicitly. Do not promote the current REVISE bytes. Stop after Phase A is accounted for;
-Phase B promotion and Phase C runtime release are separate tasks.
-```
-
-### 4. Dense PresentationWorld native acceptance
-
-```text
-Use Prompt B with UNIT_ID `PQ-038.native-acceptance`. Run one clean supported-runtime candidate,
-publish the honest native evidence, and stop. Do not turn a failed acceptance run into an unrelated
-implementation campaign.
-```
-
-### 5. Exact packaged Electron acceptance
-
-```text
-Use Prompt B with UNIT_ID `PQ-041.native-acceptance`. Build and run one exact package plus its paired
-Browser route, publish the ledgers, and stop.
-```
-
-### 6. Dirty-range GPU acceptance
-
-```text
-Use Prompt B with UNIT_ID `PQ-040.native-acceptance`. Run one clean paired Browser/Electron
-dirty-range candidate, publish the result, and stop.
-```
-
-### 7. Ceres disabled tender client
-
-```text
-Use Prompt B with UNIT_ID `PQ-045.tender-client-materialization`. Put one real disabled client in
-Ceres, preserve the tender's target through Continue, move through the existing job owner, update the
-five-minute census, prove it, publish it, and stop. The speculative late target-motion audit is not a
-prerequisite.
-```
-
-### 8. Two late target-motion questions
-
-```text
-Use Prompt B with UNIT_ID `PQ-045.target-motion-late-audit`. Run only the two named reproductions.
-Repair a defect only if it reproduces; otherwise publish a short dismissal receipt. Do not reopen the
-feature, rerun the whole campaign, or delay tender-client work. Stop after the two answers.
-```
-
-### 9. Continue the Ceres lived-world chain
-
-```text
-Use Prompt B with the first unfinished unit in this exact sequence:
-`PQ-045.route-topology` -> `PQ-045.causal-chain` and `PQ-045.npc-identity` ->
-`PQ-045.prop-promotion` and `PQ-045.wreck-dressing` -> `PQ-045.vfx-recipes` ->
-`PQ-045.five-minute-h1`.
-
-Finish only the one selected unit and stop. Do not interpret the later units as blocked; they are the
-documented continuation for subsequent agents.
-```
-
-The final `PQ-045.human-review` is a prompt for the named human reviewer, not an autonomous agent.
