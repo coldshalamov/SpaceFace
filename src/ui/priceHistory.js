@@ -49,10 +49,16 @@ function entrySpread(e) {
 // does so buy > sell > 0 always holds. The seeded past predates the pilot's clock (entry.history
 // uses negative simTime for pre-campaign samples), but this UI buffer's invariant is t >= 0 and the
 // charts position by array index, so clamp the timestamp at the origin.
+// Seeded points are synthetic past: they can never carry an event, nothing in the tree mutates a
+// price point's `events`, and the market chart's event log reads `state.economy.econEvents`
+// directly rather than this field. A fresh array per point was therefore a second allocation per
+// point for nobody. Frozen so a future reader cannot start mutating the shared instance.
+const NO_EVENTS = Object.freeze([]);
+
 function pointFromMid(mid, spread, t) {
   const buy = Math.max(1, Math.round(mid * (1 + spread / 2)));
   const sell = Math.max(1, Math.min(buy - 1, Math.round(mid * (1 - spread / 2))));
-  return { mid: Math.round(mid), buy, sell, t: Math.max(0, Number(t) || 0), events: [] };
+  return { mid: Math.round(mid), buy, sell, t: Math.max(0, Number(t) || 0), events: NO_EVENTS };
 }
 
 /** Backfill one station's ring buffer from the economy's formula-seeded entry.history. No-op once

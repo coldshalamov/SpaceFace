@@ -29,6 +29,13 @@ The last two rows are the honest pair to quote together. Hitch *rate* improves m
 *severity* because the multi-second collections described below survive both arms and dominate what
 is left of the excess-milliseconds number.
 
+**Quote the improvement as a range, not a point estimate.** The before-arm is n=3 with a 3.4x
+internal spread (38.1 / 11.1 / 36.9), and the whole mean-versus-median gap is the single mild run.
+At n=3 there is no way to tell "that run was lucky" from "the other two were unlucky", so the true
+multiple sits somewhere in **2–5x** depending on which measure you trust: ~2.2x on severity, ~4x on
+mean rate, ~5x on median rate. The after-arm is n=8 and tight (5.8–8.7), so the uncertainty is
+almost entirely in the baseline.
+
 The game also delivers ~4% more frames in the same wall clock, and the spread collapsed — before,
 hitch rate ranged 11–38 per 1000 frames (3.4x between runs); after, 5.8–8.7 (1.5x). Every owner
 category improved, including `sim` (mean 23 → 3.2), because frames that are not being stolen by a
@@ -100,19 +107,23 @@ texture sources) was wrong. That guess is recorded here because it is the plausi
 
 V8's *sampling* heap profiler (`--alloc-probe`) then names the sites. A sampling profile is the
 right tool: a full snapshot of a 1.3 GB heap is multi-gigabyte and unreadable, while sampling costs
-almost nothing and reports self-size per call frame. Top sites over a 60 s flight, as a share of
-sampled bytes:
+almost nothing and reports self-size per call frame.
 
-```
- 3.4 MB  pointFromMid            @ src/ui/priceHistory.js:52
- 2.4 MB  pricePointAt            @ src/systems/economy.js:267
- 1.9 MB  append                  @ presentationJournal.js:274
- 1.1 MB  cloneUniforms           @ three.core.js
- 0.9 MB  frame                   @ presentationRunner.js:659
- 0.4 MB  seedStationFromHistory  @ src/ui/priceHistory.js:60
- 0.4 MB  createCycle             @ economyCycles.js:106
- 0.3 MB  (anonymous)             @ src/ui/priceHistory.js:93
-```
+**Read these as proportions, not absolute bytes.** The profiler samples at a 64 KiB interval, so its
+20 MB total is a statistical estimate standing in for the ~845 MB of real garbage. A site listed at
+"3.4 MB" is 17% of allocation, i.e. on the order of 140 MB — do not read it as 3.4 MB and drop the
+lead. Top sites over a 60 s flight:
+
+| share of allocation | site |
+|---:|---|
+| 17% | `pointFromMid` @ `src/ui/priceHistory.js:52` |
+| 12% | `pricePointAt` @ `src/systems/economy.js:267` |
+| 10% | `append` @ `presentationJournal.js:274` |
+| 6% | `cloneUniforms` @ `three.core.js` |
+| 5% | `frame` @ `presentationRunner.js:659` |
+| 2% | `seedStationFromHistory` @ `src/ui/priceHistory.js:60` |
+| 2% | `createCycle` @ `economyCycles.js:106` |
+| 2% | `(anonymous)` @ `src/ui/priceHistory.js:93` |
 
 **The single largest allocator in flight is the ECONOMY, not the renderer.** `priceHistory` plus
 `economy` account for roughly a third of all allocation. The mechanism: as the player flies, new
