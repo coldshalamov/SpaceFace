@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Agentic development architecture
 
-This directory is the durable design layer behind `design/program/CENTRAL_BRAIN.md`. It exists to preserve the full architecture and rationale while the root `CANONICAL_BUILD_MAP.md` stays a compact implementation router.
+This directory is the durable design layer behind `design/program/CENTRAL_BRAIN.md`. It preserves the full architecture and rationale while the root `CANONICAL_BUILD_MAP.md` stays a compact implementation router.
 
 Read in this order for broad autonomous development:
 
@@ -19,3 +19,5 @@ Specialized durable plans:
 - `PERFORMANCE_GOVERNANCE.md` — same-picture, evidence-first performance work.
 
 Machine/operator surfaces live in `tools/agentic/` and `design/program/AGENTIC_QUALITY_WORKSTREAMS.json`. The PQ queue remains the only admitted machine index; these documents never constitute a second queue or acceptance system.
+
+Publication history and the distinction between the initial #107 scaffold, recovered Pro architecture, and final routing migration are recorded in `RECOVERY_RECEIPT_2026-08-29.md`.
