@@ -112,22 +112,24 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the Cycle 34 source candidate exists. Exact hashes are:
+G0 is written and the Cycle 35 source candidate exists. Exact hashes are:
 
-- LOD0 `256454E3CF02C4EB34AEE1069C6047DBF336351E94041A196DC94D818FA85208`
-- LOD1 `44D9E875194DC8F297E3F830B99D4CF3CBA48646B11D955E8C9E28BC82AA0FBF`
-- LOD2 `A281D0E8E0A6248D8F29984E38C7CF8CE2C5D82532CA04AF5ADBACF563C3BF31`
-- editable Blend `637B0F3AE63464AAADFD95C20E260E706DEFB318E0EA918E8F61940F9ABFE527`
+- LOD0 `8D0668D2131B7C27ED2612B052F162C2B573F97FA2E7E7709D2FBD054A5F978C`
+- LOD1 `995C086C159FD8E9A16BFDFCC3889A05BFC4B110454783D4D9D2E12F2345434A`
+- LOD2 `2C36BB6C50AC00C8FC76FFB46DF45517716796414E681D86665CBC081F52E493`
+- editable Blend `E29D9038EC98CB96C24A589D3DCE4F9768A9382ACDBC93AC23E5884A709F5471`
 
-Matched exact-source evidence is bound under `cycles/cycle_34/`, with labeled `lod1/` and `lod2/`
-subsets. Cycle 34 replaces the broad uniform passenger course with three stepped pressure sections,
-six paired deck-edge gallery wells, and full-height hat frames. Both drive cases now overlap a widened
-aft load shoulder, traverse a shorter/thicker outboard transition, and carry pale shoulder armor over
-dark manufactured cases. Semantic contract names now match the exact exported glTF material names.
+Matched exact-source evidence is bound under `cycles/cycle_35/`, with labeled `lod1/` and `lod2/`
+subsets. Cycle 35 retains three stepped pressure sections, six paired deck-edge gallery wells, and
+full-height hat frames while narrowing the inhabited belt. A blunt operations bow replaces the spear
+tip. Both near-axial drive cases now sit inside the aft pressure envelope and overlap a tapered central
+load bridge that ends before their dry bores. Blue-grey glazing has higher dielectric transmission and
+set-back interior datum plates. Semantic contract names match the exact exported glTF material names.
 
-Implementing-agent original-resolution review remains `REVISE`: all named Cycle 33 defects moved in
-the intended direction, but the long separated drive cases can still read as prongs at D=144 and the
-abeam pressure belt remains visually broad. Whole-asset G1/G2/G4 and independent acceptance stay open.
-G3, G5, G6, and G7 belong to later PQ-049 leaves. No P0/P1 is hidden by a new camera.
-Source bounds remain 40.67 x 22.45 x 10.99 m (length-to-beam 1.81). Default occupancy is 17.45%,
-abeam 9.80%, and close 44.96%, all uncropped for LOD0/1; LOD2 is 17.46%, 9.81%, and 45.09%.
+Implementing-agent original-resolution review records `KEEP` for controller review: the former swept
+pincer pair, cross/arrow abeam silhouette, opaque-black glazing, and out-of-band LOD evidence are
+materially corrected. Whole-asset G1/G2/G4 and independent acceptance stay open. G3, G5, G6, and G7
+belong to later PQ-049 leaves. No P0/P1 is hidden by a new camera. Source bounds are
+40.27 x 20.75 x 11.11 m (length-to-beam 1.94). Default occupancy is 17.19%, abeam 9.08%, and close
+43.92%, all uncropped. LOD1 and LOD2 default/abeam evidence is inside the authored 90–220 px and
+<=90 px bands; their matched far transition pair measures 89.0 px.

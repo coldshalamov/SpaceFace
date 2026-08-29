@@ -1,20 +1,22 @@
-"""PQ-049.01 Massline express-liner source builder — cycle 34.
+"""PQ-049.01 Massline express-liner source builder — cycle 35.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
 
-Cycle 34 form correction: Cycle 33 established real passenger galleries and
-dry drive bores, but the legal chase view still collapsed into one broad pale
-course and two detached fork arms. Rebuild the course as three stepped
-pressure sections with paired chase-visible gallery wells, grow both drive
-cases continuously from a wider aft load shoulder, and separate ceramic,
-frame, glazing, and keel values at gameplay exposure. Preserve sockets,
-collision, civic identity, and the reproducible source/export path.
+Cycle 35 form correction: retain Cycle 34's stepped passenger galleries and
+real dry drive bores, but remove the remaining pincer/cross first reads. The
+drive pair now sits inside the aft pressure envelope as two near-axial,
+full-bodied propulsion cases instead of long outboard prongs; the inhabited
+belt is narrowed without deleting its passenger rhythm; a longitudinal crown
+subordinates the transverse galleries in the abeam silhouette; and the smoked
+dielectric glass keeps blue-grey reflection and interior depth at ordinary
+exposure. Legal cameras remain frozen while additional evidence is rendered at
+the authored LOD bands and at matched approach/recede transition distances.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=34
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=35
 """
 from __future__ import annotations
 
@@ -62,7 +64,7 @@ from spaceface_chase_camera import (  # noqa: E402
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
 TEX = 1024
-CYCLE = 34
+CYCLE = 35
 PROBE_OCCUPANCY = False
 RENDER_ONLY = False
 for i, tok in enumerate(sys.argv):
@@ -79,22 +81,25 @@ for i, tok in enumerate(sys.argv):
     elif tok in ("--render-only", "--stills-only"):
         RENDER_ONLY = True
 
-# Cycle 34 manufactured envelope. Metres, +X forward.
+# Cycle 35 manufactured envelope. Metres, +X forward.
 # Keep 40.67 x 22.45 x 10.99 m, L/B 1.81. Width from the passenger
 # station's inhabited equator, not hanging cards or occupancy padding.
-DRIVE_Y = 8.55
+# The twin bores sit inside the 6.25 m aft pressure half-width. Keeping their
+# centerlines near +/-4.55 m preserves two readable throats while preventing
+# the long outboard fork/pincer silhouette rejected in Cycle 34.
+DRIVE_Y = 4.55
 DRIVE_Z = 0.38
 DRIVE_R_FORE = 1.48
-DRIVE_R_AFT = 1.12
+DRIVE_R_AFT = 1.30
 BOARD_X, BOARD_Z = 14.85, 0.62
-FORE_HW, FORE_HH = 6.15, 4.15
-PASS_HW, PASS_HH = 10.48, 4.55
+FORE_HW, FORE_HH = 7.65, 4.65
+PASS_HW, PASS_HH = 9.65, 4.55
 AFT_HW, AFT_HH = 6.55, 3.75
 MID_HW, MID_HH = PASS_HW, PASS_HH
-CORR_Y = 10.48
+CORR_Y = PASS_HW
 CORR_HW, CORR_HH = 0.62, 1.38
 PASS_WALL = 0.22
-BELT_OUTER = 11.07
+BELT_OUTER = PASS_HW + CORR_HW
 HAT_FORE_X = 10.20
 HAT_AFT_X = -1.55
 HAT_LOAD_X = -12.45
@@ -112,7 +117,7 @@ ROLE_RGB = {
     "ceramic": (0.86, 0.80, 0.68),
     "frame": (0.18, 0.22, 0.27),
     "keel": (0.055, 0.070, 0.090),
-    "glass": (0.012, 0.035, 0.085),
+    "glass": (0.185, 0.365, 0.500),
     "primer": (0.32, 0.36, 0.34),
     "refractory": (0.16, 0.145, 0.130),
     "cyan": (0.10, 0.58, 0.62),
@@ -293,7 +298,7 @@ def role_maps(role, rgb, size=TEX, prefix=None):
                 ny = 0.5 + (gf3 - 0.5) * 0.035
             elif role == "glass":
                 r, g, b = br, bg, bb
-                rough, metal, ao = 0.035, 0.0, 0.97
+                rough, metal, ao = 0.090, 0.0, 0.97
                 nx, ny = 0.5, 0.5
             elif role == "cyan":
                 pulse = 0.78 + 0.22 * math.sin(x * 0.04)
@@ -373,7 +378,7 @@ def create_materials():
         "Material_Hull": ("MAT_SF_Massline_CeramicPaint_WarmIvory", ROLE_RGB["ceramic"], "ceramic", 0.0, None, 0.0, "ceramic"),
         "Material_Armor": ("MAT_SF_Massline_Frame_DarkAnodized", ROLE_RGB["frame"], "frame", 0.05, None, 0.0, "frame"),
         "Material_Mechanical": ("MAT_SF_Massline_Keel_ForgedDark", ROLE_RGB["keel"], "keel", 0.0, None, 0.0, "keel"),
-        "Material_Canopy": ("MAT_SF_Massline_Glazing_SmokedSafety", ROLE_RGB["glass"], "glass", 0.04, None, 0.78, "glass"),
+        "Material_Canopy": ("MAT_SF_Massline_Glazing_SmokedSafety", ROLE_RGB["glass"], "glass", 0.28, None, 0.30, "glass"),
         "Material_Radiator": ("MAT_SF_Massline_ServicePrimer_Galvanized", ROLE_RGB["primer"], "primer", 0.0, None, 0.0, "primer"),
         "Material_Ceramic": ("MAT_SF_Massline_RefractoryHeatAlloy", (0.32, 0.28, 0.24), "refractory", 0.0, None, 0.0, "refractory"),
         "Material_Accent": ("MAT_SF_Massline_WayfindingCyan", (0.10, 0.58, 0.62), "cyan", 0.0, ((0.12, 0.64, 0.68), 0.18), 0.0, "cyan"),
@@ -394,15 +399,15 @@ def create_materials():
         material["spacefaceRole"] = role
         if lookup_name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.78
+                bsdf.inputs["Transmission Weight"].default_value = 0.30
             if "Alpha" in bsdf.inputs:
-                bsdf.inputs["Alpha"].default_value = 0.88
+                bsdf.inputs["Alpha"].default_value = 1.0
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Specular IOR Level" in bsdf.inputs:
-                bsdf.inputs["Specular IOR Level"].default_value = 0.42
+                bsdf.inputs["Specular IOR Level"].default_value = 0.50
             if "Roughness" in bsdf.inputs:
-                bsdf.inputs["Roughness"].default_value = 0.035
+                bsdf.inputs["Roughness"].default_value = 0.090
             if "Metallic" in bsdf.inputs:
                 bsdf.inputs["Metallic"].default_value = 0.0
             try:
@@ -882,6 +887,16 @@ def add_passenger_corridors(lod, mats, collection, passenger_hull=None):
             corridor_ring(4.20, y - sign * 0.28, zc, inner_hw - 0.10, CORR_HH - wall - 0.14),
             corridor_ring(x1 + 0.12, y - sign * 0.28, zc, inner_hw - 0.10, CORR_HH - wall - 0.14),
         ], mech, collection, 0.002, cap="both")
+        # A set-back galvanized interior datum catches neutral light through
+        # the dielectric pane. It is partial and recessed, so the glazing
+        # reads as depth and blue-grey reflection rather than an opaque black
+        # card or a luminous screen.
+        add_box(
+            f"CorridorInteriorDatum_{tag}",
+            (4.20, y - sign * 0.34, zc - 0.18),
+            (4.72, 0.035, 0.22),
+            mats["Material_Radiator"], collection, 0.002,
+        )
         # Gallery roof with thickness and hat-collar roots — not a pancake or knife card.
         add_box(
             f"CorrRoof_{tag}",
@@ -998,6 +1013,12 @@ def add_passenger_clerestory(lod, mats, collection, passenger_hull):
                 inner, collection, 0.002,
             )
             add_box(
+                f"GalleryInteriorDatum_{section}_{side}",
+                (px, cy, deck_z - 0.285),
+                (max(0.18, hx * 0.62), max(0.16, hy * 0.48), 0.024),
+                mats["Material_Radiator"], collection, 0.001,
+            )
+            add_box(
                 f"GalleryGlass_{section}_{side}",
                 (px, cy, deck_z - 0.080),
                 (hx - 0.19, hy - 0.18, 0.030),
@@ -1010,12 +1031,51 @@ def add_passenger_clerestory(lod, mats, collection, passenger_hull):
             add_box(f"GalleryMull_{section}_{side}", (px, cy, deck_z + 0.010), (0.065, hy - 0.12, 0.085), frame, collection, 0.001)
 
 
+def add_passenger_pressure_crown(lod, mats, collection):
+    """Narrow axial pressure crown that keeps the end-on view from becoming a cross.
+
+    The crown only protrudes beyond the passenger shell at its dorsal and
+    ventral arcs. Its side slopes stay inboard of the six recessed gallery
+    wells, so the inherited occupied rhythm remains readable rather than
+    becoming a transverse wing. Four dark course joints make the longitudinal
+    construction survive the legal chase distance and all three LODs.
+    """
+    hull = mats["Material_Hull"]
+    frame = mats["Material_Armor"]
+    rings = [
+        pressure_ring(9.62, 0.0, 0.34, 3.35, 4.88, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
+        pressure_ring(6.48, 0.0, 0.38, 3.72, 5.18, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
+        pressure_ring(2.18, 0.0, 0.38, 3.78, 5.22, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
+        pressure_ring(-1.28, 0.0, 0.32, 3.42, 4.92, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
+    ]
+    loft_from_rings(
+        "PassengerAxialPressureCrown", rings, hull, collection,
+        0.010 if lod <= 1 else 0.006, cap="both",
+    )
+    # Paired longitudinal coaming rails bound the pressure crown without
+    # touching the deck-edge gallery wells at y=+/-2.95 and +/-3.55.
+    add_box("PassengerCrownRail_P", (4.18, -2.10, 5.25), (5.22, 0.075, 0.075), frame, collection, 0.002)
+    add_box("PassengerCrownRail_S", (4.18, 2.10, 5.25), (5.22, 0.075, 0.075), frame, collection, 0.002)
+    for index, (x, half_y, z) in enumerate((
+        (9.55, 1.90, 5.18),
+        (6.50, 2.12, 5.52),
+        (2.20, 2.16, 5.56),
+        (-1.20, 1.96, 5.20),
+    )):
+        add_box(
+            f"PassengerCrownCourseJoint_{index}",
+            (x, 0.0, z), (0.075, half_y, 0.075),
+            frame, collection, 0.002,
+        )
+
+
 def add_drive_saddle(tag, y, lod, mats, collection):
     """Gusseted load-ring saddle. Housing grows from the aft bulkhead, not a stick boom."""
     frame, mech = mats["Material_Armor"], mats["Material_Mechanical"]
     sign = 1.0 if y > 0 else -1.0
     z = DRIVE_Z
-    root_y = sign * 5.70
+    root_y = sign * 4.45
+    saddle_y = sign * 4.55
     loft_from_rings(f"DriveSaddle_{tag}", [
         [
             (HAT_LOAD_X + 0.35, root_y - sign * 1.55, 1.88),
@@ -1024,32 +1084,32 @@ def add_drive_saddle(tag, y, lod, mats, collection):
             (HAT_LOAD_X + 0.35, root_y - sign * 1.55, -1.46),
         ],
         [
-            (HAT_LOAD_X - 1.15, sign * 6.55 - sign * 1.55, z + 1.68),
-            (HAT_LOAD_X - 1.15, sign * 6.55 + sign * 1.35, z + 1.58),
-            (HAT_LOAD_X - 1.15, sign * 6.55 + sign * 1.35, z - 1.26),
-            (HAT_LOAD_X - 1.15, sign * 6.55 - sign * 1.55, z - 1.36),
+            (HAT_LOAD_X - 1.15, saddle_y - sign * 1.45, z + 1.68),
+            (HAT_LOAD_X - 1.15, saddle_y + sign * 1.25, z + 1.58),
+            (HAT_LOAD_X - 1.15, saddle_y + sign * 1.25, z - 1.26),
+            (HAT_LOAD_X - 1.15, saddle_y - sign * 1.45, z - 1.36),
         ],
     ], frame, collection, 0.006, cap="both")
     add_folded_sheet(
         f"DriveGusset_{tag}",
         (HAT_LOAD_X + 0.15, root_y - sign * 0.25, 1.98),
         (HAT_LOAD_X + 0.15, root_y - sign * 0.25, -1.45),
-        (HAT_LOAD_X - 1.35, sign * 6.55 - sign * 0.65, z - 1.16),
-        (HAT_LOAD_X - 1.35, sign * 6.55 - sign * 0.65, z + 1.46),
+        (HAT_LOAD_X - 1.35, saddle_y - sign * 0.60, z - 1.16),
+        (HAT_LOAD_X - 1.35, saddle_y - sign * 0.60, z + 1.46),
         0.090, frame, collection, 0.004,
     )
     add_folded_sheet(
         f"DriveGussetOut_{tag}",
         (HAT_LOAD_X + 0.05, root_y + sign * 1.45, 1.72),
         (HAT_LOAD_X + 0.05, root_y + sign * 1.45, -1.22),
-        (HAT_LOAD_X - 1.05, sign * 6.55 + sign * 1.10, z - 1.02),
-        (HAT_LOAD_X - 1.05, sign * 6.55 + sign * 1.10, z + 1.32),
+        (HAT_LOAD_X - 1.05, saddle_y + sign * 1.00, z - 1.02),
+        (HAT_LOAD_X - 1.05, saddle_y + sign * 1.00, z + 1.32),
         0.070, frame, collection, 0.004,
     )
     add_box(f"DriveShoe_{tag}", (HAT_LOAD_X + 0.05, root_y, 0.22), (0.52, 1.22, 1.38), frame, collection, 0.004)
-    add_box(f"DriveClampBar_{tag}", (HAT_LOAD_X - 1.55, sign * 6.55, z + 1.62), (0.90, 0.28, 0.12), frame, collection, 0.003)
+    add_box(f"DriveClampBar_{tag}", (HAT_LOAD_X - 1.55, saddle_y, z + 1.62), (0.90, 0.28, 0.12), frame, collection, 0.003)
     if lod == 0:
-        add_box(f"DriveClampBolt_{tag}", (HAT_LOAD_X - 1.25, sign * 6.55, z + 1.72), (0.07, 0.07, 0.06), mech, collection, 0.001)
+        add_box(f"DriveClampBolt_{tag}", (HAT_LOAD_X - 1.25, saddle_y, z + 1.72), (0.07, 0.07, 0.06), mech, collection, 0.001)
 
 
 def add_rooted_vane(name, origin, material, collection, angle, inner=0.22, outer=0.68):
@@ -1096,23 +1156,27 @@ def add_civic_drive(tag, y, lod, mats, collection):
     core = mats["Material_Accent"]
     z = DRIVE_Z
     sign = 1.0 if y > 0 else -1.0
-    y0 = sign * 5.70
-    x0, x1, x2, x3, x4 = HAT_LOAD_X - 0.15, -13.65, -15.35, -18.05, -20.85
+    y0 = sign * 4.45
+    x0, x1, x2, x3, x4 = HAT_LOAD_X - 0.15, -13.75, -15.50, -17.80, -20.85
+    # The pair remains inside the aft pressure envelope. A small root-to-bore
+    # convergence establishes load transfer without the swept horn/prong path
+    # that dominated Cycle 34.
+    y1, y2, y3 = sign * 4.50, sign * 4.55, y
     case = loft_hollow(
         f"DriveHouse_{tag}",
         [
-            drive_case_ring(x0, y0, 0.22, 2.30, 1.95, 8),
-            drive_case_ring(x1, sign * 6.55, z, 2.08, 1.78, 8),
-            drive_case_ring(x2, sign * 7.90, z, 1.72, 1.48, 8),
-            drive_case_ring(x3, y, z, 1.34, 1.18, 8),
+            drive_case_ring(x0, y0, 0.22, 2.38, 2.02, 8),
+            drive_case_ring(x1, y1, z, 2.28, 1.92, 8),
+            drive_case_ring(x2, y2, z, 2.05, 1.74, 8),
+            drive_case_ring(x3, y3, z, 1.72, 1.48, 8),
             drive_case_ring(x4, y, z, DRIVE_R_AFT, DRIVE_R_AFT * 0.92, 8),
         ],
         [
-            drive_case_ring(x0, y0, 0.22, 1.84, 1.54, 8),
-            drive_case_ring(x1, sign * 6.55, z, 1.62, 1.36, 8),
-            drive_case_ring(x2, sign * 7.90, z, 1.28, 1.08, 8),
-            drive_case_ring(x3, y, z, 0.98, 0.84, 8),
-            drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.28, DRIVE_R_AFT * 0.92 - 0.26, 8),
+            drive_case_ring(x0, y0, 0.22, 1.90, 1.60, 8),
+            drive_case_ring(x1, y1, z, 1.78, 1.48, 8),
+            drive_case_ring(x2, y2, z, 1.53, 1.27, 8),
+            drive_case_ring(x3, y3, z, 1.20, 1.00, 8),
+            drive_case_ring(x4, y, z, DRIVE_R_AFT - 0.32, DRIVE_R_AFT * 0.92 - 0.28, 8),
         ],
         frame, collection, 0.006, close_front=True,
     )
@@ -1129,25 +1193,53 @@ def add_civic_drive(tag, y, lod, mats, collection):
                 (HAT_LOAD_X + 0.02, y0 - sign * 1.45, 1.42),
             ],
             [
-                (x2 + 0.12, sign * 7.90 - sign * 1.05, 1.70),
-                (x2 + 0.12, sign * 7.90 + sign * 1.05, 1.70),
-                (x2 + 0.12, sign * 7.90 + sign * 0.92, 1.38),
-                (x2 + 0.12, sign * 7.90 - sign * 0.92, 1.38),
+                (x2 + 0.12, y2 - sign * 1.12, 1.76),
+                (x2 + 0.12, y2 + sign * 1.12, 1.76),
+                (x2 + 0.12, y2 + sign * 0.98, 1.38),
+                (x2 + 0.12, y2 - sign * 0.98, 1.38),
             ],
         ],
         hull, collection, 0.004, cap="both",
     )
+    # Three structural collars and primer inspection lands make the long case
+    # read as a manufactured propulsion housing before the eye reaches the
+    # bore. They follow the same centerline and never bridge the twin void.
+    for index, (cx, cy, rx, rz) in enumerate((
+        (-14.25, sign * 4.50, 2.20, 1.86),
+        (-16.62, sign * 4.55, 1.84, 1.57),
+        (-19.35, y, 1.50, 1.31),
+    )):
+        loft_hollow(
+            f"DriveCaseCollar_{tag}_{index}",
+            [
+                drive_case_ring(cx + 0.11, cy, z, rx + 0.08, rz + 0.08, 8),
+                drive_case_ring(cx - 0.11, cy, z, rx + 0.08, rz + 0.08, 8),
+            ],
+            [
+                drive_case_ring(cx + 0.11, cy, z, rx, rz, 8),
+                drive_case_ring(cx - 0.11, cy, z, rx, rz, 8),
+            ],
+            hull, collection, 0.002, close_front=False, close_aft=False,
+        )
+        add_box(
+            f"DriveInspectionLand_{tag}_{index}",
+            (cx, cy, z + rz + 0.07),
+            (0.58 if index < 2 else 0.42, 0.22, 0.055),
+            mats["Material_Radiator"], collection, 0.002,
+        )
+    bore_y0 = y
+    bore_y1 = y
     # Dry refractory inner wall. Same 8-sided family as the housing, not a 10-gon chrome sleeve.
     loft_hollow(
         f"Liner_{tag}",
         [
-            drive_case_ring(-16.85, y, z, 0.86, 0.78, 8),
-            drive_case_ring(-18.65, y, z, 0.80, 0.72, 8),
+            drive_case_ring(-16.85, bore_y0, z, 0.86, 0.78, 8),
+            drive_case_ring(-18.65, bore_y1, z, 0.80, 0.72, 8),
             drive_case_ring(-20.55, y, z, 0.84, 0.76, 8),
         ],
         [
-            drive_case_ring(-16.85, y, z, 0.62, 0.56, 8),
-            drive_case_ring(-18.65, y, z, 0.54, 0.48, 8),
+            drive_case_ring(-16.85, bore_y0, z, 0.62, 0.56, 8),
+            drive_case_ring(-18.65, bore_y1, z, 0.54, 0.48, 8),
             drive_case_ring(-20.55, y, z, 0.58, 0.52, 8),
         ],
         refractory, collection, 0.002, close_front=True,
@@ -1165,8 +1257,8 @@ def add_civic_drive(tag, y, lod, mats, collection):
         ],
         throat, collection, 0.002, close_front=False,
     )
-    add_cylinder(f"ThroatFloor_{tag}", (-16.85, y, z), 0.48, 0.10, throat, collection, 8, 0.002)
-    add_cylinder(f"Hub_{tag}", (-18.55, y, z), 0.22, 0.85, throat, collection, 8, 0.002)
+    add_cylinder(f"ThroatFloor_{tag}", (-16.85, bore_y0, z), 0.48, 0.10, throat, collection, 8, 0.002)
+    add_cylinder(f"Hub_{tag}", (-18.55, bore_y1, z), 0.22, 0.85, throat, collection, 8, 0.002)
     add_cylinder(f"HubCap_{tag}", (-18.95, y, z), 0.16, 0.12, mech, collection, 8, 0.001)
     add_cylinder(f"Core_{tag}", (-18.35, y, z), 0.045, 0.08, core, collection, 8, 0.001)
     add_drive_saddle(tag, y, lod, mats, collection)
@@ -1178,6 +1270,45 @@ def add_civic_drive(tag, y, lod, mats, collection):
                 inner=0.20, outer=0.66,
             )
     return case
+
+
+def add_propulsion_load_bridge(lod, mats, collection):
+    """Tapered central afterbody carrying load to the paired drive cases.
+
+    The bridge overlaps both case roots and ends before their bores. At the
+    supported cameras the propulsion plant therefore divides into two short
+    cases instead of presenting two long free-ended prongs. The paired dry
+    throats and their centerline clearance remain distinct.
+    """
+    hull = mats["Material_Hull"]
+    frame = mats["Material_Armor"]
+    mech = mats["Material_Mechanical"]
+    loft_from_rings(
+        "PropulsionLoadBridge",
+        [
+            pressure_ring(HAT_LOAD_X - 0.05, 0.0, 0.24, 3.18, 2.24, deck=0.48, wall=0.72, chine=0.16, belly=0.34),
+            pressure_ring(-14.45, 0.0, 0.30, 2.78, 1.92, deck=0.46, wall=0.70, chine=0.16, belly=0.32),
+            pressure_ring(-16.55, 0.0, 0.36, 1.94, 1.34, deck=0.42, wall=0.66, chine=0.14, belly=0.28),
+        ],
+        hull, collection, 0.008 if lod <= 1 else 0.005, cap="both",
+    )
+    for index, (x, half_y, half_z) in enumerate((
+        (HAT_LOAD_X - 0.12, 3.20, 2.18),
+        (-14.45, 2.82, 1.86),
+        (-16.48, 1.98, 1.30),
+    )):
+        add_box(
+            f"PropulsionBridgeFrame_{index}",
+            (x, 0.0, 0.30), (0.085, half_y, half_z),
+            frame, collection, 0.002,
+        )
+    # A set-in centerline service spine makes the load path legible with the
+    # paint response disabled; it is not hung in the space between cases.
+    add_box(
+        "PropulsionBridgeKeel",
+        (-14.42, 0.0, -1.38), (2.00, 0.34, 0.18),
+        mech, collection, 0.003,
+    )
 
 
 def add_dock_hardware(tag, loc, mats, collection, lod, cyan=True):
@@ -1209,10 +1340,10 @@ def sockets():
         "SOCKET_Utility_Dorsal": (4.4, 0.0, 5.55),
         "SOCKET_Cargo_Ventral": (0.35, 0.0, -5.28),
         "SOCKET_Camera_Focus": (0.4, 0.0, 0.45),
-        "SOCKET_RCS_Port": (8.8, -9.87, 0.85),
-        "SOCKET_RCS_Starboard": (8.8, 9.87, 0.85),
-        "SOCKET_Dock_Port": (3.40, -11.12, 0.42),
-        "SOCKET_Service_Starboard": (-1.80, 11.12, 0.42),
+        "SOCKET_RCS_Port": (8.8, -(PASS_HW + 0.22), 0.85),
+        "SOCKET_RCS_Starboard": (8.8, PASS_HW + 0.22, 0.85),
+        "SOCKET_Dock_Port": (3.40, -BELT_OUTER, 0.42),
+        "SOCKET_Service_Starboard": (-1.80, BELT_OUTER, 0.42),
         "SOCKET_Tether_Keel": (0.35, 0.0, -5.28),
     }
 
@@ -1322,13 +1453,14 @@ def forward_stations(lod):
     """Operations/boarding shoulder. Snub bow, then a parallel narrower station."""
     if lod >= 2:
         return [
-            pressure_ring(19.55, 0, 0.20, 1.32, 1.58, deck=0.26, wall=0.34, chine=0.08, belly=0.16),
+            pressure_ring(19.15, 0, 0.22, 2.18, 1.86, deck=0.38, wall=0.46, chine=0.10, belly=0.18),
+            pressure_ring(17.55, 0, 0.30, 3.55, 2.62, deck=0.48, wall=0.56, chine=0.12, belly=0.22),
             pressure_ring(15.55, 0, 0.36, 5.45, 3.85, **OPS),
             pressure_ring(10.55, 0, 0.40, FORE_HW, FORE_HH, **OPS),
         ]
     return [
-        pressure_ring(19.58, 0, 0.18, 1.22, 1.52, deck=0.22, wall=0.30, chine=0.06, belly=0.16),
-        pressure_ring(18.05, 0, 0.28, 2.95, 2.42, deck=0.42, wall=0.48, chine=0.10, belly=0.20),
+        pressure_ring(19.15, 0, 0.22, 2.18, 1.86, deck=0.38, wall=0.46, chine=0.10, belly=0.18),
+        pressure_ring(17.55, 0, 0.30, 3.55, 2.62, deck=0.48, wall=0.56, chine=0.12, belly=0.22),
         pressure_ring(16.35, 0, 0.36, 4.85, 3.45, deck=0.55, wall=0.62, chine=0.14, belly=0.24),
         pressure_ring(14.15, 0, 0.40, 6.05, 4.05, **OPS),
         pressure_ring(10.55, 0, 0.40, FORE_HW, FORE_HH, **OPS),
@@ -1552,7 +1684,7 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
     }.get(role, 0.12)
     rough_base = {
         "ceramic": 0.56, "frame": 0.30, "keel": 0.28, "primer": 0.58,
-        "refractory": 0.78, "glass": 0.035, "cyan": 0.22, "amber": 0.36, "throat": 0.54,
+        "refractory": 0.78, "glass": 0.090, "cyan": 0.22, "amber": 0.36, "throat": 0.54,
     }.get(role, 0.45)
     count = size * size
     for i in range(count):
@@ -1566,7 +1698,7 @@ def composite_unique(role, rgb, ao_img, curv_img, nrm_img, size, prefix):
         if role == "glass":
             a = max(0.86, a)
             r, g, b = br, bg, bb
-            rough = 0.035 + cavity * 0.02
+            rough = 0.090 + cavity * 0.02
             metal = 0.0
         elif role == "ceramic":
             a = max(0.72, min(1.0, a))
@@ -1706,13 +1838,19 @@ def bake_lod0_unique(merged, collection, mats):
                 for node in list(obj.data.materials[0].node_tree.nodes):
                     if node.type != "OUTPUT_MATERIAL" and node != bsdf:
                         obj.data.materials[0].node_tree.nodes.remove(node)
-            coat = 0.0 if key == "Hull" else (0.04 if key == "Canopy" else 0.05 if key == "Armor" else 0.0)
-            trans = 0.78 if key == "Canopy" else 0.0
+            coat = 0.0 if key == "Hull" else (0.35 if key == "Canopy" else 0.05 if key == "Armor" else 0.0)
+            trans = 0.18 if key == "Canopy" else 0.0
             wire_maps(obj.data.materials[0], bsdf, maps, coat=coat, transmission=trans)
             if key == "Canopy":
                 mat = obj.data.materials[0]
                 if "IOR" in bsdf.inputs:
                     bsdf.inputs["IOR"].default_value = 1.52
+                if "Specular IOR Level" in bsdf.inputs:
+                    bsdf.inputs["Specular IOR Level"].default_value = 0.50
+                if "Roughness" in bsdf.inputs:
+                    bsdf.inputs["Roughness"].default_value = 0.090
+                if "Alpha" in bsdf.inputs:
+                    bsdf.inputs["Alpha"].default_value = 1.0
                 try:
                     mat.blend_method = "HASHED"
                 except Exception:
@@ -1758,8 +1896,8 @@ def build_lod(lod, mats):
         add_boarding_necks(lod, mats, collection)
         try_cut_bay(hull_pass, "PortDock", (3.40, -PASS_HW + 0.20, 0.28), 2.15, 1.05, 0.48, (0, -1, 0), mats, collection, "empty")
         try_cut_bay(hull_pass, "StbdService", (-0.55, PASS_HW - 0.20, 0.28), 2.05, 0.98, 0.46, (0, 1, 0), mats, collection, "empty")
-        add_dock_hardware("Port", (3.40, -11.12, 0.42), mats, collection, lod, cyan=True)
-        add_dock_hardware("Stbd", (-1.80, 11.12, 0.42), mats, collection, lod, cyan=False)
+        add_dock_hardware("Port", (3.40, -BELT_OUTER, 0.42), mats, collection, lod, cyan=True)
+        add_dock_hardware("Stbd", (-1.80, BELT_OUTER, 0.42), mats, collection, lod, cyan=False)
         add_dorsal_spine(lod, mats, collection)
         add_passenger_corridors(lod, mats, collection, passenger_hull=hull_pass)
         add_passenger_clerestory(lod, mats, collection, hull_pass)
@@ -1773,11 +1911,11 @@ def build_lod(lod, mats):
             0.32, 0.78, 0.14, 0.36, inner_hw=9.48, inner_hh=4.32,
         )
         add_hat_station_ring(
-            "Hat_GalleryAft", 2.20, 9.72, 4.48, mats, collection,
+            "Hat_GalleryAft", 2.20, PASS_HW - 0.20, 4.48, mats, collection,
             0.34, 0.77, 0.14, 0.35, inner_hw=9.08, inner_hh=4.08,
         )
         add_hat_station_ring(
-            "Hat_Waist", HAT_AFT_X, 9.18, 4.22, mats, collection,
+            "Hat_Waist", HAT_AFT_X, PASS_HW - 0.60, 4.22, mats, collection,
             0.37, 0.77, 0.14, 0.34,
             inner_hw=AFT_HW * 0.98, inner_hh=AFT_HH * 0.98,
         )
@@ -1821,23 +1959,25 @@ def build_lod(lod, mats):
             0.32, 0.78, 0.14, 0.36, inner_hw=9.48, inner_hh=4.32,
         )
         add_hat_station_ring(
-            "Hat_GalleryAft", 2.20, 9.72, 4.48, mats, collection,
+            "Hat_GalleryAft", 2.20, PASS_HW - 0.20, 4.48, mats, collection,
             0.34, 0.77, 0.14, 0.35, inner_hw=9.08, inner_hh=4.08,
         )
         add_hat_station_ring(
-            "Hat_Waist", HAT_AFT_X, 9.18, 4.22, mats, collection,
+            "Hat_Waist", HAT_AFT_X, PASS_HW - 0.60, 4.22, mats, collection,
             0.37, 0.77, 0.14, 0.34,
             inner_hw=AFT_HW, inner_hh=AFT_HH,
         )
-        add_box("NoseCap", (19.62, 0.0, 0.35), (0.16, 0.85, 0.62), hull_mat, collection, 0.003)
+        add_box("NoseCap", (19.28, 0.0, 0.30), (0.14, 1.42, 0.86), hull_mat, collection, 0.003)
+    add_passenger_pressure_crown(lod, mats, collection)
     add_service_cassette(lod, mats, collection)
     add_keel_and_saddle(lod, mats, collection)
     add_box("KeelRoot_Fore", (HAT_FORE_X, 0.0, -3.55), (0.18, 0.55, 0.42), mats["Material_Mechanical"], collection, 0.003)
     add_box("KeelRoot_Waist", (HAT_AFT_X, 0.0, -3.85), (0.18, 0.55, 0.42), mats["Material_Mechanical"], collection, 0.003)
     add_box("KeelRoot_Load", (HAT_LOAD_X, 0.0, -2.55), (0.18, 0.42, 0.32), mats["Material_Mechanical"], collection, 0.003)
+    add_propulsion_load_bridge(lod, mats, collection)
     add_civic_drive("Port", -DRIVE_Y, lod, mats, collection)
     add_civic_drive("Stbd", DRIVE_Y, lod, mats, collection)
-    add_box("NoseCap_LOD", (19.68, 0.0, 0.32), (0.14, 0.72, 0.55), hull_mat, collection, 0.003)
+    add_box("NoseCap_LOD", (19.28, 0.0, 0.30), (0.14, 1.42, 0.86), hull_mat, collection, 0.003)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
@@ -1882,7 +2022,8 @@ def build_lod(lod, mats):
     bm = bmesh.new()
     for point in (
         (19.8, 0, 0.3), (15.6, -4.4, 2.4), (15.6, 4.4, 2.4),
-        (4.2, -11.1, 0.5), (4.2, 11.1, 0.5),
+        (10.55, -7.75, 0.4), (10.55, 7.75, 0.4),
+        (4.2, -BELT_OUTER, 0.5), (4.2, BELT_OUTER, 0.5),
         (HAT_LOAD_X, -5.2, 0.3), (HAT_LOAD_X, 5.2, 0.3),
         (-21.0, -DRIVE_Y, DRIVE_Z), (-21.0, DRIVE_Y, DRIVE_Z),
         (0.35, 0, -5.3), (4.4, 0, 5.6),
@@ -2152,6 +2293,55 @@ def measure_supported_occupancy(camera, meshes, focus):
     return measured, failures
 
 
+def render_authored_band_evidence(camera, meshes, out, focus, lod):
+    """Render labeled, matched chase views at real LOD selection sizes.
+
+    The three legal cycle cameras above remain untouched. These additional
+    views prove the simplified sources at their authored on-screen bands and
+    supply identical approach/recede poses on both sides of each LOD handoff.
+    """
+    authored = {
+        0: [
+            ("transition_near_lod0.png", 200.0, 0.0, None, "LOD0 side of LOD0/LOD1 transition"),
+        ],
+        1: [
+            ("lod_band_play_chase.png", 210.0, 0.0, (90.0, 220.0), "LOD1 authored-band default"),
+            ("lod_band_play_chase_abeam.png", 210.0, 90.0, (90.0, 220.0), "LOD1 authored-band abeam"),
+            ("transition_near_lod1.png", 200.0, 0.0, (90.0, 220.0), "LOD1 side of LOD0/LOD1 transition"),
+            ("transition_far_lod1.png", 439.5, 0.0, (90.0, 220.0), "LOD1 side of LOD1/LOD2 transition"),
+        ],
+        2: [
+            ("lod_band_play_chase.png", 480.0, 0.0, (0.0, 90.0), "LOD2 authored-band default"),
+            ("lod_band_play_chase_abeam.png", 480.0, 90.0, (0.0, 90.0), "LOD2 authored-band abeam"),
+            ("transition_far_lod2.png", 439.5, 0.0, (0.0, 90.0), "LOD2 side of LOD1/LOD2 transition"),
+        ],
+    }
+    result = {}
+    scene = bpy.context.scene
+    for name, distance, heading, px_band, purpose in authored[lod]:
+        render_chase_still(
+            camera, out / name, distance=distance,
+            heading_deg=heading, focus=focus,
+        )
+        rec = projected_occupancy(scene, camera, meshes)
+        rec.update({
+            "distance": distance,
+            "headingDeg": heading,
+            "purpose": purpose,
+            "authoredBandPx1600": list(px_band) if px_band else None,
+            "inAuthoredBand": (
+                px_band[0] <= rec["widthPx1600"] <= px_band[1]
+                if px_band else None
+            ),
+        })
+        result[name] = rec
+        print(
+            f"authored evidence lod{lod} {name}: "
+            f"{rec['widthPx1600']:.1f}px at D={distance:g}"
+        )
+    return result
+
+
 def assign_all_slots(obj, mat):
     if not obj.material_slots:
         obj.data.materials.append(mat)
@@ -2274,6 +2464,7 @@ def render_cycle_from_glb(glb_path, lod=0):
     out.mkdir(parents=True, exist_ok=True)
     occupancy, occupancy_failures = measure_supported_occupancy(camera, meshes, focus)
     render_cycle_chase_stills(camera, out, focus=focus)
+    authored_band_evidence = render_authored_band_evidence(camera, meshes, out, focus, lod)
 
     world_bg = bpy.context.scene.world.node_tree.nodes.get("Background")
     prior_strength = world_bg.inputs["Strength"].default_value
@@ -2371,16 +2562,25 @@ def render_cycle_from_glb(glb_path, lod=0):
             "grazing_close": {"kind": "diagnostic", "lens_mm": 32},
             "drive_rear": {"kind": "diagnostic", "lens_mm": 55},
             "diagnostics": ["id_or_material_id.png", "orm_isolation.png", "normal_isolation.png"],
+            "authoredBandAndTransitions": {
+                name: {
+                    "distance": rec["distance"],
+                    "heading_deg": rec["headingDeg"],
+                    "purpose": rec["purpose"],
+                }
+                for name, rec in authored_band_evidence.items()
+            },
         },
         "boundsSizeM": [round(float(size.x), 4), round(float(size.y), 4), round(float(size.z), 4)],
         "lengthToBeam": round(float(size.x) / max(1e-6, float(size.y)), 4),
         "occupancy": occupancy,
         "occupancyFailures": occupancy_failures,
+        "authoredBandEvidence": authored_band_evidence,
         "views": [
             "play_chase.png", "play_chase_abeam.png", "play_chase_close.png",
             "clay_play_chase.png", "grazing_close.png", "drive_rear.png",
             "orm_isolation.png", "normal_isolation.png", "id_or_material_id.png",
-        ],
+        ] + list(authored_band_evidence.keys()),
         "stillSha256": still_hashes,
         "producer": "build_massline_express_liner_v1.py",
         "verdict": "revise",
@@ -2493,6 +2693,7 @@ def main():
                 ).replace("\\", "/").rstrip("/"),
                 "occupancy": record["occupancy"],
                 "occupancyFailures": record["occupancyFailures"],
+                "authoredBandEvidence": record["authoredBandEvidence"],
             }
             for lod, record in identities.items()
         },
