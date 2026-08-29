@@ -13,17 +13,26 @@ Nine 60-second flights, New Game seed 47, held thrust, host CPU 18–23% through
 frame time in hitch frames beyond a 16.7 ms budget — a severity measure, because a hitch count
 weights a 500 ms freeze the same as a 35 ms one.
 
-| | before (n=3) | after (n=6) |
+| | before (n=3) | after (n=8) |
 |---|---|---|
-| hitches per 1000 frames | 38.1 / 11.1 / 36.9 | **6.2 / 8.7 / 8.3 / 6.5 / 5.8 / 5.9** |
-| excess ms per 1000 frames | 1429 / 924 / 1298 | **530 / 608 / 613 / 509 / 498 / 530** |
-| frames delivered in 60 s | 2888 / 2974 / 2924 | **3079 / 2989 / 3019 / 3077 / 3080 / 3047** |
+| hitches per 1000 frames | 38.1 / 11.1 / 36.9 | **6.2 / 8.7 / 8.3 / 6.5 / 5.8 / 5.9 / 8.2 / 7.9** |
+| excess ms per 1000 frames | 1429 / 924 / 1298 | **530 / 608 / 613 / 509 / 498 / 530 / 607 / 579** |
+| frames delivered in 60 s | 2888 / 2974 / 2924 | **~3050 (2989–3080)** |
 
-Hitch rate fell about **4x on the mean and 5.8x on the median**; excess frame time fell about
-**2.2x**; the game delivers ~4% more frames in the same wall clock. The spread also collapsed —
-before, hitch rate ranged 11–38 per 1000 frames (3.4x between runs); after, 5.8–8.7 (1.5x). Every
-owner category improved, including `sim` (mean 23 → 2.8), because frames that are not being stolen
-by a driver stall finish inside their budget.
+|  | before | after | ratio |
+|---|---:|---:|---:|
+| hitches / 1000 frames, mean | 28.7 | 7.2 | **4.0x** |
+| hitches / 1000 frames, median | 36.9 | 7.2 | **5.1x** |
+| excess ms / 1000 frames, mean | 1217 | 559 | **2.2x** |
+
+The last two rows are the honest pair to quote together. Hitch *rate* improves more than hitch
+*severity* because the multi-second collections described below survive both arms and dominate what
+is left of the excess-milliseconds number.
+
+The game also delivers ~4% more frames in the same wall clock, and the spread collapsed — before,
+hitch rate ranged 11–38 per 1000 frames (3.4x between runs); after, 5.8–8.7 (1.5x). Every owner
+category improved, including `sim` (mean 23 → 3.2), because frames that are not being stolen by a
+driver stall finish inside their budget.
 
 Two changes produced this, both quality-neutral and both recorded in their own commits: the opening
 readiness cohort, and the global pipeline warmup that had never run outside context recovery.
