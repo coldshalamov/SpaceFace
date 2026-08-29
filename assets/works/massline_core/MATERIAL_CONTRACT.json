@@ -3,7 +3,7 @@
   "assetId": "place_works_massline_core",
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "packet": "PQ-131.02",
-  "cycle": 3,
+  "cycle": 4,
   "state": "design_candidate",
   "disposition": "review_pending",
   "allSupportedViewZonesClassified": false,
@@ -85,7 +85,11 @@
     "uniform AO dirt",
     "nested-square puck feet",
     "brown well plug",
-    "beacon lamp"
+    "beacon lamp",
+    "pie-wedge collar",
+    "occupancy-arrow shoes",
+    "plus-dot site icon",
+    "chrome coin race"
   ],
   "componentReferenceDecision": "not_needed",
   "citedReferences": [
