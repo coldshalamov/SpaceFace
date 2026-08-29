@@ -24,16 +24,32 @@ function _buf(stationId, cmdtyId) {
   return arr;
 }
 
-function activeEventIds(state, stationId, cmdtyId) {
-  const events = state && state.economy && state.economy.econEvents;
-  if (!events) return [];
-  const out = [];
-  for (const ev of events) {
-    if (ev.stationId !== stationId) continue;
-    if (ev.commodityId !== '*' && ev.commodityId !== cmdtyId) continue;
-    out.push(ev.id);
+// Per-tick event capture. The market screen's own event log reads state.economy.econEvents
+// directly, but the points' `events` field is not dead: scripts/check-market-chart.mjs asserts
+// live tick points carry the active event ids. Capture therefore stays bit-identical to the old
+// per-listing activeEventIds scan (same filter, same order); it just stops allocating per listing
+// when nothing is active — the station's candidate rows are resolved once per tick, and only
+// listings with matching events allocate their id array.
+function stationEventRows(events, stationId) {
+  if (!events || !events.length) return null;
+  const rows = [];
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    if (ev && ev.stationId === stationId) rows.push(ev);
   }
-  return out;
+  return rows.length ? rows : null;
+}
+
+function eventIdsFor(rows, cmdtyId) {
+  if (!rows) return NO_EVENTS;
+  let ids = null;
+  for (let i = 0; i < rows.length; i++) {
+    const ev = rows[i];
+    if (ev.commodityId !== '*' && ev.commodityId !== cmdtyId) continue;
+    if (!ids) ids = [];
+    ids.push(ev.id);
+  }
+  return ids || NO_EVENTS;
 }
 
 const NOMINAL_SPREAD = 0.085; // matches economy SPREAD_BASE; used only when an entry has no quotes yet
@@ -51,8 +67,9 @@ function entrySpread(e) {
 // charts position by array index, so clamp the timestamp at the origin.
 // Seeded points are synthetic past: they can never carry an event, nothing in the tree mutates a
 // price point's `events`, and the market chart's event log reads `state.economy.econEvents`
-// directly rather than this field. A fresh array per point was therefore a second allocation per
-// point for nobody. Frozen so a future reader cannot start mutating the shared instance.
+// directly rather than this field. Live tick points share the same frozen empty marker whenever no
+// active event matches the listing, so the steady state allocates no events array per point at all.
+// Frozen so a future reader cannot start mutating the shared instance.
 const NO_EVENTS = Object.freeze([]);
 
 function pointFromMid(mid, spread, t) {
@@ -100,10 +117,14 @@ export function initPriceHistory(bus, state) {
     _tickCount++;
     const markets = state && state.economy && state.economy.markets;
     if (!markets) return;
+    const activeEvents = state && state.economy && state.economy.econEvents;
     for (const stationId in markets) {
       // First tick after a reset: backfill a real price past before recording the live sample.
       seedStationFromHistory(state, stationId);
       const market = markets[stationId];
+      // Resolve the station's candidate events once per tick; listings with no match share the
+      // frozen empty marker instead of allocating a fresh array each.
+      const stationRows = stationEventRows(activeEvents, stationId);
       for (const cid in market) {
         const e = market[cid];
         const mid = e && (e.lastMid != null ? e.lastMid : (e.lastBuy != null && e.lastSell != null ? (e.lastBuy + e.lastSell) / 2 : null));
@@ -114,7 +135,7 @@ export function initPriceHistory(bus, state) {
           buy: Math.round(e.lastBuy != null ? e.lastBuy : mid),
           sell: Math.round(e.lastSell != null ? e.lastSell : mid),
           t: Math.max(0, state.simTime || 0),
-          events: activeEventIds(state, stationId, cid),
+          events: eventIdsFor(stationRows, cid),
         });
         if (arr.length > MAX_POINTS) arr.shift();
       }
