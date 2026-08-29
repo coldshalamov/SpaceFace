@@ -5728,6 +5728,30 @@
       }
     },
     {
+      "id": "place_works_massline_core",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_massline_core.glb",
+      "tris": 5550,
+      "bytes": 3193144,
+      "textureSize": 1024,
+      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 5550/1660/486-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 05 whole-asset top, edge, site, clay, matched-LOD, material-isolation, hook, and dedicated LOD2 Works-site evidence independently reviewed KEEP against source SHA-256 0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "ring_spin",
+        "lamp"
+      ],
+      "sockets": [
+        "ring_spin",
+        "lamp"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.04, -1.04, 0],
+        "max": [1.068, 1.04, 0.735],
+        "dimensionsM": [2.108, 2.08, 0.735]
+      }
+    },
+    {
       "id": "place_works_extractor",
       "category": "works",
       "priority": "P1",

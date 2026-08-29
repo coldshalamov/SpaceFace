@@ -2992,6 +2992,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-fabricator",
       "metadataUrl": "assets/ships/release/render-packages/works-fabricator/render-package.json"
+    },
+    {
+      "key": "works-massline-core",
+      "assetId": "sf.render.works-massline-core",
+      "runtimeAssetId": "place_works_massline_core",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_massline_core",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_massline_core.glb",
+      "releaseSha256": "fc7b2de1eaaafd5fa0bd2ca2d5d355c525fabbd3c06788cee265e50838d6e80c",
+      "releaseBytes": 1313132,
+      "rootNode": "SF_WORKS_MASSLINE_CORE_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-massline-core",
+      "metadataUrl": "assets/ships/release/render-packages/works-massline-core/render-package.json"
     }
   ]
 }

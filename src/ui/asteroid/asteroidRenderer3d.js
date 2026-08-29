@@ -60,6 +60,7 @@ import {
   DERRICK_HOOKS,
   EXTRACTOR_HOOKS,
   FABRICATOR_HOOKS,
+  MASSLINE_CORE_HOOKS,
   recordWorksInstanceResources,
 } from './worksPartLoader.js';
 
@@ -300,6 +301,7 @@ const MACHINE_KIND = {
 
 export function authoredWorksMachineKind(defId) {
   const kind = MACHINE_KIND[defId];
+  if (kind === 'core') return 'massline_core';
   return kind === 'extractor' || kind === 'fabricator' ? kind : null;
 }
 
@@ -654,6 +656,52 @@ export function bindAuthoredExtractor(group) {
           beltPhaseMaps[i].needsUpdate = true;
         }
       },
+    },
+  };
+}
+
+// PQ-131.02 — bind the accepted square-flange Massline Core. The source is Y-up after glTF
+// export, so its ring_spin hook turns around local Y before the seat maps that axis onto the
+// Works cut plane's +Z normal. Only the recessed lamp meshes get instance materials; the atlas
+// shared by the wellhead and rotating ring remains immutable across placements.
+export function bindAuthoredMasslineCore(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Massline Core group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of MASSLINE_CORE_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Massline Core is missing ${name}`);
+  }
+
+  const seat = new THREE.Group();
+  seat.name = 'massline_core_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (obj.isMesh && /^LOD[012]_massline_core_lamp$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+  const instanceOwned = [];
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  recordWorksInstanceResources(group, instanceOwned);
+  const ringBaseY = hooks.ring_spin.rotation.y;
+
+  return {
+    group: seat,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      ring: hooks.ring_spin,
+      setOrbitTheta(theta) { hooks.ring_spin.rotation.y = ringBaseY + theta; },
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.lamp,
     },
   };
 }
@@ -3539,7 +3587,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
-    const label = kind === 'fabricator' ? 'Fabricator' : 'Extractor';
+    const label = kind === 'massline_core'
+      ? 'Massline Core'
+      : (kind === 'fabricator' ? 'Fabricator' : 'Extractor');
     try {
       source = await loader.loadWorksPart(kind);
       if (!source) {
@@ -3551,9 +3601,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         loader.releaseWorksPart(source);
         return null;
       }
-      const authored = kind === 'fabricator'
-        ? bindAuthoredFabricator(source)
-        : bindAuthoredExtractor(source);
+      const authored = kind === 'massline_core'
+        ? bindAuthoredMasslineCore(source)
+        : (kind === 'fabricator' ? bindAuthoredFabricator(source) : bindAuthoredExtractor(source));
       rec.group.add(authored.group);
       rec.authoredSource = source;
       rec.authoredSeat = authored.group;
@@ -3752,7 +3802,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const running = state === 'running' || state === 'throttled' || state === 'limited';
         rec.lightRunning = running;
         rec.lightState = state;
-        if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = motionReduce ? 0.8 : timeS * 1.1;
+        if (rec.dyn.setOrbitTheta) rec.dyn.setOrbitTheta(motionReduce ? 0.8 : timeS * 1.1);
+        else if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = motionReduce ? 0.8 : timeS * 1.1;
         if (rec.dyn.turbine) {
           rec.dyn.turbine.rotation.z = motionReduce
             ? 0.4 : timeS * ((status && status.genMW) ? 5 : 0.5);
@@ -4589,7 +4640,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
-    const label = kind === 'fabricator' ? 'Fabricator' : 'Extractor';
+    const label = kind === 'massline_core'
+      ? 'Massline Core'
+      : (kind === 'fabricator' ? 'Fabricator' : 'Extractor');
     try {
       source = await loader.loadWorksPart(kind);
       if (!source) {

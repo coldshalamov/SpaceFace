@@ -1971,6 +1971,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "053accea1d215c45214a94862d6de9e08f22bb5ed980c18c2692cc5549bc097c",
     "sourceUrl": "assets/ships/release/parts/works/place_works_fabricator.glb"
+  },
+  {
+    "assetId": "sf.render.works-massline-core",
+    "expectedContentHash": "bee76d786033e0b27eb7dadcb5dd87be75cc2b251b8715d36eadbec110cf8168",
+    "key": "works-massline-core",
+    "metadataUrl": "assets/ships/release/render-packages/works-massline-core/render-package.json",
+    "runtimeAssetId": "place_works_massline_core",
+    "slot": "place",
+    "sourceSha256": "fc7b2de1eaaafd5fa0bd2ca2d5d355c525fabbd3c06788cee265e50838d6e80c",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_massline_core.glb"
   }
 ];
 

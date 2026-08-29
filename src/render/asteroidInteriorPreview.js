@@ -363,25 +363,7 @@ export function makeMachine(kind, S, envMap) {
     }
   }
 
-  if (kind === 'core') {
-    // Massline Core: a hex pressure column in a machined collar, with a counterweight arm that
-    // swings while the core runs. The arm is the motion tell the old glowing bead was faking.
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.38, S * 0.44, S * 1.2, 6), metalMat(mid, envMap));
-    body.rotation.x = Math.PI / 2; body.position.z = S * 0.72; body.castShadow = true; g.add(body);
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.47, S * 0.065, 8, 24), metalMat(steel, envMap));
-    collar.position.z = S * 1.1; collar.castShadow = true; g.add(collar);
-    const ribs = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.42, S * 0.42, S * 0.09, 6), metalMat(brass, envMap));
-    ribs.rotation.x = Math.PI / 2; ribs.position.z = S * 0.42; g.add(ribs);
-    const orbit = new THREE.Group(); orbit.position.z = S * 1.16; g.add(orbit);
-    const armSeg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.44, S * 0.05, S * 0.05), metalMat(steel, envMap));
-    armSeg.position.x = S * 0.24; orbit.add(armSeg);
-    const weight = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.075, S * 0.075, S * 0.1, 8), metalMat(dark, envMap));
-    weight.rotation.x = Math.PI / 2; weight.position.x = S * 0.46; weight.castShadow = true; orbit.add(weight);
-    dyn.orbit = orbit;
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(S * 0.3, S * 0.34, 6), metalMat(dark, envMap));
-    cap.rotation.x = Math.PI / 2; cap.position.z = S * 1.4; cap.castShadow = true; g.add(cap);
-    lampZ = S * 1.44;
-  } else if (kind === 'gas_tap') {
+  if (kind === 'gas_tap') {
     // Gas tap: a pressure vessel in a strap cradle with a real intake turbine. Nothing glows —
     // the danger colour belongs to the gas cell, never to the machine that makes it safe.
     const tank = new THREE.Mesh(new THREE.SphereGeometry(S * 0.32, 20, 14), metalMat(0x9a9c9e, envMap));

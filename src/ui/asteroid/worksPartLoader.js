@@ -51,6 +51,11 @@ export const FABRICATOR_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+export const MASSLINE_CORE_HOOKS = Object.freeze([
+  'ring_spin',
+  'lamp',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -81,6 +86,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: FABRICATOR_HOOKS,
+  }),
+  massline_core: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_massline_core.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: MASSLINE_CORE_HOOKS,
   }),
 });
 
@@ -247,8 +258,8 @@ function hookForMeshStem(stem, hooks) {
   if (hooks[stem]) return hooks[stem];
   // Render packages flatten authored hierarchy into world matrices. Rebuild each accepted Works
   // part's functional children while keeping their world pose. Derrick drums/cable/lamps, the
-  // Extractor head/belt/lamp, and the Fabricator gantry/lamp then move from their authored pivots
-  // rather than the asset origin.
+  // Extractor head/belt/lamp, Fabricator gantry/lamp, and Massline Core ring/lamp then move from
+  // their authored pivots rather than the asset origin.
   if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
   if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
   if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;
@@ -256,6 +267,8 @@ function hookForMeshStem(stem, hooks) {
   if (stem === 'head') return hooks.head_face || null;
   if (stem === 'belt') return hooks.belt || null;
   if (/^gantry(?:_|$)/i.test(stem)) return hooks.gantry_head || null;
+  if (/^massline_core_spin$/i.test(stem)) return hooks.ring_spin || null;
+  if (/^massline_core_lamp$/i.test(stem)) return hooks.lamp || null;
   if (/^lamp(?:_|$)/i.test(stem)) return hooks.lamp || null;
   return null;
 }
