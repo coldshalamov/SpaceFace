@@ -1941,6 +1941,16 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "3a0148e3191e4a6258728e5585f246ad2a5ca0c5192f406052f39dfbc048b761",
     "sourceUrl": "assets/ships/release/parts/wholeships/ranger_production_v1_lod2.glb"
+  },
+  {
+    "assetId": "sf.render.works-derrick",
+    "expectedContentHash": "c99daef819908637e30fa8b3d5e34721fb9e007e7c0f3000a04318a40f06afed",
+    "key": "works-derrick",
+    "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json",
+    "runtimeAssetId": "place_works_derrick",
+    "slot": "place",
+    "sourceSha256": "c17d9512ddae854b3fd73433ba01dd0446e258fca4a13e3d06aaae66d0667793",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_derrick.glb"
   }
 ];
 

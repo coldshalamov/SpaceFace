@@ -4,7 +4,7 @@
   "root": "SF_WORKS_DERRICK_V1",
   "packet": "PQ-131.05",
   "cycle": 4,
-  "currentState": "design_candidate",
+  "currentState": "integration_candidate",
   "candidateHash": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
@@ -106,11 +106,17 @@
     "box on stilts",
     "silhouette padding"
   ],
-  "allSupportedViewZonesClassified": false,
+  "allSupportedViewZonesClassified": true,
   "gatesOpen": [
-    "G1",
-    "G2",
-    "G4",
+    "G6",
     "G7"
-  ]
+  ],
+  "independentSourceReview": {
+    "reviewer": "/root/derrick_cycle04_review_resume",
+    "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+    "verdict": "KEEP",
+    "p0": 0,
+    "p1": 0,
+    "scope": "source_candidate_only"
+  }
 }

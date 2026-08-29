@@ -48,14 +48,18 @@ import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
 import {
-  makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat,
+  makeRockMaterials, makeMachine, makeRover, metalMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
-import { createWorksPartLoader, recordWorksInstanceResources } from './worksPartLoader.js';
+import {
+  createWorksPartLoader,
+  DERRICK_HOOKS,
+  recordWorksInstanceResources,
+} from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -535,6 +539,57 @@ export function isolateWorksMeshMaterials(meshes, instanceOwned = []) {
     mesh.material = Array.isArray(mesh.material) ? clones : clones[0];
   }
   return isolated;
+}
+
+export function bindAuthoredDerrick(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Derrick group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of DERRICK_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Derrick is missing ${name}`);
+  }
+
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (obj.isMesh && /^LOD[012]_lamp_[LR]_lens$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+  const instanceOwned = [];
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  recordWorksInstanceResources(group, instanceOwned);
+  const drumBaseZ = hooks.drum_spin.rotation.z;
+
+  return {
+    group,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      drum: hooks.drum_spin,
+      cableAnchor: hooks.cable_anchor,
+      lamps: [hooks.lamp_L, hooks.lamp_R],
+      lampMats,
+      setDrumSpin(theta) { hooks.drum_spin.rotation.z = drumBaseZ + theta; },
+    },
+  };
+}
+
+// The swap seam is deliberately Derrick-scoped. Keeping it pure lets the focused test put a rover,
+// a machine, and unrelated scene dressing beside the old mount and prove none of them are replaced.
+export function replaceDerrickInScene(scene, current, next, position) {
+  if (!scene || typeof scene.add !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] a scene is required for the Derrick swap');
+  }
+  if (!next || !next.group) {
+    throw new TypeError('[asteroidRenderer3d] an authored Derrick binding is required');
+  }
+  if (current && current !== next && current.group && current.group.parent) {
+    current.group.parent.remove(current.group);
+  }
+  if (position) next.group.position.copy(position);
+  if (next.group.parent !== scene) scene.add(next.group);
+  next.group.visible = true;
+  return next;
 }
 
 export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection }) {
@@ -2477,9 +2532,60 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     machineLights.push(l);
   }
 
-  // surface derrick (the umbilical winch) — built per session over the entry shaft
+  // Authored surface Derrick — one standing lease per works-screen lifetime. Its source was built
+  // at native works scale (one 2.2 wu cell wide, three cells tall), so runtime only places it.
   let derrickBuilt = null;
+  let authoredDerrickGroup = null;
   let derrickBaseY = 0;
+  let derrickDrumTheta = 0;
+  const derrickMountPosition = new THREE.Vector3();
+  const derrickCableWorld = new THREE.Vector3();
+
+  function placeAuthoredDerrick() {
+    if (!derrickBuilt) return;
+    derrickMountPosition.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
+    replaceDerrickInScene(scene, derrickBuilt, derrickBuilt, derrickMountPosition);
+  }
+
+  const authoredDerrickMount = createSingleFlightMount(async () => {
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    const group = await loader.loadStandingPart('derrick');
+    if (worksTearingDown || disposed || glTeardownDone) {
+      if (group) loader.releaseWorksPart(group);
+      return null;
+    }
+    if (!group) return null;
+    if (authoredDerrickGroup === group) {
+      placeAuthoredDerrick();
+      return group;
+    }
+    const authored = bindAuthoredDerrick(group);
+    derrickMountPosition.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
+    derrickBuilt = replaceDerrickInScene(scene, derrickBuilt, authored, derrickMountPosition);
+    authoredDerrickGroup = group;
+    return group;
+  });
+
+  function mountAuthoredDerrick() {
+    if (worksTearingDown || disposed || glTeardownDone) return Promise.resolve(null);
+    return authoredDerrickMount.invoke().catch((error) => {
+      // Loud and visible in diagnostics. PQ-131.05 intentionally deleted the procedural model;
+      // a failed accepted release must not disguise itself behind the obsolete cheap picture.
+      console.error('[asteroidRenderer3d] authored Derrick load failed; surface head-frame is absent', error);
+      return null;
+    });
+  }
+
+  function releaseAuthoredDerrick() {
+    authoredDerrickMount.reset();
+    const group = authoredDerrickGroup;
+    authoredDerrickGroup = null;
+    derrickBuilt = null;
+    if (!group) return;
+    if (group.parent) group.parent.remove(group);
+    if (worksLoader) worksLoader.releaseWorksPart(group);
+  }
 
   // umbilical
   let umbilical = null;      // { casing, core }
@@ -2979,11 +3085,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       plateauInst.dispose();
       plateauInst = null;
     }
-    if (derrickBuilt) {
-      scene.remove(derrickBuilt.group);
-      disposeGroup(derrickBuilt.group);
-      derrickBuilt = null;
-    }
     plateauInst = new THREE.InstancedMesh(blockGeos[0], rockMats.matrix, COLS + 2);
     plateauInst.castShadow = true;
     plateauInst.receiveShadow = true;
@@ -3008,17 +3109,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
     rockGroup.add(plateauInst);
 
-    derrickBuilt = makeDerrick(S, envMap);
-    // per-session build: tag materials so disposeGroup frees them with the next begin()/dispose()
-    derrickBuilt.group.traverse((o) => {
-      if (o.isMesh) {
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const mt of mats) mt._own = true;
-      }
-    });
     derrickBaseY = worldY(-1) + (S * (0.55 + rnd01(ENTRY_COL, 77, 'ph') * 0.8)) / 2;
-    derrickBuilt.group.position.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
-    scene.add(derrickBuilt.group);
+    if (derrickBuilt) placeAuthoredDerrick();
+    else void mountAuthoredDerrick();
   }
 
   // The silhouette skirt (law §4): an irregular fringe of crust blocks around the field rectangle
@@ -4236,6 +4329,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The tether is the way home: a lit-core cable spooling off the surface derrick's winch drum,
   // down the entry shaft, along every cell the rig has visited, to the socket on its back.
   function syncUmbilical(d, roverX, roverY, moving, dt) {
+    if (moving && derrickBuilt && derrickBuilt.dyn.setDrumSpin) {
+      derrickDrumTheta += dt * 4.2;
+      derrickBuilt.dyn.setDrumSpin(derrickDrumTheta);
+    }
     umbilicalTimer -= dt;
     const trail = d.cableTrail || [];
     const cellKey = `${trail.length}:${d.avatar.col}:${d.avatar.row}`;
@@ -4248,9 +4345,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       umbilical.core.geometry.dispose();
       umbilical = null;
     }
-    const drumY = derrickBaseY + S * 1.14;
+    const cableAnchor = derrickBuilt && derrickBuilt.dyn.cableAnchor;
+    if (cableAnchor) cableAnchor.getWorldPosition(derrickCableWorld);
+    else derrickCableWorld.set(worldX(ENTRY_COL), derrickBaseY + S * 1.14, Z.surface);
     const pts = [
-      new THREE.Vector3(worldX(ENTRY_COL), drumY, Z.surface),
+      derrickCableWorld.clone(),
       new THREE.Vector3(worldX(ENTRY_COL), worldY(0) + S * 0.6, Z.rover - 0.15),
     ];
     for (const p of trail) pts.push(new THREE.Vector3(worldX(p.col), worldY(p.row), Z.rover - 0.1));
@@ -5946,6 +6045,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     eventLog.refusalsSuppressed = 0; eventLog.cargoRefusals = 0;
     eventLog.installs = 0; eventLog.courierLaunches = 0;
     drillTheta = 0;
+    derrickDrumTheta = 0;
     lookInit = false;
     zoomRegister = 'work';
     if (worksLoader) worksLoader.setRegister('work');
@@ -5960,8 +6060,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // surface dressing is per-session (plateau tint/derrick position are field-stable but cheap)
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
-    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
-    if (!field) { rover.visible = false; return; }
+    if (!field) {
+      rover.visible = false;
+      if (derrickBuilt) derrickBuilt.group.visible = false;
+      return;
+    }
     // Single-flight: joins the setup-time load if it is still in the air, no-ops once it stands,
     // and only re-arms after a genuine miss.
     void mountAuthoredRover();
@@ -6264,6 +6367,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // Before retireWorksAssets drops the loader reference — afterwards there is nothing left to
     // release through, which is why the old teardown branch could never fire.
     releaseAuthoredRover();
+    releaseAuthoredDerrick();
     Promise.resolve(retireWorksAssets('works-screen-exit')).then(finishDispose, finishDispose);
   }
   function finishDispose() {
@@ -6318,7 +6422,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     cellRock.clear();
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
-    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
+    releaseAuthoredDerrick();
     if (backWall) { backWall.geometry.dispose(); backWall.material.dispose(); backWall = null; }
     if (ro) ro.disconnect();
     bloom.dispose();

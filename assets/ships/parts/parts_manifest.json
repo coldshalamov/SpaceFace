@@ -5698,6 +5698,34 @@
         "max": [0.9923, 0.8635, 1.02],
         "dimensionsM": [1.9056, 1.727, 1.02]
       }
+    },
+    {
+      "id": "place_works_derrick",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_derrick.glb",
+      "tris": 7072,
+      "bytes": 15605268,
+      "textureSize": 2048,
+      "note": "PQ-131.05 — authored Asteroid Works surface head-frame at one-cell works scale with explicit 7072/1304/896-triangle LODs. Runtime hooks: drum_spin, cable_anchor, lamp_L, lamp_R. Cycle 04 top, edge, site, clay, and grazing views plus hierarchy/collision transforms independently reviewed KEEP against source SHA-256 B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "drum_spin",
+        "cable_anchor",
+        "lamp_L",
+        "lamp_R"
+      ],
+      "sockets": [
+        "drum_spin",
+        "cable_anchor",
+        "lamp_L",
+        "lamp_R"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.08, -0.87, 0],
+        "max": [1.08, 0.87, 6.49],
+        "dimensionsM": [2.16, 1.74, 6.49]
+      }
     }
   ],
   "runtimeSlots": {

@@ -8,7 +8,7 @@
   "componentReferenceDecision": "not_needed",
   "workingScene": "tools/blender/build_works_derrick.py",
   "supportedCameras": ["works_top", "works_edge", "works_site"],
-  "allSupportedViewZonesClassified": false,
+  "allSupportedViewZonesClassified": true,
   "fictionDevelopmentAgreement": {
     "components": [
       {

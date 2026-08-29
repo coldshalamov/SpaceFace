@@ -33,6 +33,13 @@ export const ROVER_HOOKS = Object.freeze([
   'scar_plate',
 ]);
 
+export const DERRICK_HOOKS = Object.freeze([
+  'drum_spin',
+  'cable_anchor',
+  'lamp_L',
+  'lamp_R',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -45,6 +52,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: ROVER_HOOKS,
+  }),
+  derrick: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_derrick.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: DERRICK_HOOKS,
   }),
 });
 
@@ -203,6 +216,18 @@ function hookStem(name) {
   return raw.replace(/^LOD[012]_/, '');
 }
 
+function hookForMeshStem(stem, hooks) {
+  if (hooks[stem]) return hooks[stem];
+  // Render packages flatten authored hierarchy into world matrices. Rebuild the Derrick's
+  // functional children here while keeping their world pose: all LOD drums rotate at drum_spin,
+  // the paid-out cable starts at cable_anchor, and each hood/lens pair stays on its lamp hook.
+  if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
+  if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
+  if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;
+  if (/^lamp_R(?:_|$)/.test(stem)) return hooks.lamp_R || null;
+  return null;
+}
+
 function bindWorksHookHierarchy(root, hooks) {
   if (!hooks) return [];
   const meshes = [];
@@ -223,8 +248,9 @@ function bindWorksHookHierarchy(root, hooks) {
       cutters.push(mesh);
       continue;
     }
-    if (hooks[stem]) {
-      reparentKeepWorld(mesh, hooks[stem]);
+    const hook = hookForMeshStem(stem, hooks);
+    if (hook) {
+      reparentKeepWorld(mesh, hook);
       continue;
     }
     if (/_Boom$/.test(mesh.name) || /Bit/i.test(mesh.name)) {

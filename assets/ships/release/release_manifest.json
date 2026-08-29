@@ -3420,6 +3420,25 @@
       "ktx2Textures": 30,
       "meshoptBufferViews": 53,
       "contractNodeCount": 21
+    },
+    {
+      "id": "place_works_derrick",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_derrick.glb",
+      "release": "assets/ships/release/parts/works/place_works_derrick.glb",
+      "sourceSha256": "b35007a82902bfc57017950e2a7bb4c8221984d3e090229a507bcceffb6f492a",
+      "releaseSha256": "c17d9512ddae854b3fd73433ba01dd0446e258fca4a13e3d06aaae66d0667793",
+      "sourceBytes": 15605268,
+      "releaseBytes": 4417200,
+      "textures": 9,
+      "ktx2Textures": 9,
+      "meshoptBufferViews": 84,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

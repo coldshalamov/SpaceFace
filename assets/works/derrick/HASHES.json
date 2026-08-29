@@ -1,6 +1,6 @@
 {
   "cycle": 4,
-  "disposition": "review_pending",
+  "disposition": "source_keep",
   "combinedSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
   "partsSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
   "cycle001Frozen": true,
@@ -54,5 +54,37 @@
       "output": "assets/works/derrick/evidence/cycle_004/material_id.png",
       "outputSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76"
     }
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_derrick.glb",
+    "sha256": "c17d9512ddae854b3fd73433ba01dd0446e258fca4a13e3d06aaae66d0667793",
+    "bytes": 4417200,
+    "ktx2Textures": 9,
+    "meshoptBufferViews": 84
+  },
+  "renderPackage": {
+    "key": "works-derrick",
+    "metadataPath": "assets/ships/release/render-packages/works-derrick/render-package.json",
+    "metadataSha256": "58feaed23430c22d80b034091b97ffcf6e332e5f5744ccbd549b5a8b99da3eaf",
+    "contentHash": "c99daef819908637e30fa8b3d5e34721fb9e007e7c0f3000a04318a40f06afed",
+    "runtimeHash": "fa290360ee2ecfb00bc83d5e827428e6700a8c4ec1842aa845e68c5575d2b38d",
+    "renderGlbPath": "assets/ships/release/render-packages/works-derrick/render.glb",
+    "renderGlbSha256": "2ace7c2d1fb8469f0bfb880dae6ffc223ad09083a7ed937250251b2a749e6f11",
+    "renderGlbBytes": 4579420
+  },
+  "independentReview": {
+    "reviewer": "/root/derrick_cycle04_review_resume",
+    "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+    "candidateSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "p0": 0,
+    "p1": 0,
+    "p2Repair": {
+      "rebasedCommit": "7ca946c7a4a109f410e24e6bdd3595e7bf384eff",
+      "materialIdSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76",
+      "chromaticPixels": 7302
+    },
+    "openGates": ["G6", "G7"]
   }
 }

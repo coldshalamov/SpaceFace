@@ -2947,6 +2947,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/ranger-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/ranger-production-v1-lod2/render-package.json"
+    },
+    {
+      "key": "works-derrick",
+      "assetId": "sf.render.works-derrick",
+      "runtimeAssetId": "place_works_derrick",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_derrick",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_derrick.glb",
+      "releaseSha256": "c17d9512ddae854b3fd73433ba01dd0446e258fca4a13e3d06aaae66d0667793",
+      "releaseBytes": 4417200,
+      "rootNode": "SF_WORKS_DERRICK_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-derrick",
+      "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json"
     }
   ]
 }
