@@ -45,6 +45,16 @@ const NO_SUBMIT_DIAGNOSTIC = process.argv.includes('--no-submit-diagnostic');
 // those as frame gaps and charges them to the game. Pass this to score flight smoothness without
 // the measuring apparatus in the number; the final shot is still taken, after sampling ends.
 const NO_SAMPLE_SHOTS = process.argv.includes('--no-sample-shots');
+// Split the ~1.3 GB flight heap into garbage vs live retention. Force a full collection after the
+// sample and measure again: if the heap collapses, the cost is allocation churn and the fix is to
+// stop allocating; if it holds, the cost is retention and the fix is to dispose. Those are
+// different fixes, and guessing between them from source is how this kind of hunt goes wrong.
+const GC_PROBE = process.argv.includes('--gc-probe');
+// Name the allocation sites behind that garbage. V8's SAMPLING heap profiler is the right tool
+// here: it costs almost nothing at runtime (unlike a full snapshot of a 1.3 GB heap, which would
+// be multi-gigabyte and unreadable) and reports self-size per call frame, which is exactly
+// "who allocates the most bytes".
+const ALLOC_PROBE = process.argv.includes('--alloc-probe');
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
@@ -60,6 +70,9 @@ const canvasFrames = [];
 const loadingReadinessSamples = [];
 let loadingProgressEvents = [];
 let probeInstrumentation = null;
+let gcProbe = null;
+let allocProfile = null;
+let allocCdp = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
 let finalSystemTiming = null;
@@ -2743,6 +2756,16 @@ try {
       ), null, { timeout: 30_000 });
     }
   }
+  if (ALLOC_PROBE) {
+    try {
+      allocCdp = await page.context().newCDPSession(page);
+      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      log('alloc-probe: sampling started');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: startSampling unavailable (${error && error.message})`);
+    }
+  }
   hostLoadStart = snapshotHostLoadStart();
   const started = Date.now();
   let shotIndex = 0;
@@ -2760,6 +2783,59 @@ try {
       shotIndex += 1;
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
+  }
+  if (GC_PROBE) {
+    const before = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    let collected = false;
+    try {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('HeapProfiler.collectGarbage');
+      collected = true;
+    } catch (error) {
+      log(`gc-probe: collectGarbage unavailable (${error && error.message})`);
+    }
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    gcProbe = { collected, beforeMb: before, afterMb: after };
+    log(`gc-probe: collected=${collected} heap ${before} MB -> ${after} MB`);
+  }
+  if (ALLOC_PROBE && allocCdp) {
+    try {
+      const { profile } = await allocCdp.send('HeapProfiler.stopSampling');
+      const rows = [];
+      const walk = (node) => {
+        const f = node.callFrame || {};
+        if (Number(node.selfSize) > 0) {
+          rows.push({
+            fn: String(f.functionName || '(anonymous)'),
+            url: String(f.url || '').split('/').slice(-1)[0] + ':' + (f.lineNumber + 1),
+            bytes: Number(node.selfSize) || 0,
+          });
+        }
+        for (const child of node.children || []) walk(child);
+      };
+      walk(profile.head);
+      const merged = new Map();
+      for (const row of rows) {
+        const key = `${row.fn} @ ${row.url}`;
+        merged.set(key, (merged.get(key) || 0) + row.bytes);
+      }
+      allocProfile = {
+        totalMb: Math.round([...merged.values()].reduce((a, b) => a + b, 0) / 1048576),
+        top: [...merged.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25)
+          .map(([site, bytes]) => ({ site, mb: +(bytes / 1048576).toFixed(1) })),
+      };
+      log(`alloc-probe: ${allocProfile.totalMb} MB sampled`);
+      for (const row of allocProfile.top.slice(0, 20)) log(`  alloc ${row.mb} MB  ${row.site}`);
+    } catch (error) {
+      log(`alloc-probe: stopSampling failed (${error && error.message})`);
+    }
   }
   hostLoad = snapshotHostLoadEnd(hostLoadStart);
   const finalPerfReport = await page.evaluate(() => window.SF.state.perfRuntime.getReport());
@@ -2984,6 +3060,8 @@ const markdown = `${formatRuntimeWitnessReport({
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   longTaskWitness,
+  gcProbe,
+  allocProfile,
   verdict,
   sampleCount: snapshots.length,
   first: snapshots[0] || null,

@@ -86,10 +86,48 @@ A V8 major GC on a 1.3 GB heap costing 2.5–4.4 s is exactly the observed block
 That is the whole of game JS accounting for ~1.3 s against ~16 s of observed blocking, which is what
 puts the cost outside instrumented game code and inside the collector.
 
-**Where to look next:** a 1.3 GB heap against ~237 resident textures suggests decoded texture
-sources being retained CPU-side after upload — a 2048² RGBA image is 16 MB, and a few dozen of those
-is the whole budget. That wants a real heap snapshot to confirm; do not guess at it from source.
-Any fix must keep WebGL context restore working, which is why nothing was attempted here.
+### It is churn, not retention — and the allocators are named
+
+A forced collection (`--gc-probe`, CDP `HeapProfiler.collectGarbage`) settles the question:
+
+```
+heap 1331 MB -> 486 MB
+```
+
+**About 845 MB of the 1.3 GB is garbage, not live data.** The live set is ~486 MB. So the fix is to
+stop allocating, not to dispose — those are different fixes, and the earlier guess (retained decoded
+texture sources) was wrong. That guess is recorded here because it is the plausible-sounding one.
+
+V8's *sampling* heap profiler (`--alloc-probe`) then names the sites. A sampling profile is the
+right tool: a full snapshot of a 1.3 GB heap is multi-gigabyte and unreadable, while sampling costs
+almost nothing and reports self-size per call frame. Top sites over a 60 s flight, as a share of
+sampled bytes:
+
+```
+ 3.4 MB  pointFromMid            @ src/ui/priceHistory.js:52
+ 2.4 MB  pricePointAt            @ src/systems/economy.js:267
+ 1.9 MB  append                  @ presentationJournal.js:274
+ 1.1 MB  cloneUniforms           @ three.core.js
+ 0.9 MB  frame                   @ presentationRunner.js:659
+ 0.4 MB  seedStationFromHistory  @ src/ui/priceHistory.js:60
+ 0.4 MB  createCycle             @ economyCycles.js:106
+ 0.3 MB  (anonymous)             @ src/ui/priceHistory.js:93
+```
+
+**The single largest allocator in flight is the ECONOMY, not the renderer.** `priceHistory` plus
+`economy` account for roughly a third of all allocation. The mechanism: as the player flies, new
+stations come into existence, `ensureMarket` builds each one a synthetic price past
+(`HISTORY_POINT_LIMIT = 64` points per commodity), and `seedStationFromHistory` then copies that
+past into a UI ring buffer, allocating a second object per point — plus a fresh `events: []` array
+for each, on points that are synthetic and can never carry an event.
+
+This is UI chart data being built eagerly for stations the player has never opened, and there is
+already an `economy:marketOpened` handler that seeds on demand.
+
+**Deliberately not changed here.** Deferring that generation changes what a chart shows for a
+station visited long after it spawned, which is a design call, and it is the economy lane rather
+than the renderer. The measurement is the deliverable; the decision is not this lane's to make.
+Anyone taking it should re-run `--gc-probe` and `--alloc-probe` before and after.
 
 ## Instrument notes
 
