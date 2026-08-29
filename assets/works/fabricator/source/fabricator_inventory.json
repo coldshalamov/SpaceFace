@@ -4,9 +4,9 @@
   "combined": "assets/works/fabricator/source/fabricator.glb",
   "partsSource": "assets/ships/parts/works/place_works_fabricator.glb",
   "lodTriangles": {
-    "lod0": 8580,
-    "lod1": 836,
-    "lod2": 432
+    "lod0": 8872,
+    "lod1": 808,
+    "lod2": 428
   },
   "hooks": [
     "gantry_head",
@@ -45,6 +45,6 @@
     "LOD2_Lamp",
     "LOD2_fabricator"
   ],
-  "bytes": 3196140,
-  "sha256": "F14445BFF3A83DA6891A3CBD5A96CC79091C8A395588537F04EE6393E2E3B549"
+  "bytes": 2091504,
+  "sha256": "31E7E0F70CED279B5FFBEFD6A482362688044306BDF4CE68D6A37294E9387B1F"
 }

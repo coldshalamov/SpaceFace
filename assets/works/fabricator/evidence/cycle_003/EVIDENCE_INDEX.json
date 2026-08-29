@@ -1,0 +1,61 @@
+{
+  "paths": {
+    "works_top": "assets/works/fabricator/evidence/cycle_003/works_top.png",
+    "works_edge": "assets/works/fabricator/evidence/cycle_003/works_edge.png",
+    "works_top_clay": "assets/works/fabricator/evidence/cycle_003/works_top_clay.png",
+    "works_site": "assets/works/fabricator/evidence/cycle_003/works_site.png",
+    "works_site_clay": "assets/works/fabricator/evidence/cycle_003/works_site_clay.png",
+    "works_site_lod2": "assets/works/fabricator/evidence/cycle_003/works_site_lod2.png",
+    "works_site_lod2_clay": "assets/works/fabricator/evidence/cycle_003/works_site_lod2_clay.png",
+    "grazing_close": "assets/works/fabricator/evidence/cycle_003/grazing_close.png",
+    "normal_isolation": "assets/works/fabricator/evidence/cycle_003/normal_isolation.png",
+    "orm_isolation": "assets/works/fabricator/evidence/cycle_003/orm_isolation.png",
+    "material_id": "assets/works/fabricator/evidence/cycle_003/material_id.png",
+    "hook_view": "assets/works/fabricator/evidence/cycle_003/hook_view.png",
+    "progress_0": "assets/works/fabricator/evidence/cycle_003/progress_0.png",
+    "progress_05": "assets/works/fabricator/evidence/cycle_003/progress_05.png",
+    "progress_1": "assets/works/fabricator/evidence/cycle_003/progress_1.png",
+    "uv0_layout": "assets/works/fabricator/evidence/cycle_003/uv0_layout.png"
+  },
+  "travelCollisions": {
+    "progress_0": {
+      "ok": true,
+      "overBed": true,
+      "inCell": true,
+      "gantryBounds": [
+        -0.818,
+        -0.438,
+        -0.912,
+        0.912,
+        0.368,
+        0.797
+      ]
+    },
+    "progress_05": {
+      "ok": true,
+      "overBed": true,
+      "inCell": true,
+      "gantryBounds": [
+        -0.118,
+        0.262,
+        -0.912,
+        0.912,
+        0.368,
+        0.797
+      ]
+    },
+    "progress_1": {
+      "ok": true,
+      "overBed": true,
+      "inCell": true,
+      "gantryBounds": [
+        0.582,
+        0.962,
+        -0.912,
+        0.912,
+        0.368,
+        0.797
+      ]
+    }
+  }
+}

@@ -1,9 +1,13 @@
 # Works fabricator — cycle 1 reference brief
 
 **Asset:** `fabricator` (PQ-131.08). **Class:** place/prop, works camera only. **Tier:** C
-(supporting machine; one manufactured family). **State:** `design_candidate`. Cycle 1 of ≥5.
+(supporting machine; one manufactured family). **State:** `design_candidate`. Cycle 3 of ≥5.
 This page is the construction contract for the source candidate. It does **not** import
 geometry or textures.
+
+Cycle 03 implements this brief's open H (posts + C-beam + hat rail, raised T-slot bed,
+hanging ram, hooded lamp). Cycle 02's cabinet web, filled plinth, gold bed, and sine-quilt
+are rejected. G1/G2/G4 stay open pending independent review of `evidence/cycle_003/`.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object offset to
 the frame edge), `works_site` (19 px/cell). All 1920×1080, 31° perspective, +Z up, origin
