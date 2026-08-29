@@ -46,6 +46,11 @@ export const EXTRACTOR_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+export const FABRICATOR_HOOKS = Object.freeze([
+  'gantry_head',
+  'lamp',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -70,6 +75,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: EXTRACTOR_HOOKS,
+  }),
+  fabricator: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_fabricator.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: FABRICATOR_HOOKS,
   }),
 });
 
@@ -177,6 +188,10 @@ function instantiateBlueprint(blueprint, hookNames) {
   for (const marker of blueprint.markers || []) {
     const node = new THREE.Object3D();
     node.name = marker.name;
+    node.userData = {
+      ...(marker.userData || {}),
+      spacefaceTags: { ...(marker.tags || {}) },
+    };
     marker.matrix.decompose(node.position, node.quaternion, node.scale);
     root.add(node);
   }
@@ -231,15 +246,17 @@ function hookStem(name) {
 function hookForMeshStem(stem, hooks) {
   if (hooks[stem]) return hooks[stem];
   // Render packages flatten authored hierarchy into world matrices. Rebuild each accepted Works
-  // part's functional children while keeping their world pose. Derrick drums/cable/lamps and the
-  // Extractor head/belt/lamp then move from their authored pivots rather than the asset origin.
+  // part's functional children while keeping their world pose. Derrick drums/cable/lamps, the
+  // Extractor head/belt/lamp, and the Fabricator gantry/lamp then move from their authored pivots
+  // rather than the asset origin.
   if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
   if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
   if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;
   if (/^lamp_R(?:_|$)/.test(stem)) return hooks.lamp_R || null;
   if (stem === 'head') return hooks.head_face || null;
   if (stem === 'belt') return hooks.belt || null;
-  if (/^lamp(?:_|$)/.test(stem)) return hooks.lamp || null;
+  if (/^gantry(?:_|$)/i.test(stem)) return hooks.gantry_head || null;
+  if (/^lamp(?:_|$)/i.test(stem)) return hooks.lamp || null;
   return null;
 }
 

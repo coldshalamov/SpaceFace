@@ -2977,6 +2977,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-extractor",
       "metadataUrl": "assets/ships/release/render-packages/works-extractor/render-package.json"
+    },
+    {
+      "key": "works-fabricator",
+      "assetId": "sf.render.works-fabricator",
+      "runtimeAssetId": "place_works_fabricator",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_fabricator",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_fabricator.glb",
+      "releaseSha256": "053accea1d215c45214a94862d6de9e08f22bb5ed980c18c2692cc5549bc097c",
+      "releaseBytes": 760900,
+      "rootNode": "SF_WORKS_FABRICATOR_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-fabricator",
+      "metadataUrl": "assets/ships/release/render-packages/works-fabricator/render-package.json"
     }
   ]
 }

@@ -338,9 +338,9 @@ export function paintMat(color, envMap, rough = 0.58) {
 //
 // LAW §2.7 — THESE ARE OBJECTS, NOT ICONS. No emissive rings, bars or halos. Every part is real
 // hardware with metal roughness/metalness, a chamfered plinth, bolts, and cast shadows. The only
-// light-emitting parts left are things that would genuinely emit: the shared corner status lamp,
-// the refinery furnace slit, and the fabricator viewport. Everything that used to be a glowing
-// torus is now a machined collar, a counterweight, a heat sink or a guide rail.
+// light-emitting parts left are things that would genuinely emit: the shared corner status lamp
+// and the refinery furnace slit. Everything that used to be a glowing torus is now a machined
+// collar, a counterweight, a heat sink or a guide rail.
 export function makeMachine(kind, S, envMap) {
   const g = new THREE.Group();
   const pulses = [];
@@ -425,28 +425,6 @@ export function makeMachine(kind, S, envMap) {
     const cowl = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.11, S * 0.085, S * 0.07, 8), metalMat(steel, envMap));
     cowl.rotation.x = Math.PI / 2; cowl.position.set(S * 0.26, -S * 0.16, S * 1.15); g.add(cowl);
     lampZ = S * 1.02;
-  } else if (kind === 'fabricator') {
-    // Fabricator: a sealed bay with a small lit viewport (a real window, not a glowing panel) and
-    // a physical gantry head that slides along a rail as the job runs.
-    const body = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.8, S * 0.74), metalMat(mid, envMap));
-    body.position.z = S * 0.48; body.castShadow = true; g.add(body);
-    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(S * 0.48, S * 0.36, S * 0.05), metalMat(dark, envMap));
-    winFrame.position.set(0, S * 0.06, S * 0.845); g.add(winFrame);
-    const winMat = new THREE.MeshStandardMaterial({
-      color: 0x2a1f12, emissive: 0xffb648, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.1,
-    });
-    const win = new THREE.Mesh(new THREE.BoxGeometry(S * 0.4, S * 0.28, S * 0.03), winMat);
-    win.position.set(0, S * 0.06, S * 0.87); g.add(win);
-    // Progress reads as a gantry head travelling a rail — dyn.progressBar keeps its 0..1 contract,
-    // but it now drives position along the rail instead of the width of a neon bar.
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(S * 0.62, S * 0.05, S * 0.05), metalMat(steel, envMap));
-    rail.position.set(0, -S * 0.3, S * 0.88); g.add(rail);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(S * 0.1, S * 0.11, S * 0.11), metalMat(brass, envMap));
-    head.position.set(-S * 0.31, -S * 0.3, S * 0.92); head.castShadow = true; g.add(head);
-    dyn.progressBar = head;
-    dyn.progressTravel = S * 0.62;
-    dyn.progressBase = -S * 0.31;
-    lampZ = S * 1.0;
   } else if (kind === 'cargo_port') {
     // Cargo port: a launch collar with physical guide rails and a berthed pod. The old emissive
     // guide torus is now a machined ring the key light picks out.

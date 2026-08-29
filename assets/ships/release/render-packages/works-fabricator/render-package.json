@@ -1,0 +1,1312 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-fabricator",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "2853e941dae2bbf376c845459c54cd3b9483f8836ca886a6a0dc694505f6c9ad",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.0199999809265137,
+          0.7003837823867798,
+          1.0199999809265137
+        ],
+        "min": [
+          -1.0199999809265137,
+          0.00004621325933840126,
+          -1.0199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c75ea9c4dd4e7d6f8201014ff283ac18b3dfba8dc6ce4aca47ba43291927d9e",
+      "id": "sf.render.works-fabricator.mesh.lod0-fabricator.primitive.0",
+      "indexCount": 19524,
+      "indexed": true,
+      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_fabricator",
+      "nodeId": "sf.render.works-fabricator.mesh.lod0-fabricator",
+      "primitiveIndex": 0,
+      "vertexCount": 14008
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4380684196949005,
+          0.7970358431339264,
+          0.9120000004768372
+        ],
+        "min": [
+          -0.8179315775632858,
+          0.36796414852142334,
+          -0.9120000004768372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cb52a729e12335b6be5a323d26e60ecfa95b7179fce15a2dcbc15447eda8756d",
+      "id": "sf.render.works-fabricator.mesh.lod0-gantry.primitive.0",
+      "indexCount": 6060,
+      "indexed": true,
+      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Gantry",
+      "nodeId": "sf.render.works-fabricator.mesh.lod0-gantry",
+      "primitiveIndex": 0,
+      "vertexCount": 4646
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5620032772421837,
+          0.8459999933838844,
+          -0.8640006482601166
+        ],
+        "min": [
+          0.47799668461084366,
+          0.6179999858140945,
+          -0.9439993053674698
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1b3350cf14d4c2a44bdb4cef0ecca27b701a0446ee28c7c5efd01b647ab88509",
+      "id": "sf.render.works-fabricator.mesh.lod0-lamp.primitive.0",
+      "indexCount": 1032,
+      "indexed": true,
+      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lamp",
+      "nodeId": "sf.render.works-fabricator.mesh.lod0-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 780
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0199999809265137,
+          0.6976540684700012,
+          1.0199999809265137
+        ],
+        "min": [
+          -1.0199999809265137,
+          0.00005590375803876668,
+          -1.0199999809265137
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4059ed1b35f51ff205524f663fde0653044521e5d3b434a03ab9a0e5d948019e",
+      "id": "sf.render.works-fabricator.mesh.lod1-fabricator.primitive.0",
+      "indexCount": 1548,
+      "indexed": true,
+      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_fabricator",
+      "nodeId": "sf.render.works-fabricator.mesh.lod1-fabricator",
+      "primitiveIndex": 0,
+      "vertexCount": 996
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4379630386829376,
+          0.7619454525411129,
+          0.9120000004768372
+        ],
+        "min": [
+          -0.8120369538664818,
+          0.3680545389652252,
+          -0.9120000004768372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b52ed1caf729a7ecf7c46f2a5576078838b097b0e996134788f12fe387f20d1a",
+      "id": "sf.render.works-fabricator.mesh.lod1-gantry.primitive.0",
+      "indexCount": 804,
+      "indexed": true,
+      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Gantry",
+      "nodeId": "sf.render.works-fabricator.mesh.lod1-gantry",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5539999827742577,
+          0.8419987112283707,
+          -0.8700010720640421
+        ],
+        "min": [
+          0.4859999790787697,
+          0.8060012739151716,
+          -0.9299988802522421
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "172c87f20681f0c2d572314a2f4fc27a602f45486a0a474958df5c8e69baaa1c",
+      "id": "sf.render.works-fabricator.mesh.lod1-lamp.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lamp",
+      "nodeId": "sf.render.works-fabricator.mesh.lod1-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0199410915374756,
+          0.697678804397583,
+          1.0299999713897705
+        ],
+        "min": [
+          -1.0199410915374756,
+          0.00003117546657449566,
+          -1.0299999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f3fc8751c2e7327f988edbee06aa6cb50362513736428bb6457da532f004694c",
+      "id": "sf.render.works-fabricator.mesh.lod2-fabricator.primitive.0",
+      "indexCount": 744,
+      "indexed": true,
+      "materialHash": "7c89538983cf7b85aecbcf0c861f45400d9ed31b22268070429b2753f4dd993e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_fabricator",
+      "nodeId": "sf.render.works-fabricator.mesh.lod2-fabricator",
+      "primitiveIndex": 0,
+      "vertexCount": 492
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4860106408596039,
+          0.7420131415128708,
+          0.9120000004768372
+        ],
+        "min": [
+          -0.8119893372058868,
+          0.3919868469238281,
+          -0.9120000004768372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "434f0d73ea787c2b0c5af44a1cc098dbf5239928de2aa917b28b308d983e7dfe",
+      "id": "sf.render.works-fabricator.mesh.lod2-gantry.primitive.0",
+      "indexCount": 468,
+      "indexed": true,
+      "materialHash": "7c89538983cf7b85aecbcf0c861f45400d9ed31b22268070429b2753f4dd993e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Gantry",
+      "nodeId": "sf.render.works-fabricator.mesh.lod2-gantry",
+      "primitiveIndex": 0,
+      "vertexCount": 300
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5579999797046185,
+          0.8419997487217188,
+          -0.8699972927570343
+        ],
+        "min": [
+          0.4819999821484089,
+          0.8060002373531461,
+          -0.9300026595592499
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a077290e26741347a861e08f37d05ac704d3e31a77cd09b570f78436993fa6b",
+      "id": "sf.render.works-fabricator.mesh.lod2-lamp.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "7c89538983cf7b85aecbcf0c861f45400d9ed31b22268070429b2753f4dd993e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lamp",
+      "nodeId": "sf.render.works-fabricator.mesh.lod2-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "id": "material:5d8a04e40e5d6d198176ccc1",
+      "name": "FabricatorAtlasLOD0",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod0_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod0_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod0_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7c89538983cf7b85aecbcf0c861f45400d9ed31b22268070429b2753f4dd993e",
+      "id": "material:7c89538983cf7b85aecbcf0c",
+      "name": "FabricatorAtlasLOD2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod2_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod2_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod2_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod2_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "id": "material:c88227ad39c62ee9a0094392",
+      "name": "FabricatorAtlasLOD1",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod1_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "fabricator_atlas_lod1_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod1_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "fabricator_atlas_lod1_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-fabricator.mesh.lod0-fabricator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_fabricator",
+      "nodeName": "LOD0_fabricator",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod0-gantry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Gantry",
+      "nodeName": "LOD0_Gantry",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.699999988079071,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod0-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lamp",
+      "nodeName": "LOD0_Lamp",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.8199999928474426,
+        -0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod1-fabricator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_fabricator",
+      "nodeName": "LOD1_fabricator",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod1-gantry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Gantry",
+      "nodeName": "LOD1_Gantry",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.699999988079071,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod1-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lamp",
+      "nodeName": "LOD1_Lamp",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.8199999928474426,
+        -0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod2-fabricator",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_fabricator",
+      "nodeName": "LOD2_fabricator",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod2-gantry",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Gantry",
+      "nodeName": "LOD2_Gantry",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.699999988079071,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.mesh.lod2-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lamp",
+      "nodeName": "LOD2_Lamp",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.works-fabricator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.8199999928474426,
+        -0.8999999761581421,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-fabricator.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_WORKS_FABRICATOR_V1",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-fabricator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "572b0163bbf7e8d5bcd2e61e699e8639a0ba9fbf3cc91c5d4298f16d91d90b59"
+    },
+    "sourceGlb": {
+      "bytes": 760900,
+      "sha256": "053accea1d215c45214a94862d6de9e08f22bb5ed980c18c2692cc5549bc097c",
+      "uri": "place_works_fabricator.glb"
+    },
+    "sourceManifest": {
+      "bytes": 139897,
+      "sha256": "9686bbd58527b08f86268ca3969e02f61583815eb72e4141eed4d653873ec813",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 975600,
+    "sha256": "43fdc8bc10ec73869209739ac144fb481a8d9bdf4fd3bae025bbe39104b4519a",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.42301558442522946,
+        0
+      ],
+      "max": [
+        1.0199999809265137,
+        0.8459999933838844,
+        1.0299999713897705
+      ],
+      "min": [
+        -1.0199999809265137,
+        0.00003117546657449566,
+        -1.0299999713897705
+      ],
+      "size": [
+        2.0399999618530273,
+        0.8459688179173099,
+        2.059999942779541
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.699999988079071,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "gantry_head",
+        "planIndex": 3,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "_sf_raw": "gantry_head",
+          "authoredProgress": 0,
+          "name": "gantry_head",
+          "sf_import_lod": 0,
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true,
+          "travel": {
+            "authoredProgress": 0,
+            "axis": [
+              1,
+              0,
+              0
+            ],
+            "gltfNote": "export_yup: Blender +X stays glTF +X; runtime drives gantry_head local +X * length * progress",
+            "length": 1.4,
+            "progress0": [
+              -0.7,
+              0,
+              0.7
+            ],
+            "progress1": [
+              0.7,
+              0,
+              0.7
+            ],
+            "space": "blender_z_up"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.8199999928474426,
+          -0.8999999761581421,
+          1
+        ],
+        "name": "lamp",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "_sf_raw": "lamp",
+          "name": "lamp",
+          "sf_import_lod": 0,
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 15,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.699999988079071,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "LOD0_Gantry",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.699999988079071,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "LOD1_Gantry",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.699999988079071,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "LOD2_Gantry",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.8199999928474426,
+          -0.8999999761581421,
+          1
+        ],
+        "name": "LOD0_Lamp",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.8199999928474426,
+          -0.8999999761581421,
+          1
+        ],
+        "name": "LOD1_Lamp",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.8199999928474426,
+          -0.8999999761581421,
+          1
+        ],
+        "name": "LOD2_Lamp",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_fabricator",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_fabricator",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_fabricator",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_fabricator.glb"
+  },
+  "runtimeHash": "bff1e57f8858b8411e4603f45e82705cc1eeb98ca634c6ed8e84ef64d37fc30b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.0199999809265137,
+          0.8459999933838844,
+          1.0299999713897705
+        ],
+        "min": [
+          -1.0199999809265137,
+          0.00003117546657449566,
+          -1.0299999713897705
+        ]
+      },
+      "id": "sf.render.works-fabricator.body",
+      "nodeIds": [
+        "sf.render.works-fabricator.mesh.lod0-fabricator",
+        "sf.render.works-fabricator.mesh.lod0-gantry",
+        "sf.render.works-fabricator.mesh.lod0-lamp",
+        "sf.render.works-fabricator.mesh.lod1-fabricator",
+        "sf.render.works-fabricator.mesh.lod1-gantry",
+        "sf.render.works-fabricator.mesh.lod1-lamp",
+        "sf.render.works-fabricator.mesh.lod2-fabricator",
+        "sf.render.works-fabricator.mesh.lod2-gantry",
+        "sf.render.works-fabricator.mesh.lod2-lamp",
+        "sf.render.works-fabricator.root"
+      ]
+    }
+  ]
+}

@@ -59,6 +59,7 @@ import {
   createWorksPartLoader,
   DERRICK_HOOKS,
   EXTRACTOR_HOOKS,
+  FABRICATOR_HOOKS,
   recordWorksInstanceResources,
 } from './worksPartLoader.js';
 
@@ -296,6 +297,11 @@ const MACHINE_KIND = {
   sm_fabricator: 'fabricator',
   sm_cargo_port: 'cargo_port',
 };
+
+export function authoredWorksMachineKind(defId) {
+  const kind = MACHINE_KIND[defId];
+  return kind === 'extractor' || kind === 'fabricator' ? kind : null;
+}
 
 const FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
 
@@ -648,6 +654,67 @@ export function bindAuthoredExtractor(group) {
           beltPhaseMaps[i].needsUpdate = true;
         }
       },
+    },
+  };
+}
+
+// PQ-131.08 — bind the accepted open-H Fabricator. The source's gantry_head is authored at
+// progress 0 and travels 1.4 m along local +X; keeping that motion on the authored pivot makes the
+// visible mechanism itself the progress read. Lamp materials are instance-owned so status changes
+// cannot repaint the frame or another placement that shares the package blueprint.
+export function bindAuthoredFabricator(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Fabricator group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of FABRICATOR_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Fabricator is missing ${name}`);
+  }
+
+  const seat = new THREE.Group();
+  seat.name = 'fabricator_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (obj.isMesh && /^LOD[012]_Lamp$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+  const instanceOwned = [];
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  recordWorksInstanceResources(group, instanceOwned);
+  const travel = hooks.gantry_head.userData && hooks.gantry_head.userData.travel;
+  const axis = travel && travel.axis;
+  const progress0 = travel && travel.progress0;
+  if (!travel || !Array.isArray(axis) || axis.length !== 3
+      || Math.abs(axis[0] - 1) > 1e-6 || Math.abs(axis[1]) > 1e-6 || Math.abs(axis[2]) > 1e-6
+      || !Array.isArray(progress0) || progress0.length !== 3
+      || !Number.isFinite(progress0[0]) || !Number.isFinite(travel.length) || travel.length <= 0) {
+    throw new Error('[asteroidRenderer3d] authored Fabricator has an invalid gantry_head travel contract');
+  }
+  const progressBase = progress0[0];
+  const progressTravel = travel.length;
+
+  return {
+    group: seat,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      progressBar: hooks.gantry_head,
+      progressBase,
+      progressTravel,
+      setProgress(progress) {
+        const p = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+        hooks.gantry_head.position.x = progressBase + progressTravel * p;
+      },
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.lamp,
     },
   };
 }
@@ -3468,14 +3535,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- machines
-  async function mountAuthoredExtractor(rec) {
+  async function mountAuthoredMachine(rec, kind) {
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
+    const label = kind === 'fabricator' ? 'Fabricator' : 'Extractor';
     try {
-      source = await loader.loadWorksPart('extractor');
+      source = await loader.loadWorksPart(kind);
       if (!source) {
-        console.error('[asteroidRenderer3d] authored Extractor load failed; the accepted machine is absent');
+        console.error(`[asteroidRenderer3d] authored ${label} load failed; the accepted machine is absent`);
         return null;
       }
       if (worksTearingDown || disposed || glTeardownDone || !rec.alive
@@ -3483,7 +3551,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         loader.releaseWorksPart(source);
         return null;
       }
-      const authored = bindAuthoredExtractor(source);
+      const authored = kind === 'fabricator'
+        ? bindAuthoredFabricator(source)
+        : bindAuthoredExtractor(source);
       rec.group.add(authored.group);
       rec.authoredSource = source;
       rec.authoredSeat = authored.group;
@@ -3492,12 +3562,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return source;
     } catch (error) {
       if (source) loader.releaseWorksPart(source);
-      console.error('[asteroidRenderer3d] authored Extractor mount failed; the accepted machine is absent', error);
+      console.error(`[asteroidRenderer3d] authored ${label} mount failed; the accepted machine is absent`, error);
       return null;
     }
   }
 
-  function releaseAuthoredExtractor(rec) {
+  function releaseAuthoredMachine(rec) {
     if (!rec) return;
     rec.alive = false;
     if (rec.authoredSeat && rec.authoredSeat.parent) rec.authoredSeat.parent.remove(rec.authoredSeat);
@@ -3509,10 +3579,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function buildMachineAt(m) {
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
-    const built = kind === 'extractor'
+    const authoredKind = authoredWorksMachineKind(m.defId);
+    const built = authoredKind
       ? { group: new THREE.Group(), dyn: {}, pulses: [] }
       : makeMachine(kind, S, envMap);
-    if (kind !== 'extractor') {
+    if (!authoredKind) {
       built.group.traverse((o) => {
         if (o.isMesh) {
           const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -3520,7 +3591,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         }
       });
     }
-    built.group.name = kind === 'extractor' ? 'authored_extractor_mount' : built.group.name;
+    built.group.name = authoredKind ? `authored_${authoredKind}_mount` : built.group.name;
     built.group.position.set(worldX(m.col), worldY(m.row), 0);
     siteRoot.add(built.group);
     const rec = {
@@ -3530,14 +3601,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       authoredSource: null, authoredSeat: null,
     };
     machines.set(m.id, rec);
-    if (kind === 'extractor') void mountAuthoredExtractor(rec);
+    if (authoredKind) void mountAuthoredMachine(rec, authoredKind);
     return rec;
   }
 
   function removeMachine(id) {
     const rec = machines.get(id);
     if (!rec) return;
-    releaseAuthoredExtractor(rec);
+    releaseAuthoredMachine(rec);
     siteRoot.remove(rec.group);
     disposeGroup(rec.group);
     machines.delete(id);
@@ -3662,9 +3733,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           // pay"). Hungry machines keep .07's dark housing exactly as shipped.
           const coral = !settling && CORAL_FAULTS.has(state);
           const hex = settling ? 0x7cd9a2 : statusColorHex(status);
-          rec.dyn.lamp.color.setHex(hex);
-          rec.dyn.lamp.emissive.setHex(hex);
-          rec.dyn.lamp.emissiveIntensity = settling ? 1.2 : (coral ? 0.62 : (fault ? 0.06 : 0.9));
+          const lampMats = rec.dyn.lampMats && rec.dyn.lampMats.length
+            ? rec.dyn.lampMats
+            : [rec.dyn.lamp];
+          for (let i = 0; i < lampMats.length; i++) {
+            lampMats[i].color.setHex(hex);
+            lampMats[i].emissive.setHex(hex);
+            lampMats[i].emissiveIntensity = settling ? 1.2 : (coral ? 0.62 : (fault ? 0.06 : 0.9));
+          }
         }
         if (rec.dyn.lampAnchor) {
           // Law §7: at the site register the same drawing simplifies to "lines, lamps, flows". A
@@ -3693,10 +3769,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           rec.dyn.furnace.emissiveIntensity = hot
             ? (motionReduce ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
         }
-        if (rec.dyn.progressBar) {
+        if (rec.dyn.setProgress || rec.dyn.progressBar) {
           const p = status && Number.isFinite(status.progress) ? Math.max(0, Math.min(1, status.progress)) : 0;
           // The gantry head TRAVELS its rail. Same 0..1 contract, a mechanism instead of a bar.
-          rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
+          if (rec.dyn.setProgress) rec.dyn.setProgress(p);
+          else rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
         if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
         // The want chip: what this machine is waiting for, as a colour or a bolt. `status.limit`
@@ -4508,14 +4585,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     ghost = null;
   }
 
-  async function mountAuthoredExtractorGhost(rec) {
+  async function mountAuthoredMachineGhost(rec, kind) {
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
+    const label = kind === 'fabricator' ? 'Fabricator' : 'Extractor';
     try {
-      source = await loader.loadWorksPart('extractor');
+      source = await loader.loadWorksPart(kind);
       if (!source) {
-        console.error('[asteroidRenderer3d] authored Extractor ghost load failed; the build seat stays empty');
+        rec.authoredPending = false;
+        console.error(`[asteroidRenderer3d] authored ${label} ghost load failed; the build seat stays empty`);
         return null;
       }
       if (worksTearingDown || disposed || glTeardownDone || !rec.alive || ghost !== rec) {
@@ -4540,7 +4619,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       });
       recordWorksInstanceResources(source, instanceOwned);
       const seat = new THREE.Group();
-      seat.name = 'extractor_ghost_seat';
+      seat.name = `${kind}_ghost_seat`;
       seat.rotation.x = Math.PI / 2;
       seat.add(source);
       rec.group.add(seat);
@@ -4550,7 +4629,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     } catch (error) {
       if (source) loader.releaseWorksPart(source);
       rec.authoredPending = false;
-      console.error('[asteroidRenderer3d] authored Extractor ghost mount failed; the build seat stays empty', error);
+      console.error(`[asteroidRenderer3d] authored ${label} ghost mount failed; the build seat stays empty`, error);
       return null;
     }
   }
@@ -4559,9 +4638,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
     if (!defId) return null;
-    if (defId === 'sm_extractor') {
+    const authoredKind = authoredWorksMachineKind(defId);
+    if (authoredKind) {
       const group = new THREE.Group();
-      group.name = 'authored_extractor_ghost_mount';
+      group.name = `authored_${authoredKind}_ghost_mount`;
       group.renderOrder = 24;
       fxRoot.add(group);
       const rec = {
@@ -4572,7 +4652,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         authoredPending: true,
       };
       ghost = rec;
-      void mountAuthoredExtractorGhost(rec);
+      void mountAuthoredMachineGhost(rec, authoredKind);
       return rec;
     }
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);

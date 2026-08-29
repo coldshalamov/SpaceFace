@@ -5752,6 +5752,32 @@
         "max": [0.73, 0.7976, 0.8],
         "dimensionsM": [1.675, 1.5952, 0.8]
       }
+    },
+    {
+      "id": "place_works_fabricator",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_fabricator.glb",
+      "tris": 8872,
+      "bytes": 2091504,
+      "textureSize": 1024,
+      "note": "PQ-131.08 — authored one-cell Asteroid Works open-H gantry fabricator with explicit 8872/808/428-triangle LODs. Runtime hooks: gantry_head and lamp; rail is the authored 1.4 m +X travel datum. Cycle 03 whole-asset top, edge, site, clay, matched-LOD, material-isolation, hook, and progress-state evidence independently reviewed KEEP against source SHA-256 31E7E0F70CED279B5FFBEFD6A482362688044306BDF4CE68D6A37294E9387B1F; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "gantry_head",
+        "lamp",
+        "rail"
+      ],
+      "sockets": [
+        "gantry_head",
+        "lamp",
+        "rail"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.02, -1.03, 0],
+        "max": [1.02, 1.03, 0.846],
+        "dimensionsM": [2.04, 2.06, 0.846]
+      }
     }
   ],
   "runtimeSlots": {
