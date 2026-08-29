@@ -55,6 +55,11 @@ const GC_PROBE = process.argv.includes('--gc-probe');
 // be multi-gigabyte and unreadable) and reports self-size per call frame, which is exactly
 // "who allocates the most bytes".
 const ALLOC_PROBE = process.argv.includes('--alloc-probe');
+// Start the allocation profiler BEFORE the loading route instead of at the flight loop. World
+// population allocates a single ~612 MB step that every profile so far has started after and
+// therefore never attributed - it is the largest single allocation event in the session and it sets
+// the heap floor that makes every later major GC expensive.
+const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
@@ -497,6 +502,9 @@ function formatLongTaskSection(trace) {
   if (trace.jsHeapSeries && trace.jsHeapSeries.length) {
     lines.push(`- JS heap MB over run: ${trace.jsHeapSeries.join(' ')}`);
   }
+  if (trace.economySeries && trace.economySeries.length) {
+    lines.push(`- economy stations/listings/history-points: ${trace.economySeries.join('  ')}`);
+  }
   if (trace.geometrySeries && trace.geometrySeries.length) {
     lines.push(`- GPU geometries over run: ${trace.geometrySeries.join(' ')}`);
     lines.push(`- GPU textures over run:   ${trace.textureSeries.join(' ')}`);
@@ -515,6 +523,19 @@ function formatLongTaskSection(trace) {
 }
 
 async function installLoadingReadinessWitness(targetPage) {
+  // Arm the allocation profiler here rather than in one route's branch: this helper is the one
+  // point BOTH the Continue and New Game routes pass through before the loading route runs, and a
+  // branch-local start silently produced no profile at all on the other route.
+  if (ALLOC_PROBE_BOOT && !allocCdp) {
+    try {
+      allocCdp = await targetPage.context().newCDPSession(targetPage);
+      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      log('alloc-probe: sampling started BEFORE the loading route');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: boot startSampling unavailable (${error && error.message})`);
+    }
+  }
   await targetPage.evaluate(() => {
     const prior = window.__SF_LOADING_READINESS_WITNESS__;
     if (prior && typeof prior.unsubscribe === 'function') prior.unsubscribe();
@@ -2109,6 +2130,28 @@ function readWitnessInPage() {
       programs: Array.isArray(progs) ? progs.length : 0,
     } : null;
   } catch (_) { sample.gpuResidency = null; }
+  // Economy population alongside the heap. The flight allocation profile blames synthetic
+  // price-history seeding, which costs 64 points per LISTING at market creation - so the size of
+  // that cost is a function of how many markets come into existence during flight, not of the tick
+  // rate. Counting them is the difference between a real fix and optimising a rounding error.
+  try {
+    const markets = window.SF?.state?.economy?.markets;
+    if (markets) {
+      let listings = 0;
+      let withHistory = 0;
+      let historyPoints = 0;
+      for (const sid in markets) {
+        for (const cid in markets[sid]) {
+          listings += 1;
+          const h = markets[sid][cid] && markets[sid][cid].history;
+          if (Array.isArray(h) && h.length) { withHistory += 1; historyPoints += h.length; }
+        }
+      }
+      sample.economy = {
+        stations: Object.keys(markets).length, listings, withHistory, historyPoints,
+      };
+    }
+  } catch (_) { sample.economy = null; }
   // JS heap alongside the blocks. If multi-second stalls are OUR garbage collection, the heap is
   // large and sawtooths across them; if the heap is small and flat, the stall belongs to the host
   // (paging, other processes) and no game-side change will remove it.
@@ -2756,7 +2799,7 @@ try {
       ), null, { timeout: 30_000 });
     }
   }
-  if (ALLOC_PROBE) {
+  if (ALLOC_PROBE && !allocCdp) {
     try {
       allocCdp = await page.context().newCDPSession(page);
       await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
@@ -2805,7 +2848,7 @@ try {
     gcProbe = { collected, beforeMb: before, afterMb: after };
     log(`gc-probe: collected=${collected} heap ${before} MB -> ${after} MB`);
   }
-  if (ALLOC_PROBE && allocCdp) {
+  if ((ALLOC_PROBE || ALLOC_PROBE_BOOT) && allocCdp) {
     try {
       const { profile } = await allocCdp.send('HeapProfiler.stopSampling');
       const rows = [];
@@ -3045,6 +3088,7 @@ const longTaskWitness = lastSnapshot.longTasks
     ...lastSnapshot.longTasks,
     heavyResources: lastSnapshot.heavyResources || [],
     jsHeapSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.jsHeap ? x.jsHeap.usedMb : '?')),
+    economySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.economy ? `${x.economy.stations}s/${x.economy.listings}L/${x.economy.historyPoints}p` : '?')),
     geometrySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.geometries : '?')),
     textureSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.textures : '?')),
   }
