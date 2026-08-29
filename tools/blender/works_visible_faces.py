@@ -1,12 +1,17 @@
-"""Report faces the live Asteroid Works camera never hits.
+"""Observe faces hit by the supported Asteroid Works camera.
 
-Do not use this as a quality close. Do not delete faces unless --delete is
-passed after a dry-run you have looked at.
+Do not use this as a quality close or culling proof. ``--delete`` is retained
+only to reject old invocations explicitly; this tool never deletes geometry.
 
 Rays come from the same pose as tools/blender/spaceface_works_camera.py:
 straight down, 31° vertical FOV, works_top dead centre, works_edge at eight
 in-plane object offsets (the mine is read from above and slightly from the
 side near the screen edges), plus works_site.
+
+Sampling is one ray per 1920x1080 render pixel centre inside the projected
+bounds of the active LOD. The old 80x45 whole-frame grid put fewer than one
+ray across a one-cell machine at works_site distance and falsely reported
+known-visible LOD1/LOD2 meshes as zero-visible.
 
 Each LOD is evaluated alone. LOD0, LOD1 and LOD2 are coincident; if they
 were raycast together, LOD0 would occlude the others and --delete would
@@ -15,26 +20,28 @@ LOD1 and LOD2 against works_site.
 
 Usage:
   blender --background --python tools/blender/works_visible_faces.py -- --glb <file.glb>
-  blender --background --python tools/blender/works_visible_faces.py -- --glb <file.glb> --delete
+  blender --background --python tools/blender/works_visible_faces.py -- --glb <file.glb> --delete  # rejected
   blender --background --python tools/blender/works_visible_faces.py -- --self-test
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
 import sys
 from pathlib import Path
 
-import bmesh
 import bpy
+from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 TOOLS = Path(__file__).resolve().parent
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from spaceface_works_camera import (  # noqa: E402
+    DEFAULT_RES,
     FOV_V_DEG,
     apply_works_camera,
     works_edge_offset,
@@ -51,8 +58,8 @@ EDGE_DIRS = (
     (-1.0, 1.0),
     (-1.0, -1.0),
 )
-GRID_W = 80
-GRID_H = 45
+SAMPLE_W, SAMPLE_H = DEFAULT_RES
+SAMPLE_PAD_PX = 1
 LOD_PARK = 10000.0
 LOD_NAME_RE = re.compile(r"^LOD([012])(?:_|$)", re.IGNORECASE)
 FRAMINGS_FOR_LOD = {
@@ -97,24 +104,47 @@ def render_meshes():
     return out
 
 
-def camera_rays(camera, width, height):
-    """Origins/directions in world space through a coarse pixel grid."""
+def camera_rays(camera, width, height, pixel_bounds):
+    """Origins/directions through render-pixel centres in ``pixel_bounds``."""
     origin = camera.matrix_world.translation.copy()
     rot = camera.matrix_world.to_3x3()
     fov = float(camera.data.angle)
     tan_v = math.tan(fov * 0.5)
     tan_h = tan_v * (width / max(1, height))
     rays = []
-    for y in range(height):
+    x0, y0, x1, y1 = pixel_bounds
+    for y in range(y0, y1):
         ndc_y = 1.0 - 2.0 * ((y + 0.5) / height)
-        for x in range(width):
+        for x in range(x0, x1):
             ndc_x = 2.0 * ((x + 0.5) / width) - 1.0
             local = Vector((ndc_x * tan_h, ndc_y * tan_v, -1.0))
             direction = (rot @ local).normalized()
             rays.append((origin, direction))
-    axis = (rot @ Vector((0.0, 0.0, -1.0))).normalized()
-    rays.append((origin, axis))
     return rays
+
+
+def projected_pixel_bounds(scene, camera, objects, width, height):
+    """Return a padded, clamped render-pixel rectangle around ``objects``."""
+    projected = []
+    for obj in objects:
+        for corner in obj.bound_box:
+            ndc = world_to_camera_view(scene, camera, obj.matrix_world @ Vector(corner))
+            if ndc.z >= 0.0:
+                projected.append((float(ndc.x), float(ndc.y)))
+    if not projected:
+        return None
+    min_x = min(point[0] for point in projected)
+    max_x = max(point[0] for point in projected)
+    min_y = min(point[1] for point in projected)
+    max_y = max(point[1] for point in projected)
+    x0 = max(0, math.floor(min_x * width) - SAMPLE_PAD_PX)
+    x1 = min(width, math.ceil(max_x * width) + SAMPLE_PAD_PX)
+    # world_to_camera_view uses bottom-up Y; camera_rays uses top-down pixel Y.
+    y0 = max(0, math.floor((1.0 - max_y) * height) - SAMPLE_PAD_PX)
+    y1 = min(height, math.ceil((1.0 - min_y) * height) + SAMPLE_PAD_PX)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return (x0, y0, x1, y1)
 
 
 def shift_meshes(meshes, delta):
@@ -125,11 +155,31 @@ def shift_meshes(meshes, delta):
         obj.location.z += dz
 
 
-def collect_hits(scene, camera, names, visible, deps):
-    for origin, direction in camera_rays(camera, GRID_W, GRID_H):
+def collect_hits(scene, camera, names, visible, deps, meshes):
+    targets = [obj for obj in meshes if obj.name in names]
+    pixel_bounds = projected_pixel_bounds(scene, camera, targets, SAMPLE_W, SAMPLE_H)
+    if pixel_bounds is None:
+        return {
+            "pixelBounds": None,
+            "sampleCount": 0,
+            "hitCount": 0,
+            "objectHitCount": {},
+        }
+    hit_count = 0
+    object_hits = {}
+    rays = camera_rays(camera, SAMPLE_W, SAMPLE_H, pixel_bounds)
+    for origin, direction in rays:
         hit, _loc, _n, index, obj, _mat = scene.ray_cast(deps, origin, direction)
         if hit and obj is not None and obj.name in names and index >= 0:
             visible[obj.name].add(int(index))
+            hit_count += 1
+            object_hits[obj.name] = object_hits.get(obj.name, 0) + 1
+    return {
+        "pixelBounds": list(pixel_bounds),
+        "sampleCount": len(rays),
+        "hitCount": hit_count,
+        "objectHitCount": object_hits,
+    }
 
 
 def isolate_lod(meshes, active_lod):
@@ -165,7 +215,7 @@ def restore_isolated(stashed):
     bpy.context.view_layer.update()
 
 
-def run_framings(scene, camera, meshes, names, visible, framings):
+def run_framings(scene, camera, meshes, names, visible, framings, sampling, lod):
     for framing in framings:
         if framing == "works_edge":
             apply_works_camera(camera, framing="works_top")
@@ -174,17 +224,24 @@ def run_framings(scene, camera, meshes, names, visible, framings):
                 shift_meshes(meshes, offset)
                 bpy.context.view_layer.update()
                 deps = bpy.context.evaluated_depsgraph_get()
-                collect_hits(scene, camera, names, visible, deps)
+                record = collect_hits(scene, camera, names, visible, deps, meshes)
+                record.update({"lod": lod, "framing": framing, "edgeDir": list(direction)})
+                sampling.append(record)
                 shift_meshes(meshes, (-offset[0], -offset[1], -offset[2]))
             continue
         apply_works_camera(camera, framing=framing)
         bpy.context.view_layer.update()
         deps = bpy.context.evaluated_depsgraph_get()
-        collect_hits(scene, camera, names, visible, deps)
+        record = collect_hits(scene, camera, names, visible, deps, meshes)
+        record.update({"lod": lod, "framing": framing})
+        sampling.append(record)
 
 
 def classify(meshes):
     scene = bpy.context.scene
+    scene.render.resolution_x = SAMPLE_W
+    scene.render.resolution_y = SAMPLE_H
+    scene.render.resolution_percentage = 100
     cam_data = bpy.data.cameras.new("WorksProbe")
     camera = bpy.data.objects.new("WorksProbe", cam_data)
     scene.collection.objects.link(camera)
@@ -192,6 +249,7 @@ def classify(meshes):
     camera.data.clip_start = 0.1
     camera.data.clip_end = 10000.0
     visible = {obj.name: set() for obj in meshes}
+    sampling = []
     totals = {obj.name: len(obj.data.polygons) for obj in meshes}
     groups = {}
     untagged = []
@@ -206,7 +264,7 @@ def classify(meshes):
     if not lods:
         run_framings(
             scene, camera, meshes, {obj.name for obj in meshes}, visible,
-            ("works_top", "works_edge", "works_site"),
+            ("works_top", "works_edge", "works_site"), sampling, None,
         )
     else:
         for lod in lods:
@@ -215,7 +273,9 @@ def classify(meshes):
             try:
                 names = {obj.name for obj in members} | {obj.name for obj in untagged}
                 framings = FRAMINGS_FOR_LOD.get(lod, ("works_site",))
-                run_framings(scene, camera, meshes, names, visible, framings)
+                run_framings(
+                    scene, camera, meshes, names, visible, framings, sampling, lod,
+                )
             finally:
                 restore_isolated(parked)
 
@@ -231,49 +291,51 @@ def classify(meshes):
             "object": obj.name,
             "lod": lod_index(obj.name),
             "faces": total,
-            "visible": len(seen),
-            "hidden": len(hidden),
-            "hiddenFrac": round(len(hidden) / max(1, total), 4),
-            "hiddenIndices": hidden,
+            "observedVisible": len(seen),
+            "unobserved": len(hidden),
+            "unobservedFrac": round(len(hidden) / max(1, total), 4),
         })
-    return rows
+    return rows, sampling
 
 
-def delete_hidden(meshes, rows):
-    lookup = {row["object"]: row["hiddenIndices"] for row in rows}
-    for obj in meshes:
-        indices = lookup.get(obj.name) or []
-        if not indices:
-            continue
-        mesh = obj.data
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
-        bm.faces.ensure_lookup_table()
-        doomed = [bm.faces[i] for i in indices if 0 <= i < len(bm.faces)]
-        if doomed:
-            bmesh.ops.delete(bm, geom=doomed, context="FACES")
-        bm.to_mesh(mesh)
-        bm.free()
-        mesh.update()
-
-
-def report_for(meshes, rows, *, glb="", deleted=False):
+def report_for(meshes, rows, sampling, *, glb="", deleted=False):
     top = works_pose("works_top")
     site = works_pose("works_site")
     report = {
+        "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
         "glb": str(glb),
+        "glbSha256": hashlib.sha256(Path(glb).read_bytes()).hexdigest().upper(),
+        "generator": {
+            "path": "tools/blender/works_visible_faces.py",
+            "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest().upper(),
+            "blenderVersion": bpy.app.version_string,
+        },
+        "authority": {
+            "role": "diagnostic_only",
+            "supportsVisibleFaceObservation": True,
+            "supportsHiddenFaceProof": False,
+            "supportsGeometryDeletion": False,
+        },
         "fovV": FOV_V_DEG,
         "framings": ["works_top", "works_edge x8", "works_site"],
         "lodFramings": {str(lod): list(names) for lod, names in FRAMINGS_FOR_LOD.items()},
         "distances": [top["distance"], site["distance"]],
         "edgeDirs": [list(d) for d in EDGE_DIRS],
-        "grid": [GRID_W, GRID_H],
+        "resolution": [SAMPLE_W, SAMPLE_H],
+        "sampling": {
+            "method": "one ray per render-pixel centre inside projected active-LOD bounds",
+            "pixelPad": SAMPLE_PAD_PX,
+            "records": sampling,
+        },
         "deleted": bool(deleted),
-        "objects": [{k: v for k, v in row.items() if k != "hiddenIndices"} for row in rows],
-        "hiddenFaces": sum(row["hidden"] for row in rows),
+        "objects": rows,
+        "observedVisibleFaces": sum(row["observedVisible"] for row in rows),
+        "unobservedFaces": sum(row["unobserved"] for row in rows),
         "faces": sum(row["faces"] for row in rows),
     }
-    report["hiddenFrac"] = round(report["hiddenFaces"] / max(1, report["faces"]), 4)
+    report["unobservedFrac"] = round(
+        report["unobservedFaces"] / max(1, report["faces"]), 4
+    )
     return report
 
 
@@ -286,7 +348,7 @@ def build_self_test_lods():
     wipe_scene()
     roots = []
     for lod in (0, 1, 2):
-        bpy.ops.mesh.primitive_cube_add(size=16.0, location=(0.0, 0.0, 0.0))
+        bpy.ops.mesh.primitive_cube_add(size=1.6, location=(0.0, 0.0, 0.0))
         obj = bpy.context.active_object
         obj.name = f"LOD{lod}_SelfTest"
         if obj.name != f"LOD{lod}_SelfTest":
@@ -303,27 +365,28 @@ def run_self_test():
     build_self_test_lods()
     meshes = render_meshes()
     print(f"  built {len(meshes)} coincident LOD meshes")
-    rows = classify(meshes)
+    rows, sampling = classify(meshes)
     for row in rows:
         print(
             f"  classify {row['object']}: faces={row['faces']} "
-            f"visible={row['visible']} hidden={row['hidden']}"
+            f"observedVisible={row['observedVisible']} unobserved={row['unobserved']}"
         )
-    delete_hidden(meshes, rows)
     missing = []
     for lod in (0, 1, 2):
         name = f"LOD{lod}_SelfTest"
-        obj = bpy.data.objects.get(name)
-        faces = len(obj.data.polygons) if obj is not None and obj.type == "MESH" else 0
-        exists = obj is not None
-        print(f"  after --delete: {name} exists={exists} faces={faces}")
-        if not exists or faces < 1:
+        row = next((item for item in rows if item["object"] == name), None)
+        observed = row["observedVisible"] if row else 0
+        print(f"  supported-camera observation: {name} observedVisible={observed}")
+        if observed < 1:
             missing.append(name)
     if missing:
         raise SystemExit(
-            "SELF-TEST FAIL: LOD roots lost or empty after --delete: " + ", ".join(missing)
+            "SELF-TEST FAIL: site-scale LOD meshes had no visible-face observation: "
+            + ", ".join(missing)
         )
-    print("SELF-TEST OK: all three LOD roots survived --delete with at least one face each")
+    if not sampling:
+        raise SystemExit("SELF-TEST FAIL: no sampling records")
+    print("SELF-TEST OK: all three site-scale LOD meshes have visible-face observations")
 
 
 def main(argv):
@@ -333,31 +396,23 @@ def main(argv):
         return
     if not args.glb:
         raise SystemExit("missing --glb (or pass --self-test)")
+    if args.delete:
+        raise SystemExit(
+            "--delete is disabled: visible pixel-centre observations cannot prove that an "
+            "unobserved face is hidden. This diagnostic never deletes geometry."
+        )
     glb = Path(args.glb)
     if not glb.is_file():
         raise SystemExit(f"missing glb: {glb}")
     import_glb(glb)
     meshes = render_meshes()
-    rows = classify(meshes)
-    report = report_for(meshes, rows, glb=glb, deleted=bool(args.delete))
-    if args.delete:
-        # SAFETY GATE (independent review, 2026-08-21). Classification is an 80x45 ray grid: at
-        # 1920x1080 the rays are ~24px apart while a site-register cell is ~19px, so a visible rail,
-        # fin or bevel narrower than the ray spacing is classified "hidden" and would be erased.
-        # "Not hit by a coarse grid" is not "not visible". Deleting on that basis is how a previous
-        # lane lost 77% of a hull. --delete stays closed until classification is conservative
-        # (full-resolution or object-ID visibility); the report is still useful as a hint.
-        raise SystemExit(
-            "--delete is disabled: the 80x45 ray grid (~24px spacing at 1920x1080, vs ~19px site "
-            "cells) cannot prove a thin face is invisible, and this path erases geometry. "
-            "Use the dry-run report as a hint only. Re-enable only with conservative "
-            "full-resolution/object-ID visibility and a test that a thin visible face survives."
-        )
-    else:
-        report["note"] = (
-            "dry-run; pass --delete only after inspecting hiddenFrac. "
-            "Do not use this as a quality close. LODs were evaluated one at a time."
-        )
+    rows, sampling = classify(meshes)
+    report = report_for(meshes, rows, sampling, glb=glb, deleted=bool(args.delete))
+    report["note"] = (
+        "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays "
+        "can miss subpixel or antialiased coverage. This record cannot authorize culling "
+        "or geometry deletion. LODs were evaluated one at a time."
+    )
     text = json.dumps(report, indent=2)
     print(text)
     if args.json_out:
