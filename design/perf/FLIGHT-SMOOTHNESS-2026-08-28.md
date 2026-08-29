@@ -188,6 +188,26 @@ program families are absent from the 36 entirely and real play is worse than thi
 catch-up cap engages on under 1% of frames on real hardware, exactly as that lead predicted it would
 if the GPU were real.
 
+## An intermittent worth having on the board
+
+`check:playable` failed once with `CLEAN — 1 uncaught error: [render] opening submission post-submit
+validation failed`. It is recorded here rather than dismissed, with its frequency stated, because a
+red on that gate is the project's hard stop.
+
+Frequency today, all at or beside the same commits: roughly **1 occurrence in ~10 runs**, with 3/3
+green on immediate retry and **no source change between the red and the greens**. A second red the
+same day was a different signature (`BOOT — never reached the main menu in 30s`, no uncaught errors)
+under heavy machine load, also non-reproducing.
+
+Two things make it specifically interesting rather than noise. `check:playable` runs software
+rendering, where the driver reports `KHR_parallel_shader_compile extension not supported` — so the
+readiness cohort degrades to per-unit blocking compiles, and the one ordering that *does* still
+change on that route is that touches run after all compiles rather than interleaved. And this is the
+same validation that the headed GPU shows failing 3/3 on the pre-session build and 0/6 after the
+cohort landed. So on the real GPU the change removed this failure; on the software route it appears
+occasionally. That is worth a bisect if it ever becomes reproducible — it is not currently, and
+chasing a 1-in-10 event with a 90-second gate was not a good use of a session.
+
 ## Instrument notes
 
 The witness now reports, always on: long tasks (count/total/max/top with the heavy resources that
