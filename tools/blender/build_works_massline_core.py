@@ -1,12 +1,13 @@
-"""PQ-131.02 Works Massline Core — Cycle 04 square-flange wellhead correction.
+"""PQ-131.02 Works Massline Core — Cycle 05 material/evidence correction.
 
 Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four
 L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, and a
 chrome-coin inner race. Pitch-break gaps read as a dashed torus, not a
 hat-channel. Site silhouette was a plus-dot map marker.
 
-Cycle 04 keeps identity, hooks, envelope, cameras, the open well and the
-inner race, and rebuilds the load-bearing form:
+Cycle 04 established the accepted square-flange wellhead form. Cycle 05 keeps
+that geometry, identity, hooks, envelope, cameras, open well, and inner race,
+and repairs only the independently reviewed portable-material/evidence defects:
 
 - square wellhead flange with a round bore (claims the cell; not a torus,
   not four isolated L-arrows, not a featureless slab)
@@ -16,7 +17,9 @@ inner race, and rebuilds the load-bearing form:
 - corner pads as thickened frame mass, not compass arrows
 - nested dark machined race in a rebate (not a proud coin)
 - one side-mounted hooded lamp with a visible cavity
-- LOD1/2 keep square outer + open well + collar trench + lamp at 19 px/cell
+- a black-except-lens emissive atlas replaces the base-color-as-emissive export
+- packed ORM red is exported as glTF occlusionTexture
+- an exact-source 1920x1080 Works-camera LOD2 site still is hash-bound
 
     blender --background --python tools/blender/build_works_massline_core.py
 
@@ -58,17 +61,18 @@ SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 BLEND_DIR = FAMILY / "blender"
 REF_DIR = FAMILY / "reference"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_004"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_005"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
 CYCLE_003_DIR = FAMILY / "evidence" / "cycle_003"
+CYCLE_004_DIR = FAMILY / "evidence" / "cycle_004"
 PARTS_GLB = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_massline_core.glb"
 BLEND_PATH = BLEND_DIR / "massline_core.blend"
 
 ASSET_ID = "place_works_massline_core"
 IDENTITY = "SF_WORKS_MASSLINE_CORE_V1"
 PACKET = "PQ-131.02"
-CYCLE = 4
+CYCLE = 5
 HOOK_NAMES = ("ring_spin", "lamp")
 
 CELL = float(CELL_WU)
@@ -131,7 +135,7 @@ ROLE_FLAT = {
 }
 ROLE_ROUGH = {"paint": 0.64, "wear": 0.58, "liner": 0.92, "accent": 0.58, "lamp": 0.26}
 ROLE_METAL = {"paint": 0.08, "wear": 0.58, "liner": 0.02, "accent": 0.22, "lamp": 0.02}
-EMIT_ALPHA = {"lamp": 0.55}
+EMISSIVE_SCALE = 0.55
 CITED_REFS = (
     ROOT / "assets" / "concept" / "archetypes" / "concept_station_mining.jpg",
     ROOT / "assets" / "concept" / "landmarks" / "concept_landmark_driller.jpg",
@@ -534,6 +538,23 @@ def principled(material):
     return bsdf
 
 
+def ensure_gltf_occlusion_group():
+    group = bpy.data.node_groups.get("glTF Material Output")
+    if group is None:
+        group = bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
+        try:
+            group.interface.new_socket(
+                name="Occlusion", in_out="INPUT", socket_type="NodeSocketFloat"
+            )
+        except Exception:
+            if hasattr(group, "inputs") and group.inputs.get("Occlusion") is None:
+                group.inputs.new("NodeSocketFloat", "Occlusion")
+        if not group.nodes:
+            group.nodes.new("NodeGroupInput")
+            group.nodes.new("NodeGroupOutput")
+    return group
+
+
 def wire_atlas(material, bsdf, maps):
     nodes = material.node_tree.nodes
     links = material.node_tree.links
@@ -545,9 +566,12 @@ def wire_atlas(material, bsdf, maps):
     tex_o.image = maps[1]
     tex_n = nodes.new("ShaderNodeTexImage")
     tex_n.image = maps[2]
+    tex_e = nodes.new("ShaderNodeTexImage")
+    tex_e.image = maps[3]
     links.new(uv0.outputs["UV"], tex_a.inputs["Vector"])
     links.new(uv0.outputs["UV"], tex_o.inputs["Vector"])
     links.new(uv0.outputs["UV"], tex_n.inputs["Vector"])
+    links.new(uv0.outputs["UV"], tex_e.inputs["Vector"])
     sep = nodes.new("ShaderNodeSeparateColor")
     links.new(tex_o.outputs["Color"], sep.inputs["Color"])
     links.new(tex_a.outputs["Color"], bsdf.inputs["Base Color"])
@@ -555,14 +579,19 @@ def wire_atlas(material, bsdf, maps):
     links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
     if "Ambient Occlusion" in bsdf.inputs:
         links.new(sep.outputs["Red"], bsdf.inputs["Ambient Occlusion"])
+    gltf_out = nodes.new("ShaderNodeGroup")
+    gltf_out.name = "SF_glTF_Occlusion"
+    gltf_out.node_tree = ensure_gltf_occlusion_group()
+    if "Occlusion" in gltf_out.inputs:
+        links.new(sep.outputs["Red"], gltf_out.inputs["Occlusion"])
     nmap = nodes.new("ShaderNodeNormalMap")
     nmap.space = "TANGENT"
     nmap.inputs["Strength"].default_value = 1.10
     links.new(tex_n.outputs["Color"], nmap.inputs["Color"])
     links.new(nmap.outputs["Normal"], bsdf.inputs["Normal"])
     if "Emission Color" in bsdf.inputs:
-        links.new(tex_a.outputs["Color"], bsdf.inputs["Emission Color"])
-        links.new(tex_a.outputs["Alpha"], bsdf.inputs["Emission Strength"])
+        links.new(tex_e.outputs["Color"], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = 1.0
 
 
 def create_role_materials():
@@ -1232,7 +1261,7 @@ def store_vertex_colors(obj, ao, curv, role):
         cattr.data[i].color = (v, v, v, 1.0)
 
 
-def rasterize_mesh_to_atlas(obj, albedo, orm, nrm, size):
+def rasterize_mesh_to_atlas(obj, albedo, orm, nrm, emissive, size):
     mesh = obj.data
     if not mesh.uv_layers:
         return
@@ -1375,7 +1404,12 @@ def rasterize_mesh_to_atlas(obj, albedo, orm, nrm, size):
                     albedo[y, x, 0] = float(np.clip(rgb[0], 0, 1))
                     albedo[y, x, 1] = float(np.clip(rgb[1], 0, 1))
                     albedo[y, x, 2] = float(np.clip(rgb[2], 0, 1))
-                    albedo[y, x, 3] = float(EMIT_ALPHA.get(role, 0.0))
+                    albedo[y, x, 3] = 1.0
+                    if role == "lamp":
+                        emissive[y, x, 0] = ROLE_RGB["lamp"][0] * EMISSIVE_SCALE
+                        emissive[y, x, 1] = ROLE_RGB["lamp"][1] * EMISSIVE_SCALE
+                        emissive[y, x, 2] = ROLE_RGB["lamp"][2] * EMISSIVE_SCALE
+                    emissive[y, x, 3] = 1.0
                     rough = ROLE_ROUGH[role] + dirt * 0.14 - wear * 0.08 + cavity * 0.10
                     metal = ROLE_METAL[role] + wear * 0.08 - (0.03 if role == "liner" else 0.0)
                     orm[y, x, 0] = float(np.clip(ao * (1.0 - cavity * 0.40), 0.10, 1.0))
@@ -1406,6 +1440,7 @@ def author_atlas(meshes, lod, size):
     albedo = np.zeros((size, size, 4), dtype=np.float32)
     orm = np.zeros((size, size, 4), dtype=np.float32)
     nrm = np.zeros((size, size, 4), dtype=np.float32)
+    emissive = np.zeros((size, size, 4), dtype=np.float32)
     nrm[..., 0] = 0.5
     nrm[..., 1] = 0.5
     nrm[..., 2] = 1.0
@@ -1413,12 +1448,14 @@ def author_atlas(meshes, lod, size):
     orm[..., 0] = 1.0
     orm[..., 1] = 0.5
     orm[..., 3] = 1.0
+    emissive[..., 3] = 1.0
     # Fill unused with quiet paint so gutters never sample magenta.
     albedo[..., 0] = ROLE_RGB["paint"][0]
     albedo[..., 1] = ROLE_RGB["paint"][1]
     albedo[..., 2] = ROLE_RGB["paint"][2]
+    albedo[..., 3] = 1.0
     for obj in meshes:
-        rasterize_mesh_to_atlas(obj, albedo, orm, nrm, size)
+        rasterize_mesh_to_atlas(obj, albedo, orm, nrm, emissive, size)
     # Multiply AO into albedo (deterministic; no Cycles).
     factor = 0.78 + 0.22 * orm[..., 0]
     albedo[..., 0] *= factor
@@ -1429,7 +1466,8 @@ def author_atlas(meshes, lod, size):
     img_a, p_a = write_pixels(f"{prefix}_basecolor", albedo, size, "sRGB")
     img_o, p_o = write_pixels(f"{prefix}_orm", orm, size, "Non-Color")
     img_n, p_n = write_pixels(f"{prefix}_normal", nrm, size, "Non-Color")
-    return (img_a, img_o, img_n), (p_a, p_o, p_n), albedo, orm, nrm
+    img_e, p_e = write_pixels(f"{prefix}_emissive", emissive, size, "sRGB")
+    return (img_a, img_o, img_n, img_e), (p_a, p_o, p_n, p_e), albedo, orm, nrm, emissive
 
 
 def assign_atlas_material(meshes, maps, lod):
@@ -1510,7 +1548,7 @@ def build_lod(lod):
     joined = [o for o in (body, spin_m, lamp_m) if o is not None]
     uv_pack_groups(body, spin_m, lamp_m)
     size = TEX_BY_LOD[lod]
-    maps, paths, albedo, orm, nrm = author_atlas(joined, lod, size)
+    maps, paths, albedo, orm, nrm, emissive = author_atlas(joined, lod, size)
     atlas_mat = assign_atlas_material(joined, maps, lod)
     for obj in joined:
         triangulate(obj)
@@ -1758,7 +1796,7 @@ def combine_lods(lod_reports, lamp_loc):
         "normalConvention": "OpenGL",
         "ormChannels": "R=AO,G=Roughness,B=Metallic",
         "textureCompression": "PNG-source",
-        "textureAuthorship": "mesh-derived AO/curvature/tangent-normal + authored unique-UV 1024 atlas (paint/wear/liner/accent/lamp)",
+        "textureAuthorship": "mesh-derived AO/curvature/tangent-normal + authored unique-UV atlases; packed ORM.R is glTF occlusion and emissive is black except the recessed lamp lens",
         "textureSize": 1024,
         "deliverableRole": "production_multi_lod",
         "lods": ["lod0", "lod1", "lod2"],
@@ -2201,6 +2239,8 @@ def render_stills(glb_path: Path, still_dir: Path):
     paths["works_edge"], pose_edge = snap("works_edge.png", "works_edge")
     set_lod_visible(1)
     paths["works_site"], pose_site = snap("works_site.png", "works_site")
+    set_lod_visible(2)
+    paths["works_site_lod2"], pose_site_lod2 = snap("works_site_lod2.png", "works_site")
     set_lod_visible(0)
 
     backups, _clay = override_clay(meshes)
@@ -2227,6 +2267,9 @@ def render_stills(glb_path: Path, still_dir: Path):
     oback, _ = override_atlas_emit(meshes, "orm")
     paths["orm_isolation"], _ = snap("orm_isolation.png", "works_top", samples=1)
     restore_mats(meshes, oback)
+    eback, _ = override_atlas_emit(meshes, "emissive")
+    paths["emissive_isolation"], _ = snap("emissive_isolation.png", "works_top", samples=1)
+    restore_mats(meshes, eback)
     idback = override_id(meshes)
     paths["material_id"], _ = snap("material_id.png", "works_top", samples=1)
     restore_mats(meshes, idback)
@@ -2296,6 +2339,15 @@ def render_stills(glb_path: Path, still_dir: Path):
             "location": list(pose_site["location"]),
             "objectOffset": list(pose_site["object_offset"]),
             "pxPerCellTarget": pose_site["px_per_cell"],
+            "lod": 1,
+        },
+        "works_site_lod2": {
+            "distance": pose_site_lod2["distance"],
+            "location": list(pose_site_lod2["location"]),
+            "objectOffset": list(pose_site_lod2["object_offset"]),
+            "pxPerCellTarget": pose_site_lod2["px_per_cell"],
+            "lod": 2,
+            "note": "original-resolution exact-source Works-camera LOD2 evidence",
         },
     }
     return {k: rel(v) for k, v in paths.items()}, camera_facts, paths
@@ -2349,6 +2401,39 @@ def inspect_glb_nodes(path: Path):
     meshes = gltf.get("meshes") or []
     primitives = sum(len(m.get("primitives") or []) for m in meshes)
     materials = gltf.get("materials") or []
+    textures = gltf.get("textures") or []
+    images = gltf.get("images") or []
+
+    def texture_image_name(texture_info):
+        if not isinstance(texture_info, dict):
+            return None
+        texture_index = texture_info.get("index")
+        if not isinstance(texture_index, int) or texture_index >= len(textures):
+            return None
+        source_index = textures[texture_index].get("source")
+        if not isinstance(source_index, int) or source_index >= len(images):
+            return None
+        return images[source_index].get("name")
+
+    material_bindings = []
+    for material in materials:
+        pbr = material.get("pbrMetallicRoughness") or {}
+        base = pbr.get("baseColorTexture")
+        orm = pbr.get("metallicRoughnessTexture")
+        occlusion = material.get("occlusionTexture")
+        emissive = material.get("emissiveTexture")
+        material_bindings.append({
+            "material": material.get("name"),
+            "baseColorTextureIndex": base.get("index") if isinstance(base, dict) else None,
+            "baseColorImage": texture_image_name(base),
+            "metallicRoughnessTextureIndex": orm.get("index") if isinstance(orm, dict) else None,
+            "metallicRoughnessImage": texture_image_name(orm),
+            "occlusionTextureIndex": occlusion.get("index") if isinstance(occlusion, dict) else None,
+            "occlusionImage": texture_image_name(occlusion),
+            "emissiveTextureIndex": emissive.get("index") if isinstance(emissive, dict) else None,
+            "emissiveImage": texture_image_name(emissive),
+            "emissiveFactor": material.get("emissiveFactor"),
+        })
     return {
         "nodeNames": names,
         "hooks": hooks,
@@ -2357,6 +2442,7 @@ def inspect_glb_nodes(path: Path):
         "meshCount": len(meshes),
         "primitiveCount": primitives,
         "materialCount": len(materials),
+        "materialBindings": material_bindings,
         "sceneExtrasIdentity": ((gltf.get("scenes") or [{}])[0].get("extras") or {}).get("identity"),
     }
 
@@ -2391,20 +2477,17 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     audit_md = FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md"
     audit_md.write_text(
         "\n".join([
-            "# Massline Core — material and shape audit (Cycle 04)",
+            "# Massline Core — material and shape audit (Cycle 05)",
             "",
             f"Identity `{IDENTITY}`. Packet `{PACKET}`. State `design_candidate`.",
             "Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.",
             "",
             "## Shape grammar",
             "",
-            "Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four",
-            "L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, a chrome-coin",
-            "inner race, and a plus-dot site marker. Cycle 04 keeps the open well and inner",
-            "race and rebuilds: a square wellhead flange with a round bore; a continuous",
-            "U-channel opening +Z (inner flange / dark trench / outer flange); a folded",
-            "square angle skirt on the rock; corner pads as frame mass; a nested dark race;",
-            "one side-mounted hooded lamp with a visible cavity.",
+            "Cycle 04's independently reviewed square-flange geometry is frozen for this repair:",
+            "a square wellhead flange with a round bore; continuous U-channel opening +Z;",
+            "folded square angle skirt; corner pads; nested dark race; and one side-mounted",
+            "hooded lamp with a visible cavity. Cycle 05 changes no authored form.",
             "",
             "Clay must read: dark circular hole in a squat square machine, U-channel trench,",
             "skirt thickness, one hooded fixture. A washer / manhole / gear / tire / nut /",
@@ -2421,6 +2504,13 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "| Lamp lens | recessed dielectric | small warm emissive | beacon, painted tab, emissive ring |",
             "",
             "`allSupportedViewZonesClassified`: false (independent reviewer has not confirmed).",
+            "",
+            "## Portable material wiring",
+            "",
+            "- Base color is not emissive.",
+            "- A separate black-except-lens emissive atlas drives only the recessed lamp lens.",
+            "- Packed ORM is bound twice as required by glTF: ORM.R -> occlusionTexture and",
+            "  ORM.G/B -> metallicRoughnessTexture.",
             "",
             "## Construction sequence",
             "",
@@ -2487,6 +2577,13 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "pie-wedge collar", "occupancy-arrow shoes", "plus-dot site icon", "chrome coin race",
         ],
         "componentReferenceDecision": "not_needed",
+        "portableMaterialBindings": {
+            "baseColor": "dedicated sRGB atlas",
+            "normal": "dedicated non-color OpenGL tangent atlas",
+            "packedOrm": "R=AO,G=Roughness,B=Metallic",
+            "occlusion": "ORM.R via glTF occlusionTexture",
+            "emissive": "dedicated sRGB atlas, black outside the recessed lamp-lens UVs",
+        },
         "citedReferences": [rel(p) for p in CITED_REFS],
     }
     (FAMILY / "MATERIAL_CONTRACT.json").write_bytes(
@@ -2518,7 +2615,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-22", "implemented", "normal_isolation", "pass", True,
         "OpenGL tangent normals on unique UV0; isolation is world-space geometric, distinct from ORM.")
     row("MTX-23", "implemented", "orm_isolation", "pass", True,
-        "Vertex hemisphere AO via BVH, rasterized into ORM.R; AO at U-trench, skirt, pads, race, throat.")
+        "Vertex hemisphere AO via BVH is rasterized into ORM.R and exported as glTF occlusionTexture.")
     row("MTX-24", "implemented", "orm_isolation", "pass", True,
         "Vertex curvature from neighbour-normal angle drives wear; no checker or grid stamp.")
     row("MTX-25", "implemented", "orm_isolation", "pass", True,
@@ -2530,19 +2627,21 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-32", "implemented", "works_top", "pass", True,
         "Unique 1024 albedo for this asset; rover atlas is not tinted or reused.")
     row("MTX-33", "implemented", "orm_isolation", "pass", True,
-        "ORM R=mesh AO, G=role roughness + cavity, B=role metallic + curvature wear.")
+        "One packed ORM image binds R to glTF occlusionTexture and G/B to metallicRoughnessTexture.")
     row("MTX-39", "implemented", "works_top", "pass", True,
         "Edge-wear from curvature on alkyd; no uniform AO dirt crayon.")
+    row("MTX-45", "implemented", "emissive_isolation", "pass", True,
+        "Dedicated emissive atlas is black except the recessed lens; base color is never used as emission.")
     row("MTX-46", "implemented", "works_top_clay", "pass", True,
         "No yellow livery, no emissive torus, no pie wedges, no occupancy arrows, no plastic default.")
     row("MTX-50", "implemented", "hook_identity", "pass", True,
-        "glTF extras stamp identity, LOD prefixes, sockets, collision helper, OpenGL/ORM contract.")
+        "glTF extras stamp identity, LOD prefixes, sockets, collision helper, OpenGL normal, packed ORM occlusion, and lens-only emission.")
     row("MTX-52", "implemented", "works_top_clay", "pass", True,
         "Macro: square flange with round bore, U-channel trench, skirt on the rock, nested race, hooded lamp.")
     row("MTX-53", "not_applicable", "works_top", "pass", True,
         "Manufactured wellhead, not a rock/wreck; no sculpt/photogrammetry bake is required.")
     row("MTX-54", "not_applicable", "works_top", "pass", True,
-        "Cycle 04 correction of Cycle 03; Cycle 01–03 evidence bytes are not rewritten.")
+        "Cycle 05 preserves Cycle 04 form; Cycle 01–04 evidence bytes are not rewritten.")
 
     ledger = {
         "schema": "spaceface.advancedModelTechniqueLedger.v1",
@@ -2579,6 +2678,12 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "state": "design_candidate",
         "g1g2g4": "open",
         "independentReviewLaunched": False,
+        "reviewSource": "controller-provided independent review of Cycle 04 exact candidate",
+        "reviewFindingsAddressed": [
+            "base-color atlas was incorrectly exported as full-surface emissive",
+            "packed ORM.R was not consumed as glTF occlusionTexture",
+            "LOD2 lacked an original-resolution Works-camera site still",
+        ],
         "sourceGlb": inventory["combined"],
         "partsGlb": inventory["partsSource"],
         "sourceSha256": inventory["sha256"],
@@ -2597,14 +2702,23 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             rel(TEX_DIR / "massline_core_atlas_lod0_basecolor.png"),
             rel(TEX_DIR / "massline_core_atlas_lod0_orm.png"),
             rel(TEX_DIR / "massline_core_atlas_lod0_normal.png"),
+            rel(TEX_DIR / "massline_core_atlas_lod0_emissive.png"),
         ],
+        "lod2SiteEvidence": {
+            "path": still_rel.get("works_site_lod2"),
+            "sha256": hash_stills.get("works_site_lod2"),
+            "sourceSha256": inventory["sha256"],
+            "lod": 2,
+            "resolution": camera_facts.get("resolution"),
+            "camera": camera_facts.get("works_site_lod2"),
+            "originalResolutionReviewPending": True,
+        },
         "citedReferences": [rel(p) for p in CITED_REFS],
         "contactSheet": rel(REF_DIR / "CONTACT_SHEET.png"),
         "notes": (
-            "Cycle 04 square-flange wellhead correction. Not wired, not released, not promoted. "
-            "Reviewers were not launched. Disposition review_pending/revise. Remaining visual "
-            "risk: whether the U-trench and square skirt hold at 120 px/cell and whether site "
-            "LOD1 reads as a claimed square with a hole rather than a plus-dot or slab."
+            "Cycle 05 preserves Cycle 04 square-flange geometry and repairs portable material "
+            "wiring plus direct LOD2 site evidence. Not wired, not released, not promoted. "
+            "A new independent exact-hash visual verdict remains pending."
         ),
     }
     (EVIDENCE_DIR / "EPOCH.json").write_bytes(
@@ -2612,7 +2726,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     )
     (EVIDENCE_DIR / "CYCLE.md").write_text(
         "\n".join([
-            "# PQ-131.02 Massline Core — Cycle 04 evidence",
+            "# PQ-131.02 Massline Core — Cycle 05 evidence",
             "",
             f"Disposition: **review_pending** / **revise**. State: `design_candidate`. Identity: `{IDENTITY}`.",
             f"Source SHA-256: `{inventory['sha256']}`",
@@ -2622,12 +2736,12 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             f"Hooks: {', '.join(inventory['hooks'])}",
             "",
             "Stills from the exported GLB at 1920×1080, live works camera (31° FOV, +Z up).",
-            "Independent reviewers were not launched this cycle. Cycle 01–03 evidence is immutable.",
+            "Independent reviewers were not launched this cycle. Cycle 01–04 evidence is immutable.",
             "",
-            "Correction vs Cycle 03: square wellhead flange with round bore; U-channel opening",
-            "+Z so the trench reads from above; folded square angle skirt on the rock; corner",
-            "pads as frame mass (no L-arrows); nested dark race; side-mounted hooded lamp with",
-            "a visible cavity. LOD1/2 keep square outer + open well + trench + lamp.",
+            "Cycle 04 geometry is unchanged. Cycle 05 exports packed ORM.R as occlusionTexture",
+            "and uses a dedicated black-except-lens emissive atlas instead of the base-color atlas.",
+            f"LOD2 Works-site still (1920×1080): `{still_rel.get('works_site_lod2')}`",
+            f"LOD2 still SHA-256: `{hash_stills.get('works_site_lod2')}`",
             "",
             "Still `review_pending` / `revise`. Not wired, not released, not promoted.",
             "",
@@ -2657,6 +2771,20 @@ def check_contract(inventory, glb_inspect, camera_facts, occupancy):
             errors.append(f"LOD{lod} tris {tris} too thin")
     if inventory["sha256"] != inventory["partsSha256"]:
         errors.append("source/parts hash mismatch")
+    bindings = glb_inspect.get("materialBindings") or []
+    if len(bindings) != 3:
+        errors.append(f"material bindings {len(bindings)} != 3")
+    for binding in bindings:
+        name = binding.get("material") or "unnamed"
+        if binding.get("occlusionTextureIndex") != binding.get("metallicRoughnessTextureIndex"):
+            errors.append(f"{name} ORM.R is not bound as packed occlusionTexture")
+        if binding.get("occlusionImage") != binding.get("metallicRoughnessImage"):
+            errors.append(f"{name} occlusion image differs from packed ORM")
+        emissive_image = str(binding.get("emissiveImage") or "")
+        if not emissive_image.endswith("_emissive"):
+            errors.append(f"{name} emissive image is not the lens-only atlas: {emissive_image}")
+        if binding.get("emissiveImage") == binding.get("baseColorImage"):
+            errors.append(f"{name} base color is still bound as emissive")
     bbox0 = inventory["lodReports"][0]["bbox"]
     if bbox0["min"][0] < -1.12 or bbox0["min"][1] < -1.12 or bbox0["max"][0] > 1.12 or bbox0["max"][1] > 1.12:
         errors.append(f"envelope {bbox0}")
@@ -2666,6 +2794,7 @@ def check_contract(inventory, glb_inspect, camera_facts, occupancy):
         top = camera_facts["works_top"]
         edge = camera_facts["works_edge"]
         site = camera_facts["works_site"]
+        site_lod2 = camera_facts.get("works_site_lod2") or {}
         if top["location"] != edge["location"]:
             errors.append("works_edge camera moved")
         if top["objectOffset"] == edge["objectOffset"]:
@@ -2674,11 +2803,18 @@ def check_contract(inventory, glb_inspect, camera_facts, occupancy):
             errors.append("works_top px/cell")
         if abs(site["pxPerCellTarget"] - 19.0) > 0.01:
             errors.append("works_site px/cell")
+        if site_lod2.get("lod") != 2 or site_lod2.get("location") != site.get("location"):
+            errors.append("works_site_lod2 camera/LOD contract")
     if occupancy.get("works_site"):
         site = occupancy["works_site"]
         bw, bh = site.get("bboxSizePx") or [0, 0]
         if bw < 16 or bh < 16:
             errors.append(f"site bbox too round/small {site.get('bboxSizePx')}")
+    if occupancy.get("works_site_lod2"):
+        site_lod2 = occupancy["works_site_lod2"]
+        bw, bh = site_lod2.get("bboxSizePx") or (0, 0)
+        if bw < 16 or bh < 16:
+            errors.append(f"LOD2 site bbox too round/small {site_lod2.get('bboxSizePx')}")
     if errors:
         raise RuntimeError("contract checks failed: " + "; ".join(errors))
     return True
@@ -2689,16 +2825,16 @@ def main(argv=None):
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
     skip_stills, skip_hidden, stills_only = parse_args(argv)
-    if CYCLE != 4 or EVIDENCE_DIR.name != "cycle_004":
-        raise RuntimeError("Cycle 04 builder must write cycle_004 only")
-    frozen_dirs = (CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR)
+    if CYCLE != 5 or EVIDENCE_DIR.name != "cycle_005":
+        raise RuntimeError("Cycle 05 builder must write cycle_005 only")
+    frozen_dirs = (CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR, CYCLE_004_DIR)
     if EVIDENCE_DIR.resolve() in {d.resolve() for d in frozen_dirs}:
-        raise RuntimeError("refusing to write over Cycle 01/02/03 evidence")
+        raise RuntimeError("refusing to write over Cycle 01/02/03/04 evidence")
     frozen_prev = {}
     for folder in frozen_dirs:
         frozen_prev.update(hash_tree(folder))
     if not frozen_prev:
-        raise RuntimeError("Cycle 01/02/03 evidence missing; refuse to build Cycle 04 without it")
+        raise RuntimeError("Cycle 01/02/03/04 evidence missing; refuse to build Cycle 05 without it")
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
@@ -2741,6 +2877,8 @@ def main(argv=None):
             occupancy["works_edge"] = occupancy_from_still(abs_stills["works_edge"], 120.0, 0.92)
         if "works_site" in abs_stills:
             occupancy["works_site"] = occupancy_from_still(abs_stills["works_site"], 19.0, 0.5)
+        if "works_site_lod2" in abs_stills:
+            occupancy["works_site_lod2"] = occupancy_from_still(abs_stills["works_site_lod2"], 19.0, 0.5)
 
     glb_inspect = inspect_glb_nodes(PARTS_GLB)
     hidden = {"ran": False}
@@ -2770,7 +2908,7 @@ def main(argv=None):
     if after_prev != frozen_prev:
         mutated = [k for k in after_prev if after_prev.get(k) != frozen_prev.get(k)]
         missing = [k for k in frozen_prev if k not in after_prev]
-        raise RuntimeError(f"Cycle 01/02/03 evidence mutated: {mutated or missing}")
+        raise RuntimeError(f"Cycle 01/02/03/04 evidence mutated: {mutated or missing}")
     print(json.dumps({
         "ok": True,
         "cycle": CYCLE,
@@ -2785,6 +2923,7 @@ def main(argv=None):
             "cycle_001": len(hash_tree(CYCLE_001_DIR)),
             "cycle_002": len(hash_tree(CYCLE_002_DIR)),
             "cycle_003": len(hash_tree(CYCLE_003_DIR)),
+            "cycle_004": len(hash_tree(CYCLE_004_DIR)),
         },
         "camera": {
             "works_top_D": camera_facts.get("works_top", {}).get("distance"),

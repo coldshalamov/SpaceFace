@@ -3,7 +3,7 @@
   "assetId": "place_works_massline_core",
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "packet": "PQ-131.02",
-  "cycle": 4,
+  "cycle": 5,
   "state": "design_candidate",
   "disposition": "review_pending",
   "allSupportedViewZonesClassified": false,
@@ -92,6 +92,13 @@
     "chrome coin race"
   ],
   "componentReferenceDecision": "not_needed",
+  "portableMaterialBindings": {
+    "baseColor": "dedicated sRGB atlas",
+    "normal": "dedicated non-color OpenGL tangent atlas",
+    "packedOrm": "R=AO,G=Roughness,B=Metallic",
+    "occlusion": "ORM.R via glTF occlusionTexture",
+    "emissive": "dedicated sRGB atlas, black outside the recessed lamp-lens UVs"
+  },
   "citedReferences": [
     "assets/concept/archetypes/concept_station_mining.jpg",
     "assets/concept/landmarks/concept_landmark_driller.jpg",

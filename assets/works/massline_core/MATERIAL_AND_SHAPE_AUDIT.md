@@ -1,17 +1,14 @@
-# Massline Core — material and shape audit (Cycle 04)
+# Massline Core — material and shape audit (Cycle 05)
 
 Identity `SF_WORKS_MASSLINE_CORE_V1`. Packet `PQ-131.02`. State `design_candidate`.
 Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.
 
 ## Shape grammar
 
-Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four
-L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, a chrome-coin
-inner race, and a plus-dot site marker. Cycle 04 keeps the open well and inner
-race and rebuilds: a square wellhead flange with a round bore; a continuous
-U-channel opening +Z (inner flange / dark trench / outer flange); a folded
-square angle skirt on the rock; corner pads as frame mass; a nested dark race;
-one side-mounted hooded lamp with a visible cavity.
+Cycle 04's independently reviewed square-flange geometry is frozen for this repair:
+a square wellhead flange with a round bore; continuous U-channel opening +Z;
+folded square angle skirt; corner pads; nested dark race; and one side-mounted
+hooded lamp with a visible cavity. Cycle 05 changes no authored form.
 
 Clay must read: dark circular hole in a squat square machine, U-channel trench,
 skirt thickness, one hooded fixture. A washer / manhole / gear / tire / nut /
@@ -28,6 +25,13 @@ compass-rose / plus-dot / generic slab is a fail.
 | Lamp lens | recessed dielectric | small warm emissive | beacon, painted tab, emissive ring |
 
 `allSupportedViewZonesClassified`: false (independent reviewer has not confirmed).
+
+## Portable material wiring
+
+- Base color is not emissive.
+- A separate black-except-lens emissive atlas drives only the recessed lamp lens.
+- Packed ORM is bound twice as required by glTF: ORM.R -> occlusionTexture and
+  ORM.G/B -> metallicRoughnessTexture.
 
 ## Construction sequence
 
