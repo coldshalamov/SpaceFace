@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Canonical Build Map
 
-This is the repository's implementation front door. It is intentionally a **router**, not a status ledger or historical transcript. The pre-Central-Brain long-form map is preserved in Git history and as a historical reference on this branch; it has no current dispatch authority.
+This is the repository's implementation front door. It is intentionally a **router**, not a status ledger or historical transcript. The pre-Central-Brain long-form map is preserved at [`design/program/historical/CANONICAL_BUILD_MAP_PRE_CENTRAL_BRAIN.md`](./design/program/historical/CANONICAL_BUILD_MAP_PRE_CENTRAL_BRAIN.md) and in Git history; it has no current dispatch authority.
 
 ## 1. Start here
 
