@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 2,
+  "cycle": 3,
   "tier": "C",
   "supportedViews": ["works_top", "works_edge", "works_site"],
   "allSupportedViewZonesClassified": false,
-  "note": "Independent reviewer must confirm coverage before this flips true. Cycle 02 self-register only; Cycle 01 power remains frozen KEEP.",
+  "note": "Independent reviewer must confirm coverage before this flips true. Cycle 03 self-register only.",
   "zones": [
     {"zone": "power_ladder_tray", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
     {"zone": "power_gold_jacket", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},

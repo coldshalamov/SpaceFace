@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 2,
+  "cycle": 3,
   "tier": "C",
   "grouping": "one manufactured family per network (power tray/cable; lane conveyor). Repeated pieces share the family bill.",
   "componentReferenceDecision": "not_needed",
@@ -16,7 +16,7 @@
           "zone": "ladder_tray_and_rungs",
           "disposition": "billed",
           "substrate": "hot-dip galvanized formed steel channel, IEC 61537 ladder class",
-          "basecolor": [0.22, 0.23, 0.21],
+          "basecolor": [0.40, 0.41, 0.38],
           "roughness": [0.48, 0.62],
           "metallic": [0.72, 0.88],
           "forbidden": ["plastic toy rail", "emissive outline", "generic plate grid"]
@@ -25,7 +25,7 @@
           "zone": "gold_jacket",
           "disposition": "billed",
           "substrate": "extruded LSZH polymer jacket over SWA, restrained brass-gold pigment — identification, not a light",
-          "basecolor": [0.58, 0.42, 0.16],
+          "basecolor": [0.50, 0.36, 0.14],
           "roughness": [0.42, 0.58],
           "metallic": [0.04, 0.12],
           "forbidden": ["whole-cable emission", "chrome gold", "cyan"]
@@ -103,7 +103,7 @@
           "zone": "smoked_cover_strip",
           "disposition": "billed",
           "substrate": "narrow polycarbonate wear strip over the product path only; rollers and rails stay visible beside it",
-          "basecolor": [0.12, 0.13, 0.14],
+          "basecolor": [0.30, 0.34, 0.36],
           "roughness": [0.18, 0.30],
           "metallic": [0.02, 0.06],
           "forbidden": ["full-width glass lid", "additive transparency sheet", "neon"]

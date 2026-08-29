@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 2,
+  "cycle": 3,
   "cellWu": 2.2,
   "halfExtent": 1.1,
   "authoring": {
@@ -47,22 +47,22 @@
     "power": {
       "trayOuterWidth": 0.48,
       "trayHeight": 0.20,
-      "trayWall": 0.032,
-      "cableRadius": 0.070,
-      "cableCenterZ": 0.134,
+      "trayWall": 0.090,
+      "cableRadius": 0.052,
+      "cableCenterZ": 0.080,
       "mountClearanceZ": 0.020
     },
     "lane": {
       "frameOuterWidth": 0.76,
       "frameHeight": 0.26,
-      "railThickness": 0.040,
-      "rollerRadius": 0.045,
-      "rollerCenterZ": 0.073,
-      "beltTopZ": 0.128,
-      "beltWidth": 0.28,
-      "coverWidth": 0.12,
+      "railThickness": 0.085,
+      "rollerRadius": 0.070,
+      "rollerCenterZ": 0.098,
+      "beltTopZ": 0.178,
+      "beltWidth": 0.16,
+      "coverWidth": 0.10,
       "mountClearanceZ": 0.018,
-      "note": "Cycle 02: belt width is interior, not a port dimension. Outer envelope frozen."
+      "note": "Cycle 03: belt width is interior, not a port dimension. Outer envelope frozen. Rails and rollers sized to read at 120 px/cell."
     }
   },
   "floorToWall": {

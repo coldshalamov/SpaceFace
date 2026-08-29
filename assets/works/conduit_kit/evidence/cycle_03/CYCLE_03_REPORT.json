@@ -1,0 +1,131 @@
+{
+  "packet": "PQ-131.06",
+  "cycle": 3,
+  "state": "design_candidate",
+  "gates": {
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "G6": "open",
+    "G7": "open",
+    "technical": "evidence_ready"
+  },
+  "note": "Cycle 03 construction correction. Source candidate only. Not wired, not released, not accepted. Independent review of this hash is required; this report is not KEEP.",
+  "rejectedCandidate": "3d2f0395 Cycle 02",
+  "repairedFailures": [
+    "P0 power junction was a cell-filling cube",
+    "P0 lane junction was a cube with four stubs",
+    "P0 lane T was a through-run overlapping a delayed branch, with a hanging motor that confused orientation",
+    "P0 lane cross was four disconnected stubs around a hole",
+    "P0 power T/cross were overlapping gold bars meeting a filled square",
+    "P0 power gold jacket was the unprotected top silhouette",
+    "P0 lane rollers/cover/belt still read as a black ribbon at 120 px/cell",
+    "P1 end hardware was a blob (power) or motor cube (lane)",
+    "P1 site register collapsed both families to colored tracks / gold rails"
+  ],
+  "construction": [
+    "Galvanized ladder tray with lips that occupy ~5 px at works_top; gold jacket sits in the trough and is interrupted by rooted saddles",
+    "Power T/cross are U-channel arms plus inner arcs and a bonded splice, not a filled box",
+    "Power/lane junctions are smaller service enclosures in the hollow, with lids, glands, and remaining stubs",
+    "Lane T: continuous far rail, gapped near rail, branch rails meeting at the opening, thin transfer plate",
+    "Lane cross: four arms plus inner fillets and a thin transfer plate",
+    "Larger rollers, narrower belt, smoked cover strip over the product path only"
+  ],
+  "kitSheet": "kit_sheet_works_top.png + kit_sheet_works_site.png + family_lineup_works_top.png",
+  "portMatrix": [
+    "join_power_straight_straight",
+    "join_power_straight_corner",
+    "join_power_straight_t",
+    "join_lane_straight_straight",
+    "join_lane_straight_corner",
+    "join_lane_straight_t"
+  ],
+  "lodBands": "diagnostics/{power,lane}_straight_lod{0,1,2}.png",
+  "claimsNotMade": [
+    "whole-asset G1/G2/G4",
+    "runtime G6",
+    "independent G7",
+    "release / loadWorksPart wiring"
+  ],
+  "originalResolutionInspection": {
+    "resolution": "1920x1080 works camera originals inspected at 1:1, plus matched crops",
+    "inspector": "implementer (not controller, not G7)",
+    "views": [
+      "kit_sheet_works_top.png",
+      "kit_sheet_works_site.png",
+      "family_lineup_works_top.png",
+      "power_{straight,t,cross,junction}_{works_top,clay}",
+      "lane_{straight,corner,t,cross,end,junction}_{works_top,clay}",
+      "join_power_straight_{straight,corner,t}_works_top.png",
+      "join_lane_straight_{straight,corner,t}_works_top.png",
+      "diagnostics/{power,lane}_straight_lod{0,1,2}.png"
+    ],
+    "cycle02Findings": [
+      {
+        "id": 1,
+        "finding": "Power junction was a cell-filling cube",
+        "verdict": "repaired",
+        "note": "Smaller service box in the hollow of four tray stubs; clay still shows a quiet lid."
+      },
+      {
+        "id": 2,
+        "finding": "Lane junction was a cube with four stubs",
+        "verdict": "repaired",
+        "note": "Smaller enclosure; stubs keep rails and rollers."
+      },
+      {
+        "id": 3,
+        "finding": "Lane T was overlapping runs / delayed branch",
+        "verdict": "repaired",
+        "note": "Through-run plus branch meet at a transfer; join_lane_straight_t is continuous."
+      },
+      {
+        "id": 4,
+        "finding": "Lane cross was four disconnected stubs around a hole",
+        "verdict": "repaired",
+        "note": "Four arms plus inner connection and a small centre plate."
+      },
+      {
+        "id": 5,
+        "finding": "Power T/cross were overlapping gold bars meeting a filled square",
+        "verdict": "repaired",
+        "note": "T is a three-arm U-fitting with inner arcs; cross is a round four-way; join_power_straight_t mates."
+      },
+      {
+        "id": 6,
+        "finding": "Power gold jacket was the unprotected top silhouette",
+        "verdict": "repaired",
+        "note": "Galvanized lips and saddles interrupt the jacket; gold sits in the trough."
+      },
+      {
+        "id": 7,
+        "finding": "Lane still read as a black ribbon at 120 px/cell",
+        "verdict": "repaired",
+        "note": "Two C-rails and silver rollers read at works_top; cover is a narrow strip, not a filled trough."
+      },
+      {
+        "id": 8,
+        "finding": "End hardware was a blob or motor cube",
+        "verdict": "repaired",
+        "note": "Lane end shows a return bed and stop; power end is a gland/bulkhead. Both stay small."
+      },
+      {
+        "id": 9,
+        "finding": "Site register collapsed both families to colored tracks",
+        "verdict": "repaired",
+        "note": "At 19 px/cell the gold tray row vs dark conveyor row and T/cross/junction topology still separate without bloom."
+      }
+    ],
+    "implementingDecision": "construction_correction_complete",
+    "notClaimed": "KEEP, whole-asset G1/G2/G4, runtime G6, independent G7, release",
+    "residualRisks": [
+      "Lane cover strip still reads cool/blue at 120 px/cell; rollers carry the family, but a reviewer can still call the strip a cyan accent.",
+      "Junction lids remain quiet squares at works_top; service hardware is present and small.",
+      "Power LOD1 recedes the gold; LOD2 at site is a topology dash only.",
+      "Not wired, not released."
+    ]
+  },
+  "cycle01Preserved": "assets/works/conduit_kit/evidence/cycle_01",
+  "cycle02Preserved": "assets/works/conduit_kit/evidence/cycle_02",
+  "inventory": "assets/works/conduit_kit/INVENTORY.json"
+}
