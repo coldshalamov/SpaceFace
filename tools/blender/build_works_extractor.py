@@ -1,15 +1,16 @@
-"""PQ-131.03 Works extractor — Cycle 05 semantic LOD correction.
+"""PQ-131.03 Works extractor — Cycle 06 intake form and evidence binding.
 
-Cycle 04's exact review found that its parallel pale feed bars read as forbidden
-forklift tines, LOD1 lost the head/belt/drive/lamp hierarchy at the legal site
-camera, and LOD2 popped to a generic U-frame. Cycle 05 replaces those bars with
-short rooted splayed crusher cheeks, adds a real transverse cutter crown, keeps
-the warm drive mass in every LOD, and makes the hooded lamp a materially warm,
-rooted fixture rather than a floating emissive pixel. Independent review and
-the actual normal route remain open.
+Cycle 05's exact review confirmed the UV/export, cutter, belt, warm drive, lamp,
+and semantic LOD hierarchy, but the paired pale shoulders still ended as two
+longitudinal prongs. Its material-ID still was an invalid grayscale fallback,
+LOD2 lacked a capture at its honest ~40 px switch band, and current evidence
+was not fully hash/producer/renderer bound. Cycle 06 replaces those forms with
+broad lateral jaw retainers around a V-shaped dark intake and completes the
+exact-source evidence contract. Independent review and the actual normal route
+remain open.
 
 Kit GLBs are cited shape references only and are never imported.
-Cycle 01 through Cycle 04 evidence folders are immutable.
+Cycle 01 through Cycle 05 evidence folders are immutable.
 
     blender --background --python tools/blender/build_works_extractor.py
 """
@@ -29,6 +30,8 @@ from mathutils import Matrix, Vector
 
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parents[1]
+BUILDER_PATH = Path(__file__).resolve()
+WORKS_CAMERA_PATH = TOOLS / "spaceface_works_camera.py"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -36,6 +39,7 @@ from spaceface_works_camera import (  # noqa: E402
     FOV_V_DEG,
     apply_works_camera,
     measured_px_per_cell,
+    works_distance,
     works_pose,
 )
 
@@ -43,13 +47,14 @@ FAMILY = ROOT / "assets" / "works" / "extractor"
 SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 PARTS_DIR = ROOT / "assets" / "ships" / "parts" / "works"
-CYCLE = 5
-EPOCH_NAME = "cycle_005"
+CYCLE = 6
+EPOCH_NAME = "cycle_006"
 EVIDENCE_DIR = FAMILY / "evidence" / EPOCH_NAME
 CYCLE_01_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_02_DIR = FAMILY / "evidence" / "cycle_002"
 CYCLE_03_DIR = FAMILY / "evidence" / "cycle_003"
 CYCLE_04_DIR = FAMILY / "evidence" / "cycle_004"
+CYCLE_05_DIR = FAMILY / "evidence" / "cycle_005"
 BLEND_PATH = SOURCE_DIR / "extractor.blend"
 COMBINED_NAME = "place_works_extractor.glb"
 ASSET_ID = "place_works_extractor"
@@ -60,6 +65,8 @@ TRI_BUDGET = {0: 8000, 1: 2000, 2: 600}
 TEX_SIZE = {0: 1024, 1: 1024, 2: 1024}
 CELL_WU = 2.2
 SHADE_ANGLE = 28.0
+LOD2_PROJECTED_MACHINE_PX_BAND = (34, 45)
+LOD2_EVIDENCE_PX_PER_CELL = 37.0
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYs"}
 
 PIVOT = Vector((0.42, 0.00, 0.30))
@@ -163,6 +170,35 @@ CYCLE_04_SHA256 = {
     "inspect/works_top_crop.png": "E6AD4E980E0E740C12E312FAF963FB46F00EDC1D8632E3333988565B7B1A2D1B",
 }
 
+CYCLE_05_SHA256 = {
+    "EPOCH.json": "8A8F45C5A7A2CBA885AFFD3486E76B3EB1779729180C4FFE777B97B1B69BE6ED",
+    "hidden_faces.json": "997DEAEDE5DBC70325B85B44183FD2DF88CF923778BD96D94DDEC6C09CDCCBA4",
+    "hook_identity.png": "C90265C220221C6C37A9AC52003C5F94CD793F8C1D4E421F9E3D6C191F40E904",
+    "id_or_material_id.png": "948D60AEFA48B812888E6E21431EE2C1E6B9B7420C3B76F74BBCAE7303D205C1",
+    "INSPECT.md": "5AC7408597A7804902998DA723A9978006417E55FDA3BAEDF1E1B5B6DA04FEBB",
+    "LOD_COMPARISON.json": "E8665B543CCF1A83C634B901C6AD9D0EA350DA7770D8F9F0E312CFDB81EC2AFD",
+    "LOD_COMPARISON.md": "198417B14B22A5A3B27B3498C9CAA17BB7628556C7726BAE682F88AFAD8ECFA0",
+    "lod0_matched_120px.png": "FE1CF4274F84D0FA80F8C6EB8031926E730D129A44C3CCF3B49F09B690890861",
+    "lod1_matched_120px.png": "40C733C6F03B5D6D78EA33357A33D865A6180739FF4EE74D14398521E1333DE5",
+    "lod2_matched_120px.png": "4330506448148A20282956AE7E9A19886E7347D1771ECC394BB2F3476E5A1A5F",
+    "normal_isolation.png": "124E4A0F35E2229729BB73D407A395E260531A68C92184EDEB05828DDA11479E",
+    "NORMAL_ROUTE_LIMITATIONS.md": "CA492EAD9D131ED0049C5FDB37FC89B69A70CFD26B2AD15DA60EE3DB12D30BF2",
+    "orm_isolation.png": "8F957BD1F56BD6732C686562D88435D20CF92DB29343568CB06F48DE2DEA1A7C",
+    "SUPPORTED_VIEW_ZONE_REGISTER.json": "B8FCE17B6595540C74A464D31B025770457FC51C698F111597776B824358CD97",
+    "works_edge_grazing.png": "4197B90F1882C56643488B690F7871932543FB856FD102DCE2E17E800DE8CE62",
+    "works_edge.png": "AD3F20BE4B33269F61B06C38EE21DF21BC5215722D69873860201F1CEE077BDE",
+    "works_site.png": "A8188B797551227F11DBC525195D7645F4A9DE3385D0DBDD0499C7773DDC7AF3",
+    "works_top_clay.png": "AD62CFE054A3317D9FA7AB54F7202A33F24EC512A89DA6FE54487D293E17BA89",
+    "works_top.png": "C94A40D4BC02B2ABA4D876B7407FB254D85901A46E59F63ABC54BC6E5EDB339C",
+    "inspect/lod0_matched_crop.png": "CA62EB7D6FFBF0EFB4A7C411E7DB641D46E84204424ED5CE862A998AC6102BD3",
+    "inspect/lod1_matched_crop.png": "921F4075881222EC1E01206ABE5CD7AB9AC7F841CA39D705E9DBA6B4E2F0494F",
+    "inspect/lod2_matched_crop.png": "D11C55DC0B2E7A69A318E19489CF7F21477E7066F09FF302A988F7A157DC4DBA",
+    "inspect/works_edge_crop.png": "7AAA9CA13DAEE7DD409CEBB1601B637DC5D036018B5CD72A3E9866133806CA1C",
+    "inspect/works_site_crop.png": "47349D5D60FC08DFDCE08E549D01EF6E143140562F24E61F3CCD8334A7E30A2F",
+    "inspect/works_top_clay_crop.png": "DE8D02D008CA24407FC67E5281D445712DB3D37B4ACC58BD58C2596943D00B34",
+    "inspect/works_top_crop.png": "395354F4127C41BBE78393D55CFFAF92500287E78EBF3F0A739F3F636D9BDE57",
+}
+
 ROLES = {
     # Blue-grey alkyd over zinc — dielectric paint, deliberately separated
     # from the mine pad and every exposed-metal family at Works scale.
@@ -184,7 +220,7 @@ ROLES = {
 VISIBLE_ZONES = [
     {
         "id": "painted_load_frame",
-        "objects": ["rail_*", "xmem_*", "foot_*", "gusset_*", "cheek_*", "saddle_*"],
+        "objects": ["rail_*", "xmem_*", "foot_*", "gusset_*", "cheek_*", "intake_shoulder_*", "saddle_*"],
         "classification": "billed",
         "supportedViews": ["works_top", "works_edge", "works_site"],
         "dominantIn": ["works_top", "works_site"],
@@ -226,15 +262,15 @@ VISIBLE_ZONES = [
     },
     {
         "id": "refractory_feed_jaws",
-        "objects": ["jaw_*", "feed_cheek_*"],
+        "objects": ["jaw_*"],
         "classification": "billed",
         "supportedViews": ["works_top", "works_edge", "works_site"],
         "dominantIn": ["works_site"],
         "substrate": "replaceable alumina refractory",
-        "manufacture": "pressed and fired blocks in short broad-rooted paired retainers",
+        "manufacture": "pressed and fired blocks mechanically retained on the inward faces of painted lateral shoulders",
         "finish": "dry ochre mineral body, uncoated",
-        "interfaces": "paired along the open +X cheek rims",
-        "opticalRead": "two short pale splayed cheeks framing a dark open process bite",
+        "interfaces": "rooted laterally between crusher side shoulders and the cutter crown",
+        "opticalRead": "short inward jaw material framing a dark V intake; no longitudinal pale ends",
         "wear": "chipped feed faces and dust-darkened roots only",
         "forbiddenReads": ["parallel forklift tines", "closed grate", "tiny studs", "painted yellow trim"],
     },
@@ -293,6 +329,27 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest().upper()
+
+
+def producer_binding():
+    binary = Path(bpy.app.binary_path).resolve()
+    return {
+        "builder": {
+            "path": str(BUILDER_PATH.relative_to(ROOT)).replace("\\", "/"),
+            "sha256": sha256(BUILDER_PATH),
+        },
+        "cameraHelper": {
+            "path": str(WORKS_CAMERA_PATH.relative_to(ROOT)).replace("\\", "/"),
+            "sha256": sha256(WORKS_CAMERA_PATH),
+        },
+        "blender": {
+            "version": bpy.app.version_string,
+            "binary": str(binary),
+            "binarySha256": sha256(binary),
+        },
+        "renderFunction": "render_stills",
+        "renderEngine": "BLENDER_EEVEE_NEXT",
+    }
 
 
 def sanitize_png(path: Path) -> None:
@@ -437,27 +494,27 @@ def add_jaw_block(name, loc, size, collection, bevel=0.006):
     return add_box(name, loc, size, "ceramic", collection, bevel=bevel)
 
 
-def add_feed_cheek(side, lod, collection, z_center):
-    """Short rooted refractory cheek that splays around the +X aperture.
+def add_intake_shoulder(side, lod, collection, z_center):
+    """Broad lateral cheek shoulder plus inset refractory jaw retainer.
 
-    The plan-view trapezoid is deliberately not a parallel rectangular tine:
-    its broad root overlaps the crusher cheek, its short nose opens outward,
-    and the paired inner edges preserve a dark process bite.
+    Neither element projects as a pale longitudinal free end. The painted
+    shoulder is a side wall of the crusher body; the shorter refractory liner
+    is retained on its inward face and converges back toward the cutter.
     """
     sign = 1.0 if side == "P" else -1.0
-    root_x = 0.69
-    tip_x = {0: 0.93, 1: 0.94, 2: 0.945}[lod]
-    root_inner = 0.14 * sign
-    root_outer = 0.34 * sign
-    tip_inner = 0.22 * sign
-    tip_outer = 0.41 * sign
+    root_x = 0.50
+    outer_front_x = {0: 0.73, 1: 0.73, 2: 0.72}[lod]
+    inner_front_x = {0: 0.64, 1: 0.64, 2: 0.63}[lod]
+    root_inner = 0.15 * sign
+    outer = 0.37 * sign
+    front_inner = 0.22 * sign
     z0 = z_center - {0: 0.085, 1: 0.082, 2: 0.078}[lod]
     z1 = z_center + {0: 0.085, 1: 0.082, 2: 0.078}[lod]
     plan = [
         (root_x, root_inner),
-        (root_x, root_outer),
-        (tip_x, tip_outer),
-        (tip_x, tip_inner),
+        (root_x, outer),
+        (outer_front_x, outer),
+        (inner_front_x, front_inner),
     ]
     verts = [(x, y, z0) for x, y in plan] + [(x, y, z1) for x, y in plan]
     faces = [
@@ -465,10 +522,26 @@ def add_feed_cheek(side, lod, collection, z_center):
         (0, 1, 5, 4), (1, 2, 6, 5),
         (2, 3, 7, 6), (3, 0, 4, 7),
     ]
-    return add_mesh(
-        f"feed_cheek_{side}", verts, faces, "ceramic", collection,
+    shoulder = add_mesh(
+        f"intake_shoulder_{side}", verts, faces, "structure", collection,
         bevel=0.004 if lod == 0 else 0.0,
     )
+
+    # Shorter inward liner: visible as crusher jaw material but wholly rooted
+    # on the shoulder, with no isolated end extending down the feed axis.
+    liner_plan = [
+        (0.53, 0.14 * sign),
+        (0.53, 0.235 * sign),
+        (0.66, 0.270 * sign),
+        (0.59, 0.190 * sign),
+    ]
+    lz0, lz1 = z0 + 0.012, z1 + 0.010
+    liner_verts = [(x, y, lz0) for x, y in liner_plan] + [(x, y, lz1) for x, y in liner_plan]
+    liner = add_mesh(
+        f"jaw_retainer_{side}", liner_verts, faces, "ceramic", collection,
+        bevel=0.003 if lod == 0 else 0.0,
+    )
+    return [shoulder, liner]
 
 
 def add_belt_ribbon(name, x0, x1, y0, y1, z_top, thickness, sag, collection, stations=5, bevel=0.002):
@@ -1301,7 +1374,10 @@ def build_head(lod, collection):
     bevel = {0: 0.004, 1: 0.0, 2: 0.0}[lod]
     objs = []
     t = {0: 0.050, 1: 0.055, 2: 0.060}[lod]
-    x0, x1 = WELL_X0, 1.03
+    # The head side walls terminate at the lateral shoulders. Extending them
+    # to WELL_X1 leaves two parallel free-ended bars even when the refractory
+    # liners are corrected, recreating the rejected forklift silhouette.
+    x0, x1 = WELL_X0, 0.72
     y0, y1 = WELL_Y0, WELL_Y1
     z0, z1 = WELL_Z0, WELL_Z1
     wall_len = x1 - x0
@@ -1320,13 +1396,13 @@ def build_head(lod, collection):
     ))
     # No well floor. The +X bite is true void to the tan pad.
 
-    # 3–4 chunky dry-refractory jaw blocks on the rim. Survive works_top.
+    # Short dry-refractory jaw blocks on the inward rim. They stay clustered
+    # beside the cutter instead of becoming longitudinal top-facing prongs.
     jaw_h = {0: 0.18, 1: 0.17, 2: 0.16}[lod]
-    jaw_x = {0: 0.18, 1: 0.19, 2: 0.20}[lod]
+    jaw_x = {0: 0.08, 1: 0.09, 2: 0.10}[lod]
     jaw_y = {0: 0.13, 1: 0.14, 2: 0.15}[lod]
     jaw_z = z1 - jaw_h * 0.35
-    jaw_fore_x = 0.74
-    jaw_aft_x = 0.56
+    jaw_fore_x = 0.58
     y_rim_p = y1 - t - jaw_y * 0.15
     y_rim_s = y0 + t + jaw_y * 0.15
     objs.append(add_jaw_block(
@@ -1337,20 +1413,11 @@ def build_head(lod, collection):
         "jaw_S_fore", (jaw_fore_x, y_rim_s, jaw_z),
         (jaw_x, jaw_y, jaw_h), collection, bevel=0.005 if lod == 0 else 0.0,
     ))
-    if lod < 2:
-        objs.append(add_jaw_block(
-            "jaw_P_aft", (jaw_aft_x, y_rim_p, jaw_z - 0.01),
-            (jaw_x * 0.90, jaw_y, jaw_h * 0.92), collection, bevel=0.004 if lod == 0 else 0.0,
-        ))
-        objs.append(add_jaw_block(
-            "jaw_S_aft", (jaw_aft_x, y_rim_s, jaw_z - 0.01),
-            (jaw_x * 0.90, jaw_y, jaw_h * 0.92), collection, bevel=0.004 if lod == 0 else 0.0,
-        ))
-
-    # Short broad-rooted trapezoidal cheeks replace Cycle 04's forbidden
-    # parallel forklift-tine read while preserving the open +X process bite.
-    objs.append(add_feed_cheek("P", lod, collection, jaw_z + 0.005))
-    objs.append(add_feed_cheek("S", lod, collection, jaw_z + 0.005))
+    # Broad painted side shoulders with shorter inward refractory retainers
+    # frame the V-shaped aperture laterally. Nothing remains as a paired pale
+    # longitudinal free end.
+    objs.extend(add_intake_shoulder("P", lod, collection, jaw_z + 0.005))
+    objs.extend(add_intake_shoulder("S", lod, collection, jaw_z + 0.005))
     # Circular bearing housings rooted on the rail tops (Z-up → circles from above).
     rail_y = 0.67
     rail_top_z = 0.18
@@ -1967,6 +2034,10 @@ def assert_cycle_04_frozen():
     return assert_epoch_frozen("Cycle 04", CYCLE_04_DIR, CYCLE_04_SHA256)
 
 
+def assert_cycle_05_frozen():
+    return assert_epoch_frozen("Cycle 05", CYCLE_05_DIR, CYCLE_05_SHA256)
+
+
 def load_png_rgb(path: Path):
     img = bpy.data.images.load(str(path), check_existing=False)
     w, h = img.size
@@ -2045,6 +2116,32 @@ def analyze_works_still(path: Path, px_per_cell: float):
         "well_darker_than_rails": well_dark_mean < rails - 0.02,
         "bite_px_in_band": dark_span_px >= 4 and dark_span_px <= 8 if px_per_cell < 40 else None,
         **tan_bite,
+    }
+
+
+def analyze_material_id_still(path: Path):
+    """Prove that the unlit exported-UV role still contains every role color."""
+    rgba, width, height = load_png_rgb(path)
+    rgb = rgba[..., :3]
+    names = list(ROLES.keys())
+    targets = np.asarray([ROLES[name]["id"] for name in names], dtype=np.float32)
+    active = np.max(rgb, axis=2) > 0.20
+    sample = rgb[active]
+    counts = {name: 0 for name in names}
+    if sample.size:
+        delta = sample[:, None, :] - targets[None, :, :]
+        nearest = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+        for index, name in enumerate(names):
+            counts[name] = int(np.count_nonzero(nearest == index))
+    return {
+        "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+        "sha256": sha256(path),
+        "resolution": [width, height],
+        "renderMode": "unlit authored ID atlas through exact exported UV0",
+        "roleColors": {name: list(ROLES[name]["id"]) for name in names},
+        "rolePixelCounts": counts,
+        "missingRoles": [name for name, count in counts.items() if count < 4],
+        "allRolesVisible": all(count >= 4 for count in counts.values()),
     }
 
 
@@ -2208,7 +2305,24 @@ def override_channel(meshes, kind):
         nt = iso.node_tree
         out = next(n for n in nt.nodes if n.type == "OUTPUT_MATERIAL")
         emit = nt.nodes.new("ShaderNodeEmission")
-        if src is not None:
+        linked = False
+        if kind == "id":
+            lod = 0
+            if obj.name.startswith("LOD1"):
+                lod = 1
+            elif obj.name.startswith("LOD2"):
+                lod = 2
+            id_path = TEX_DIR / f"extractor_atlas_lod{lod}_id.png"
+            if not id_path.is_file():
+                raise RuntimeError(f"missing authored ID atlas for {obj.name}: {id_path}")
+            id_image = bpy.data.images.load(str(id_path), check_existing=True)
+            id_image.colorspace_settings.name = "sRGB"
+            tex = nt.nodes.new("ShaderNodeTexImage")
+            tex.image = id_image
+            tex.interpolation = "Closest"
+            nt.links.new(tex.outputs["Color"], emit.inputs["Color"])
+            linked = True
+        if src is not None and not linked:
             # Try to copy the matching image from the source material.
             for node in src.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image:
@@ -2264,8 +2378,22 @@ def render_stills(glb_path: Path, still_dir: Path):
 
     paths = {}
 
-    def snap(name, framing, edge_dir=(1.0, 0.0)):
-        pose = apply_works_camera(camera, framing=framing, focus=(0.0, 0.0, 0.32), edge_dir=edge_dir)
+    def snap(name, framing, edge_dir=(1.0, 0.0), px_per_cell_override=None):
+        focus = (0.0, 0.0, 0.32)
+        pose = apply_works_camera(camera, framing=framing, focus=focus, edge_dir=edge_dir)
+        if px_per_cell_override is not None:
+            distance = works_distance(float(px_per_cell_override), 1080)
+            camera.location = Vector((focus[0], focus[1], focus[2] + distance))
+            look_at(camera, focus)
+            camera.data.clip_end = max(1000.0, distance * 4.0)
+            pose = {
+                "framing": "lod2_switch_band",
+                "distance": distance,
+                "location": list(camera.location),
+                "look_at": list(focus),
+                "object_offset": (0.0, 0.0, 0.0),
+                "px_per_cell": float(px_per_cell_override),
+            }
         offset = Vector(pose["object_offset"])
         moved = []
         if offset.length > 1e-9:
@@ -2287,7 +2415,8 @@ def render_stills(glb_path: Path, still_dir: Path):
             obj.location = obj.location - off
         return {
             "path": str(out.relative_to(ROOT)).replace("\\", "/"),
-            "framing": framing,
+            "sha256": sha256(out),
+            "framing": pose.get("framing", framing),
             "distance": pose["distance"],
             "px_per_cell_target": pose["px_per_cell"],
             "px_per_cell_measured": measured_px_per_cell(pose["distance"], 1080),
@@ -2309,6 +2438,15 @@ def render_stills(glb_path: Path, still_dir: Path):
         rec["lod"] = lod
         rec["label"] = f"LOD{lod} matched works_top 120 px/cell"
         paths[f"lod{lod}_matched"] = rec
+    set_lod(2)
+    band = snap(
+        "lod2_switch_band_40px.png", "works_top",
+        px_per_cell_override=LOD2_EVIDENCE_PX_PER_CELL,
+    )
+    band["lod"] = 2
+    band["label"] = "LOD2 projected switch band (~40 px machine)"
+    band["projectedMachinePxBand"] = list(LOD2_PROJECTED_MACHINE_PX_BAND)
+    paths["lod2_switch_band"] = band
     set_lod("close")
     clay_b, _ = override_clay(meshes)
     paths["works_top_clay"] = snap("works_top_clay.png", "works_top")
@@ -2381,6 +2519,7 @@ def render_stills(glb_path: Path, still_dir: Path):
         ("works_top", 140), ("works_top_clay", 140), ("works_site", 40),
         ("works_edge", 160), ("lod0_matched", 140),
         ("lod1_matched", 140), ("lod2_matched", 140),
+        ("lod2_switch_band", 70),
     ):
         rec = paths.get(key)
         if not rec:
@@ -2400,7 +2539,10 @@ def render_stills(glb_path: Path, still_dir: Path):
     return paths
 
 
-def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle01, cycle02, cycle03, cycle04):
+def write_docs(
+    inventory, contract, inspect, stills, lod_reports, pixels, material_id,
+    cycle01, cycle02, cycle03, cycle04, cycle05,
+):
     FAMILY.mkdir(parents=True, exist_ok=True)
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     hashes = {
@@ -2412,10 +2554,13 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         "cycle02Frozen": True,
         "cycle03Frozen": True,
         "cycle04Frozen": True,
+        "cycle05Frozen": True,
         "cycle01Sha256": cycle01,
         "cycle02Sha256": cycle02,
         "cycle03Sha256": cycle03,
         "cycle04Sha256": cycle04,
+        "cycle05Sha256": cycle05,
+        "producer": producer_binding(),
         "lod": {str(r["lod"] if "lod" in r else i): {"sha256": r.get("sha256"), "triangles": r["triangles"]} for i, r in enumerate(lod_reports)},
         "textures": {},
     }
@@ -2442,8 +2587,10 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         "cycle02Frozen": True,
         "cycle03Frozen": True,
         "cycle04Frozen": True,
+        "cycle05Frozen": True,
         "cycle03IndependentVerdict": "revise",
         "cycle04IndependentVerdict": "revise",
+        "cycle05IndependentVerdict": "revise",
         "candidate": {
             "root": ROOT_NAME,
             "partGlb": inventory["partsSource"],
@@ -2452,6 +2599,7 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
             "sha256": inventory["sha256"],
             "partsSha256": inventory["partsSha256"],
         },
+        "producer": producer_binding(),
         "hooks": {
             "required": list(HOOK_NAMES),
             "found": inspect["hooksFound"],
@@ -2474,15 +2622,21 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
         "bboxBlenderZUp": inventory["bbox"],
         "camera": camera_stills,
         "pixels": pixels,
+        "materialIdEvidence": material_id,
         "inspectCrops": stills.get("_inspect_crops") or {},
-        "visibleZoneRegister": "assets/works/extractor/evidence/cycle_005/SUPPORTED_VIEW_ZONE_REGISTER.json",
+        "visibleZoneRegister": f"assets/works/extractor/evidence/{EPOCH_NAME}/SUPPORTED_VIEW_ZONE_REGISTER.json",
         "matchedLodEvidence": {
             str(lod): stills.get(f"lod{lod}_matched") for lod in (0, 1, 2)
+        },
+        "lod2ProjectedBandEvidence": {
+            "targetMachinePxBand": list(LOD2_PROJECTED_MACHINE_PX_BAND),
+            "still": stills.get("lod2_switch_band"),
+            "measured": pixels.get("lod2_switch_band"),
         },
         "normalRouteEvidence": {
             "status": "unavailable_unintegrated_candidate",
             "bestAvailableWorksContext": stills.get("works_site"),
-            "limitations": "assets/works/extractor/evidence/cycle_005/NORMAL_ROUTE_LIMITATIONS.md",
+            "limitations": f"assets/works/extractor/evidence/{EPOCH_NAME}/NORMAL_ROUTE_LIMITATIONS.md",
         },
         "firstRenderCorrection": {
             "observedFailure": "LOD1 and LOD2 steel cutter crown reflected too dark to preserve the transverse head hierarchy.",
@@ -2494,15 +2648,17 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
             ],
         },
         "notes": [
-            "Cycle 05 correction candidate only. Not wired, not released, not accepted.",
-            "Cycle 01 through Cycle 04 evidence folders are byte-frozen.",
-            "Cycle 04 independent exact-hash verdict was REVISE; Cycle 05 does not overwrite that result.",
-            "Open +X aperture is framed by two short broad-rooted splayed refractory cheeks; no parallel tines, closing floor, wall, roof, or grate.",
+            "Cycle 06 correction candidate only. Not wired, not released, not accepted.",
+            "Cycle 01 through Cycle 05 evidence folders are byte-frozen.",
+            "Cycle 05 independent exact-hash verdict was REVISE; Cycle 06 does not overwrite that result.",
+            "Open +X aperture is framed by broad painted lateral shoulders with short inward refractory liners; no pale longitudinal free ends, closing floor, wall, roof, or grate.",
             "Long dark belt leads into a real transverse steel cutter crown; warm drive hatch and rooted warm lamp survive every LOD.",
             "Matched LOD0/1/2 stills use one legal 120 px/cell camera without per-LOD reframing.",
+            "LOD2 is also captured at its honest 34–45 px projected-machine switch band.",
+            "Material-ID evidence uses the exact exported UV0 with the authored role-color atlas; it is not a grayscale isolation fallback.",
             "Author-side visible-zone register is exhaustive; independent confirmation remains open.",
             "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
-            "No Cycle 05 independent reviewer has run. G1/G2/G4/G7 remain open.",
+            "No Cycle 06 independent reviewer has run. G1/G2/G4/G7 remain open.",
             "The unintegrated source candidate cannot supply a true Browser/Electron normal-route capture.",
         ],
     }
@@ -2510,21 +2666,22 @@ def write_docs(inventory, contract, inspect, stills, lod_reports, pixels, cycle0
 
     site_px = (pixels or {}).get("works_site") or {}
     top_px = (pixels or {}).get("works_top") or {}
-    audit = f"""# Extractor — material and shape audit (Cycle 05)
+    audit = f"""# Extractor — material and shape audit (Cycle 06)
 
 Candidate `{inventory['sha256']}` · root `{ROOT_NAME}` · disposition `review_pending`.
 
-Cycle 04's exact independent review returned REVISE. Its long pale parallel
-bars read as forbidden forklift tines at 120 and 19 px. At legal works_site,
-LOD1 lost the transverse head, dark belt, warm drive, and lamp hierarchy.
-LOD2 popped to a generic U-frame without a stable crusher process read.
+Cycle 05's exact independent review returned REVISE. Its short refractory
+cheeks still terminated as paired pale longitudinal prongs in the legal Works
+views. Its material-ID image was a grayscale fallback rather than an explicit
+role-ID isolation, LOD2 had no still at its honest projected switch band, and
+the evidence packet was not completely bound to the current source producer.
 
-Cycle 05 preserves the same footprint, hooks, physical material families, UV
-and bake corrections, and open +X process bite. It replaces the bars with
-short broad-rooted splayed refractory cheek plates, adds a machined cutter
-crown attached across the drum, preserves a warm service hatch in every LOD,
-and roots the warm lamp hood/socket/bracket at every LOD with only restrained
-lens self-light.
+Cycle 06 preserves the same footprint, hooks, cutter, belt, physical material
+families, UV/bake corrections, and open +X process bite. It replaces the pale
+free ends with broad painted lateral shoulders and shorter refractory liners
+rooted on their inward faces. The role-color diagnostic now renders the exact
+exported UV0 against the authored ID atlas, and LOD2 is captured at the legal
+120 px comparison and at its honest projected-machine switch band.
 
 ## Shape grammar
 
@@ -2534,9 +2691,9 @@ lens self-light.
 | Crossmembers | Hat-beam loft | Rooted into rails with gussets; not a box wall | works_top |
 | Drive case | Waisted loft, narrower than rail span | Warm machinery-enamel gearbox with broad asymmetric service hatch retained through LOD2 | works_top / edge / site |
 | Fins | Thin tall plates in a hat header | Air-gapped machined-steel heat path, not a vent grille | works_top |
-| Mouth | Two cheeks, no +X wall/floor/roof; two short trapezoidal cheek plates | Open site-scale bite with strong outward splay and no parallel tine read | works_top / site |
+| Mouth | Two painted side shoulders, no +X wall/floor/roof; short inward refractory liners | Open site-scale V bite with no paired pale longitudinal free ends | works_top / site |
 | Drum / housings | Y-axis cylinder, bearing housings, attached transverse cutter crown and bonded hardface blocks | Bright physical segmented head under `head_face`, not an outline/card | works_top / edge / site |
-| Jaws | Chunky refractory rim blocks plus broad-rooted forward cheeks | Dry replaceable plates framing the bite, not forklift bars or a grate | works_top / site |
+| Jaws | Chunky refractory rim blocks retained on inward shoulder faces | Dry replaceable plates framing the bite laterally, not forklift bars or a grate | works_top / site |
 | Belt | Long thin sagging ribbon + proud roller crowns + return | Near-black directional path from drive to crusher, with side/under void | works_top / edge / site |
 | Lamp | Rooted bracket + warm cone hood + socket + recessed lens at every LOD | Warm fixture read carried by construction/material; lens emission restrained | works_edge / site |
 
@@ -2556,10 +2713,21 @@ into authored 1024² basecolor / normal / ORM. Unique non-overlapping UV0.
 ## LOD
 
 LOD0 {inspect['lodTriangles']['lod0']} / 8000. LOD1 {inspect['lodTriangles']['lod1']} / 2000.
-LOD2 {inspect['lodTriangles']['lod2']} / 600. The splayed cheek mouth, cutter crown,
-long belt, warm drive hatch, rooted lamp, and all three hooks survive. Exact
-matched evidence is in `evidence/cycle_005/lod0_matched_120px.png` through
-`lod2_matched_120px.png`. Hidden faces are evaluated per LOD only.
+LOD2 {inspect['lodTriangles']['lod2']} / 600. The lateral-shoulder V mouth, cutter
+crown, long belt, warm drive hatch, rooted lamp, and all three hooks survive.
+Exact matched evidence is in `evidence/{EPOCH_NAME}/lod0_matched_120px.png`
+through `lod2_matched_120px.png`; LOD2 also has
+`evidence/{EPOCH_NAME}/lod2_switch_band_40px.png` at
+{pixels.get('lod2_switch_band', {}).get('machine_size_px')} measured machine px.
+Hidden faces are evaluated per LOD only.
+
+## Material-ID isolation
+
+`evidence/{EPOCH_NAME}/id_or_material_id.png` is an unlit render of the exact
+exported UV0 using the authored per-role ID atlas. Role pixel counts are
+`{material_id.get('rolePixelCounts')}`; missing roles are
+`{material_id.get('missingRoles')}`. This is explicit material isolation, not
+the prior grayscale channel fallback.
 
 ## Pixel facts (original 1920×1080)
 
@@ -2578,10 +2746,9 @@ reviewer confirms it, as required by the material-truth contract.
 
 ## First-render correction
 
-The first Cycle 05 legal render showed that the honest metallic crown still
-reflected too dark at LOD1/2. The final candidate adds segmented bonded dry
-refractory hardface blocks attached to that crown. This is a manufactured
-replaceable contact surface, not emission, outline, a card, or camera bias.
+Cycle 06 retains Cycle 05's segmented bonded dry refractory hardface blocks on
+the cutter crown. The geometry correction is limited to the intake shoulders
+and liners; it does not redesign the machine or move its runtime interfaces.
 
 ## Remaining route limits (honest)
 
@@ -2589,7 +2756,7 @@ replaceable contact surface, not emission, outline, a card, or camera bias.
   can honestly show this hash. `works_site.png` is the best available legal
   Works-context evidence, not a substitute for G7.
 - Site-scale identity is only ~22 px and must be judged at original resolution.
-- Cycle 05 independent G1/G2/G4/G7 review has not run. This cycle closes none.
+- Cycle 06 independent G1/G2/G4/G7 review has not run. This cycle closes none.
 """
     write_text_lf(FAMILY / "MATERIAL_AND_SHAPE_AUDIT.md", audit)
 
@@ -2618,7 +2785,7 @@ replaceable contact surface, not emission, outline, a card, or camera bias.
         "visibleZoneCoverage": {
             "authorInventory": "complete",
             "reviewerConfirmed": False,
-            "register": "assets/works/extractor/evidence/cycle_005/SUPPORTED_VIEW_ZONE_REGISTER.json",
+            "register": f"assets/works/extractor/evidence/{EPOCH_NAME}/SUPPORTED_VIEW_ZONE_REGISTER.json",
             "supportedViews": ["works_top", "works_edge", "works_site"],
             "zones": [z["id"] for z in VISIBLE_ZONES],
             "unclassifiedVisibleZones": [],
@@ -2685,7 +2852,7 @@ replaceable contact surface, not emission, outline, a card, or camera bias.
         json.dumps(lod_record, indent=2) + "\n",
     )
     lod_lines = [
-        "# Extractor Cycle 05 — matched LOD evidence",
+        "# Extractor Cycle 06 — matched LOD evidence",
         "",
         f"Candidate `{inventory['sha256']}`. These are labeled comparison stills, not acceptance.",
         "",
@@ -2709,7 +2876,28 @@ replaceable contact surface, not emission, outline, a card, or camera bias.
     ])
     write_text_lf(EVIDENCE_DIR / "LOD_COMPARISON.md", "\n".join(lod_lines))
 
-    route_text = f"""# Extractor Cycle 05 — normal-route limitation
+    band_rec = stills.get("lod2_switch_band") or {}
+    band_pixels = pixels.get("lod2_switch_band") or {}
+    band_path = ROOT / band_rec.get("path", "")
+    band_record = {
+        "schema": "spaceface.projectedLodBandEvidence.v1",
+        "assetId": ASSET_ID,
+        "candidateHash": inventory["sha256"],
+        "lod": 2,
+        "targetMachinePxBand": list(LOD2_PROJECTED_MACHINE_PX_BAND),
+        "targetPxPerCell": LOD2_EVIDENCE_PX_PER_CELL,
+        "measuredMachineSizePx": band_pixels.get("machine_size_px"),
+        "path": band_rec.get("path"),
+        "imageSha256": sha256(band_path) if band_path.is_file() else None,
+        "camera": band_rec,
+        "acceptanceClaim": False,
+    }
+    write_text_lf(
+        EVIDENCE_DIR / "LOD2_PROJECTED_BAND.json",
+        json.dumps(band_record, indent=2) + "\n",
+    )
+
+    route_text = f"""# Extractor Cycle 06 — normal-route limitation
 
 Candidate `{inventory['sha256']}` is an unintegrated source asset. It is not present on the
 default Browser/Electron Asteroid Works route, so a headed normal-route capture of this exact
@@ -2759,7 +2947,7 @@ and obtain independent exact-hash review. Until then the disposition remains `re
         },
         "rows": [
             row("MTX-01", "implemented", graz, "pass", True, "Angle bevel 6–12 mm then weighted normals, shade 28°.", bevelWidthM=0.006, shadeAngleDeg=SHADE_ANGLE),
-            row("MTX-03", "implemented", clay, "pass", True, "Cycle 05: open +X aperture with two short broad-rooted splayed refractory cheeks; no parallel tines, bite floor, wall, roof, or grate."),
+            row("MTX-03", "implemented", clay, "pass", True, "Cycle 06: open +X aperture framed laterally by painted shoulders and short inward refractory liners; no pale longitudinal free ends, bite floor, wall, roof, or grate."),
             row("MTX-16", "implemented", top, "pass", True, "Unique non-overlapping UV0 packed per LOD."),
             row("MTX-20", "implemented", nrm, "pass", True, "High duplicate with extra 3 mm bevel as bake source."),
             row("MTX-21", "implemented", nrm, "pass", True, "Cage extrusion 0.03 wu on selected-to-active normal bake."),
@@ -2776,7 +2964,7 @@ and obtain independent exact-hash review. Until then the disposition remains `re
             row("MTX-50", "implemented", inventory["partsSource"], "pass", True, "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."),
             row("MTX-52", "implemented", clay, "pass", True, "Macro from cited kit shape language + construction studies, not a cube."),
             row("MTX-53", "not_applicable", None, "pass", True, "Manufactured machine, not a rock/sculpt."),
-            row("MTX-54", "implemented", top, "pass", True, "Cycle 05 preserves footprint, hooks, process identity, and Cycle 04 UV/material repairs while addressing the exact Cycle 04 REVISE findings; prior evidence is frozen."),
+            row("MTX-54", "implemented", top, "pass", True, "Cycle 06 preserves footprint, hooks, process identity, and Cycle 05 cutter/belt/UV/material work while addressing the exact Cycle 05 REVISE findings; prior evidence is frozen."),
         ],
     }
     write_text_lf(FAMILY / "TECHNIQUE_LEDGER.json", json.dumps(ledger, indent=2) + "\n")
@@ -2800,28 +2988,29 @@ def run_hidden_faces(glb_path: Path, dest: Path):
     return report
 
 
-def write_inspect_md(inventory, inspect, stills, pixels, hidden):
+def write_inspect_md(inventory, inspect, stills, pixels, material_id, hidden):
     top = pixels.get("works_top") or {}
     site = pixels.get("works_site") or {}
-    text = f"""# Extractor Cycle 05 — original-resolution inspect
+    band = pixels.get("lod2_switch_band") or {}
+    text = f"""# Extractor Cycle 06 — original-resolution inspect
 
 Candidate `{inventory['sha256']}`.
 Disposition **`review_pending`**. Independent reviewers were not launched.
 G1/G2/G4/G7 remain open.
 
 Inspected once at 1920×1080 (`works_top`, clay, edge, grazing, site, matched
-LOD0/1/2, normal, ORM, material ID, hook identity) plus centre crops. Cycle 01
-through Cycle 04 evidence are byte-frozen. Cycle 04's exact-hash verdict remains
-REVISE; this is the correction candidate.
+LOD0/1/2, LOD2 switch band, normal, ORM, explicit material ID, hook identity)
+plus centre crops. Cycle 01 through Cycle 05 evidence are byte-frozen. Cycle
+05's exact-hash verdict remains REVISE; this is the correction candidate.
 
-## Cycle 04 independent REVISE vs this candidate
+## Cycle 05 independent REVISE vs this candidate
 
-| Cycle 04 review | Cycle 05 candidate evidence |
+| Cycle 05 review | Cycle 06 candidate evidence |
 |---|---|
-| Parallel pale bars read as forklift tines | Short broad-rooted trapezoidal refractory cheeks splay outward around a dark bite |
-| LOD1 site head/belt/drive/lamp hierarchy collapses | Physical transverse crown with segmented hardface, long black belt, persistent warm hatch, rooted warm hood/socket/bracket |
-| LOD2 pops to generic U-frame | Cutter crown/hardface, splayed bite, belt, drive hatch, refractory pair, and lamp all survive LOD2 |
-| Do not use outline/emission/camera cheating | Geometry and material boundaries carry the read; lens self-light reduced to 0.18 and cameras unchanged |
+| Paired pale free ends still read as forklift prongs | Broad painted lateral shoulders carry short refractory liners on their inward faces; no pale longitudinal free ends remain |
+| Material-ID image was grayscale fallback | Unlit exact-export UV0 ID-atlas render; role counts `{material_id.get('rolePixelCounts')}` and missing roles `{material_id.get('missingRoles')}` |
+| No honest LOD2 projected-size proof | LOD2 switch-band still measures {band.get('machine_size_px')} px against target {list(LOD2_PROJECTED_MACHINE_PX_BAND)} |
+| Current source/producer binding incomplete | Epoch records exact source/parts/image hashes, renderer path/hash, camera, ID roles, and frozen Cycle 05 hashes |
 | Exact route still absent | Honest Works-context evidence plus explicit integration limitation; G7 stays open |
 
 ## Pixel / camera facts
@@ -2830,14 +3019,16 @@ REVISE; this is the correction candidate.
 - `works_top` machine bbox ≈ {top.get('machine_size_px')} px at 120 px/cell.
 - `works_top` tan bite px: {top.get('tan_bite_px')} (target 8–10).
 - `works_site` pad+machine bbox ≈ {site.get('machine_size_px')} px at 19 px/cell.
+- `lod2_switch_band` machine bbox ≈ {band.get('machine_size_px')} px at {LOD2_EVIDENCE_PX_PER_CELL} px/cell.
+- Material-ID all roles visible: {material_id.get('allRolesVisible')}.
 - Hooks `head_face`, `belt`, `lamp` present. Root `{ROOT_NAME}`.
 - LOD0 {inspect['lodTriangles']['lod0']} / 8000 · LOD1 {inspect['lodTriangles']['lod1']} / 2000 · LOD2 {inspect['lodTriangles']['lod2']} / 600.
 - Envelope {inventory['bbox']['size']} wu, underside z=0, +X feed.
 - Hidden-face dry-run: {hidden.get('hiddenFaces')} / {hidden.get('faces')} hidden (per LOD).
 
-First legal-render correction: the bare steel crown reflected too dark in
-LOD1/2, so the final candidate adds non-emissive bonded refractory hardface
-blocks as a real replaceable cutter surface. Cameras and lighting are unchanged.
+Cycle 06 keeps the non-emissive bonded refractory hardface from Cycle 05 and
+changes only the intake shoulder/liner construction plus evidence binding.
+Cameras and lighting are unchanged except for the explicit LOD2-distance still.
 
 ## Remaining risk (honest)
 
@@ -2849,7 +3040,7 @@ blocks as a real replaceable cutter surface. Cameras and lighting are unchanged.
     write_text_lf(EVIDENCE_DIR / "INSPECT.md", text)
 
 
-def validate_inventory(inventory, inspect, lod_reports, pixels=None):
+def validate_inventory(inventory, inspect, lod_reports, pixels=None, material_id=None):
     errors = []
     bbox = inventory["bbox"]
     size = bbox["size"]
@@ -2874,6 +3065,21 @@ def validate_inventory(inventory, inspect, lod_reports, pixels=None):
     tan = top.get("tan_bite_px")
     if tan is not None and not (8 <= int(tan) <= 10):
         errors.append(f"works_top tan bite {tan} px not in 8–10")
+    band = (pixels or {}).get("lod2_switch_band") or {}
+    machine_size = band.get("machine_size_px") or []
+    projected_px = max(machine_size) if machine_size else None
+    if projected_px is None:
+        errors.append("missing LOD2 projected-size measurement")
+    elif not (LOD2_PROJECTED_MACHINE_PX_BAND[0] <= int(projected_px) <= LOD2_PROJECTED_MACHINE_PX_BAND[1]):
+        errors.append(
+            f"LOD2 projected machine size {projected_px} px not in "
+            f"{LOD2_PROJECTED_MACHINE_PX_BAND}"
+        )
+    if not (material_id or {}).get("allRolesVisible"):
+        errors.append(
+            "material-ID isolation missing authored roles: "
+            f"{(material_id or {}).get('missingRoles')}"
+        )
     return errors
 
 
@@ -2887,6 +3093,7 @@ def main():
     cycle02 = assert_cycle_02_frozen()
     cycle03 = assert_cycle_03_frozen()
     cycle04 = assert_cycle_04_frozen()
+    cycle05 = assert_cycle_05_frozen()
 
     lod_reports = []
     for lod in (0, 1, 2):
@@ -2900,21 +3107,28 @@ def main():
     inspect = inspect_glb(parts)
     stills = render_stills(parts, EVIDENCE_DIR)
     pixels = {}
-    for key, ppc in (("works_top", 120.0), ("works_site", 19.0), ("works_top_clay", 120.0)):
+    for key, ppc in (
+        ("works_top", 120.0),
+        ("works_site", 19.0),
+        ("works_top_clay", 120.0),
+        ("lod2_switch_band", LOD2_EVIDENCE_PX_PER_CELL),
+    ):
         rec = stills.get(key)
         if rec:
             pixels[key] = analyze_works_still(ROOT / rec["path"], ppc)
+    material_id = analyze_material_id_still(ROOT / stills["id"]["path"])
     hidden = run_hidden_faces(parts, EVIDENCE_DIR / "hidden_faces.json")
-    write_inspect_md(inventory, inspect, stills, pixels, hidden)
+    write_inspect_md(inventory, inspect, stills, pixels, material_id, hidden)
     hashes, epoch = write_docs(
-        inventory, contract, inspect, stills, lod_reports, pixels,
-        cycle01, cycle02, cycle03, cycle04,
+        inventory, contract, inspect, stills, lod_reports, pixels, material_id,
+        cycle01, cycle02, cycle03, cycle04, cycle05,
     )
-    errors = validate_inventory(inventory, inspect, lod_reports, pixels)
+    errors = validate_inventory(inventory, inspect, lod_reports, pixels, material_id)
     assert_cycle_01_frozen()
     assert_cycle_02_frozen()
     assert_cycle_03_frozen()
     assert_cycle_04_frozen()
+    assert_cycle_05_frozen()
     result = {
         "ok": not errors,
         "errors": errors,
@@ -2924,6 +3138,7 @@ def main():
         "epoch": str((EVIDENCE_DIR / "EPOCH.json").relative_to(ROOT)).replace("\\", "/"),
         "hashes": str((FAMILY / "HASHES.json").relative_to(ROOT)).replace("\\", "/"),
         "pixels": pixels,
+        "materialId": material_id,
     }
     print(json.dumps(result, indent=2))
     if errors:

@@ -1,0 +1,42 @@
+{
+  "schema": "spaceface.projectedLodBandEvidence.v1",
+  "assetId": "place_works_extractor",
+  "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "lod": 2,
+  "targetMachinePxBand": [
+    34,
+    45
+  ],
+  "targetPxPerCell": 37.0,
+  "measuredMachineSizePx": [
+    42,
+    42
+  ],
+  "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+  "imageSha256": "986DCF81D9B2E1BAAD2E1E0A8702D45544A6E9BFC260B60035D0643E531BB058",
+  "camera": {
+    "path": "assets/works/extractor/evidence/cycle_006/lod2_switch_band_40px.png",
+    "sha256": "986DCF81D9B2E1BAAD2E1E0A8702D45544A6E9BFC260B60035D0643E531BB058",
+    "framing": "lod2_switch_band",
+    "distance": 115.77809752453835,
+    "px_per_cell_target": 37.0,
+    "px_per_cell_measured": 36.99999999999999,
+    "object_offset": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "fov_v_deg": 31.0,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "lod": 2,
+    "label": "LOD2 projected switch band (~40 px machine)",
+    "projectedMachinePxBand": [
+      34,
+      45
+    ]
+  },
+  "acceptanceClaim": false
+}

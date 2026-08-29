@@ -1,0 +1,78 @@
+{
+  "schema": "spaceface.matchedLodEvidence.v1",
+  "assetId": "place_works_extractor",
+  "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "matchContract": "One exported combined GLB; same works_top camera, 120 px/cell, lighting, resolution, transform, and object offset; only the visible LOD changes.",
+  "records": [
+    {
+      "label": "LOD0 matched works_top 120 px/cell",
+      "lod": 0,
+      "triangles": 3112,
+      "budget": 8000,
+      "path": "assets/works/extractor/evidence/cycle_006/lod0_matched_120px.png",
+      "imageSha256": "BCE096B17CD8506C42321AED571A012E1B6578561E11857FF7A302FB66685F19",
+      "camera": {
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "pxPerCell": 120.0,
+        "fovVDeg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "objectOffset": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "label": "LOD1 matched works_top 120 px/cell",
+      "lod": 1,
+      "triangles": 916,
+      "budget": 2000,
+      "path": "assets/works/extractor/evidence/cycle_006/lod1_matched_120px.png",
+      "imageSha256": "2E533CD95F9B271DDFF291821D66628A8C660C3F4BF24DFE7BAE37180E94ABDD",
+      "camera": {
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "pxPerCell": 120.0,
+        "fovVDeg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "objectOffset": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "label": "LOD2 matched works_top 120 px/cell",
+      "lod": 2,
+      "triangles": 544,
+      "budget": 600,
+      "path": "assets/works/extractor/evidence/cycle_006/lod2_matched_120px.png",
+      "imageSha256": "7F448D50961A42DFE96E94651989F4877BC5436B5C84F43ADAC66FD81822DFBE",
+      "camera": {
+        "framing": "works_top",
+        "distance": 35.698246736732656,
+        "pxPerCell": 120.0,
+        "fovVDeg": 31.0,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "objectOffset": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ],
+  "acceptanceClaim": false
+}

@@ -3,9 +3,9 @@
   "assetId": "place_works_extractor",
   "root": "SF_WORKS_EXTRACTOR_V1",
   "packet": "PQ-131.03",
-  "cycle": 5,
+  "cycle": 6,
   "currentState": "design_candidate",
-  "candidateHash": "009AF84FAE250F84E218980E8F30FCDCB506B23FC7CAC2B673936D73A162658F",
+  "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -106,7 +106,7 @@
   "visibleZoneCoverage": {
     "authorInventory": "complete",
     "reviewerConfirmed": false,
-    "register": "assets/works/extractor/evidence/cycle_005/SUPPORTED_VIEW_ZONE_REGISTER.json",
+    "register": "assets/works/extractor/evidence/cycle_006/SUPPORTED_VIEW_ZONE_REGISTER.json",
     "supportedViews": [
       "works_top",
       "works_edge",
