@@ -5,7 +5,7 @@
   "scope": "PQ-049.01 source candidate; chase-camera evidence only; not wired",
   "componentReferenceDecision": "native_imagegen",
   "allSupportedViewZonesClassified": false,
-  "candidateHash": "256454E3CF02C4EB34AEE1069C6047DBF336351E94041A196DC94D818FA85208",
+  "candidateHash": "8D0668D2131B7C27ED2612B052F162C2B573F97FA2E7E7709D2FBD054A5F978C",
   "supportedViews": [
     "play_chase",
     "play_chase_abeam",
@@ -43,9 +43,9 @@
       "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
-      "functionOriginAndServiceContext": "framed boarding/operations enclosure ahead of the passenger pressure bulkhead",
+      "functionOriginAndServiceContext": "blunt framed boarding/operations enclosure ahead of the passenger pressure bulkhead",
       "substrateManufactureAndFinish": "forged/anodized structural rails around laminated smoked safety glazing",
-      "interfacesLoadAccessAndHeatPaths": "rails bridge the pressure shoulder; panes are seated inside a frame rather than laid on a hull",
+      "interfacesLoadAccessAndHeatPaths": "rails bridge the pressure shoulder; panes are seated inside a frame over set-back interior datum plates rather than laid on the hull",
       "expectedOpticalResponse": "satin anodized frame lifted above crushed black; dark blue-grey dielectric glass with transmission and inner depth",
       "forbiddenReads": ["black painted nose", "black visor bite", "cyan pin identity", "futuristic neon canopy", "fighter cockpit", "floating glass cards", "opaque slate cards"]
     },
@@ -103,9 +103,9 @@
       "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close", "clay_play_chase", "drive_rear", "id_or_material_id"],
       "dominatesSupportedView": true,
       "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_RefractoryHeatAlloy", "MAT_SF_Massline_Throat_OxidizedDark", "MAT_SF_Massline_WayfindingCyan"],
-      "functionOriginAndServiceContext": "paired aft propulsion assemblies grown continuously from a widened civic load shoulder with protected heat-throat liners",
-      "substrateManufactureAndFinish": "thick tapered dark-alloy case under ceramic shoulder armor, formed from the aft load ring around a dry refractory liner and oxidized throat rim",
-      "interfacesLoadAccessAndHeatPaths": "enlarged gusseted load-ring saddles; the case reaches the outboard drive line over a short thick transition; interior liners sit behind oxidized thick-metal throats with six thin rooted stator blades",
+      "functionOriginAndServiceContext": "paired aft propulsion assemblies carried by a tapered central afterbody from the widened civic load shoulder to two protected heat-throat liners",
+      "substrateManufactureAndFinish": "ceramic-painted tapered central load bridge overlapping two short dark-alloy cases, each wrapped around a dry refractory liner and oxidized throat rim",
+      "interfacesLoadAccessAndHeatPaths": "enlarged gusseted load-ring saddles and a three-station central afterbody carry both near-axial cases; the bridge ends before the paired bores, whose interior liners sit behind oxidized thick-metal throats with six thin rooted stator blades",
       "expectedOpticalResponse": "dark satin housing, dry rough refractory, no chrome lip, faint recessed cyan core",
       "forbiddenReads": ["glowing disk", "neon thruster", "smooth tube", "plastic nozzle", "stick boom", "hanging can", "chrome lip", "plywood throat"]
     },
@@ -116,9 +116,9 @@
       "dominatesSupportedView": false,
       "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
       "functionOriginAndServiceContext": "ART EXTRAPOLATION: equatorial passenger/service walkways rooted into the pressure-drum chine, carrying dock contacts without becoming wings.",
-      "substrateManufactureAndFinish": "hollow ceramic-painted corridor shells with inner wall, formed sill/header, four pane/door bays, and inset dark blue-grey dielectric glass",
+      "substrateManufactureAndFinish": "hollow ceramic-painted corridor shells with inner wall, set-back galvanized interior datum, formed sill/header, four pane/door bays, and inset blue-grey dielectric glass",
       "interfacesLoadAccessAndHeatPaths": "corridor section returns into hat-section collars; dock jambs sit on the outer face; load shoes return into the drum chine",
-      "expectedOpticalResponse": "quiet ceramic belt with satin frame and transmissive glass over inner depth, not a hanging card or fin",
+      "expectedOpticalResponse": "quiet ceramic belt with satin frame and transmissive blue-grey glass over visible set-back depth, not a hanging card or fin",
       "forbiddenReads": ["flat wing", "disc flange", "fin card", "floating box", "I-beam rail", "hanging gallery slab", "opaque slate card"]
     },
     {
@@ -135,9 +135,9 @@
     }
   ],
   "knownOpenItems": [
-    "Cycle 34 source candidate and matched LOD0/1/2 chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 256454E3CF02C4EB34AEE1069C6047DBF336351E94041A196DC94D818FA85208.",
+    "Cycle 35 source candidate and matched LOD0/1/2 chase-camera evidence exist. Whole-asset G1/G2/G4 stay open until an independent hash-bound review of LOD0 8D0668D2131B7C27ED2612B052F162C2B573F97FA2E7E7709D2FBD054A5F978C.",
     "G3 needs an independent checker/stretch review; unique UV0 is not a self-pass.",
     "G5/G6/G7 and Browser/Electron route proof belong to later PQ-049 leaves. This leaf does not wire traffic or manifests.",
-    "Abeam width 9.80% is inside the legal 8–22% band. Independent review still owns the decision. Remaining risk: the pressure belt remains broad abeam, and the long separated drive cases can still read as prongs at D=144 even though their roots and manufactured shoulders are now continuous."
+    "Abeam width 9.08% is inside the legal 8–22% band. Cycle 35 blunts the bow, narrows the inhabited belt, and carries the paired cases on a tapered central afterbody so they split only near their bores. Independent review still owns the whole-asset decision; the remaining visible twin-throat separation is a review risk, not an implementing-worker acceptance claim."
   ]
 }
