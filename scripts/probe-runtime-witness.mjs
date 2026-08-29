@@ -39,6 +39,27 @@ const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-di
 const OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC = process.argv.includes('--opening-first-touch-owner');
 const OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC = process.argv.includes('--opening-exact-owner-touch');
 const NO_SUBMIT_DIAGNOSTIC = process.argv.includes('--no-submit-diagnostic');
+// `locator('#gl-canvas').screenshot()` reads back the drawing buffer, and on this Intel/ANGLE
+// target that BLOCKS the renderer process for seconds — measured 2449 / 3336 / 4076 ms long tasks
+// for exactly the three shots taken inside a 60 s sample. The game's own hitch classifier sees
+// those as frame gaps and charges them to the game. Pass this to score flight smoothness without
+// the measuring apparatus in the number; the final shot is still taken, after sampling ends.
+const NO_SAMPLE_SHOTS = process.argv.includes('--no-sample-shots');
+// Split the ~1.3 GB flight heap into garbage vs live retention. Force a full collection after the
+// sample and measure again: if the heap collapses, the cost is allocation churn and the fix is to
+// stop allocating; if it holds, the cost is retention and the fix is to dispose. Those are
+// different fixes, and guessing between them from source is how this kind of hunt goes wrong.
+const GC_PROBE = process.argv.includes('--gc-probe');
+// Name the allocation sites behind that garbage. V8's SAMPLING heap profiler is the right tool
+// here: it costs almost nothing at runtime (unlike a full snapshot of a 1.3 GB heap, which would
+// be multi-gigabyte and unreadable) and reports self-size per call frame, which is exactly
+// "who allocates the most bytes".
+const ALLOC_PROBE = process.argv.includes('--alloc-probe');
+// Start the allocation profiler BEFORE the loading route instead of at the flight loop. World
+// population allocates a single ~612 MB step that every profile so far has started after and
+// therefore never attributed - it is the largest single allocation event in the session and it sets
+// the heap floor that makes every later major GC expensive.
+const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
@@ -54,6 +75,9 @@ const canvasFrames = [];
 const loadingReadinessSamples = [];
 let loadingProgressEvents = [];
 let probeInstrumentation = null;
+let gcProbe = null;
+let allocProfile = null;
+let allocCdp = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
 let finalSystemTiming = null;
@@ -456,7 +480,62 @@ function formatLoadingReadinessSection(events, samples) {
   return lines.join('\n');
 }
 
+/**
+ * Always-on long-task witness.
+ *
+ * The hitch classifier can say "the frame took 90 ms but our callback only ran for 39 ms" — it
+ * cannot say WHY the other 51 ms went missing. Two very different causes look identical from
+ * inside the callback: our own main thread was blocked (GC, asset decode, a synchronous parse), or
+ * the browser simply never called us. A `longtask` entry covering the gap means the first; an
+ * unexplained gap with no long task means the second, and no amount of game-side optimization will
+ * touch it. This ran only inside the no-submit diagnostic, which replaces scene submission and so
+ * cannot be used to judge an ordinary flight.
+ */
+function formatLongTaskSection(trace) {
+  const NL = '\n';
+  const lines = ['## Long tasks (main-thread blocks)'];
+  if (!trace) { lines.push('- not captured'); return lines.join(NL) + NL; }
+  if (!trace.supported) {
+    lines.push('- longtask entry type unsupported on this engine: NOT MEASURED (not "none")');
+    return lines.join(NL) + NL;
+  }
+  if (trace.jsHeapSeries && trace.jsHeapSeries.length) {
+    lines.push(`- JS heap MB over run: ${trace.jsHeapSeries.join(' ')}`);
+  }
+  if (trace.economySeries && trace.economySeries.length) {
+    lines.push(`- economy stations/listings/history-points: ${trace.economySeries.join('  ')}`);
+  }
+  if (trace.geometrySeries && trace.geometrySeries.length) {
+    lines.push(`- GPU geometries over run: ${trace.geometrySeries.join(' ')}`);
+    lines.push(`- GPU textures over run:   ${trace.textureSeries.join(' ')}`);
+  }
+  lines.push(`- count ${trace.count}; total ${Math.round(trace.totalMs)} ms; max ${Math.round(trace.maxMs)} ms; >=50 ms ${trace.over50Ms}; >=100 ms ${trace.over100Ms}`);
+  for (const entry of trace.top) {
+    const near = (trace.heavyResources || []).filter((r) => (
+      r.responseEnd <= entry.startTime && entry.startTime - r.responseEnd < 3000
+    ));
+    const blame = near.length
+      ? ` <- ${near.slice(-3).map((r) => `${r.name} ${r.kb}KB @${r.responseEnd}`).join(', ')}`
+      : '';
+    lines.push(`- ${entry.durationMs} ms at ${entry.startTime} ms${blame}`);
+  }
+  return lines.join(NL) + NL;
+}
+
 async function installLoadingReadinessWitness(targetPage) {
+  // Arm the allocation profiler here rather than in one route's branch: this helper is the one
+  // point BOTH the Continue and New Game routes pass through before the loading route runs, and a
+  // branch-local start silently produced no profile at all on the other route.
+  if (ALLOC_PROBE_BOOT && !allocCdp) {
+    try {
+      allocCdp = await targetPage.context().newCDPSession(targetPage);
+      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      log('alloc-probe: sampling started BEFORE the loading route');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: boot startSampling unavailable (${error && error.message})`);
+    }
+  }
   await targetPage.evaluate(() => {
     const prior = window.__SF_LOADING_READINESS_WITNESS__;
     if (prior && typeof prior.unsubscribe === 'function') prior.unsubscribe();
@@ -1971,6 +2050,26 @@ async function collectSectorTransitionWitness(targetPage) {
 }
 
 function readWitnessInPage() {
+  // Arm the long-task observer HERE rather than from a separate install step. The probe drives more
+  // than one page handle, and installing on the wrong one produced a witness that read back as
+  // "not captured" for a whole 4-run A/B. Whatever page is being sampled is by definition the page
+  // whose main thread we care about, so arm it on first sample and it cannot miss.
+  if (!window.__SF_LONGTASK_WITNESS__) {
+    const trace = { startedWallMs: Date.now(), entries: [], observer: null, supported: false };
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.entries.length >= 4000) break;
+          trace.entries.push({ startTime: entry.startTime, duration: entry.duration, name: String(entry.name || '') });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+      trace.supported = true;
+    } catch (_) {
+      trace.supported = false;
+    }
+    window.__SF_LONGTASK_WITNESS__ = trace;
+  }
   const witness = window.__SF_WITNESS__;
   const s = window.SF?.state;
   let sample = null;
@@ -2003,6 +2102,83 @@ function readWitnessInPage() {
     hitch: false,
     costs: [],
   };
+  {
+    const lt = window.__SF_LONGTASK_WITNESS__;
+    if (lt) {
+      const durations = lt.entries.map((e) => Number(e.duration) || 0);
+      sample.longTasks = {
+        supported: lt.supported === true,
+        count: lt.entries.length,
+        totalMs: durations.reduce((sum, d) => sum + d, 0),
+        maxMs: durations.reduce((max, d) => Math.max(max, d), 0),
+        over50Ms: durations.filter((d) => d >= 50).length,
+        over100Ms: durations.filter((d) => d >= 100).length,
+        top: lt.entries.slice().sort((a, b) => b.duration - a.duration).slice(0, 12)
+          .map((e) => ({ startTime: Math.round(e.startTime), durationMs: Math.round(e.duration), name: e.name })),
+      };
+    }
+  }
+  // GPU-side residency alongside the heap. Growth here that never plateaus says the world is
+  // retaining what it streams in rather than churning it, which is a different fix from allocation
+  // churn even though both end in the same multi-second collection.
+  try {
+    const mem = window.SF?.state?.render?.renderer?.info?.memory;
+    const progs = window.SF?.state?.render?.renderer?.info?.programs;
+    sample.gpuResidency = mem ? {
+      geometries: Number(mem.geometries) || 0,
+      textures: Number(mem.textures) || 0,
+      programs: Array.isArray(progs) ? progs.length : 0,
+    } : null;
+  } catch (_) { sample.gpuResidency = null; }
+  // Economy population alongside the heap. The flight allocation profile blames synthetic
+  // price-history seeding, which costs 64 points per LISTING at market creation - so the size of
+  // that cost is a function of how many markets come into existence during flight, not of the tick
+  // rate. Counting them is the difference between a real fix and optimising a rounding error.
+  try {
+    const markets = window.SF?.state?.economy?.markets;
+    if (markets) {
+      let listings = 0;
+      let withHistory = 0;
+      let historyPoints = 0;
+      for (const sid in markets) {
+        for (const cid in markets[sid]) {
+          listings += 1;
+          const h = markets[sid][cid] && markets[sid][cid].history;
+          if (Array.isArray(h) && h.length) { withHistory += 1; historyPoints += h.length; }
+        }
+      }
+      sample.economy = {
+        stations: Object.keys(markets).length, listings, withHistory, historyPoints,
+      };
+    }
+  } catch (_) { sample.economy = null; }
+  // JS heap alongside the blocks. If multi-second stalls are OUR garbage collection, the heap is
+  // large and sawtooths across them; if the heap is small and flat, the stall belongs to the host
+  // (paging, other processes) and no game-side change will remove it.
+  try {
+    const mem = performance.memory;
+    sample.jsHeap = mem ? {
+      usedMb: Math.round(mem.usedJSHeapSize / 1048576),
+      totalMb: Math.round(mem.totalJSHeapSize / 1048576),
+      limitMb: Math.round(mem.jsHeapSizeLimit / 1048576),
+    } : null;
+  } catch (_) { sample.jsHeap = null; }
+  // Pair every long task with the heavy assets that landed just before it. A multi-second block
+  // whose start follows a large .glb/.ktx2 responseEnd is main-thread parse/decode, which the
+  // game's own phase timers never see because it happens inside a fetch continuation, not inside a
+  // simulation or render phase.
+  try {
+    const resources = performance.getEntriesByType('resource') || [];
+    sample.heavyResources = resources
+      .filter((e) => (Number(e.decodedBodySize) || Number(e.transferSize) || 0) > 300000)
+      .map((e) => ({
+        name: String(e.name).split('/').slice(-2).join('/'),
+        kb: Math.round((Number(e.decodedBodySize) || Number(e.transferSize) || 0) / 1024),
+        responseEnd: Math.round(e.responseEnd),
+      }))
+      .sort((a, b) => a.responseEnd - b.responseEnd)
+      .slice(-40);
+  } catch (_) { sample.heavyResources = null; }
   const loadingTrace = window.__SF_LOADING_READINESS_WITNESS__;
   if (loadingTrace) {
     const render = s?.render || {};
@@ -2623,6 +2799,16 @@ try {
       ), null, { timeout: 30_000 });
     }
   }
+  if (ALLOC_PROBE && !allocCdp) {
+    try {
+      allocCdp = await page.context().newCDPSession(page);
+      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      log('alloc-probe: sampling started');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: startSampling unavailable (${error && error.message})`);
+    }
+  }
   hostLoadStart = snapshotHostLoadStart();
   const started = Date.now();
   let shotIndex = 0;
@@ -2634,12 +2820,65 @@ try {
     }));
     row.elapsedMs = elapsedMs;
     snapshots.push(row);
-    if (elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
+    if (!NO_SAMPLE_SHOTS && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
       shotIndex += 1;
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
+  }
+  if (GC_PROBE) {
+    const before = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    let collected = false;
+    try {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('HeapProfiler.collectGarbage');
+      collected = true;
+    } catch (error) {
+      log(`gc-probe: collectGarbage unavailable (${error && error.message})`);
+    }
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    gcProbe = { collected, beforeMb: before, afterMb: after };
+    log(`gc-probe: collected=${collected} heap ${before} MB -> ${after} MB`);
+  }
+  if ((ALLOC_PROBE || ALLOC_PROBE_BOOT) && allocCdp) {
+    try {
+      const { profile } = await allocCdp.send('HeapProfiler.stopSampling');
+      const rows = [];
+      const walk = (node) => {
+        const f = node.callFrame || {};
+        if (Number(node.selfSize) > 0) {
+          rows.push({
+            fn: String(f.functionName || '(anonymous)'),
+            url: String(f.url || '').split('/').slice(-1)[0] + ':' + (f.lineNumber + 1),
+            bytes: Number(node.selfSize) || 0,
+          });
+        }
+        for (const child of node.children || []) walk(child);
+      };
+      walk(profile.head);
+      const merged = new Map();
+      for (const row of rows) {
+        const key = `${row.fn} @ ${row.url}`;
+        merged.set(key, (merged.get(key) || 0) + row.bytes);
+      }
+      allocProfile = {
+        totalMb: Math.round([...merged.values()].reduce((a, b) => a + b, 0) / 1048576),
+        top: [...merged.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25)
+          .map(([site, bytes]) => ({ site, mb: +(bytes / 1048576).toFixed(1) })),
+      };
+      log(`alloc-probe: ${allocProfile.totalMb} MB sampled`);
+      for (const row of allocProfile.top.slice(0, 20)) log(`  alloc ${row.mb} MB  ${row.site}`);
+    } catch (error) {
+      log(`alloc-probe: stopSampling failed (${error && error.message})`);
+    }
   }
   hostLoad = snapshotHostLoadEnd(hostLoadStart);
   const finalPerfReport = await page.evaluate(() => window.SF.state.perfRuntime.getReport());
@@ -2834,10 +3073,26 @@ const route = {
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
   sampleEveryMs: SAMPLE_EVERY_MS,
+  noSampleShots: NO_SAMPLE_SHOTS,
   simDelta: (Number(lastMoving?.simTime) || 0) - (Number(firstMoving?.simTime) || 0),
   executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
   instrumentation: probeInstrumentation,
 };
+// Read before the markdown is assembled: the report template consumes it.
+// Taken off the last sample rather than a separate page.evaluate: the probe drives more than one
+// page handle, and reading from the wrong one silently reported "not captured" for a whole 4-run
+// A/B. The sample already comes from the page being measured.
+const lastSnapshot = snapshots[snapshots.length - 1] || {};
+const longTaskWitness = lastSnapshot.longTasks
+  ? {
+    ...lastSnapshot.longTasks,
+    heavyResources: lastSnapshot.heavyResources || [],
+    jsHeapSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.jsHeap ? x.jsHeap.usedMb : '?')),
+    economySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.economy ? `${x.economy.stations}s/${x.economy.listings}L/${x.economy.historyPoints}p` : '?')),
+    geometrySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.geometries : '?')),
+    textureSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.textures : '?')),
+  }
+  : null;
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,
@@ -2845,9 +3100,12 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatLongTaskSection(longTaskWitness)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
+  longTaskWitness,
+  gcProbe,
+  allocProfile,
   verdict,
   sampleCount: snapshots.length,
   first: snapshots[0] || null,

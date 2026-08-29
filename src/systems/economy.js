@@ -166,6 +166,37 @@ function toleratesContraband(info) {
   return !!(info && info.type === 'blackmarket');
 }
 
+// Shared empty demand-driver row set. demandModel already returns frozen rows; this covers the
+// defensive non-array fallback and normalizes a missing cache without allocating per call.
+const EMPTY_DRIVERS = Object.freeze([]);
+
+// Structural equality for demand-driver rows, replacing the old JSON.stringify pair that built two
+// full strings per listing per tick just to say "unchanged". Rows are flat frozen objects of
+// primitives from demandModel.driverFor (single fixed key set since that model's introduction;
+// spread clones and save/load round-trips preserve its key order), so length + own-key/value
+// comparison is exactly equivalent — and allocates nothing.
+function demandDriversEqual(prev, next) {
+  if (prev === next) return true;
+  const a = Array.isArray(prev) ? prev : (prev ? null : EMPTY_DRIVERS);
+  const b = Array.isArray(next) ? next : (next ? null : EMPTY_DRIVERS);
+  if (!a || !b) return false; // a truthy non-array never stringified equal to an array
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const ra = a[i];
+    const rb = b[i];
+    if (ra === rb) continue;
+    if (!ra || !rb) return false;
+    let keys = 0;
+    for (const k in ra) {
+      if (!Object.hasOwn(rb, k) || ra[k] !== rb[k]) return false;
+      keys++;
+    }
+    for (const k in rb) keys--;
+    if (keys !== 0) return false;
+  }
+  return true;
+}
+
 /** Role of a commodity for a station type: 'produce' if the type makes it, 'consume' if it uses
  *  it, else 'none'. produce wins ties (a station that both makes and uses a good is a net seller). */
 function roleFor(def, stationType) {
@@ -872,9 +903,12 @@ export const economy = {
       result = effectiveDemandFor({ state: this.state, sectorId, commodity: def });
     }
     const nextMult = Number(result.multiplier) || 1;
-    const nextDrivers = Array.isArray(result.drivers) ? result.drivers.map((driver) => ({ ...driver })) : [];
+    // demandModel returns fresh frozen driver rows per projection and every consumer reads or
+    // clones them — nothing mutates — so store the projection's rows directly instead of
+    // re-cloning them into every listing on every tick.
+    const nextDrivers = Array.isArray(result.drivers) ? result.drivers : EMPTY_DRIVERS;
     const changed = Math.abs((Number(entry.demandMult) || 1) - nextMult) > 1e-9
-      || JSON.stringify(entry.demandDrivers || []) !== JSON.stringify(nextDrivers);
+      || !demandDriversEqual(entry.demandDrivers, nextDrivers);
     entry.demandMult = nextMult;
     entry.demandDrivers = nextDrivers;
     return changed;
