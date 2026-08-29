@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Canonical Build Map
 
-This is the repository's implementation front door. It is intentionally a **router**, not a status ledger or historical transcript. The pre-Central-Brain long-form map is preserved for archaeology at [`design/program/historical/CANONICAL_BUILD_MAP_PRE_CENTRAL_BRAIN.md`](./design/program/historical/CANONICAL_BUILD_MAP_PRE_CENTRAL_BRAIN.md); it has no current dispatch authority.
+This is the repository's implementation front door. It is intentionally a **router**, not a status ledger or historical transcript. The pre-Central-Brain long-form map is preserved in Git history and as a historical reference on this branch; it has no current dispatch authority.
 
 ## 1. Start here
 
@@ -34,7 +34,7 @@ For broad work, the Central Brain ranks demonstrated player-facing debt across i
 
 ### 1.2 Central Brain deep architecture
 
-The compact operator law is [`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md). The recovered full architecture lives under [`docs/agentic-development/`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md):
+The compact operator law is [`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md). The recovered full architecture starts at [`docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md):
 
 - [`AGENTIC_GAME_DEVELOPMENT_OS.md`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md) — authority, roles, dispatch, anti-recursion, Jules/INFERENCE integration.
 - [`OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md`](./docs/agentic-development/OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md) — exact observer hooks, matched replay, autonomous playtesting.
