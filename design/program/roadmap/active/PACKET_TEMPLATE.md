@@ -35,13 +35,30 @@ Unknown owner contracts are blockers. Replace role names with exact current symb
 
 Write the route beats and a small state/receipt model. Identify stable IDs, deterministic tie-breaking, save boundaries, failure/recovery, and exactly-once effects.
 
+## Agent-observable scenario
+
+For any gameplay-feel, visual-continuity, combat, AI, or performance claim, name the smallest repeatable scenario that lets another agent observe the defect through time. Prefer a scenario in [`tools/agentic/scenarios.json`](../../../../tools/agentic/scenarios.json) and reuse `src/testing/lab/`, `src/core/runtimeWitness.js`, and `src/observability/` before creating another recorder.
+
+Record:
+
+- scenario ID and fixed seed;
+- public input policy or input tape;
+- semantic checkpoints (for example `reverse-command`, `first-hit`, `first-visible`), not arbitrary screenshot timestamps;
+- telemetry fields needed to distinguish competing causes;
+- the before/after metrics that can actually change the verdict;
+- shipping-camera captures when the claim is visual;
+- the exact evidence gap when the behavior cannot yet be represented headlessly.
+
+A still can prove appearance. It cannot by itself prove oscillation, control latency, target churn, a hitch, or a trail that retracts over time. Temporal claims need temporal evidence.
+
 ## Work breakdown
 
 ### Phase 0 — characterization
 
 - [ ] focused failing characterization;
 - [ ] owner/write map;
-- [ ] baseline cost model.
+- [ ] baseline cost model;
+- [ ] one causal hypothesis for a feel/performance defect rather than several simultaneous guesses.
 
 ### Phase 1 — pure contracts/data
 
@@ -57,7 +74,8 @@ Write the route beats and a small state/receipt model. Identify stable IDs, dete
 
 - [ ] normal-route visuals/controls/accessibility;
 - [ ] Browser/Electron evidence;
-- [ ] matched performance.
+- [ ] matched performance;
+- [ ] replay the same scenario/seed/input policy after mutation and compare against Phase 0.
 
 ## Write set
 
@@ -87,6 +105,11 @@ If you need the full validation ladder or broker-managed Browser/Electron route 
 (`src/testing/lab/`) for gameplay claims it can represent; reach for headed route evidence only when
 a claim genuinely can't be proven headlessly.
 
+For subjective player-feel or cross-system work, use the Central Brain loop in
+[`design/program/CENTRAL_BRAIN.md`](../../CENTRAL_BRAIN.md): observe → reduce → make one intervention
+→ replay identical conditions → compare → keep/revert. Do not run a fresh broad audit after every
+repair.
+
 List any packet-specific checks here (exact commands are fine when you know them), but don't treat
 this as a mandatory inventory — an empty list just means "the default gate covers it."
 
@@ -98,15 +121,17 @@ A short list of architecture, player, visual, physics, accessibility, and perfor
 
 List missing owner seams, semantic collisions, lease conflicts, unbounded work, route impossibility, nondeterminism, direct foreign-state writes, visual fallback, and performance failures that require `BLOCKED`/shared-change handling.
 
+For iterative debugging, add this finite rule when applicable: after two failed repair cycles with the same causal model, do not run a third ornamental variation. Record the falsified assumption and reduce the problem to a narrower scenario or choose a different causal model.
+
 ## Checkoff and receipt
 
 - [ ] All entry conditions recorded.
 - [ ] Diff stays inside approved write budget.
 - [ ] L0–L2 receipt green at exact candidate.
 - [ ] Exit `npm run check:baseline` passes; nothing green at entry is now red.
-- [ ] Independent discovery review complete.
+- [ ] Independent discovery review complete when it can materially change the verdict.
 - [ ] Validated findings repaired.
-- [ ] Causal re-review terminal.
+- [ ] Causal re-review terminal; no recursive fresh audit.
 - [ ] Required L3/L4 evidence complete or honestly unproven.
 - [ ] Active packet checklist and packet receipt updated.
 - [ ] Integrator notified; no worker-owned global status promotion.
