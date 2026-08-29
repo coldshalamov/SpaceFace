@@ -39,6 +39,12 @@ const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-di
 const OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC = process.argv.includes('--opening-first-touch-owner');
 const OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC = process.argv.includes('--opening-exact-owner-touch');
 const NO_SUBMIT_DIAGNOSTIC = process.argv.includes('--no-submit-diagnostic');
+// `locator('#gl-canvas').screenshot()` reads back the drawing buffer, and on this Intel/ANGLE
+// target that BLOCKS the renderer process for seconds — measured 2449 / 3336 / 4076 ms long tasks
+// for exactly the three shots taken inside a 60 s sample. The game's own hitch classifier sees
+// those as frame gaps and charges them to the game. Pass this to score flight smoothness without
+// the measuring apparatus in the number; the final shot is still taken, after sampling ends.
+const NO_SAMPLE_SHOTS = process.argv.includes('--no-sample-shots');
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
@@ -467,52 +473,6 @@ function formatLoadingReadinessSection(events, samples) {
  * touch it. This ran only inside the no-submit diagnostic, which replaces scene submission and so
  * cannot be used to judge an ordinary flight.
  */
-async function installLongTaskWitness(targetPage) {
-  await targetPage.evaluate(() => {
-    const prior = window.__SF_LONGTASK_WITNESS__;
-    try { prior?.observer?.disconnect(); } catch (_) {}
-    const trace = { startedWallMs: Date.now(), entries: [], observer: null, supported: false };
-    try {
-      trace.observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (trace.entries.length >= 4000) break;
-          trace.entries.push({
-            startTime: entry.startTime,
-            duration: entry.duration,
-            name: String(entry.name || ''),
-          });
-        }
-      });
-      trace.observer.observe({ entryTypes: ['longtask'] });
-      trace.supported = true;
-    } catch (_) {
-      // Not every engine implements the longtask entry type. Absence must read as "not measured",
-      // never as "no long tasks happened".
-      trace.supported = false;
-    }
-    window.__SF_LONGTASK_WITNESS__ = trace;
-  });
-}
-
-async function readLongTaskWitness(targetPage) {
-  return targetPage.evaluate(() => {
-    const trace = window.__SF_LONGTASK_WITNESS__;
-    if (!trace) return null;
-    const entries = trace.entries || [];
-    const durations = entries.map((e) => Number(e.duration) || 0).sort((a, b) => b - a);
-    return {
-      supported: trace.supported === true,
-      count: entries.length,
-      totalMs: durations.reduce((sum, d) => sum + d, 0),
-      maxMs: durations[0] || 0,
-      over50Ms: durations.filter((d) => d >= 50).length,
-      over100Ms: durations.filter((d) => d >= 100).length,
-      top: entries.slice().sort((a, b) => b.duration - a.duration).slice(0, 12)
-        .map((e) => ({ startTime: Math.round(e.startTime), durationMs: Math.round(e.duration), name: e.name })),
-    };
-  }).catch(() => null);
-}
-
 function formatLongTaskSection(trace) {
   const NL = '\n';
   const lines = ['## Long tasks (main-thread blocks)'];
@@ -521,9 +481,22 @@ function formatLongTaskSection(trace) {
     lines.push('- longtask entry type unsupported on this engine: NOT MEASURED (not "none")');
     return lines.join(NL) + NL;
   }
+  if (trace.jsHeapSeries && trace.jsHeapSeries.length) {
+    lines.push(`- JS heap MB over run: ${trace.jsHeapSeries.join(' ')}`);
+  }
+  if (trace.geometrySeries && trace.geometrySeries.length) {
+    lines.push(`- GPU geometries over run: ${trace.geometrySeries.join(' ')}`);
+    lines.push(`- GPU textures over run:   ${trace.textureSeries.join(' ')}`);
+  }
   lines.push(`- count ${trace.count}; total ${Math.round(trace.totalMs)} ms; max ${Math.round(trace.maxMs)} ms; >=50 ms ${trace.over50Ms}; >=100 ms ${trace.over100Ms}`);
   for (const entry of trace.top) {
-    lines.push(`- ${entry.durationMs} ms at ${entry.startTime} ms${entry.name ? ` (${entry.name})` : ''}`);
+    const near = (trace.heavyResources || []).filter((r) => (
+      r.responseEnd <= entry.startTime && entry.startTime - r.responseEnd < 3000
+    ));
+    const blame = near.length
+      ? ` <- ${near.slice(-3).map((r) => `${r.name} ${r.kb}KB @${r.responseEnd}`).join(', ')}`
+      : '';
+    lines.push(`- ${entry.durationMs} ms at ${entry.startTime} ms${blame}`);
   }
   return lines.join(NL) + NL;
 }
@@ -2043,6 +2016,26 @@ async function collectSectorTransitionWitness(targetPage) {
 }
 
 function readWitnessInPage() {
+  // Arm the long-task observer HERE rather than from a separate install step. The probe drives more
+  // than one page handle, and installing on the wrong one produced a witness that read back as
+  // "not captured" for a whole 4-run A/B. Whatever page is being sampled is by definition the page
+  // whose main thread we care about, so arm it on first sample and it cannot miss.
+  if (!window.__SF_LONGTASK_WITNESS__) {
+    const trace = { startedWallMs: Date.now(), entries: [], observer: null, supported: false };
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.entries.length >= 4000) break;
+          trace.entries.push({ startTime: entry.startTime, duration: entry.duration, name: String(entry.name || '') });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+      trace.supported = true;
+    } catch (_) {
+      trace.supported = false;
+    }
+    window.__SF_LONGTASK_WITNESS__ = trace;
+  }
   const witness = window.__SF_WITNESS__;
   const s = window.SF?.state;
   let sample = null;
@@ -2075,6 +2068,61 @@ function readWitnessInPage() {
     hitch: false,
     costs: [],
   };
+  {
+    const lt = window.__SF_LONGTASK_WITNESS__;
+    if (lt) {
+      const durations = lt.entries.map((e) => Number(e.duration) || 0);
+      sample.longTasks = {
+        supported: lt.supported === true,
+        count: lt.entries.length,
+        totalMs: durations.reduce((sum, d) => sum + d, 0),
+        maxMs: durations.reduce((max, d) => Math.max(max, d), 0),
+        over50Ms: durations.filter((d) => d >= 50).length,
+        over100Ms: durations.filter((d) => d >= 100).length,
+        top: lt.entries.slice().sort((a, b) => b.duration - a.duration).slice(0, 12)
+          .map((e) => ({ startTime: Math.round(e.startTime), durationMs: Math.round(e.duration), name: e.name })),
+      };
+    }
+  }
+  // GPU-side residency alongside the heap. Growth here that never plateaus says the world is
+  // retaining what it streams in rather than churning it, which is a different fix from allocation
+  // churn even though both end in the same multi-second collection.
+  try {
+    const mem = window.SF?.state?.render?.renderer?.info?.memory;
+    const progs = window.SF?.state?.render?.renderer?.info?.programs;
+    sample.gpuResidency = mem ? {
+      geometries: Number(mem.geometries) || 0,
+      textures: Number(mem.textures) || 0,
+      programs: Array.isArray(progs) ? progs.length : 0,
+    } : null;
+  } catch (_) { sample.gpuResidency = null; }
+  // JS heap alongside the blocks. If multi-second stalls are OUR garbage collection, the heap is
+  // large and sawtooths across them; if the heap is small and flat, the stall belongs to the host
+  // (paging, other processes) and no game-side change will remove it.
+  try {
+    const mem = performance.memory;
+    sample.jsHeap = mem ? {
+      usedMb: Math.round(mem.usedJSHeapSize / 1048576),
+      totalMb: Math.round(mem.totalJSHeapSize / 1048576),
+      limitMb: Math.round(mem.jsHeapSizeLimit / 1048576),
+    } : null;
+  } catch (_) { sample.jsHeap = null; }
+  // Pair every long task with the heavy assets that landed just before it. A multi-second block
+  // whose start follows a large .glb/.ktx2 responseEnd is main-thread parse/decode, which the
+  // game's own phase timers never see because it happens inside a fetch continuation, not inside a
+  // simulation or render phase.
+  try {
+    const resources = performance.getEntriesByType('resource') || [];
+    sample.heavyResources = resources
+      .filter((e) => (Number(e.decodedBodySize) || Number(e.transferSize) || 0) > 300000)
+      .map((e) => ({
+        name: String(e.name).split('/').slice(-2).join('/'),
+        kb: Math.round((Number(e.decodedBodySize) || Number(e.transferSize) || 0) / 1024),
+        responseEnd: Math.round(e.responseEnd),
+      }))
+      .sort((a, b) => a.responseEnd - b.responseEnd)
+      .slice(-40);
+  } catch (_) { sample.heavyResources = null; }
   const loadingTrace = window.__SF_LOADING_READINESS_WITNESS__;
   if (loadingTrace) {
     const render = s?.render || {};
@@ -2526,7 +2574,6 @@ try {
     await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
     await dismissCinematic(page);
     await installLoadingReadinessWitness(page);
-    await installLongTaskWitness(page);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
       if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
@@ -2552,7 +2599,6 @@ try {
   } else {
     log('new game');
     await installLoadingReadinessWitness(page);
-    await installLongTaskWitness(page);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
       if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
@@ -2708,7 +2754,7 @@ try {
     }));
     row.elapsedMs = elapsedMs;
     snapshots.push(row);
-    if (elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
+    if (!NO_SAMPLE_SHOTS && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
       shotIndex += 1;
@@ -2908,12 +2954,25 @@ const route = {
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
   sampleEveryMs: SAMPLE_EVERY_MS,
+  noSampleShots: NO_SAMPLE_SHOTS,
   simDelta: (Number(lastMoving?.simTime) || 0) - (Number(firstMoving?.simTime) || 0),
   executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
   instrumentation: probeInstrumentation,
 };
 // Read before the markdown is assembled: the report template consumes it.
-const longTaskWitness = await readLongTaskWitness(page);
+// Taken off the last sample rather than a separate page.evaluate: the probe drives more than one
+// page handle, and reading from the wrong one silently reported "not captured" for a whole 4-run
+// A/B. The sample already comes from the page being measured.
+const lastSnapshot = snapshots[snapshots.length - 1] || {};
+const longTaskWitness = lastSnapshot.longTasks
+  ? {
+    ...lastSnapshot.longTasks,
+    heavyResources: lastSnapshot.heavyResources || [],
+    jsHeapSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.jsHeap ? x.jsHeap.usedMb : '?')),
+    geometrySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.geometries : '?')),
+    textureSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.textures : '?')),
+  }
+  : null;
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,
