@@ -1,22 +1,19 @@
-"""PQ-049.01 Massline express-liner source builder — cycle 35.
+"""PQ-049.01 Massline express-liner source builder — cycle 36.
 
 Civic pressure-drum liner, not a Mule rename and not a Lark courier.
 Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
 
-Cycle 35 form correction: retain Cycle 34's stepped passenger galleries and
-real dry drive bores, but remove the remaining pincer/cross first reads. The
-drive pair now sits inside the aft pressure envelope as two near-axial,
-full-bodied propulsion cases instead of long outboard prongs; the inhabited
-belt is narrowed without deleting its passenger rhythm; a longitudinal crown
-subordinates the transverse galleries in the abeam silhouette; and the smoked
-dielectric glass keeps blue-grey reflection and interior depth at ordinary
-exposure. Legal cameras remain frozen while additional evidence is rendered at
-the authored LOD bands and at matched approach/recede transition distances.
+Cycle 36 keeps Cycle 35's blue-grey recessed glazing, internal drive
+centerlines, dry bores, and authored LOD evidence while correcting the
+remaining exposed-prong/cross read. A common manufactured aft pressure shroud
+now wraps both cases almost to their throat mouths, and the passenger belt is
+tucked beneath a longer axial civic crown. Only the two actual bores split at
+the stern. Legal cameras and evidence bands remain frozen.
 
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=35
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=36
 """
 from __future__ import annotations
 
@@ -64,7 +61,7 @@ from spaceface_chase_camera import (  # noqa: E402
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 256}
 TEX = 1024
-CYCLE = 35
+CYCLE = 36
 PROBE_OCCUPANCY = False
 RENDER_ONLY = False
 for i, tok in enumerate(sys.argv):
@@ -81,9 +78,9 @@ for i, tok in enumerate(sys.argv):
     elif tok in ("--render-only", "--stills-only"):
         RENDER_ONLY = True
 
-# Cycle 35 manufactured envelope. Metres, +X forward.
-# Keep 40.67 x 22.45 x 10.99 m, L/B 1.81. Width from the passenger
-# station's inhabited equator, not hanging cards or occupancy padding.
+# Cycle 36 manufactured envelope. Metres, +X forward.
+# Width comes from a tucked inhabited equator, not hanging cards or occupancy
+# padding. The longer axial crown carries the dominant abeam read.
 # The twin bores sit inside the 6.25 m aft pressure half-width. Keeping their
 # centerlines near +/-4.55 m preserves two readable throats while preventing
 # the long outboard fork/pincer silhouette rejected in Cycle 34.
@@ -93,11 +90,11 @@ DRIVE_R_FORE = 1.48
 DRIVE_R_AFT = 1.30
 BOARD_X, BOARD_Z = 14.85, 0.62
 FORE_HW, FORE_HH = 7.65, 4.65
-PASS_HW, PASS_HH = 9.65, 4.55
+PASS_HW, PASS_HH = 8.80, 4.55
 AFT_HW, AFT_HH = 6.55, 3.75
 MID_HW, MID_HH = PASS_HW, PASS_HH
 CORR_Y = PASS_HW
-CORR_HW, CORR_HH = 0.62, 1.38
+CORR_HW, CORR_HH = 0.55, 1.34
 PASS_WALL = 0.22
 BELT_OUTER = PASS_HW + CORR_HW
 HAT_FORE_X = 10.20
@@ -863,8 +860,8 @@ def add_passenger_corridors(lod, mats, collection, passenger_hull=None):
     outer_hw = CORR_HW
     inner_hw = outer_hw - wall
     zc = 0.48
-    x0, x1 = 9.55, -1.05
-    pane_xs = (7.85, 5.15, 2.45, -0.25)
+    x0, x1 = 8.95, -0.45
+    pane_xs = (7.45, 4.95, 2.45, 0.05)
     for tag, sign in (("P", -1.0), ("S", 1.0)):
         y = sign * (PASS_HW - 0.06)
         corr = loft_hollow(
@@ -1032,21 +1029,25 @@ def add_passenger_clerestory(lod, mats, collection, passenger_hull):
 
 
 def add_passenger_pressure_crown(lod, mats, collection):
-    """Narrow axial pressure crown that keeps the end-on view from becoming a cross.
+    """Long axial pressure crown that dominates the abeam civic silhouette.
 
     The crown only protrudes beyond the passenger shell at its dorsal and
     ventral arcs. Its side slopes stay inboard of the six recessed gallery
-    wells, so the inherited occupied rhythm remains readable rather than
-    becoming a transverse wing. Four dark course joints make the longitudinal
-    construction survive the legal chase distance and all three LODs.
+    wells, so the inherited occupied rhythm remains readable without becoming
+    a transverse wing. The crown now bridges the operations shoulder through
+    the machinery course; dark joints make that longitudinal construction
+    survive the legal chase distance and all three LODs.
     """
     hull = mats["Material_Hull"]
     frame = mats["Material_Armor"]
     rings = [
+        pressure_ring(14.35, 0.0, 0.34, 2.72, 4.05, deck=0.56, wall=0.62, chine=0.10, belly=0.42),
         pressure_ring(9.62, 0.0, 0.34, 3.35, 4.88, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
         pressure_ring(6.48, 0.0, 0.38, 3.72, 5.18, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
         pressure_ring(2.18, 0.0, 0.38, 3.78, 5.22, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
         pressure_ring(-1.28, 0.0, 0.32, 3.42, 4.92, deck=0.58, wall=0.60, chine=0.10, belly=0.46),
+        pressure_ring(-5.65, 0.0, 0.28, 2.92, 4.02, deck=0.54, wall=0.64, chine=0.12, belly=0.40),
+        pressure_ring(-9.45, 0.0, 0.24, 2.32, 3.12, deck=0.50, wall=0.68, chine=0.14, belly=0.36),
     ]
     loft_from_rings(
         "PassengerAxialPressureCrown", rings, hull, collection,
@@ -1054,13 +1055,16 @@ def add_passenger_pressure_crown(lod, mats, collection):
     )
     # Paired longitudinal coaming rails bound the pressure crown without
     # touching the deck-edge gallery wells at y=+/-2.95 and +/-3.55.
-    add_box("PassengerCrownRail_P", (4.18, -2.10, 5.25), (5.22, 0.075, 0.075), frame, collection, 0.002)
-    add_box("PassengerCrownRail_S", (4.18, 2.10, 5.25), (5.22, 0.075, 0.075), frame, collection, 0.002)
+    add_box("PassengerCrownRail_P", (2.45, -2.10, 5.25), (11.35, 0.075, 0.075), frame, collection, 0.002)
+    add_box("PassengerCrownRail_S", (2.45, 2.10, 5.25), (11.35, 0.075, 0.075), frame, collection, 0.002)
     for index, (x, half_y, z) in enumerate((
+        (14.30, 1.58, 4.42),
         (9.55, 1.90, 5.18),
         (6.50, 2.12, 5.52),
         (2.20, 2.16, 5.56),
         (-1.20, 1.96, 5.20),
+        (-5.60, 1.66, 4.36),
+        (-9.40, 1.38, 3.52),
     )):
         add_box(
             f"PassengerCrownCourseJoint_{index}",
@@ -1273,12 +1277,12 @@ def add_civic_drive(tag, y, lod, mats, collection):
 
 
 def add_propulsion_load_bridge(lod, mats, collection):
-    """Tapered central afterbody carrying load to the paired drive cases.
+    """Common tapered aft pressure shroud carrying both drive cases.
 
-    The bridge overlaps both case roots and ends before their bores. At the
-    supported cameras the propulsion plant therefore divides into two short
-    cases instead of presenting two long free-ended prongs. The paired dry
-    throats and their centerline clearance remain distinct.
+    The shroud wraps the full outer envelope of both cases and ends just ahead
+    of their mouths. At supported cameras the plant is therefore one civic
+    pressure/load body with two throat openings, never two exposed prongs. The
+    paired dry bores, internal centerlines, and socket contract remain intact.
     """
     hull = mats["Material_Hull"]
     frame = mats["Material_Armor"]
@@ -1286,27 +1290,36 @@ def add_propulsion_load_bridge(lod, mats, collection):
     loft_from_rings(
         "PropulsionLoadBridge",
         [
-            pressure_ring(HAT_LOAD_X - 0.05, 0.0, 0.24, 3.18, 2.24, deck=0.48, wall=0.72, chine=0.16, belly=0.34),
-            pressure_ring(-14.45, 0.0, 0.30, 2.78, 1.92, deck=0.46, wall=0.70, chine=0.16, belly=0.32),
-            pressure_ring(-16.55, 0.0, 0.36, 1.94, 1.34, deck=0.42, wall=0.66, chine=0.14, belly=0.28),
+            pressure_ring(HAT_LOAD_X - 0.05, 0.0, 0.24, 7.08, 2.58, deck=0.60, wall=0.76, chine=0.14, belly=0.42),
+            pressure_ring(-14.45, 0.0, 0.30, 6.88, 2.42, deck=0.59, wall=0.75, chine=0.14, belly=0.40),
+            pressure_ring(-17.20, 0.0, 0.34, 6.52, 2.12, deck=0.58, wall=0.74, chine=0.14, belly=0.38),
+            pressure_ring(-19.72, 0.0, 0.38, 6.18, 1.76, deck=0.56, wall=0.72, chine=0.12, belly=0.34),
         ],
-        hull, collection, 0.008 if lod <= 1 else 0.005, cap="both",
+        hull, collection, 0.008 if lod <= 1 else 0.005, cap="front",
     )
-    for index, (x, half_y, half_z) in enumerate((
-        (HAT_LOAD_X - 0.12, 3.20, 2.18),
-        (-14.45, 2.82, 1.86),
-        (-16.48, 1.98, 1.30),
+    for index, (x, half_y, half_z, deck, wall, chine, belly) in enumerate((
+        (HAT_LOAD_X - 0.12, 7.10, 2.50, 0.60, 0.76, 0.14, 0.42),
+        (-14.45, 6.90, 2.34, 0.59, 0.75, 0.14, 0.40),
+        (-17.20, 6.54, 2.04, 0.58, 0.74, 0.14, 0.38),
+        (-19.62, 6.20, 1.68, 0.56, 0.72, 0.12, 0.34),
     )):
-        add_box(
+        loft_hollow(
             f"PropulsionBridgeFrame_{index}",
-            (x, 0.0, 0.30), (0.085, half_y, half_z),
-            frame, collection, 0.002,
+            [
+                pressure_ring(x + 0.10, 0.0, 0.30, half_y + 0.08, half_z + 0.08, deck=deck, wall=wall, chine=chine, belly=belly),
+                pressure_ring(x - 0.10, 0.0, 0.30, half_y + 0.08, half_z + 0.08, deck=deck, wall=wall, chine=chine, belly=belly),
+            ],
+            [
+                pressure_ring(x + 0.10, 0.0, 0.30, half_y - 0.14, half_z - 0.14, deck=deck, wall=wall, chine=chine, belly=belly),
+                pressure_ring(x - 0.10, 0.0, 0.30, half_y - 0.14, half_z - 0.14, deck=deck, wall=wall, chine=chine, belly=belly),
+            ],
+            frame, collection, 0.002, close_front=False, close_aft=False,
         )
     # A set-in centerline service spine makes the load path legible with the
     # paint response disabled; it is not hung in the space between cases.
     add_box(
         "PropulsionBridgeKeel",
-        (-14.42, 0.0, -1.38), (2.00, 0.34, 0.18),
+        (-16.05, 0.0, -1.72), (3.48, 0.34, 0.18),
         mech, collection, 0.003,
     )
 
@@ -1471,22 +1484,22 @@ def passenger_stations(lod):
     """Three visibly stepped passenger pressure sections, not one pale slab."""
     if lod >= 2:
         return [
-            pressure_ring(9.85, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
-            pressure_ring(6.65, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+            pressure_ring(9.85, 0, 0.38, 8.20, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+            pressure_ring(6.65, 0, 0.40, 8.55, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
             pressure_ring(6.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
             pressure_ring(2.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
-            pressure_ring(2.05, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
-            pressure_ring(-1.20, 0, 0.36, 9.10, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
+            pressure_ring(2.05, 0, 0.40, 8.55, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+            pressure_ring(-1.20, 0, 0.36, 8.25, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
         ]
     return [
-        pressure_ring(9.85, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
-        pressure_ring(9.55, 0, 0.38, 8.85, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
-        pressure_ring(9.25, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
-        pressure_ring(6.65, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(9.85, 0, 0.38, 8.20, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+        pressure_ring(9.55, 0, 0.38, 8.20, 4.08, deck=0.38, wall=0.76, chine=0.14, belly=0.34),
+        pressure_ring(9.25, 0, 0.40, 8.55, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(6.65, 0, 0.40, 8.55, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
         pressure_ring(6.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
         pressure_ring(2.35, 0, 0.42, PASS_HW, 4.72, deck=0.32, wall=0.78, chine=0.14, belly=0.36),
-        pressure_ring(2.05, 0, 0.40, 9.58, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
-        pressure_ring(-1.20, 0, 0.36, 9.10, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
+        pressure_ring(2.05, 0, 0.40, 8.55, 4.42, deck=0.35, wall=0.77, chine=0.14, belly=0.35),
+        pressure_ring(-1.20, 0, 0.36, 8.25, 4.18, deck=0.37, wall=0.77, chine=0.14, belly=0.34),
     ]
 
 
@@ -1839,7 +1852,7 @@ def bake_lod0_unique(merged, collection, mats):
                     if node.type != "OUTPUT_MATERIAL" and node != bsdf:
                         obj.data.materials[0].node_tree.nodes.remove(node)
             coat = 0.0 if key == "Hull" else (0.35 if key == "Canopy" else 0.05 if key == "Armor" else 0.0)
-            trans = 0.18 if key == "Canopy" else 0.0
+            trans = 0.30 if key == "Canopy" else 0.0
             wire_maps(obj.data.materials[0], bsdf, maps, coat=coat, transmission=trans)
             if key == "Canopy":
                 mat = obj.data.materials[0]
@@ -2050,7 +2063,11 @@ def build_lod(lod, mats):
         "triangles": sum(sum(max(0, len(p.vertices) - 2) for p in obj.data.polygons) for obj in merged),
         "hullTriangles": hull_tris,
         "draws": len(merged),
-        "materials": sorted(groups),
+        # Blender suffixes duplicate datablock names while building LOD1/2 in
+        # one scene, but the exported semantic names are intentionally
+        # unsuffixed. Record the actual glTF names, not transient `.001/.002`
+        # authoring datablock labels.
+        "materials": sorted({re.sub(r"\.\d{3}$", "", name) for name in groups}),
         "bake": bake_report,
     }
 
