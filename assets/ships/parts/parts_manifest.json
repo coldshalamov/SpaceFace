@@ -5802,6 +5802,149 @@
         "max": [1.02, 1.03, 0.846],
         "dimensionsM": [2.04, 2.06, 0.846]
       }
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1",
+      "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/massline_express_liner_v1.glb",
+      "status": "integration_candidate",
+      "wiringStatus": "live_traffic_express",
+      "tris": 54637,
+      "bytes": 12671644,
+      "textureSize": 1024,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "note": "PQ-049-MASSLINE-EXPRESS-LINER-V1 — Massline Express Liner LOD0 live express body; Cycle 36 frozen source AAF714ABF24EF5F7B92AE47818C9CEF2C0512065F405AE9A4BFF0E2D43E1AFEB; passenger-only civic pressure-drum; 13 sockets; COLLISION_HULL; 0.30 smoked glazing; common aft pressure/load shroud with open twin throats. Whole-asset G1/G2/G4/G7 remain open. Family source is assets/ships/massline_express_liner_v1/.",
+      "lodFamily": {
+        "lod0": "wholeships/massline_express_liner_v1.glb",
+        "lod1": "wholeships/massline_express_liner_v1_lod1.glb",
+        "lod2": "wholeships/massline_express_liner_v1_lod2.glb"
+      }
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod1",
+      "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/massline_express_liner_v1_lod1.glb",
+      "status": "integration_candidate",
+      "wiringStatus": "live_traffic_express",
+      "tris": 49273,
+      "bytes": 11988516,
+      "textureSize": 1024,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "note": "PQ-049-MASSLINE-EXPRESS-LINER-V1 — Massline Express Liner LOD1 family member; Cycle 36 frozen source 7FBB3B272962C17D07396CBB90A7594C111CD621431B7955F4AD796A0780158E; passenger-only civic pressure-drum; 13 sockets; COLLISION_HULL; 0.30 smoked glazing; common aft pressure/load shroud with open twin throats. Whole-asset G1/G2/G4/G7 remain open. Family source is assets/ships/massline_express_liner_v1/."
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod2",
+      "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/massline_express_liner_v1_lod2.glb",
+      "status": "integration_candidate",
+      "wiringStatus": "live_traffic_express",
+      "tris": 25912,
+      "bytes": 5126584,
+      "textureSize": 1024,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "note": "PQ-049-MASSLINE-EXPRESS-LINER-V1 — Massline Express Liner LOD2 family member; Cycle 36 frozen source B201060C52819F9F0B2A9416A8FE4915E41D19D2263BFE32EF76E221D141CA50; passenger-only civic pressure-drum; 13 sockets; COLLISION_HULL; 0.30 smoked glazing; common aft pressure/load shroud with open twin throats. Whole-asset G1/G2/G4/G7 remain open. Family source is assets/ships/massline_express_liner_v1/."
     }
   ],
   "runtimeSlots": {
@@ -5833,7 +5976,10 @@
       "wholeships/scrap_sweeper.glb",
       "wholeships/yard_tug.glb",
       "wholeships/inspection_cutter.glb",
-      "wholeships/apron_shuttle.glb"
+      "wholeships/apron_shuttle.glb",
+      "wholeships/massline_express_liner_v1.glb",
+      "wholeships/massline_express_liner_v1_lod1.glb",
+      "wholeships/massline_express_liner_v1_lod2.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",

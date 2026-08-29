@@ -1149,6 +1149,9 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/prospector_skiff.glb',
   'wholeships/scrap_sweeper.glb',
   'wholeships/apron_shuttle.glb',
+  'wholeships/massline_express_liner_v1.glb',
+  'wholeships/massline_express_liner_v1_lod1.glb',
+  'wholeships/massline_express_liner_v1_lod2.glb',
 ]));
 
 export function isPackagedLiveWholeShipFile(file) {
@@ -1247,13 +1250,14 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   salvor: 'wholeships/salvage_cutter.glb',
   surveyor: 'wholeships/survey_pin.glb',
   // PQ-136.02: packaged work-fleet hulls with no recorded still-review defect. Additive
-  // keys only — existing role values above stay the accepted live bodies, and `express`
-  // deliberately keeps NO whole-ship binding (PQ-049 owns express liner identity; binding
-  // it here would silently re-skin already-shipping Express Liner traffic).
+  // keys only — existing role values above stay the accepted live bodies.
   rescue: 'wholeships/rescue_lifter.glb',
   prospector: 'wholeships/prospector_skiff.glb',
   sweeper: 'wholeships/scrap_sweeper.glb',
   shuttle: 'wholeships/apron_shuttle.glb',
+  // PQ-049: Helios passenger-only express selects the authored liner. Courier Lark and
+  // every other traffic role stay on their accepted bodies. ship_mule def identity is unchanged.
+  express: 'wholeships/massline_express_liner_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1270,12 +1274,21 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   prospector: 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
   sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',
   shuttle: 'SF_WHOLESHIP_APRON_SHUTTLE',
+  express: 'SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1',
+});
+const WHOLE_SHIP_LOD_FAMILY_BY_TRAFFIC_ROLE = Object.freeze({
+  express: Object.freeze({
+    lod0: 'wholeships/massline_express_liner_v1.glb',
+    lod1: 'wholeships/massline_express_liner_v1_lod1.glb',
+    lod2: 'wholeships/massline_express_liner_v1_lod2.glb',
+  }),
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
   ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID).flatMap((family) => Object.values(family)),
   ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
   ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
+  ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_TRAFFIC_ROLE).flatMap((family) => Object.values(family)),
 ]);
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
@@ -1338,6 +1351,7 @@ export function wholeShipVisualForEntity(entity, options = {}) {
       trafficFile,
       WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
       trafficRole,
+      WHOLE_SHIP_LOD_FAMILY_BY_TRAFFIC_ROLE[trafficRole] || null,
     );
   }
   if (options.requiredWholeShip !== true) return null;

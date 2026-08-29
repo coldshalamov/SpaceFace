@@ -3496,6 +3496,48 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
+      "sourceSha256": "e4edb1fac95d9518b04bd26af71031f9b645ecfc1342dee8f41c91a8202414cc",
+      "releaseSha256": "957921c74f847e2c04556bd0b16aed1fda0b0d866a7a07682371afce4b36cbd9",
+      "sourceBytes": 12671644,
+      "releaseBytes": 5279556,
+      "textures": 27,
+      "ktx2Textures": 27,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "sourceSha256": "13a76db3ece6e2061c1c07dc96227c8dade9905798bff742b6fb859d432efb47",
+      "releaseSha256": "edef5fe382a5ef86a45b19c5ccb381ca53514debc03d11270151aca9b9c755f5",
+      "sourceBytes": 11988516,
+      "releaseBytes": 5837376,
+      "textures": 27,
+      "ktx2Textures": 27,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 22
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "sourceSha256": "816aafa0866dd64dde1075323f2d71bec8a2530be8e5ce1b848ea2b7c23f2bba",
+      "releaseSha256": "4449a4e1e246465d939e4105eb8ea35f4c9d4824b263e93f559dce56fa095bdf",
+      "sourceBytes": 5126584,
+      "releaseBytes": 2186340,
+      "textures": 24,
+      "ktx2Textures": 24,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 21
     }
   ]
 }

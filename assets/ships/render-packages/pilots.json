@@ -3007,6 +3007,51 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-massline-core",
       "metadataUrl": "assets/ships/release/render-packages/works-massline-core/render-package.json"
+    },
+    {
+      "key": "massline-express-liner-v1",
+      "assetId": "sf.render.massline-express-liner-v1",
+      "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_massline_express_liner_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
+      "releaseSha256": "957921c74f847e2c04556bd0b16aed1fda0b0d866a7a07682371afce4b36cbd9",
+      "releaseBytes": 5279556,
+      "rootNode": "LINER_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1",
+      "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json"
+    },
+    {
+      "key": "massline-express-liner-v1-lod1",
+      "assetId": "sf.render.massline-express-liner-v1-lod1",
+      "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_massline_express_liner_v1_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "releaseSha256": "edef5fe382a5ef86a45b19c5ccb381ca53514debc03d11270151aca9b9c755f5",
+      "releaseBytes": 5837376,
+      "rootNode": "LINER_LOD1_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json"
+    },
+    {
+      "key": "massline-express-liner-v1-lod2",
+      "assetId": "sf.render.massline-express-liner-v1-lod2",
+      "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_massline_express_liner_v1_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "releaseSha256": "4449a4e1e246465d939e4105eb8ea35f4c9d4824b263e93f559dce56fa095bdf",
+      "releaseBytes": 2186340,
+      "rootNode": "LINER_LOD2_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/massline-express-liner-v1-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json"
     }
   ]
 }

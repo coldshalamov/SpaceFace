@@ -1981,6 +1981,36 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "fc7b2de1eaaafd5fa0bd2ca2d5d355c525fabbd3c06788cee265e50838d6e80c",
     "sourceUrl": "assets/ships/release/parts/works/place_works_massline_core.glb"
+  },
+  {
+    "assetId": "sf.render.massline-express-liner-v1",
+    "expectedContentHash": "83b68f5cf322c0f0022b4872bef7807666eaba821bd734ed4699bdfa96d546b7",
+    "key": "massline-express-liner-v1",
+    "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+    "slot": "hull",
+    "sourceSha256": "957921c74f847e2c04556bd0b16aed1fda0b0d866a7a07682371afce4b36cbd9",
+    "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+  },
+  {
+    "assetId": "sf.render.massline-express-liner-v1-lod1",
+    "expectedContentHash": "14fd504eecb881d130c502d362e5ae30f9cdda28b265d7439b12c3a6b59a1fd8",
+    "key": "massline-express-liner-v1-lod1",
+    "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+    "slot": "hull",
+    "sourceSha256": "edef5fe382a5ef86a45b19c5ccb381ca53514debc03d11270151aca9b9c755f5",
+    "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
+  },
+  {
+    "assetId": "sf.render.massline-express-liner-v1-lod2",
+    "expectedContentHash": "6ea1eb3c4d9ee23d25f443aa6d00adfb9e3013309ce230c3b091b9119e1ec8f5",
+    "key": "massline-express-liner-v1-lod2",
+    "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+    "slot": "hull",
+    "sourceSha256": "4449a4e1e246465d939e4105eb8ea35f4c9d4824b263e93f559dce56fa095bdf",
+    "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
   }
 ];
 

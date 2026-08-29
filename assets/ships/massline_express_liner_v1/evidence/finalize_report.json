@@ -1,0 +1,204 @@
+{
+  "schema": "spaceface.masslineExpressLiner.finalize.v1",
+  "packet": "PQ-049-MASSLINE-EXPRESS-LINER-V1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "status": "integration_candidate",
+  "promoted": true,
+  "frozenSource": {
+    "lod0": "AAF714ABF24EF5F7B92AE47818C9CEF2C0512065F405AE9A4BFF0E2D43E1AFEB",
+    "lod1": "7FBB3B272962C17D07396CBB90A7594C111CD621431B7955F4AD796A0780158E",
+    "lod2": "B201060C52819F9F0B2A9416A8FE4915E41D19D2263BFE32EF76E221D141CA50",
+    "blend": "A7AB8524935C312F8550ED70DF99593CBDD3C6D74FA87EF69296B2B9A88FAC36"
+  },
+  "blendSha256": "A7AB8524935C312F8550ED70DF99593CBDD3C6D74FA87EF69296B2B9A88FAC36",
+  "lods": [
+    {
+      "lod": 0,
+      "partId": "wholeship_massline_express_liner_v1",
+      "source": "assets/ships/massline_express_liner_v1/source/wholeships/massline_express_liner_v1_lod0.glb",
+      "sourceSha256": "AAF714ABF24EF5F7B92AE47818C9CEF2C0512065F405AE9A4BFF0E2D43E1AFEB",
+      "sourceBytes": 12668580,
+      "candidate": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1.glb",
+      "parts": "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+      "sha256": "E4EDB1FAC95D9518B04BD26AF71031F9B645ECFC1342DEE8F41C91A8202414CC",
+      "bytes": 12671644,
+      "triangles": 54637,
+      "renderTriangles": 54619,
+      "draws": 9,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "collision": true,
+      "glazingTransmissionFactor": 0.30000001192092896,
+      "occlusionBound": 9,
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "materials": [
+        "MAT_SF_Massline_CeramicPaint_WarmIvory",
+        "MAT_SF_Massline_Frame_DarkAnodized",
+        "MAT_SF_Massline_Glazing_SmokedSafety",
+        "MAT_SF_Massline_Keel_ForgedDark",
+        "MAT_SF_Massline_RefractoryHeatAlloy",
+        "MAT_SF_Massline_ServicePrimer_Galvanized",
+        "MAT_SF_Massline_Throat_OxidizedDark",
+        "MAT_SF_Massline_WayfindingAmber",
+        "MAT_SF_Massline_WayfindingCyan"
+      ]
+    },
+    {
+      "lod": 1,
+      "partId": "wholeship_massline_express_liner_v1_lod1",
+      "source": "assets/ships/massline_express_liner_v1/source/wholeships/massline_express_liner_v1_lod1.glb",
+      "sourceSha256": "7FBB3B272962C17D07396CBB90A7594C111CD621431B7955F4AD796A0780158E",
+      "sourceBytes": 11985436,
+      "candidate": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod1.glb",
+      "parts": "assets/ships/parts/wholeships/massline_express_liner_v1_lod1.glb",
+      "sha256": "13A76DB3ECE6E2061C1C07DC96227C8DADE9905798BFF742B6FB859D432EFB47",
+      "bytes": 11988516,
+      "triangles": 49273,
+      "renderTriangles": 49255,
+      "draws": 9,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "collision": true,
+      "glazingTransmissionFactor": 0.30000001192092896,
+      "occlusionBound": 9,
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "materials": [
+        "MAT_SF_Massline_CeramicPaint_WarmIvory",
+        "MAT_SF_Massline_Frame_DarkAnodized",
+        "MAT_SF_Massline_Glazing_SmokedSafety",
+        "MAT_SF_Massline_Keel_ForgedDark",
+        "MAT_SF_Massline_RefractoryHeatAlloy",
+        "MAT_SF_Massline_ServicePrimer_Galvanized",
+        "MAT_SF_Massline_Throat_OxidizedDark",
+        "MAT_SF_Massline_WayfindingAmber",
+        "MAT_SF_Massline_WayfindingCyan"
+      ]
+    },
+    {
+      "lod": 2,
+      "partId": "wholeship_massline_express_liner_v1_lod2",
+      "source": "assets/ships/massline_express_liner_v1/source/wholeships/massline_express_liner_v1_lod2.glb",
+      "sourceSha256": "B201060C52819F9F0B2A9416A8FE4915E41D19D2263BFE32EF76E221D141CA50",
+      "sourceBytes": 5123560,
+      "candidate": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod2.glb",
+      "parts": "assets/ships/parts/wholeships/massline_express_liner_v1_lod2.glb",
+      "sha256": "816AAFA0866DD64DDE1075323F2D71BEC8A2530BE8E5CE1B848EA2B7C23F2BBA",
+      "bytes": 5126584,
+      "triangles": 25912,
+      "renderTriangles": 25894,
+      "draws": 8,
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "collision": true,
+      "glazingTransmissionFactor": 0.30000001192092896,
+      "occlusionBound": 8,
+      "bounds": {
+        "min": [
+          -21,
+          -5.47,
+          -9.48
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          40.8,
+          11.105,
+          18.96
+        ]
+      },
+      "materials": [
+        "MAT_SF_Massline_CeramicPaint_WarmIvory",
+        "MAT_SF_Massline_Frame_DarkAnodized",
+        "MAT_SF_Massline_Glazing_SmokedSafety",
+        "MAT_SF_Massline_Keel_ForgedDark",
+        "MAT_SF_Massline_RefractoryHeatAlloy",
+        "MAT_SF_Massline_ServicePrimer_Galvanized",
+        "MAT_SF_Massline_Throat_OxidizedDark",
+        "MAT_SF_Massline_WayfindingCyan"
+      ]
+    }
+  ],
+  "checks": {
+    "frozenSourcePreserved": true,
+    "blendPreserved": true,
+    "sockets": true,
+    "collision": true,
+    "glazing030": true,
+    "occlusionBound": true
+  },
+  "ok": true
+}
