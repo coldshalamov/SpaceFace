@@ -24,9 +24,9 @@
     "LOD2_massline_core_lamp",
     "LOD2_massline_core_spin"
   ],
-  "bytes": 3163528,
-  "sha256": "FEBC60B1E4284242C124E9516C759924567B44740E63751F6CE0D308B2B66687",
-  "partsSha256": "FEBC60B1E4284242C124E9516C759924567B44740E63751F6CE0D308B2B66687",
+  "bytes": 3193144,
+  "sha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
+  "partsSha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
   "lodReports": [
     {
       "lod": 0,
@@ -58,7 +58,8 @@
       "atlas": [
         "assets/works/massline_core/source/textures/massline_core_atlas_lod0_basecolor.png",
         "assets/works/massline_core/source/textures/massline_core_atlas_lod0_orm.png",
-        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png"
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod0_emissive.png"
       ],
       "lampLoc": [
         0.18,
@@ -71,8 +72,8 @@
         "LOD0_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod0.glb",
-      "bytes": 2019456,
-      "sha256": "1421FF5A6A3359A36473FB35C6F1567A82743293EABC0903C8D30D9F0BFA569F"
+      "bytes": 2040324,
+      "sha256": "A665B42A874A232E9521B8898FA67AC80658577ACE088A2A282E257C8E87C151"
     },
     {
       "lod": 1,
@@ -104,7 +105,8 @@
       "atlas": [
         "assets/works/massline_core/source/textures/massline_core_atlas_lod1_basecolor.png",
         "assets/works/massline_core/source/textures/massline_core_atlas_lod1_orm.png",
-        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_normal.png"
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod1_emissive.png"
       ],
       "lampLoc": [
         0.18,
@@ -117,8 +119,8 @@
         "LOD1_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod1.glb",
-      "bytes": 661356,
-      "sha256": "0E188B03962691FEE7DCE5501AEBA1F9A47F0805712AD144BCA5EF80F81DAFE6"
+      "bytes": 667704,
+      "sha256": "9C6955896A4CF834F8FB537361AA633E0A33BAD12E0F257B0FDCF39872A7493E"
     },
     {
       "lod": 2,
@@ -150,7 +152,8 @@
       "atlas": [
         "assets/works/massline_core/source/textures/massline_core_atlas_lod2_basecolor.png",
         "assets/works/massline_core/source/textures/massline_core_atlas_lod2_orm.png",
-        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_normal.png"
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_normal.png",
+        "assets/works/massline_core/source/textures/massline_core_atlas_lod2_emissive.png"
       ],
       "lampLoc": [
         0.18,
@@ -163,8 +166,8 @@
         "LOD2_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod2.glb",
-      "bytes": 179828,
-      "sha256": "F931D07AF5029A74A990B4D18C6BE98E7E13BCB39FE16B59A91DC9233370BFA8"
+      "bytes": 182072,
+      "sha256": "3823FA5615B6E66D4E07EDD49E8197233E6A9A860CDB49361266DD44B26AE97C"
     }
   ]
 }
