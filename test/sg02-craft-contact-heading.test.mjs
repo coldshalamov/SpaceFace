@@ -41,6 +41,33 @@ test('a glancing asteroid bump does not reverse a ship or leave it spinning', as
   }
 });
 
+test('an offset station contact does not rotate the craft during the impact step', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const ship = makeCraft(12, 'ship', { x: -42, z: 8, vx: 90 });
+    const station = makeStaticBody(13, 'station', { x: 0, z: 0, radius: 16 });
+    owner.syncFromEntities([ship, station]);
+
+    let hit = false;
+    let maxAbsRot = 0;
+    for (let i = 0; i < 60; i++) {
+      owner.step(DT);
+      if (owner.drainContactImpacts().some((impact) => impact.aId === ship.id || impact.bId === ship.id)) {
+        hit = true;
+      }
+      maxAbsRot = Math.max(maxAbsRot, Math.abs(ship.rot));
+    }
+
+    assert.equal(hit, true, 'the ship must actually strike the station');
+    assert.ok(maxAbsRot < 0.05,
+      `a station bump must not turn the craft (peak rot=${maxAbsRot})`);
+    assert.ok(Math.abs(ship.angVel) < 0.05,
+      `a station bump must not leave contact yaw velocity (angVel=${ship.angVel})`);
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('authored yaw torque still turns a ship, including after a bump', async () => {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
   try {
@@ -80,11 +107,15 @@ function makeCraft(id, type, pose) {
 }
 
 function makeRock(id, pose) {
+  return makeStaticBody(id, 'asteroid', { ...pose, radius: 10 });
+}
+
+function makeStaticBody(id, type, pose) {
   return {
     id,
-    type: 'asteroid',
+    type,
     alive: true,
-    radius: 10,
+    radius: pose.radius,
     mass: 1_000_000,
     pos: { x: pose.x, z: pose.z },
     vel: { x: 0, z: 0 },
@@ -92,13 +123,13 @@ function makeRock(id, pose) {
     angVel: 0,
     physicsBody: {
       schemaVersion: 1,
-      radius: 10,
+      radius: pose.radius,
       mass: 1_000_000,
       inertiaY: 1_000_000,
       dynamic: false,
       ccd: false,
       revision: 0,
     },
-    data: {},
+    data: type === 'station' ? { stationId: 'test_station' } : {},
   };
 }

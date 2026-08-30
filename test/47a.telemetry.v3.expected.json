@@ -54,21 +54,21 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 2,
-    "combat:damage": 2,
+    "projectile:hit": 17,
+    "combat:damage": 17,
     "economy:tick": 2,
-    "camera:shake": 3,
-    "presentation:cameraCue": 3,
-    "presentation:vfxCue": 4,
-    "presentation:audioCue": 4,
-    "presentation:uiCue": 4,
-    "presentation:caption": 4,
-    "presentation:cueApplied": 6,
-    "presentation:cue": 6,
-    "audio:cue": 4
+    "camera:shake": 4,
+    "presentation:cameraCue": 4,
+    "presentation:vfxCue": 5,
+    "presentation:audioCue": 5,
+    "presentation:uiCue": 5,
+    "presentation:caption": 5,
+    "presentation:cueApplied": 22,
+    "presentation:cue": 22,
+    "audio:cue": 5
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "60551f42970fa9dab5980828466d2e841201ae10fd0fd605f7c2bdc8809f60ee",
+    "authoritativeHash": "8e645aa0528db43b617542b9145a5f173a6097e34c486faa51d3d11dc6143e1b",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -130,6 +130,8 @@
     "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields — the player path under the same stick tape, plus matching physics-body x/z/vx/vz, input aimWorld, and two scenario-timing fields (event[2] tick 171->149).",
     "Trace counts moved: projectile:hit and combat:damage 9->2, presentation cue fanout 13->6. combat:fire UNCHANGED at 17 — same shots fired; the crisper hull evades seven that used to connect (entity[2] shield 40.75->110).",
     "Legacy envelope stays bit-identical: compatibility flight was deliberately given no feel envelopes.",
-    "Prior authoritativeHash was b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70."
+    "Prior authoritativeHash was b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70.",
+    "2026-08-30 deliberate re-record: SG-02 contact pose kicks are removed by restoring craft yaw to its no-contact prediction; authored yaw torque remains active.",
+    "sim-golden-diff v3: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 17, damage 17, presentation cues 22."
   ]
 }

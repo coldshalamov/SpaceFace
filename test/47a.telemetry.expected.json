@@ -52,21 +52,21 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 17,
-    "projectile:hit": 11,
-    "combat:damage": 11,
+    "projectile:hit": 6,
+    "combat:damage": 6,
     "economy:tick": 2,
-    "camera:shake": 3,
-    "presentation:cameraCue": 3,
-    "presentation:vfxCue": 4,
-    "presentation:audioCue": 4,
-    "presentation:uiCue": 4,
-    "presentation:caption": 4,
-    "presentation:cueApplied": 15,
-    "presentation:cue": 15,
-    "audio:cue": 4
+    "camera:shake": 1,
+    "presentation:cameraCue": 1,
+    "presentation:vfxCue": 2,
+    "presentation:audioCue": 2,
+    "presentation:uiCue": 2,
+    "presentation:caption": 2,
+    "presentation:cueApplied": 8,
+    "presentation:cue": 8,
+    "audio:cue": 2
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "1f5706f71d20344553328c051c3bd736728246ce91bd1660a2bc3b0ef66ae3d2",
+    "authoritativeHash": "21ef7a0f4ec2580cc64d58345bb606b3b242bfe854f20bf450095a2ca985044c",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -116,6 +116,8 @@
     "reload-at 600 baselineSha256 equals the run sha256, so the new save key round-trips without divergence.",
     "2026-08-19 deliberate re-record for the same collision-helm change as the V3 envelope: ordinary bumps no longer turn or stagger ships. Combat-driven tumble is unchanged.",
     "Trace counts in this legacy envelope are unchanged (combat:fire 17, projectile:hit 11, combat:damage 11). Only the authoritative snapshot hash moved with the new contact response.",
-    "Prior authoritativeHash was 8bc6b28158340d57822740b3cc04123e10a37e24c2d39d5f7aec80e622548ff7."
+    "Prior authoritativeHash was 8bc6b28158340d57822740b3cc04123e10a37e24c2d39d5f7aec80e622548ff7.",
+    "2026-08-30 deliberate re-record: SG-02 contact pose kicks are removed by restoring craft yaw to its no-contact prediction; authored yaw torque remains active.",
+    "sim-golden-diff legacy: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 6, damage 6, presentation cues 8."
   ]
 }

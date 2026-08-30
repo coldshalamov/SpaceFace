@@ -597,6 +597,11 @@ export class Sg02DynamicBodyOwner {
       + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
     const damping = contactAngularDamping(rec);
     e.wy = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
+    // Rapier can integrate a contact-generated angular response into the pose before the
+    // post-step structural-give pass clamps that response's angular velocity. Keep the pose a
+    // no-contact prediction so a glancing station/rock contact cannot leave a one-frame heading
+    // kick behind after its spin has been removed.
+    e.yaw = wrapAngle(yawFromQuat(rec.body.rotation()) + e.wy * dt);
   }
 
   // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
@@ -626,9 +631,14 @@ export class Sg02DynamicBodyOwner {
     }
     const dw = wy - e.wy;
     const helmLocked = craftKeepsHelmThroughContact(rec);
+    const contactYaw = helmLocked && Math.abs(dw) > CRAFT_CONTACT_YAW_EPS;
     const yawCap = helmLocked ? 0 : MAX_CONTACT_DW;
     if (Math.abs(dw) > (helmLocked ? CRAFT_CONTACT_YAW_EPS : yawCap)) {
       wy = e.wy + Math.sign(dw) * yawCap;
+      touched = true;
+    }
+    if (contactYaw && Number.isFinite(e.yaw)) {
+      rec.body.setRotation(quatFromYaw(e.yaw), true);
       touched = true;
     }
     if (Math.abs(wy) > SANE_MAX_YAW_RATE) {
@@ -722,7 +732,7 @@ export class Sg02DynamicBodyOwner {
       appliedTorque: zero3(),
       controlForce: zero3(),
       controlTorque: zero3(),
-      expected: { vx: 0, vz: 0, wy: 0 },
+      expected: { vx: 0, vz: 0, wy: 0, yaw: 0 },
       kinematics: {
         x: posX,
         z: posZ,
