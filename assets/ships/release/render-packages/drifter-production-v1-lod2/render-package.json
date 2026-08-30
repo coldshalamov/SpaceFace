@@ -519,7 +519,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b98bb958d69d1fa305fe0c61dbae780522496eeeb1f5045c08d4e0f7d5984c00",
+  "contentHash": "1d777b8fa2db7d4f2e8a79d3fac3f1301976b06b9745e9945b4b7f36cfae39d0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1662,8 +1662,8 @@
       "uri": "drifter_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 137851,
-      "sha256": "5ebc4910433519edaa01c79e5ad2da97154f465d5bc1ece79f3d617ba696e9e6",
+      "bytes": 159130,
+      "sha256": "7b2afccfa30f42b89bc8ff89aab28c3bebb4dd7ce9df621e491ea388089295b7",
       "uri": "pilots.json"
     }
   },
@@ -2441,7 +2441,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
   },
-  "runtimeHash": "21476de8dc41c4404e0275984a68498b32ec8560b5551d2454039ea8c4ff2b7f",
+  "runtimeHash": "0312cbcef20399c09f384f51e17f07c702a2e9de7d889a01b43522e99ccbfc65",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

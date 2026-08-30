@@ -450,20 +450,6 @@
       "contractNodeCount": 1
     },
     {
-      "id": "fin_crystalline",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_crystalline.glb",
-      "release": "assets/ships/release/parts/fins/fin_crystalline.glb",
-      "sourceSha256": "bb483fd0e319740f6370e7ea604b5fafc4804c40511e043bdcb20351399208f7",
-      "releaseSha256": "570c7f08e38ba9d770d191261d55441debac01ddf76b590b389f0b81369d9b6c",
-      "sourceBytes": 194568,
-      "releaseBytes": 372576,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 10,
-      "contractNodeCount": 1
-    },
-    {
       "id": "fin_delta",
       "kind": "part:fins",
       "source": "assets/ships/parts/fins/fin_delta.glb",
@@ -783,20 +769,6 @@
       "contractNodeCount": 2
     },
     {
-      "id": "ship_kestrel_reference",
-      "kind": "ship-reference",
-      "source": "assets/ships/kestrel/kestrel_reference.glb",
-      "release": "assets/ships/release/kestrel/kestrel_reference.glb",
-      "sourceSha256": "0ddcce490d3cbf073b2ab3813fafd61138ef067764d4bc9af485aeb97c4d5e72",
-      "releaseSha256": "f06b1f263e427fe4ae21fee244634eddd7e44cd852e574c31564a0e5645c8f20",
-      "sourceBytes": 199044,
-      "releaseBytes": 76060,
-      "textures": 0,
-      "ktx2Textures": 0,
-      "meshoptBufferViews": 59,
-      "contractNodeCount": 7
-    },
-    {
       "id": "place_station_refinery",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_station_refinery.glb",
@@ -1046,25 +1018,6 @@
       }
     },
     {
-      "id": "place_tally_post",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_tally_post.glb",
-      "release": "assets/ships/release/parts/places/place_tally_post.glb",
-      "sourceSha256": "47b07f938262f6e04a1f3152a1ee9a4392d733642c79dbdb47de8bf9bca0e9e7",
-      "releaseSha256": "3f64cfabedbe8d56ff5857cf48181586886d5ff13a850c7291a3888e3e517dc6",
-      "sourceBytes": 46364,
-      "releaseBytes": 27764,
-      "textures": 0,
-      "ktx2Textures": 0,
-      "meshoptBufferViews": 26,
-      "contractNodeCount": 0,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_claim_mark",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_claim_mark.glb",
@@ -1076,44 +1029,6 @@
       "textures": 0,
       "ktx2Textures": 0,
       "meshoptBufferViews": 33,
-      "contractNodeCount": 0,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
-      "id": "place_cold_locker",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_cold_locker.glb",
-      "release": "assets/ships/release/parts/places/place_cold_locker.glb",
-      "sourceSha256": "53327515c91eb68cc5d60f94b398b2fcd29401a98c56e1d6485b96bb35aa5fb7",
-      "releaseSha256": "fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25",
-      "sourceBytes": 141852,
-      "releaseBytes": 54788,
-      "textures": 0,
-      "ktx2Textures": 0,
-      "meshoptBufferViews": 33,
-      "contractNodeCount": 0,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
-      "id": "place_ash_pin",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_ash_pin.glb",
-      "release": "assets/ships/release/parts/places/place_ash_pin.glb",
-      "sourceSha256": "35412f9ed212a3b3903447f02f7e1044a5868f7bf27337dd05ef9b84149a1d23",
-      "releaseSha256": "0f14dca70c41cad751b584643b1f0a36bc011748fc96fcd7ba20f13d707b7b55",
-      "sourceBytes": 40944,
-      "releaseBytes": 22908,
-      "textures": 0,
-      "ktx2Textures": 0,
-      "meshoptBufferViews": 18,
       "contractNodeCount": 0,
       "textureProfiles": {
         "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
@@ -1799,20 +1714,6 @@
       "ktx2Textures": 26,
       "meshoptBufferViews": 97,
       "contractNodeCount": 30
-    },
-    {
-      "id": "wholeship_pelican_production_v1",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/pelican_production_v1.glb",
-      "release": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
-      "sourceSha256": "d06f276d3cf9dd75d6960ed210224e2b4d3b0e688ef0ad1e2b6e8bfcd01a84d7",
-      "releaseSha256": "d06f276d3cf9dd75d6960ed210224e2b4d3b0e688ef0ad1e2b6e8bfcd01a84d7",
-      "sourceBytes": 1644940,
-      "releaseBytes": 1644940,
-      "textures": 0,
-      "ktx2Textures": 0,
-      "meshoptBufferViews": 0,
-      "contractNodeCount": 20
     },
     {
       "id": "wholeship_rescue_lifter",
@@ -3884,6 +3785,96 @@
       "ktx2Textures": 24,
       "meshoptBufferViews": 43,
       "contractNodeCount": 19
+    },
+    {
+      "id": "ship_kestrel_reference",
+      "kind": "ship-reference",
+      "source": "assets/ships/kestrel/kestrel_reference.glb",
+      "release": "assets/ships/release/kestrel/kestrel_reference.glb",
+      "developmentOnly": true,
+      "developmentOnlyReason": "reference art for the Kestrel production body; never loaded by the runtime asset selector",
+      "sourceSha256": "0ddcce490d3cbf073b2ab3813fafd61138ef067764d4bc9af485aeb97c4d5e72",
+      "releaseSha256": "f06b1f263e427fe4ae21fee244634eddd7e44cd852e574c31564a0e5645c8f20",
+      "sourceBytes": 199044,
+      "releaseBytes": 76060,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 59,
+      "contractNodeCount": 7
+    },
+    {
+      "id": "fin_crystalline",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_crystalline.glb",
+      "release": "assets/ships/release/parts/fins/fin_crystalline.glb",
+      "sourceSha256": "bb483fd0e319740f6370e7ea604b5fafc4804c40511e043bdcb20351399208f7",
+      "releaseSha256": "11637f763f94c05fff472202c37243132fbd476f85e0ff9f60aeb4035b99c0c2",
+      "sourceBytes": 194568,
+      "releaseBytes": 372580,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 10,
+      "contractNodeCount": 1
+    },
+    {
+      "id": "wholeship_pelican_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/pelican_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
+      "sourceSha256": "d06f276d3cf9dd75d6960ed210224e2b4d3b0e688ef0ad1e2b6e8bfcd01a84d7",
+      "releaseSha256": "436c72975cde7a13947969d539aa0280b146a757400461c016327a2e0f01f105",
+      "sourceBytes": 1644940,
+      "releaseBytes": 390992,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 20
+    },
+    {
+      "id": "place_tally_post",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_tally_post.glb",
+      "release": "assets/ships/release/parts/places/place_tally_post.glb",
+      "developmentOnly": true,
+      "developmentOnlyReason": "Held out of the live lane-furniture selector until the authored placement review is re-run; retain the source and release bytes for re-authoring.",
+      "sourceSha256": "47b07f938262f6e04a1f3152a1ee9a4392d733642c79dbdb47de8bf9bca0e9e7",
+      "releaseSha256": "85fec641d6c3dc4d3d8f077cd65510ee8a0ae07e48ad31b97824a31d0f6f0c47",
+      "sourceBytes": 46364,
+      "releaseBytes": 27828,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 26,
+      "contractNodeCount": 0
+    },
+    {
+      "id": "place_cold_locker",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_cold_locker.glb",
+      "release": "assets/ships/release/parts/places/place_cold_locker.glb",
+      "sourceSha256": "53327515c91eb68cc5d60f94b398b2fcd29401a98c56e1d6485b96bb35aa5fb7",
+      "releaseSha256": "bc59994f9fc9b6e084571abefbacc01fd7b706298f442a6777c69afc6724abb8",
+      "sourceBytes": 141852,
+      "releaseBytes": 54852,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 33,
+      "contractNodeCount": 0
+    },
+    {
+      "id": "place_ash_pin",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_ash_pin.glb",
+      "release": "assets/ships/release/parts/places/place_ash_pin.glb",
+      "developmentOnly": true,
+      "developmentOnlyReason": "Held out of the live lane-furniture selector until the authored placement review is re-run; retain the source and release bytes for re-authoring.",
+      "sourceSha256": "35412f9ed212a3b3903447f02f7e1044a5868f7bf27337dd05ef9b84149a1d23",
+      "releaseSha256": "81118a505c5a3f7ba3df89923488b2d7b74c8a782f949c4ce6cd030adff48dbb",
+      "sourceBytes": 40944,
+      "releaseBytes": 22972,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 18,
+      "contractNodeCount": 0
     }
   ]
 }

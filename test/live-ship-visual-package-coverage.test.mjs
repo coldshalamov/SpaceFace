@@ -111,12 +111,9 @@ test('modular live contract files used by leftover patrol/capital enemies are pa
   assert.ok(leftovers.some((enemy) => enemy.id === 'patrol_lawman'));
   assert.ok(leftovers.some((enemy) => enemy.id === 'dreadnought_boss'));
   const shipSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod'];
-  const allowlisted = new Set(['fins/fin_crystalline.glb']);
   for (const slot of shipSlots) {
     assertPackaged(
-      (PART_LIBRARY_CONTRACT.slots[slot] || []).filter((file) => (
-        !String(file).startsWith('wholeships/') && !allowlisted.has(file)
-      )),
+      (PART_LIBRARY_CONTRACT.slots[slot] || []).filter((file) => !String(file).startsWith('wholeships/')),
       `modular ${slot}`,
       packaged,
     );

@@ -95,6 +95,8 @@ const allAssets = [
     kind: 'ship-reference',
     source: 'assets/ships/kestrel/kestrel_reference.glb',
     release: 'assets/ships/release/kestrel/kestrel_reference.glb',
+    developmentOnly: true,
+    developmentOnlyReason: 'reference art for the Kestrel production body; never loaded by the runtime asset selector',
   },
   ...(partManifest.parts || [])
     .filter((part) => part.status !== 'blocked')
@@ -103,6 +105,12 @@ const allAssets = [
       kind: `part:${part.category}`,
       source: `assets/ships/parts/${part.file}`,
       release: `assets/ships/release/parts/${part.file}`,
+      ...(part.developmentOnly === true
+        ? {
+          developmentOnly: true,
+          developmentOnlyReason: String(part.developmentOnlyReason || 'not admitted to the runtime asset selector'),
+        }
+        : {}),
     })),
   ...WHOLE_SHIP_FILES.filter((file) => !manifestPartFiles.has(`wholeships/${file}`)).map((file) => ({
     id: `wholeship_${file.replace(/\.glb$/, '')}`,
@@ -219,6 +227,7 @@ for (let index = 0; index < assets.length; index++) {
     }));
 
     await document.transform(...transforms);
+    repairReleaseSemanticNodeNames(document);
     stampReleaseTextureCompression(document, sourceInspection);
     await mkdir(dirname(releaseAbs), { recursive: true });
     await writeDocumentAtomic(io, releaseAbs, document);
@@ -293,6 +302,12 @@ function appendManifestAsset(manifest, asset, pair, sourceBytes, releaseBytes) {
     kind: asset.kind,
     source: asset.source,
     release: asset.release,
+    ...(asset.developmentOnly === true
+      ? {
+        developmentOnly: true,
+        developmentOnlyReason: String(asset.developmentOnlyReason || 'not admitted to the runtime asset selector'),
+      }
+      : {}),
     sourceSha256: sha256(sourceBytes),
     releaseSha256: sha256(releaseBytes),
     sourceBytes: sourceBytes.length,
@@ -302,6 +317,33 @@ function appendManifestAsset(manifest, asset, pair, sourceBytes, releaseBytes) {
     meshoptBufferViews: pair.release.metrics.meshoptBufferViewCount,
     contractNodeCount: pair.release.metrics.contractNodeNames.length,
   });
+}
+
+// glTF-Transform may split a mesh-bearing node that also has children into a generated child
+// node. That child is visible and belongs to the release graph, so an empty name is not a valid
+// semantic identity. Likewise, a handful of legacy exports contain duplicate mesh-node names.
+// Repair only those malformed names in the generated release document; authored source remains
+// immutable and the release bytes stay reproducible from this builder.
+function repairReleaseSemanticNodeNames(document) {
+  const nodes = document.getRoot().listNodes();
+  const used = new Set();
+  for (const node of nodes) {
+    const original = String(node.getName() || '');
+    if (original && !used.has(original)) {
+      used.add(original);
+      continue;
+    }
+    if (!original && !node.getMesh()) continue;
+
+    const parent = node.getParentNode();
+    const base = original
+      || (parent && parent.getName() ? `${parent.getName()}_Mesh` : 'Generated_Mesh');
+    let suffix = original ? 2 : 1;
+    let candidate = original ? `${base}_${suffix}` : base;
+    while (used.has(candidate)) candidate = `${base}_${++suffix}`;
+    node.setName(candidate);
+    used.add(candidate);
+  }
 }
 
 function stampReleaseTextureCompression(document, sourceInspection) {

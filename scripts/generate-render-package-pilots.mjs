@@ -87,12 +87,28 @@ async function main(argv) {
   const manifestPath = resolve(REPO_ROOT, MANIFEST);
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   const release = JSON.parse(await readFile(resolve(REPO_ROOT, manifest.releaseManifest), 'utf8'));
+  const releaseRows = new Map((release.assets || []).map((row) => [
+    String(row.release || '').replace(/\\/g, '/'),
+    row,
+  ]));
+  const developmentOnlyReason = (row) => {
+    if (row?.developmentOnly !== true) return null;
+    const reason = String(row.developmentOnlyReason || '').trim();
+    if (!reason) throw new Error(`${row.id || row.release}: developmentOnly rows require developmentOnlyReason.`);
+    return reason;
+  };
 
   // Drop entries that were claimed but never successfully built. Only candidates with no output
   // directory are eligible, so an already-compiled package is never removed by a validation change.
   const pruned = [];
   const surviving = [];
   for (const pilot of manifest.pilots) {
+    const row = releaseRows.get(String(pilot.sourceUrl || '').replace(/\\/g, '/'));
+    const devOnlyReason = developmentOnlyReason(row);
+    if (devOnlyReason) {
+      pruned.push(`${pilot.sourceUrl} (development-only: ${devOnlyReason})`);
+      continue;
+    }
     if (existsSync(resolve(REPO_ROOT, pilot.outputDir, 'render-package.json'))) {
       surviving.push(pilot);
       continue;
@@ -110,27 +126,51 @@ async function main(argv) {
   const taken = new Set(manifest.pilots.map((pilot) => pilot.key));
   const added = [];
   const skipped = [];
+  const invalid = [];
 
   for (const row of release.assets || []) {
     const url = String(row.release || '').replace(/\\/g, '/');
     if (!url.endsWith('.glb') || packaged.has(url)) continue;
     const absolute = resolve(REPO_ROOT, url);
     if (!existsSync(absolute)) {
-      skipped.push(`${url} (declared in the release manifest but absent on disk)`);
+      const devOnlyReason = developmentOnlyReason(row);
+      if (devOnlyReason) skipped.push(`${url} (development-only: ${devOnlyReason})`);
+      else invalid.push(`${url} (declared in the release manifest but absent on disk)`);
+      continue;
+    }
+    const devOnlyReason = developmentOnlyReason(row);
+    if (devOnlyReason) {
+      skipped.push(`${url} (development-only: ${devOnlyReason})`);
       continue;
     }
 
     const dir = url.split('/')[4];
     const json = readGlbJson(await readFile(absolute));
-    const asset = json.asset?.extras?.spacefaceAsset || json.asset?.extras || {};
+    const scene = (json.scenes || [])[json.scene ?? 0];
+    const sceneRoot = scene && Array.isArray(scene.nodes) && scene.nodes.length === 1
+      ? (json.nodes || [])[scene.nodes[0]]
+      : null;
+    const asset = [
+      json.asset?.extras?.spacefaceAsset,
+      json.asset?.extras?.spaceface,
+      scene?.extras?.spacefaceAsset,
+      scene?.extras?.spaceface,
+      sceneRoot?.extras?.spacefaceAsset,
+      sceneRoot?.extras?.spaceface,
+      json.asset?.extras,
+    ].find((value) => value && typeof value === 'object') || {};
     const runtimeAssetId = asset.assetId;
     if (!runtimeAssetId) {
-      skipped.push(`${url} (no spacefaceAsset.assetId; cannot bind a runtime identity)`);
+      const detail = 'no spacefaceAsset.assetId; cannot bind a runtime identity';
+      if (devOnlyReason) skipped.push(`${url} (development-only: ${devOnlyReason})`);
+      else invalid.push(`${url} (${detail})`);
       continue;
     }
     const slot = asset.slot || SLOT_BY_DIR[dir];
     if (!slot) {
-      skipped.push(`${url} (no slot, and directory "${dir}" has no slot mapping)`);
+      const detail = `no slot, and directory "${dir}" has no slot mapping`;
+      if (devOnlyReason) skipped.push(`${url} (development-only: ${devOnlyReason})`);
+      else invalid.push(`${url} (${detail})`);
       continue;
     }
 
@@ -159,7 +199,9 @@ async function main(argv) {
       await derivePilotSemanticManifest(candidate, absolute);
     } catch (error) {
       taken.delete(key);
-      skipped.push(`${url} (${error?.message || error})`);
+      const detail = error?.message || error;
+      if (devOnlyReason) skipped.push(`${url} (development-only: ${devOnlyReason})`);
+      else invalid.push(`${url} (${detail})`);
       continue;
     }
     added.push(candidate);
@@ -169,16 +211,32 @@ async function main(argv) {
   for (const note of skipped) console.log(`skip ${note}`);
 
   if (check) {
+    if (invalid.length) {
+      console.error(`\n${invalid.length} released assets cannot enter the render-package graph:`);
+      for (const note of invalid) console.error(`  ${note}`);
+      console.error('\nRepair the authored release asset or mark it developmentOnly with a reason in the canonical release builder.');
+      return 1;
+    }
     if (added.length) {
       console.error(`\n${added.length} release assets have no render package:`);
       for (const pilot of added) console.error(`  ${pilot.sourceUrl}`);
       console.error('\nRun: node scripts/generate-render-package-pilots.mjs');
       return 1;
     }
-    console.log(`render-package coverage: all ${manifest.pilots.length} release assets packaged`);
+    const developmentOnlyCount = (release.assets || []).filter((row) => row.developmentOnly === true).length;
+    console.log(
+      `render-package coverage: all ${manifest.pilots.length} production release assets packaged; `
+      + `${developmentOnlyCount} development-only release assets explicitly excluded`,
+    );
     return 0;
   }
 
+  if (invalid.length) {
+    console.error(`\n${invalid.length} released assets cannot enter the render-package graph:`);
+    for (const note of invalid) console.error(`  ${note}`);
+    console.error('\nRepair the authored release asset or mark it developmentOnly with a reason in the canonical release builder.');
+    return 1;
+  }
   if (!added.length && !pruned.length) {
     console.log(`render-package coverage: already complete (${manifest.pilots.length} pilots)`);
     return 0;

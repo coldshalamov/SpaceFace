@@ -1,0 +1,534 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-crystalline",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "bdc6b6b1dbcfe64ceeed28076fe152d1d73061e46d1db2264412b339e84255a3",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.8000030517578125,
+          0.10997039824724197,
+          4.300000190734863
+        ],
+        "min": [
+          -0.30000314116477966,
+          -0.10997039824724197,
+          0
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "23d7fdf2998a194e84c71e14913d1dcce0a5bd547ba835143f715b118295b764",
+      "id": "sf.render.fin-crystalline.mesh.crystal-plane.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "materialPipelineKey": "opaque",
+      "meshName": "Crystal_Plane",
+      "nodeId": "sf.render.fin-crystalline.mesh.crystal-plane",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.1950409412384033,
+          0.2000894397497177,
+          3.792797565460205
+        ],
+        "min": [
+          0.15495896339416504,
+          0.11991055309772491,
+          0.40720245242118835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "471428968141bc4b9229a13e3f81b27496e1ba1ee32f6fa9f1090ab4d84c5a6c",
+      "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged-2.primitive.0",
+      "indexCount": 1200,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_crystalline_Material_Accent_Merged",
+      "nodeId": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged-2",
+      "primitiveIndex": 0,
+      "vertexCount": 210
+    },
+    {
+      "bounds": {
+        "max": [
+          3.4291656017303467,
+          0.19490478932857513,
+          3.75
+        ],
+        "min": [
+          0.07083459198474884,
+          0.10509520024061203,
+          0.16123077273368835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57594589b5b02a5d91393a9ef66b4eb74924dfc225d8d0cc7c88e735e24a1cdc",
+      "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_crystalline_Material_Accent_Merged",
+      "nodeId": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 54
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "id": "material:345a2ca5e0bd4360fdc384bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-crystalline.mesh.crystal-plane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Crystal_Plane",
+      "nodeName": "Crystal_Plane",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.fin-crystalline.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-crystalline.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_crystalline_Material_Accent_Merged",
+      "nodeName": "fin_crystalline_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.fin-crystalline.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-crystalline.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_crystalline_Material_Accent_Merged_2",
+      "nodeName": "fin_crystalline_Material_Accent_Merged_2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.fin-crystalline.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-crystalline.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-crystalline.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "fin_crystalline",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-crystalline.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3690d6588a851b8d7e0a9d12e62592cb72531933d0c961168fe4c5b252ed9463"
+    },
+    "sourceGlb": {
+      "bytes": 372580,
+      "sha256": "11637f763f94c05fff472202c37243132fbd476f85e0ff9f60aeb4035b99c0c2",
+      "uri": "fin_crystalline.glb"
+    },
+    "sourceManifest": {
+      "bytes": 159130,
+      "sha256": "7b2afccfa30f42b89bc8ff89aab28c3bebb4dd7ce9df621e491ea388089295b7",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 377304,
+    "sha256": "649921240d5c971cd26a8bcf2813a6fd08c0be68234df2e2cbdf01e663ee919d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.7499999552965164,
+        0.04505952075123787,
+        2.1500000953674316
+      ],
+      "max": [
+        3.8000030517578125,
+        0.2000894397497177,
+        4.300000190734863
+      ],
+      "min": [
+        -0.30000314116477966,
+        -0.10997039824724197,
+        0
+      ],
+      "size": [
+        4.100006192922592,
+        0.3100598379969597,
+        4.300000190734863
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 3,
+        "tags": {},
+        "userData": {
+          "name": "HOOK_Emissive",
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 2,
+      "hull": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 14,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "Crystal_Plane",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_crystalline_Material_Accent_Merged",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "fin_crystalline_Material_Accent_Merged_2",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_crystalline.glb"
+  },
+  "runtimeHash": "3dfb2e84bea3cf653390abcc487332f9d16a32d985be2e01e1017300b7f605f2",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.8000030517578125,
+          0.2000894397497177,
+          4.300000190734863
+        ],
+        "min": [
+          -0.30000314116477966,
+          -0.10997039824724197,
+          0
+        ]
+      },
+      "id": "sf.render.fin-crystalline.body",
+      "nodeIds": [
+        "sf.render.fin-crystalline.mesh.crystal-plane",
+        "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged",
+        "sf.render.fin-crystalline.mesh.fin-crystalline-material-accent-merged-2",
+        "sf.render.fin-crystalline.root"
+      ]
+    }
+  ]
+}
