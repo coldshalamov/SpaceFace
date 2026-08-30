@@ -1,0 +1,868 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-conduit-lane-cross",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "097fec4a24624c3d1ec8c807bf409660bdad03868c166a19b69911ea31eeb969",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.17596840858459473,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          0.1660315841436386,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80fd3fb6688dc52c3c5c67bc47e8a56638a82c2a1dbc7a4a5b05c78b849040fc",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod0-flow-mesh.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_flow_mesh",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod0-flow-mesh",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1665740013122559,
+          0.26001885533332825,
+          1.1566141843795776
+        ],
+        "min": [
+          -1.1665740013122559,
+          -0.000018877146430895664,
+          -1.1699830293655396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a95434c2c0b426970272a63c01b18c57b7b49fcaf7bdfee936b11630e3bdd3fb",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod0-merged-material-atlas.primitive.0",
+      "indexCount": 4380,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Atlas",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod0-merged-material-atlas",
+      "primitiveIndex": 0,
+      "vertexCount": 2118
+    },
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.17596840858459473,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          0.1660315841436386,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "40bca6522265416a46e829466ece2371392753eb53709b0643c6ee07e7e53c79",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod1-flow-mesh.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_flow_mesh",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod1-flow-mesh",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1700000762939453,
+          0.2599722445011139,
+          1.1700000762939453
+        ],
+        "min": [
+          -1.1700000762939453,
+          0.000027758720534620807,
+          -1.1700000762939453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7197701fabfa625b5aea3c7c6376e12256c492a51f742d850176f4cc31cb141e",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod1-merged-material-atlas.primitive.0",
+      "indexCount": 2292,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Atlas",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod1-merged-material-atlas",
+      "primitiveIndex": 0,
+      "vertexCount": 1174
+    },
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.17596840858459473,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          0.1660315841436386,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff806b0d3f131a389697cc16713164e0cea153f69861953b38df817bcff8b967",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod2-flow-mesh.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_flow_mesh",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod2-flow-mesh",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.100000023841858,
+          0.25998443365097046,
+          1.100000023841858
+        ],
+        "min": [
+          -1.100000023841858,
+          0.000015556975995423272,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af3c26619955466980a2362be9ebbb13731812e1582f9da9c9da9096882402c1",
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod2-merged-material-atlas.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Atlas",
+      "nodeId": "sf.render.works-conduit-lane-cross.mesh.lod2-merged-material-atlas",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "693fb708bae4f804c49c32935cb456c3dd61e6a2650e2b50778bcbc81ad206d4",
+      "id": "material:693fb708bae4f804c49c3293",
+      "name": "ConduitAtlas_lane",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "lane_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "lane_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "lane_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "lane_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod0-flow-mesh",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_flow_mesh",
+      "nodeName": "LOD0_flow_mesh",
+      "nodePath": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod0-merged-material-atlas",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Atlas",
+      "nodeName": "LOD0_Merged_Material_Atlas",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod1-flow-mesh",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_flow_mesh",
+      "nodeName": "LOD1_flow_mesh",
+      "nodePath": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod1-merged-material-atlas",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Atlas",
+      "nodeName": "LOD1_Merged_Material_Atlas",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod2-flow-mesh",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_flow_mesh",
+      "nodeName": "LOD2_flow_mesh",
+      "nodePath": [
+        0,
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.mesh.lod2-merged-material-atlas",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Atlas",
+      "nodeName": "LOD2_Merged_Material_Atlas",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.works-conduit-lane-cross.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-conduit-lane-cross.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_works_conduit_lane_cross",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-conduit-lane-cross.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "dcd8419a59d7b2f6e891de1a68950867e835889a12321c6d7980d021b4133844"
+    },
+    "sourceGlb": {
+      "bytes": 496836,
+      "sha256": "9a5b5b22645a7759663c2f4448596f554875909eb169bfcad9af44f52f3a348b",
+      "uri": "place_works_conduit_lane_cross.glb"
+    },
+    "sourceManifest": {
+      "bytes": 152758,
+      "sha256": "7733f4021f30af1314e5bfd7815ee21d5592c96efb6bc1f66567955dff3a8db9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 523476,
+    "sha256": "fd992853016bdd3c7f73191be9227643b146cd8d1442174df96137e671b09227",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.12999998909344868,
+        0
+      ],
+      "max": [
+        1.1700000762939453,
+        0.26001885533332825,
+        1.1700000762939453
+      ],
+      "min": [
+        -1.1700000762939453,
+        -0.000018877146430895664,
+        -1.1700000762939453
+      ],
+      "size": [
+        2.3400001525878906,
+        0.26003773247975914,
+        2.3400001525878906
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "flow_mesh",
+        "planIndex": 3,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "flow_mesh",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 10,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_flow_mesh",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_flow_mesh",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_flow_mesh",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Atlas",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Atlas",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Atlas",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb"
+  },
+  "runtimeHash": "c825c57aa97aa4dd0684e693e3427ed7f457309ed3947c8359a806e25a4b0b8b",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.1700000762939453,
+          0.26001885533332825,
+          1.1700000762939453
+        ],
+        "min": [
+          -1.1700000762939453,
+          -0.000018877146430895664,
+          -1.1700000762939453
+        ]
+      },
+      "id": "sf.render.works-conduit-lane-cross.body",
+      "nodeIds": [
+        "sf.render.works-conduit-lane-cross.mesh.lod0-flow-mesh",
+        "sf.render.works-conduit-lane-cross.mesh.lod0-merged-material-atlas",
+        "sf.render.works-conduit-lane-cross.mesh.lod1-flow-mesh",
+        "sf.render.works-conduit-lane-cross.mesh.lod1-merged-material-atlas",
+        "sf.render.works-conduit-lane-cross.mesh.lod2-flow-mesh",
+        "sf.render.works-conduit-lane-cross.mesh.lod2-merged-material-atlas",
+        "sf.render.works-conduit-lane-cross.root"
+      ]
+    }
+  ]
+}

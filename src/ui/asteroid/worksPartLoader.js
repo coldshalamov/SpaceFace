@@ -62,6 +62,66 @@ export const REFINERY_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
+
+function conduitPart(family, kind) {
+  const assetId = `place_works_conduit_${family}_${kind}`;
+  return Object.freeze({
+    lod0: `assets/ships/release/parts/works/${assetId}.glb`,
+    lod1: null,
+    slot: 'place',
+    hooks: Object.freeze([family === 'power' ? 'powered' : 'flow_mesh']),
+  });
+}
+
+/**
+ * Resolve the live N/E/S/W connectivity mask onto the conduit kit's canonical ports.
+ * Bits are siteLogistics' N=1,E=2,S=4,W=8. Canonical authored ports are:
+ * end=E, straight=E/W, corner=N/E, T=N/E/W, cross/junction=all four.
+ * `service` selects the four-port service-box variant without inventing a port.
+ */
+export function resolveWorksConduitPiece(family, mask, { service = false } = {}) {
+  if (family !== 'power' && family !== 'lane') {
+    throw new Error(`[worksPartLoader] unknown conduit family "${family}"`);
+  }
+  if (!Number.isInteger(mask) || mask < 0 || mask > 15) {
+    throw new Error(`[worksPartLoader] conduit mask must be an integer 0..15, got ${mask}`);
+  }
+  if (mask === 0) return null;
+
+  const arms = (mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1);
+  let kind = null;
+  let rotation = 0;
+  if (arms === 1) {
+    kind = 'end';
+    rotation = ({ 2: 0, 4: -Math.PI / 2, 8: Math.PI, 1: Math.PI / 2 })[mask];
+  } else if (arms === 2) {
+    if (mask === 10 || mask === 5) {
+      kind = 'straight';
+      rotation = mask === 10 ? 0 : Math.PI / 2;
+    } else {
+      kind = 'corner';
+      rotation = ({ 3: 0, 6: -Math.PI / 2, 12: Math.PI, 9: Math.PI / 2 })[mask];
+    }
+  } else if (arms === 3) {
+    kind = 't';
+    rotation = ({ 11: 0, 7: -Math.PI / 2, 14: Math.PI, 13: Math.PI / 2 })[mask];
+  } else {
+    kind = service ? 'junction' : 'cross';
+  }
+
+  if (!CONDUIT_KINDS.includes(kind) || !Number.isFinite(rotation)) {
+    throw new Error(`[worksPartLoader] unresolved conduit mask ${mask}`);
+  }
+  return Object.freeze({
+    family,
+    kind,
+    mask,
+    assetId: `place_works_conduit_${family}_${kind}`,
+    rotation,
+  });
+}
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -105,6 +165,18 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: REFINERY_HOOKS,
   }),
+  place_works_conduit_power_straight: conduitPart('power', 'straight'),
+  place_works_conduit_power_corner: conduitPart('power', 'corner'),
+  place_works_conduit_power_t: conduitPart('power', 't'),
+  place_works_conduit_power_cross: conduitPart('power', 'cross'),
+  place_works_conduit_power_end: conduitPart('power', 'end'),
+  place_works_conduit_power_junction: conduitPart('power', 'junction'),
+  place_works_conduit_lane_straight: conduitPart('lane', 'straight'),
+  place_works_conduit_lane_corner: conduitPart('lane', 'corner'),
+  place_works_conduit_lane_t: conduitPart('lane', 't'),
+  place_works_conduit_lane_cross: conduitPart('lane', 'cross'),
+  place_works_conduit_lane_end: conduitPart('lane', 'end'),
+  place_works_conduit_lane_junction: conduitPart('lane', 'junction'),
 });
 
 function selectUrl(entry, register) {
@@ -369,6 +441,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       register,
       lod1Missing,
       untaggedMeshes,
+      live: live.length,
       standing: standing.size,
       lastError,
     };

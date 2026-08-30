@@ -933,6 +933,13 @@ try {
           const h = document.querySelector('.ast-canvas').__ast3d;
           return { net: h.networks(), lens: h.lens(), crates: h.crates(), faces: h.faces() };
         });
+        await page.waitForFunction(() => {
+          const canvas = document.querySelector('.ast-canvas');
+          const h = canvas && canvas.__ast3d;
+          if (!h || typeof h.networks !== 'function') return false;
+          const phase = h.networks().mountPhase;
+          return phase === 'authored' || phase === 'fallback';
+        }, null, { timeout: 20000 }).catch(() => {});
         const n0 = await readNet();
         notes.push(`${label}: §7 networks — ${n0.net.runs.length} runs `
           + `[${n0.net.runs.map((r) => `${r.kind}:${r.key}:${r.live ? 'live' : 'dark'}@${r.emissive}`).join(', ')}]`
@@ -1048,6 +1055,14 @@ try {
         const work = await readNet();
         await page.keyboard.press('KeyZ');
         await page.waitForTimeout(700);
+        await page.waitForFunction(() => {
+          const canvas = document.querySelector('.ast-canvas');
+          const h = canvas && canvas.__ast3d;
+          if (!h || typeof h.networks !== 'function') return false;
+          const net = h.networks();
+          return net.register === 'site'
+            && (net.mountPhase === 'authored' || net.mountPhase === 'fallback');
+        }, null, { timeout: 20000 }).catch(() => {});
         const siteReg = await readNet();
         notes.push(`${label}: §7 register work(armour ${work.net.casings}, lane ${work.net.laneWidthPx}px,`
           + ` seam α ${work.lens.seamAlpha}) -> site(armour ${siteReg.net.casings},`

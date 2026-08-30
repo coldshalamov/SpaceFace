@@ -5830,6 +5830,222 @@
       }
     },
     {
+      "id": "place_works_conduit_power_straight",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_straight.glb",
+      "tris": 788,
+      "bytes": 394432,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 788/344/44-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 A939E2FD4A22C63A2D5116B55E237F46A6D06B5CE7C936E4C56B08A07BD1DC85 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -0.2549999952316284],
+        "max": [1.100000023841858, 0.20000000298023224, 0.2549999952316284],
+        "dimensionsM": [2.200000047683716, 0.20000000298023224, 0.5099999904632568]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_corner.glb",
+      "tris": 912,
+      "bytes": 412320,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 912/472/124-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 0FE74535BC5AA6C09B07B6B10A4D1FFE0AB9E885CF459C54AFB9C89BA6BC1542 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.2549999952316284, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.20000000298023224, 0.2549999952316284],
+        "dimensionsM": [1.3550000190734863, 0.20000000298023224, 1.3550000190734863]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_t.glb",
+      "tris": 872,
+      "bytes": 415960,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 872/492/132-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 8790991E0B798076E4F2A54C24C18CEDAAD01A6A2ED7A509E9D0860D2330E083 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.20000000298023224, 0.2549999952316284],
+        "dimensionsM": [2.200000047683716, 0.20000000298023224, 1.3550000190734863]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_cross.glb",
+      "tris": 1276,
+      "bytes": 467708,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 1276/740/164-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 E070997992AE8CDAE6FF585319ACA7154365294D918F9032E8C54230C19D5CA9 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.20000000298023224, 1.100000023841858],
+        "dimensionsM": [2.200000047683716, 0.20000000298023224, 2.200000047683716]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_end.glb",
+      "tris": 952,
+      "bytes": 427792,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 952/464/116-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 0D38BE7A45CE36C45019802E3851C45A030146E1FF015CB39FF96ED0EBAC2D62 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.3799999952316284, -0.02500000037252903, -0.26499998569488525],
+        "max": [1.149999976158142, 0.22499999403953552, 0.26499998569488525],
+        "dimensionsM": [1.5299999713897705, 0.24999999441206455, 0.5299999713897705]
+      }
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_power_junction.glb",
+      "tris": 1620,
+      "bytes": 522136,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted armoured ladder-tray power fitting with gold jacket in the trough with explicit 1620/724/100-triangle LODs. Runtime hook: powered. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 05EC1E15A05BCB6C25B81340AD92A6E06520066510AF6DB05E74116189408608 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["powered"],
+      "sockets": ["powered"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.100000023841858, 0, -1.100000023841858],
+        "max": [1.100000023841858, 0.3230000138282776, 1.100000023841858],
+        "dimensionsM": [2.200000047683716, 0.3230000138282776, 2.200000047683716]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_straight.glb",
+      "tris": 704,
+      "bytes": 333520,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 704/340/56-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 751E55D9E4531D877A408BB38F38698B4E7AE5E26B8929036CDAE86315863C7B and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1100000143051147, 0, -0.3873000144958496],
+        "max": [1.1100000143051147, 0.25999999046325684, 0.3873000144958496],
+        "dimensionsM": [2.2200000286102295, 0.25999999046325684, 0.7746000289916992]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_corner.glb",
+      "tris": 924,
+      "bytes": 360468,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 924/432/192-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 654281521ED1735DA34054B23E1DBDF9509A68E59A02E8BAB762FAC9BC99F253 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.3873000144958496, 0, -1.1100000143051147],
+        "max": [1.1100000143051147, 0.25999999046325684, 0.3873000144958496],
+        "dimensionsM": [1.4973000288009644, 0.25999999046325684, 1.4973000288009644]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_t.glb",
+      "tris": 1210,
+      "bytes": 405432,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 1210/614/180-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 3A447ADD078CA58B573037EBCEB3BA24912ED0553B8007050B263DD96E090222 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1700000762939453, 0, -1.1700000762939453],
+        "max": [1.1700000762939453, 0.25999999046325684, 0.5174999833106995],
+        "dimensionsM": [2.3400001525878906, 0.25999999046325684, 1.6875000596046448]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_cross.glb",
+      "tris": 1556,
+      "bytes": 449632,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 1556/828/252-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 7EA5018BC232498D789B408E2BFD814DEEA69FBAD0F3B75D3133AB66D755EB74 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1700000762939453, 0, -1.1700000762939453],
+        "max": [1.1700000762939453, 0.25999999046325684, 1.1700000762939453],
+        "dimensionsM": [2.3400001525878906, 0.25999999046325684, 2.3400001525878906]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_end.glb",
+      "tris": 868,
+      "bytes": 358020,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 868/412/92-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 BE6A20D98A43A5114034EDF3CCB369BC5F0EE2617587CF5CAAFBE5581091EEB1 and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.3580000102519989, -0.009999999776482582, -0.5174999833106995],
+        "max": [1.1665740013122559, 0.27900001406669617, 0.38999998569488525],
+        "dimensionsM": [1.5245740115642548, 0.28900001384317875, 0.9074999690055847]
+      }
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "category": "works",
+      "priority": "P0",
+      "file": "works/place_works_conduit_lane_junction.glb",
+      "tris": 1216,
+      "bytes": 441156,
+      "textureSize": 1024,
+      "note": "PQ-131.06 Cycle 03 — accepted open C-rail material-lane fitting with rollers and a narrow cover strip with explicit 1216/712/276-triangle LODs. Runtime hook: flow_mesh. Independent source KEEP at 9d3f56757f6c805cf2fc385b5ecad52eab23aff5 against piece SHA-256 376DC71CD185CB93B9001D40F2D0C2F7A9B6848DBF444D4CD8D633B7DF896E5F and master kit SHA-256 ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": ["flow_mesh"],
+      "sockets": ["flow_mesh"],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.1665740013122559, 0, -1.1700000762939453],
+        "max": [1.1665740013122559, 0.29100000858306885, 1.1700000762939453],
+        "dimensionsM": [2.3331480026245117, 0.29100000858306885, 2.3400001525878906]
+      }
+    },
+    {
       "id": "wholeship_massline_express_liner_v1",
       "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
       "category": "wholeships",
