@@ -1,0 +1,238 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 193,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 46555,
+      "hullTriangles": 33023,
+      "draws": 65,
+      "meshNodes": 61,
+      "primitiveSubmits": 65,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Frame",
+        "Material_Gap",
+        "Material_Hull",
+        "Material_HullPanel",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Soot",
+        "Material_Warning",
+        "Material_Wing"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 4096,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 372,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "evidence/hornet/cycles/cycle_193/candidates/hornet_production_v1_lod0.glb",
+      "bytes": 15239872,
+      "sha256": "C83491BD4CD1C47D7E1BEC3AAE2A48FA77041B087003023F48D65AE9E6247392",
+      "embeddedTextureSizes": [
+        [
+          4096,
+          4096
+        ]
+      ],
+      "tangentPrimitives": 65,
+      "tangentReadyPrimitives": 65
+    },
+    {
+      "lod": 1,
+      "triangles": 31852,
+      "hullTriangles": 23912,
+      "draws": 55,
+      "meshNodes": 53,
+      "primitiveSubmits": 55,
+      "materials": [
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Frame.001",
+        "Material_Gap.001",
+        "Material_Hull.001",
+        "Material_HullPanel.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Soot.001",
+        "Material_Wing.001"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 2048,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 186,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "evidence/hornet/cycles/cycle_193/candidates/hornet_production_v1_lod1.glb",
+      "bytes": 6683664,
+      "sha256": "D75BBF76A89F8B3FF295D5C2D11D3F52DDF4E27EAB2DB02227EAECF4F39DB793",
+      "embeddedTextureSizes": [
+        [
+          2048,
+          2048
+        ]
+      ],
+      "tangentPrimitives": 55,
+      "tangentReadyPrimitives": 55
+    },
+    {
+      "lod": 2,
+      "triangles": 18819,
+      "hullTriangles": 12629,
+      "draws": 44,
+      "meshNodes": 42,
+      "primitiveSubmits": 44,
+      "materials": [
+        "Material_Canopy.002",
+        "Material_Ceramic.002",
+        "Material_Frame.002",
+        "Material_Gap.002",
+        "Material_Hull.002",
+        "Material_HullPanel.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002",
+        "Material_Soot.002",
+        "Material_Wing.002"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 1024,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 93,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "evidence/hornet/cycles/cycle_193/candidates/hornet_production_v1_lod2.glb",
+      "bytes": 3324684,
+      "sha256": "23DA89018726B1075B44700CD046518DC1DCCFA58657ABBDE26F579E930E978A",
+      "embeddedTextureSizes": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "tangentPrimitives": 44,
+      "tangentReadyPrimitives": 44
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_193",
+  "reviewSlots": [
+    {
+      "slot": "form-and-chase-continuity",
+      "status": "pending",
+      "evidence": [
+        "evidence/hornet/cycles/cycle_193/play_chase.png",
+        "evidence/hornet/cycles/cycle_193/play_chase_abeam.png"
+      ]
+    },
+    {
+      "slot": "material-and-visible-zones",
+      "status": "pending",
+      "evidence": [
+        "evidence/hornet/cycles/cycle_193/play_chase_close.png",
+        "evidence/hornet/cycles/cycle_193/grazing_close.png"
+      ]
+    },
+    {
+      "slot": "technical-lod-and-runtime-admission",
+      "status": "pending",
+      "evidence": [
+        "evidence/hornet/cycle_193.json"
+      ]
+    }
+  ]
+}

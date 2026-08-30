@@ -10,7 +10,9 @@ Hornet authoring GLBs, source textures, and cycle evidence; it never writes rele
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
+import struct
 import sys
 from pathlib import Path
 
@@ -46,7 +48,126 @@ TAG = f"C{CYCLE:03d}"
 # lower bound.  Use a power-of-two ladder with a density-preserving source bake so the procedural
 # plate periods do not become a finer checker when the map edge is raised.
 C192_TEX_BY_LOD = {0: 4096, 1: 2048, 2: 1024}
+C193_TEX_BY_LOD = {0: 4096, 1: 2048, 2: 1024}
 FORM_AUTHORED_LENGTH_M = 11.01
+
+
+def read_final_glb_metrics(path: Path, lod: int):
+    """Read the exported GLB and derive acceptance metrics from its final binary payload.
+
+    Blender's pre-export loop-triangle count can differ from the indexed primitive payload after
+    modifier/export triangulation.  The report must describe what the runtime actually receives,
+    including embedded image dimensions and tangent attributes, so this deliberately parses the
+    finished GLB instead of trusting the authoring scene.
+    """
+    payload = path.read_bytes()
+    if len(payload) < 20 or payload[:4] != b"glTF":
+        raise RuntimeError(f"{path.name}: invalid GLB header")
+    offset = 12
+    json_chunk = None
+    bin_chunk = b""
+    while offset + 8 <= len(payload):
+        chunk_length, chunk_type = struct.unpack_from("<II", payload, offset)
+        start = offset + 8
+        end = start + chunk_length
+        if end > len(payload):
+            raise RuntimeError(f"{path.name}: truncated GLB chunk")
+        chunk = payload[start:end]
+        if chunk_type == 0x4E4F534A:
+            json_chunk = chunk
+        elif chunk_type == 0x004E4942:
+            bin_chunk = chunk
+        offset = end
+    if json_chunk is None:
+        raise RuntimeError(f"{path.name}: missing JSON chunk")
+    gltf = json.loads(json_chunk.decode("utf-8").rstrip(" \t\r\n\x00"))
+    accessors = gltf.get("accessors", [])
+    buffer_views = gltf.get("bufferViews", [])
+
+    def accessor_info(index):
+        accessor = accessors[index]
+        view = buffer_views[accessor["bufferView"]]
+        return accessor, view
+
+    def indexed_triangles(primitive):
+        accessor, _view = accessor_info(primitive["indices"])
+        if (primitive.get("mode", 4)) != 4:
+            raise RuntimeError(f"{path.name}: non-triangle primitive in LOD{lod}")
+        return accessor["count"] // 3
+
+    def mesh_is_collision(mesh):
+        return "collision" in str(mesh.get("name", "")).lower()
+
+    meshes = gltf.get("meshes", [])
+    visible_meshes = [mesh for mesh in meshes if not mesh_is_collision(mesh)]
+    visible_primitives = [primitive for mesh in visible_meshes for primitive in mesh.get("primitives", [])]
+    triangles = sum(indexed_triangles(primitive) for primitive in visible_primitives)
+    hull_meshes = [mesh for mesh in visible_meshes if f"LOD{lod}_Hull" in str(mesh.get("name", ""))]
+    hull_triangles = sum(indexed_triangles(primitive) for mesh in hull_meshes for primitive in mesh.get("primitives", []))
+    image_sizes = []
+    for image in gltf.get("images", []):
+        if image.get("mimeType") != "image/png" or "bufferView" not in image:
+            raise RuntimeError(f"{path.name}: image is not embedded PNG")
+        view = buffer_views[image["bufferView"]]
+        start = view.get("byteOffset", 0)
+        end = start + view["byteLength"]
+        png = bin_chunk[start:end]
+        if len(png) < 24 or png[:8] != b"\x89PNG\r\n\x1a\n":
+            raise RuntimeError(f"{path.name}: malformed embedded PNG")
+        image_sizes.append((struct.unpack_from(">II", png, 16)))
+    unique_image_sizes = sorted(set(image_sizes))
+    if not unique_image_sizes:
+        raise RuntimeError(f"{path.name}: no embedded images")
+
+    missing_tangents = []
+    tangent_primitives = 0
+    for mesh in visible_meshes:
+        mesh_name = str(mesh.get("name", ""))
+        for primitive in mesh.get("primitives", []):
+            attributes = primitive.get("attributes", {})
+            if "TANGENT" in attributes:
+                tangent_primitives += 1
+            if any(marker in mesh_name for marker in ("Flap", "LowerLoadPath", "ServiceHose")) and "TANGENT" not in attributes:
+                missing_tangents.append(mesh_name)
+    if missing_tangents:
+        raise RuntimeError(f"{path.name}: missing tangents on {', '.join(missing_tangents)}")
+
+    # All normal-mapped role primitives must carry a tangent basis; simple untextured collision
+    # and frame meshes are intentionally outside this check.
+    tangent_ready = 0
+    for mesh in visible_meshes:
+        for primitive in mesh.get("primitives", []):
+            attrs = primitive.get("attributes", {})
+            if "NORMAL" in attrs and "TEXCOORD_0" in attrs:
+                tangent_ready += int("TANGENT" in attrs)
+
+    expected_ladder = C193_TEX_BY_LOD if CYCLE >= 193 else (C192_TEX_BY_LOD if CYCLE >= 192 else {0: 1024, 1: 512, 2: 512})
+    expected_map = expected_ladder.get(lod)
+    if expected_map is None or unique_image_sizes != [(expected_map, expected_map)]:
+        raise RuntimeError(f"{path.name}: embedded image sizes {unique_image_sizes}, expected {expected_map}")
+    return {
+        "triangles": triangles,
+        "hullTriangles": hull_triangles,
+        "draws": len(visible_primitives),
+        "meshNodes": len(visible_meshes),
+        "primitiveSubmits": len(visible_primitives),
+        "embeddedTextureSizes": [list(size) for size in unique_image_sizes],
+        "textureMapSize": unique_image_sizes[0][0],
+        "texelDensityPxPerM": round(unique_image_sizes[0][0] / FORM_AUTHORED_LENGTH_M, 1),
+        "tangentPrimitives": tangent_primitives,
+        "tangentReadyPrimitives": tangent_ready,
+    }
+
+
+def finalize_binary_report(reports):
+    """Replace authoring estimates with metrics parsed from the three final source GLBs."""
+    ladder = C193_TEX_BY_LOD if CYCLE >= 193 else (C192_TEX_BY_LOD if CYCLE >= 192 else {0: 1024, 1: 512, 2: 512})
+    for report in reports:
+        output = FAMILY / "source" / "wholeships" / f"hornet_production_v1_lod{report['lod']}.glb"
+        report.update(read_final_glb_metrics(output, report["lod"]))
+        report["textureMapLadder"] = {f"lod{level}": size for level, size in ladder.items()}
+        report["texelDensityTargetPxPerM"] = [256, 512]
+    return reports
 
 
 def _set_input(node, name, value):
@@ -110,6 +231,70 @@ def wire_form_maps(material, bsdf, maps, coat=0.0, uv1_scale=72.0):
         _set_input(bsdf, "Coat Roughness", 0.10)
 
 
+def refresh_packed_image(image):
+    """Persist the current image buffer and replace any stale packed payload."""
+    target = str(MTX.TEX_DIR / f"{image.name}.png")
+    image.filepath = target
+    image.filepath_raw = target
+    image.file_format = "PNG"
+    image.save()
+    # Image.pack() without data is a no-op when role_maps() already packed its 1024 source. Read
+    # the just-saved target and pass it explicitly so the existing PackedFile is replaced in-place
+    # without Blender writing a transient relative `textures/` path.
+    data = Path(target).read_bytes()
+    image.pack(data=data, data_len=len(data))
+
+
+def flatten_c193_role_maps(maps, rgb, role):
+    """Remove procedural checker/facet stamping while keeping unique role-map assets."""
+    if CYCLE < 193 or role not in {"hull", "armor", "mechanical"}:
+        return maps
+    roughness = {"hull": 0.46, "armor": 0.52, "mechanical": 0.48}[role]
+    metallic = {"hull": 0.05, "armor": 0.22, "mechanical": 0.52}[role]
+    payloads = (
+        (*rgb, 1.0),
+        (0.90, roughness, metallic, 1.0),
+        (0.5, 0.5, 1.0, 1.0),
+    )
+    # role_maps() is intentionally generated at the 1024 source frequency and scaled to the
+    # final ladder below. Flattening here keeps the cleanup cheap while ensuring the embedded
+    # 4096/2048 image carries no repeated pixel-grid at any of its target sizes.
+    for image, value in zip(maps, payloads):
+        pixels = list(image.pixels)
+        pixels[:] = list(value) * (len(pixels) // 4)
+        image.pixels = pixels
+        image.update()
+    return maps
+
+
+def c193_uniform_role_maps(rgb, role, prefix):
+    """Create target-sized authored role maps without Blender's FILE-image resize trap."""
+    roughness = {"hull": 0.46, "armor": 0.52, "mechanical": 0.48}.get(role, 0.50)
+    metallic = {"hull": 0.05, "armor": 0.22, "mechanical": 0.52}.get(role, 0.05)
+    payloads = {
+        "basecolor": ((*rgb, 1.0), "sRGB"),
+        "orm": ((0.90, roughness, metallic, 1.0), "Non-Color"),
+        "normal": ((0.5, 0.5, 1.0, 1.0), "Non-Color"),
+    }
+    maps = []
+    for suffix, (color, colorspace) in payloads.items():
+        name = f"hornet_{prefix}_{suffix}"
+        if name in bpy.data.images:
+            bpy.data.images.remove(bpy.data.images[name])
+        image = bpy.data.images.new(name, width=MTX.TEX, height=MTX.TEX, alpha=True)
+        image.generated_color = color
+        image.colorspace_settings.name = colorspace
+        target = MTX.TEX_DIR / f"{name}.png"
+        image.filepath = str(target)
+        image.filepath_raw = str(target)
+        image.file_format = "PNG"
+        image.save()
+        data = target.read_bytes()
+        image.pack(data=data, data_len=len(data))
+        maps.append(image)
+    return tuple(maps)
+
+
 def soften_plate_seams(maps, role):
     """Keep authored map density while removing the synthetic checkerboard read.
 
@@ -119,9 +304,11 @@ def soften_plate_seams(maps, role):
     maps and UV1 detail, but blends only the seam bands toward their immediate plate so they
     read as restrained course breaks instead of a debug texture. C192 removes the remaining
     repeated contrast from the baked bands; the shell construction is carried by geometry and
-    role value, not a tiled checker.
+    role value, not a tiled checker. C193 removes the remaining role-map grid at source resolution
+    and refreshes Blender's packed image after this pixel edit; otherwise the exporter can embed
+    the stale pre-scale 1024 source image.
     """
-    if CYCLE < 190 or role not in {"hull", "armor"}:
+    if CYCLE < 190 or CYCLE >= 193 or role not in {"hull", "armor"}:
         return maps
     for image in maps:
         width, height = image.size[:]
@@ -148,9 +335,10 @@ def soften_plate_seams(maps, role):
                     pixels[target + channel] = pixels[target + channel] * seam_blend + pixels[source + channel] * (1.0 - seam_blend)
         image.pixels = pixels
         image.update()
-        image.filepath_raw = str(MTX.TEX_DIR / f"{image.name}.png")
-        image.file_format = "PNG"
-        image.save()
+        # role_maps() packs the 1024 source before C192/C193 scales it. Blender's pack() is a
+        # no-op while a PackedFile exists, so explicitly replace that stale payload after saving
+        # the final target-sized image for glTF embedding.
+        refresh_packed_image(image)
     return maps
 
 
@@ -192,6 +380,12 @@ def create_form_materials():
             "Material_Ceramic": ((0.25, 0.20, 0.15), "ceramic", 0.0, 0.68, 36.0),
             "Material_Radiator": ((0.17, 0.23, 0.25), "mechanical", 0.68, 0.42, 52.0),
         })
+    if CYCLE >= 193:
+        # The radiator is a serviceable thermal cassette, not a black grille. A slightly lifted
+        # blue-steel role keeps its core and header readable against the recessed gap and hull.
+        specs["Material_Armor"] = ((0.13, 0.20, 0.24), "armor", 0.10, 0.52, 0.36)
+        specs["Material_Wing"] = ((0.16, 0.27, 0.32), "armor", 0.10, 0.52, 0.36)
+        specs["Material_Radiator"] = ((0.24, 0.33, 0.35), "mechanical", 0.52, 0.48, 18.0)
     mats = {}
     for name, (rgb, role, metallic, roughness, detail_scale) in specs.items():
         material = bpy.data.materials.new(name)
@@ -203,22 +397,33 @@ def create_form_materials():
         # Generate the procedural pattern at the C191 1024 source frequency, then scale the
         # authored image to its contract edge. This raises measured texel density without making
         # plate periods four times tighter in physical metres.
-        map_source = min(map_target, 1024) if CYCLE >= 192 else map_target
-        maps = MTX.role_maps(
-            role,
-            rgb,
-            size=map_source,
-            prefix=f"form_c{CYCLE:03d}_lod{map_target}_{name.replace('Material_', '').lower()}",
-        )
-        if CYCLE >= 192 and map_source != map_target:
+        map_prefix = f"form_c{CYCLE:03d}_lod{map_target}_{name.replace('Material_', '').lower()}"
+        if CYCLE >= 193:
+            # Use a generated target image directly. Image.scale() on a packed FILE image reports
+            # the new size but save() reloads the original 1024 payload; direct generation makes
+            # the embedded ladder truthful and keeps the C193 material floor free of grid stamps.
+            maps = c193_uniform_role_maps(rgb, role, map_prefix)
+        else:
+            map_source = min(map_target, 1024) if CYCLE >= 192 else map_target
+            maps = MTX.role_maps(role, rgb, size=map_source, prefix=map_prefix)
+            flatten_c193_role_maps(maps, rgb, role)
+        if CYCLE >= 192 and CYCLE < 193 and map_source != map_target:
             for image in maps:
+                # Blender's Image.scale() is a no-op while the source image remains packed. Drop
+                # only that generated source payload before scaling; refresh_packed_image() packs
+                # the target-sized PNG explicitly below.
+                if image.packed_file is not None:
+                    image.unpack(method="REMOVE")
                 image.scale(map_target, map_target)
-                image.filepath_raw = str(MTX.TEX_DIR / f"{image.name}.png")
-                image.file_format = "PNG"
-                image.save()
-                image.pack()
+                refresh_packed_image(image)
         soften_plate_seams(maps, role)
-        wire_form_maps(material, bsdf, maps, coat=0.22 if role == "hull" else 0.08, uv1_scale=detail_scale)
+        wire_form_maps(
+            material,
+            bsdf,
+            maps,
+            coat=0.22 if role == "hull" else 0.08,
+            uv1_scale=0.14 if CYCLE >= 193 else detail_scale,
+        )
         material["spacefaceRole"] = role
         material["spacefaceMapLadder"] = f"LOD{MTX.TEX} unique UV0 + UV1 detail"
         mats[name] = material
@@ -734,7 +939,20 @@ def build_wing(name, sign, mats, collection, lod):
     # gridded slab in the play frame; the root fairing below remains hull-colored.
     wing = mats["Material_Wing"] if CYCLE >= 188 else mats["Material_Hull"]
     underside = mats["Material_Wing"]
-    if CYCLE >= 192:
+    if CYCLE >= 193:
+        # C192's wing is closed and materially thicker, but its long pointed planform still
+        # collapses into a blade at chase distance. C193 shortens the main chord where the flap
+        # starts, increases the root section, and leaves a real aft control surface separated by
+        # an open structural channel.
+        full = [
+            (1.12, 1.92, 0.26, 3.10, 0.38),
+            (1.52, 2.12, 0.30, 2.86, 0.34),
+            (2.18, 2.52, 0.30, 2.42, 0.30),
+            (2.82, 2.98, 0.27, 1.95, 0.24),
+            (3.44, 3.42, 0.22, 1.38, 0.18),
+            (4.02, 3.78, 0.16, 0.92, 0.12),
+        ]
+    elif CYCLE >= 192:
         full = [
             (1.16, 2.00, 0.16, 3.86, 1.04),
             (1.44, 2.22, 0.18, 3.58, 0.88),
@@ -775,7 +993,14 @@ def build_wing(name, sign, mats, collection, lod):
     # The root fairing is a thick carry-through that begins inside the pressure shell.  A lighter
     # hull-panel role at the first stations keeps the attachment legible instead of reading as a
     # detached dark card.
-    if CYCLE >= 192:
+    if CYCLE >= 193:
+        root_rings = [
+            MTX.densify_ring(airfoil_section(0.46 * sign, 0.70, 0.02, 3.34, 0.52), 2),
+            MTX.densify_ring(airfoil_section(1.10 * sign, 0.92, 0.05, 3.36, 0.46), 2),
+            MTX.densify_ring(airfoil_section(1.80 * sign, 1.24, 0.12, 3.08, 0.34), 2),
+        ]
+        root_material = mats["Material_HullPanel"]
+    elif CYCLE >= 192:
         root_rings = [
             MTX.densify_ring(airfoil_section(0.70 * sign, 0.94, 0.12, 3.72, 1.10), 2),
             MTX.densify_ring(airfoil_section(1.16 * sign, 1.10, 0.15, 3.78, 0.94), 2),
@@ -799,13 +1024,13 @@ def build_wing(name, sign, mats, collection, lod):
     fairing = MTX.loft_from_rings(f"{name}_RootFairing", root_rings, root_material, collection, 0.012, cap=True)
     append_lower_material(fairing, underside, limit=-0.02)
     bits = [obj, fairing]
-    if CYCLE >= 192:
-        # A load-bearing lower spar gives the wing a visible underside section and a real root
-        # path into the hull instead of leaving a dark paper blade above the body.
+    if CYCLE >= 193:
+        # C193 lowers and thickens the spar so it remains a visible underside load path from the
+        # default and close chase cameras, while keeping its tapered section tied into the shell.
         load_rings = [
-            MTX.densify_ring(airfoil_section(0.56 * sign, 0.62, -0.12, 1.82, 0.38), 2 if lod == 0 else 1),
-            MTX.densify_ring(airfoil_section(1.12 * sign, 0.84, -0.08, 1.78, 0.32), 2 if lod == 0 else 1),
-            MTX.densify_ring(airfoil_section(1.72 * sign, 1.16, 0.00, 1.56, 0.24), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(0.42 * sign, 0.58, -0.22, 1.90, 0.50), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.08 * sign, 0.78, -0.18, 1.82, 0.42), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 1.06, -0.08, 1.55, 0.30), 2 if lod == 0 else 1),
         ]
         bits.append(MTX.loft_from_rings(
             f"{name}_LowerLoadPath",
@@ -816,20 +1041,20 @@ def build_wing(name, sign, mats, collection, lod):
             cap=True,
         ))
     if lod < 2:
-        if CYCLE >= 192:
-            # The C192 flap is aft of the main trailing edge at both span stations. The wider
-            # slot has enough projected width to survive the default player framing.
+        if CYCLE >= 193:
+            # The flap is an independent aft surface. Its leading edge is behind the shortened
+            # main-wing trailing edge, and the channel spans both inboard and outboard sections.
             flap_specs = [
-                (2.24, -1.72, 0.82, 0.12, 0.18),
-                (3.40, 1.38, 0.54, 0.16, 0.12),
+                (1.48, -1.04, 0.70, 0.04, 0.20),
+                (3.02, 1.04, 0.48, 0.07, 0.16),
             ]
             slot = MTX.loft_from_rings(
                 f"{name}_FlapSlot",
                 [
-                    wing_slot_section(2.18 * sign, -1.84, 0.16, 0.15, 0.080),
-                    wing_slot_section(2.32 * sign, -1.60, 0.15, 0.15, 0.080),
-                    wing_slot_section(3.32 * sign, 1.38, 0.14, 0.17, 0.070),
-                    wing_slot_section(3.48 * sign, 1.58, 0.13, 0.17, 0.070),
+                    wing_slot_section(1.28 * sign, -0.92, 0.18, 0.16, 0.14),
+                    wing_slot_section(1.68 * sign, -0.92, 0.17, 0.16, 0.14),
+                    wing_slot_section(2.82 * sign, 1.15, 0.16, 0.16, 0.12),
+                    wing_slot_section(3.24 * sign, 1.15, 0.15, 0.16, 0.12),
                 ],
                 mats["Material_Gap"],
                 collection,
@@ -866,7 +1091,7 @@ def build_wing(name, sign, mats, collection, lod):
         flap = MTX.loft_from_rings(
             f"{name}_Flap",
             [MTX.densify_ring(airfoil_section(y * sign, x_le, z, chord, thick), 1) for y, x_le, chord, z, thick in flap_specs],
-            underside,
+            mats["Material_HullPanel"] if CYCLE >= 193 else underside,
             collection,
             0.004,
             cap=True,
@@ -905,7 +1130,21 @@ def add_canards(mats, collection, lod):
 
 
 def build_radiator(hull, mats, collection, lod):
-    if CYCLE >= 192:
+    if CYCLE >= 193:
+        # C192's cassette is structurally present but still collapses to a dark grille at the
+        # legal play size. C193 enlarges the rim and wall depth, lifts the core out of the floor,
+        # and pulls the mounts onto the cassette shoulders so the feature reads as serviceable
+        # hardware before its fins are read.
+        well_loc = (-1.10, 0.38, 0.84)
+        well_scale = (0.84, 0.62, 0.34)
+        cassette_loc = (-1.10, 0.38, 0.62)
+        cassette_inner = (0.72, 0.46, 0.22)
+        fin_y = 0.78
+        fin_z = 0.82
+        fin_x0 = -1.72
+        fin_step = 0.38
+        fin_scale = (0.075, 0.36, 0.035)
+    elif CYCLE >= 192:
         # C191 exposed a real well, but its dark floor and fins photographed as a comb.  Keep
         # the service opening recessed while giving it a structural cassette: a framed rim,
         # visible walls, a header rail, and mounts that visibly bite into the spine.
@@ -946,7 +1185,7 @@ def build_radiator(hull, mats, collection, lod):
         f"RadiatorCassette_{TAG}",
         cassette_loc,
         cassette_inner,
-        0.070 if CYCLE >= 192 else 0.045,
+        0.100 if CYCLE >= 193 else (0.070 if CYCLE >= 192 else 0.045),
         mats["Material_Frame"] if CYCLE >= 192 else mats["Material_Gap"],
         collection,
     ) or [])
@@ -963,31 +1202,33 @@ def build_radiator(hull, mats, collection, lod):
         ))
         bits.append(MTX.add_box(
             f"RadiatorCore_{TAG}",
-            (cassette_loc[0], cassette_loc[1], cassette_loc[2] + 0.075),
-            (cassette_inner[0] * 0.84, cassette_inner[1] * 0.80, 0.055),
+            (cassette_loc[0], cassette_loc[1], cassette_loc[2] + (0.100 if CYCLE >= 193 else 0.075)),
+            (cassette_inner[0] * (0.86 if CYCLE >= 193 else 0.84), cassette_inner[1] * (0.84 if CYCLE >= 193 else 0.80), 0.085 if CYCLE >= 193 else 0.055),
             mats["Material_Radiator"],
             collection,
             0.004,
         ))
         bits.append(MTX.add_box(
             f"RadiatorHeader_{TAG}",
-            (cassette_loc[0] + cassette_inner[0] - 0.070, cassette_loc[1], cassette_loc[2] + 0.035),
-            (0.070, cassette_inner[1] * 0.96, 0.060),
+            (cassette_loc[0] + cassette_inner[0] - (0.095 if CYCLE >= 193 else 0.070), cassette_loc[1], cassette_loc[2] + (0.050 if CYCLE >= 193 else 0.035)),
+            (0.095 if CYCLE >= 193 else 0.070, cassette_inner[1] * (0.98 if CYCLE >= 193 else 0.96), 0.075 if CYCLE >= 193 else 0.060),
             mats["Material_Frame"],
             collection,
             0.006,
         ))
-        for mount_tag, mount_y in (("Port", cassette_loc[1] - cassette_inner[1] - 0.055), ("Stbd", cassette_loc[1] + cassette_inner[1] + 0.055)):
+        for mount_tag, mount_y in (("Port", cassette_loc[1] - cassette_inner[1] - (0.075 if CYCLE >= 193 else 0.055)), ("Stbd", cassette_loc[1] + cassette_inner[1] + (0.075 if CYCLE >= 193 else 0.055))):
             bits.append(MTX.add_box(
                 f"RadiatorMount_{TAG}_{mount_tag}",
-                (cassette_loc[0] - cassette_inner[0] * 0.66, mount_y, cassette_loc[2] + 0.025),
-                (0.115, 0.065, 0.095),
+                (cassette_loc[0] - cassette_inner[0] * (0.60 if CYCLE >= 193 else 0.66), mount_y, cassette_loc[2] + (0.045 if CYCLE >= 193 else 0.025)),
+                (0.135 if CYCLE >= 193 else 0.115, 0.085 if CYCLE >= 193 else 0.065, 0.125 if CYCLE >= 193 else 0.095),
                 mats["Material_Mechanical"],
                 collection,
                 0.006,
             ))
     count = 7 if lod == 0 else (4 if lod == 1 else (3 if CYCLE >= 191 else 0))
-    if CYCLE >= 192:
+    if CYCLE >= 193:
+        count = 3 if lod == 0 else (3 if lod == 1 else 2)
+    elif CYCLE >= 192:
         count = 5 if lod == 0 else (4 if lod == 1 else 3)
     for index in range(count):
         bits.append(MTX.add_box(
@@ -1191,6 +1432,18 @@ def build_lod(lod, mats):
     for obj in meshes:
         triangulate_export_mesh(obj)
         MTX.shade_and_uv(obj)
+        # Bevel/weighted-normal application can reintroduce quads after the first triangulation.
+        # Triangulate at the final authored boundary, then ask Blender to build the same tangent
+        # basis that the glTF exporter will serialize. C193 treats failure as a hard build error.
+        triangulate_export_mesh(obj)
+        if CYCLE >= 193:
+            uv_layer = obj.data.uv_layers.get("UVMap")
+            if uv_layer is None:
+                raise RuntimeError(f"{obj.name}: missing UVMap for tangent export")
+            try:
+                obj.data.calc_tangents(uvmap=uv_layer.name)
+            except RuntimeError as exc:
+                raise RuntimeError(f"{obj.name}: tangent calculation failed: {exc}") from exc
     hull.data.calc_loop_triangles()
     hull_triangles = len(hull.data.loop_triangles)
     total_triangles = 0
@@ -1201,7 +1454,7 @@ def build_lod(lod, mats):
     # A mesh with two or more material slots exports one visible primitive per slot.  Reporting
     # mesh nodes understated the actual draw submissions (C191 parsed 64/51/38 versus 60/49/36).
     primitive_submits = sum(max(1, len(obj.data.materials)) for obj in meshes)
-    texture_ladder = C192_TEX_BY_LOD if CYCLE >= 192 else {0: 1024, 1: 512, 2: 512}
+    texture_ladder = C193_TEX_BY_LOD if CYCLE >= 193 else (C192_TEX_BY_LOD if CYCLE >= 192 else {0: 1024, 1: 512, 2: 512})
     report = {
         "lod": lod,
         "triangles": total_triangles,
@@ -1225,17 +1478,24 @@ def build_lod(lod, mats):
 
 def main():
     # Delegate reset/export/render bookkeeping to the existing sanctioned Hornet builder.  Its
-    # main loop sets MTX.TEX for each LOD and writes cycle JSON plus chase stills. C192 raises the
-    # Hornet-only texture ladder in memory; the shared builder file remains untouched.
+    # main loop sets MTX.TEX for each LOD and writes cycle JSON plus chase stills. C192/C193 raise
+    # the Hornet-only texture ladder in memory; the shared builder file remains untouched.
     MTX.build_lod = build_lod
     MTX.create_materials = create_form_materials
     previous_ladder = MTX.TEX_BY_LOD
-    if CYCLE >= 192:
+    if CYCLE >= 193:
+        MTX.TEX_BY_LOD = C193_TEX_BY_LOD
+    elif CYCLE >= 192:
         MTX.TEX_BY_LOD = C192_TEX_BY_LOD
     try:
         MTX.main()
     finally:
         MTX.TEX_BY_LOD = previous_ladder
+    cycle_report = FAMILY / "evidence" / "hornet" / f"cycle_{CYCLE:02d}.json"
+    report = json.loads(cycle_report.read_text(encoding="utf-8"))
+    report["lods"] = finalize_binary_report(report["lods"])
+    cycle_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"binaryReport": True, "cycle": CYCLE, "lods": report["lods"]}, indent=2))
 
 
 if __name__ == "__main__":
