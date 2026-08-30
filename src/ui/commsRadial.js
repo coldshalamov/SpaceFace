@@ -240,12 +240,6 @@ function actionReason(actionId, availability, state, target) {
   return '';
 }
 
-function offerWhyLine(offer) {
-  const lines = Array.isArray(offer && offer.lines) ? offer.lines : [];
-  const line = String(lines[1] || lines[0] || '').trim();
-  return line ? line.toUpperCase() : '';
-}
-
 function wedgeIconSvg(actionId) {
   const icon = ACTION_ICON[actionId];
   if (!icon) return stationIcon('info', 24);
@@ -413,6 +407,7 @@ export function createCommsRadial(ctx) {
   let previousFreq = '';
   let nextUiUpdateAt = 0;
   let wedgeButtons = [];
+  let lastWedgeSig = '';
   const responseLog = new Map();
   const gamepadNavPrev = { up: false, down: false, left: false, right: false };
   const unsubs = [];
@@ -452,42 +447,36 @@ export function createCommsRadial(ctx) {
   }
 
   function renderFanWedges() {
-    wedgeHost.replaceChildren();
-    wedgeButtons = [];
     const offer = activeOffer;
     if (!offer || !Array.isArray(offer.actions)) return;
-    const whyLine = offerWhyLine(offer);
     const target = entityById(state, offer.targetId);
     const actions = offer.actions
       .map((row) => ({ id: String(row && row.id || '').toLowerCase(), label: String(row && row.label || '').toUpperCase() }))
       .filter((row) => KNOWN_ACTION_IDS.has(row.id));
     if (!actions.length) return;
-    const angleStart = 164;
-    const angleEnd = 16;
-    const radius = 122;
-    const hubX = 180;
-    const hubY = 176;
+    const reasons = actions.map((row) => actionReason(row.id, currentAvailability, state, target));
+    // The fan used to rebuild its buttons on every 0.12 s UI tick, which deleted and recreated
+    // the card under the cursor ~8x per second — the reported hover flicker. Rebuild only when
+    // the action set, labels, or availability (dim state) actually change.
+    const sig = `${offer.targetId}|${actions.map((row, i) => `${row.id}:${row.label}:${reasons[i] ? 'd' : 'u'}`).join(',')}`;
+    if (sig === lastWedgeSig) return;
+    lastWedgeSig = sig;
+    wedgeHost.replaceChildren();
+    wedgeButtons = [];
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
-      const t = actions.length === 1 ? 0.5 : (i / (actions.length - 1));
-      const angle = angleStart + (angleEnd - angleStart) * t;
-      const rad = angle * Math.PI / 180;
-      const x = hubX + Math.cos(rad) * radius;
-      const y = hubY - Math.sin(rad) * radius;
-      const reason = actionReason(action.id, currentAvailability, state, target);
-      const why = reason || whyLine;
+      const reason = reasons[i];
+      const why = reason || '';
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'sf-commsfan__wedge';
-      button.style.setProperty('--sf-x', `${x.toFixed(2)}px`);
-      button.style.setProperty('--sf-y', `${y.toFixed(2)}px`);
       button.dataset.choice = action.id;
-      button.dataset.why = why || '';
+      button.dataset.why = why;
       button.setAttribute('aria-label', `${action.label}${why ? `. ${why}` : ''}`);
       button.innerHTML = `
         ${wedgeIconSvg(action.id)}
         <span class="sf-commsfan__verb">${action.label}</span>
-        <span class="sf-commsfan__why">${why || ''}</span>
+        ${why ? `<span class="sf-commsfan__why">${why}</span>` : ''}
       `;
       if (reason) {
         button.classList.add('is-dim');
@@ -499,13 +488,10 @@ export function createCommsRadial(ctx) {
         if (button.classList.contains('is-dim')) return;
         choose(action.id, 'pointer');
       });
-      button.addEventListener('pointerenter', () => {
-        focusSafely(button);
-      });
       wedgeHost.appendChild(button);
       wedgeButtons.push(button);
     }
-    focusSafely(wedgeButtons.find((el) => !el.classList.contains('is-dim')) || hubBtn);
+    focusSafely(wedgeButtons.find((el) => !el.classList.contains('is-dim')) || wedgeButtons[0]);
   }
 
   function choose(choice, source = 'pointer') {
@@ -582,6 +568,7 @@ export function createCommsRadial(ctx) {
     if (!open) return;
     open = false;
     activeOffer = null;
+    lastWedgeSig = '';
     fan.classList.remove('is-open');
     fan.hidden = true;
     wedgeHost.replaceChildren();

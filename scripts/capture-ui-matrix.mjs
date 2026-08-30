@@ -229,6 +229,10 @@ async function captureModeSet({
   }
 
   await waitForSimTicks(page, 90, 45_000, FLIGHT_SETTLE_MS);
+  // The intro live-screen fence fades the comms panel in as it clears; capture after the fade
+  // so the flight frame does not show half-faded instrument text.
+  await page.waitForFunction(() => !document.body.classList.contains('ui-live-screen'), null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(400);
   await captureSurfaceScreenshot({
     page,
     outputDir,
