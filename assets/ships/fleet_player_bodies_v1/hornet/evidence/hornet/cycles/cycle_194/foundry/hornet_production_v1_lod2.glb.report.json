@@ -1,0 +1,515 @@
+{
+  "bbox": {
+    "dims": [
+      11.0098,
+      2.7255,
+      8.3
+    ],
+    "max": [
+      5.52,
+      1.6055,
+      4.15
+    ],
+    "min": [
+      -5.4898,
+      -1.12,
+      -4.15
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Canopy_GlassShell_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Fore_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "COLLISION_HULL_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.065",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.066",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.067",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.068",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.069",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.070",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.071",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.072",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.073",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.074",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.075",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.077",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.078",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.079",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.080",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.081",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.082",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.083",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.084",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.085",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.086",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.087",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.088",
+        "primitives": 1
+      },
+      {
+        "name": "Cylinder.009",
+        "primitives": 1
+      },
+      {
+        "name": "Cylinder.011",
+        "primitives": 1
+      },
+      {
+        "name": "DriveCeramic_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "DriveCeramic_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "DriveFlange_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "DriveFlange_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "DriveHouse_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "DriveHouse_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Hull_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorHeaderFeed_C194.002",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorRootMount_C194_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorRootMount_C194_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_LowerLoadPath_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_RootFairing_Mesh.002",
+        "primitives": 2
+      },
+      {
+        "name": "Wing_Stbd_LowerLoadPath_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_Mesh.002",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_RootFairing_Mesh.002",
+        "primitives": 2
+      }
+    ],
+    "primitiveCount": 48
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat"
+  ],
+  "file": "hornet_production_v1_lod2.glb",
+  "geometry": {
+    "primitives": 48,
+    "tangentPrimitives": 47,
+    "tangentsPresent": true,
+    "uvSets": [
+      0,
+      1
+    ]
+  },
+  "materials": {
+    "count": 11,
+    "usage": {
+      "Material_Canopy.002": 1,
+      "Material_Ceramic.002": 2,
+      "Material_Frame.002": 11,
+      "Material_Gap": 1,
+      "Material_Gap.002": 6,
+      "Material_Hull.002": 1,
+      "Material_HullPanel.002": 2,
+      "Material_Mechanical.002": 15,
+      "Material_Radiator.002": 3,
+      "Material_Soot.002": 2,
+      "Material_Wing.002": 4
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL.002",
+    "CanopyFrame_Fore.002",
+    "CanopyFrame_Port.002",
+    "CanopyFrame_Stbd.002",
+    "CanopyTub_C194_Aft.002",
+    "CanopyTub_C194_Floor.002",
+    "CanopyTub_C194_Fore.002",
+    "CanopyTub_C194_Port.002",
+    "CanopyTub_C194_Stbd.002",
+    "Canopy_GlassShell.002",
+    "DriveBore_Port.002",
+    "DriveBore_Stbd.002",
+    "DriveCeramic_Port.002",
+    "DriveCeramic_Stbd.002",
+    "DriveFlange_Port.002",
+    "DriveFlange_Stbd.002",
+    "DriveHouse_Port.002",
+    "DriveHouse_Stbd.002",
+    "DriveVane_Port_0.002",
+    "DriveVane_Port_1.002",
+    "DriveVane_Port_2.002",
+    "DriveVane_Stbd_0.002",
+    "DriveVane_Stbd_1.002",
+    "DriveVane_Stbd_2.002",
+    "HORNET_LOD2_ROOT",
+    "LOD2_Hull",
+    "RadiatorCassette_C194_Aft.002",
+    "RadiatorCassette_C194_Floor.002",
+    "RadiatorCassette_C194_Fore.002",
+    "RadiatorCassette_C194_Port.002",
+    "RadiatorCassette_C194_Stbd.002",
+    "RadiatorCore_C194.002",
+    "RadiatorFin_C194_0.002",
+    "RadiatorFin_C194_1.002",
+    "RadiatorFloor_C194.002",
+    "RadiatorHeaderFeed_C194.002",
+    "RadiatorHeader_C194.002",
+    "RadiatorMount_C194_Port.002",
+    "RadiatorMount_C194_Stbd.002",
+    "RadiatorRootMount_C194_Port.002",
+    "RadiatorRootMount_C194_Stbd.002",
+    "SOCKET_Camera_Focus.002",
+    "SOCKET_Cargo_Ventral.002",
+    "SOCKET_Engine_Main.002",
+    "SOCKET_Mining_Front.002",
+    "SOCKET_RCS_Port.002",
+    "SOCKET_RCS_Starboard.002",
+    "SOCKET_Trail_Main.002",
+    "SOCKET_Trail_Port.002",
+    "SOCKET_Trail_Starboard.002",
+    "SOCKET_Utility_Dorsal.002",
+    "SOCKET_Weapon_Front.002",
+    "Wing_Port.002",
+    "Wing_Port_LowerLoadPath.002",
+    "Wing_Port_RootFairing.002",
+    "Wing_Stbd.002",
+    "Wing_Stbd_LowerLoadPath.002",
+    "Wing_Stbd_RootFairing.002"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_ceramic_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_ceramic_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_ceramic_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hull_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hull_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hull_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hullpanel_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hullpanel_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_hullpanel_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_mechanical_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_mechanical_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_mechanical_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_radiator_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_radiator_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_radiator_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_wing_basecolor",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_wing_normal",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c194_lod1024_wing_orm",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 58,
+    "nonAppliedCount": 40,
+    "nonAppliedNodes": [
+      "CanopyTub_C194_Aft.002",
+      "CanopyTub_C194_Floor.002",
+      "CanopyTub_C194_Fore.002",
+      "CanopyTub_C194_Port.002",
+      "CanopyTub_C194_Stbd.002",
+      "DriveBore_Port.002",
+      "DriveBore_Stbd.002",
+      "DriveCeramic_Port.002",
+      "DriveCeramic_Stbd.002",
+      "DriveFlange_Port.002",
+      "DriveFlange_Stbd.002",
+      "DriveVane_Port_0.002",
+      "DriveVane_Port_1.002",
+      "DriveVane_Port_2.002",
+      "DriveVane_Stbd_0.002",
+      "DriveVane_Stbd_1.002",
+      "DriveVane_Stbd_2.002",
+      "RadiatorCassette_C194_Aft.002",
+      "RadiatorCassette_C194_Floor.002",
+      "RadiatorCassette_C194_Fore.002",
+      "RadiatorCassette_C194_Port.002",
+      "RadiatorCassette_C194_Stbd.002",
+      "RadiatorCore_C194.002",
+      "RadiatorFin_C194_0.002",
+      "RadiatorFin_C194_1.002",
+      "RadiatorFloor_C194.002",
+      "RadiatorHeader_C194.002",
+      "RadiatorMount_C194_Port.002",
+      "RadiatorMount_C194_Stbd.002",
+      "SOCKET_Camera_Focus.002",
+      "SOCKET_Cargo_Ventral.002",
+      "SOCKET_Engine_Main.002",
+      "SOCKET_Mining_Front.002",
+      "SOCKET_RCS_Port.002",
+      "SOCKET_RCS_Starboard.002",
+      "SOCKET_Trail_Main.002",
+      "SOCKET_Trail_Port.002",
+      "SOCKET_Trail_Starboard.002",
+      "SOCKET_Utility_Dorsal.002",
+      "SOCKET_Weapon_Front.002"
+    ]
+  },
+  "tris": 20529,
+  "verdict": {
+    "budget": null,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

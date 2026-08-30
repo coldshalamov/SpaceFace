@@ -1,0 +1,213 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 194,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 48315,
+      "hullTriangles": 33205,
+      "draws": 68,
+      "meshNodes": 64,
+      "primitiveSubmits": 68,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Frame",
+        "Material_Gap",
+        "Material_Hull",
+        "Material_HullPanel",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Soot",
+        "Material_Warning",
+        "Material_Wing"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 4096,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 372.0,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod0.glb",
+      "bytes": 15391960,
+      "sha256": "0E5B82D2C2EF2CD4F75CAC6EF5955CA6B3DC21D7A152B57E030CC6256964677D",
+      "embeddedTextureSizes": [
+        [
+          4096,
+          4096
+        ]
+      ],
+      "tangentPrimitives": 68,
+      "tangentReadyPrimitives": 68
+    },
+    {
+      "lod": 1,
+      "triangles": 33588,
+      "hullTriangles": 24062,
+      "draws": 58,
+      "meshNodes": 56,
+      "primitiveSubmits": 58,
+      "materials": [
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Frame.001",
+        "Material_Gap.001",
+        "Material_Hull.001",
+        "Material_HullPanel.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Soot.001",
+        "Material_Wing.001"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 2048,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 186.0,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod1.glb",
+      "bytes": 6817500,
+      "sha256": "EC1578328924CF6BB20FD8F76B9F4577A5D66A2DE7595E803222460069B83B7E",
+      "embeddedTextureSizes": [
+        [
+          2048,
+          2048
+        ]
+      ],
+      "tangentPrimitives": 58,
+      "tangentReadyPrimitives": 58
+    },
+    {
+      "lod": 2,
+      "triangles": 20515,
+      "hullTriangles": 12735,
+      "draws": 47,
+      "meshNodes": 45,
+      "primitiveSubmits": 47,
+      "materials": [
+        "Material_Canopy.002",
+        "Material_Ceramic.002",
+        "Material_Frame.002",
+        "Material_Gap.002",
+        "Material_Hull.002",
+        "Material_HullPanel.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002",
+        "Material_Soot.002",
+        "Material_Wing.002"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.78,
+          "axis": [
+            -0.622,
+            0.0,
+            0.783
+          ]
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 1024,
+      "textureMapLadder": {
+        "lod0": 4096,
+        "lod1": 2048,
+        "lod2": 1024
+      },
+      "texelDensityPxPerM": 93.0,
+      "texelDensityTargetPxPerM": [
+        256,
+        512
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod2.glb",
+      "bytes": 3453076,
+      "sha256": "6E317745FBCC2088E15DA1D753C7AB235BC937C2ECF7B456E05B301C1D530C17",
+      "embeddedTextureSizes": [
+        [
+          1024,
+          1024
+        ]
+      ],
+      "tangentPrimitives": 47,
+      "tangentReadyPrimitives": 47
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_194"
+}

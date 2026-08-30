@@ -386,6 +386,18 @@ def create_form_materials():
         specs["Material_Armor"] = ((0.13, 0.20, 0.24), "armor", 0.10, 0.52, 0.36)
         specs["Material_Wing"] = ((0.16, 0.27, 0.32), "armor", 0.10, 0.52, 0.36)
         specs["Material_Radiator"] = ((0.24, 0.33, 0.35), "mechanical", 0.52, 0.48, 18.0)
+    if CYCLE >= 194:
+        # C194 keeps the palette quiet but gives the pressure shell, lifting surfaces, and thermal
+        # hardware a clearer value hierarchy. The wing is structural blue-steel, not a decal, and
+        # the radiator core is bright enough to read inside its darker frame at play size.
+        specs.update({
+            "Material_Hull": ((0.42, 0.50, 0.58), "hull", 0.0, 0.46, 0.42),
+            "Material_HullPanel": ((0.24, 0.33, 0.40), "hull", 0.0, 0.52, 0.36),
+            "Material_Armor": ((0.095, 0.16, 0.20), "armor", 0.16, 0.50, 0.55),
+            "Material_Wing": ((0.10, 0.19, 0.24), "armor", 0.18, 0.49, 0.36),
+            "Material_Mechanical": ((0.12, 0.19, 0.23), "mechanical", 0.82, 0.36, 18.0),
+            "Material_Radiator": ((0.27, 0.38, 0.39), "mechanical", 0.62, 0.44, 18.0),
+        })
     mats = {}
     for name, (rgb, role, metallic, roughness, detail_scale) in specs.items():
         material = bpy.data.materials.new(name)
@@ -436,6 +448,8 @@ def create_form_materials():
     }
     if CYCLE >= 192:
         simple_specs["Material_Frame"] = ((0.17, 0.23, 0.28), 0.72, 0.42, "mechanical")
+    if CYCLE >= 194:
+        simple_specs["Material_Frame"] = ((0.12, 0.19, 0.23), 0.78, 0.40, "mechanical")
     for name, (rgb, metallic, roughness, role) in simple_specs.items():
         material = bpy.data.materials.new(name)
         bsdf = MTX.principled(material)
@@ -939,7 +953,19 @@ def build_wing(name, sign, mats, collection, lod):
     # gridded slab in the play frame; the root fairing below remains hull-colored.
     wing = mats["Material_Wing"] if CYCLE >= 188 else mats["Material_Hull"]
     underside = mats["Material_Wing"]
-    if CYCLE >= 193:
+    if CYCLE >= 194:
+        # C193's new construction was present but still read as a thin delta blade at play size.
+        # C194 keeps the same planform while carrying a visibly thick root section, a separated
+        # aft control surface, and a broad recessed channel between the two.
+        full = [
+            (1.10, 1.94, 0.40, 3.02, 0.52),
+            (1.50, 2.14, 0.44, 2.78, 0.46),
+            (2.14, 2.46, 0.40, 2.34, 0.38),
+            (2.80, 2.84, 0.32, 1.86, 0.29),
+            (3.44, 3.30, 0.24, 1.30, 0.21),
+            (4.02, 3.68, 0.16, 0.84, 0.13),
+        ]
+    elif CYCLE >= 193:
         # C192's wing is closed and materially thicker, but its long pointed planform still
         # collapses into a blade at chase distance. C193 shortens the main chord where the flap
         # starts, increases the root section, and leaves a real aft control surface separated by
@@ -993,7 +1019,17 @@ def build_wing(name, sign, mats, collection, lod):
     # The root fairing is a thick carry-through that begins inside the pressure shell.  A lighter
     # hull-panel role at the first stations keeps the attachment legible instead of reading as a
     # detached dark card.
-    if CYCLE >= 193:
+    if CYCLE >= 194:
+        root_rings = [
+            MTX.densify_ring(airfoil_section(0.42 * sign, 0.66, 0.04, 3.30, 0.70), 2),
+            MTX.densify_ring(airfoil_section(0.92 * sign, 0.80, 0.06, 3.34, 0.64), 2),
+            MTX.densify_ring(airfoil_section(1.48 * sign, 1.02, 0.09, 3.18, 0.51), 2),
+            MTX.densify_ring(airfoil_section(1.92 * sign, 1.22, 0.13, 2.92, 0.38), 2),
+        ]
+        # Keep the carry-through in the mechanical role in C194 so its depth reads as a
+        # bolted/formed root structure instead of blending into the pressure shell.
+        root_material = mats["Material_Mechanical"]
+    elif CYCLE >= 193:
         root_rings = [
             MTX.densify_ring(airfoil_section(0.46 * sign, 0.70, 0.02, 3.34, 0.52), 2),
             MTX.densify_ring(airfoil_section(1.10 * sign, 0.92, 0.05, 3.36, 0.46), 2),
@@ -1024,7 +1060,24 @@ def build_wing(name, sign, mats, collection, lod):
     fairing = MTX.loft_from_rings(f"{name}_RootFairing", root_rings, root_material, collection, 0.012, cap=True)
     append_lower_material(fairing, underside, limit=-0.02)
     bits = [obj, fairing]
-    if CYCLE >= 193:
+    if CYCLE >= 194:
+        # The spar is a dark formed load path under the carry-through. Its upper shoulder is
+        # deliberately close to the wing root so the camera catches a structural band, while its
+        # aft edge projects beyond the main airfoil instead of disappearing inside it.
+        load_rings = [
+            MTX.densify_ring(airfoil_section(0.40 * sign, -0.16, -0.08, 2.28, 0.62), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.00 * sign, -0.04, -0.04, 2.20, 0.54), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 0.24, 0.02, 1.92, 0.42), 2 if lod == 0 else 1),
+        ]
+        bits.append(MTX.loft_from_rings(
+            f"{name}_LowerLoadPath",
+            load_rings,
+            mats["Material_Mechanical"],
+            collection,
+            0.009 if lod == 0 else 0.006,
+            cap=True,
+        ))
+    elif CYCLE >= 193:
         # C193 lowers and thickens the spar so it remains a visible underside load path from the
         # default and close chase cameras, while keeping its tapered section tied into the shell.
         load_rings = [
@@ -1041,7 +1094,28 @@ def build_wing(name, sign, mats, collection, lod):
             cap=True,
         ))
     if lod < 2:
-        if CYCLE >= 193:
+        if CYCLE >= 194:
+            # Leave a wide, dark service channel behind the main airfoil. The channel is lower
+            # than the crown but high enough to remain visible between the two separate surfaces.
+            flap_specs = [
+                (1.46, -1.30, 0.88, 0.28, 0.30),
+                (3.10, 0.50, 0.64, 0.22, 0.22),
+            ]
+            slot = MTX.loft_from_rings(
+                f"{name}_FlapSlot",
+                [
+                    wing_slot_section(1.20 * sign, -0.96, 0.30, 0.31, 0.20),
+                    wing_slot_section(1.76 * sign, -0.92, 0.28, 0.30, 0.19),
+                    wing_slot_section(2.84 * sign, 0.64, 0.25, 0.27, 0.17),
+                    wing_slot_section(3.38 * sign, 0.64, 0.23, 0.25, 0.15),
+                ],
+                mats["Material_Gap"],
+                collection,
+                0.004,
+                cap=True,
+            )
+            bits.append(slot)
+        elif CYCLE >= 193:
             # The flap is an independent aft surface. Its leading edge is behind the shortened
             # main-wing trailing edge, and the channel spans both inboard and outboard sections.
             flap_specs = [
@@ -1088,10 +1162,11 @@ def build_wing(name, sign, mats, collection, lod):
                 (2.42, -0.58, 0.92, 0.15, 0.12),
                 (3.52, -0.44, 0.54, 0.18, 0.07),
             ]
+        flap_material = mats["Material_Wing"] if CYCLE >= 194 else (mats["Material_HullPanel"] if CYCLE >= 193 else underside)
         flap = MTX.loft_from_rings(
             f"{name}_Flap",
             [MTX.densify_ring(airfoil_section(y * sign, x_le, z, chord, thick), 1) for y, x_le, chord, z, thick in flap_specs],
-            mats["Material_HullPanel"] if CYCLE >= 193 else underside,
+            flap_material,
             collection,
             0.004,
             cap=True,
@@ -1130,7 +1205,19 @@ def add_canards(mats, collection, lod):
 
 
 def build_radiator(hull, mats, collection, lod):
-    if CYCLE >= 193:
+    if CYCLE >= 194:
+        # A larger five-wall tub makes the recess legible first; the raised core remains below its
+        # rim, while the header and sloped root brackets provide a visible thermal service path.
+        well_loc = (-1.24, 0.12, 0.88)
+        well_scale = (0.96, 0.78, 0.42)
+        cassette_loc = (-1.24, 0.12, 0.64)
+        cassette_inner = (0.82, 0.58, 0.26)
+        fin_y = 0.78
+        fin_z = 0.83
+        fin_x0 = -1.72
+        fin_step = 0.42
+        fin_scale = (0.075, 0.44, 0.035)
+    elif CYCLE >= 193:
         # C192's cassette is structurally present but still collapses to a dark grille at the
         # legal play size. C193 enlarges the rim and wall depth, lifts the core out of the floor,
         # and pulls the mounts onto the cassette shoulders so the feature reads as serviceable
@@ -1181,11 +1268,12 @@ def build_radiator(hull, mats, collection, lod):
         fin_scale = (0.035, 0.17, 0.14)
     ok = MTX.safe_boolean_cut(hull, f"RadiatorWell_{TAG}", well_loc, well_scale)
     bits = []
+    wall = 0.14 if CYCLE >= 194 else (0.100 if CYCLE >= 193 else (0.070 if CYCLE >= 192 else 0.045))
     bits.extend(MTX.add_five_wall_tub(
         f"RadiatorCassette_{TAG}",
         cassette_loc,
         cassette_inner,
-        0.100 if CYCLE >= 193 else (0.070 if CYCLE >= 192 else 0.045),
+        wall,
         mats["Material_Frame"] if CYCLE >= 192 else mats["Material_Gap"],
         collection,
     ) or [])
@@ -1202,29 +1290,63 @@ def build_radiator(hull, mats, collection, lod):
         ))
         bits.append(MTX.add_box(
             f"RadiatorCore_{TAG}",
-            (cassette_loc[0], cassette_loc[1], cassette_loc[2] + (0.100 if CYCLE >= 193 else 0.075)),
-            (cassette_inner[0] * (0.86 if CYCLE >= 193 else 0.84), cassette_inner[1] * (0.84 if CYCLE >= 193 else 0.80), 0.085 if CYCLE >= 193 else 0.055),
+            (cassette_loc[0], cassette_loc[1], cassette_loc[2] + (0.130 if CYCLE >= 194 else (0.100 if CYCLE >= 193 else 0.075))),
+            (cassette_inner[0] * (0.90 if CYCLE >= 194 else (0.86 if CYCLE >= 193 else 0.84)), cassette_inner[1] * (0.88 if CYCLE >= 194 else (0.84 if CYCLE >= 193 else 0.80)), 0.105 if CYCLE >= 194 else (0.085 if CYCLE >= 193 else 0.055)),
             mats["Material_Radiator"],
             collection,
             0.004,
         ))
         bits.append(MTX.add_box(
             f"RadiatorHeader_{TAG}",
-            (cassette_loc[0] + cassette_inner[0] - (0.095 if CYCLE >= 193 else 0.070), cassette_loc[1], cassette_loc[2] + (0.050 if CYCLE >= 193 else 0.035)),
-            (0.095 if CYCLE >= 193 else 0.070, cassette_inner[1] * (0.98 if CYCLE >= 193 else 0.96), 0.075 if CYCLE >= 193 else 0.060),
+            (cassette_loc[0] + cassette_inner[0] - (0.130 if CYCLE >= 194 else (0.095 if CYCLE >= 193 else 0.070)), cassette_loc[1], cassette_loc[2] + (0.075 if CYCLE >= 194 else (0.050 if CYCLE >= 193 else 0.035))),
+            (0.130 if CYCLE >= 194 else (0.095 if CYCLE >= 193 else 0.070), cassette_inner[1] * (0.99 if CYCLE >= 194 else (0.98 if CYCLE >= 193 else 0.96)), 0.090 if CYCLE >= 194 else (0.075 if CYCLE >= 193 else 0.060)),
             mats["Material_Frame"],
             collection,
             0.006,
         ))
-        for mount_tag, mount_y in (("Port", cassette_loc[1] - cassette_inner[1] - (0.075 if CYCLE >= 193 else 0.055)), ("Stbd", cassette_loc[1] + cassette_inner[1] + (0.075 if CYCLE >= 193 else 0.055))):
+        for mount_tag, mount_y in (("Port", cassette_loc[1] - cassette_inner[1] - (0.110 if CYCLE >= 194 else (0.075 if CYCLE >= 193 else 0.055))), ("Stbd", cassette_loc[1] + cassette_inner[1] + (0.110 if CYCLE >= 194 else (0.075 if CYCLE >= 193 else 0.055)))):
             bits.append(MTX.add_box(
                 f"RadiatorMount_{TAG}_{mount_tag}",
-                (cassette_loc[0] - cassette_inner[0] * (0.60 if CYCLE >= 193 else 0.66), mount_y, cassette_loc[2] + (0.045 if CYCLE >= 193 else 0.025)),
-                (0.135 if CYCLE >= 193 else 0.115, 0.085 if CYCLE >= 193 else 0.065, 0.125 if CYCLE >= 193 else 0.095),
+                (cassette_loc[0] - cassette_inner[0] * (0.55 if CYCLE >= 194 else (0.60 if CYCLE >= 193 else 0.66)), mount_y, cassette_loc[2] + (0.075 if CYCLE >= 194 else (0.045 if CYCLE >= 193 else 0.025))),
+                (0.170 if CYCLE >= 194 else (0.135 if CYCLE >= 193 else 0.115), 0.105 if CYCLE >= 194 else (0.085 if CYCLE >= 193 else 0.065), 0.160 if CYCLE >= 194 else (0.125 if CYCLE >= 193 else 0.095)),
                 mats["Material_Mechanical"],
                 collection,
                 0.006,
             ))
+        if CYCLE >= 194:
+            # The header is visibly fed into the spine, and the two mount plates are sloped
+            # buttresses rather than isolated cubes. These are the only new radiator details in
+            # C194; the fin count stays restrained so the cassette does not become a comb.
+            header_x = cassette_loc[0] + cassette_inner[0] - 0.10
+            bits.append(MTX.add_curve_hose(
+                f"RadiatorHeaderFeed_{TAG}",
+                [
+                    (header_x, cassette_loc[1], cassette_loc[2] + 0.11),
+                    (header_x + 0.24, cassette_loc[1], cassette_loc[2] + 0.16),
+                    (header_x + 0.62, cassette_loc[1], cassette_loc[2] + 0.18),
+                ],
+                mats["Material_Mechanical"],
+                collection,
+                0.028,
+            ))
+            for mount_tag, mount_sign in (("Port", -1.0), ("Stbd", 1.0)):
+                inner_y = cassette_loc[1] + mount_sign * (cassette_inner[1] - 0.02)
+                outer_y = cassette_loc[1] + mount_sign * (cassette_inner[1] + 0.34)
+                x0 = cassette_loc[0] - 0.56
+                x1 = cassette_loc[0] - 0.16
+                z0 = cassette_loc[2] - 0.04
+                z1 = cassette_loc[2] + 0.16
+                bits.append(MTX.add_folded_sheet(
+                    f"RadiatorRootMount_{TAG}_{mount_tag}",
+                    (x0, inner_y, z0),
+                    (x1, inner_y, z0),
+                    (x1, outer_y, z1),
+                    (x0, outer_y, z1),
+                    0.055,
+                    mats["Material_Mechanical"],
+                    collection,
+                    0.005,
+                ))
     count = 7 if lod == 0 else (4 if lod == 1 else (3 if CYCLE >= 191 else 0))
     if CYCLE >= 193:
         count = 3 if lod == 0 else (3 if lod == 1 else 2)
@@ -1436,6 +1558,14 @@ def build_lod(lod, mats):
         # Triangulate at the final authored boundary, then ask Blender to build the same tangent
         # basis that the glTF exporter will serialize. C193 treats failure as a hard build error.
         triangulate_export_mesh(obj)
+        # Blender 5.1 can retain stale loop/custom-data records after boolean and bevel
+        # application even when the visible triangle soup is exportable.  Validate the final
+        # authored mesh before tangent generation so the exporter never has to repair it on the
+        # way out (which is the source of the LOD0/LOD2 "mesh is not valid" warning in C193).
+        repaired = obj.data.validate(verbose=False, clean_customdata=True)
+        if repaired:
+            print(f"{TAG} {obj.name}: mesh.validate repaired final export data")
+        obj.data.update()
         if CYCLE >= 193:
             uv_layer = obj.data.uv_layers.get("UVMap")
             if uv_layer is None:
