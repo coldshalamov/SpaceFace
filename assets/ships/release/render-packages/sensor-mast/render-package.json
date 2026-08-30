@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "253a567e12439d74e179ad36e85ef6eae9ea92939da21ab0ff267a0ef2d55cc5",
+  "contentHash": "3e212f8b7452cdd4cb8b4807658b61fa22e3ebf4edda4be3ba1fedc7ff9471b0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1679,7 +1679,7 @@
     },
     "sourceManifest": {
       "bytes": 159134,
-      "sha256": "712542cd8b25edbb24f8c1dae1cffbc0e91d6e78cce9337e90c81b35dc44efc0",
+      "sha256": "a7d07a58b2cede16605a68588b0feb7eb250742e6af01c6cb6cc0fe3842731f6",
       "uri": "pilots.json"
     }
   },
@@ -2364,7 +2364,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sensor_mast.glb"
   },
-  "runtimeHash": "76ff9a0ff08844c1d6b824ddc51ca0e3cdf511e26af432df7511592ae668638f",
+  "runtimeHash": "fc8b3165f1566b99668d61f64363874a9d143a46cc6c7b88635771f3e2e10d47",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

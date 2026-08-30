@@ -1,4 +1,4 @@
-"""PQ-131.02 Works Massline Core — Cycle 08 form/readability revision.
+"""PQ-131.02 Works Massline Core — Cycle 09 form/readability revision.
 
 Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four
 L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, and a
@@ -9,8 +9,10 @@ Cycle 04 established the square-flange wellhead form. Cycle 05 repaired the
 portable material/evidence defects while keeping that geometry. Cycle 06
 deepened the collar/skirt and carried authored cues into the far LODs. Cycle 07
 rebalanced the circle-to-square mass, raised the load wall, and lifted the steel
-values. Cycle 08 keeps the same identity, hooks, envelope, cameras, open well,
-and interface, then addresses the exact-hash visual review's remaining defects:
+values. Cycle 08 kept the same identity, hooks, envelope, cameras, open well,
+and interface while addressing the previous exact-hash visual review's defects.
+Cycle 09 preserves those production contracts and addresses the remaining
+exact-hash picture defects:
 
 - square wellhead flange with a round bore (claims the cell; not a torus,
   not four isolated L-arrows, not a featureless slab)
@@ -20,10 +22,12 @@ and interface, then addresses the exact-hash visual review's remaining defects:
 - corner pads as thickened frame mass, not compass arrows
 - nested dark machined race in a rebate (not a proud coin)
 - one side-mounted hooded lamp with a visible cavity
-- the circular collar/race is substantially subordinate to a broad square load wall
-- the U-channel is authored as a recessed floor with explicit inner and outer flanges
+- a raised, non-circular square anchor frame is the first load-bearing read;
+  the circular collar/race is subordinate inside it
+- the U-channel is authored as a wide recessed floor with explicit inner and outer flanges
+  and visible negative-space breaks
 - the square angle skirt is raised and thickened while staying inside the one-cell envelope
-- LOD1/LOD2 retain a modeled second race shoulder, layered service hatch, socket,
+- LOD1/LOD2 retain a modeled square anchor frame, layered service hatch, socket,
   and hooded lamp cavity instead of relying on colour/emissive contrast
 - the Blender emissive diagnostic follows the imported glTF V orientation so only
   the +Y lamp lens emits; the central well remains dark
@@ -34,7 +38,7 @@ and interface, then addresses the exact-hash visual review's remaining defects:
 
 Writes only:
   tools/blender/build_works_massline_core.py
-  assets/works/massline_core/**   (cycle_001 through cycle_007 evidence are never rewritten)
+  assets/works/massline_core/**   (cycle_001 through cycle_008 evidence are never rewritten)
   assets/ships/parts/works/place_works_massline_core.glb
 """
 from __future__ import annotations
@@ -70,7 +74,7 @@ SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 BLEND_DIR = FAMILY / "blender"
 REF_DIR = FAMILY / "reference"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_008"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_009"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
 CYCLE_003_DIR = FAMILY / "evidence" / "cycle_003"
@@ -78,13 +82,14 @@ CYCLE_004_DIR = FAMILY / "evidence" / "cycle_004"
 CYCLE_005_DIR = FAMILY / "evidence" / "cycle_005"
 CYCLE_006_DIR = FAMILY / "evidence" / "cycle_006"
 CYCLE_007_DIR = FAMILY / "evidence" / "cycle_007"
+CYCLE_008_DIR = FAMILY / "evidence" / "cycle_008"
 PARTS_GLB = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_massline_core.glb"
 BLEND_PATH = BLEND_DIR / "massline_core.blend"
 
 ASSET_ID = "place_works_massline_core"
 IDENTITY = "SF_WORKS_MASSLINE_CORE_V1"
 PACKET = "PQ-131.02"
-CYCLE = 8
+CYCLE = 9
 HOOK_NAMES = ("ring_spin", "lamp")
 
 CELL = float(CELL_WU)
@@ -99,24 +104,24 @@ _GLTF_NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT3": 9, "MAT4": 
 # Square wellhead flange with round bore. Underside at z=0. Open hole through.
 # Planform (inside → out): tapered dark well, refractory mouth, nested race,
 # U-channel (cavity +Z), square deck filling the corners, folded angle skirt.
-WELL_INNER_R_BOT = 0.30
-WELL_INNER_R_TOP = 0.36
+WELL_INNER_R_BOT = 0.26
+WELL_INNER_R_TOP = 0.30
 WELL_INNER_R = WELL_INNER_R_TOP
-LINER_OUTER_R = 0.42
+LINER_OUTER_R = 0.36
 LINER_Z0 = 0.012
 LINER_Z1 = 0.620
 LIP_Z0, LIP_Z1 = 0.560, 0.735
 # U-channel: inner flange / trench floor / outer flange. Cavity opens +Z.
 # Outer radius stays inside the square so mid-sides keep a readable deck band.
-U_R_IN = 0.43
-U_R_WEB0 = 0.50
-U_R_WEB1 = 0.64
-U_R_OUT = 0.71
+U_R_IN = 0.390
+U_R_WEB0 = 0.440
+U_R_WEB1 = 0.560
+U_R_OUT = 0.625
 U_Z_BOT = 0.028
 U_Z_TOP = 0.420
 U_PLATE = 0.045
 # Nested race sits in the inner rebate, below the mouth lip — not a proud coin.
-SPIN_R0, SPIN_R1 = 0.390, 0.445
+SPIN_R0, SPIN_R1 = 0.340, 0.395
 SPIN_Z0, SPIN_Z1 = 0.470, 0.535
 # Square flange / skirt. Axis-aligned envelope stays inside ±1.10.
 FRAME_HALF = 1.04
@@ -127,15 +132,23 @@ SHOE_W = 0.30
 SHOE_H = 0.145
 # Lamp lives on the +Y frame, hatch on the +X deck. Both stay inside the cell.
 LAMP_POS = (0.18, 0.90, 0.32)
-HATCH_POS = (0.885, -0.22, DECK_Z1 + 0.018)
+HATCH_POS = (0.84, -0.20, DECK_Z1 + 0.018)
+
+# A raised square anchor frame gives the machine a non-circular load path
+# around the collar. The inner edge remains separated from the U-channel so
+# the trench floor is a readable void instead of one merged annular band.
+ANCHOR_HALF = 0.90
+ANCHOR_T = 0.20
+ANCHOR_Z0 = DECK_Z1 - 0.006
+ANCHOR_Z1 = 0.515
 
 ROLES = ("paint", "wear", "liner", "accent", "lamp")
 ATLAS_TILE = {"paint": 0, "wear": 1, "liner": 2, "accent": 3, "lamp": 4}
 ROLE_RGB = {
-    "paint": (0.220, 0.240, 0.300),
-    "wear": (0.380, 0.420, 0.490),
-    "liner": (0.040, 0.034, 0.030),
-    "accent": (0.520, 0.300, 0.125),
+    "paint": (0.255, 0.280, 0.345),
+    "wear": (0.500, 0.545, 0.610),
+    "liner": (0.030, 0.025, 0.022),
+    "accent": (0.600, 0.350, 0.165),
     "lamp": (0.990, 0.840, 0.460),
 }
 ROLE_FLAT = {
@@ -877,7 +890,7 @@ def tapered_annulus(name, r0_bot, r0_top, r1_bot, r1_top, z0, z1, segs,
 
 
 def build_liner(mats, collection, lod):
-    segs = {0: 28, 1: 16, 2: 5}[lod]
+    segs = {0: 28, 1: 16, 2: 4}[lod]
     bevel = {0: 0.007, 1: 0.004, 2: 0.0}[lod]
     body = tapered_annulus(
         "LinerBody",
@@ -912,6 +925,35 @@ def build_liner(mats, collection, lod):
     return parts
 
 
+def build_anchor_frame(mats, collection, lod):
+    """Raised square load anchors around the circular collar.
+
+    The collar is a service trench, not the machine's planform. Four actual
+    welded wall sections establish a square load path and leave a deliberate
+    reveal between their inner edge and the outer U-channel flange. They are
+    kept in the far LOD because a square silhouette plus one asymmetric
+    fixture is the minimum site-scale identity of this place.
+    """
+    t = ANCHOR_T + (0.018 if lod == 2 else 0.0)
+    z1 = ANCHOR_Z1 + (0.008 if lod == 2 else 0.0)
+    z0 = ANCHOR_Z0
+    zhalf = max(0.015, (z1 - z0) * 0.5)
+    zmid = z0 + zhalf
+    half = ANCHOR_HALF
+    center = half - t * 0.5
+    bars = (
+        ("AnchorWallYPos", (0.0, center, zmid), (half, t * 0.5, zhalf)),
+        ("AnchorWallYNeg", (0.0, -center, zmid), (half, t * 0.5, zhalf)),
+        ("AnchorWallXPos", (center, 0.0, zmid), (t * 0.5, half, zhalf)),
+        ("AnchorWallXNeg", (-center, 0.0, zmid), (t * 0.5, half, zhalf)),
+    )
+    return [
+        add_box(name, loc, scale, mats["wear"], collection,
+                bevel=0.004 if lod == 0 else 0.0, role="wear", group="static")
+        for name, loc, scale in bars
+    ]
+
+
 def build_collar(mats, collection, lod):
     """Three-piece U-channel around the well, plus the square deck.
 
@@ -923,7 +965,7 @@ def build_collar(mats, collection, lod):
     bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
     plate = {0: U_PLATE, 1: 0.034, 2: 0.040}[lod]
     parts = []
-    floor_gap = 0.014 if lod < 2 else 0.010
+    floor_gap = 0.028 if lod < 2 else 0.022
     floor_z0 = U_Z_BOT + 0.004
     floor_z1 = floor_z0 + plate
     parts.extend((
@@ -953,8 +995,10 @@ def build_collar(mats, collection, lod):
         DECK_Z0, DECK_Z1, segs, mats["paint"], collection,
         bevel=bevel, role="paint",
     ))
-    # Four lap straps at the cardinals — joints, not occupancy cuts.
-    if lod <= 2:
+    # Four lap straps at the cardinals — joints, not occupancy cuts. The
+    # square anchor walls replace these redundant far-LOD arcs so the 19px
+    # silhouette reads square rather than as a ring of dark tabs.
+    if lod < 2:
         lap_w = 0.16 if lod == 0 else (0.12 if lod == 1 else 0.10)
         for i in range(4):
             mid = i * (math.tau / 4.0)
@@ -979,11 +1023,12 @@ def build_collar(mats, collection, lod):
                 (0, 0, 1), mats["wear"], collection, group="static", lod=lod,
                 head_r=0.016, head_h=0.008, shank_r=0.009, shank_h=0.018,
             ))
+    parts.extend(build_anchor_frame(mats, collection, lod))
     return parts
 
 
 def build_spin_ring(mats, collection, lod):
-    segs = {0: 24, 1: 16, 2: 5}[lod]
+    segs = {0: 24, 1: 16, 2: 4}[lod]
     bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     race = annular_segment(
         "SpinRace", SPIN_R0, SPIN_R1, SPIN_Z0, SPIN_Z1,
@@ -1112,35 +1157,35 @@ def build_hatch(mats, collection, lod):
         # marker; the detailed strap/bolts remain reserved for nearer LODs.
         hatch = add_box(
             "ServiceHatch", loc,
-            (0.220, 0.170, 0.026), mats["accent"], collection,
+            (0.250, 0.205, 0.028), mats["accent"], collection,
             bevel=0.0, role="accent",
         )
         strap = add_box(
             "HatchStrap", (loc[0], loc[1], loc[2] + 0.014),
-            (0.232, 0.056, 0.012), mats["wear"], collection,
+            (0.262, 0.074, 0.014), mats["wear"], collection,
             bevel=0.0, role="wear",
         )
         hinge = add_box(
-            "HatchHinge", (1.090, loc[1], loc[2] + 0.026),
-            (0.030, 0.060, 0.018), mats["wear"], collection,
+            "HatchHinge", (1.085, loc[1], loc[2] + 0.030),
+            (0.035, 0.085, 0.022), mats["wear"], collection,
             bevel=0.0, role="wear",
         )
         return [hatch, strap, hinge]
     hatch = add_box(
         "ServiceHatch", loc,
-        (0.220, 0.165, 0.026), mats["accent"], collection,
+        (0.250, 0.200, 0.028), mats["accent"], collection,
         bevel=0.003 if lod < 2 else 0.0, role="accent",
     )
     parts = [hatch]
     if lod < 2:
         parts.append(add_box(
             "HatchStrap", (loc[0], loc[1], loc[2] + 0.012),
-            (0.232, 0.056, 0.012), mats["wear"], collection,
+            (0.262, 0.074, 0.014), mats["wear"], collection,
             bevel=0.002, role="wear",
         ))
     parts.append(add_box(
-        "HatchHinge", (1.090, loc[1], loc[2] + 0.026),
-        (0.030, 0.060, 0.018), mats["wear"], collection,
+        "HatchHinge", (1.085, loc[1], loc[2] + 0.030),
+        (0.035, 0.085, 0.022), mats["wear"], collection,
         bevel=0.002 if lod == 0 else 0.0, role="wear",
     ))
     if lod == 0:
@@ -1173,14 +1218,14 @@ def build_lamp(mats, collection, lod):
         vertices=10 if lod == 0 else (8 if lod == 1 else 6), bevel=0.0, role="wear", group="lamp",
     ))
     hood_s = (
-        0.260 if lod == 0 else 0.240,
-        0.170 if lod == 0 else 0.165,
-        0.095 if lod == 0 else 0.090,
+        0.300 if lod == 0 else (0.285 if lod == 1 else 0.300),
+        0.190 if lod == 0 else (0.180 if lod == 1 else 0.190),
+        0.105 if lod == 0 else (0.100 if lod == 1 else 0.105),
     )
-    hood_z = pz + 0.052
+    hood_z = pz + 0.078
     hood = add_box(
         "LampHood",
-        (px, py + 0.050, hood_z),
+        (px, py + 0.025, hood_z),
         hood_s, mats["paint"], collection,
         bevel=0.004 if lod == 0 else 0.0, role="paint", group="lamp",
     )
@@ -1189,31 +1234,29 @@ def build_lamp(mats, collection, lod):
     # the fixture's identity at site scale.
     cutter = add_box(
         "LampHoodCutter",
-        (px, py + 0.040, hood_z + 0.038),
+        (px, py + 0.020, hood_z + 0.042),
         (hood_s[0] - 0.030, hood_s[1] - 0.022, hood_s[2] + 0.010),
         None, collection, bevel=0.0, role="paint", group="lamp",
     )
     boolean_difference(hood, cutter)
     parts.append(hood)
-    # A real outer hood return catches the +Y silhouette at the work camera.
-    # It is omitted only from the 19 px LOD2 mesh; the enlarged hood itself is
-    # retained there so the far simplification stays geometric, not an outline.
-    if lod < 2:
-        parts.append(add_box(
-            "LampHoodReturn",
-            (px, py + 0.050 + hood_s[1] * 0.5 - 0.020, hood_z + hood_s[2] * 0.42),
-            (hood_s[0] * 0.46, 0.018, 0.012), mats["wear"], collection,
-            bevel=0.002 if lod == 0 else 0.0, role="wear", group="lamp",
-        ))
+    # A real outer hood return catches the +Y silhouette at every LOD. It is
+    # a folded part of the fixture, not an outline or a glow-card proxy.
+    parts.append(add_box(
+        "LampHoodReturn",
+        (px, py + 0.025 + hood_s[1] * 0.5 - 0.022, hood_z + hood_s[2] * 0.40),
+        (hood_s[0] * 0.50, 0.020, 0.014), mats["wear"], collection,
+        bevel=0.002 if lod == 0 else 0.0, role="wear", group="lamp",
+    ))
     # Keep the functional hook at its frozen socket transform while lifting
     # the emitter into the upper hood/front plane. The previous lens sat below
     # the raised +Y skirt wall and was depth-occluded in the combined diagnostic;
     # this location is physically on the hood and remains inside the envelope.
-    lens_loc = Vector((px, py + 0.030, pz + 0.125))
+    lens_loc = Vector((px, py + 0.006, pz + 0.170))
     hook_loc = Vector((px, py - 0.008, pz + 0.042))
     parts.append(add_cylinder(
         "LampLens", (lens_loc.x, lens_loc.y, lens_loc.z),
-        0.058 if lod < 2 else 0.055, 0.020, mats["lamp"], collection,
+        0.066 if lod == 0 else (0.062 if lod == 1 else 0.066), 0.022, mats["lamp"], collection,
         vertices=10 if lod == 0 else (8 if lod == 1 else 6), bevel=0.0, role="lamp", group="lamp",
     ))
     return parts, hook_loc
@@ -2589,12 +2632,13 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "",
             "## Shape grammar",
             "",
-            "Cycle 07's square-flange wellhead is the frozen identity for this revision:",
+            "Cycle 08's square-flange wellhead is the frozen identity for this revision:",
             "a square wellhead flange with a round bore; continuous U-channel opening +Z;",
             "folded square angle skirt; corner pads; nested dark race; and one side-mounted",
-            "hooded lamp with a visible cavity. Cycle 08 substantially subordinates the circular",
-            "collar, splits the U-channel into inner flange / recessed floor / outer flange,",
-            "raises the square load wall, strengthens far-LOD asymmetry, and corrects the",
+            "hooded lamp with a visible cavity. Cycle 09 makes the square anchor frame the",
+            "first load-bearing read, subordinates the circular collar, splits the U-channel",
+            "into inner flange / recessed floor / outer flange with real reveals, strengthens",
+            "far-LOD asymmetry, and corrects the",
             "Blender emissive diagnostic's glTF V orientation;",
             "identity, hooks, envelope, and camera contract stay fixed.",
             "",
@@ -2625,8 +2669,8 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             "",
             "1. Tapered dark liner, real lip, open through, true inner wall.",
             "2. Three-piece recessed U-channel (inner flange / dark floor / outer flange),",
-            "   cavity +Z, with four cardinal lap straps.",
-            "3. Square deck (round bore) + raised folded angle load wall + corner pads on the rock.",
+            "   cavity +Z, with four near-LOD cardinal lap straps and a far-LOD square anchor frame.",
+            "3. Square deck (round bore) + raised folded angle load wall + inner anchor frame + corner pads on the rock.",
             "4. Narrow nested dark inner bearing race (ring_spin) with a retained far-LOD shoulder.",
             "5. One enlarged layered hatch on the +X deck, one hooded lamp with a returned",
             "   lip on the +Y frame; only its recessed lens emits.",
@@ -2752,7 +2796,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-53", "not_applicable", "works_top", "pass", True,
         "Manufactured wellhead, not a rock/wreck; no sculpt/photogrammetry bake is required.")
     row("MTX-54", "not_applicable", "works_top", "pass", True,
-        "Cycle 08 preserves the frozen identity and interface while revising circle-to-square readability, explicitly separating the recessed U-channel floor and flanges, carrying geometric lamp/hatch cues into LOD2, and preserving immutable Cycle 01–07 evidence.")
+        "Cycle 09 preserves the frozen identity and interface while making the square anchor frame the first read, separating the recessed U-channel floor and flanges with real reveals, carrying geometric lamp/hatch cues into LOD2, raising truthful material value separation, and preserving immutable Cycle 01–08 evidence.")
 
     ledger = {
         "schema": "spaceface.advancedModelTechniqueLedger.v1",
@@ -2789,7 +2833,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "state": "design_candidate",
         "g1g2g4": "open",
         "independentReviewLaunched": False,
-        "reviewSource": "controller-provided independent exact-hash review of the Cycle 07 candidate",
+        "reviewSource": "controller-provided independent exact-hash review of the Cycle 08 candidate",
         "reviewFindingsAddressed": [
             "base-color atlas was incorrectly exported as full-surface emissive",
             "packed ORM.R was not consumed as glTF occlusionTexture",
@@ -2841,9 +2885,9 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "citedReferences": [rel(p) for p in CITED_REFS],
         "contactSheet": rel(REF_DIR / "CONTACT_SHEET.png"),
         "notes": (
-            "Cycle 08 revises the Cycle 07 square-flange candidate's circle-to-square mass balance, "
-            "explicit inner-flange/recessed-floor/outer-flange trench section, raised skirt wall, "
-            "far-LOD lamp/hatch cues, and Blender diagnostic emissive orientation while retaining "
+            "Cycle 09 revises the Cycle 08 square-flange candidate's circle-to-square mass balance, "
+            "explicit inner-flange/recessed-floor/outer-flange trench section with visible reveals, "
+            "raised square anchor walls, far-LOD lamp/hatch cues, and truthful material values while retaining "
             "its portable production material wiring and direct LOD2 site evidence. Not wired, "
             "not released, not promoted. A new independent "
             "exact-hash visual verdict remains pending."
@@ -2864,18 +2908,18 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             f"Hooks: {', '.join(inventory['hooks'])}",
             "",
             "Stills from the exported GLB at 1920×1080, live works camera (31° FOV, +Z up).",
-            "Independent reviewers were not launched this cycle. Cycle 01–07 evidence is immutable.",
+            "Independent reviewers were not launched this cycle. Cycle 01–08 evidence is immutable.",
             "",
-            "Cycle 08 makes the square load wall the first read, authors the U-channel as separate",
-            "inner flange / recessed floor / outer flange geometry with negative space, and retains",
-            "a modeled ring shoulder, layered +X hatch, and hooded +Y lamp in LOD2. The dedicated",
+            "Cycle 09 makes the square anchor wall the first read, authors the U-channel as separate",
+            "inner flange / recessed floor / outer flange geometry with visible negative-space reveals,",
+            "and retains a modeled ring shoulder, layered +X hatch, and hooded +Y lamp in LOD2. The dedicated",
             "black-except-lens production emissive atlas remains unchanged; the Blender reimport",
             "isolation diagnostic preserves its image rows because the importer converts the glTF V",
             "orientation into the low-V lamp UV rectangle.",
             f"LOD2 Works-site still (1920×1080): `{still_rel.get('works_site_lod2')}`",
             f"LOD2 still SHA-256: `{hash_stills.get('works_site_lod2')}`",
             "",
-            "Still `review_pending` / `revise`. Not wired, not released, not promoted. Cycle 07",
+            "Still `review_pending` / `revise`. Not wired, not released, not promoted. Cycle 08",
             "evidence remains immutable; independent review of this new exact hash is required.",
             "",
         ]),
@@ -2958,19 +3002,19 @@ def main(argv=None):
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
     skip_stills, skip_hidden, stills_only = parse_args(argv)
-    if CYCLE != 8 or EVIDENCE_DIR.name != "cycle_008":
-        raise RuntimeError("Cycle 08 builder must write cycle_008 only")
+    if CYCLE != 9 or EVIDENCE_DIR.name != "cycle_009":
+        raise RuntimeError("Cycle 09 builder must write cycle_009 only")
     frozen_dirs = (
         CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR,
-        CYCLE_004_DIR, CYCLE_005_DIR, CYCLE_006_DIR, CYCLE_007_DIR,
+        CYCLE_004_DIR, CYCLE_005_DIR, CYCLE_006_DIR, CYCLE_007_DIR, CYCLE_008_DIR,
     )
     if EVIDENCE_DIR.resolve() in {d.resolve() for d in frozen_dirs}:
-        raise RuntimeError("refusing to write over Cycle 01/02/03/04/05/06/07 evidence")
+        raise RuntimeError("refusing to write over Cycle 01–08 evidence")
     frozen_prev = {}
     for folder in frozen_dirs:
         frozen_prev.update(hash_tree(folder))
     if not frozen_prev:
-        raise RuntimeError("Cycle 01/02/03/04/05/06/07 evidence missing; refuse to build Cycle 08 without it")
+        raise RuntimeError("Cycle 01–08 evidence missing; refuse to build Cycle 09 without it")
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
@@ -3044,7 +3088,7 @@ def main(argv=None):
     if after_prev != frozen_prev:
         mutated = [k for k in after_prev if after_prev.get(k) != frozen_prev.get(k)]
         missing = [k for k in frozen_prev if k not in after_prev]
-        raise RuntimeError(f"Cycle 01/02/03/04/05/06/07 evidence mutated: {mutated or missing}")
+        raise RuntimeError(f"Cycle 01–08 evidence mutated: {mutated or missing}")
     print(json.dumps({
         "ok": True,
         "cycle": CYCLE,
@@ -3063,6 +3107,7 @@ def main(argv=None):
             "cycle_005": len(hash_tree(CYCLE_005_DIR)),
             "cycle_006": len(hash_tree(CYCLE_006_DIR)),
             "cycle_007": len(hash_tree(CYCLE_007_DIR)),
+            "cycle_008": len(hash_tree(CYCLE_008_DIR)),
         },
         "camera": {
             "works_top_D": camera_facts.get("works_top", {}).get("distance"),

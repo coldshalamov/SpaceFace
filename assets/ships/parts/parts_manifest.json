@@ -5736,10 +5736,10 @@
       "category": "works",
       "priority": "P1",
       "file": "works/place_works_massline_core.glb",
-      "tris": 6092,
-      "bytes": 3382996,
+      "tris": 6268,
+      "bytes": 3288888,
       "textureSize": 1024,
-      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 6092/1866/590-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 08 makes the square load wall the first read, authors a three-piece recessed U-channel (inner flange, separated floor, outer flange), enlarges the physical lamp and layered hatch cues into far LODs, and preserves truthful cool-steel value separation. The Blender emissive diagnostic uses the imported glTF V orientation so only the raised +Y lamp lens emits. Whole-asset G1/G2/G4 remain open and the exact source SHA-256 is EE84AB08B5A1F30EB795895B8C69AA1000A4C007215A38E69BE248B265E7F85D. Release/runtime G6 and player-route G7 remain separate.",
+      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 6268/1914/570-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 09 makes the raised square anchor wall the first read, subordinates the circular collar, authors a physically separated recessed U-channel floor and flanges, and carries modeled hooded-lamp/layered-hatch cues into far LODs. Truthful cool-steel value separation is preserved; the Blender emissive diagnostic uses imported glTF V orientation so only the +Y lamp lens emits. Whole-asset G1/G2/G4 remain open and the exact source SHA-256 is 2E06D1E0EACD7319416AFD5587DD4D719228FC46004E26F8FEA02020BBCC59BC. Release/runtime G6 and player-route G7 remain separate.",
       "hooks": [
         "ring_spin",
         "lamp"
@@ -5751,8 +5751,8 @@
       "mount": "origin",
       "bounds": {
         "min": [-1.04, -1.04, 0],
-        "max": [1.068, 1.04, 0.735],
-        "dimensionsM": [2.108, 2.08, 0.735]
+        "max": [1.12, 1.115, 0.735],
+        "dimensionsM": [2.16, 2.155, 0.735]
       }
     },
     {

@@ -1,7 +1,7 @@
-# Works Massline Core — reference brief (Cycle 08 form/readability revision)
+# Works Massline Core — reference brief (Cycle 09 form/readability revision)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 8. This page is the
+(signature installed machine). **State:** `design_candidate`. Cycle 9. This page is the
 contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
 `review_pending` / `revise`; this cycle does not launch reviewers.
 
@@ -18,7 +18,10 @@ raises the folded skirt returns, and carries the hooded lamp and layered hatch i
 19 px/cell silhouettes. Cycle 08 makes the square wall the first read, authors a physically
 separated inner flange, recessed trench floor, and outer flange, enlarges the +Y hood/lamp
 and +X hatch in every LOD, and corrects the Blender emissive-isolation V orientation without
-changing the production glTF texture/UV pair. Material values remain separated under the same
+changing the production glTF texture/UV pair. Cycle 09 makes a raised non-circular square
+anchor frame the unequivocal first load path, shrinks the redundant collar/race mass, widens
+the floor and its shadow reveals, and carries a larger hooded lamp and layered hatch through
+LOD2. Material values remain separated under the same
 Works lighting without introducing safety-yellow livery. No identity, hook, camera, or envelope
 contract changes.
 
@@ -108,18 +111,19 @@ the square skirt, and the U-trench without textures.
 1 cell = 2.2 wu. Envelope **2.20 × 2.20 × 1.10 wu**. Origin at cell centre. +Z up. Underside
 on the cut face (z = 0). Footprint stays inside ±1.10.
 
-| Part | wu (Cycle 08) |
+| Part | wu (Cycle 09) |
 |---|---|
 | Envelope X × Y × Z | 2.20 × 2.20 × 1.10 |
-| Well inner radius (open hole) | 0.30 bottom / 0.36 mouth |
-| Liner outer radius / height | 0.42 / 0.012–0.62 |
-| Mouth lip | r 0.348–0.448, z 0.56–0.74 |
-| Inner race (ring_spin) | 0.390–0.445 / z 0.470–0.535 (nested rebate, not a proud cap) |
-| U-channel collar | inner flange r 0.43–0.50; floor r 0.514–0.626; outer flange r 0.64–0.71; z 0.028–0.420, cavity +Z |
+| Well inner radius (open hole) | 0.26 bottom / 0.30 mouth |
+| Liner outer radius / height | 0.36 / 0.012–0.62 |
+| Mouth lip | r 0.288–0.388, z 0.56–0.74 |
+| Inner race (ring_spin) | 0.340–0.395 / z 0.470–0.535 (nested rebate, not a proud cap) |
+| U-channel collar | inner flange r 0.390–0.440; floor r 0.468–0.532; outer flange r 0.560–0.625; z 0.028–0.420, cavity +Z |
+| Square anchor frame | inner opening ±0.700, outer ±0.900, wall 0.200, top z 0.515–0.523; four real load walls |
 | Square flange / skirt | outer ±1.04, deck z 0.125–0.235, skirt height 0.420, wall 0.160, top return 0.050 |
 | Corner pads | 0.30 square, height 0.145, on the rock |
-| Lamp | +Y frame (0.18, 0.90), arm + socket + enlarged hood cavity/return + recessed lens |
-| Service hatch | +X deck (0.885, −0.22), ~0.46 × 0.22, proud layered cover |
+| Lamp | +Y frame (0.18, 0.90), arm + socket + broad hood cavity/return + recessed lens |
+| Service hatch | +X deck (0.84, −0.20), ~0.50 × 0.41, proud layered cover |
 
 Hooks:
 
@@ -162,7 +166,7 @@ repair hatch. Clay must read that without textures.
 
 ## Quality axes (grade these, not taste)
 
-1. **Planform at 120 px/cell** — hole + square flange + U-trench, not a coin/halo/compass.
+1. **Planform at 120 px/cell** — hole + square anchor/load wall + U-trench, not a coin/halo/compass.
 2. **Clay vs textured** — form holds in `works_top_clay.png`.
 3. **Well is a hole** — open through, thick liner, dark inner wall, no brown plug.
 4. **`works_edge` shows side depth** — skirt, channel web, raised lip, not a decal.
@@ -172,7 +176,7 @@ repair hatch. Clay must read that without textures.
 8. **Manufacture** — U-section, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
 9. **LOD** — LOD1/LOD2 keep hole, square outer, U-trench, lamp, ring hook at 19 px/cell.
 
-Cycle 08 remaining review risk: the revised circle-to-square balance, explicit three-piece
+Cycle 09 remaining review risk: the revised square-anchor-first balance, explicit three-piece
 U-trench/skirt section, far-LOD cues, and emissive-isolation orientation must still receive
 a fresh original-resolution exact-hash whole-asset review, including the player route. The candidate remains
 `review_pending` / `revise`; do not treat this cycle as KEEP.

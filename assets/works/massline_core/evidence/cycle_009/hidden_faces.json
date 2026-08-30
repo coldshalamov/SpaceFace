@@ -1,0 +1,379 @@
+{
+  "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
+  "glb": "C:\\sf-agents\\luna-massline-core-revise\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+  "glbSha256": "2E06D1E0EACD7319416AFD5587DD4D719228FC46004E26F8FEA02020BBCC59BC",
+  "generator": {
+    "path": "tools/blender/works_visible_faces.py",
+    "sha256": "C38B611CC7F90371FD7ADB28A489E3F7A5ACCDD678047C1E4340D8455BC784DC",
+    "blenderVersion": "5.1.2"
+  },
+  "authority": {
+    "role": "diagnostic_only",
+    "supportsVisibleFaceObservation": true,
+    "supportsHiddenFaceProof": false,
+    "supportsGeometryDeletion": false
+  },
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "resolution": [
+    1920,
+    1080
+  ],
+  "sampling": {
+    "method": "one ray per render-pixel centre inside projected active-LOD bounds",
+    "pixelPad": 1,
+    "records": [
+      {
+        "pixelBounds": [
+          901,
+          477,
+          1024,
+          599
+        ],
+        "sampleCount": 15006,
+        "hitCount": 12168,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 251,
+          "LOD0_massline_core": 11861,
+          "LOD0_massline_core_spin": 56
+        },
+        "lod": 0,
+        "framing": "works_top"
+      },
+      {
+        "pixelBounds": [
+          1718,
+          477,
+          1857,
+          599
+        ],
+        "sampleCount": 16958,
+        "hitCount": 13869,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 291,
+          "LOD0_massline_core": 13456,
+          "LOD0_massline_core_spin": 122
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          67,
+          477,
+          207,
+          599
+        ],
+        "sampleCount": 17080,
+        "hitCount": 13849,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 291,
+          "LOD0_massline_core": 13436,
+          "LOD0_massline_core_spin": 122
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          901,
+          11,
+          1024,
+          139
+        ],
+        "sampleCount": 15744,
+        "hitCount": 13173,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 260,
+          "LOD0_massline_core": 12831,
+          "LOD0_massline_core_spin": 82
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          901,
+          939,
+          1024,
+          1068
+        ],
+        "sampleCount": 15867,
+        "hitCount": 13003,
+        "objectHitCount": {
+          "LOD0_massline_core": 12674,
+          "LOD0_massline_core_lamp": 247,
+          "LOD0_massline_core_spin": 82
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1479,
+          148,
+          1613,
+          274
+        ],
+        "sampleCount": 16884,
+        "hitCount": 13828,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 300,
+          "LOD0_massline_core": 13423,
+          "LOD0_massline_core_spin": 105
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1479,
+          804,
+          1613,
+          931
+        ],
+        "sampleCount": 17018,
+        "hitCount": 13719,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 274,
+          "LOD0_massline_core": 13340,
+          "LOD0_massline_core_spin": 105
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          311,
+          148,
+          446,
+          274
+        ],
+        "sampleCount": 17010,
+        "hitCount": 13798,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 299,
+          "LOD0_massline_core": 13394,
+          "LOD0_massline_core_spin": 105
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          311,
+          804,
+          446,
+          931
+        ],
+        "sampleCount": 17145,
+        "hitCount": 13690,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 274,
+          "LOD0_massline_core": 13311,
+          "LOD0_massline_core_spin": 105
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          949,
+          529,
+          971,
+          551
+        ],
+        "sampleCount": 484,
+        "hitCount": 290,
+        "objectHitCount": {
+          "LOD1_massline_core_lamp": 8,
+          "LOD1_massline_core": 282
+        },
+        "lod": 1,
+        "framing": "works_site"
+      },
+      {
+        "pixelBounds": [
+          949,
+          529,
+          971,
+          551
+        ],
+        "sampleCount": 484,
+        "hitCount": 298,
+        "objectHitCount": {
+          "LOD2_massline_core_lamp": 8,
+          "LOD2_massline_core": 290
+        },
+        "lod": 2,
+        "framing": "works_site"
+      }
+    ]
+  },
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_massline_core_lamp",
+      "lod": 0,
+      "faces": 252,
+      "observedVisible": 64,
+      "unobserved": 188,
+      "unobservedFrac": 0.746
+    },
+    {
+      "object": "LOD1_massline_core_lamp",
+      "lod": 1,
+      "faces": 108,
+      "observedVisible": 4,
+      "unobserved": 104,
+      "unobservedFrac": 0.963
+    },
+    {
+      "object": "LOD2_massline_core_lamp",
+      "lod": 2,
+      "faces": 92,
+      "observedVisible": 4,
+      "unobserved": 88,
+      "unobservedFrac": 0.9565
+    },
+    {
+      "object": "LOD0_massline_core",
+      "lod": 0,
+      "faces": 5218,
+      "observedVisible": 1491,
+      "unobserved": 3727,
+      "unobservedFrac": 0.7143
+    },
+    {
+      "object": "LOD1_massline_core",
+      "lod": 1,
+      "faces": 1546,
+      "observedVisible": 88,
+      "unobserved": 1458,
+      "unobservedFrac": 0.9431
+    },
+    {
+      "object": "LOD2_massline_core",
+      "lod": 2,
+      "faces": 410,
+      "observedVisible": 52,
+      "unobserved": 358,
+      "unobservedFrac": 0.8732
+    },
+    {
+      "object": "LOD0_massline_core_spin",
+      "lod": 0,
+      "faces": 798,
+      "observedVisible": 163,
+      "unobserved": 635,
+      "unobservedFrac": 0.7957
+    },
+    {
+      "object": "LOD1_massline_core_spin",
+      "lod": 1,
+      "faces": 260,
+      "observedVisible": 0,
+      "unobserved": 260,
+      "unobservedFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_spin",
+      "lod": 2,
+      "faces": 68,
+      "observedVisible": 0,
+      "unobserved": 68,
+      "unobservedFrac": 1.0
+    }
+  ],
+  "observedVisibleFaces": 1866,
+  "unobservedFaces": 6886,
+  "faces": 8752,
+  "unobservedFrac": 0.7868,
+  "note": "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays can miss subpixel or antialiased coverage. This record cannot authorize culling or geometry deletion. LODs were evaluated one at a time."
+}
