@@ -270,7 +270,7 @@ function injectStyle() {
   #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:#ffb35c; }
   #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(238,108,117,.48); border-top-color:#ee6c75; }
   #sf-sector-law.sf-law--lawless .sf-law__head, #sf-sector-law.sf-law--danger .sf-law__head { color:#ff5c5c; }
-  #sf-sector-law.sf-law--receipt .sf-law__headline { color:#39d0ff; font-size:12px; }
+  #sf-sector-law.sf-law--receipt .sf-law__headline { color:#4f8fdd; font-size:12px; }
   @media (max-width:900px), (max-height:620px) {
     #ui-root > #sf-sector-law { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
     .sf-law__headline { font-size:12px; }

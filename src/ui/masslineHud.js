@@ -45,7 +45,7 @@ export const MASSLINE_HUD_CSS = `
   stroke-width:2.25; stroke-dasharray:10 5 2 5; filter:drop-shadow(0 0 5px rgba(125,224,255,0.72)); }
 #sf-ml2 .ml2-preview-link.ml2-bridle-preview .ml2-preview-line { stroke:rgba(255,181,71,0.9);
   stroke-width:2; stroke-dasharray:7 5; filter:drop-shadow(0 0 4px rgba(125,224,255,0.55)); }
-#sf-ml2 .ml2-preview.ml2-preview-snare { border-style:solid; border-left-width:3px; }
+#sf-ml2 .ml2-preview.ml2-preview-snare { border-style:solid; border-left-width:1px; }
 /* The acquisition MARK is the world anchor: it sits on the candidate itself, so the preview never
    needs a player-to-target link line (see _updateAcquisitionPreview). Shape, not colour, carries
    the state — diamond = ready, circle = protected, dashed = unavailable. */
@@ -63,7 +63,7 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
 #sf-ml2 .ml2-preview { position:absolute; left:0; top:0; min-width:94px;
   transform:translate3d(-9999px,-9999px,0); padding:6px 9px 5px 9px;
-  border:1px solid rgba(125,224,255,0.88); border-left-width:3px;
+  border:1px solid rgba(125,224,255,0.88); border-left-width:1px;
   background:linear-gradient(90deg,rgba(4,14,24,0.82),rgba(4,14,24,0.36));
   clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
   color:#e5f8ff; text-shadow:0 1px 2px #02060b; white-space:nowrap;

@@ -4,12 +4,14 @@
 @import "./commsradial.css";
 
 :root {
-  --bg: #05070d;
-  --panel: #0b1220; --panel-2: #111d30; --panel-edge: #1d3350; --panel-edge-2: #2b4a72;
-  --ink: #d3e6ff; --ink-dim: #84a0c8; --ink-mute: #5a7aa0;
-  --accent: #39d0ff; --accent-2: #7af7d0; --accent-3: #c08bff;
-  --warn: #ffb347; --danger: #ff5470; --good: #62e08a;
-  --hull: #ff5470; --shield: #39d0ff; --energy: #ffd84a; --cargo: #7af7d0;
+  /* Visual identity (2026-08 revision): quiet modern neutral. Desaturated surfaces, one
+     restrained interaction accent, colour spent only on state. No neon, no rails, no glass. */
+  --bg: #0a0c10;
+  --panel: #151a21; --panel-2: #1b212a; --panel-edge: #2c343f; --panel-edge-2: #3d4754;
+  --ink: #e7eaee; --ink-dim: #9aa4b0; --ink-mute: #6e7885;
+  --accent: #4f8fdd; --accent-2: #4fbf8f; --accent-3: #4f8fdd;
+  --warn: #d9a054; --danger: #d95f6a; --good: #4fbf8f;
+  --hull: #d95f6a; --shield: #4f8fdd; --energy: #d4b45f; --cargo: #4fbf8f;
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
@@ -24,19 +26,19 @@
      token, so contrast is already proven. At rest a screen is ≥80% calm+paper on the surface;
      you/foe/goal are SPENT on state, never worn as chrome. Every colour-coded state carries a
      second channel (shape or word) — never encode by colour alone. */
-  --sf-you: #7af7d0;    /* you, your agency, a gain        (equals --accent-2, 14.3:1 on surface) */
-  --sf-foe: #ff5470;    /* threat, cost, over-budget, loss (equals --danger,    6.0:1) */
-  --sf-goal: #ffb347;   /* next unlock, objective, opportunity (equals --warn, 10.5:1) */
-  --sf-calm: #84a0c8;   /* structure, chrome, labels, rest (equals --ink-dim,   6.9:1) */
-  --sf-paper: #d3e6ff;  /* all body copy                   (equals --ink,     ~14:1) */
-  --sf-surface: #0b1220; /* screen backdrop base            (equals --panel) */
-  --sf-edge: #1d3350;   /* 1px separators, socket rings    (equals --panel-edge) */
+  --sf-you: #4fbf8f;    /* you, your agency, a gain        (14.0:1 on surface) */
+  --sf-foe: #d95f6a;    /* threat, cost, over-budget, loss (6.0:1) */
+  --sf-goal: #d9a054;   /* next unlock, objective, opportunity (9.6:1) */
+  --sf-calm: #9aa4b0;   /* structure, chrome, labels, rest (7.2:1) */
+  --sf-paper: #dfe3e8;  /* all body copy                   (~13:1) */
+  --sf-surface: #12161c; /* screen backdrop base            */
+  --sf-edge: #2c343f;   /* 1px separators, socket rings    */
 
   /* ===== Instrument grammar type tokens (§3: four roles, no fifth) =====
      Faces are vendored and loaded at boot (styles/fonts.css). 12px floor; tracking above .06em
      only on MICRO; every screen has exactly one DISPLAY-sized element. */
-  --sf-display-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 700 · 28/40/64px */
-  --sf-subhead-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 600 · 15/19/22px */
+  --sf-display-face: "IBM Plex Sans", "Segoe UI", sans-serif;           /* 600/700 · 28/40/64px */
+  --sf-subhead-face: "IBM Plex Sans", "Segoe UI", sans-serif;           /* 600 · 15/19/22px */
   --sf-body-face: "IBM Plex Sans", "Segoe UI", sans-serif;              /* 400/500 · 13/14/15px */
   --sf-data-face: "IBM Plex Mono", Consolas, monospace;                 /* 500 · 13/15/20px, tabular-nums, numerals only */
 
@@ -54,30 +56,30 @@
      color-mix literal written twice. This repo has a documented history of an append-only
      stylesheet becoming an override pile (styles/station.css: 202 selectors redefined at
      brace-depth 0). Three drifts in the first two consumers is where that starts. */
-  --sf-rail-w: 2px;                                                    /* the meaning rail on any instrument block */
-  --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 45%, transparent); /* the resting edge of a verb */
-  --sf-track-micro: .18em;                                             /* MICRO tracking, one value */
+  --sf-rail-w: 0px;                                                    /* left accent rails are retired; state carries a word or glyph */
+  --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 40%, transparent); /* the resting edge of a verb */
+  --sf-track-micro: .06em;                                             /* MICRO tracking, one value */
 
   /* extra from visual bible for pro polish */
   --nebula-purple: #3a1c6e;
   --nebula-cyan: #0e4030;
-  --glow-cyan: #7af7ff;
+  --glow-cyan: #9ec9e8;
 
   /* ===== Legacy visor palette, compatibility only =====
-     Do not extend these tokens or use them as a visual direction. */
-  --visor-cyan: #00F0FF;
-  --visor-cyan-dim: rgba(0, 240, 255, 0.4);
-  --visor-amber: #FF9900;
-  --visor-amber-dim: rgba(255, 153, 0, 0.4);
-  --visor-red: #FF2A2A;
-  --visor-red-dim: rgba(255, 42, 42, 0.4);
+     Do not extend these tokens or use them as a visual direction. Values desaturated 2026-08. */
+  --visor-cyan: #4f8fdd;
+  --visor-cyan-dim: rgba(79, 143, 221, 0.28);
+  --visor-amber: #d9a054;
+  --visor-amber-dim: rgba(217, 160, 84, 0.28);
+  --visor-red: #d95f6a;
+  --visor-red-dim: rgba(217, 95, 106, 0.28);
 
   /* Text and glows */
   --text-primary: #FFFFFF;
   --text-secondary: rgba(255, 255, 255, 0.7);
-  --visor-glow-cyan: 0px 0px 8px rgba(0, 240, 255, 0.6);
-  --visor-glow-amber: 0px 0px 8px rgba(255, 153, 0, 0.6);
-  --visor-glow-red: 0px 0px 12px rgba(255, 42, 42, 0.8);
+  --visor-glow-cyan: 0px 0px 6px rgba(79, 143, 221, 0.35);
+  --visor-glow-amber: 0px 0px 6px rgba(217, 160, 84, 0.35);
+  --visor-glow-red: 0px 0px 8px rgba(217, 95, 106, 0.45);
 
   /* Text shadow for legibility without backgrounds */
   --text-shadow-hard: 0px 1px 3px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 0.8);
@@ -234,7 +236,7 @@ button, .btn {
   cursor: pointer;
   transition: border-color .1s ease, color .1s ease, box-shadow .1s ease, transform .1s ease;
   text-transform: uppercase;
-  letter-spacing: .08em;
+  letter-spacing: .05em;
   font-size: 0.92em;
 }
 button:hover, .btn:hover {
@@ -305,14 +307,13 @@ button:active { translate: 0 1px; }
   color: var(--ink);
   background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
   border: 1px solid var(--panel-edge);
-  border-left: 3px solid var(--accent);
   padding: 5px 12px;
   border-radius: 4px;
   box-shadow: 0 4px 14px rgba(0,0,0,.45);
 }
-.toast.good, .toast[data-kind="good"], .toast[data-kind="credits"], .toast[data-kind="success"] { border-left-color: var(--good); color: #d4f7e2; }
-.toast.warn, .toast[data-kind="warn"] { border-left-color: var(--warn); color: #fce8cc; }
-.toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { border-left-color: var(--danger); color: #ffd6dc; }
+.toast.good, .toast[data-kind="good"], .toast[data-kind="credits"], .toast[data-kind="success"] { color: #b9e6cd; }
+.toast.warn, .toast[data-kind="warn"] { color: #ecd7b5; }
+.toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { color: #f0c9cd; }
 
 
 /* J05 removed `.icon-ref`, the only referrer to assets/ui/icons_atlas.jpg. It was a "usage hint" for
@@ -321,10 +322,9 @@ button:active { translate: 0 1px; }
 
 /* Screen titles and pro touches */
 #screens h1, #screens .title {
-  font-family: var(--mono);
-  letter-spacing: .35em;
-  text-shadow: 0 0 18px var(--accent);
-  color: var(--accent);
+  font-family: var(--sf-display-face);
+  letter-spacing: .04em;
+  color: var(--ink);
 }
 #screens .subtle { color: var(--ink-dim); font-size: 0.82em; }
 
@@ -346,14 +346,14 @@ button:active { translate: 0 1px; }
   --ease: cubic-bezier(.2, .8, .2, 1);
   --dur-fast: .1s; --dur: .18s; --dur-slow: .3s;
   /* elevation */
-  --sh-1: 0 2px 10px rgba(0,0,0,.4);
-  --sh-2: 0 6px 24px rgba(0,0,0,.55);
-  --sh-3: 0 14px 44px rgba(0,0,0,.7);
-  /* glass surface */
-  --glass: rgba(11,18,32,.62);
-  --glass-edge: rgba(57,208,255,.16);
-  /* accent gradient (used for highlights, active states, brand moments) */
-  --grad-accent: linear-gradient(135deg, var(--accent), var(--accent-3));
+  --sh-1: 0 2px 10px rgba(0,0,0,.35);
+  --sh-2: 0 6px 24px rgba(0,0,0,.45);
+  --sh-3: 0 14px 44px rgba(0,0,0,.6);
+  /* surface (former "glass" tokens, now plain translucent panel values) */
+  --glass: rgba(18,22,28,.82);
+  --glass-edge: rgba(255,255,255,.09);
+  /* accent (flattened: solid colour, no gradient fills) */
+  --grad-accent: var(--accent);
 }
 
 /* ---- reusable components --------------------------------------------------------------- */
@@ -371,13 +371,13 @@ button:active { translate: 0 1px; }
   box-shadow: var(--sh-2);
   transform: translateY(-2px);
 }
-.sf-card--accent { border-left: 3px solid var(--accent); }
+.sf-card--accent { border-color: var(--panel-edge-2); }
 
 /* Badge / tag: legality, facing, tier, event pills. */
 .sf-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 1px 8px; border-radius: var(--r-pill);
-  font-size: var(--t-xs); letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--t-xs); letter-spacing: .05em; text-transform: uppercase;
   background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
@@ -388,7 +388,7 @@ button:active { translate: 0 1px; }
 
 /* Section header: the small all-caps label above a group. */
 .sf-section-h {
-  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em;
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
   text-transform: uppercase; color: var(--ink-mute);
   display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2);
 }
@@ -404,15 +404,14 @@ button:active { translate: 0 1px; }
   color: var(--ink-dim); font-size: var(--t-sm); letter-spacing: .04em; pointer-events: auto;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease); border: none; background: none; text-transform: none; }
 .sf-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, transparent); }
-.sf-tab.active { color: #fff; background: var(--grad-accent); box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+.sf-tab.active { color: #fff; background: var(--accent); }
 
 /* Primary / ghost button variants for clear affordance hierarchy. */
 .sf-btn { font-family: inherit; cursor: pointer; pointer-events: auto; border-radius: var(--r-md);
   padding: var(--sp-2) var(--sp-4); font-size: var(--t-sm); letter-spacing: .06em; text-transform: uppercase;
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
-.sf-btn--primary { background: var(--grad-accent); color: var(--sf-surface); border: none; font-weight: 700;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent); }
-.sf-btn--primary:hover { box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 55%, transparent); transform: translateY(-1px); }
+.sf-btn--primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.sf-btn--primary:hover { background: color-mix(in srgb, var(--accent) 86%, #fff); transform: translateY(-1px); }
 .sf-btn--ghost { background: var(--glass); color: var(--ink); border: 1px solid var(--panel-edge); }
 .sf-btn--ghost:hover { border-color: var(--accent); color: #fff; }
 .sf-btn--danger { background: color-mix(in srgb, var(--sf-foe) 15%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--sf-foe) 40%, transparent); }
@@ -426,13 +425,13 @@ button:active { translate: 0 1px; }
 
 /* Stat readout (label over value) — used in shipyard/market headers. */
 .sf-stat-block { display: flex; flex-direction: column; gap: 2px; }
-.sf-stat-block__k { font-size: var(--t-xs); letter-spacing: .12em; color: var(--ink-mute); text-transform: uppercase; }
+.sf-stat-block__k { font-size: var(--t-xs); letter-spacing: .06em; color: var(--ink-mute); text-transform: uppercase; }
 .sf-stat-block__v { font-size: var(--t-lg); color: var(--ink); font-family: var(--mono); }
 
 /* Screen title bar: consistent header for every modal screen. */
 .sf-screen-title {
-  font-family: var(--mono); font-size: var(--t-xl); letter-spacing: .28em;
-  color: var(--accent); text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 50%, transparent);
+  font-family: var(--sf-display-face); font-size: var(--t-xl); letter-spacing: .04em;
+  color: var(--ink);
   display: flex; align-items: baseline; gap: var(--sp-3);
 }
 .sf-screen-title .sf-screen-sub { font-family: var(--font); font-size: var(--t-sm);
@@ -490,24 +489,24 @@ button:active { translate: 0 1px; }
   /* Structure / hull — desaturated steel-blue. Calm "this is the ship itself."
      (These mirror the existing well-behaved --ink-mute/--ink-dim text values, now given a semantic
      name so vitals can reference them without overloading text tokens.) */
-  --console-steel:      #84a0c8;   /* bright steel — the healthy / nominal state */
-  --console-steel-dim:  #5a7aa0;   /* dim structural — bars at full health read quiet */
-  /* Active systems — cyan (shield, energy). Bright = the system is live / regenerating. */
-  --console-cyan:       #39d0ff;   /* bright cyan — active system / regenerating (== --accent) */
-  --console-cyan-dim:   #235c78;   /* dim cyan — shield/energy at rest */
+  --console-steel:      #9aa4b0;   /* bright steel — the healthy / nominal state */
+  --console-steel-dim:  #6e7885;   /* dim structural — bars at full health read quiet */
+  /* Active systems — the single blue accent. Bright = the system is live / regenerating. */
+  --console-cyan:       #4f8fdd;   /* bright accent — active system / regenerating (== --accent) */
+  --console-cyan-dim:   #2c4a68;   /* dim accent — shield/energy at rest */
   /* Heat — amber. A bar at 0% is nearly invisible; it EARNS its presence as it climbs. */
-  --console-amber:      #ffb347;   /* bright amber — heat climbing, attention warranted (== --warn) */
-  --console-amber-dim:  #5c4019;   /* dim amber — idle/cool (barely visible = correct) */
+  --console-amber:      #d9a054;   /* bright amber — heat climbing, attention warranted (== --warn) */
+  --console-amber-dim:  #4a3a1e;   /* dim amber — idle/cool (barely visible = correct) */
   /* Danger — red. ONLY for damage taken, low health, alarms. Never a default state. */
-  --console-red:        #ff5470;   /* bright red — critical / taking damage (== --danger) */
-  /* Cargo / income — mint. */
-  --console-mint:       #7af7d0;   /* bright mint — resource gained (== --accent-2) */
+  --console-red:        #d95f6a;   /* bright red — critical / taking damage (== --danger) */
+  /* Cargo / income — the calm green. */
+  --console-mint:       #4fbf8f;   /* bright green — resource gained (== --accent-2) */
 
   /* Console surfaces (panel + edge) — reusable by the command bar + screens. */
-  --console-bg:         rgba(8,13,24,.82);     /* semi-transparent (flight HUD, over the canvas) */
-  --console-bg-solid:   #0b1220;               /* opaque (screens/modals, over the menu bg) */
-  --console-edge:       rgba(132,160,200,.22); /* calm steel edge */
-  --console-edge-strong:rgba(132,160,200,.45); /* focused/active edge */
+  --console-bg:         rgba(13,16,21,.85);    /* semi-transparent (flight HUD, over the canvas) */
+  --console-bg-solid:   #151a21;               /* opaque (screens/modals, over the menu bg) */
+  --console-edge:       rgba(255,255,255,.10); /* calm neutral edge */
+  --console-edge-strong:rgba(255,255,255,.22); /* focused/active edge */
 }
 
 /* ---- Current console primitives (additive compatibility variants) ----------------------------
@@ -538,7 +537,7 @@ button:active { translate: 0 1px; }
   border: 1px solid var(--console-edge);
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   padding: var(--sp-2) var(--sp-4);
-  font-size: var(--t-sm); letter-spacing: .08em; text-transform: uppercase;
+  font-size: var(--t-sm); letter-spacing: .05em; text-transform: uppercase;
   transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .sf-console-btn:hover { border-color: var(--console-cyan); color: #fff; }
@@ -549,7 +548,7 @@ button:active { translate: 0 1px; }
    from jittering as the value changes (credits counting up, cargo filling). */
 .sf-console-stat { display: flex; flex-direction: column; gap: 1px; line-height: 1.1; }
 .sf-console-stat__k {
-  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .14em;
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
   text-transform: uppercase; color: var(--ink-mute);
 }
 .sf-console-stat__v {
@@ -889,7 +888,7 @@ button:active { translate: 0 1px; }
    Mirrors the .sf-console-stat metric recipe. Label stays --ink-dim (not --ink-mute) to hold 4.5:1
    over the .88 panel ground (check-wcag-contrast). */
 .sf-card__label {
-  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .14em;
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
   text-transform: uppercase; color: var(--ink-dim); line-height: 1.2;
 }
 .sf-card__value {
@@ -907,7 +906,7 @@ button:active { translate: 0 1px; }
   --sf-chip-color: var(--ink-dim);
   display: inline-flex; align-items: center; gap: .4em;
   padding: .15em .6em; border-radius: var(--r-pill);
-  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .12em; text-transform: uppercase;
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase;
   color: var(--sf-chip-color);
   background: color-mix(in srgb, var(--sf-chip-color) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--sf-chip-color) 32%, transparent);
@@ -998,7 +997,7 @@ button:active { translate: 0 1px; }
   gap: var(--sp-2); color: var(--ink-mute); pointer-events: none;
 }
 .sf-asset-stage__fallback svg { width: 42%; max-width: 160px; opacity: .5; }
-.sf-asset-stage__fallback span { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .16em; text-transform: uppercase; }
+.sf-asset-stage__fallback span { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; }
 .sf-asset-stage--loaded .sf-asset-stage__fallback { display: none; }
 
 /* 8 ─ sf-border-trace : ONE-SHOT edge sweep on a state change (see WHEN-ALLOWED note above) ----- */
@@ -1229,7 +1228,7 @@ button:active { translate: 0 1px; }
   min-height: 34px;
   padding: 6px 10px;
   font: 600 12px/1.2 var(--sf-subhead-face);
-  letter-spacing: .08em;
+  letter-spacing: .05em;
   text-transform: uppercase;
 }
 .sf-range__drawer-tab.is-on {
@@ -1244,7 +1243,7 @@ button:active { translate: 0 1px; }
 }
 .sf-range__drawer-title {
   font: 600 12px/1.2 var(--sf-subhead-face);
-  letter-spacing: .18em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--sf-calm);
 }
@@ -1269,7 +1268,7 @@ button:active { translate: 0 1px; }
 }
 .sf-range__rail-group-head {
   font: 600 12px/1.2 var(--sf-subhead-face);
-  letter-spacing: .16em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--sf-calm);
 }
@@ -1293,19 +1292,12 @@ button:active { translate: 0 1px; }
   letter-spacing: .01em;
   color: var(--sf-paper);
   border: 1px solid var(--sf-edge);
-  border-left: 3px solid var(--sf-calm);
   border-radius: var(--r-sm, 5px);
   background: color-mix(in srgb, var(--sf-surface) 92%, black);
   padding: 6px 8px;
 }
 .sf-range__rail-row[data-state="new"] .sf-range__rail-state { color: var(--sf-calm); }
-.sf-range__rail-row[data-state="flown"] {
-  border-left-color: var(--sf-goal);
-}
 .sf-range__rail-row[data-state="flown"] .sf-range__rail-state { color: var(--sf-goal); }
-.sf-range__rail-row[data-state="cleared"] {
-  border-left-color: var(--sf-you);
-}
 .sf-range__rail-row[data-state="cleared"] .sf-range__rail-state { color: var(--sf-you); }
 .sf-range__rail-row.is-active {
   border-color: var(--sf-paper);
@@ -1331,7 +1323,7 @@ button:active { translate: 0 1px; }
 }
 .sf-range__b-row .k {
   font: 600 12px/1.2 var(--sf-subhead-face);
-  letter-spacing: .08em;
+  letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--sf-calm);
 }
@@ -1364,7 +1356,7 @@ button:active { translate: 0 1px; }
   min-height: 32px;
   padding: 5px 10px;
   font: 600 12px/1.2 var(--sf-subhead-face);
-  letter-spacing: .08em;
+  letter-spacing: .05em;
 }
 .sf-range__because {
   margin: 0;
@@ -1380,7 +1372,7 @@ button:active { translate: 0 1px; }
   min-height: 36px;
   padding: 6px 12px;
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing: .05em;
 }
 .sf-range__empty {
   position: absolute;
@@ -1617,7 +1609,6 @@ button:active { translate: 0 1px; }
   color: var(--sf-paper);
   padding: 7px 9px;
   border: 1px solid var(--sf-edge);
-  border-left-width: 3px;
   border-radius: var(--r-sm, 5px);
   background: color-mix(in srgb, var(--sf-surface) 92%, black);
   cursor: pointer;
@@ -1815,7 +1806,7 @@ button:active { translate: 0 1px; }
   .fp-control input,
   .fp-sort { border: 1px solid CanvasText; }
   .fp-field { display: none; }
-  .fp-node { border: 1px solid CanvasText; border-left-width: 3px; }
+  .fp-node { border: 1px solid CanvasText; }
   .fp-edge { stroke: CanvasText; }
   .fp-edge--live { stroke-width: 2.2; }
 }

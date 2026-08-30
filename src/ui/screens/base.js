@@ -65,7 +65,7 @@ function injectStyle() {
 #sf-base .base-ledger { border:1px solid rgba(219,152,56,.25); border-radius:2px; padding:12px;
   background:rgba(14,17,19,.88); display:grid; gap:8px; }
 #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-#sf-base .base-ledger-cell { border-left:2px solid rgba(219,152,56,.32); padding-left:8px; }
+#sf-base .base-ledger-cell { border-left:1px solid var(--sf-edge); padding-left:8px; }
 #sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:12px;
   letter-spacing:.12em; text-transform:uppercase; }
 #sf-base .base-ledger-v { color:var(--ink); font-size:12px; margin-top:2px; }

@@ -608,7 +608,7 @@
 /* Whole hulls carry more visual weight than recipes for intermediate goods. */
 .sx-app .sx-ind-process[data-process="ship"] .sx-ind-process__items { grid-template-columns: 1fr; }
 .sx-app .sx-ind-process[data-process="ship"] .sx-ind-row {
-  border-left: 3px solid var(--signal);
+  border-left: 1px solid var(--signal);
   background: linear-gradient(90deg, color-mix(in srgb, var(--signal) 12%, var(--sxb-panel-up)), var(--sxb-panel));
 }
 .sx-app .sx-ind-process[data-process="ship"] .sx-ind-row__name {

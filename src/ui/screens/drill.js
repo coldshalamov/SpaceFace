@@ -229,7 +229,7 @@ export function createDrillInputController({ drillSys, getState }) {
 // Presentation palette — one instrument-grammar resolver (same path as localmap.js).
 // Hex fallbacks match styles/ui.css :root defaults. --accent has no role and is not used.
 export const ROLE_FALLBACK = {
-  you: '#7af7d0',
+  you: '#4fbf8f',
   foe: '#ff5470',
   goal: '#ffb347',
   calm: '#84a0c8',
@@ -932,7 +932,7 @@ function injectStyle() {
 }
 .drill-activity-feed { display:flex; flex-direction:column; gap:5px; min-height:72px; max-height:156px; overflow:hidden; }
 .drill-activity-empty { color:var(--sf-calm); font-size:12px; line-height:1.4; }
-.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:2px solid var(--sf-you); background: color-mix(in srgb, var(--sf-you) 6%, transparent); color:var(--sf-calm); font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
+.drill-activity-item { display:grid; grid-template-columns:18px minmax(0,1fr) auto; gap:7px; align-items:start; padding:6px 7px; border-left:1px solid var(--sf-edge); background: color-mix(in srgb, var(--sf-you) 6%, transparent); color:var(--sf-calm); font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
 .drill-activity-item.warn { border-left-color:var(--sf-goal); color:var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
 .drill-activity-item.bad { border-left-color:var(--sf-foe); color:var(--sf-foe); background: color-mix(in srgb, var(--sf-foe) 8%, transparent); }
 .drill-activity-item .icon { font-weight:700; color:currentColor; }
@@ -2006,7 +2006,7 @@ export const drillScreen = {
         const radius = progress * SCAN_RADIUS * TILE;
         const alpha = motionReduce ? 0.28 : Math.max(0.08, 0.48 * (1 - progress));
         ctx2d.save();
-        ctx2d.strokeStyle = `rgba(57,208,255,${alpha})`;
+        ctx2d.strokeStyle = `rgba(79,143,221,${alpha})`;
         ctx2d.lineWidth = 2;
         ctx2d.beginPath();
         ctx2d.arc(drillScreen._rx + TILE / 2, drillScreen._ry + TILE / 2 - viewY, radius, 0, Math.PI * 2);
@@ -2055,7 +2055,7 @@ export const drillScreen = {
       // Tile-break flash pulse
       if (breakFlash.t > 0) {
         const a = breakFlash.t / 0.22;
-        ctx2d.fillStyle = `rgba(57,208,255,${0.18 * a})`;
+        ctx2d.fillStyle = `rgba(79,143,221,${0.18 * a})`;
         ctx2d.beginPath();
         ctx2d.arc(breakFlash.x, breakFlash.y - viewY, TILE * (0.6 + (1 - a) * 0.8), 0, Math.PI * 2);
         ctx2d.fill();

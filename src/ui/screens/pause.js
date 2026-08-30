@@ -44,7 +44,7 @@ function injectStyle() {
   /* The FLIGHT BRIEF card is the pause screen's own instrument readout: amber worklight edge
      plus a dimmed amber wash so the live objective reads first against the frozen world. */
   .screen.sf-menu .sf-pause-brief {
-    border-left:2px solid var(--accent);
+    border-left:1px solid var(--sf-edge);
     background:
       linear-gradient(90deg, var(--mf-worklight-dim), transparent 42%),
       #0e1113;

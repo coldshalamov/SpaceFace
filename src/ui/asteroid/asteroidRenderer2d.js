@@ -347,13 +347,13 @@ export function paintMachine(g, defId, x, y, opts = {}) {
     g.lineWidth = 1.5;
     g.stroke();
     const pulse = opts.reducedMotion ? 0.8 : 0.65 + 0.35 * Math.sin((opts.timeS || 0) * 2.2);
-    g.fillStyle = '#39d0ff';
+    g.fillStyle = '#4f8fdd';
     g.globalAlpha = pulse;
     g.beginPath();
     g.arc(cx, cy, 6, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = 1;
-    g.strokeStyle = 'rgba(57,208,255,0.5)';
+    g.strokeStyle = 'rgba(79,143,221,0.5)';
     g.beginPath();
     g.arc(cx, cy, 10, 0, Math.PI * 2);
     g.stroke();
@@ -402,7 +402,7 @@ export function paintMachine(g, defId, x, y, opts = {}) {
     g.fillRect(x + 9, y + 12, TILE - 18, 3);
     g.fillStyle = '#5a6c8f';
     g.fillRect(x + 10 + p * (TILE - 24), y + 10, 4, 7);
-    g.fillStyle = 'rgba(57,208,255,0.85)';
+    g.fillStyle = 'rgba(79,143,221,0.85)';
     g.fillRect(x + 9, y + TILE - 10, (TILE - 18) * p, 2);
   } else if (defId === 'sm_cargo_port') {
     box(x + 5, y + 12, TILE - 10, TILE - 18);
@@ -522,7 +522,7 @@ export function paintOverlayNetworks(g, kind, cells, machineCells, viewY, startR
       }
       if (!mask) { g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.stroke(); }
       const alpha = ratio >= 1 ? 0.9 : (0.35 + ratio * 0.4);
-      g.strokeStyle = `rgba(57,208,255,${alpha})`;
+      g.strokeStyle = `rgba(79,143,221,${alpha})`;
       g.lineWidth = 2;
       for (const [bit, dx, dy] of arms) {
         if (!(mask & bit)) continue;
@@ -537,7 +537,7 @@ export function paintOverlayNetworks(g, kind, cells, machineCells, viewY, startR
         g.beginPath();
         g.arc(cx, cy, 4, 0, Math.PI * 2);
         g.fill();
-        g.strokeStyle = `rgba(57,208,255,${alpha})`;
+        g.strokeStyle = `rgba(79,143,221,${alpha})`;
         g.lineWidth = 1;
         g.stroke();
       }
@@ -582,7 +582,7 @@ export function paintRover(g, x, y, faceDir, opts = {}) {
   g.strokeStyle = '#41527a';
   g.stroke();
   // Canopy
-  g.fillStyle = '#39d0ff';
+  g.fillStyle = '#4f8fdd';
   g.globalAlpha = 0.85;
   g.beginPath();
   g.moveTo(-3, -7);
@@ -624,7 +624,7 @@ export function paintRover(g, x, y, faceDir, opts = {}) {
     g.stroke();
   }
   g.restore();
-  g.fillStyle = '#39d0ff';
+  g.fillStyle = '#4f8fdd';
   g.beginPath();
   g.arc(14 + len, 0, 1.8, 0, Math.PI * 2);
   g.fill();

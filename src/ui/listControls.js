@@ -30,7 +30,7 @@ function injectStyle() {
     border-radius:var(--r-md); padding:var(--sp-2) var(--sp-3); font-size:var(--t-sm);
     pointer-events:auto; transition:border-color var(--dur) var(--ease); }
   .sf-lc__search:focus { outline:none; border-color:var(--accent);
-    box-shadow:0 0 0 2px rgba(57,208,255,.18); }
+    box-shadow:0 0 0 2px rgba(79,143,221,.18); }
   /* Authored placeholder tint — the browser default gray reads low-contrast on the dark face. */
   .sf-lc__search::placeholder { color:var(--ink-mute); }
   .sf-lc__chips { display:flex; gap:var(--sp-1); flex-wrap:wrap; }
@@ -39,7 +39,7 @@ function injectStyle() {
     background:rgba(132,160,200,.08); color:var(--ink-dim); border:1px solid var(--panel-edge);
     transition:all var(--dur) var(--ease); text-transform:none; }
   .sf-lc__chip:hover { color:var(--ink); border-color:var(--panel-edge-2); }
-  .sf-lc__chip.active { color:#fff; background:rgba(57,208,255,.18); border-color:var(--accent); }
+  .sf-lc__chip.active { color:#fff; background:rgba(79,143,221,.18); border-color:var(--accent); }
   /* Sortable header cell — used inside existing .st-row-head style grids */
   .sf-sort { cursor:pointer; pointer-events:auto; user-select:none; display:inline-flex;
     align-items:center; gap:3px; transition:color var(--dur) var(--ease);

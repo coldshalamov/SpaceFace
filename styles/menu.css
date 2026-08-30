@@ -29,9 +29,9 @@
   --ink-dim: #a9b8c4;
   --ink-mute: #71828f;
   /* accent: one signal cyan, pale variants for secondary marks */
-  --accent: #4ec3e6;
-  --accent-2: #9ddcf0;
-  --accent-3: #7fd4ee;
+  --accent: #4f8fdd;
+  --accent-2: #7fb3e6;
+  --accent-3: #4f8fdd;
   --good: #5fc98f;
   --warn: #dfa04e;
   --danger: #e0665f;
@@ -215,7 +215,7 @@
   font-family: var(--mf-ui);
   font-weight: 500;
   font-size: 12px;
-  letter-spacing: .16em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   text-align: left;
   color: var(--ink-dim);
@@ -281,7 +281,7 @@
 .screen.sf-menu button.sf-btn--primary::before { background: rgba(6, 36, 48, .45); }
 .screen.sf-menu button.sf-btn--primary:hover:not(:disabled),
 .screen.sf-menu button.sf-btn--primary:focus-visible {
-  background: linear-gradient(180deg, var(--accent-3), #45b7db);
+  background: var(--accent);
   color: #04202b;
 }
 .screen.sf-menu button.sf-btn--primary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
@@ -528,7 +528,7 @@
 }
 .screen.sf-menu button.sf-tab.active {
   color: #04202b;
-  background: linear-gradient(180deg, var(--accent-3), #45b7db);
+  background: var(--accent);
   border-color: var(--accent-3);
   font-weight: 600;
   box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
@@ -674,7 +674,7 @@
   font-family: var(--mf-display);
   font-weight: 600;
   font-size: 16px;
-  letter-spacing: .14em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink);
   text-shadow: none;
@@ -702,7 +702,7 @@
   font-family: var(--mf-ui);
   font-weight: 500;
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   text-align: center;
   color: var(--ink-dim);
@@ -729,7 +729,7 @@
 }
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary:hover:not(:disabled),
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible {
-  background: linear-gradient(180deg, var(--accent-3), #45b7db);
+  background: var(--accent);
   color: #04202b;
 }
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }

@@ -235,7 +235,7 @@ export function createHudMeta(ctx) {
 export const HUD_META_CSS = `
   /* STABLE LOAD — the persistent cargo lie (Phase 1+). Chromeless, glowing-edge marker. */
   .sf-stableload { position:absolute; left:22px; bottom:210px; display:none; align-items:center; gap:8px;
-    padding-left:8px; border-left:2px solid var(--text-secondary);
+    padding-left:8px; border-left:1px solid var(--sf-edge);
     pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .5s ease; }
   .sf-stableload--visible { display:flex; opacity:1; }
   .sf-stableload__k { font-size:12px; letter-spacing:.14em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }

@@ -62,8 +62,8 @@ export const CAPTION_SIZES = ['small', 'medium', 'large'];
 const PALETTES = {
   none: {
     // identity — the shipped theme (styles/ui.css:8-9). Listed so we can hard-reset every var.
-    '--sf-hostile': '#ff5470', '--sf-neutral': '#9aa8bc', '--sf-friendly': '#62e08a', '--sf-ally': '#39d0ff',
-    '--sf-hull': '#ff5470', '--sf-shield': '#39d0ff', '--sf-energy': '#ffd84a', '--sf-cargo': '#7af7d0',
+    '--sf-hostile': '#ff5470', '--sf-neutral': '#9aa8bc', '--sf-friendly': '#62e08a', '--sf-ally': '#4f8fdd',
+    '--sf-hull': '#ff5470', '--sf-shield': '#4f8fdd', '--sf-energy': '#ffd84a', '--sf-cargo': '#4fbf8f',
     '--sf-warn': '#ffb347', '--sf-danger': '#ff5470', '--sf-good': '#62e08a',
   },
   // Protan (no L-cones): red is dark/ambiguous. Push hostile toward orange-vermillion, friendly toward
@@ -139,12 +139,12 @@ export const SEMANTIC_PALETTE = {
   hostile:  { color: '#ff5470', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', glyph: 'target',      label: 'Hostile' },
   neutral:  { color: '#9aa8bc', cssVar: '--sf-neutral',  shape: 'square',   icon: '■', glyph: 'info',        label: 'Neutral' },
   friendly: { color: '#62e08a', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', glyph: 'info',        label: 'Friendly' },
-  ally:     { color: '#39d0ff', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', glyph: 'chevron',     label: 'Ally / You' },
+  ally:     { color: '#4f8fdd', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', glyph: 'chevron',     label: 'Ally / You' },
   target:   { color: '#ffffff', cssVar: null,            shape: 'ring',     icon: '◎', glyph: 'target',      label: 'Target' },
 
   // --- status bars (label-redundant today; registered for completeness + colorblind hues) ---
   hull:     { color: '#ff5470', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
-  shield:   { color: '#39d0ff', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
+  shield:   { color: '#4f8fdd', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
   energy:   { color: '#ffd84a', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
   // NOTE: armor IS a real stat — entities carry armorHp/armorMax and combat/damage.js consumes
   // them; the command bar pins an ARMR row (commandBar.js). The non-armor bars (energy=cap, heat,

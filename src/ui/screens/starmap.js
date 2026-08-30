@@ -26,7 +26,7 @@ for (const f of FACTION_META) {
 
 // Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill.
 export const ROLE_FALLBACK = {
-  you: '#7af7d0',
+  you: '#4fbf8f',
   foe: '#ff5470',
   goal: '#ffb347',
   calm: '#84a0c8',

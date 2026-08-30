@@ -246,12 +246,12 @@ function injectStyle() {
   .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.18em; }
   .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.16em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
   .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.1em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
-  .sf-ft--ore { color:#7af7d0; }
+  .sf-ft--ore { color:#4fbf8f; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
     text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
   .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }
-  .sf-ft--module { color:#39d0ff; font-size:15px; text-shadow:0 0 8px rgba(57,208,255,.6),0 0 4px #000; }
+  .sf-ft--module { color:#4f8fdd; font-size:15px; text-shadow:0 0 8px rgba(79,143,221,.6),0 0 4px #000; }
   .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
   `;
   document.head.appendChild(s);

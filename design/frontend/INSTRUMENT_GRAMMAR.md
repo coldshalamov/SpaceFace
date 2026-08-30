@@ -4,6 +4,14 @@
 **Status:** the shared design language for every 2D surface in SpaceFace. Binding on all frontend
 work. Read this before designing or building any screen.
 
+> **REVISION 2026-08-30 — visual identity superseded.** The owner rejected the previous
+> identity (neon cyan/mint console, Saira SemiCondensed, tracked-out micro labels, 2px coloured
+> left rails, glass panels) as a failed direction. **Sections 3 (Type) and 4 (Colour) below were
+> rewritten and are now the only valid identity.** The old neon/rail/glass vocabulary is banned
+> (see §4 "Hard bans"). Every other section — the thesis, motion contract, layout skeleton,
+> disclosure tiers, naming rules, definition of done — remains in force. Do not reintroduce the
+> superseded look from git history, older specs, or per-screen documents.
+
 **Why this file exists.** The owner's standing complaint is that frontend work keeps coming back
 "cheap and uninspired." That is not a talent problem — it is a **specification** problem. An
 instruction to "make the ship screen good" produces slop from any author. This document removes the
@@ -68,59 +76,59 @@ drag orbit, wheel zoom with `deltaMode` normalisation, two-finger orbit vs pinch
 
 ## 3. Type
 
-Four roles. **No screen may introduce a fifth.** All faces are already vendored in `styles/fonts/`
-and already loaded at boot by `styles/fonts.css`.
+Two roles. **No screen may introduce a third.** Both faces are vendored in `styles/fonts/` and
+loaded at boot by `styles/fonts.css`.
 
 | Role | Face | Sizes | Used for |
 |---|---|---|---|
-| **DISPLAY** | Saira SemiCondensed **700** | 28 / 40 / 64 px | Screen identity, hero values, the one thing you read at a glance |
-| **SUBHEAD** | Saira SemiCondensed **600** | 15 / 19 / 22 px | Band labels, card titles, verb sentences |
-| **BODY** | IBM Plex Sans **400 / 500** | 13 / 14 / 15 px | All prose, labels, descriptions, buttons |
+| **UI** | IBM Plex Sans **400 / 500 / 600 / 700** | 12 / 13 / 14 / 15 / 19 / 22 / 28 px | Everything — prose, labels, buttons, titles, screen identity |
 | **DATA** | IBM Plex Mono **500** | 13 / 15 / 20 px, `tabular-nums` | **Numerals only** — never labels, never prose, never titles |
 
 **Hard rules.**
-- **12 px is the floor. Nothing renders below it, ever.** The current flight HUD has 96 of 137 size
-  declarations at ≤11 px and 49 at ≤9 px. That single fact is most of why it reads as a debug overlay.
-- **Letter-spacing above `.06em` is banned** except in one place: the MICRO label — Saira 600,
-  uppercase, `.18em`, **12 px minimum**, used only for a band's name. Tracked-out small caps as
-  "atmosphere" is the AI-sci-fi tell and is forbidden.
-- **Every screen has exactly one DISPLAY-sized element.** If two things are biggest, nothing is.
+- **12 px is the floor. Nothing renders below it, ever.**
+- **Letter-spacing above `.06em` is banned everywhere, no exceptions.** There is no MICRO
+  label role any more; the tracked-out small-caps band label was the single most recognisable
+  element of the rejected identity.
+- **No text glow.** No `text-shadow` colour halos on titles or labels. A plain 1px-black
+  legibility shadow over bright 3D is allowed (`--text-shadow-hard`).
+- **Every screen has exactly one DISPLAY-sized element (≥22 px).** If two things are biggest,
+  nothing is.
 - **The verb outranks the number.** Where a capability and its statistic both appear, the verb is
-  SUBHEAD and the number is DATA at half its size. *"Tows a 40-tonne hauler"* at 19 px above
-  *`40 t`* at 13 px — never the reverse.
+  15–19 px above the number at 13 px DATA — never the reverse.
 
 ---
 
-## 4. Colour — roles, not a palette
+## 4. Colour — a quiet neutral base, colour spent only on state
 
-Colour is assigned by **meaning**, so a screen cannot be "restyled" into incoherence.
+The identity is a **modern, restrained, near-neutral dark UI**: flat translucent dark panels,
+1px hairline edges, calm off-white type, and ONE interaction accent. Colour is assigned by
+**meaning**, so a screen cannot be "restyled" into incoherence. The tokens live in the first
+`:root` block of `styles/ui.css` and are binding on every surface.
 
-**The token block — canonical, binding on every surface.** These five custom properties **do not
-exist in `styles/` yet** (verified: zero matches). **Phase 0 adds them to the `:root` block in
-`styles/ui.css`** as aliases of existing tokens, so nothing re-themes and contrast stays proven.
-Until they land, use the equivalent column.
+| Role | Token | Hex | Means / where it is allowed |
+|---|---|---|---|
+| backdrop | `--bg` | `#0a0c10` | screen/viewport backdrop |
+| panel | `--panel` / `--sf-surface` | `#151a21` / `#12161c` | panels, cards, instruments |
+| edge | `--panel-edge` / `--sf-edge` | `#2c343f` | 1px hairline borders and separators — the only border colour at rest |
+| body copy | `--ink` / `--sf-paper` | `#e7eaee` / `#dfe3e8` | all prose and values |
+| labels/rest | `--ink-dim` / `--sf-calm` | `#9aa4b0` | secondary labels, chrome, everything at rest |
+| **accent** | `--accent` | `#4f8fdd` | THE single interaction accent: focus rings, active tab, primary button, links, live selection. Spent on *what you can act on*, never decoration |
+| objective | `--sf-goal` | `#d9a054` | destination, next unlock, caution, heat |
+| gain | `--sf-you` | `#4fbf8f` | you, your agency, a gain, positive standing |
+| threat | `--sf-foe` | `#d95f6a` | threat, cost, damage, a loss — never a default state |
 
-| Role | Hex | Equals existing token | Contrast on `--panel` `#0b1220` | Means / where it is allowed |
-|---|---|---|---|---|
-| `--sf-you` | `#7af7d0` | `--accent-2` | 14.3 : 1 | **you** — your hull, your unlocked capability, your route, a gain |
-| `--sf-foe` | `#ff5470` | `--danger` | 6.0 : 1 | **against you** — threat, cost, over-budget, damage, a loss, bounty |
-| `--sf-goal` | `#ffb347` | `--warn` | 10.5 : 1 | **what you're heading for** — destination, next unlock, opportunity, surplus |
-| `--sf-calm` | `#84a0c8` | `--ink-dim` | 6.9 : 1 | **steel** — labels, chrome, structure, everything at rest |
-| `--sf-paper` | `#d3e6ff` | `--ink` | ~14 : 1 | all body copy |
-| *(surface)* | `#0b1220` | `--panel` | — | screen backdrop base |
-| *(edge)* | `#1d3350` | `--panel-edge` | — | 1 px separators, socket rings |
+**The 80% rule: at rest, a screen is at least 80% neutral** (paper + calm on panel). Semantic
+colour (goal/you/foe, and the accent) is *spent* on state and interaction, not worn as chrome.
 
-**`--accent` (`#39d0ff`, cyan) is assigned NO role and may not be used on any new surface.** It is
-the colour behind the flight HUD's 99 saturated-cyan usages and the "flat blue wash" the owner
-rejected. Leaving it roleless is deliberate: a colour with no meaning cannot be spent to look
-sci-fi.
-
-*(Sourced from `SCREENS_B_SHIP_RANGE.md` §0.1, which caught that this grammar specified roles without
-defining tokens. Promoted here so all surfaces share one source; that file's local scoping is void.)*
-
-**The 80% rule: at rest, a screen is at least 80 % `calm` + `paper`.** Hot colour is *spent*, not
-worn. A screen that is uniformly saturated has no hierarchy, which is the failure mode of the
-current flight HUD's 99 saturated-cyan usages.
+**Hard bans (the rejected 2025–26 identity — none of these may ship in any surface):**
+- **Left accent rails / bars** — a thicker or coloured `border-left` on a card, row, toast, or
+  panel to "encode state". State carries a word, a glyph, or text colour — not a slab on the edge.
+- **Glassmorphism** — `backdrop-filter` blur stacks, layered translucent tints, frosted cards.
+  A panel is one flat translucent surface with a 1px edge and (on modal screens) a shadow.
+- **Neon / glow** — the old cyan `#39d0ff`, mint `#7af7d0`, purple `#c08bff`, or any
+  `box-shadow`/`drop-shadow`/`text-shadow` colour halo. Glow is not depth.
+- **Gradient accent fills** on buttons, tabs, or titles (`--grad-accent` is now a flat colour).
+- **Tracked-out uppercase labels** (letter-spacing > `.06em`) as "atmosphere".
 
 **Never encode by colour alone.** Every hostile/friendly/threshold state carries a second channel —
 shape, position, or a word — because of colour-blind modes and `forced-colors`.
@@ -274,8 +282,10 @@ menus feel like tiny games."* Each per-screen doc must name which of these it us
 
 **Banned as "polish":** decorative bracket punctuation (`[ TARGET LOCK: ]`), flavour chrome (`SYS`,
 `NOMINAL`, `LINK ESTABLISHED`), emoji drawn into canvas or used as icons, more boxed cards to
-"organise" clutter, raising z-index to solve overlap, and any first-person visor / cockpit arc /
-helmet / pilot-portrait motif (**standing owner preference, non-negotiable**).
+"organise" clutter, raising z-index to solve overlap, any first-person visor / cockpit arc /
+helmet / pilot-portrait motif (**standing owner preference, non-negotiable**), plus everything in
+§4's hard-bans list (left rails, glassmorphism, neon/glow, gradient fills, tracked-out labels).
+Never satisfy a visual brief with a camera-facing soft square.
 
 ---
 

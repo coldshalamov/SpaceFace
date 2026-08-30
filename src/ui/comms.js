@@ -32,9 +32,9 @@ const COMMS_STYLE_ID = 'sf-comms-style';
 const CATEGORY_STYLE = {
   ambient:  { color: 'var(--ink-mute)',  tag: 'CHN',  glow: 'none' },
   trap:     { color: 'var(--warn)',      tag: 'ALERT', glow: '0 0 8px rgba(255,179,71,.4)' },
-  personal: { color: 'var(--accent-3)',  tag: 'MSG',  glow: '0 0 8px rgba(192,139,255,.4)' },
+  personal: { color: 'var(--accent-3)',  tag: 'MSG',  glow: '0 0 8px rgba(167,139,202,.4)' },
   late:     { color: 'var(--danger)',    tag: 'LOG',  glow: '0 0 8px rgba(255,84,112,.4)' },
-  story:    { color: 'var(--accent)',    tag: 'LOG',  glow: '0 0 10px rgba(57,208,255,.5)' },
+  story:    { color: 'var(--accent)',    tag: 'LOG',  glow: '0 0 10px rgba(79,143,221,.5)' },
 };
 
 const MAX_LIVE = 4;          // max simultaneous live comms entries on the feed
@@ -757,17 +757,17 @@ function injectCommsCss() {
     font-size:12px; padding:2px 9px; cursor:pointer; font-family:var(--mono); }
   .sf-comm-backlog__close:hover { border-color:var(--accent); color:var(--accent); }
   .sf-comm-backlog__hint { padding:7px 16px; font-size:12px; color:var(--ink-mute); font-style:italic;
-    border-bottom:1px solid rgba(57,208,255,.07); }
+    border-bottom:1px solid rgba(79,143,221,.07); }
   .sf-comm-backlog__list { overflow-y:auto; padding:4px 0; }
   .sf-comm-backlog__list::-webkit-scrollbar { width:5px; }
   .sf-comm-backlog__list::-webkit-scrollbar-thumb { background:var(--accent); border-radius:3px; }
-  .sf-comm-backlog__row { --comm-color:var(--ink-dim); padding:8px 16px; border-bottom:1px solid rgba(57,208,255,.05);
+  .sf-comm-backlog__row { --comm-color:var(--ink-dim); padding:8px 16px; border-bottom:1px solid rgba(79,143,221,.05);
     display:flex; flex-direction:column; gap:2px; }
-  .sf-comm-backlog__row:hover { background:rgba(57,208,255,.04); }
+  .sf-comm-backlog__row:hover { background:rgba(79,143,221,.04); }
   .sf-comm-backlog__sender { font-size:12px; letter-spacing:.08em; color:var(--comm-color); text-transform:uppercase; }
   .sf-comm-backlog__text { font-size:12px; color:var(--ink); line-height:1.4; }
   .sf-comm-backlog__note { margin-top:4px; font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.4;
-    border-left:2px solid var(--comm-color); padding-left:8px; }
+    border-left:1px solid var(--sf-edge); padding-left:8px; }
   .sf-comm-backlog__empty { padding:30px 16px; text-align:center; color:var(--ink-mute); font-style:italic; }
 
   /* ===== bulkhead graffiti (player's own ship) ===== */
@@ -788,15 +788,15 @@ function injectCommsCss() {
   .sf-endgame.open { display:flex; opacity:1; }
   .sf-endgame__panel { width:min(880px, 94vw); max-height:90vh; overflow-y:auto; padding:24px 28px;
     background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--accent); border-radius:10px;
-    box-shadow:0 0 60px rgba(57,208,255,.15), 0 20px 60px rgba(0,0,0,.6); }
+    box-shadow:0 0 60px rgba(79,143,221,.15), 0 20px 60px rgba(0,0,0,.6); }
   .sf-endgame__head { text-align:center; margin-bottom:18px; }
   .sf-endgame__title { margin:0; font-family:var(--mono); font-size:18px; letter-spacing:.2em; color:var(--accent);
-    text-transform:uppercase; text-shadow:0 0 14px rgba(57,208,255,.4); }
+    text-transform:uppercase; text-shadow:0 0 14px rgba(79,143,221,.4); }
   .sf-endgame__sub { margin-top:6px; font-size:12px; color:var(--ink-mute); font-style:italic; }
   .sf-endgame__choices { display:flex; flex-direction:column; gap:14px; }
   .sf-endgame__choice { padding:14px 16px; background:rgba(4,9,18,.6); border:1px solid var(--panel-edge); border-radius:7px;
     transition:border-color .15s, background .15s; }
-  .sf-endgame__choice:hover { border-color:var(--accent-3); background:rgba(192,139,255,.05); }
+  .sf-endgame__choice:hover { border-color:var(--accent-3); background:rgba(167,139,202,.05); }
   .sf-endgame__choice-head { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
   .sf-endgame__choice-id { font-size:20px; color:var(--accent-3); letter-spacing:.1em; }
   .sf-endgame__choice-title { font-size:15px; color:var(--ink); letter-spacing:.04em; }
@@ -804,11 +804,11 @@ function injectCommsCss() {
   .sf-endgame__choice-noboard { color:var(--ink-mute); font-style:italic; }
   .sf-endgame__choice-summary { font-size:12.5px; color:var(--ink); line-height:1.5; margin-bottom:6px; }
   .sf-endgame__choice-cost { font-size:12px; color:var(--ink-mute); font-style:italic; line-height:1.5;
-    border-left:2px solid var(--danger); padding-left:9px; }
+    border-left:1px solid var(--sf-edge); padding-left:9px; }
   .sf-endgame__choice-actions { margin-top:10px; display:flex; justify-content:flex-end; }
-  .sf-endgame__accept { background:rgba(192,139,255,.12); border:1px solid var(--accent-3); color:var(--accent-3);
+  .sf-endgame__accept { background:rgba(167,139,202,.12); border:1px solid var(--accent-3); color:var(--accent-3);
     font-family:var(--mono); font-size:12px; letter-spacing:.16em; padding:6px 18px; border-radius:5px; cursor:pointer; }
-  .sf-endgame__accept:hover { background:rgba(192,139,255,.25); color:#fff; }
+  .sf-endgame__accept:hover { background:rgba(167,139,202,.25); color:#fff; }
   .sf-endgame__footer { margin-top:18px; text-align:center; font-size:12px; color:var(--ink-mute); font-style:italic; }
   /* Choice C inline prompt */
   .sf-endgame--c .sf-endgame__panel--c { width:min(480px, 90vw); padding:28px; text-align:center; }

@@ -36,7 +36,7 @@ export function drawProceduralAvatar(canvas, contact) {
   ctx2.quadraticCurveTo(w * 0.5, h * 0.55, w * 0.88, h);
   ctx2.closePath();
   ctx2.fill();
-  ctx2.strokeStyle = 'rgba(57,208,255,.7)';
+  ctx2.strokeStyle = 'rgba(79,143,221,.7)';
   ctx2.lineWidth = 2;
   ctx2.beginPath();
   ctx2.moveTo(w * 0.34, h * 0.4);

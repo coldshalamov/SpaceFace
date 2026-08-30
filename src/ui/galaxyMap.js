@@ -128,7 +128,7 @@ const INK = Object.freeze({
   ink1: '#b3afa2',
   ink2: '#8a877d',
   amber: '#e8a33d',
-  amberHot: '#ffc064',
+  amberHot: '#d9a054',
   brass: '#d8b26a',
   teal: '#56bbb2',
   red: '#ed6961',
@@ -1226,7 +1226,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       stage: infrastructure.stage,
       operational,
       lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
-      color: operational ? '#39d0ff' : '#87939c',
+      color: operational ? '#4f8fdd' : '#87939c',
       from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
       support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
       to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
@@ -1247,7 +1247,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         kind: 'claim-throughline',
         role: partDef.role,
         glyph: partDef.glyph,
-        color: operational ? '#39d0ff' : '#87939c',
+        color: operational ? '#4f8fdd' : '#87939c',
         name: `${partDef.role} · ${body.name} ${partDef.name}`,
         status,
         statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
@@ -2169,21 +2169,17 @@ const CSS = `
    near-black, hairline steel edges, amber worklight) as a full-bleed instrument layout.
    Related, not identical (GDD §9.4). Token values mirror styles/menu.css §1 — keep in sync. */
 #sf-galaxymap {
-  --panel: #121518;
-  --panel-2: #171b1f;
-  --panel-edge: #3b403f;
-  --panel-edge-2: #66645d;
-  --ink: #f1ede2;
-  --ink-dim: #b3afa2;
-  --ink-mute: #8a877d;
-  --accent: #db9838;
-  --accent-2: #56bbb2;
-  --accent-3: #ffc064;
-  --good: #58c98a;
-  --warn: #e3a13d;
-  --danger: #ed6961;
+  /* 2026-08 identity revision: the chart no longer runs a private warm-gold palette.
+     It inherits the global :root tokens so every surface shares one identity; only its
+     map-graphics line/stamp tokens remain local. */
+  --accent: var(--sf-goal);
+  --accent-2: var(--sf-you);
+  --accent-3: var(--sf-goal);
+  --good: var(--sf-you);
+  --warn: var(--sf-goal);
+  --danger: var(--sf-foe);
   --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
-  --mf-display: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  --mf-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --mf-line-1: #292d2e;
   --mf-line-2: #3b403f;
@@ -2686,7 +2682,7 @@ const CSS = `
 #sf-galaxymap .gm-layer-btn.active .gm-layer-ico { color: var(--accent-3); }
 #sf-galaxymap .gm-layer-btn.active .gm-layer-name { color: var(--ink); }
 #sf-galaxymap .gm-layer-btn[data-layer="route"] .gm-layer-state    { border-color: #e8a33d; }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #ffc064; }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #d9a054; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"] .gm-layer-state   { border-color: #58c98a; }
 #sf-galaxymap .gm-layer-btn[data-layer="events"] .gm-layer-state   { border-color: #d184ea; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"] .gm-layer-state { border-color: #ed6961; }
@@ -2696,7 +2692,7 @@ const CSS = `
 #sf-galaxymap .gm-layer-btn[data-layer="holdings"] .gm-layer-state { border-color: #8ec47a; }
 #sf-galaxymap .gm-layer-btn[data-layer="discovery"] .gm-layer-state{ border-color: #8ea6c8; }
 #sf-galaxymap .gm-layer-btn[data-layer="route"].active .gm-layer-state    { background: #e8a33d; }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #ffc064; }
+#sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #d9a054; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"].active .gm-layer-state   { background: #58c98a; }
 #sf-galaxymap .gm-layer-btn[data-layer="events"].active .gm-layer-state   { background: #d184ea; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"].active .gm-layer-state { background: #ed6961; }
@@ -2912,7 +2908,7 @@ const CSS = `
   width: 100%;
   padding: 10px 14px;
   margin-top: 2px;
-  background: linear-gradient(180deg, #ffc064, #db9838);
+  background: #d9a054;
   border: 1px solid #6b4a26;
   border-radius: 2px;
   clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
@@ -2948,7 +2944,7 @@ const CSS = `
 }
 /* Engaged: this control now represents the active route, which is what earns the gold. */
 #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] {
-  background: linear-gradient(180deg, #ffc064, #db9838);
+  background: #d9a054;
   color: #1c1206;
 }
 #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"]:hover:not(:disabled) {
@@ -3229,7 +3225,7 @@ const CSS = `
 /* The leg currently under way reads as the live one; the rest are record. */
 #sf-galaxymap .gm-route-leg.is-current {
   color: var(--ink);
-  border-left: 2px solid var(--accent);
+  border-left:1px solid var(--sf-edge);
   margin-left: -6px;
   padding-left: 4px;
 }
@@ -3504,7 +3500,7 @@ html.sf-dyslexia #sf-galaxymap {
 /* Tracked mission: bright gold is legitimate here — this IS the tracked objective. It carries a
    glyph and a left rule as well, so the state never rests on hue alone. */
 #sf-galaxymap .gm-rail-item.is-tracked {
-  border-left: 2px solid var(--accent-3);
+  border-left:1px solid var(--sf-edge);
   color: var(--ink);
 }
 #sf-galaxymap .gm-rail-track-g { color: var(--accent-3); margin-right: 5px; }
@@ -3577,7 +3573,7 @@ html.sf-dyslexia #sf-galaxymap {
   font-weight: 600;
 }
 #sf-galaxymap .gm-nav-row[data-tone="tracked"] {
-  border-left: 2px solid var(--accent-3);
+  border-left:1px solid var(--sf-edge);
   padding-left: 7px;
 }
 #sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--ink-mute); font-style: italic; }
@@ -3747,7 +3743,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-ribbon-leg[data-leg-state="done"] { opacity: .55; }
 #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] {
   border-color: var(--accent-3);
-  border-left-width: 3px;
+  border-left-width: 1px;
   color: var(--ink);
 }
 #sf-galaxymap .gm-ribbon-leg-g { color: var(--accent); font-size: 12px; }
@@ -3962,7 +3958,7 @@ html.sf-dyslexia #sf-galaxymap {
   #sf-galaxymap .gm-ribbon-btn[aria-disabled="true"],
   #sf-galaxymap .gm-place-btn:disabled,
   #sf-galaxymap .gm-place-btn[aria-disabled="true"] { border-style: dashed; opacity: 1; }
-  #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] { border-left-width: 4px; }
+  #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] { border-left-width: 1px; }
 }
 `;
 
@@ -10421,10 +10417,6 @@ function drawNavCartouche(g, rows, w, h, options = {}) {
   g.rect(0.5, 0.5, boxW - 1, boxH - 1);
   g.fill();
   g.stroke();
-
-  // Brass index rule down the binding edge — the cartouche's one ornament.
-  g.fillStyle = INK.brass;
-  g.fillRect(0.5, 0.5, 2, boxH - 1);
 
   let y = padY;
   for (const row of rows) {

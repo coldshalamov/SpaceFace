@@ -3675,7 +3675,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-fit-empty { color: var(--os-ink-mute); font-style: italic; padding: 8px 0; }
 .st-fit-node { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 5px 8px; border-radius: var(--os-r-xs); cursor: pointer; }
 .st-fit-node--root { font-weight: 600; color: var(--os-ink); background: var(--os-surface); border: 1px solid var(--os-line); margin-bottom: 6px; }
-.st-fit-node--slot { padding-left: 18px; border-left: 2px solid transparent; margin: 1px 0; }
+.st-fit-node--slot { padding-left: 18px; border-left:1px solid var(--sf-edge); margin: 1px 0; }
 .st-fit-node--slot:hover { background: color-mix(in srgb, var(--st-accent) 7%, transparent); }
 .st-fit-node--selected { background: color-mix(in srgb, var(--st-accent) 11%, transparent); }
 .st-fit-node--filled { color: var(--os-ink); }
@@ -3756,12 +3756,12 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-slot.empty { border-style: dashed; }
 .st-slot.filled { border-color: var(--os-line-strong); }
 .st-slot.sel { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
-.st-slot-weapon { border-left: 3px solid var(--danger); }
-.st-slot-shield { border-left: 3px solid var(--shield); }
-.st-slot-engine { border-left: 3px solid var(--warn); }
-.st-slot-cargo { border-left: 3px solid var(--cargo); }
-.st-slot-mining { border-left: 3px solid var(--accent-2); }
-.st-slot-utility { border-left: 3px solid var(--accent-3); }
+.st-slot-weapon { border-left:1px solid var(--sf-edge); }
+.st-slot-shield { border-left:1px solid var(--sf-edge); }
+.st-slot-engine { border-left:1px solid var(--sf-edge); }
+.st-slot-cargo { border-left:1px solid var(--sf-edge); }
+.st-slot-mining { border-left:1px solid var(--sf-edge); }
+.st-slot-utility { border-left:1px solid var(--sf-edge); }
 .st-slot-type { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--os-ink-mute); }
 .st-slot-facing { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 12px; letter-spacing: .08em; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 .st-slot-mod { font-size: 13px; margin-top: 3px; min-height: 1.1em; }
@@ -4017,7 +4017,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-ops-gauge-meta { display: grid; gap: 1px; }
 .st-ops-gauge-val { font-family: var(--mono); font-size: 13.5px; font-weight: 700; color: var(--os-ink); line-height: 1.05; font-variant-numeric: tabular-nums; }
 .st-ops-gauge-label { font-size: 12px; letter-spacing: .12em; color: var(--os-ink-mute); text-transform: uppercase; }
-.st-ops-comms { border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: var(--os-r-xs); padding: 9px 12px; margin: 0 0 12px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.st-ops-comms { border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-left:1px solid var(--sf-edge); border-radius: var(--os-r-xs); padding: 9px 12px; margin: 0 0 12px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .st-ops-comms-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
 .st-ops-comms-from { color: var(--accent-2); font-weight: 700; font-size: 12.5px; min-width: 0; }
 .st-ops-comms-tag { flex: none; color: var(--accent); font-size: 12px; letter-spacing: .14em; }
@@ -4038,7 +4038,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 
 /* ── 18 · Legacy comms overlays stay parked while docked chrome is active (pre-existing rule) ── */
 #sf-comms, #sf-comm-backlog, #sf-comm-backlog-btn { display: none !important; }
-[data-tip]::after { border-left: 3px solid var(--tip-accent, var(--os-line-strong)); }
+[data-tip]::after { border-left:1px solid var(--sf-edge); }
 [data-tip-severity="ok"]   { --tip-accent: var(--good); }
 [data-tip-severity="warn"] { --tip-accent: var(--warn); }
 [data-tip-severity="bad"]  { --tip-accent: var(--danger); }

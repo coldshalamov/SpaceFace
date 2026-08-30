@@ -142,7 +142,7 @@ function injectStyle() {
 }
 
 function canvasRoles() {
-  const fallback = { you: '#7af7d0', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350' };
+  const fallback = { you: '#4fbf8f', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350' };
   if (typeof document === 'undefined' || !document.documentElement) return fallback;
   let cs;
   try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }

@@ -269,7 +269,7 @@ const CSS = `
 #sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; }
 #sf-automation .au-top-right { display: flex; align-items: center; gap: 14px; }
 #sf-automation .au-title { font-size: 1.2em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
-  text-shadow: 0 0 12px rgba(57,208,255,.5); }
+  text-shadow: 0 0 12px rgba(79,143,221,.5); }
 #sf-automation .au-credits { font-family: var(--mono); font-size: .9em; color: var(--energy); }
 #sf-automation .au-close { font-family: var(--mono); font-size: .74em; letter-spacing: .08em; text-transform: uppercase;
   padding: 5px 12px; border-radius: 6px; color: var(--ink-dim); }
@@ -285,15 +285,15 @@ const CSS = `
 #sf-automation .au-tabs { display: flex; gap: 4px; }
 #sf-automation .au-tab { padding: 6px 16px; font-size: .82em; letter-spacing: .06em; text-transform: uppercase;
   border-radius: 6px 6px 0 0; }
-#sf-automation .au-tab.active { background: rgba(57,208,255,.14); border-color: var(--accent); color: #fff;
-  text-shadow: 0 0 8px rgba(57,208,255,.5); }
+#sf-automation .au-tab.active { background: rgba(79,143,221,.14); border-color: var(--accent); color: #fff;
+  text-shadow: 0 0 8px rgba(79,143,221,.5); }
 #sf-automation .au-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
 #sf-automation .au-command { display: grid; grid-template-columns: minmax(230px, 1.08fr) minmax(0, 1.92fr);
   gap: 12px; align-items: stretch; }
 #sf-automation .au-next, #sf-automation .au-summary {
   border: 1px solid var(--panel-edge); border-radius: 8px; background: rgba(10,18,30,.62);
   padding: 12px 13px; }
-#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-color: rgba(57,208,255,.42); }
+#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-color: rgba(79,143,221,.42); }
 #sf-automation .au-kicker { font-family: var(--mono); font-size: .68em; letter-spacing: .13em; text-transform: uppercase;
   color: var(--accent-2); }
 #sf-automation .au-next-title { font-size: 1em; color: var(--ink); }
@@ -301,9 +301,9 @@ const CSS = `
 #sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; }
 #sf-automation .au-next-meta { font-family: var(--mono); font-size: .72em; color: var(--energy); }
 #sf-automation .au-cta { padding: 7px 12px; white-space: nowrap; border-color: var(--accent-2);
-  background: rgba(57,208,255,.11); color: var(--ink); }
+  background: rgba(79,143,221,.11); color: var(--ink); }
 #sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
-#sf-automation .au-metric { min-width: 0; border: 1px solid rgba(57,208,255,.16); border-radius: 6px;
+#sf-automation .au-metric { min-width: 0; border: 1px solid rgba(79,143,221,.16); border-radius: 6px;
   background: rgba(6,10,18,.5); padding: 8px 9px; }
 #sf-automation .au-metric .k { font-family: var(--mono); font-size: .66em; letter-spacing: .09em; text-transform: uppercase;
   color: var(--ink-mute); }
@@ -324,10 +324,10 @@ const CSS = `
 #sf-automation .au-outpost-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 #sf-automation .au-outpost-head .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 #sf-automation .au-outpost-flow { display: grid; grid-template-columns: minmax(150px, 1fr) 30px minmax(145px, .92fr) 30px minmax(170px, 1.12fr);
-  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid rgba(57,208,255,.16);
-  border-bottom: 1px solid rgba(57,208,255,.16); background: linear-gradient(90deg, rgba(6,10,18,.46), rgba(12,23,36,.58), rgba(6,10,18,.46)); }
+  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid rgba(79,143,221,.16);
+  border-bottom: 1px solid rgba(79,143,221,.16); background: linear-gradient(90deg, rgba(6,10,18,.46), rgba(12,23,36,.58), rgba(6,10,18,.46)); }
 #sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid rgba(57,208,255,.2); border-right: 1px solid rgba(57,208,255,.2); }
+#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid rgba(79,143,221,.2); border-right: 1px solid rgba(79,143,221,.2); }
 #sf-automation .au-flow-k { font-family: var(--mono); font-size: .62em; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-mute); }
 #sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: .84em; }
 #sf-automation .au-flow-core strong { white-space: normal; }
@@ -362,7 +362,7 @@ const CSS = `
 #sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--mono); }
 #sf-automation .au-buy { background: rgba(98,224,138,.12); border-color: var(--good); color: #d9ffe7; }
 #sf-automation .au-buy:hover { border-color: var(--good); }
-#sf-automation .au-order { background: rgba(57,208,255,.1); border-color: var(--accent-2); }
+#sf-automation .au-order { background: rgba(79,143,221,.1); border-color: var(--accent-2); }
 #sf-automation .au-recall { background: rgba(255,84,112,.1); border-color: var(--danger); color: #ffd6dd; }
 #sf-automation .au-empty { font-size: .84em; color: var(--ink-mute); font-style: italic; padding: 6px 0; }
 #sf-automation .au-pill { font-family: var(--mono); font-size: .68em; padding: 1px 7px; border-radius: 10px;
@@ -375,7 +375,7 @@ const CSS = `
 #sf-automation .au-program { font-family:var(--mono); font-size:.78em; padding:3px 8px; border-radius:4px;
   background:var(--panel); color:var(--ink); border:1px solid var(--panel-edge); cursor:pointer; }
 #sf-automation .au-program-badge { font-family:var(--mono); font-size:.66em; padding:1px 6px; border-radius:8px;
-  background:rgba(57,208,255,.12); color:var(--accent); border:1px solid rgba(57,208,255,.4); margin-left:6px; }
+  background:rgba(79,143,221,.12); color:var(--accent); border:1px solid rgba(79,143,221,.4); margin-left:6px; }
 #sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 3px; background: rgba(20,28,42,.9);
   overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: var(--good); }

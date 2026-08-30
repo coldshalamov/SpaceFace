@@ -26,9 +26,9 @@
    these :root values are just the fallback when the JS controller hasn't run yet.
    ============================================================================================ */
 :root {
-  --sf-hostile: #ff5470; --sf-neutral: #9aa8bc; --sf-friendly: #62e08a; --sf-ally: #39d0ff;
-  --sf-hull: #ff5470; --sf-shield: #39d0ff; --sf-energy: #ffd84a; --sf-cargo: #7af7d0;
-  --sf-warn: #ffb347; --sf-danger: #ff5470; --sf-good: #62e08a;
+  --sf-hostile: #d95f6a; --sf-neutral: #9aa8bc; --sf-friendly: #4fbf8f; --sf-ally: #4f8fdd;
+  --sf-hull: #d95f6a; --sf-shield: #4f8fdd; --sf-energy: #d4b45f; --sf-cargo: #4fbf8f;
+  --sf-warn: #ffb347; --sf-danger: #d95f6a; --sf-good: #4fbf8f;
 
   /* iOS / notched-display safe-area fallbacks (0 on desktops that don't define env()). */
   --sf-safe-top: env(safe-area-inset-top, 0px);
@@ -116,13 +116,13 @@ html.sf-high-contrast .sf-barrow__num,
 html.sf-high-contrast .sf-stat__v { text-shadow: 0 1px 2px #000, 0 0 1px #000; }
 
 /* Always give keyboard users a visible focus ring, even outside high-contrast (motor/keyboard a11y). */
-:focus-visible { outline: 2px solid var(--accent, #39d0ff); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent, #4f8fdd); outline-offset: 2px; }
 /* Gamepad navigation moves focus programmatically, which can retain the browser's pointer heuristic
    and suppress :focus-visible. The UI input router marks pad-owned focus until the next pointerdown. */
 html.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
-  outline: 3px solid var(--accent, #39d0ff);
+  outline: 3px solid var(--accent, #4f8fdd);
   outline-offset: 3px;
-  box-shadow: 0 0 0 2px rgba(3, 8, 16, .92), 0 0 0 5px color-mix(in srgb, var(--accent, #39d0ff) 35%, transparent);
+  box-shadow: 0 0 0 2px rgba(3, 8, 16, .92), 0 0 0 5px color-mix(in srgb, var(--accent, #4f8fdd) 35%, transparent);
 }
 html.sf-high-contrast.sf-gamepad-focus :is(button, a, input, select, textarea, [tabindex]):focus {
   outline-color: #ffe14d;
@@ -164,7 +164,7 @@ html.sf-caption-size-medium .sf-caption { font-size: 15px !important; }
 html.sf-caption-size-large .sf-caption { font-size: 19px !important; max-width: min(88vw, 760px) !important; line-height: 1.45 !important; }
 html.sf-caption-backing .sf-caption {
   background: #02060c !important;
-  border-color: color-mix(in srgb, var(--accent, #39d0ff) 55%, #fff) !important;
+  border-color: color-mix(in srgb, var(--accent, #4f8fdd) 55%, #fff) !important;
   text-shadow: 0 1px 2px #000 !important;
 }
 html.sf-high-contrast .sf-caption {

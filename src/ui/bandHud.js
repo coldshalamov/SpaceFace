@@ -27,7 +27,7 @@ export const BAND_HUD_CSS = `
   #hud > .sf-band-hud { pointer-events:auto; }
   .sf-band-hud__button { min-width:176px; min-height:34px; display:flex; align-items:center;
     justify-content:space-between; gap:12px; padding:7px 10px; border:1px solid rgba(135,165,190,.38);
-    border-left:2px solid rgba(124,196,218,.82); border-radius:8px; background:rgba(5,9,18,.92);
+    border-left:1px solid var(--sf-edge); border-radius:8px; background:rgba(5,9,18,.92);
     color:var(--text-secondary, #aebdca); font:600 12px/1.2 var(--hud-data, "IBM Plex Mono", Consolas, monospace);
     letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
     transition:border-color 160ms ease-out,color 160ms ease-out,background 160ms ease-out; }

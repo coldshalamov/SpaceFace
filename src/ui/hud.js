@@ -1875,7 +1875,7 @@ export function createHud(ctx, alerts) {
       text-shadow:0 1px 6px rgba(0,0,0,.7); z-index:40;
       letter-spacing:.01em; }
     .sf-caption.show { opacity:1; transform:translate(-50%, 0); }
-    .sf-caption.assertive { border-color:var(--accent, #39d0ff); box-shadow:0 0 16px rgba(57,208,255,.35); }
+    .sf-caption.assertive { border-color:var(--warn, #d9a054); }
     @media (prefers-reduced-motion: reduce) { .sf-caption { transition:opacity .18s ease; transform:translate(-50%,0); } }
     `;
     document.head.appendChild(cs);

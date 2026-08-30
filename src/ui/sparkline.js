@@ -26,7 +26,7 @@ export function drawSparkline(canvas, values, opts = {}) {
   const n = pts.length;
   const trend = pts[n - 1] - pts[0];
   const upColor = opts.upColor || '#ffb35c';
-  const downColor = opts.downColor || '#39d0ff';
+  const downColor = opts.downColor || '#4f8fdd';
   const col = trend > 0.0001 ? upColor : trend < -0.0001 ? downColor : (opts.flatColor || '#84a0c8');
 
   const padT = 3, padB = 3;

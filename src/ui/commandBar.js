@@ -98,7 +98,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   font-family: var(--mono, monospace);
   font-size: calc(13px * var(--ui-scale, 1));
   letter-spacing: .22em;
-  color: var(--console-cyan, #39d0ff);
+  color: var(--console-cyan, #4f8fdd);
 }
 #sf-command-bar .sf-cb-sector {
   font-family: var(--mono, monospace);
@@ -155,7 +155,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
    (only earns visibility when actually hot). */
 #sf-command-bar .sf-cb-fill--hull { background: var(--console-steel-dim, #5a7aa0); }
 #sf-command-bar .sf-cb-fill--armor { background: var(--ink-dim, #84a0c8); }
-#sf-command-bar .sf-cb-fill--shield { background: var(--console-cyan, #39d0ff); }
+#sf-command-bar .sf-cb-fill--shield { background: var(--console-cyan, #4f8fdd); }
 #sf-command-bar .sf-cb-fill--energy { background: var(--console-cyan-dim, #235c78); }
 #sf-command-bar .sf-cb-fill--heat { background: var(--console-amber-dim, #5c4019); }
 /* Bright = problem state (overrides dim): hull critical, energy low, heat high. */
@@ -173,7 +173,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   font-size: calc(9px * var(--ui-scale, 1));
   margin-left: 4px;
 }
-#sf-command-bar .sf-cb-delta--up { color: var(--console-mint, #7af7d0); }
+#sf-command-bar .sf-cb-delta--up { color: var(--console-mint, #4fbf8f); }
 #sf-command-bar .sf-cb-delta--down { color: var(--console-red, #ff5470); }
 #sf-command-bar .sf-cb-delta--flat { color: var(--ink-mute, #5a7aa0); }
 

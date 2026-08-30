@@ -90,7 +90,7 @@ function injectStyle() {
   font:700 12px/1.35 var(--mono, monospace);
   letter-spacing:0;
 }
-.sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #39d0ff); }
+.sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #4f8fdd); }
 .sf-dmgind-marker.layer-armor { --impact-tone:var(--sf-warn, #ffb35c); }
 .sf-dmgind-marker.layer-hull { --impact-tone:var(--sf-danger, #ff5c5c); }
 .sf-dmgind-marker.layer-shield .sf-dmgind-marker__layer { border-radius:50%; }

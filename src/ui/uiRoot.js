@@ -29,19 +29,19 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
-  <g class="sf-reticle-shape sf-reticle-shape--open" fill="none" stroke="#39d0ff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
+  <g class="sf-reticle-shape sf-reticle-shape--open" fill="none" stroke="#4f8fdd" stroke-width="2" stroke-linecap="round">
     <circle cx="50" cy="50" r="30" opacity="0.85"/>
     <circle cx="50" cy="50" r="40" opacity="0.18"/>
     <line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/>
     <line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/>
   </g>
-  <g class="sf-reticle-shape sf-reticle-shape--bracket" fill="none" stroke="#39d0ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
+  <g class="sf-reticle-shape sf-reticle-shape--bracket" fill="none" stroke="#4f8fdd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
     <line x1="50" y1="34" x2="50" y2="42"/><line x1="50" y1="58" x2="50" y2="66"/>
     <line x1="34" y1="50" x2="42" y2="50"/><line x1="58" y1="50" x2="66" y2="50"/>
     <path d="M26 34h12V22"/><path d="M74 34H62V22"/>
     <path d="M26 66h12v12"/><path d="M74 66H62v12"/>
   </g>
-  <circle cx="50" cy="50" r="3" fill="#39d0ff" style="filter:drop-shadow(0 0 4px #39d0ff)"/>
+  <circle cx="50" cy="50" r="3" fill="#4f8fdd"/>
 </svg>`;
 // (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
@@ -744,7 +744,7 @@ export const ui = {
       vid.autoplay = true;
       vid.controls = true;
       vid.playsInline = true;
-      vid.style.cssText = 'max-width:100%;max-height:82vh;border:3px solid #39d0ff;box-shadow:0 0 40px #39d0ff;';
+      vid.style.cssText = 'max-width:100%;max-height:82vh;border:1px solid #3d4754;box-shadow:0 14px 44px rgba(0,0,0,.6);';
       const hint = document.createElement('div');
       hint.style.cssText = 'text-align:center;margin-top:8px;color:#d3e6ff;font-family:var(--mono);letter-spacing:2px;opacity:0.7;';
       hint.textContent = `${title} — click backdrop to close`;
@@ -1431,7 +1431,7 @@ function injectHudCss() {
 
   /* Thin micro-bars (energy / heat / boost) — 2px glowing lines, no panel. */
   .sf-barrow { display:flex; align-items:center; gap:8px; }
-  .sf-barrow__label { width:40px; font-family:var(--mono); font-size:12px; letter-spacing:.14em;
+  .sf-barrow__label { width:40px; font-family:var(--mono); font-size:12px; letter-spacing:.06em;
     color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-barrow__num { width:38px; text-align:right; font-family:var(--mono); font-size:12px;
     color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
@@ -1459,7 +1459,7 @@ function injectHudCss() {
    .sf-nav-readout { position:relative; text-align:left;
     pointer-events:none; contain:layout paint style;
     padding:2px 10px; background:rgba(4,10,18,.34); }
-  .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase;
+  .sf-nav-label { font-family:var(--mono); font-size:13px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--visor-cyan); text-shadow:none; }
   /* The "[ TARGET LOCK: ... ]" / "[ NNN u ]" framing applies only to a live, in-range fix — the JS
      toggles .sf-nav--lock for that case; route/tutorial guidance renders plain (§3E). */
@@ -1496,7 +1496,7 @@ function injectHudCss() {
     max-width:min(880px, 92vw); }
   .sf-stat { display:flex; align-items:baseline; gap:5px; position:relative;
     font-family:var(--mono); }
-  .sf-stat__k { font-size:12px; letter-spacing:.16em; color:var(--text-secondary);
+  .sf-stat__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary);
     text-shadow:var(--text-shadow-hard); }
   .sf-stat__v { font-size:14px; color:var(--text-primary); text-shadow:var(--text-shadow-hard); }
   .sf-credits { color:var(--visor-cyan); text-shadow:var(--text-shadow-hard), var(--visor-glow-cyan); }
@@ -1607,7 +1607,7 @@ function injectHudCss() {
     border-color:transparent transparent transparent var(--visor-amber); }
   .sf-objarrow__label { position:absolute; max-width:280px; padding:4px 7px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    background:rgba(5,9,18,.94); border-left:2px solid var(--visor-amber);
+    background:rgba(5,9,18,.94); border-left:1px solid var(--sf-edge);
     color:var(--text-primary); font-size:12px; font-weight:700; letter-spacing:.08em;
     line-height:1.35; text-shadow:none; }
   .sf-objarrow[data-edge="left"] .sf-objarrow__label { left:20px; top:50%; transform:translateY(-50%); }
@@ -1640,13 +1640,13 @@ function injectHudCss() {
      monospace + accent-colored so it reads as a multiplier, not part of the message. */
   .sf-toast__count { font-family:var(--mono); font-size:12px; color:var(--accent); margin-left:6px;
     padding:0 5px; border:1px solid var(--panel-edge-2); border-radius:var(--r-pill);
-    background:rgba(57,208,255,.1); letter-spacing:.04em; }
+    background:rgba(79,143,221,.1); letter-spacing:.04em; }
 
   /* ===== alerts ===== */
   .sf-alert { display:flex; align-items:center; gap:8px; padding:6px 16px; border-radius:999px;
-    font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; text-transform:uppercase;
     background:rgba(8,14,24,.78); border:1px solid var(--panel-edge); color:var(--ink); }
-  .sf-alert--info { color:var(--accent); border-color:rgba(57,208,255,.4); }
+  .sf-alert--info { color:var(--accent); border-color:rgba(79,143,221,.4); }
   .sf-alert--warn { color:var(--warn); border-color:rgba(255,179,71,.5); }
   .sf-alert--danger { color:var(--danger); border-color:rgba(255,84,112,.6);
     animation:sf-alertpulse .8s ease-in-out infinite alternate; }
@@ -1654,7 +1654,7 @@ function injectHudCss() {
      pills (dock/gate/lock/low-vitals) in the top-center slot, regardless of DOM insertion order. */
   .sf-alert--floor { order:-1; }
   .sf-alert--dock { color:#30ffb0; border-color:rgba(48,255,176,.6); font-size:18px;
-    padding:12px 28px; letter-spacing:.18em;
+    padding:12px 28px; letter-spacing:.06em;
     background:rgba(8,14,24,.88); box-shadow:0 0 24px rgba(48,255,176,.3);
     animation:sf-dockpulse 1.2s ease-in-out infinite alternate; }
   @keyframes sf-dockpulse { from { box-shadow:0 0 12px rgba(48,255,176,.2); }
@@ -1677,8 +1677,8 @@ function injectHudCss() {
     stroke-linecap:round; transition:stroke .15s ease; }
   .sf-lockring.locked .sf-lockring__fill { stroke:var(--danger); }
   .sf-lockring__label { position:absolute; left:50%; bottom:-2px; transform:translateX(-50%);
-    font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:var(--accent);
-    text-transform:uppercase; white-space:nowrap; text-shadow:0 0 6px rgba(57,208,255,.6); }
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--accent);
+    text-transform:uppercase; white-space:nowrap; text-shadow:0 0 6px rgba(79,143,221,.6); }
   .sf-lockring.locked .sf-lockring__label { color:var(--danger); text-shadow:0 0 6px rgba(255,84,112,.6); }
   @keyframes sf-lockring-latch {
     0% { transform:translate(-50%,-50%) scale(1); }
@@ -1727,15 +1727,15 @@ function injectHudCss() {
   .sf-gravity-mark { display:none; position:absolute; left:0; top:0; width:46px; height:46px;
     pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
   .sf-gravity-mark.visible { display:block; opacity:1; }
-  .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid rgba(166,240,255,.95);
-    border-radius:50%; box-shadow:0 0 13px rgba(57,208,255,.58), inset 0 0 10px rgba(234,255,255,.2);
+  .sf-gravity-mark__ring { position:absolute; inset:3px; border:2px solid rgba(214,228,240,.95);
+    border-radius:50%; box-shadow:0 0 8px rgba(79,143,221,.4);
     animation:sf-gravity-mark-contract .9s cubic-bezier(.4,0,.2,1) infinite; }
   .sf-gravity-mark__core { position:absolute; left:50%; top:50%; width:6px; height:6px;
-    transform:translate(-50%,-50%) rotate(45deg); background:#eaffff;
-    box-shadow:0 0 9px #39d0ff; }
+    transform:translate(-50%,-50%) rotate(45deg); background:#eaf1f8;
+    box-shadow:0 0 6px rgba(79,143,221,.5); }
   .sf-gravity-mark__label { position:absolute; left:50%; top:48px; transform:translateX(-50%);
-    color:#a6f0ff; font-size:12px; letter-spacing:.12em; white-space:nowrap;
-    text-shadow:0 1px 2px #02060a, 0 0 6px rgba(57,208,255,.8); }
+    color:#dfe8f2; font-size:12px; letter-spacing:.06em; white-space:nowrap;
+    text-shadow:0 1px 2px #02060a; }
   @keyframes sf-gravity-mark-contract {
     from { transform:scale(1.18); opacity:.48; }
     to { transform:scale(.78); opacity:1; }
@@ -1745,7 +1745,7 @@ function injectHudCss() {
   .sf-momentum-sink { display:none; position:absolute; left:0; top:0; width:58px; height:58px;
     pointer-events:none; z-index:12; opacity:0; transition:opacity .12s ease; will-change:transform; }
   .sf-momentum-sink.visible { display:block; opacity:1; }
-  .sf-momentum-sink__bracket { position:absolute; inset:5px; border-left:3px solid rgba(255,190,112,.95);
+  .sf-momentum-sink__bracket { position:absolute; inset:5px; border-left:1px solid var(--sf-edge);
     border-right:3px solid rgba(255,190,112,.95); box-shadow:0 0 10px rgba(255,136,64,.34); }
   .sf-momentum-sink__bracket::before, .sf-momentum-sink__bracket::after {
     content:''; position:absolute; left:7px; right:7px; height:2px; background:rgba(255,222,176,.8); }
@@ -1890,7 +1890,7 @@ function injectHudCss() {
   .sf-cargo-panel.open { display:flex; }
   .sf-cargo-panel__head { display:flex; align-items:center; justify-content:space-between;
     padding:10px 14px; border-bottom:1px solid var(--panel-edge); }
-  .sf-cargo-panel__title { font-size:13px; letter-spacing:.14em; color:var(--visor-cyan); text-transform:uppercase; }
+  .sf-cargo-panel__title { font-size:13px; letter-spacing:.06em; color:var(--visor-cyan); text-transform:uppercase; }
   .sf-cargo-panel__close { background:none; border:1px solid var(--ink-mute); border-radius:4px;
     color:var(--ink-dim); font-size:12px; padding:2px 8px; cursor:pointer; font-family:var(--mono); }
   .sf-cargo-panel__close:hover { border-color:var(--visor-cyan); color:var(--visor-cyan); }
@@ -1920,9 +1920,9 @@ function injectHudCss() {
 
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
   .sf-mission-tracker { position:relative; width:320px; max-width:calc(100vw - 32px);
-    padding:10px 12px; border-left:3px solid var(--visor-amber);
+    padding:10px 12px; border-left:1px solid var(--sf-edge);
     background:rgba(5,9,18,.92); box-shadow:none; pointer-events:none; contain:layout paint style; }
-  .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--visor-amber); letter-spacing:.18em;
+  .sf-mt-title { font-family:var(--mono); font-size:12px; color:var(--visor-amber); letter-spacing:.06em;
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-shadow:none; }
   .sf-mt-obj { font-family:var(--mono); font-size:13px; line-height:1.35; color:var(--text-primary); margin-bottom:5px;
@@ -1955,7 +1955,7 @@ function injectHudCss() {
     --hud-line-strong:rgba(148,178,205,.34);
     --hud-surface:rgba(10,14,20,.92);
     --hud-surface-soft:rgba(13,18,25,.78);
-    --hud-cyan:#4ec3e6;
+    --hud-cyan:#4f8fdd;
     --hud-amber:#dfa04e;
     --hud-danger:#e0665f;
     --font-mono:var(--hud-data);
@@ -1994,7 +1994,7 @@ function injectHudCss() {
     display:flex; align-items:center; gap:8px;
   }
   .sf-condition-state {
-    font-family:var(--hud-data); font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--hud-cyan);
+    font-family:var(--hud-data); font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--hud-cyan);
     padding:1px 4px; background:rgba(78,195,230,.10); border-radius:2px; border:1px solid rgba(78,195,230,.28);
   }
   .sf-condition-critical .sf-condition-state {
@@ -2235,13 +2235,13 @@ function injectHudCss() {
   }
   .sf-commtape .sf-comm-backlog-btn {
     padding:2px 8px; background:none; border:none; box-shadow:none;
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-cyan); text-shadow:var(--sf-ink); cursor:pointer;
   }
   .sf-commtape .sf-comm-backlog-btn:hover { color:var(--hud-paper); }
   .sf-commtape .sf-contact-hail__button {
     padding:2px 8px; background:none; border:none; box-shadow:none;
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-paper); text-shadow:var(--sf-ink);
   }
   .sf-commtape .sf-contact-hail__button[disabled] { color:var(--hud-muted); }
@@ -2252,7 +2252,7 @@ function injectHudCss() {
   .sf-mission-tracker { padding:8px 10px 9px; }
   .sf-mt-title { border-bottom:1px solid rgba(223,160,78,.55); padding-bottom:3px; }
   .sf-mt-title {
-    font-family:var(--hud-display) !important; font-size:12px; font-weight:700; letter-spacing:.12em;
+    font-family:var(--hud-display) !important; font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-amber); margin-bottom:4px;
   }
   .sf-mt-obj { font-family:var(--hud-body) !important; font-size:12px; line-height:1.35; font-weight:500; color:var(--hud-paper); margin-bottom:4px; }
@@ -2285,7 +2285,7 @@ function injectHudCss() {
   }
   .sf-overview::before {
     content:'LOCAL CONTACTS'; display:block; padding:3px 10px 6px; color:var(--hud-muted);
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.18em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     border-bottom:1px solid rgba(148,178,205,.14);
   }
   .sf-overview-row {
@@ -2325,9 +2325,9 @@ function injectHudCss() {
      survives forced-colors and colour-blind play unchanged. */
   .sf-target__threat { display:flex; align-items:center; gap:7px; padding:2px 0 3px; }
   .sf-target__threat[hidden] { display:none !important; }
-  .sf-target__threat-pips { font-family:var(--hud-data); font-size:12px; letter-spacing:.16em; color:var(--hud-muted); }
+  .sf-target__threat-pips { font-family:var(--hud-data); font-size:12px; letter-spacing:.06em; color:var(--hud-muted); }
   .sf-target__threat-word {
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-paper); text-shadow:var(--sf-ink);
   }
   .sf-target__threat[data-tier]::before {
@@ -2407,7 +2407,7 @@ function injectHudCss() {
   .sf-radar-wrap { align-items:center; }
   .sf-radar { width:var(--sf-radar-size); height:var(--sf-radar-size);
     border:1px solid rgba(148,178,205,.22); box-shadow:none; background:none; }
-  .sf-radar-objective-key { width:100%; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; font-size:12px; letter-spacing:.14em; }
+  .sf-radar-objective-key { width:100%; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; font-size:12px; letter-spacing:.06em; }
 
   .sf-toast {
     width:100%; padding:2px 0; border:none; background:none; box-shadow:none;
@@ -2420,7 +2420,7 @@ function injectHudCss() {
   .sf-ml-instrument__track { flex:1; height:3px; background:rgba(164,181,197,.18); }
   .sf-ml-instrument__fill { display:block; height:100%; width:100%; transform-origin:left center; background:var(--hud-amber, #dfa04e); }
   .sf-ml-instrument__v { font-size:12px; color:var(--hud-paper); }
-  .sf-ml-instrument__release { text-align:center; font-size:12px; letter-spacing:.12em; color:var(--hud-amber, #dfa04e); margin-top:3px; }
+  .sf-ml-instrument__release { text-align:center; font-size:12px; letter-spacing:.06em; color:var(--hud-amber, #dfa04e); margin-top:3px; }
   .sf-firstuse {
     position:absolute; left:0; top:0; max-width:240px; padding:2px 0;
     color:var(--hud-paper); font-family:var(--hud-data); font-size:13px;
@@ -2523,7 +2523,7 @@ function injectHudCss() {
     display:flex; gap:14px; align-items:flex-end; pointer-events:none; z-index:6;
     padding-bottom:14px; }
   .sf-prail__band { display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .sf-prail__label { font-family:var(--hud-display); font-size:12px; letter-spacing:.18em;
+  .sf-prail__label { font-family:var(--hud-display); font-size:12px; letter-spacing:.06em;
     color:var(--hud-steel); opacity:.7; }
   .sf-prail__slots { display:flex; gap:4px; }
 
@@ -2546,14 +2546,15 @@ function injectHudCss() {
   .sf-pslot[data-state="armed"] { border-color:var(--hud-amber); box-shadow:inset 0 0 0 1px var(--hud-amber); }
   .sf-pslot[data-state="cooling"] { opacity:.72; }
   .sf-pslot[data-state="cooling"] .sf-pslot__sweep circle { opacity:.95; }
-  .sf-pslot[data-state="unaffordable"] { opacity:.5; border-style:dashed; }
-  .sf-pslot[data-state="locked"] { opacity:.42; border-style:dotted; }
-  .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.5; }
-  /* An empty socket stays VISIBLE. A gap the player can see reads as "this fills in later";
-     a hidden gap reads as "there is nothing here", which is the lie J06 exists to correct. */
-  .sf-pslot[data-state="empty"] { border-style:dashed; border-color:var(--hud-edge);
-    opacity:.34; background:none; }
-  .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.35; }
+  .sf-pslot[data-state="unaffordable"] { opacity:.45; }
+  /* Locked/empty sockets stay visible (a seen gap reads as "fills in later") but they WHISPER:
+     solid hairline, low opacity, dimmed glyph — not dashed boxes shouting for attention. */
+  .sf-pslot[data-state="locked"] { opacity:.26; border-color:var(--hud-line); }
+  .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.3; }
+  .sf-pslot[data-state="locked"] .sf-pslot__key { opacity:.5; }
+  .sf-pslot[data-state="empty"] { border-color:var(--hud-line); opacity:.24; background:none; }
+  .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.25; }
+  .sf-pslot[data-state="empty"] .sf-pslot__key { opacity:.4; }
 
   /* Under a FULL claim the rail is answering a prompt, so it stops advertising powers. */
   .sf-prail[data-claimed="FULL"] .sf-prail__label { opacity:.3; }

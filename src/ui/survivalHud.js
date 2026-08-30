@@ -323,7 +323,7 @@ export const survivalHud = {
     // Own lease: this block styles only .sf-crun*. It never redefines a shared selector.
     style.textContent = `
   .sf-crun { display:flex; flex-direction:column; gap:5px; min-width:196px;
-    padding:9px 11px; border-left:2px solid var(--sf-goal-edge, var(--sf-goal));
+    padding:9px 11px; border-left:1px solid var(--sf-edge);
     background:rgba(6,12,22,.62); color:var(--sf-paper); }
   .sf-crun__label { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
     letter-spacing:.18em; text-transform:uppercase; color:var(--sf-calm); }
@@ -350,7 +350,7 @@ export const survivalHud = {
     font-variant-numeric:tabular-nums; color:var(--sf-you); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
   @media (forced-colors: active) {
-    .sf-crun { border-left:2px solid CanvasText; background:Canvas; }
+    .sf-crun { border-left:1px solid var(--sf-edge); background:Canvas; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
   }
   @media (max-width: 900px) {

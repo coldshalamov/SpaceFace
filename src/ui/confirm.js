@@ -30,10 +30,10 @@ function injectStyle() {
   #sf-confirm-root.sf-confirm--in { opacity:1; }
   .sf-confirm { width:min(440px, 92vw); background:linear-gradient(180deg,var(--panel-2),var(--panel));
     border:1px solid var(--panel-edge); border-radius:var(--r-lg); padding:var(--sp-5);
-    box-shadow:var(--sh-3), 0 0 0 1px rgba(57,208,255,.08) inset;
+    box-shadow:var(--sh-3), 0 0 0 1px rgba(79,143,221,.08) inset;
     animation:sf-fadein var(--dur) var(--ease) both; }
   .sf-confirm__title { font-family:var(--mono); font-size:var(--t-lg); letter-spacing:.12em;
-    text-transform:uppercase; color:var(--accent); text-shadow:0 0 14px rgba(57,208,255,.4);
+    text-transform:uppercase; color:var(--accent); text-shadow:0 0 14px rgba(79,143,221,.4);
     margin:0 0 var(--sp-2); }
   .sf-confirm__title.sf-confirm__title--danger { color:var(--danger);
     text-shadow:0 0 14px rgba(255,84,112,.4); }

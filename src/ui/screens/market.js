@@ -1500,7 +1500,7 @@ export function createMarketPanel(ctx) {
       div.innerHTML =
         '<span>' + escapeHtml(trade.side === 'buy' ? 'BUY' : 'SELL') + ' ' +
           formatCargoUnits(trade.qty) + 'u ' + escapeHtml(def ? def.name : trade.commodityId) + '</span>' +
-        '<b class="mono" style="color:' + (profit >= 0 ? '#7af7d0' : '#ff5c5c') + '">' +
+        '<b class="mono" style="color:' + (profit >= 0 ? '#4fbf8f' : '#ff5c5c') + '">' +
           (margin >= 0 ? '+' : '') + fmtCr(margin) + '/u</b>';
       frag.appendChild(div);
     }
