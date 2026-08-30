@@ -1,0 +1,137 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 186,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 26820,
+      "hullTriangles": 13250,
+      "draws": 60,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Frame",
+        "Material_Gap",
+        "Material_Hull",
+        "Material_HullPanel",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Soot",
+        "Material_Warning",
+        "Material_Wing"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 1024,
+      "textureMapLadder": {
+        "lod0": 1024,
+        "lod1": 512,
+        "lod2": 512
+      },
+      "path": "evidence/hornet/cycles/cycle_186/candidates/hornet_production_v1_lod0.glb",
+      "bytes": 13099752,
+      "sha256": "9CC00233C8B19F3ACFABD1B9974BC51652FADCFDEA5E4F0236F892EE2E3A6B93"
+    },
+    {
+      "lod": 1,
+      "triangles": 30572,
+      "hullTriangles": 23058,
+      "draws": 46,
+      "materials": [
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Frame.001",
+        "Material_Gap.001",
+        "Material_Hull.001",
+        "Material_HullPanel.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Soot.001",
+        "Material_Wing.001"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 512,
+      "textureMapLadder": {
+        "lod0": 1024,
+        "lod1": 512,
+        "lod2": 512
+      },
+      "path": "evidence/hornet/cycles/cycle_186/candidates/hornet_production_v1_lod1.glb",
+      "bytes": 6607368,
+      "sha256": "81FAA49215FCFC12999E47FF6EF624D92EB32FDE732BA5535621316831CE9678"
+    },
+    {
+      "lod": 2,
+      "triangles": 27786,
+      "hullTriangles": 23058,
+      "draws": 24,
+      "materials": [
+        "Material_Canopy.002",
+        "Material_Ceramic.002",
+        "Material_Frame.002",
+        "Material_Gap.002",
+        "Material_Hull.002",
+        "Material_HullPanel.002",
+        "Material_Mechanical.002",
+        "Material_Soot.002",
+        "Material_Wing.002"
+      ],
+      "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
+      "canopyCut": true,
+      "driveWells": [
+        {
+          "tag": "Port",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        },
+        {
+          "tag": "Stbd",
+          "opened": true,
+          "mouthOuterRadius": 0.68
+        }
+      ],
+      "radiatorWell": true,
+      "textureMapSize": 512,
+      "textureMapLadder": {
+        "lod0": 1024,
+        "lod1": 512,
+        "lod2": 512
+      },
+      "path": "evidence/hornet/cycles/cycle_186/candidates/hornet_production_v1_lod2.glb",
+      "bytes": 5010040,
+      "sha256": "FFB14BB0D4409869C3423EBE0BA296F30A7448BA075AFD6DFED0F90D0AC9524B"
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_186"
+}

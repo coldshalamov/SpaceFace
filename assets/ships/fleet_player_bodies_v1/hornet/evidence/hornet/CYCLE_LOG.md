@@ -163,5 +163,10 @@
 | 183 | yes | 690C2D58 | REVISE/REVISE/REVISE | Mid visor still a painted square; transom reads as a white cap. Not wired. |
 | 184 | yes | 2A1DB61D | REVISE/REVISE/REVISE | Wider cockpit lip + aft punches. Only 1.8/2.0/1.7% of ship pixels moved vs C183 - a visor nudge, not a full job. Not wired. |
 | 185 | yes | B6CA117F | REJECT/REVISE/REVISE/REVISE | Full three-house reset. Connected shell, canopy tub, and twin throats built; final picture still a box with attached wings, and visible length was 3.02x live. Retire this scripted ring-loft technique. Not wired. |
+| 186 | yes | EA69AC26 | REVISE | New continuous chined pressure shell with wing carry-through. First pass exposed missing Boolean operand; corrected before final evidence. Real canopy/radiator/twin drive cuts. Material grid too regular; not wired. |
+| 187 | yes | 2C18970F | REVISE | Set-back, raised cockpit excavation and controlled aft taper. The final corrected pass makes the canopy read in chase; material density still needs review. Not wired. |
+| 188 | yes | 2D7724A2 | REVISE | Dedicated dark wing crown and steel-blue hull value hierarchy make the carry-through planform legible. Not wired. |
+| 189 | yes | 83578368 | REVISE | More aggressive aft pressure-shell taper keeps the drive throats from reading as a rectangular pod. Not wired. |
+| 190 | yes | AA8C9807 | REVISE pending independent review | C189 form retained; hull/armor seam bands softened in unique basecolor/ORM/normal maps to reduce checkerboard aliasing while preserving UV0/UV1 density. Not wired. |
 
-Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
+Hitch-plus / A-list: not independently established. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
