@@ -9,6 +9,13 @@
   "clayStillReadsAsPrimitives": false,
   "independentReview": "KEEP",
   "independentReviewer": "/root/extractor_cycle06_review",
+  "routeAcceptance": {
+    "verdict": "KEEP",
+    "reviewer": "/root",
+    "scope": "exact_release_browser_electron_route",
+    "evidence": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
+    "closedGates": ["G6", "G7"]
+  },
   "forbidden": {
     "factoryLoftPlusBoxes": false,
     "sharedSheetTint": false,

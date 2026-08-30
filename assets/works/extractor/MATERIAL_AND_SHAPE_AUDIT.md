@@ -73,8 +73,10 @@ the prior grayscale channel fallback.
 
 `SUPPORTED_VIEW_ZONE_REGISTER.json` bills every visible zone in works_top,
 works_edge, and works_site. Coverage is author-complete but
-`allSupportedViewZonesClassified` remains false until an independent exact-hash
-reviewer confirms it, as required by the material-truth contract.
+the frozen Cycle 06 register retains its pre-review `false` value. The subsequent
+exact-hash independent decision in `evidence/cycle_006/VISUAL_REVIEW.md` and
+`TECHNIQUE_LEDGER.json` is `KEEP`; the frozen register is historical evidence,
+not the current verdict.
 
 ## First-render correction
 
@@ -82,10 +84,11 @@ Cycle 06 retains Cycle 05's segmented bonded dry refractory hardface blocks on
 the cutter crown. The geometry correction is limited to the intake shoulders
 and liners; it does not redesign the machine or move its runtime interfaces.
 
-## Remaining route limits (honest)
+## Route closure
 
-- The candidate is not integrated, so no Browser/Electron normal-route capture
-  can honestly show this hash. `works_site.png` is the best available legal
-  Works-context evidence, not a substitute for G7.
-- Site-scale identity is only ~22 px and must be judged at original resolution.
-- Cycle 06 independent G1/G2/G4/G7 review has not run. This cycle closes none.
+The exact independently accepted source is integrated, released, packaged, and captured through the
+ordinary installed-machine route in both Browser and source Electron. Cycle 07 evidence is bound in
+`evidence/cycle_007_route/EPOCH.json`: LOD0 at work register, LOD1 at site register, the three
+functional hooks present, correct base-color/normal color spaces, and no procedural double-draw.
+G6 and G7 are `KEEP`; site-scale identity remains intentionally compact and is preserved in the
+original-resolution Browser/Electron stills.

@@ -7221,6 +7221,27 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       return out;
     },
+    machineVisual(defId) {
+      const rec = [...machines.values()].find((candidate) => candidate.defId === defId) || null;
+      if (!rec) return null;
+      const visual = rec.authoredSeat || rec.authoredSource || rec.group || null;
+      const source = rec.authoredSource || null;
+      const hookNames = source?.userData?.worksHooks || {};
+      const hooks = {};
+      for (const name of Object.keys(hookNames)) hooks[name] = !!hookNames[name];
+      return {
+        id: rec.machineId,
+        defId: rec.defId,
+        cell: [rec.col, rec.row],
+        authored: !!source,
+        fallback: !!rec.proceduralFallback,
+        assetId: source?.userData?.worksPartId || null,
+        register: zoomRegister,
+        hooks,
+        colourSpace: inspectWorksColourSpace(visual),
+        lod: inspectWorksLod(visual),
+      };
+    },
     cargoPort() {
       const rec = authoredCargoRec() || [...machines.values()].find((m) => m.defId === 'sm_cargo_port') || null;
       const stats = rec && rec.cargoLifecycle ? rec.cargoLifecycle.stats() : null;

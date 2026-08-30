@@ -15,23 +15,35 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
+import { provisionElectronRuntime } from './lib/electronRuntimeProvisioning.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./lib/gameServer.cjs');
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, '.devshots', 'asteroid-works');
+const NAVIGATION_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.SF_WORKS_CAPTURE_NAVIGATION_TIMEOUT_MS) || 90_000,
+);
+const SF_BOOT_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.SF_WORKS_CAPTURE_BOOT_TIMEOUT_MS) || 90_000,
+);
 // Law §11.10 evidence is judged at play size; the theater leaf needs 1920×1080 stills.
 const VIEWPORT = {
   width: Number(process.env.AST_CAP_W) || 1500,
   height: Number(process.env.AST_CAP_H) || 940,
 };
 
-const { chromium } = await loadPlaywright();
+const { chromium, _electron: electron } = await loadPlaywright();
 mkdirSync(OUT_DIR, { recursive: true });
 
 let server = null;
 let browser = null;
+let electronApp = null;
+let isolatedElectronLaunch = null;
 let issues = null;
 const failures = [];
 
@@ -42,36 +54,73 @@ const failures = [];
 // review stills until the unit wires the authored asset and seats it.
 const PART_ID = (process.argv.find((arg) => arg.startsWith('--part=')) || '').slice('--part='.length)
   || null;
+const PART_ELECTRON = process.argv.includes('--electron');
 
 async function captureAuthoredWorksPart(partId) {
   // Later art units review at play size: 1920×1080 → 120 px/cell work, 19 px/cell site.
   const partViewport = { width: 1920, height: 1080 };
-  server = await startFreshServer();
-  const executablePath = findSystemBrowser();
-  browser = await chromium.launch(executablePath ? {
-    headless: false,
-    executablePath,
-    args: ['--no-first-run', '--no-default-browser-check', '--disable-extensions',
-      `--window-size=${partViewport.width},${partViewport.height}`, '--force-device-scale-factor=1'],
-  } : { headless: true });
-  const page = await browser.newPage({ viewport: partViewport, deviceScaleFactor: 1 });
-  issues = collectPageIssues(page);
-  await page.addInitScript(() => {
-    try {
-      sessionStorage.setItem('sf.cinematicSeen', '1');
-      localStorage.setItem('sf.firstRunIntroSeen', '1');
-    } catch (_) {}
-  });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  let page;
+  if (PART_ELECTRON) {
+    provisionElectronRuntime({ root: ROOT });
+    isolatedElectronLaunch = createIsolatedElectronLaunch({
+      root: ROOT,
+      taskId: `works-part-${partId}`,
+      timeout: SF_BOOT_TIMEOUT_MS,
+    });
+    electronApp = await electron.launch(isolatedElectronLaunch.options);
+    page = await electronApp.firstWindow({ timeout: SF_BOOT_TIMEOUT_MS });
+    issues = collectPageIssues(page, { ignoreProbeWarnings: true });
+    await electronApp.evaluate(({ BrowserWindow }, viewport) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (window) window.setContentSize(viewport.width, viewport.height);
+    }, partViewport);
+    await page.waitForLoadState('domcontentloaded', { timeout: NAVIGATION_TIMEOUT_MS });
+  } else {
+    server = await startFreshServer();
+    const executablePath = findSystemBrowser();
+    browser = await chromium.launch(executablePath ? {
+      headless: false,
+      executablePath,
+      args: ['--no-first-run', '--no-default-browser-check', '--disable-extensions',
+        `--window-size=${partViewport.width},${partViewport.height}`, '--force-device-scale-factor=1'],
+    } : { headless: true });
+    page = await browser.newPage({ viewport: partViewport, deviceScaleFactor: 1 });
+    issues = collectPageIssues(page);
+    await page.addInitScript(() => {
+      try {
+        sessionStorage.setItem('sf.cinematicSeen', '1');
+        localStorage.setItem('sf.firstRunIntroSeen', '1');
+      } catch (_) {}
+    });
+    await page.goto(server.baseUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: NAVIGATION_TIMEOUT_MS,
+    });
+  }
+  console.log('works-part capture phase: document-loaded');
+  await page.waitForFunction(
+    () => window.SF && window.SF.state && window.SF.bus && window.SF.ctx,
+    null,
+    { timeout: SF_BOOT_TIMEOUT_MS },
+  );
+  console.log('works-part capture phase: SF-boot-ready');
+  if (PART_ELECTRON) {
+    const splash = page.locator('#cinematic-splash');
+    if (await splash.isVisible().catch(() => false)) {
+      await page.keyboard.press('Space');
+      await splash.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+    }
+  }
   await page.evaluate(async () => {
     const ready = window.SF.state.render && window.SF.state.render.authoredPartLibraryReady;
     if (ready && typeof ready.then === 'function') await ready.catch(() => {});
   });
+  console.log('works-part capture phase: authored-library-ready');
   await page.evaluate(() => {
     window.SF.bus.emit('game:new', { name: 'Works Part Capture', difficulty: 'standard' });
   });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120000 });
+  console.log('works-part capture phase: flight-ready');
   await page.waitForTimeout(1500);
 
   const opened = await page.evaluate(() => {
@@ -98,32 +147,110 @@ async function captureAuthoredWorksPart(partId) {
   }, null, { timeout: 15000 });
   await page.waitForTimeout(800);
 
-  const mounted = await page.evaluate(async (id) => {
+  let mounted = await page.evaluate(async (id) => {
     const h = document.querySelector('.ast-canvas').__ast3d;
-    const result = id === 'drill_platform' && typeof h.mountWorksProof === 'function'
-      ? await h.mountWorksProof()
-      : await h.loadWorksPart(id);
-    if (h.worksProofCell) h.frameCell(h.worksProofCell.col, h.worksProofCell.row);
+    let result;
+    if (id === 'drill_platform' && typeof h.mountWorksProof === 'function') {
+      result = await h.mountWorksProof();
+    } else if (id === 'extractor') {
+      const sf = window.SF;
+      const st = sf.state;
+      const d = st.drill;
+      const asteroidId = d.asteroidId;
+      const col = 13;
+      const row = 2;
+      const asteroid = st.entities.get(asteroidId);
+      const hollow = (nextCol, nextRow) => {
+        const previous = d.field[nextCol][nextRow];
+        if (previous?.type === 'empty') return;
+        d.field[nextCol][nextRow] = {
+          type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
+        };
+        if (asteroid?.data) {
+          if (!Array.isArray(asteroid.data.drillCleared)) asteroid.data.drillCleared = [];
+          const index = nextRow * 28 + nextCol;
+          if (!asteroid.data.drillCleared.includes(index)) asteroid.data.drillCleared.push(index);
+        }
+        sf.bus.emit('drill:break', {
+          col: nextCol,
+          row: nextRow,
+          type: previous?.type || 'matrix',
+          ore: previous?.ore || null,
+          wasVein: !!previous?.ore,
+          wasGas: previous?.type === 'gas',
+        });
+      };
+      // Match the shipped manual-build precondition used by the full Works capture: the rover
+      // occupies the adjacent gallery cell while the machine seat retains seven solid contacts.
+      hollow(col, row);
+      hollow(col + 1, row);
+      d.avatar.col = col + 1;
+      d.avatar.row = row;
+      d.avatar.fromCol = col + 1;
+      d.avatar.fromRow = row;
+      const install = sf.registry.get('asteroidSites').installMachine({
+        asteroidId,
+        defId: 'sm_extractor',
+        col,
+        row,
+      });
+      result = {
+        ok: install.ok === true,
+        id,
+        cell: { col, row },
+        install: { ok: install.ok === true, reason: install.reason || null, siteId: install.siteId || null },
+      };
+    } else {
+      result = await h.loadWorksPart(id);
+    }
+    const cell = result?.cell || h.worksProofCell;
+    if (cell) h.frameCell(cell.col, cell.row);
     h.setZoomRegister('work');
     return result;
   }, partId);
   if (!mounted || !mounted.ok) {
     throw new Error(`loadWorksPart(${partId}) failed: ${JSON.stringify(mounted)}`);
   }
+  if (partId === 'extractor') {
+    await page.waitForFunction(() => {
+      const h = document.querySelector('.ast-canvas')?.__ast3d;
+      const visual = h && typeof h.machineVisual === 'function'
+        ? h.machineVisual('sm_extractor')
+        : null;
+      return visual && visual.authored && !visual.fallback;
+    }, null, { timeout: 30_000 });
+    mounted = {
+      ...mounted,
+      ...(await page.evaluate(() => (
+        document.querySelector('.ast-canvas').__ast3d.machineVisual('sm_extractor')
+      ))),
+    };
+  }
+  console.log('works-part capture phase: part-mounted');
   await page.waitForTimeout(400);
-  const workName = `works-part-${partId}-work.png`;
+  const runtimeLabel = PART_ELECTRON ? 'electron' : 'browser';
+  const workName = PART_ELECTRON
+    ? `works-part-${partId}-electron-work.png`
+    : `works-part-${partId}-work.png`;
   await page.screenshot({ path: join(OUT_DIR, workName), type: 'png' });
 
   await page.evaluate(() => {
     document.querySelector('.ast-canvas').__ast3d.setZoomRegister('site');
   });
   await page.waitForTimeout(400);
-  const siteName = `works-part-${partId}-site.png`;
+  const siteName = PART_ELECTRON
+    ? `works-part-${partId}-electron-site.png`
+    : `works-part-${partId}-site.png`;
   await page.screenshot({ path: join(OUT_DIR, siteName), type: 'png' });
+  const siteVisual = partId === 'extractor'
+    ? await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.machineVisual('sm_extractor'))
+    : null;
 
   console.log(`works-part ${partId} mounted`, JSON.stringify({
+    runtime: runtimeLabel,
     id: mounted.id,
     lod: mounted.lod,
+    siteLod: siteVisual && siteVisual.lod,
     colourSpace: mounted.colourSpace,
     hooks: mounted.hooks,
     work: workName,
@@ -142,6 +269,14 @@ if (PART_ID) {
     } catch (_) {}
   } finally {
     if (browser) await browser.close().catch(() => {});
+    let electronClosed = false;
+    if (electronApp) {
+      await electronApp.close();
+      electronClosed = true;
+    }
+    if (isolatedElectronLaunch && electronClosed) {
+      isolatedElectronLaunch.cleanup({ runtimeClosed: true });
+    }
     if (server && server.kill) await server.kill().catch(() => {});
   }
   if (failures.length) {
@@ -171,8 +306,17 @@ try {
     } catch (_) {}
   });
 
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await page.goto(server.baseUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: NAVIGATION_TIMEOUT_MS,
+  });
+  console.log('works capture phase: document-loaded');
+  await page.waitForFunction(
+    () => window.SF && window.SF.state && window.SF.bus && window.SF.ctx,
+    null,
+    { timeout: SF_BOOT_TIMEOUT_MS },
+  );
+  console.log('works capture phase: SF-boot-ready');
 
   const shot = (name) => page.screenshot({ path: join(OUT_DIR, name), type: 'png' });
 

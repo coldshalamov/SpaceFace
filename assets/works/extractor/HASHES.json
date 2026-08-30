@@ -201,5 +201,17 @@
       "authority": "diagnostic_only_not_culling_proof"
     },
     "openGates": ["G6", "G7"]
+  },
+  "routeAcceptance": {
+    "reviewer": "/root",
+    "verdict": "KEEP",
+    "scope": "exact_release_browser_electron_route",
+    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "releaseSha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
+    "renderGlbSha256": "d5573dd1b099c742f2eb3fc5f7312f2a9da5e80688ff7f713167580037b9a3be",
+    "evidence": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
+    "closedGates": ["G6", "G7"],
+    "p0": 0,
+    "p1": 0
   }
 }
