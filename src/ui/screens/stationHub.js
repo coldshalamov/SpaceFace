@@ -3229,7 +3229,7 @@ button.st-handoff-step:focus-visible { outline: 2px solid var(--st-accent); outl
 .st-tab.active {
   color: #fff; border-color: var(--os-line);
   background: linear-gradient(90deg, var(--st-accent-soft), rgba(255,255,255,0.02));
-  box-shadow: inset 2px 0 0 var(--st-accent);
+  box-shadow: inset 1px 0 0 var(--sf-edge);
 }
 .st-tab-icon { grid-row: 1 / span 2; width: 20px; height: 20px; opacity: .85; color: var(--os-ink-mute); display: inline-flex; align-items: center; justify-content: center; }
 .st-tab-icon svg { width: 18px; height: 18px; }
@@ -3246,7 +3246,7 @@ button.st-handoff-step:focus-visible { outline: 2px solid var(--st-accent); outl
 .st-tab[data-service-status="available"] .st-tab-service { color: color-mix(in srgb, var(--accent-2) 80%, var(--os-ink-mute)); }
 .st-tab[data-service-status="unavailable"] { opacity: .62; }
 .st-tab[data-service-status="unavailable"] .st-tab-service { color: var(--warn); }
-.st-tab[data-service-status="unavailable"].active { opacity: 1; box-shadow: inset 2px 0 0 var(--warn); }
+.st-tab[data-service-status="unavailable"].active { opacity: 1; box-shadow: inset 1px 0 0 var(--sf-edge); }
 
 /* Workspace: the tools own this. Faint static chart-grid texture; zero motion at rest. */
 .st-content {
@@ -3282,7 +3282,7 @@ button.st-handoff-step:focus-visible { outline: 2px solid var(--st-accent); outl
 .st-ins-section { display: flex; flex-direction: column; gap: 6px; padding-bottom: 16px; border-bottom: 1px solid var(--os-line); }
 .st-ins-section:last-child { border-bottom: none; padding-bottom: 0; }
 .st-ins-section--id { align-items: flex-start; }
-.st-ins-schematic { align-self: center; opacity: .85; filter: drop-shadow(0 0 8px var(--st-accent-soft)); }
+.st-ins-schematic { align-self: center; opacity: .85; }
 .st-ins-schematic svg { width: 84px; height: 84px; display: block; }
 .st-ins-title { font-family: var(--mono); font-size: 12px; letter-spacing:.06em; text-transform: uppercase; color: var(--os-ink-mute); }
 .st-ins-tab-header { display: flex; align-items: center; gap: 8px; }
@@ -3378,7 +3378,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-market-category-rail { display: flex; flex-direction: column; gap: 3px; position: sticky; top: 0; }
 .st-market-cat-tab { display: flex; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid transparent; border-radius: var(--os-r-xs); background: transparent; color: var(--os-ink-dim); font-size: 12.5px; text-align: left; }
 .st-market-cat-tab:hover { background: rgba(255,255,255,0.045); color: var(--os-ink); }
-.st-market-cat-tab.active { border-color: var(--os-line); background: var(--st-accent-soft); color: var(--os-ink); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-market-cat-tab.active { border-color: var(--os-line); background: var(--st-accent-soft); color: var(--os-ink); box-shadow: inset 1px 0 0 var(--sf-edge); }
 .st-cat-icon { flex: none; width: 18px; text-align: center; }
 .st-cat-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-market-center { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -3451,7 +3451,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
   align-items: center; gap: 4px 10px;
 }
 .st-cmdty-card:hover { border-color: color-mix(in srgb, var(--st-accent) 45%, var(--os-line)); }
-.st-cmdty-card.is-selected { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-cmdty-card.is-selected { border-color: var(--st-accent); box-shadow: inset 1px 0 0 var(--sf-edge); }
 .st-cmdty-card > .st-card-header { grid-area: head; }
 .st-cmdty-card > .st-card-spark-wrap { grid-area: scope; }
 .st-cmdty-card > .st-cmdty-purpose { grid-area: purpose; }
@@ -3596,7 +3596,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-sy-rail-list { flex: 1; overflow-y: auto; min-height: 0; max-height: none; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
 .st-sy-rail-card { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 8px 10px; cursor: pointer; background: var(--os-surface); transition: border-color .12s, background .12s; }
 .st-sy-rail-card:hover { border-color: color-mix(in srgb, var(--st-accent) 45%, transparent); background: color-mix(in srgb, var(--st-accent) 5%, var(--os-surface)); }
-.st-sy-rail-card.selected { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-sy-rail-card.selected { border-color: var(--st-accent); box-shadow: inset 1px 0 0 var(--sf-edge); }
 .st-sy-rail-card.owned { opacity: .7; }
 .st-sy-rail-card.mission-fit-ok { border-color: color-mix(in srgb, var(--good) 40%, transparent); }
 .st-sy-rail-card.mission-fit-warn { border-color: color-mix(in srgb, var(--warn) 34%, transparent); }
@@ -3755,7 +3755,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-slot { border: 1px solid var(--os-line); border-radius: var(--os-r-xs); padding: 8px 10px; cursor: pointer; background: var(--os-surface); position: relative; }
 .st-slot.empty { border-style: dashed; }
 .st-slot.filled { border-color: var(--os-line-strong); }
-.st-slot.sel { border-color: var(--st-accent); box-shadow: inset 2px 0 0 var(--st-accent); }
+.st-slot.sel { border-color: var(--st-accent); box-shadow: inset 1px 0 0 var(--sf-edge); }
 .st-slot-weapon { border-left:1px solid var(--sf-edge); }
 .st-slot-shield { border-left:1px solid var(--sf-edge); }
 .st-slot-engine { border-left:1px solid var(--sf-edge); }
@@ -3939,7 +3939,7 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-mission-list { display: flex; flex-direction: column; gap: 10px; }
 .st-mission-card { border: 1px solid var(--os-line); border-radius: var(--os-r-sm); padding: 11px 14px; background: var(--os-surface); box-shadow: var(--os-shadow); cursor: pointer; transition: border-color .15s ease, background .15s ease; }
 .st-mission-card:hover { border-color: color-mix(in srgb, var(--st-accent) 40%, transparent); }
-.st-mission-card.selected { border-color: var(--st-accent); background: color-mix(in srgb, var(--st-accent) 6%, var(--os-surface)); box-shadow: inset 3px 0 0 var(--st-accent); }
+.st-mission-card.selected { border-color: var(--st-accent); background: color-mix(in srgb, var(--st-accent) 6%, var(--os-surface)); box-shadow: inset 1px 0 0 var(--sf-edge); }
 .st-mission-card.tracked { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 .st-mission-card.recommended--ok { border-color: color-mix(in srgb, var(--good) 36%, transparent); }
 .st-mission-card.recommended--warn { border-color: color-mix(in srgb, var(--warn) 38%, transparent); }

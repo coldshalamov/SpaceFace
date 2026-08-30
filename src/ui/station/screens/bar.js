@@ -37,6 +37,51 @@ const rewardOf = (m) => Math.max(0, Math.round(Number(
   m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
 ) || 0));
 
+// Bar corrections that belong to this screen (scoped under .sx-bar; no other host reuses these
+// classes inside the station): contact tabs size to their name instead of shearing it mid-word,
+// the leads panels get a visible slim scrollbar for their overflow, procedural placeholder
+// portraits are neutralized (one hashes to bright purple), and an untouched transcript collapses
+// to its content instead of holding one prompt line in a tall dark panel.
+// Named BAR_CSS, not CSS — this module calls the global CSS.escape, and a module binding named
+// CSS would shadow it (that threw "CSS.escape is not a function" and blanked the stage).
+const STYLE_ID = 'sf-bar-style';
+function injectStyle() {
+  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = BAR_CSS;
+  document.head.appendChild(s);
+}
+
+const BAR_CSS = `
+.sx-bar .sx-bar-row { flex: 0 1 auto; min-width: 178px; max-width: 264px; }
+.sx-bar .sx-bar__leads > .sx-panel {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sx-bar .sx-bar__leads > .sx-panel::-webkit-scrollbar { display: none; width: 0; height: 0; }
+/* This Chromium answers overflow with an auto-hiding overlay scrollbar — nothing visible at
+   rest — so each leads panel carries the same always-visible slim progress track as the
+   shipworks chooser list. */
+.sx-bar .sx-leadtrack {
+  position: absolute; right: 4px; top: 8px; bottom: 5px; width: 3px; border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-edge, #2c343f) 60%, transparent);
+  pointer-events: none;
+}
+.sx-bar .sx-leadtrack i {
+  display: block; width: 100%; height: 100%; border-radius: inherit;
+  background: color-mix(in srgb, var(--accent, #4f8fdd) 55%, transparent);
+}
+.sx-bar canvas.sx-portrait { filter: grayscale(1) contrast(1.05) brightness(.94); }
+.sx-bar .sx-talk:has(.sx-talk__reply.is-idle) { grid-template-rows: auto auto minmax(0, 1fr); }
+.sx-bar .sx-talk__reply.is-idle { padding: 26px clamp(30px, 5vw, 78px) 10px; }
+.sx-bar .sx-talk__reply.is-idle::before { content: "TRANSCRIPT / NO LINES YET"; }
+.sx-bar .sx-talk__reply.is-idle .sx-talk__quote { font-size: 44px; opacity: .2; }
+.sx-bar .sx-talk__reply.is-idle p { color: var(--sf-calm, #9aa4b0); font-size: clamp(16px, 1.35vw, 19px); }
+`;
+
 /** Durable, optional station handoff for the authored first purchased Tethys rumor. */
 export function tethysRumorGuidance(state, stationId) {
   const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
@@ -63,6 +108,7 @@ export function openTethysRumorGuidanceMap(ctx, stationId) {
 }
 
 export function createBarScreen(ctx) {
+  injectStyle();
   const el = document.createElement('div');
   el.className = 'sx-bar';
   el.innerHTML =
@@ -231,7 +277,7 @@ export function createBarScreen(ctx) {
             (memLine ? `<p class="sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
           `</div>` +
         `</header>` +
-        `<div class="sx-talk__reply${saidText ? ' is-said' : ''}">` +
+        `<div class="sx-talk__reply${saidText ? ' is-said' : ' is-idle'}">` +
           `<span class="sx-talk__quote">&ldquo;</span>` +
           `<p>${escapeHtml(saidText || 'They look up as you approach. Ask them something.')}</p>` +
         `</div>` +
@@ -281,10 +327,28 @@ export function createBarScreen(ctx) {
       : `<p class="sx-muted">No leads on the board.</p>`;
 
     leadsEl.innerHTML =
-      `<div class="sx-panel"><div class="sx-panel__head">${icon('spark', 15)}<span>Intel</span></div>${intelHtml}</div>` +
-      `<div class="sx-panel"><div class="sx-panel__head">${icon('route', 15)}<span>Survey Data</span></div>${surveyHtml}</div>` +
+      `<div class="sx-panel"><div class="sx-panel__head">${icon('spark', 15)}<span>Intel</span></div>${intelHtml}<span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>` +
+      `<div class="sx-panel"><div class="sx-panel__head">${icon('route', 15)}<span>Survey Data</span></div>${surveyHtml}<span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>` +
       `<div class="sx-panel"><div class="sx-panel__head">${icon('contracts', 15)}<span>Leads</span></div>${leadsHtml}` +
-        `<button type="button" class="sx-btn-ghost sx-bar__log" data-log>Open Mission Log</button></div>`;
+        `<button type="button" class="sx-btn-ghost sx-bar__log" data-log>Open Mission Log</button><span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>`;
+    syncLeadTracks();
+  }
+
+  // The platform scrollbar is an auto-hiding overlay here (nothing visible at rest), so each
+  // leads panel carries a slim always-visible progress track mirroring its scrollTop.
+  function syncLeadTracks() {
+    for (const panel of leadsEl.querySelectorAll(':scope > .sx-panel')) {
+      const track = panel.querySelector('.sx-leadtrack');
+      if (!track) continue;
+      const overflow = panel.scrollHeight - panel.clientHeight;
+      if (overflow <= 1) { track.hidden = true; continue; }
+      track.hidden = false;
+      const ratio = Math.max(.15, Math.min(1, panel.clientHeight / panel.scrollHeight));
+      const progress = Math.max(0, Math.min(1, panel.scrollTop / overflow));
+      const thumb = track.firstElementChild;
+      thumb.style.height = `${(ratio * 100).toFixed(2)}%`;
+      thumb.style.transform = `translateY(${(progress * (100 / ratio - 100)).toFixed(2)}%)`;
+    }
   }
 
   function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }
@@ -396,8 +460,9 @@ export function createBarScreen(ctx) {
     renderLeads(ctx.state || {});
   });
 
-  leadsEl.addEventListener('click', (ev) => {
-    const st = ctx.state || {};
+  // scroll does not bubble, but a capture listener on the leads root still sees any panel scroll
+  leadsEl.addEventListener('scroll', syncLeadTracks, { capture: true, passive: true });
+  leadsEl.addEventListener('click', (ev) => {    const st = ctx.state || {};
     const sv = ev.target.closest('[data-survey]');
     if (sv && !sv.disabled) {
       if (ctx.bus) {

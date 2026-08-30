@@ -35,6 +35,60 @@ function stationType(ctx) {
 }
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
 
+// Short, single-line readiness reason for the compact slots (rail subline, disabled verb).
+// The full sentence — the industryReadiness label — stays in the console status line and the
+// accessible names, so a blocked requirement is stated once per surface instead of three
+// times in one panel (status + note + button all used to print it).
+function shortBlockLabel(bp, r) {
+  if (r.state === 'station') return 'NEEDS ' + (bp.stationType === 'fab' ? 'FABRICATOR' : 'REFINERY');
+  if (r.state === 'materials') return 'NEEDS MATERIALS';
+  return r.label;
+}
+
+const STYLE_ID = 'sf-industry-style';
+
+function injectStyle() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+  if (typeof document.getElementById === 'function' && document.getElementById(STYLE_ID)) return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = CSS;
+  document.head.appendChild(s);
+}
+
+// The station sheets fight over this screen in layers; these rules are stated at
+// three-class specificity so they win regardless of stylesheet load order.
+const CSS = `
+/* The recipe rail clipped cards mid-glyph across every column: the final sheet
+   lets names and tier lines wrap and floors each row at 68px, so a four-row
+   column needed ~280px inside a 125px strip and the overflow just sliced the
+   visible row. Compact single-line rows (ellipsis, never a hard cut) plus a rail
+   tall enough for the tallest column (refine ships 7 blueprints = 4 rows) render
+   every card whole with no scrolling. */
+.sx-app .sx-ind { grid-template-rows: 228px minmax(0, 1fr); }
+.sx-app .sx-ind .sx-ind-process__items { grid-auto-rows: minmax(0, auto); }
+.sx-app .sx-ind .sx-ind-row__name,
+.sx-app .sx-ind .sx-ind-row__tier {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+/* The augment column holds the longest recipe names but the narrowest track
+   (refine holds the shortest names and the widest); rebalance so names are not
+   ellipsized down to nothing in the one column that cannot spare the pixels. */
+.sx-app .sx-ind .sx-ind-spindle { grid-template-columns: 1.3fr 1fr 1fr .9fr; }
+/* The stage below the inputs→output diagram read as a half-empty page while the
+   rail over-cramped. The diagram now owns the leftover height and centers in it,
+   so the void is distributed above and below a composed instrument. */
+.sx-app .sx-ind .sx-ind__stage { justify-content: flex-start; }
+.sx-app .sx-ind .sx-fab-flow {
+  flex: 1 1 auto; align-self: stretch; min-height: 0;
+  align-content: center; margin-top: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-ind, .sx-ind * { animation: none !important; transition: none !important; }
+}
+`;
+
 function ownsModule(state, defId) {
   const player = state && state.player;
   if (!player || !defId) return false;
@@ -54,6 +108,7 @@ export function industryReadiness(bp, state, stnType) {
 }
 
 export function createIndustryScreen(ctx) {
+  injectStyle();
   const el = document.createElement('div');
   el.className = 'sx-ind';
   el.innerHTML =
@@ -84,7 +139,7 @@ export function createIndustryScreen(ctx) {
                 `<span class="sx-ind-row__dot" aria-hidden="true"></span>` +
                 `<span class="sx-ind-row__process">${CAT_LABEL[category]}</span>` +
                 `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
-                `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(r.label)}</span>` +
+                `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(shortBlockLabel(bp, r))}</span>` +
               `</button>`;
             }).join('') + `</div>` +
           `</section>`;
@@ -137,21 +192,24 @@ export function createIndustryScreen(ctx) {
     const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
     const notes = [];
     if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
+    // A station/source mismatch is already stated once by the status line above
+    // (it prints the readiness label). These notes only confirm a MATCHING
+    // facility or owned source, so the panel never prints the same requirement
+    // three times (status + note + disabled verb).
     if (bp.stationType) {
       const matches = !stn || bp.stationType === stn;
-      notes.push({ ok: matches, text: matches ? `${facilityName(bp.stationType)} online` : `Required: ${facilityName(bp.stationType)}` });
+      if (matches) notes.push({ ok: true, text: `${facilityName(bp.stationType)} online` });
     }
     if (bp.category === 'augment' && bp.fromModule) {
       const sourceName = niceName(bp.fromModule, 'module');
-      const sourceOwned = ownsModule(state, bp.fromModule);
-      notes.push({ ok: sourceOwned, text: sourceOwned ? `${sourceName} ready to augment` : `Required source: ${sourceName}` });
+      if (ownsModule(state, bp.fromModule)) notes.push({ ok: true, text: `${sourceName} ready to augment` });
     }
     consoleEl.innerHTML =
       `<div class="sx-panel">` +
         `<div class="sx-fab-status sx-fab-status--${queue ? 'warn' : tone}"><span class="sx-fab-status__dot"></span>${queue ? 'Fabricator occupied' : r.label}</div>` +
         (queue ? `<div class="sx-fab-queue"><span>ACTIVE LINE / ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}</span><b>${Math.round(progress * 100)}%</b><i><span style="width:${(progress * 100).toFixed(1)}%"></span></i><em>${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))}s remaining</em></div>` : `<div class="sx-fab-queue is-idle"><span>ACTIVE LINE</span><b>IDLE</b><em>One strategic build slot available</em></div>`) +
         `<div class="sx-fab-notes">${notes.map((n) => `<div class="sx-fab-note${n.ok ? ' is-ok' : ''}">${icon(n.ok ? 'spark' : 'info', 13)}<span>${escapeHtml(n.text)}</span></div>`).join('')}</div>` +
-        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : r.label)}</button>` +
+        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : shortBlockLabel(bp, r))}</button>` +
       `</div>`;
   }
 

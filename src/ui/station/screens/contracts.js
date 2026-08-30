@@ -259,7 +259,11 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
       `</div>` +
       `<div class="sx-dossier__foot">` +
         `<button type="button" class="sx-btn-primary sx-ct-commit${focus}" data-accept="${escapeHtml(String(mid(mission)))}"${ready ? '' : ' disabled'} aria-label="Review final disposition Choice ${escapeHtml(filing.choiceId)}; opens a separate irreversible confirmation">` +
-          `<span>${ready ? 'Review Final Disposition' : 'Resolve Readiness'}</span><em>${escapeHtml(readiness)}</em>` +
+          `<span>${ready ? 'Review Final Disposition' : 'Resolve Readiness'}</span>` +
+          // The readiness module above already carries this sentence — the verb
+          // must not repeat it at its right end. Kept only when blocked, where
+          // it is the disabled button's reason.
+          (ready ? '' : `<em>${escapeHtml(readiness)}</em>`) +
         `</button>` +
       `</div>` +
     `</div>`
@@ -270,7 +274,68 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+const STYLE_ID = 'sf-contracts-style';
+
+function injectStyle() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+  if (typeof document.getElementById === 'function' && document.getElementById(STYLE_ID)) return;
+  if (!document.head || typeof document.head.appendChild !== 'function') return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = CSS;
+  document.head.appendChild(s);
+}
+
+// Stated at three-class specificity so these rules win regardless of stylesheet
+// load order (the station sheets restyle these same selectors at two classes).
+const CSS = `
+/* The mission ticker used fixed 268px cards: the sixth card ended flush against
+   the frame edge, reading as a hard cut. Flexible cards share the lane instead —
+   every card fits the board, longer copy ellipsizes cleanly inside its card. */
+.sx-app .sx-ct .sx-ct-row {
+  flex: 1 1 236px; width: auto; min-width: 200px; max-width: 340px;
+}
+/* The dossier grid gave the route row minmax(150px,1fr) — on a tall host it
+   stretched into a near-black void between the header and the outcome row — and
+   never gave the authored summary a cell, so it auto-placed BELOW the accept
+   button. Every block now has an explicit placement: the summary reads under the
+   title, the route keeps only its own height, and the brief/simulator sit side
+   by side so the whole brief fits its area (the accept verb stays above the
+   fold) and centers vertically when the host is taller. */
+.sx-app .sx-ct .sx-ct__dossier { justify-content: safe center; overflow-y: auto; }
+.sx-app .sx-ct .sx-dossier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto;
+  gap: 8px 10px;
+  height: auto; min-height: 0; flex-shrink: 0;
+  padding: 14px 18px 10px;
+}
+.sx-app .sx-ct .sx-dossier__head { grid-column: 1; grid-row: 1; }
+.sx-app .sx-ct .sx-dossier__topline { grid-column: 2; grid-row: 1; }
+.sx-app .sx-ct .sx-dossier__summary { grid-column: 1 / -1; grid-row: 2; }
+.sx-app .sx-ct .sx-dossier__route { grid-column: 1 / -1; grid-row: 3; min-height: 0; padding: 8px 16px; }
+.sx-app .sx-ct .sx-dossier__grid { grid-column: 1; grid-row: 4; }
+.sx-app .sx-ct .sx-contract-sim { grid-column: 2; grid-row: 4; min-height: 0; max-height: none; }
+.sx-app .sx-ct .sx-dossier__foot { grid-column: 1 / -1; grid-row: 5; }
+/* ONE interaction accent, flat. The commit verb wore an amber left-to-right
+   gradient (plus a glow) — gradient fills and glows are out of bounds, and amber
+   is reserved for pressable chrome elsewhere on the fascia. */
+.sx-app .sx-ct .sx-ct-commit {
+  background: var(--accent, #4f8fdd); color: #fff; box-shadow: none;
+}
+.sx-app .sx-ct .sx-ct-commit:disabled {
+  background: var(--sxb-panel-hi, #232a2f); color: var(--sxb-ink-3, #78838a);
+  border: 1px solid var(--sxb-line-2, rgba(255,255,255,.14));
+  box-shadow: none; cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-ct, .sx-ct * { animation: none !important; transition: none !important; }
+}
+`;
+
 export function createContractsScreen(ctx) {
+  injectStyle();
   const el = document.createElement('div');
   el.className = 'sx-ct';
   el.innerHTML =
@@ -455,7 +520,11 @@ export function createContractsScreen(ctx) {
         `</div>` +
         `<div class="sx-dossier__foot">` +
           `<button type="button" class="sx-btn-primary sx-ct-commit${focusAccept && ready ? ' is-attention' : ''}" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'}>` +
-            `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span><em>${escapeHtml(readiness)}</em>` +
+            `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span>` +
+            // The OUTCOME readiness module directly above already carries this
+            // sentence ("Ship and account ready"); the verb drops the duplicate
+            // and keeps an <em> only as the reason while blocked.
+            (ready ? '' : `<em>${escapeHtml(readiness)}</em>`) +
           `</button>` +
         `</div>` +
       `</div>`;

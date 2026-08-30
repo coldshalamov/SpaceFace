@@ -63,13 +63,15 @@
   --sxb-line-3:  rgba(255,255,255,.24);
 
   /* ---- semantic ------------------------------------------------------------ */
-  --sxb-act:      #f2a03c;   /* actionable. reserved.                        */
-  --sxb-act-hi:   #ffb75c;
+  /* Semantic hues re-pointed to the global tokens (design bar: one interaction accent
+     #4f8fdd + desaturated green/amber/red). The old local cyan "live" hue is retired. */
+  --sxb-act:      var(--warn);   /* actionable. reserved.                       */
+  --sxb-act-hi:   color-mix(in srgb, var(--warn) 78%, #fff);
   --sxb-act-ink:  #1b1206;
-  --sxb-live:     #62cfe0;   /* live measured data                           */
-  --sxb-gain:     #52d08c;
-  --sxb-warn:     #f2c94a;
-  --sxb-loss:     #ff6d75;
+  --sxb-live:     var(--accent); /* live measured data                          */
+  --sxb-gain:     var(--good);
+  --sxb-warn:     var(--warn);
+  --sxb-loss:     var(--danger);
 
   --sxb-r:    3px;
   --sxb-r-lg: 5px;
@@ -100,7 +102,7 @@
   grid-template-rows: auto minmax(0,1fr);
   background:
     radial-gradient(120% 78% at 18% -12%, rgba(242,160,60,.055), transparent 58%),
-    radial-gradient(90% 60% at 88% 4%, rgba(98,207,224,.035), transparent 62%),
+    radial-gradient(90% 60% at 88% 4%, rgba(79,143,221,.035), transparent 62%),
     linear-gradient(180deg, #101315 0%, var(--sxb-void) 46%, var(--bg) 100%);
 }
 
@@ -179,7 +181,7 @@
 }
 .sxb-vital__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .sxb-vital__label {
-  font-size: var(--sxb-t-label); font-weight: 500; letter-spacing: .07em;
+  font-size: var(--sxb-t-label); font-weight: 500; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sxb-ink-3); white-space: nowrap;
 }
 .sxb-vital__value {
@@ -227,7 +229,7 @@
 }
 .sxb-vital__act:hover {
   color: var(--sxb-act-ink); background: var(--sxb-act-hi);
-  box-shadow: 0 0 0 1px rgba(242,160,60,.34);
+  box-shadow: 0 0 0 1px rgba(217,160,84,.34);
 }
 .sxb-vital__act:focus-visible { outline: 2px solid var(--sxb-act-hi); outline-offset: 2px; }
 .sxb-vital__act[aria-disabled="true"] { opacity: .42; cursor: default; }
@@ -254,7 +256,7 @@
   flex: 0 0 auto; padding: 0 4px 0 14px; border-left: 1px solid var(--sxb-line);
 }
 .sxb-purse__label {
-  font-size: var(--sxb-t-label); letter-spacing: .09em; text-transform: uppercase;
+  font-size: var(--sxb-t-label); letter-spacing: .06em; text-transform: uppercase;
   color: var(--sxb-ink-3);
 }
 .sxb-purse__value {
@@ -276,10 +278,10 @@
 .sxb-launch:focus-visible { outline: 2px solid var(--sxb-act); outline-offset: 2px; }
 .sxb-launch__label {
   font-family: var(--sx-display); font-weight: 700; font-size: var(--sxb-t-md);
-  letter-spacing: .09em; text-transform: uppercase; line-height: 1;
+  letter-spacing: .06em; text-transform: uppercase; line-height: 1;
 }
 .sxb-launch__state {
-  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .07em; line-height: 1;
+  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .06em; line-height: 1;
 }
 .sxb-launch[data-state="ready"] .sxb-launch__state { color: var(--sxb-gain); }
 .sxb-launch[data-state="check"] .sxb-launch__state { color: var(--sxb-warn); }
@@ -352,10 +354,10 @@
    landed on MISSIONS on every screen and the actually-selected tab had no fill worth the
    name, so only the thin underline was telling the truth. Selection now carries the cool
    signal hue its own underline uses, so the two channels agree instead of competing. */
-.sx-app .sxb-ops .sx-tile.is-active { color: var(--sxb-ink); background: rgba(120,222,238,.11); }
+.sx-app .sxb-ops .sx-tile.is-active { color: var(--sxb-ink); background: color-mix(in srgb, var(--accent) 11%, transparent); }
 .sx-app .sxb-ops .sx-tile.is-active::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
-  background: var(--sxb-live); box-shadow: 0 0 10px rgba(98,207,224,.5);
+  background: var(--sxb-live);
 }
 .sx-app .sxb-ops .sx-tile.is-active .sx-tile__icon { opacity: 1; color: var(--sxb-live); }
 
@@ -391,7 +393,7 @@
    you were standing on it. Measured: selected scores 57.9 against the strip ground, attention 15.7;
    without this line selecting Missions scored 15.7 and a merely-hovered neighbour outranked it. */
 .sx-app .sxb-ops .sx-tile.is-attention.is-active {
-  background: rgba(120,222,238,.11);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
 }
 
 /* ============================================================================
@@ -408,7 +410,7 @@
   background: rgba(242,160,60,.045);
 }
 .sxb-handoff__k {
-  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .09em;
+  font-size: var(--sxb-t-label); font-weight: 600; letter-spacing: .06em;
   text-transform: uppercase; color: var(--sxb-act); white-space: nowrap;
 }
 .sxb-hstep {

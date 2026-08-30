@@ -81,6 +81,19 @@ const CSS = `
 .sx-mkt .sx-route-row__s { color: var(--sf-you); }
 .sx-mkt .sx-tag--warn { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
 .sx-mkt .sx-tag--bad { color: var(--sf-foe); border-color: color-mix(in srgb, var(--sf-foe) 45%, transparent); }
+/* The stats row sits at the bottom of the stage column, and the dockside notice
+   floats over that same edge (absolute, bottom:10px). The console used to be an
+   overlay with an 88px stage reserve under it; now that it is a real grid column
+   nothing reserved the notice's band, so it painted straight over the
+   BUY/SELL/AVG sublabels and left the demand bars a few-pixel sliver. Reserve
+   the band again, let the scope chart (which stretches to fit) absorb the
+   difference, and keep the stats row itself from ever shrinking. The 320px right
+   reservations predate the console column and only starve the four stat cells. */
+.sx-app .sx-mkt .sx-mkt__stage { padding-bottom: 68px; }
+.sx-app .sx-mkt .sx-mkt-scope { min-height: 140px; }
+.sx-app .sx-mkt .sx-mkt-chart { min-height: 0; }
+.sx-app .sx-mkt .sx-mkt-stats { flex-shrink: 0; margin-right: 0; }
+.sx-app .sx-mkt .sx-mkt-head { max-width: none; }
 @media (forced-colors: active) {
   .sx-mkt .sx-mkt-tracked, .sx-mkt .sx-trade__go--buy, .sx-mkt .sx-trade__go--sell {
     background: Canvas; color: CanvasText; border: 1px solid CanvasText;

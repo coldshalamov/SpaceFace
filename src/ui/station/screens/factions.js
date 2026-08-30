@@ -142,11 +142,13 @@ function injectStyle() {
   if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
-  s.textContent = CSS;
+  s.textContent = FACTIONS_CSS;
   document.head.appendChild(s);
 }
 
-const CSS = `
+// Named FACTIONS_CSS, not CSS: selectFaction below calls the global CSS.escape, and a module
+// binding named CSS shadows it — every node/tab click threw "CSS.escape is not a function".
+const FACTIONS_CSS = `
 .sx-fac { font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper); }
 .sx-fac .sf-fig, .sx-fac .sx-dial-rep, .sx-fac .sx-ladder__min {
   font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
@@ -202,10 +204,14 @@ const CSS = `
 .sx-fac .sx-fac-network { background: color-mix(in srgb, var(--sf-surface) 80%, transparent); box-shadow: none; animation: none; }
 .sx-fac .sx-fac-network > svg line { animation: none !important; filter: none; stroke: var(--relation); }
 .sx-fac .sx-fac-network > header span {
-  color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  color: color-mix(in srgb, var(--sf-calm) 78%, var(--sf-paper));
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase;
 }
-.sx-fac .sx-fac-network > header b { color: var(--sf-calm); font-family: var(--sf-body-face); font-weight: 400; font-size: 13px; }
+.sx-fac .sx-fac-network > header b {
+  color: color-mix(in srgb, var(--sf-calm) 78%, var(--sf-paper));
+  font-family: var(--sf-body-face); font-weight: 400; font-size: 13px;
+}
 .sx-fac .sx-fac-network__core {
   border-color: var(--sf-edge); background: color-mix(in srgb, var(--sf-surface) 94%, transparent);
   box-shadow: none; border-radius: 0;
@@ -251,6 +257,22 @@ const CSS = `
   background: color-mix(in srgb, var(--standing, var(--sf-calm)) 12%, transparent);
   box-shadow: none; border-bottom: var(--sf-rail-w) solid var(--standing, var(--sf-you));
 }
+/* Fourteen powers cannot fit one 176px card row at dock width — the strip used to overflow-x with
+   its scrollbar invisible under the rail's edge fade, so the last power rendered as a sheared
+   sliver. Wrapping the strip into a second row keeps every card whole at every dock width; the
+   field below absorbs the taller rail because its row is content-sized now. */
+.sx-fac { grid-template-rows: auto minmax(0, 1fr) auto; }
+.sx-fac .sx-fac__rail {
+  flex-flow: row wrap;
+  overflow-y: hidden;
+  align-content: start;
+  /* The shared rail theming drew its "bottom edge" hairline 68px down; with two card rows that
+     line crosses the second row, so the rail keeps only the vertical head separator (edge token). */
+  background: linear-gradient(90deg, transparent 0 180px, var(--sf-edge, #2c343f) 180px 181px, transparent 181px);
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.sx-fac .sx-fac-row { flex: 0 1 176px; min-width: 158px; }
 @media (max-width: 1220px) {
   .sx-fac .sx-fac-standing { grid-template-columns: 160px minmax(0, 1fr); padding-inline: var(--sp-3); width: 380px; }
 }

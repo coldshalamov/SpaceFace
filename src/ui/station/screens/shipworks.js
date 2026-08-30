@@ -66,6 +66,46 @@ const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
 const SLOT_ICON = { weapon: 'target', shield: 'hull', engine: 'refuel', cargo: 'cargo', mining: 'industry', utility: 'spark' };
 const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo: 'Cargo', mining: 'Mining', utility: 'Utility' };
 
+// Chooser corrections that belong to this screen (the shared sheets carry older deck theming):
+// the compatible-modules list must be the element that scrolls — a flex child keeps its content
+// height unless min-height:0 is stated, so the row stack used to spill past the panel's capped
+// height and the last module was sheared off with no scrollbar. This Chromium answers overflow
+// with an auto-hiding overlay scrollbar (nothing visible at rest — measured in the headless
+// atlas), so the list carries the same always-visible slim progress track as the ship rail
+// (.sx-sw__railtrack) instead of depending on UA chrome. Scoped under .sx-sw so the market and
+// industry hosts, which reuse nothing here, are untouched.
+const STYLE_ID = 'sf-shipworks-style';
+function injectStyle() {
+  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = SHIPWORKS_CSS;
+  document.head.appendChild(s);
+}
+
+// Named SHIPWORKS_CSS, not CSS — a module binding named CSS would shadow the global CSS object
+// (the global is what CSS.escape lives on).
+const SHIPWORKS_CSS = `
+.sx-sw .sx-chooser__panel { overflow: hidden; }
+.sx-sw .sx-chooser__list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.sx-sw .sx-chooser__list::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.sx-sw .sx-chooser__track {
+  position: absolute; right: 5px; width: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-edge, #2c343f) 60%, transparent);
+  pointer-events: none;
+}
+.sx-sw .sx-chooser__track i {
+  display: block; width: 100%; height: 100%; border-radius: inherit;
+  background: color-mix(in srgb, var(--accent, #4f8fdd) 55%, transparent);
+}
+.sx-sw .sx-chooser__kicker { color: var(--accent, #4f8fdd); }
+`;
+
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
 const GAUGE_DEFS = SHIP_ENGINEERING_GAUGE_DEFS.slice();
@@ -344,6 +384,7 @@ export function getSharedShipStage(ctx) {
  * Everything else — the mount, the projection, the callouts, ghost preview — is identical.
  */
 export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
+  injectStyle();
   let host = initialHost;
   const el = document.createElement('div');
   el.className = 'sx-sw';
@@ -1812,6 +1853,27 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stopChooserPositioning = null;
   }
 
+  /** Vertical twin of updateRailControls: the chooser's scroll affordance is our own slim track
+   * because the platform scrollbar answers overflow with an auto-hiding overlay (SHIPWORKS_CSS). */
+  function syncChooserTrack() {
+    const panel = chooserEl.querySelector('.sx-chooser__panel');
+    const list = chooserEl.querySelector('.sx-chooser__list');
+    const track = chooserEl.querySelector('.sx-chooser__track');
+    if (!panel || !list || !track) return;
+    if (list.scrollHeight - list.clientHeight <= 1) { track.hidden = true; return; }
+    track.hidden = false;
+    const panelRect = panel.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    track.style.top = `${Math.round(listRect.top - panelRect.top)}px`;
+    track.style.height = `${Math.round(listRect.height)}px`;
+    const overflow = list.scrollHeight - list.clientHeight;
+    const viewportRatio = Math.max(.12, Math.min(1, list.clientHeight / list.scrollHeight));
+    const progress = Math.max(0, Math.min(1, list.scrollTop / overflow));
+    const thumb = track.firstElementChild;
+    thumb.style.height = `${(viewportRatio * 100).toFixed(2)}%`;
+    thumb.style.transform = `translateY(${(progress * (100 / viewportRatio - 100)).toFixed(2)}%)`;
+  }
+
   function positionChooser(anchor, panel) {
     if (!anchor || !panel || chooserEl.hidden) return;
     computePosition(anchor, panel, {
@@ -1836,6 +1898,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).then(({ x, y }) => {
       if (chooserEl.hidden) return;
       Object.assign(panel.style, { left: `${x}px`, top: `${y}px` });
+      syncChooserTrack();
     }).catch(() => {});
   }
 
@@ -1909,8 +1972,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         (availability.outfitEnabled ? '' : `<p class="sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
         (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}` : 'Dock to unfit'}</button>` : '') +
         `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +
+        `<span class="sx-chooser__track" aria-hidden="true"><i></i></span>` +
       `</div>`;
     chooserEl.hidden = false;
+    syncChooserTrack();
     const panel = chooserEl.querySelector('.sx-chooser__panel');
     positionChooser(chooserAnchor, panel);
     if (chooserAnchor && panel) {
@@ -1920,6 +1985,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     requestAnimationFrame(() => {
       chooserEl.classList.add('is-open');
+      syncChooserTrack();
       const first = chooserEl.querySelector('[data-preview-module], [data-unfit], [data-close]');
       if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
     });
@@ -2360,6 +2426,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   if (stageResizeObserver) stageResizeObserver.observe(stageEl);
 
   let buyConfirmBusy = false;
+  // scroll does not bubble, but a capture listener on the chooser root still sees the list scroll
+  // (wheel, keyboard, drag) and keeps the slim track honest.
+  chooserEl.addEventListener('scroll', syncChooserTrack, { capture: true, passive: true });
   chooserEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
     const bf = ev.target.closest('[data-buyfit]');
