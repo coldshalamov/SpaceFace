@@ -2171,6 +2171,36 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "d635ffd87d38e14092ec38b2f63fb830965f0ccb57f33db83d83da2ea97ce88b",
     "sourceUrl": "assets/ships/release/parts/works/place_works_inclusion_kit.glb"
+  },
+  {
+    "assetId": "sf.render.ironback-production-v1",
+    "expectedContentHash": "313cd76e248136f08d3ad6c84b9b2c7e851edabf5a2c9315d3f6778e5902f0d6",
+    "key": "ironback-production-v1",
+    "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json",
+    "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+    "slot": "hull",
+    "sourceSha256": "f895a9f35de067f45b96a97528869caf2325de43590e7022fb1627c2eb021444",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
+  },
+  {
+    "assetId": "sf.render.ironback-production-v1-lod1",
+    "expectedContentHash": "8bbea0aadb0e13853281feb48529bdb1aab6cb82e7d348f8ca655305d15d27a7",
+    "key": "ironback-production-v1-lod1",
+    "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json",
+    "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+    "slot": "hull",
+    "sourceSha256": "fd31f285c62e1dc74171d08b2c38fb66d775637f9954398e99b2da155e59fd45",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb"
+  },
+  {
+    "assetId": "sf.render.ironback-production-v1-lod2",
+    "expectedContentHash": "71d01c5f9b3caae3f0d54c4da7855694ce7aa51e6a79b637dfd7e09d54144509",
+    "key": "ironback-production-v1-lod2",
+    "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json",
+    "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+    "slot": "hull",
+    "sourceSha256": "7ad31d87e4716ca153ab9a56638ad6ee8a59cac999f75760b85b4c52fccd42c5",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb"
   }
 ];
 

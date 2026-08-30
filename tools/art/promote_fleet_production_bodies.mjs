@@ -31,11 +31,27 @@ const SHIPS = [
   ['wasp_production_v1', 'wasp'],
 ];
 
+const argv = process.argv.slice(2);
+const onlyArg = argv.find((arg) => arg.startsWith('--only='));
+const onlyIndex = argv.indexOf('--only');
+const onlyId = onlyArg
+  ? onlyArg.slice('--only='.length).trim()
+  : (onlyIndex >= 0 ? String(argv[onlyIndex + 1] || '').trim() : '');
+const unknownArgs = argv.filter((arg, index) => {
+  if (arg.startsWith('--only=')) return false;
+  if (arg === '--only') return false;
+  if (onlyIndex >= 0 && index === onlyIndex + 1) return false;
+  return true;
+});
+if (unknownArgs.length) throw new Error(`unknown promotion argument(s): ${unknownArgs.join(', ')}`);
+const selected = onlyId ? SHIPS.filter(([, id]) => id === onlyId) : SHIPS;
+if (onlyId && selected.length !== 1) throw new Error(`unknown production body id: ${onlyId}`);
+
 mkdirSync(PARTS, { recursive: true });
 mkdirSync(RELEASE, { recursive: true });
 
 const copied = [];
-for (const [family, id] of SHIPS) {
+for (const [family, id] of selected) {
   const lod0 = resolve(ROOT, 'assets/ships', family, 'source/wholeships', `${id}_production_v1_lod0.glb`);
   const lod1 = resolve(ROOT, 'assets/ships', family, 'source/wholeships', `${id}_production_v1_lod1.glb`);
   const lod2 = resolve(ROOT, 'assets/ships', family, 'source/wholeships', `${id}_production_v1_lod2.glb`);

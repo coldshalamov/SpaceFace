@@ -799,6 +799,7 @@ const REQUIRED_PRODUCTION_WHOLE_SHIP_DEF_IDS = new Set([
   'ship_wasp',
   'ship_drifter',
   'ship_ranger',
+  'ship_ironback',
 ]);
 
 export function requiresProductionWholeShipForEntity(entity) {
@@ -1133,6 +1134,9 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/kestrel_lod1.glb',
   'wholeships/kestrel_lod2.glb',
   'wholeships/wasp_production_v1.glb',
+  'wholeships/ironback_production_v1.glb',
+  'wholeships/ironback_production_v1_lod1.glb',
+  'wholeships/ironback_production_v1_lod2.glb',
   'wholeships/ashline_dart.glb',
   'wholeships/ashline_lode.glb',
   'wholeships/ashline_rig.glb',

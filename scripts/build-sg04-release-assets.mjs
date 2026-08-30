@@ -10,6 +10,7 @@ import { meshopt } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import JPEG from 'jpeg-js';
 import { PNG } from 'pngjs';
+import { ensureWholeshipAssetContractMetadata } from './lib/wholeshipAssetIdentity.mjs';
 
 import {
   inspectGlbReleaseCompression,
@@ -83,6 +84,9 @@ const WHOLE_SHIP_FILES = [
   'ranger_production_v1.glb',
   'ranger_production_v1_lod1.glb',
   'ranger_production_v1_lod2.glb',
+  'ironback_production_v1.glb',
+  'ironback_production_v1_lod1.glb',
+  'ironback_production_v1_lod2.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const allAssets = [
@@ -166,6 +170,7 @@ for (let index = 0; index < assets.length; index++) {
     console.log(`[sg04] ${index + 1}/${assets.length} ${asset.id}: build-start ${asset.source} -> ${outputReleasePath}`);
     await mkdir(dirname(releaseAbs), { recursive: true });
     const document = await io.read(sourceAbs);
+    if (asset.kind === 'part:wholeships') ensureWholeshipAssetContractMetadata(document);
     splitIncompatibleTextureSlots(document);
     const transforms = [];
     // Sources that already ship KTX2/BasisU textures (e.g. authored hull GLBs) are KTX2-native and

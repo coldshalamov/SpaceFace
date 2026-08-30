@@ -41,12 +41,12 @@ assert.equal(requiresProductionWholeShipForEntity(hitch), true,
 assert.equal(requiresProductionWholeShipForEntity({ ...hitch, isPlayer: false }), false,
   'a generic Kestrel NPC must not inherit the player-only boot identity');
 
-for (const defId of ['ship_wasp', 'ship_drifter', 'ship_ranger']) {
+for (const defId of ['ship_wasp', 'ship_drifter', 'ship_ranger', 'ship_ironback']) {
   const rebuildEntity = makeShipEntitySpec(defId, { isPlayer: false, team: 0 });
   assert.equal(requiresProductionWholeShipForEntity(rebuildEntity), true,
     `${defId} accepted production body must survive a render rebuild without an isPlayer marker`);
 }
-for (const defId of ['ship_pelican', 'ship_mule', 'ship_hornet', 'ship_ironback']) {
+for (const defId of ['ship_pelican', 'ship_mule', 'ship_hornet']) {
   const notYetPromoted = makeShipEntitySpec(defId, { isPlayer: false, team: 0 });
   assert.equal(requiresProductionWholeShipForEntity(notYetPromoted), false,
     `${defId} must stay off the required route until its canonical remaster packet closes`);

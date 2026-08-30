@@ -3292,6 +3292,51 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-inclusion-kit",
       "metadataUrl": "assets/ships/release/render-packages/works-inclusion-kit/render-package.json"
+    },
+    {
+      "key": "ironback-production-v1",
+      "assetId": "sf.render.ironback-production-v1",
+      "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ironback_production_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
+      "releaseSha256": "f895a9f35de067f45b96a97528869caf2325de43590e7022fb1627c2eb021444",
+      "releaseBytes": 6464492,
+      "rootNode": "IRONBACK_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ironback-production-v1",
+      "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1/render-package.json"
+    },
+    {
+      "key": "ironback-production-v1-lod1",
+      "assetId": "sf.render.ironback-production-v1-lod1",
+      "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ironback_production_v1_lod1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb",
+      "releaseSha256": "fd31f285c62e1dc74171d08b2c38fb66d775637f9954398e99b2da155e59fd45",
+      "releaseBytes": 6354520,
+      "rootNode": "IRONBACK_LOD1_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod1",
+      "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod1/render-package.json"
+    },
+    {
+      "key": "ironback-production-v1-lod2",
+      "assetId": "sf.render.ironback-production-v1-lod2",
+      "runtimeAssetId": "SF_IRONBACK_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ironback_production_v1_lod2",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb",
+      "releaseSha256": "7ad31d87e4716ca153ab9a56638ad6ee8a59cac999f75760b85b4c52fccd42c5",
+      "releaseBytes": 5912408,
+      "rootNode": "IRONBACK_LOD2_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ironback-production-v1-lod2",
+      "metadataUrl": "assets/ships/release/render-packages/ironback-production-v1-lod2/render-package.json"
     }
   ]
 }

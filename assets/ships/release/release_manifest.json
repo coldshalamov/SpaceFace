@@ -3842,6 +3842,48 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_ironback_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1.glb",
+      "sourceSha256": "34bcca4b35fbe0ea3f6784de56d172ab08413dfacc021ab26642a698e7d08361",
+      "releaseSha256": "f895a9f35de067f45b96a97528869caf2325de43590e7022fb1627c2eb021444",
+      "sourceBytes": 14510072,
+      "releaseBytes": 6464492,
+      "textures": 24,
+      "ktx2Textures": 24,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 19
+    },
+    {
+      "id": "wholeship_ironback_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb",
+      "sourceSha256": "fde30f9912b3c222d1f8d5b5b37205a9c007566fe7e60dd8591a244ac0742c5b",
+      "releaseSha256": "fd31f285c62e1dc74171d08b2c38fb66d775637f9954398e99b2da155e59fd45",
+      "sourceBytes": 14100804,
+      "releaseBytes": 6354520,
+      "textures": 24,
+      "ktx2Textures": 24,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 19
+    },
+    {
+      "id": "wholeship_ironback_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ironback_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb",
+      "sourceSha256": "5edb1e798cb6bc1acfb61db548e923e469ec1d01a8d952bbb3e7604d7b116fd5",
+      "releaseSha256": "7ad31d87e4716ca153ab9a56638ad6ee8a59cac999f75760b85b4c52fccd42c5",
+      "sourceBytes": 12254544,
+      "releaseBytes": 5912408,
+      "textures": 24,
+      "ktx2Textures": 24,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 19
     }
   ]
 }
