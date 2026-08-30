@@ -75,14 +75,15 @@ stays `false` until an independent reviewer confirms coverage against the exact 
 
 ## Shape-grammar failure and assembly sequence
 
-Cycle 31 rebuilds the dorsal half as one process spine cut through the manufactured shell, not
-kits on a loaf. Sequence: blunt barge envelope and closed keel -> hopper register as a hull-cut
-receiving bay with proud rim, ceramic apron, three saddle-mounted drum crowns, and open floor ->
-connecting trench -> pulse register as two hull-cut dry wells with a narrow oxide bridge and shared
-rim language -> tool yard as shoulder waist, rail, and end-frames with four distinct heads in
-negative space -> cab tub/cage -> underside/thermal/service -> unique UV/bake/material response ->
-meaning-preserving LODs. If clay still reads as hull plus attachments at D=144, change the spine
-cut rather than enlarging attachments.
+Cycle 32 rebuilds the dorsal half as three separately readable process registers on one chassis,
+not one dark slot through an oxide loaf. Sequence: blunt barge envelope and closed keel -> hopper
+register as three hull-cut hatch bays with oxide bulkheads between them, proud drum crowns,
+ceramic apron, and a short feed throat -> closed split deck -> pulse register as two matched open
+wells with low rims, dark floors, and a deck-height oxide strip (no roof over port) -> tool yard
+as one hopper-shoulder rail with four equal-class heads in negative space, clear of the wells ->
+cab tub/cage -> underside/thermal/service -> unique UV/bake/material response -> meaning-preserving
+LODs. If clay at D=144 still shows one trough, one pulse hole, or a saw that outclasses crusher
+and grab, change the register cuts rather than enlarging attachments.
 
 ## Generated component reference
 
