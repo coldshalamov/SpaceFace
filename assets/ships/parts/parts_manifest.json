@@ -5736,10 +5736,10 @@
       "category": "works",
       "priority": "P1",
       "file": "works/place_works_massline_core.glb",
-      "tris": 5550,
-      "bytes": 3183992,
+      "tris": 5726,
+      "bytes": 3147444,
       "textureSize": 1024,
-      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 5550/1660/576-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 06 revises the U-channel/skirt section and far-LOD modeled features; whole-asset G1/G2/G4 remain open and the exact source SHA-256 is D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7. Release/runtime G6 and player-route G7 remain separate.",
+      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 5726/1708/556-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 07 subordinates the circular collar to the square load wall, widens/deepens the U-channel, raises the folded skirt, and carries modeled hood/hatch cues into far LODs while lifting truthful cool-steel value separation. Whole-asset G1/G2/G4 remain open and the exact source SHA-256 is 47E3E4BB1D1D14859906743ABD9047FF38C1D6D3D7308E21BF9E5454452BD165. Release/runtime G6 and player-route G7 remain separate.",
       "hooks": [
         "ring_spin",
         "lamp"

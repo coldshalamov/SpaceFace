@@ -3,7 +3,7 @@
   "assetId": "place_works_massline_core",
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "packet": "PQ-131.02",
-  "cycle": 6,
+  "cycle": 7,
   "state": "design_candidate",
   "disposition": "review_pending",
   "allSupportedViewZonesClassified": false,

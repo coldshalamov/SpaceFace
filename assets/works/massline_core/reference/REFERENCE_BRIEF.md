@@ -1,7 +1,7 @@
-# Works Massline Core — reference brief (Cycle 06 form/readability revision)
+# Works Massline Core — reference brief (Cycle 07 form/readability revision)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 6. This page is the
+(signature installed machine). **State:** `design_candidate`. Cycle 7. This page is the
 contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
 `review_pending` / `revise`; this cycle does not launch reviewers.
 
@@ -12,7 +12,11 @@ and the inner race, and rebuilds the load-bearing form as a square wellhead flan
 a round bore and a U-channel that opens upward. Cycle 05 corrected portable material
 wiring and added exact LOD2 evidence. Cycle 06 responds to the exact-hash visual review
 by deepening/widening the U-channel and skirt, retaining a modeled far-LOD race shoulder
-and +X hatch, and enlarging the hooded lamp fixture. No identity, hook, camera, or envelope
+and +X hatch, and enlarging the hooded lamp fixture. Cycle 07 makes the collar/race
+subordinate to the square load wall, gives the U-channel a broader separated floor,
+raises the folded skirt returns, and carries the hooded lamp and layered hatch into the
+19 px/cell silhouettes. Material values are lifted and separated under the same Works
+lighting without introducing safety-yellow livery. No identity, hook, camera, or envelope
 contract changes.
 
 Supported cameras: `works_top` (120 px/cell), `works_edge` (same camera, object offset to the
@@ -101,18 +105,18 @@ the square skirt, and the U-trench without textures.
 1 cell = 2.2 wu. Envelope **2.20 × 2.20 × 1.10 wu**. Origin at cell centre. +Z up. Underside
 on the cut face (z = 0). Footprint stays inside ±1.10.
 
-| Part | wu (Cycle 06) |
+| Part | wu (Cycle 07) |
 |---|---|
 | Envelope X × Y × Z | 2.20 × 2.20 × 1.10 |
-| Well inner radius (open hole) | 0.30 bottom / 0.42 mouth |
-| Liner outer radius / height | 0.52 / 0.012–0.62 |
-| Mouth lip | r 0.41–0.55, z 0.56–0.74 |
-| Inner race (ring_spin) | 0.500–0.555 / z 0.470–0.535 (nested rebate, not a proud cap) |
-| U-channel collar | r 0.55–0.91, z 0.095–0.475, cavity +Z, continuous |
-| Square flange / skirt | outer ±1.04, deck z 0.125–0.235, skirt height 0.220, wall 0.085 |
+| Well inner radius (open hole) | 0.30 bottom / 0.38 mouth |
+| Liner outer radius / height | 0.46 / 0.012–0.62 |
+| Mouth lip | r 0.368–0.488, z 0.56–0.74 |
+| Inner race (ring_spin) | 0.440–0.495 / z 0.470–0.535 (nested rebate, not a proud cap) |
+| U-channel collar | r 0.47–0.76, z 0.045–0.470, cavity +Z, continuous |
+| Square flange / skirt | outer ±1.04, deck z 0.125–0.235, skirt height 0.380, wall 0.145, top return 0.040 |
 | Corner pads | 0.30 square, height 0.145, on the rock |
-| Lamp | +Y frame (0.18, 0.90), arm + socket + hood cavity + recessed lens |
-| Service hatch | +X deck (0.90, −0.22), ~0.31 × 0.17, proud |
+| Lamp | +Y frame (0.18, 0.90), enlarged arm + socket + hood cavity + recessed lens |
+| Service hatch | +X deck (0.895, −0.22), ~0.42 × 0.20, proud layered cover |
 
 Hooks:
 
@@ -163,6 +167,7 @@ repair hatch. Clay must read that without textures.
 8. **Manufacture** — U-section, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
 9. **LOD** — LOD1/LOD2 keep hole, square outer, U-trench, lamp, ring hook at 19 px/cell.
 
-Cycle 06 remaining review risk: the revised U-trench/skirt and far-LOD features must still
-receive a fresh original-resolution exact-hash whole-asset review, including the player
-route. The candidate remains `review_pending` / `revise`; do not treat this cycle as KEEP.
+Cycle 07 remaining review risk: the revised circle-to-square balance, U-trench/skirt section,
+far-LOD cues, and lifted material hierarchy must still receive a fresh original-resolution
+exact-hash whole-asset review, including the player route. The candidate remains
+`review_pending` / `revise`; do not treat this cycle as KEEP.

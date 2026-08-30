@@ -34,11 +34,11 @@ const PACKAGE_JSON = resolve(ROOT, 'assets/ships/release/render-packages/works-m
 const PACKAGE_GLB = resolve(ROOT, 'assets/ships/release/render-packages/works-massline-core/render.glb');
 const MACHINE_FACTORY = resolve(ROOT, 'src/render/asteroidInteriorPreview.js');
 
-const EXPECTED_SOURCE_SHA = 'd68fba8546b0fb511aa36c46277e0949fe034aca7fa0ce0ae5761e98051731c7';
+const EXPECTED_SOURCE_SHA = '47e3e4bb1d1d14859906743abd9047ff38c1d6d3d7308e21bf9e5454452bd165';
 const EXPECTED_LOD_SHA = Object.freeze([
-  'b83478ea5477f5ff7df0ea8131f0f838b13863c1370d47fd336c0309aef2bcc4',
-  '73779a7f1a10d2586c115c2559233de33f283ed699ea771522cf9ae192775b39',
-  'a9808bf197862b7ff31ce3599922b7f7b932fcea5f12b6f3cbf3ef7e1e3f7ead',
+  'c329070cd86850c5b8991134224dc98e176d43de87f684b94de0f5649f91352a',
+  '5905ae7b8a5bcc048d68ed9bdbc56a8e0d4d0ad55d71f96fbc3add61ef88d78e',
+  '96708a56576649a8fa07ac0424619a2238506d95e885f17400fdcefefae6a725',
 ]);
 const EXPECTED_MARKERS = Object.freeze({
   lamp: [0.18000000715255737, 0.3619999885559082, -0.8920000195503235],
