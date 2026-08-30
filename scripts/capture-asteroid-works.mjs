@@ -578,11 +578,23 @@ try {
   await page.waitForFunction(() => {
     const canvas = document.querySelector('.ast-canvas');
     const h = canvas && canvas.__ast3d;
-    if (!h || typeof h.cargoPort !== 'function') return false;
+    if (!h || typeof h.cargoPort !== 'function' || typeof h.gasTap !== 'function') return false;
     const port = h.cargoPort();
-    return port.installedPhase === 'authored' || port.installedPhase === 'fallback';
+    const tap = h.gasTap();
+    return (port.installedPhase === 'authored' || port.installedPhase === 'fallback')
+      && (tap.installedPhase === 'authored' || tap.installedPhase === 'fallback');
   }, null, { timeout: 20000 }).catch(() => {});
   await shot('03-site-running.png');
+  {
+    const tap = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.gasTap());
+    console.log(`03-site-running.png: gas tap authored ${tap.authored} fallback ${tap.fallback} phase ${tap.installedPhase}`);
+    if (tap.authored && tap.fallback) {
+      failures.push('03-site-running.png: authored Gas Tap and the procedural stand-in are both on camera');
+    }
+    if (!(tap.authored || tap.fallback)) {
+      failures.push('03-site-running.png: Gas Tap never settled on authored or fallback');
+    }
+  }
 
   // PQ-130.07 law §5 "Machine starved/unpowered": the housing goes dark and a small GOLD WANT CHIP
   // floats above it carrying the missing input's swatch (or a power bolt) — a colour, never a word,

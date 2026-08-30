@@ -129,7 +129,7 @@ test('the Cargo Port release and package remain bound to the accepted Cycle 04 s
   assert.ok(release.meshoptBufferViews > 0, 'release geometry is meshopt encoded');
 
   const pilots = json(PILOTS);
-  assert.equal(pilots.pilots.length, 215, 'Cargo admission is the 215th render package');
+  assert.equal(pilots.pilots.length, 216, 'Gas Tap admission is the 216th package; Cargo stays packaged');
   const pilot = pilots.pilots.find((row) => row.key === 'works-cargo-port');
   assert.ok(pilot, 'generated pilots manifest has works-cargo-port');
   assert.equal(pilot.runtimeAssetId, 'place_works_cargo_port');
@@ -276,7 +276,7 @@ test('installed and ghost Cargo Ports select the authored route; neighbors and f
   assert.equal(authoredWorksMachineKind('sm_extractor'), 'extractor');
   assert.equal(authoredWorksMachineKind('sm_refinery'), 'refinery');
   assert.equal(authoredWorksMachineKind('sm_massline_core'), 'massline_core');
-  assert.equal(authoredWorksMachineKind('sm_gas_tap'), null);
+  assert.equal(authoredWorksMachineKind('sm_gas_tap'), 'gas_tap');
   const source = readFileSync(MACHINE_FACTORY, 'utf8');
   assert.match(source, /kind\s*===\s*['"]cargo_port['"]/, 'procedural cargo remains the failure-only fallback');
   assert.doesNotMatch(source, /kind\s*===\s*['"]fabricator['"]/);

@@ -73,6 +73,12 @@ export const CARGO_PORT_HOOKS = Object.freeze([
   'pod_thruster',
 ]);
 
+export const GAS_TAP_HOOKS = Object.freeze([
+  'valve_wheel',
+  'gauge_needle',
+  'lamp',
+]);
+
 export const CARGO_PORT_LAUNCH_CLEAR_WU = 1.55;
 
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
@@ -183,6 +189,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: CARGO_PORT_HOOKS,
+  }),
+  gas_tap: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_gas_tap.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: GAS_TAP_HOOKS,
   }),
   place_works_conduit_power_straight: conduitPart('power', 'straight'),
   place_works_conduit_power_corner: conduitPart('power', 'corner'),
@@ -362,9 +374,11 @@ function hookForMeshStem(stem, hooks) {
   // Render packages flatten authored hierarchy into world matrices. Rebuild each accepted Works
   // part's functional children while keeping their world pose. Derrick drums/cable/lamps, the
   // Extractor head/belt/lamp, Fabricator gantry/lamp, Massline Core ring/lamp, Refinery
-  // furnace-slit/lamp, and Cargo Port crates/cradle/pod then move from their authored pivots
-  // rather than the asset origin.
+  // furnace-slit/lamp, Cargo Port crates/cradle/pod, and Gas Tap wheel/needle/lamp then move
+  // from their authored pivots rather than the asset origin.
   if (stem === 'pod') return hooks.pod_root || null;
+  if (stem === 'valve_wheel') return hooks.valve_wheel || null;
+  if (stem === 'gauge_needle') return hooks.gauge_needle || null;
   if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
   if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
   if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;

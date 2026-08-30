@@ -42,6 +42,7 @@ import { contactKind, contactProfile } from '../../systems/siteProduction.js';
 // `asteroidSites` is the module singleton the registry hands to ctx, so this is the live system.
 import { asteroidSites } from '../../systems/asteroidSites.js';
 import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
+import { CONTACT_YIELD } from '../../data/sites.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
 import { createBloom } from '../../render/bloom.js';
 import {
@@ -62,6 +63,7 @@ import {
   DERRICK_HOOKS,
   EXTRACTOR_HOOKS,
   FABRICATOR_HOOKS,
+  GAS_TAP_HOOKS,
   MASSLINE_CORE_HOOKS,
   REFINERY_HOOKS,
   recordWorksInstanceResources,
@@ -306,7 +308,8 @@ const MACHINE_KIND = {
 export function authoredWorksMachineKind(defId) {
   const kind = MACHINE_KIND[defId];
   if (kind === 'core') return 'massline_core';
-  return kind === 'extractor' || kind === 'fabricator' || kind === 'refinery' || kind === 'cargo_port'
+  return kind === 'extractor' || kind === 'fabricator' || kind === 'refinery'
+    || kind === 'cargo_port' || kind === 'gas_tap'
     ? kind
     : null;
 }
@@ -317,6 +320,7 @@ function authoredWorksMachineLabel(kind) {
   if (kind === 'extractor') return 'Extractor';
   if (kind === 'refinery') return 'Refinery';
   if (kind === 'cargo_port') return 'Cargo Port';
+  if (kind === 'gas_tap') return 'Gas Tap';
   return kind;
 }
 
@@ -326,6 +330,7 @@ function bindAuthoredWorksMachine(kind, source) {
   if (kind === 'extractor') return bindAuthoredExtractor(source);
   if (kind === 'refinery') return bindAuthoredRefinery(source);
   if (kind === 'cargo_port') return bindAuthoredCargoPort(source);
+  if (kind === 'gas_tap') return bindAuthoredGasTap(source);
   throw new Error(`[asteroidRenderer3d] no authored bind for ${kind}`);
 }
 
@@ -939,10 +944,134 @@ export function bindAuthoredCargoPort(group) {
   };
 }
 
-// PQ-131.09 — one Cargo Port authored/fallback transaction. Success never constructs the
+// PQ-131.07 — bind the accepted wall-manifold Gas Tap. The source is biased to the +X wall with
+// the lance occupying the neighbouring pocket. facing.rotation.z maps that authored +X onto the
+// live gas contact. Handwheel and gauge needle turn about glTF +Y (Blender +Z stem / face
+// normal). Only the hooded lamp is instance-owned; the manifold atlas stays shared.
+export const GAS_TAP_NEEDLE_SWEEP = -2.1;
+export const GAS_TAP_GENMW_FULL = CONTACT_YIELD.gasPowerPerContact * 2;
+export const GAS_TAP_FEED_FULL = CONTACT_YIELD.gasFeedPerMinPerContact * 2;
+
+export function resolveGasTapWallYaw(field, col, row, cols = COLS, rows = ROWS) {
+  const cardinals = [
+    { dc: 1, dr: 0, yaw: 0 },
+    { dc: 0, dr: -1, yaw: Math.PI / 2 },
+    { dc: -1, dr: 0, yaw: Math.PI },
+    { dc: 0, dr: 1, yaw: -Math.PI / 2 },
+  ];
+  for (let i = 0; i < cardinals.length; i++) {
+    const c = cardinals[i];
+    const cc = col + c.dc;
+    const rr = row + c.dr;
+    const tile = (cc >= 0 && cc < cols && rr >= 0 && rr < rows && field && field[cc])
+      ? field[cc][rr]
+      : null;
+    if (contactKind(tile) === 'gas') return c.yaw;
+  }
+  const diagonals = [
+    { dc: 1, dr: -1, yaw: 0 },
+    { dc: 1, dr: 1, yaw: 0 },
+    { dc: -1, dr: -1, yaw: Math.PI },
+    { dc: -1, dr: 1, yaw: Math.PI },
+  ];
+  for (let i = 0; i < diagonals.length; i++) {
+    const d = diagonals[i];
+    const cc = col + d.dc;
+    const rr = row + d.dr;
+    const tile = (cc >= 0 && cc < cols && rr >= 0 && rr < rows && field && field[cc])
+      ? field[cc][rr]
+      : null;
+    if (contactKind(tile) === 'gas') return d.yaw;
+  }
+  return 0;
+}
+
+export function gasTapNeedleAmount(status) {
+  const state = (status && status.state) || 'idle';
+  const running = state === 'running' || state === 'throttled' || state === 'limited';
+  if (!running) return 0;
+  const gen = status && Number.isFinite(status.genMW) ? Math.max(0, status.genMW) : 0;
+  if (gen > 0) return Math.max(0, Math.min(1, gen / GAS_TAP_GENMW_FULL));
+  const feed = status && status.ratePerMin && Number.isFinite(status.ratePerMin.cmdty_gas_hydrogen)
+    ? Math.max(0, status.ratePerMin.cmdty_gas_hydrogen)
+    : 0;
+  if (feed > 0) return Math.max(0, Math.min(1, feed / GAS_TAP_FEED_FULL));
+  return 0;
+}
+
+export function bindAuthoredGasTap(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Gas Tap group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of GAS_TAP_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Gas Tap is missing ${name}`);
+  }
+
+  const facing = new THREE.Group();
+  facing.name = 'gas_tap_facing';
+  const seat = new THREE.Group();
+  seat.name = 'gas_tap_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+  facing.add(seat);
+
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (obj.isMesh && /^LOD[012]_lamp$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+  const instanceOwned = [];
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  recordWorksInstanceResources(group, instanceOwned);
+  const wheelBaseY = hooks.valve_wheel.rotation.y;
+  const needleBaseY = hooks.gauge_needle.rotation.y;
+
+  return {
+    group: facing,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      wheel: hooks.valve_wheel,
+      needle: hooks.gauge_needle,
+      wheelBaseY,
+      needleBaseY,
+      setWallYaw(yaw) {
+        facing.rotation.z = Number.isFinite(yaw) ? yaw : 0;
+      },
+      wallYaw() { return facing.rotation.z; },
+      setWheelSpin(theta) {
+        hooks.valve_wheel.rotation.y = wheelBaseY + (Number.isFinite(theta) ? theta : 0);
+      },
+      setNeedleAmount(amount) {
+        const p = Number.isFinite(amount) ? Math.max(0, Math.min(1, amount)) : 0;
+        hooks.gauge_needle.rotation.y = needleBaseY + GAS_TAP_NEEDLE_SWEEP * p;
+      },
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.lamp,
+    },
+  };
+}
+
+export function presentAuthoredGasTapGhost(source) {
+  if (!source || typeof source.traverse !== 'function') return 0;
+  source.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.frustumCulled = false;
+    obj.renderOrder = 24;
+  });
+  return countDrawnWorksMeshes(source);
+}
+
+// PQ-131.09 / PQ-131.07 — one authored/fallback transaction. Success never constructs the
 // procedural stand-in. Failure builds exactly one fallback. Authored and fallback are never
 // both standing. Late arrivals after a newer generation or teardown are released once.
-export function createCargoPortMountLifecycle({
+function createWorksAuthoredMountLifecycle(label, {
   load,
   prepare,
   mount,
@@ -956,7 +1085,7 @@ export function createCargoPortMountLifecycle({
     load, prepare, mount, unmount, release, buildFallback, disposeFallback,
   })) {
     if (typeof fn !== 'function') {
-      throw new TypeError(`[cargoPortMount] ${name} must be a function`);
+      throw new TypeError(`[${label}] ${name} must be a function`);
     }
   }
 
@@ -1094,6 +1223,14 @@ export function createCargoPortMountLifecycle({
     cancel,
     stats: () => state,
   });
+}
+
+export function createCargoPortMountLifecycle(opts) {
+  return createWorksAuthoredMountLifecycle('cargoPortMount', opts);
+}
+
+export function createGasTapMountLifecycle(opts) {
+  return createWorksAuthoredMountLifecycle('gasTapMount', opts);
 }
 
 // Courier climb on the authored Cargo Port. Rise is the 1.55 wu collar-clear, then the pose holds
@@ -4306,12 +4443,65 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec.cargoLifecycle;
   }
 
+  function ensureGasTapInstallLifecycle(rec) {
+    if (rec.gasLifecycle) return rec.gasLifecycle;
+    rec.gasLifecycle = createGasTapMountLifecycle({
+      async load() {
+        const loader = ensureWorksLoader();
+        return loader ? loader.loadWorksPart('gas_tap') : null;
+      },
+      prepare(source) {
+        return bindAuthoredGasTap(source);
+      },
+      mount(record) {
+        rec.group.add(record.group);
+        rec.authoredSource = record.source;
+        rec.authoredSeat = record.group;
+        rec.dyn = record.dyn || {};
+        rec.pulses = record.pulses || [];
+        rec.proceduralFallback = false;
+      },
+      unmount(record) {
+        if (record.group && record.group.parent) record.group.parent.remove(record.group);
+        rec.authoredSource = null;
+        rec.authoredSeat = null;
+      },
+      release(source) {
+        if (worksLoader) worksLoader.releaseWorksPart(source);
+      },
+      buildFallback(reason) {
+        console.error('[asteroidRenderer3d] authored Gas Tap load failed; the procedural tap stands', reason);
+        const built = makeMachine('gas_tap', S, envMap);
+        ownProceduralMachine(built.group);
+        rec.group.add(built.group);
+        rec.dyn = built.dyn || {};
+        rec.pulses = built.pulses || [];
+        rec.proceduralFallback = true;
+        rec.fallbackGroup = built.group;
+        return built;
+      },
+      disposeFallback(built) {
+        if (built && built.group) {
+          if (built.group.parent) built.group.parent.remove(built.group);
+          disposeGroup(built.group);
+        }
+        rec.proceduralFallback = false;
+        rec.fallbackGroup = null;
+      },
+      isClosed: () => !rec.alive || worksTearingDown || disposed || glTeardownDone
+        || machines.get(rec.machineId) !== rec,
+    });
+    return rec.gasLifecycle;
+  }
+
   function releaseAuthoredMachine(rec) {
     if (!rec) return;
     rec.alive = false;
-    if (rec.cargoLifecycle) {
-      rec.cargoLifecycle.cancel('disposed');
+    if (rec.cargoLifecycle || rec.gasLifecycle) {
+      if (rec.cargoLifecycle) rec.cargoLifecycle.cancel('disposed');
+      if (rec.gasLifecycle) rec.gasLifecycle.cancel('disposed');
       rec.cargoLifecycle = null;
+      rec.gasLifecycle = null;
       rec.authoredSource = null;
       rec.authoredSeat = null;
       rec.fallbackGroup = null;
@@ -4340,10 +4530,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       group: built.group, defId: m.defId, dyn: built.dyn || {}, col: m.col, row: m.row,
       geoSig: '', arms: null, pulses: built.pulses || [], alive: true,
       authoredSource: null, authoredSeat: null,
-      proceduralFallback: false, fallbackGroup: null, cargoLifecycle: null,
+      proceduralFallback: false, fallbackGroup: null, cargoLifecycle: null, gasLifecycle: null,
     };
     machines.set(m.id, rec);
     if (authoredKind === 'cargo_port') void ensureCargoPortInstallLifecycle(rec).rebuild();
+    else if (authoredKind === 'gas_tap') void ensureGasTapInstallLifecycle(rec).rebuild();
     else if (authoredKind) void mountAuthoredMachine(rec, authoredKind);
     return rec;
   }
@@ -4497,6 +4688,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         rec.lightState = state;
         if (rec.dyn.setOrbitTheta) rec.dyn.setOrbitTheta(motionReduce ? 0.8 : timeS * 1.1);
         else if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = motionReduce ? 0.8 : timeS * 1.1;
+        if (rec.dyn.setWallYaw) rec.dyn.setWallYaw(resolveGasTapWallYaw(field, rec.col, rec.row));
+        if (rec.dyn.setWheelSpin) {
+          const active = running || !!(status && status.genMW);
+          rec.dyn.setWheelSpin(motionReduce ? (active ? 0.4 : 0) : (active ? timeS * 2.4 : 0));
+        }
+        if (rec.dyn.setNeedleAmount) rec.dyn.setNeedleAmount(gasTapNeedleAmount(status));
         if (rec.dyn.turbine) {
           rec.dyn.turbine.rotation.z = motionReduce
             ? 0.4 : timeS * ((status && status.genMW) ? 5 : 0.5);
@@ -5573,6 +5770,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     fxRoot.remove(ghost.group);
     if (ghost.cargoLifecycle) {
       ghost.cargoLifecycle.cancel('disposed');
+    } else if (ghost.gasLifecycle) {
+      ghost.gasLifecycle.cancel('disposed');
     } else if (ghost.authoredSource && worksLoader) {
       worksLoader.releaseWorksPart(ghost.authoredSource);
     } else if (!ghost.authoredPending) {
@@ -5702,6 +5901,74 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         isClosed: () => !rec.alive || ghost !== rec || worksTearingDown || disposed || glTeardownDone,
       });
       void rec.cargoLifecycle.rebuild();
+      return rec;
+    }
+    if (authoredKind === 'gas_tap') {
+      const group = new THREE.Group();
+      group.name = 'authored_gas_tap_ghost_mount';
+      group.renderOrder = 24;
+      fxRoot.add(group);
+      const rec = {
+        defId,
+        group,
+        alive: true,
+        authoredSource: null,
+        authoredPending: true,
+        proceduralFallback: false,
+        gasLifecycle: null,
+      };
+      ghost = rec;
+      rec.gasLifecycle = createGasTapMountLifecycle({
+        async load() {
+          const loader = ensureWorksLoader();
+          return loader ? loader.loadWorksPart('gas_tap') : null;
+        },
+        prepare(source) {
+          const built = bindAuthoredGasTap(source);
+          built.dyn.setWheelSpin(0);
+          built.dyn.setNeedleAmount(0);
+          const instanceOwned = [];
+          applyGhostTransparency(built.group, { instanceOwned });
+          recordWorksInstanceResources(source, instanceOwned);
+          presentAuthoredGasTapGhost(source);
+          return built;
+        },
+        mount(record) {
+          rec.group.add(record.group);
+          rec.authoredSource = record.source;
+          rec.authoredSeat = record.group;
+          rec.dyn = record.dyn || {};
+          rec.authoredPending = false;
+          rec.proceduralFallback = false;
+        },
+        unmount(record) {
+          if (record.group && record.group.parent) record.group.parent.remove(record.group);
+          rec.authoredSource = null;
+        },
+        release(source) {
+          if (worksLoader) worksLoader.releaseWorksPart(source);
+        },
+        buildFallback(reason) {
+          rec.authoredPending = false;
+          rec.proceduralFallback = true;
+          console.error('[asteroidRenderer3d] authored Gas Tap ghost load failed; the procedural seat stands', reason);
+          const built = makeMachine('gas_tap', S, envMap);
+          applyGhostTransparency(built.group, { disposeSource: true });
+          rec.group.add(built.group);
+          rec.fallbackGroup = built.group;
+          return built;
+        },
+        disposeFallback(built) {
+          if (built && built.group) {
+            if (built.group.parent) built.group.parent.remove(built.group);
+            disposeGroup(built.group);
+          }
+          rec.fallbackGroup = null;
+          rec.proceduralFallback = false;
+        },
+        isClosed: () => !rec.alive || ghost !== rec || worksTearingDown || disposed || glTeardownDone,
+      });
+      void rec.gasLifecycle.rebuild();
       return rec;
     }
     if (authoredKind) {
@@ -6571,11 +6838,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const out = [];
       for (const [id, rec] of machines) {
         const cargo = rec.cargoLifecycle ? rec.cargoLifecycle.stats() : null;
+        const tap = rec.gasLifecycle ? rec.gasLifecycle.stats() : null;
         out.push({
           id, defId: rec.defId, col: rec.col, row: rec.row, geoSig: rec.geoSig,
           authored: !!rec.authoredSource,
           fallback: !!rec.proceduralFallback,
-          mountPhase: cargo ? cargo.phase : (rec.authoredSource ? 'authored' : null),
+          mountPhase: cargo ? cargo.phase : (tap ? tap.phase : (rec.authoredSource ? 'authored' : null)),
         });
       }
       return out;
@@ -6609,6 +6877,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         ghostVisible: !!(ghostRec && ghostRec.group && ghostRec.group.visible),
         ghostDrawnMeshes: countDrawnWorksMeshes(ghostRoot),
         ghostCell: ghostRec && Number.isInteger(ghostRec.col) ? [ghostRec.col, ghostRec.row] : null,
+      };
+    },
+    gasTap() {
+      const rec = [...machines.values()].find((m) => m.defId === 'sm_gas_tap') || null;
+      const stats = rec && rec.gasLifecycle ? rec.gasLifecycle.stats() : null;
+      const ghostRec = ghost && ghost.defId === 'sm_gas_tap' ? ghost : null;
+      const ghostStats = ghostRec && ghostRec.gasLifecycle ? ghostRec.gasLifecycle.stats() : null;
+      const ghostRoot = ghostRec && ghostRec.group && ghostRec.group.visible ? ghostRec.group : null;
+      return {
+        installedPhase: stats ? stats.phase : (rec && rec.authoredSource ? 'authored' : (rec ? 'empty' : 'absent')),
+        authored: !!(rec && rec.authoredSource),
+        fallback: !!(rec && rec.proceduralFallback),
+        wallYaw: rec && rec.dyn && rec.dyn.wallYaw ? rec.dyn.wallYaw() : 0,
+        wheelY: rec && rec.dyn && rec.dyn.wheel ? rec.dyn.wheel.rotation.y : 0,
+        needleY: rec && rec.dyn && rec.dyn.needle ? rec.dyn.needle.rotation.y : 0,
+        ghostPhase: ghostStats ? ghostStats.phase : (ghostRec ? (ghostRec.authoredSource ? 'authored' : 'empty') : 'absent'),
+        ghostAuthored: !!(ghostRec && ghostRec.authoredSource),
+        ghostFallback: !!(ghostRec && ghostRec.proceduralFallback),
+        ghostVisible: !!(ghostRec && ghostRec.group && ghostRec.group.visible),
+        ghostDrawnMeshes: countDrawnWorksMeshes(ghostRoot),
+        ghostCell: ghostRec && Number.isInteger(ghostRec.col) ? [ghostRec.col, ghostRec.row] : null,
+        bothDrawn: !!(rec && rec.authoredSource && rec.proceduralFallback),
       };
     },
     // ---- law §7 / §6.5 / §6.7 "The site reads" (PQ-130.10b) ----
@@ -6839,6 +7129,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         g.group.position.set(cx, cy, 0);
         g.col = cursor.col;
         g.row = cursor.row;
+        if (g.dyn && g.dyn.setWallYaw) {
+          g.dyn.setWallYaw(resolveGasTapWallYaw(field, cursor.col, cursor.row));
+        }
       }
       frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xff6242);   // --aw-mint / --aw-coral
       frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive

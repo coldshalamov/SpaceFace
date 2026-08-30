@@ -339,8 +339,10 @@ export function paintMat(color, envMap, rough = 0.58) {
 // LAW §2.7 — THESE ARE OBJECTS, NOT ICONS. No emissive rings, bars or halos. Every part is real
 // hardware with metal roughness/metalness, a chamfered plinth, bolts, and cast shadows. The only
 // light-emitting part left in this factory is the shared corner status lamp. Authored Works
-// machines (rover, derrick, extractor, fabricator, Massline Core, refinery) load outside this
-// builder. Everything that used to be a glowing torus is now a machined collar, a counterweight,
+// machines (rover, derrick, extractor, fabricator, Massline Core, refinery, cargo port, gas tap)
+// load outside this builder. The procedural gas-tap path remains a failure-only fallback and is
+// never drawn beside an authored instance. Everything that used to be a glowing torus is now a
+// machined collar, a counterweight,
 // a heat sink or a guide rail.
 export function makeMachine(kind, S, envMap) {
   const g = new THREE.Group();

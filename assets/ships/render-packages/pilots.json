@@ -3262,6 +3262,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-cargo-port",
       "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json"
+    },
+    {
+      "key": "works-gas-tap",
+      "assetId": "sf.render.works-gas-tap",
+      "runtimeAssetId": "place_works_gas_tap",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_gas_tap",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_gas_tap.glb",
+      "releaseSha256": "6dda02f6ae2efaa406d4cabd87519dd449b209d6176902e13427f77a71acf51e",
+      "releaseBytes": 311596,
+      "rootNode": "SF_WORKS_GAS_TAP_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-gas-tap",
+      "metadataUrl": "assets/ships/release/render-packages/works-gas-tap/render-package.json"
     }
   ]
 }

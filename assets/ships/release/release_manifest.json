@@ -3804,6 +3804,25 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "place_works_gas_tap",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_gas_tap.glb",
+      "release": "assets/ships/release/parts/works/place_works_gas_tap.glb",
+      "sourceSha256": "8da1d98dafe6ef475ff94c0f47e320c90128756bfb215ce7f362c8c52af8aa60",
+      "releaseSha256": "6dda02f6ae2efaa406d4cabd87519dd449b209d6176902e13427f77a71acf51e",
+      "sourceBytes": 2569116,
+      "releaseBytes": 311596,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 41,
+      "contractNodeCount": 12,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

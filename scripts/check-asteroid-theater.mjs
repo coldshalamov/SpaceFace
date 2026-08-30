@@ -1151,7 +1151,18 @@ try {
             await page.mouse.move(at.x, at.y);
             await page.keyboard.press('Digit2');       // the gas tap: refuses any seat off a pocket
             await page.waitForTimeout(600);
+            await page.waitForFunction(() => {
+              const canvas = document.querySelector('.ast-canvas');
+              const h = canvas && canvas.__ast3d;
+              if (!h || typeof h.gasTap !== 'function') return false;
+              const tap = h.gasTap();
+              return tap.ghostPhase === 'authored' || tap.ghostPhase === 'fallback' || tap.ghostPhase === 'absent';
+            }, null, { timeout: 20000 }).catch(() => {});
             const why = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+            const tapGhost = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.gasTap());
+            if (tapGhost.ghostAuthored && tapGhost.ghostFallback) {
+              failures.push(`${label}: §6.7 authored Gas Tap ghost and the procedural stand-in are both on camera`);
+            }
             notes.push(`${label}: §6.7 gas tap armed — ${why.whyGlyphs} why-glyph plate(s),`
               + ` reasons [${[...new Set(why.reasons)].join(', ')}], ${why.seats} seats`);
             if (!(why.whyGlyphs > 0)) {

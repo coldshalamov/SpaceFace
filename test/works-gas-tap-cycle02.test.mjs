@@ -208,9 +208,7 @@ test('Cycle 02 evidence and diagnostics exist beside frozen Cycle 01', () => {
   }
 });
 
-test('source candidate is not a live release or wired part', () => {
-  const release = resolve(ROOT, 'assets/ships/release/parts/works/place_works_gas_tap.glb');
-  assert.equal(existsSync(release), false);
+test('Cycle 02 source records stay bound and are not rewritten by promotion', () => {
   const hashes = readJson(HASHES);
   const inventory = readJson(INVENTORY);
   assert.equal(inventory.partsSource, 'assets/ships/parts/works/place_works_gas_tap.glb');
@@ -219,4 +217,5 @@ test('source candidate is not a live release or wired part', () => {
   assert.equal(extras.wiringStatus || 'source_candidate_unwired', 'source_candidate_unwired');
   assert.equal(extras.deliverableRole || 'source_candidate', 'source_candidate');
   assert.equal(hashes.state, 'design_candidate');
+  assert.equal(hashes.inspect.sha256, '8DA1D98DAFE6EF475FF94C0F47E320C90128756BFB215CE7F362C8C52AF8AA60');
 });

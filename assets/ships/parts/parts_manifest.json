@@ -5830,6 +5830,32 @@
       }
     },
     {
+      "id": "place_works_gas_tap",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_gas_tap.glb",
+      "tris": 2464,
+      "bytes": 2569116,
+      "textureSize": 1024,
+      "note": "PQ-131.07 — authored one-cell Asteroid Works wall-mounted gas-tap manifold with explicit 2464/1182/496-triangle LODs. Runtime hooks: valve_wheel, gauge_needle, lamp. Cycle 02 source independently reviewed KEEP at f21766281f6bf1f434971b02c3871ac2f624d850 against combined/parts SHA-256 8DA1D98DAFE6EF475FF94C0F47E320C90128756BFB215CE7F362C8C52AF8AA60; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "valve_wheel",
+        "gauge_needle",
+        "lamp"
+      ],
+      "sockets": [
+        "valve_wheel",
+        "gauge_needle",
+        "lamp"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [0.085, 0, -0.86],
+        "max": [1.16, 0.982, 0.86],
+        "dimensionsM": [1.075, 0.982, 1.72]
+      }
+    },
+    {
       "id": "place_works_cargo_port",
       "category": "works",
       "priority": "P1",

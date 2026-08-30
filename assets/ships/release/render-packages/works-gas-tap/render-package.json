@@ -1,0 +1,1649 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-gas-tap",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "182efd022e61ad4cadf0e802a2d74486af1b2334231a3da1c361dd0dd4467f5e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.159963846206665,
+          0.9819561243057251,
+          0.8600000143051147
+        ],
+        "min": [
+          0.08503606170415878,
+          0.000043858468416146934,
+          -0.8600000143051147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a3b3c91bca81c419ab4ed670ca6cee6187bfed8af9a29a15a52a77bc92fbb0c5",
+      "id": "sf.render.works-gas-tap.mesh.lod0-gas-tap.primitive.0",
+      "indexCount": 6156,
+      "indexed": true,
+      "materialHash": "a14b3d3fbb15c97ffe2b805f5a253df8451232f016da409c14aa40dc2420b98a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_gas_tap",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod0-gas-tap",
+      "primitiveIndex": 0,
+      "vertexCount": 3733
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5780017115175724,
+          0.7700022095814347,
+          0.5555899739265442
+        ],
+        "min": [
+          0.5419982932507992,
+          0.7579977875575423,
+          0.4480000138282776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e64c67fa6a5b2822b8079085b5593380e19dfd09bec12fedc2e533f82412cd3a",
+      "id": "sf.render.works-gas-tap.mesh.lod0-gauge-needle.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "a14b3d3fbb15c97ffe2b805f5a253df8451232f016da409c14aa40dc2420b98a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_gauge_needle",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod0-gauge-needle",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9600000083446503,
+          0.9739993261173368,
+          -0.5600000023841858
+        ],
+        "min": [
+          0.9199999868869781,
+          0.9620006629265845,
+          -0.6000000238418579
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a5571d3b43c6d08d3a292e993b6238593c7c7fab2a9017fc4daa20c6468e5c08",
+      "id": "sf.render.works-gas-tap.mesh.lod0-lamp.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "a14b3d3fbb15c97ffe2b805f5a253df8451232f016da409c14aa40dc2420b98a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_lamp",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod0-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8799999952316284,
+          0.845992311835289,
+          0.2800000160932541
+        ],
+        "min": [
+          0.1599999964237213,
+          0.7740076910704374,
+          -0.4400000125169754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7244a145695714b939928ab18645a91c8893122949b9214b1a26ab672a261f92",
+      "id": "sf.render.works-gas-tap.mesh.lod0-valve-wheel.primitive.0",
+      "indexCount": 1056,
+      "indexed": true,
+      "materialHash": "a14b3d3fbb15c97ffe2b805f5a253df8451232f016da409c14aa40dc2420b98a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_valve_wheel",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod0-valve-wheel",
+      "primitiveIndex": 0,
+      "vertexCount": 519
+    },
+    {
+      "bounds": {
+        "max": [
+          1.159963846206665,
+          0.9819561243057251,
+          0.8600000143051147
+        ],
+        "min": [
+          0.08503606170415878,
+          0.000043858468416146934,
+          -0.8600000143051147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d321eab0b0e30866d83cfe66bc2673d9fe5016a3cc45f94e900e2c104bca3aba",
+      "id": "sf.render.works-gas-tap.mesh.lod1-gas-tap.primitive.0",
+      "indexCount": 2958,
+      "indexed": true,
+      "materialHash": "6f0d0a205c9a1e45078435795a539389a43ea474b5a82e131a55a16e1a450b87",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_gas_tap",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod1-gas-tap",
+      "primitiveIndex": 0,
+      "vertexCount": 1791
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5780017115175724,
+          0.7700022095814347,
+          0.5555899739265442
+        ],
+        "min": [
+          0.5419982932507992,
+          0.7579977875575423,
+          0.4480000138282776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e64c67fa6a5b2822b8079085b5593380e19dfd09bec12fedc2e533f82412cd3a",
+      "id": "sf.render.works-gas-tap.mesh.lod1-gauge-needle.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "6f0d0a205c9a1e45078435795a539389a43ea474b5a82e131a55a16e1a450b87",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_gauge_needle",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod1-gauge-needle",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9599996171891689,
+          0.973999303765595,
+          -0.5605000257492065
+        ],
+        "min": [
+          0.9219803847372532,
+          0.9620006852783263,
+          -0.5995000004768372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54f4b5d6b4ed01074aa15b4e619344229cf6cca135a3fc7b969f585d4b1065f7",
+      "id": "sf.render.works-gas-tap.mesh.lod1-lamp.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6f0d0a205c9a1e45078435795a539389a43ea474b5a82e131a55a16e1a450b87",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_lamp",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod1-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8799999952316284,
+          0.8260164316743612,
+          0.2800000160932541
+        ],
+        "min": [
+          0.15999996662139893,
+          0.7739835921674967,
+          -0.4400000125169754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5c97f29eab7180603012e3afdc0aaabc3670353cfd5805c1c42cac4f7190915",
+      "id": "sf.render.works-gas-tap.mesh.lod1-valve-wheel.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "6f0d0a205c9a1e45078435795a539389a43ea474b5a82e131a55a16e1a450b87",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_valve_wheel",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod1-valve-wheel",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1599777936935425,
+          0.9819561243057251,
+          0.8600000143051147
+        ],
+        "min": [
+          0.13502217829227448,
+          0.000043858468416146934,
+          -0.8600000143051147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "13267e55882a3f26e536b5052474be6411ecd3a779d5c3264f28c45a7dc988f4",
+      "id": "sf.render.works-gas-tap.mesh.lod2-gas-tap.primitive.0",
+      "indexCount": 972,
+      "indexed": true,
+      "materialHash": "e8a5d0311cfb5e8f267a37ace05afb4a89eb7d4dbd45f5b58ea969a8c56a3304",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_gas_tap",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod2-gas-tap",
+      "primitiveIndex": 0,
+      "vertexCount": 599
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5699978638440371,
+          0.7659991388209164,
+          0.5519999861717224
+        ],
+        "min": [
+          0.5500021409243345,
+          0.758000850211829,
+          0.4480000138282776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2e89355b4f55ee703e0bb95bada8c3437b1d1c95a8690b876b4bc4ef68b27891",
+      "id": "sf.render.works-gas-tap.mesh.lod2-gauge-needle.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e8a5d0311cfb5e8f267a37ace05afb4a89eb7d4dbd45f5b58ea969a8c56a3304",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_gauge_needle",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod2-gauge-needle",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9599999785423279,
+          0.9739993177354336,
+          -0.5626807752996683
+        ],
+        "min": [
+          0.9200000166893005,
+          0.9620006720069796,
+          -0.5973192509263754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2fcd5b5da4395d72a451dd77d79aa078ff2b3d596228a059241c53a7f903eaf3",
+      "id": "sf.render.works-gas-tap.mesh.lod2-lamp.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "e8a5d0311cfb5e8f267a37ace05afb4a89eb7d4dbd45f5b58ea969a8c56a3304",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_lamp",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod2-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8799999952316284,
+          0.8260164316743612,
+          0.2800000160932541
+        ],
+        "min": [
+          0.15999996662139893,
+          0.7739835921674967,
+          -0.4400000125169754
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5c97f29eab7180603012e3afdc0aaabc3670353cfd5805c1c42cac4f7190915",
+      "id": "sf.render.works-gas-tap.mesh.lod2-valve-wheel.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "e8a5d0311cfb5e8f267a37ace05afb4a89eb7d4dbd45f5b58ea969a8c56a3304",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_valve_wheel",
+      "nodeId": "sf.render.works-gas-tap.mesh.lod2-valve-wheel",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "6f0d0a205c9a1e45078435795a539389a43ea474b5a82e131a55a16e1a450b87",
+      "id": "material:6f0d0a205c9a1e4507843579",
+      "name": "Material_GasTapAtlas_LOD1",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a14b3d3fbb15c97ffe2b805f5a253df8451232f016da409c14aa40dc2420b98a",
+      "id": "material:a14b3d3fbb15c97ffe2b805f",
+      "name": "Material_GasTapAtlas_LOD0",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e8a5d0311cfb5e8f267a37ace05afb4a89eb7d4dbd45f5b58ea969a8c56a3304",
+      "id": "material:e8a5d0311cfb5e8f267a37ac",
+      "name": "Material_GasTapAtlas_LOD2",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "gas_tap_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "gas_tap_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod0-gas-tap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_gas_tap",
+      "nodeName": "LOD0_gas_tap",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod0-gauge-needle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_gauge_needle",
+      "nodeName": "LOD0_gauge_needle",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5600000023841858,
+        0.7609999775886536,
+        0.5400000214576721,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod0-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_lamp",
+      "nodeName": "LOD0_lamp",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9399999976158142,
+        0.9599999785423279,
+        -0.5799999833106995,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod0-valve-wheel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_valve_wheel",
+      "nodeName": "LOD0_valve_wheel",
+      "nodePath": [
+        0,
+        6,
+        0
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.800000011920929,
+        -0.07999999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod1-gas-tap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_gas_tap",
+      "nodeName": "LOD1_gas_tap",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod1-gauge-needle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_gauge_needle",
+      "nodeName": "LOD1_gauge_needle",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5600000023841858,
+        0.7609999775886536,
+        0.5400000214576721,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod1-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_lamp",
+      "nodeName": "LOD1_lamp",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9399999976158142,
+        0.9599999785423279,
+        -0.5799999833106995,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod1-valve-wheel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_valve_wheel",
+      "nodeName": "LOD1_valve_wheel",
+      "nodePath": [
+        0,
+        6,
+        1
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.800000011920929,
+        -0.07999999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod2-gas-tap",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_gas_tap",
+      "nodeName": "LOD2_gas_tap",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod2-gauge-needle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_gauge_needle",
+      "nodeName": "LOD2_gauge_needle",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5600000023841858,
+        0.7609999775886536,
+        0.5400000214576721,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod2-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_lamp",
+      "nodeName": "LOD2_lamp",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9399999976158142,
+        0.9599999785423279,
+        -0.5799999833106995,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.mesh.lod2-valve-wheel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_valve_wheel",
+      "nodeName": "LOD2_valve_wheel",
+      "nodePath": [
+        0,
+        6,
+        2
+      ],
+      "parentId": "sf.render.works-gas-tap.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.5199999809265137,
+        0.800000011920929,
+        -0.07999999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-gas-tap.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_WORKS_GAS_TAP_V1",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-gas-tap.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a8b1c1ba414d27f6c5ad029f922e4a26650574328b79d22fd62c8b974939b4fd"
+    },
+    "sourceGlb": {
+      "bytes": 311596,
+      "sha256": "6dda02f6ae2efaa406d4cabd87519dd449b209d6176902e13427f77a71acf51e",
+      "uri": "place_works_gas_tap.glb"
+    },
+    "sourceManifest": {
+      "bytes": 154118,
+      "sha256": "3c52ee4e4eff9e2b56ce66e1a616d1d8240124e5947c74758fea3e6e2ed29d56",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 384820,
+    "sha256": "77165aa2f2021ae8f239115d902af9f8e894237153668670efe1c9861bdbb614",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.6225069276988506,
+        0.4909999913870706,
+        0
+      ],
+      "max": [
+        1.1599777936935425,
+        0.9819561243057251,
+        0.8600000143051147
+      ],
+      "min": [
+        0.08503606170415878,
+        0.000043858468416146934,
+        -0.8600000143051147
+      ],
+      "size": [
+        1.0749417319893837,
+        0.981912265837309,
+        1.7200000286102295
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5600000023841858,
+          0.7609999775886536,
+          0.5400000214576721,
+          1
+        ],
+        "name": "gauge_needle",
+        "planIndex": 3,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "_sf_raw": "gauge_needle",
+          "name": "gauge_needle",
+          "sf_import_lod": 0,
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.9599999785423279,
+          -0.5799999833106995,
+          1
+        ],
+        "name": "lamp",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "_sf_raw": "lamp",
+          "name": "lamp",
+          "sf_import_lod": 0,
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.800000011920929,
+          -0.07999999821186066,
+          1
+        ],
+        "name": "valve_wheel",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "_sf_raw": "valve_wheel",
+          "name": "valve_wheel",
+          "sf_import_lod": 0,
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 12
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5600000023841858,
+          0.7609999775886536,
+          0.5400000214576721,
+          1
+        ],
+        "name": "LOD0_gauge_needle",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5600000023841858,
+          0.7609999775886536,
+          0.5400000214576721,
+          1
+        ],
+        "name": "LOD1_gauge_needle",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5600000023841858,
+          0.7609999775886536,
+          0.5400000214576721,
+          1
+        ],
+        "name": "LOD2_gauge_needle",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.9599999785423279,
+          -0.5799999833106995,
+          1
+        ],
+        "name": "LOD0_lamp",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.9599999785423279,
+          -0.5799999833106995,
+          1
+        ],
+        "name": "LOD1_lamp",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.9599999785423279,
+          -0.5799999833106995,
+          1
+        ],
+        "name": "LOD2_lamp",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_gas_tap",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_gas_tap",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_gas_tap",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.800000011920929,
+          -0.07999999821186066,
+          1
+        ],
+        "name": "LOD0_valve_wheel",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.800000011920929,
+          -0.07999999821186066,
+          1
+        ],
+        "name": "LOD1_valve_wheel",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.5199999809265137,
+          0.800000011920929,
+          -0.07999999821186066,
+          1
+        ],
+        "name": "LOD2_valve_wheel",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_gas_tap.glb"
+  },
+  "runtimeHash": "aa835e055ce752e1bab097cc91d3e945752ee1b6f0ff71947adac851101c41f8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.1599777936935425,
+          0.9819561243057251,
+          0.8600000143051147
+        ],
+        "min": [
+          0.08503606170415878,
+          0.000043858468416146934,
+          -0.8600000143051147
+        ]
+      },
+      "id": "sf.render.works-gas-tap.body",
+      "nodeIds": [
+        "sf.render.works-gas-tap.mesh.lod0-gas-tap",
+        "sf.render.works-gas-tap.mesh.lod0-gauge-needle",
+        "sf.render.works-gas-tap.mesh.lod0-lamp",
+        "sf.render.works-gas-tap.mesh.lod0-valve-wheel",
+        "sf.render.works-gas-tap.mesh.lod1-gas-tap",
+        "sf.render.works-gas-tap.mesh.lod1-gauge-needle",
+        "sf.render.works-gas-tap.mesh.lod1-lamp",
+        "sf.render.works-gas-tap.mesh.lod1-valve-wheel",
+        "sf.render.works-gas-tap.mesh.lod2-gas-tap",
+        "sf.render.works-gas-tap.mesh.lod2-gauge-needle",
+        "sf.render.works-gas-tap.mesh.lod2-lamp",
+        "sf.render.works-gas-tap.mesh.lod2-valve-wheel",
+        "sf.render.works-gas-tap.root"
+      ]
+    }
+  ]
+}
