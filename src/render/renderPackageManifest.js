@@ -1984,7 +1984,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1",
-    "expectedContentHash": "83b68f5cf322c0f0022b4872bef7807666eaba821bd734ed4699bdfa96d546b7",
+    "expectedContentHash": "8104eceb42f204f2828884e5920db4ed7c5fbbff305c998313e2fa91e1133fba",
     "key": "massline-express-liner-v1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
@@ -1994,7 +1994,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod1",
-    "expectedContentHash": "14fd504eecb881d130c502d362e5ae30f9cdda28b265d7439b12c3a6b59a1fd8",
+    "expectedContentHash": "c4b88f0f0f7ebd06876ca93e93f43107c5b1df7de3707e353899d8e4b4d6cf46",
     "key": "massline-express-liner-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
@@ -2004,7 +2004,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.massline-express-liner-v1-lod2",
-    "expectedContentHash": "6ea1eb3c4d9ee23d25f443aa6d00adfb9e3013309ce230c3b091b9119e1ec8f5",
+    "expectedContentHash": "6b8b9b37b0a974a07045e4efd7c105f89d1c33f708cf5a17b995307e0011f49e",
     "key": "massline-express-liner-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/massline-express-liner-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
