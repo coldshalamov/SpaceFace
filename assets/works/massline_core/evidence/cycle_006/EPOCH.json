@@ -1,0 +1,730 @@
+{
+  "schema": "spaceface.worksEvidenceEpoch.v1",
+  "packet": "PQ-131.02",
+  "assetId": "place_works_massline_core",
+  "identity": "SF_WORKS_MASSLINE_CORE_V1",
+  "cycle": 6,
+  "immutable": true,
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "g1g2g4": "open",
+  "independentReviewLaunched": false,
+  "reviewSource": "controller-provided independent exact-hash review of the Cycle 05 candidate",
+  "reviewFindingsAddressed": [
+    "base-color atlas was incorrectly exported as full-surface emissive",
+    "packed ORM.R was not consumed as glTF occlusionTexture",
+    "LOD2 lacked an original-resolution Works-camera site still",
+    "U-channel floor/flanges and square skirt were too shallow/narrow in top/edge views",
+    "LOD1/LOD2 ring, lamp, and +X asymmetry were too weak at site scale"
+  ],
+  "sourceGlb": "assets/works/massline_core/source/massline_core.glb",
+  "partsGlb": "assets/ships/parts/works/place_works_massline_core.glb",
+  "sourceSha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
+  "partsSha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
+  "blend": "assets/works/massline_core/blender/massline_core.blend",
+  "lodTriangles": {
+    "lod0": 5550,
+    "lod1": 1660,
+    "lod2": 576
+  },
+  "hooks": [
+    "ring_spin",
+    "lamp"
+  ],
+  "meshNames": [
+    "LOD0_massline_core",
+    "LOD0_massline_core_lamp",
+    "LOD0_massline_core_spin",
+    "LOD1_massline_core",
+    "LOD1_massline_core_lamp",
+    "LOD1_massline_core_spin",
+    "LOD2_massline_core",
+    "LOD2_massline_core_lamp",
+    "LOD2_massline_core_spin"
+  ],
+  "camera": {
+    "fovVDeg": 31.0,
+    "cellWu": 2.2,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "works_top": {
+      "distance": 35.698246736732656,
+      "location": [
+        0.0,
+        0.0,
+        35.698246736732656
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 120.0
+    },
+    "works_edge": {
+      "distance": 35.698246736732656,
+      "location": [
+        0.0,
+        0.0,
+        35.698246736732656
+      ],
+      "objectOffset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 120.0,
+      "note": "camera matches works_top; object is offset so side walls read"
+    },
+    "works_site": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 1
+    },
+    "works_site_lod2": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 2,
+      "note": "original-resolution exact-source Works-camera LOD2 evidence"
+    }
+  },
+  "occupancy": {
+    "works_top": {
+      "pixels": 12450,
+      "bbox": [
+        903,
+        483,
+        1031,
+        611
+      ],
+      "bboxSizePx": [
+        129,
+        129
+      ],
+      "cellPx": 120.0,
+      "occupancyOfCell": 0.8646,
+      "objectCenterLuma": 0.0134,
+      "wellMeanLuma": 0.0282,
+      "frameMeanLuma": 0.1047,
+      "localPadLuma": 0.1032
+    },
+    "works_edge": {
+      "pixels": 12213,
+      "bbox": [
+        1719,
+        483,
+        1837,
+        611
+      ],
+      "bboxSizePx": [
+        119,
+        129
+      ],
+      "cellPx": 120.0,
+      "occupancyOfCell": 0.8481,
+      "objectCenterLuma": 0.0143,
+      "wellMeanLuma": 0.0332,
+      "frameMeanLuma": 0.0679,
+      "localPadLuma": 0.1146
+    },
+    "works_site": {
+      "pixels": 281,
+      "bbox": [
+        951,
+        531,
+        970,
+        550
+      ],
+      "bboxSizePx": [
+        20,
+        20
+      ],
+      "cellPx": 19.0,
+      "occupancyOfCell": 0.7784,
+      "objectCenterLuma": 0.0053,
+      "wellMeanLuma": 0.0204,
+      "frameMeanLuma": 0.019,
+      "localPadLuma": 0.1231
+    },
+    "works_site_lod2": {
+      "pixels": 243,
+      "bbox": [
+        951,
+        531,
+        970,
+        549
+      ],
+      "bboxSizePx": [
+        20,
+        19
+      ],
+      "cellPx": 19.0,
+      "occupancyOfCell": 0.6731,
+      "objectCenterLuma": 0.0089,
+      "wellMeanLuma": 0.0188,
+      "frameMeanLuma": 0.019,
+      "localPadLuma": 0.1231
+    }
+  },
+  "glbInspect": {
+    "nodeNames": [
+      "COLLISION_HULL",
+      "LOD0_massline_core_lamp",
+      "LOD1_massline_core_lamp",
+      "LOD2_massline_core_lamp",
+      "lamp",
+      "LOD0_massline_core",
+      "LOD1_massline_core",
+      "LOD2_massline_core",
+      "LOD0_massline_core_spin",
+      "LOD1_massline_core_spin",
+      "LOD2_massline_core_spin",
+      "ring_spin",
+      "SF_WORKS_MASSLINE_CORE_V1"
+    ],
+    "hooks": [
+      "lamp",
+      "ring_spin"
+    ],
+    "lodNodes": [
+      "LOD0_massline_core_lamp",
+      "LOD1_massline_core_lamp",
+      "LOD2_massline_core_lamp",
+      "LOD0_massline_core",
+      "LOD1_massline_core",
+      "LOD2_massline_core",
+      "LOD0_massline_core_spin",
+      "LOD1_massline_core_spin",
+      "LOD2_massline_core_spin"
+    ],
+    "identityPresent": true,
+    "meshCount": 9,
+    "primitiveCount": 9,
+    "materialCount": 3,
+    "materialBindings": [
+      {
+        "material": "Material_Atlas_LOD0",
+        "baseColorTextureIndex": 3,
+        "baseColorImage": "massline_core_atlas_lod0_basecolor",
+        "metallicRoughnessTextureIndex": 2,
+        "metallicRoughnessImage": "massline_core_atlas_lod0_orm",
+        "occlusionTextureIndex": 2,
+        "occlusionImage": "massline_core_atlas_lod0_orm",
+        "emissiveTextureIndex": 0,
+        "emissiveImage": "massline_core_atlas_lod0_emissive",
+        "emissiveFactor": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "material": "Material_Atlas_LOD1",
+        "baseColorTextureIndex": 7,
+        "baseColorImage": "massline_core_atlas_lod1_basecolor",
+        "metallicRoughnessTextureIndex": 6,
+        "metallicRoughnessImage": "massline_core_atlas_lod1_orm",
+        "occlusionTextureIndex": 6,
+        "occlusionImage": "massline_core_atlas_lod1_orm",
+        "emissiveTextureIndex": 4,
+        "emissiveImage": "massline_core_atlas_lod1_emissive",
+        "emissiveFactor": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "material": "Material_Atlas_LOD2",
+        "baseColorTextureIndex": 11,
+        "baseColorImage": "massline_core_atlas_lod2_basecolor",
+        "metallicRoughnessTextureIndex": 10,
+        "metallicRoughnessImage": "massline_core_atlas_lod2_orm",
+        "occlusionTextureIndex": 10,
+        "occlusionImage": "massline_core_atlas_lod2_orm",
+        "emissiveTextureIndex": 8,
+        "emissiveImage": "massline_core_atlas_lod2_emissive",
+        "emissiveFactor": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "sceneExtrasIdentity": "SF_WORKS_MASSLINE_CORE_V1"
+  },
+  "hiddenFaces": {
+    "ran": true,
+    "exit": 0,
+    "json": "assets/works/massline_core/evidence/cycle_006/hidden_faces.json",
+    "summary": {
+      "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
+      "glb": "C:\\sf-agents\\luna-massline-core-revise\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+      "glbSha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
+      "generator": {
+        "path": "tools/blender/works_visible_faces.py",
+        "sha256": "C38B611CC7F90371FD7ADB28A489E3F7A5ACCDD678047C1E4340D8455BC784DC",
+        "blenderVersion": "5.1.2"
+      },
+      "authority": {
+        "role": "diagnostic_only",
+        "supportsVisibleFaceObservation": true,
+        "supportsHiddenFaceProof": false,
+        "supportsGeometryDeletion": false
+      },
+      "fovV": 31.0,
+      "framings": [
+        "works_top",
+        "works_edge x8",
+        "works_site"
+      ],
+      "lodFramings": {
+        "0": [
+          "works_top",
+          "works_edge"
+        ],
+        "1": [
+          "works_site"
+        ],
+        "2": [
+          "works_site"
+        ]
+      },
+      "distances": [
+        35.698246736732656,
+        225.46261096883785
+      ],
+      "edgeDirs": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          -1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          -1.0
+        ]
+      ],
+      "resolution": [
+        1920,
+        1080
+      ],
+      "sampling": {
+        "method": "one ray per render-pixel centre inside projected active-LOD bounds",
+        "pixelPad": 1,
+        "records": [
+          {
+            "pixelBounds": [
+              901,
+              481,
+              1021,
+              599
+            ],
+            "sampleCount": 14160,
+            "hitCount": 12165,
+            "objectHitCount": {
+              "LOD0_massline_core": 11987,
+              "LOD0_massline_core_lamp": 118,
+              "LOD0_massline_core_spin": 60
+            },
+            "lod": 0,
+            "framing": "works_top"
+          },
+          {
+            "pixelBounds": [
+              1718,
+              481,
+              1854,
+              599
+            ],
+            "sampleCount": 16048,
+            "hitCount": 12993,
+            "objectHitCount": {
+              "LOD0_massline_core": 12697,
+              "LOD0_massline_core_lamp": 134,
+              "LOD0_massline_core_spin": 162
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              1.0,
+              0.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              67,
+              481,
+              204,
+              599
+            ],
+            "sampleCount": 16166,
+            "hitCount": 12970,
+            "objectHitCount": {
+              "LOD0_massline_core": 12667,
+              "LOD0_massline_core_lamp": 141,
+              "LOD0_massline_core_spin": 162
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              -1.0,
+              0.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              901,
+              12,
+              1021,
+              139
+            ],
+            "sampleCount": 15240,
+            "hitCount": 12549,
+            "objectHitCount": {
+              "LOD0_massline_core_lamp": 104,
+              "LOD0_massline_core": 12343,
+              "LOD0_massline_core_spin": 102
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              0.0,
+              1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              901,
+              941,
+              1021,
+              1068
+            ],
+            "sampleCount": 15240,
+            "hitCount": 12532,
+            "objectHitCount": {
+              "LOD0_massline_core": 12301,
+              "LOD0_massline_core_lamp": 129,
+              "LOD0_massline_core_spin": 102
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              0.0,
+              -1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              1479,
+              149,
+              1610,
+              274
+            ],
+            "sampleCount": 16375,
+            "hitCount": 12975,
+            "objectHitCount": {
+              "LOD0_massline_core": 12722,
+              "LOD0_massline_core_lamp": 114,
+              "LOD0_massline_core_spin": 139
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              1479,
+              806,
+              1610,
+              931
+            ],
+            "sampleCount": 16375,
+            "hitCount": 12976,
+            "objectHitCount": {
+              "LOD0_massline_core": 12707,
+              "LOD0_massline_core_lamp": 130,
+              "LOD0_massline_core_spin": 139
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              1.0,
+              -1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              311,
+              149,
+              443,
+              274
+            ],
+            "sampleCount": 16500,
+            "hitCount": 12962,
+            "objectHitCount": {
+              "LOD0_massline_core": 12696,
+              "LOD0_massline_core_lamp": 127,
+              "LOD0_massline_core_spin": 139
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              -1.0,
+              1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              311,
+              806,
+              443,
+              931
+            ],
+            "sampleCount": 16500,
+            "hitCount": 12962,
+            "objectHitCount": {
+              "LOD0_massline_core": 12691,
+              "LOD0_massline_core_lamp": 132,
+              "LOD0_massline_core_spin": 139
+            },
+            "lod": 0,
+            "framing": "works_edge",
+            "edgeDir": [
+              -1.0,
+              -1.0
+            ]
+          },
+          {
+            "pixelBounds": [
+              949,
+              529,
+              971,
+              551
+            ],
+            "sampleCount": 484,
+            "hitCount": 308,
+            "objectHitCount": {
+              "LOD1_massline_core": 295,
+              "LOD1_massline_core_lamp": 5,
+              "LOD1_massline_core_spin": 8
+            },
+            "lod": 1,
+            "framing": "works_site"
+          },
+          {
+            "pixelBounds": [
+              949,
+              529,
+              971,
+              551
+            ],
+            "sampleCount": 484,
+            "hitCount": 308,
+            "objectHitCount": {
+              "LOD2_massline_core": 303,
+              "LOD2_massline_core_lamp": 5
+            },
+            "lod": 2,
+            "framing": "works_site"
+          }
+        ]
+      },
+      "deleted": false,
+      "objects": [
+        {
+          "object": "LOD0_massline_core_lamp",
+          "lod": 0,
+          "faces": 208,
+          "observedVisible": 59,
+          "unobserved": 149,
+          "unobservedFrac": 0.7163
+        },
+        {
+          "object": "LOD1_massline_core_lamp",
+          "lod": 1,
+          "faces": 96,
+          "observedVisible": 5,
+          "unobserved": 91,
+          "unobservedFrac": 0.9479
+        },
+        {
+          "object": "LOD2_massline_core_lamp",
+          "lod": 2,
+          "faces": 52,
+          "observedVisible": 2,
+          "unobserved": 50,
+          "unobservedFrac": 0.9615
+        },
+        {
+          "object": "LOD0_massline_core",
+          "lod": 0,
+          "faces": 4544,
+          "observedVisible": 1478,
+          "unobserved": 3066,
+          "unobservedFrac": 0.6747
+        },
+        {
+          "object": "LOD1_massline_core",
+          "lod": 1,
+          "faces": 1304,
+          "observedVisible": 165,
+          "unobserved": 1139,
+          "unobservedFrac": 0.8735
+        },
+        {
+          "object": "LOD2_massline_core",
+          "lod": 2,
+          "faces": 392,
+          "observedVisible": 110,
+          "unobserved": 282,
+          "unobservedFrac": 0.7194
+        },
+        {
+          "object": "LOD0_massline_core_spin",
+          "lod": 0,
+          "faces": 798,
+          "observedVisible": 168,
+          "unobserved": 630,
+          "unobservedFrac": 0.7895
+        },
+        {
+          "object": "LOD1_massline_core_spin",
+          "lod": 1,
+          "faces": 260,
+          "observedVisible": 8,
+          "unobserved": 252,
+          "unobservedFrac": 0.9692
+        },
+        {
+          "object": "LOD2_massline_core_spin",
+          "lod": 2,
+          "faces": 132,
+          "observedVisible": 0,
+          "unobserved": 132,
+          "unobservedFrac": 1.0
+        }
+      ],
+      "observedVisibleFaces": 1995,
+      "unobservedFaces": 5791,
+      "faces": 7786,
+      "unobservedFrac": 0.7438,
+      "note": "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays can miss subpixel or antialiased coverage. This record cannot authorize culling or geometry deletion. LODs were evaluated one at a time."
+    }
+  },
+  "stills": {
+    "works_top": "assets/works/massline_core/evidence/cycle_006/works_top.png",
+    "works_edge": "assets/works/massline_core/evidence/cycle_006/works_edge.png",
+    "works_site": "assets/works/massline_core/evidence/cycle_006/works_site.png",
+    "works_site_lod2": "assets/works/massline_core/evidence/cycle_006/works_site_lod2.png",
+    "works_top_clay": "assets/works/massline_core/evidence/cycle_006/works_top_clay.png",
+    "works_edge_clay": "assets/works/massline_core/evidence/cycle_006/works_edge_grazing.png",
+    "normal_isolation": "assets/works/massline_core/evidence/cycle_006/normal_isolation.png",
+    "orm_isolation": "assets/works/massline_core/evidence/cycle_006/orm_isolation.png",
+    "emissive_isolation": "assets/works/massline_core/evidence/cycle_006/emissive_isolation.png",
+    "material_id": "assets/works/massline_core/evidence/cycle_006/material_id.png",
+    "hook_identity": "assets/works/massline_core/evidence/cycle_006/hook_identity.png"
+  },
+  "stillSha256": {
+    "works_top": "E3D8BAD9D31D3F2AE296028B5EC9194FCECEBBC257EA4B72B8F1DABBE1FBA069",
+    "works_edge": "BEDDB4CDDECFAB3DF3B07564F39E03922B32E03141D1440FDC7F2E8FF5F6EB93",
+    "works_site": "D1A6E9DD8679BF182E98BFA0B1A279F8B1A474EDE0871A7B0B8755AAE7FD70A5",
+    "works_site_lod2": "269FEE03411FB36DC036B618372E902E8B6AA9B5E0035C6A55357F7B822B2929",
+    "works_top_clay": "566FC2B2EBD0F70FCB67BBD12C445079A51128E069E4EA44BB5DC5983F7B9BB5",
+    "works_edge_clay": "FF877F780EE7B3E27E8C1D82BCF9952B262576B8EFAF89CD33EA3C72F9F16036",
+    "normal_isolation": "4303B8B79369A263CFF3A443F935B68629728996F4DE6D358B56377A04072AC7",
+    "orm_isolation": "E378CFCF747820FFAB9DF480C2D94E23506E56C8FD7E02A5886AF0CCD7C4B1C9",
+    "emissive_isolation": "D66EF2CE00004C5D2C1F4F6F878CA2B72F8783570439E7C71E0A17BEF4A4B44B",
+    "material_id": "4BA622B10E6F47685EB1EC52F8AEB47FA0F96A19213799A893472E132CAD3C51",
+    "hook_identity": "862DBDAC7B367B5244552DC7E205CCD75FCE8EB7085B048B76BB36998D9F4F30"
+  },
+  "atlasLod0": [
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_basecolor.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_orm.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_emissive.png"
+  ],
+  "lod2SiteEvidence": {
+    "path": "assets/works/massline_core/evidence/cycle_006/works_site_lod2.png",
+    "sha256": "269FEE03411FB36DC036B618372E902E8B6AA9B5E0035C6A55357F7B822B2929",
+    "sourceSha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
+    "lod": 2,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "camera": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 2,
+      "note": "original-resolution exact-source Works-camera LOD2 evidence"
+    },
+    "originalResolutionReviewPending": true
+  },
+  "citedReferences": [
+    "assets/concept/archetypes/concept_station_mining.jpg",
+    "assets/concept/landmarks/concept_landmark_driller.jpg",
+    "assets/works/rover/reference/ref_01_overhead_crawler.png",
+    "assets/works/rover/reference/ref_03_boom_bit.png"
+  ],
+  "contactSheet": "assets/works/massline_core/reference/CONTACT_SHEET.png",
+  "notes": "Cycle 06 revises the Cycle 05 square-flange candidate's collar/skirt section and far-LOD feature geometry while retaining its portable material wiring and direct LOD2 site evidence. Not wired, not released, not promoted. A new independent exact-hash visual verdict remains pending."
+}

@@ -5737,9 +5737,9 @@
       "priority": "P1",
       "file": "works/place_works_massline_core.glb",
       "tris": 5550,
-      "bytes": 3193144,
+      "bytes": 3183992,
       "textureSize": 1024,
-      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 5550/1660/486-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 05 whole-asset top, edge, site, clay, matched-LOD, material-isolation, hook, and dedicated LOD2 Works-site evidence independently reviewed KEEP against source SHA-256 0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D; release/runtime G6 and player-route G7 remain separate.",
+      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 5550/1660/576-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 06 revises the U-channel/skirt section and far-LOD modeled features; whole-asset G1/G2/G4 remain open and the exact source SHA-256 is D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7. Release/runtime G6 and player-route G7 remain separate.",
       "hooks": [
         "ring_spin",
         "lamp"

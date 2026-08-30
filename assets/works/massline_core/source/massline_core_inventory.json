@@ -7,7 +7,7 @@
   "lodTriangles": {
     "lod0": 5550,
     "lod1": 1660,
-    "lod2": 486
+    "lod2": 576
   },
   "hooks": [
     "ring_spin",
@@ -24,9 +24,9 @@
     "LOD2_massline_core_lamp",
     "LOD2_massline_core_spin"
   ],
-  "bytes": 3193144,
-  "sha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
-  "partsSha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
+  "bytes": 3183992,
+  "sha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
+  "partsSha256": "D68FBA8546B0FB511AA36C46277E0949FE034ACA7FA0CE0AE5761E98051731C7",
   "lodReports": [
     {
       "lod": 0,
@@ -72,8 +72,8 @@
         "LOD0_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod0.glb",
-      "bytes": 2040324,
-      "sha256": "A665B42A874A232E9521B8898FA67AC80658577ACE088A2A282E257C8E87C151"
+      "bytes": 2028308,
+      "sha256": "B83478EA5477F5FF7DF0EA8131F0F838B13863C1370D47FD336C0309AEF2BCC4"
     },
     {
       "lod": 1,
@@ -119,12 +119,12 @@
         "LOD1_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod1.glb",
-      "bytes": 667704,
-      "sha256": "9C6955896A4CF834F8FB537361AA633E0A33BAD12E0F257B0FDCF39872A7493E"
+      "bytes": 656448,
+      "sha256": "73779A7F1A10D2586C115C2559233DE33F283ED699EA771522CF9AE192775B39"
     },
     {
       "lod": 2,
-      "triangles": 486,
+      "triangles": 576,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD2"
@@ -136,12 +136,12 @@
           0.0
         ],
         "max": [
-          1.04,
+          1.084,
           1.04,
           0.735
         ],
         "size": [
-          2.08,
+          2.124,
           2.08,
           0.735
         ]
@@ -166,8 +166,8 @@
         "LOD2_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod2.glb",
-      "bytes": 182072,
-      "sha256": "3823FA5615B6E66D4E07EDD49E8197233E6A9A860CDB49361266DD44B26AE97C"
+      "bytes": 195292,
+      "sha256": "A9808BF197862B7FF31CE3599922B7F7B932FCEA5F12B6F3CBF3EF7E1E3F7EAD"
     }
   ]
 }

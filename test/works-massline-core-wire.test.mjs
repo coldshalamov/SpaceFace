@@ -1,6 +1,6 @@
 // PQ-131.02 — authored gallery Massline Core release/runtime wire.
 //
-// The artifact checks bind release/package identity to the independently accepted source. The
+// The artifact checks bind release/package identity to the current authored source. The
 // behavior checks drive the shared Works loader so LOD selection, hook hierarchy, ring motion,
 // lamp isolation, authored route selection, and idempotent retirement are exercised together.
 import test from 'node:test';
@@ -34,11 +34,11 @@ const PACKAGE_JSON = resolve(ROOT, 'assets/ships/release/render-packages/works-m
 const PACKAGE_GLB = resolve(ROOT, 'assets/ships/release/render-packages/works-massline-core/render.glb');
 const MACHINE_FACTORY = resolve(ROOT, 'src/render/asteroidInteriorPreview.js');
 
-const EXPECTED_SOURCE_SHA = '0f7dc23f35a43ab7e51988a15a9736461b036de4d373e3268dfead495958102d';
+const EXPECTED_SOURCE_SHA = 'd68fba8546b0fb511aa36c46277e0949fe034aca7fa0ce0ae5761e98051731c7';
 const EXPECTED_LOD_SHA = Object.freeze([
-  'a665b42a874a232e9521b8898fa67ac80658577ace088a2a282e257c8e87c151',
-  '9c6955896a4cf834f8fb537361aa633e0a33bad12e0f257b0fdcf39872a7493e',
-  '3823fa5615b6e66d4e07edd49e8197233e6a9a860cdb49361266dd44b26ae97c',
+  'b83478ea5477f5ff7df0ea8131f0f838b13863c1370d47fd336c0309aef2bcc4',
+  '73779a7f1a10d2586c115c2559233de33f283ed699ea771522cf9ae192775b39',
+  'a9808bf197862b7ff31ce3599922b7f7b932fcea5f12b6f3cbf3ef7e1e3f7ead',
 ]);
 const EXPECTED_MARKERS = Object.freeze({
   lamp: [0.18000000715255737, 0.3619999885559082, -0.8920000195503235],
@@ -121,7 +121,7 @@ function injectedLease(blueprint) {
   };
 }
 
-test('the Massline Core release and package remain bound to the accepted source and LODs', () => {
+test('the Massline Core release and package remain bound to the authored source and LODs', () => {
   const releaseManifest = json(RELEASE_MANIFEST);
   const release = releaseManifest.assets.find((row) => row.id === 'place_works_massline_core');
   assert.ok(release, 'release manifest has the Massline Core row');

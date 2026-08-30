@@ -1,14 +1,15 @@
-# Massline Core — material and shape audit (Cycle 05)
+# Massline Core — material and shape audit (Cycle 06)
 
 Identity `SF_WORKS_MASSLINE_CORE_V1`. Packet `PQ-131.02`. State `design_candidate`.
 Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.
 
 ## Shape grammar
 
-Cycle 04's independently reviewed square-flange geometry is frozen for this repair:
+Cycle 05's square-flange wellhead is the frozen identity for this revision:
 a square wellhead flange with a round bore; continuous U-channel opening +Z;
 folded square angle skirt; corner pads; nested dark race; and one side-mounted
-hooded lamp with a visible cavity. Cycle 05 changes no authored form.
+hooded lamp with a visible cavity. Cycle 06 changes section depth/width and
+far-LOD feature geometry only; identity, hooks, envelope, and camera contract stay fixed.
 
 Clay must read: dark circular hole in a squat square machine, U-channel trench,
 skirt thickness, one hooded fixture. A washer / manhole / gear / tire / nut /
@@ -36,9 +37,9 @@ compass-rose / plus-dot / generic slab is a fail.
 ## Construction sequence
 
 1. Tapered dark liner, real lip, open through, true inner wall.
-2. Continuous U-channel collar, cavity +Z, four cardinal lap straps.
-3. Square deck (round bore) + folded angle skirt + corner pads on the rock.
-4. Nested dark inner bearing race (ring_spin) in a rebate.
-5. One hatch on the +X deck, one hooded lamp on the +Y frame.
+2. Continuous deep U-channel collar, cavity +Z, four cardinal lap straps.
+3. Square deck (round bore) + deep folded angle skirt + corner pads on the rock.
+4. Nested dark inner bearing race (ring_spin) with a retained far-LOD shoulder.
+5. One layered hatch on the +X deck, one enlarged hooded lamp on the +Y frame.
 
 Every visible part has a load path into the liner or the skirt. No occupancy fins.
