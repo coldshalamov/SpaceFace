@@ -292,6 +292,32 @@ def airfoil_section(y, x_le, zc, chord, thickness):
     ]
 
 
+def oriented_ring(center, axis, radius, sides=16):
+    """Circular section in a drive axis plane, with a stable authored basis."""
+    center = Vector(center)
+    axis = Vector(axis).normalized()
+    basis_a = Vector((0.0, 1.0, 0.0))
+    if abs(axis.dot(basis_a)) > 0.92:
+        basis_a = Vector((1.0, 0.0, 0.0))
+    basis_a = (basis_a - axis * axis.dot(basis_a)).normalized()
+    basis_b = axis.cross(basis_a).normalized()
+    return [
+        tuple(center + basis_a * math.cos(math.tau * i / sides) * radius
+              + basis_b * math.sin(math.tau * i / sides) * radius)
+        for i in range(sides)
+    ]
+
+
+def wing_slot_section(y, center_x, half_width=0.10, zc=0.12, depth=0.06):
+    """Small recessed volume between a lifting surface and its trailing flap."""
+    return [
+        (center_x - half_width, y, zc + depth),
+        (center_x + half_width, y, zc + depth),
+        (center_x + half_width, y, zc - depth),
+        (center_x - half_width, y, zc - depth),
+    ]
+
+
 def append_lower_material(obj, material, limit=0.0):
     if material.name not in [slot.name for slot in obj.material_slots]:
         obj.data.materials.append(material)
@@ -317,7 +343,7 @@ def assign_hull_roles(obj, mats):
             poly.material_index = mech_slot
 
 
-def add_annulus(name, x, y, z, outer, inner, depth, material, collection, vertices=24):
+def add_annulus(name, x, y, z, outer, inner, depth, material, collection, vertices=24, rotation=(0.0, 0.0, 0.0)):
     verts = []
     for side_x in (-depth * 0.5, depth * 0.5):
         for radius in (outer, inner):
@@ -339,21 +365,22 @@ def add_annulus(name, x, y, z, outer, inner, depth, material, collection, vertic
         )
     obj = mesh_object(name, verts, faces, material, collection, 0.004)
     obj.location = (x, y, z)
+    obj.rotation_euler = rotation
     MTX.apply_modifiers(obj)
     return obj
 
 
-def cut_cylinder(host, name, location, radius, depth):
+def cut_cylinder(host, name, location, radius, depth, rotation=(0.0, math.pi / 2.0, 0.0), vertices=24):
     """Cut a +X drive throat, restoring the host if the boolean collapses the shell."""
     MTX.apply_modifiers(host)
     backup = host.data.copy()
     before = len(host.data.vertices)
     bpy.ops.mesh.primitive_cylinder_add(
-        vertices=24,
+        vertices=vertices,
         radius=radius,
         depth=depth,
         location=location,
-        rotation=(0.0, math.pi / 2.0, 0.0),
+        rotation=rotation,
     )
     cutter = bpy.context.object
     cutter.name = name
@@ -431,15 +458,25 @@ def add_canopy(hull, mats, collection, lod):
     canopy = mats["Material_Canopy"]
     frame = mats["Material_Frame"]
     gap = mats["Material_Gap"]
-    # C187 keeps the same cockpit interface but gives the excavation enough beam and
-    # setback to read from the actual 60-degree chase view instead of as a nose slit.
-    cockpit_x = 3.45 if CYCLE >= 187 else 3.68
-    cockpit_scale = (0.98, 0.68, 0.46) if CYCLE >= 187 else (0.78, 0.54, 0.40)
-    tub_size = (0.87, 0.59, 0.22) if CYCLE >= 187 else (0.70, 0.46, 0.20)
-    cut_ok = MTX.safe_boolean_cut(hull, f"CanopyWell_{TAG}", (cockpit_x, 0.0, 0.72), cockpit_scale)
+    # C187 kept the same cockpit interface but gave the excavation enough beam and setback to
+    # read from the actual 60-degree chase view.  C191 moves that same real tub farther aft and
+    # broadens it so the chase sees a framed opening instead of a tiny dark sticker.
+    if CYCLE >= 191:
+        cockpit_x = 2.65
+        cockpit_scale = (1.32, 0.88, 0.54)
+        tub_size = (1.16, 0.80, 0.27)
+        cut_z = 0.76
+        tub_z = 0.50
+    else:
+        cockpit_x = 3.45 if CYCLE >= 187 else 3.68
+        cockpit_scale = (0.98, 0.68, 0.46) if CYCLE >= 187 else (0.78, 0.54, 0.40)
+        tub_size = (0.87, 0.59, 0.22) if CYCLE >= 187 else (0.70, 0.46, 0.20)
+        cut_z = 0.72
+        tub_z = 0.46 if CYCLE >= 187 else 0.48
+    cut_ok = MTX.safe_boolean_cut(hull, f"CanopyWell_{TAG}", (cockpit_x, 0.0, cut_z), cockpit_scale)
     tub = MTX.add_five_wall_tub(
         f"CanopyTub_{TAG}",
-        (cockpit_x, 0.0, 0.46 if CYCLE >= 187 else 0.48),
+        (cockpit_x, 0.0, tub_z),
         tub_size,
         0.065,
         gap,
@@ -455,7 +492,16 @@ def add_canopy(hull, mats, collection, lod):
         (3.08, 0.37, 0.68),
         (2.94, 0.08, 0.62),
     ]
-    if CYCLE >= 187:
+    if CYCLE >= 191:
+        profile = [
+            (4.04, 0.18, 0.75),
+            (3.68, 0.56, 0.82),
+            (3.18, 0.80, 0.96),
+            (2.66, 0.88, 1.13),
+            (2.20, 0.62, 1.08),
+            (1.98, 0.24, 0.86),
+        ]
+    elif CYCLE >= 187:
         # The shell must crest above the pressure deck.  The first C187 pass enlarged the
         # cut but left its glass crown buried in the hull's upper station, so the chase still
         # saw only a black slit.  Raise the crown while retaining the excavated tub below it.
@@ -473,27 +519,45 @@ def add_canopy(hull, mats, collection, lod):
         rings.append(points)
     glass = loft_open("Canopy_GlassShell", rings, canopy, collection, 0.003)
     frames = []
-    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
-        frames.append(
-            MTX.add_folded_sheet(
-                f"CanopyFrame_{tag}",
-                ((4.19 if CYCLE >= 187 else 4.42), sign * (0.12 if CYCLE >= 187 else 0.10), 0.86 if CYCLE >= 187 else 0.62),
-                ((2.85 if CYCLE >= 187 else 3.08), sign * (0.46 if CYCLE >= 187 else 0.40), 1.02 if CYCLE >= 187 else 0.68),
-                ((2.85 if CYCLE >= 187 else 3.08), sign * (0.39 if CYCLE >= 187 else 0.34), 1.07 if CYCLE >= 187 else 0.73),
-                ((4.19 if CYCLE >= 187 else 4.42), sign * (0.07 if CYCLE >= 187 else 0.06), 0.92 if CYCLE >= 187 else 0.67),
-                0.045,
-                frame,
-                collection,
-                0.003,
+    if CYCLE >= 191:
+        # Four-sided rails follow the raised shell rather than floating as a plane above it.
+        # The same frame survives all LODs because the opening is a primary cockpit read.
+        for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+            frames.append(
+                MTX.add_folded_sheet(
+                    f"CanopyFrame_{tag}",
+                    (3.76, sign * 0.18, 0.91),
+                    (2.04, sign * 0.28, 0.87),
+                    (2.20, sign * 0.72, 1.14),
+                    (3.56, sign * 0.48, 1.08),
+                    0.055,
+                    frame,
+                    collection,
+                    0.004,
+                )
             )
-        )
-    if lod == 0:
+    else:
+        for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+            frames.append(
+                MTX.add_folded_sheet(
+                    f"CanopyFrame_{tag}",
+                    ((4.19 if CYCLE >= 187 else 4.42), sign * (0.12 if CYCLE >= 187 else 0.10), 0.86 if CYCLE >= 187 else 0.62),
+                    ((2.85 if CYCLE >= 187 else 3.08), sign * (0.46 if CYCLE >= 187 else 0.40), 1.02 if CYCLE >= 187 else 0.68),
+                    ((2.85 if CYCLE >= 187 else 3.08), sign * (0.39 if CYCLE >= 187 else 0.34), 1.07 if CYCLE >= 187 else 0.73),
+                    ((4.19 if CYCLE >= 187 else 4.42), sign * (0.07 if CYCLE >= 187 else 0.06), 0.92 if CYCLE >= 187 else 0.67),
+                    0.045,
+                    frame,
+                    collection,
+                    0.003,
+                )
+            )
+    if lod == 0 or CYCLE >= 191:
         frames.append(MTX.add_folded_sheet(
             "CanopyFrame_Fore",
-            (4.20 if CYCLE >= 187 else 4.43, -0.12 if CYCLE >= 187 else -0.10, 0.86 if CYCLE >= 187 else 0.62),
-            (4.20 if CYCLE >= 187 else 4.43, 0.12 if CYCLE >= 187 else 0.10, 0.86 if CYCLE >= 187 else 0.62),
-            (3.97 if CYCLE >= 187 else 4.20, 0.39 if CYCLE >= 187 else 0.34, 0.94 if CYCLE >= 187 else 0.66),
-            (3.97 if CYCLE >= 187 else 4.20, -0.39 if CYCLE >= 187 else -0.34, 0.94 if CYCLE >= 187 else 0.66),
+            ((3.78 if CYCLE >= 191 else (4.20 if CYCLE >= 187 else 4.43)), -0.18 if CYCLE >= 191 else (-0.12 if CYCLE >= 187 else -0.10), 0.91 if CYCLE >= 191 else (0.86 if CYCLE >= 187 else 0.62)),
+            ((3.78 if CYCLE >= 191 else (4.20 if CYCLE >= 187 else 4.43)), 0.18 if CYCLE >= 191 else (0.12 if CYCLE >= 187 else 0.10), 0.91 if CYCLE >= 191 else (0.86 if CYCLE >= 187 else 0.62)),
+            ((3.54 if CYCLE >= 191 else (3.97 if CYCLE >= 187 else 4.20)), 0.48 if CYCLE >= 191 else (0.39 if CYCLE >= 187 else 0.34), 1.08 if CYCLE >= 191 else (0.94 if CYCLE >= 187 else 0.66)),
+            ((3.54 if CYCLE >= 191 else (3.97 if CYCLE >= 187 else 4.20)), -0.48 if CYCLE >= 191 else (-0.39 if CYCLE >= 187 else -0.34), 1.08 if CYCLE >= 191 else (0.94 if CYCLE >= 187 else 0.66)),
             0.040,
             frame,
             collection,
@@ -504,6 +568,93 @@ def add_canopy(hull, mats, collection, lod):
 
 
 def add_drive(tag, sign, mats, collection, lod):
+    if CYCLE >= 191:
+        # The live chase looks from +Y/+Z and is almost edge-on to a pure -X transom.  Grow
+        # each drive from the lower aft shell toward an upward/rearward mouth so its throat is
+        # visible in the legal player camera, not only in a diagnostic rear crop.
+        axis = Vector((-0.62, 0.0, 0.78)).normalized()
+        cylinder_rotation = axis.to_track_quat("Z", "Y").to_euler()
+        annulus_rotation = axis.to_track_quat("X", "Z").to_euler()
+        y = 1.08 * sign
+        root_center = Vector((-4.00, y, 0.28))
+        mouth_center = Vector((-4.80, y, 1.02))
+        mouth_radius = 0.78
+        opened = cut_cylinder(
+            MTX._active_hull_for_c186,
+            f"DriveWell_{TAG}_{tag}",
+            mouth_center,
+            0.68,
+            1.45,
+            rotation=cylinder_rotation,
+            vertices=20 if lod > 0 else 24,
+        )
+        housing_rings = [
+            oriented_ring(root_center, axis, 0.84, 12 if lod == 0 else 10),
+            oriented_ring(root_center.lerp(mouth_center, 0.58), axis, 0.80, 12 if lod == 0 else 10),
+            oriented_ring(mouth_center - axis * 0.12, axis, 0.74, 12 if lod == 0 else 10),
+        ]
+        housing = MTX.loft_from_rings(
+            f"DriveHouse_{tag}",
+            housing_rings,
+            mats["Material_HullPanel"],
+            collection,
+            0.010 if lod == 0 else 0.007,
+            cap=False,
+        )
+        rim = add_annulus(
+            f"DriveFlange_{tag}",
+            *(mouth_center + axis * 0.03),
+            mouth_radius,
+            0.60,
+            0.20,
+            mats["Material_Frame"],
+            collection,
+            24 if lod == 0 else 16,
+            rotation=annulus_rotation,
+        )
+        ceramic = add_annulus(
+            f"DriveCeramic_{tag}",
+            *(mouth_center - axis * 0.02),
+            0.60,
+            0.43,
+            0.16,
+            mats["Material_Ceramic"],
+            collection,
+            20 if lod == 0 else 14,
+            rotation=annulus_rotation,
+        )
+        bore = MTX.add_cylinder(
+            f"DriveBore_{tag}",
+            mouth_center - axis * 0.14,
+            0.42,
+            0.12,
+            mats["Material_Soot"],
+            collection,
+            vertices=18 if lod == 0 else (14 if lod == 1 else 12),
+            bevel=0.002,
+            rot=cylinder_rotation,
+        )
+        bits = [housing, rim, ceramic, bore]
+        basis_a = Vector((0.0, 1.0, 0.0))
+        basis_b = axis.cross(basis_a).normalized()
+        vane_count = 6 if lod == 0 else (4 if lod == 1 else 3)
+        for index in range(vane_count):
+            angle = math.tau * index / vane_count
+            tangent = (-basis_a * math.sin(angle) + basis_b * math.cos(angle)).normalized()
+            vane_center = mouth_center - axis * 0.20 + basis_a * math.cos(angle) * 0.29 + basis_b * math.sin(angle) * 0.29
+            bits.append(
+                MTX.add_box(
+                    f"DriveVane_{tag}_{index}",
+                    vane_center,
+                    (0.052, 0.030, 0.24 if lod == 0 else 0.18),
+                    mats["Material_Mechanical"],
+                    collection,
+                    0.002,
+                    rot=tangent.to_track_quat("Z", "Y").to_euler(),
+                )
+            )
+        return bits, {"tag": tag, "opened": opened, "mouthOuterRadius": mouth_radius, "axis": [round(v, 3) for v in axis]}
+
     y = 0.98 * sign
     z = 0.10
     opened = cut_cylinder(MTX._active_hull_for_c186, f"DriveWell_{TAG}_{tag}", (-4.84, y, z), 0.62, 1.10)
@@ -544,38 +695,85 @@ def build_wing(name, sign, mats, collection, lod):
     # gridded slab in the play frame; the root fairing below remains hull-colored.
     wing = mats["Material_Wing"] if CYCLE >= 188 else mats["Material_Hull"]
     underside = mats["Material_Wing"]
-    full = [
-        (1.34, 2.22, 0.09, 3.72, 0.52),
-        (1.72, 2.04, 0.11, 3.58, 0.46),
-        (2.22, 2.58, 0.13, 3.10, 0.36),
-        (2.86, 3.10, 0.16, 2.56, 0.26),
-        (3.54, 3.56, 0.18, 1.88, 0.17),
-        (4.02, 3.88, 0.20, 1.22, 0.10),
-    ]
+    if CYCLE >= 191:
+        # C190's wing was technically closed, but its flap lived inside the main planform and
+        # the root fairing had no section the chase could read.  This ladder gives the wing a
+        # deep inboard section, an actual carry-through, and a trailing flap behind a recessed
+        # slot; lower LODs retain those structural cues with fewer stations.
+        full = [
+            (1.18, 2.02, 0.16, 3.86, 0.78),
+            (1.46, 2.24, 0.18, 3.58, 0.66),
+            (2.08, 2.72, 0.20, 3.02, 0.50),
+            (2.78, 3.18, 0.21, 2.40, 0.34),
+            (3.46, 3.58, 0.21, 1.72, 0.22),
+            (4.02, 3.88, 0.20, 1.12, 0.12),
+        ]
+    else:
+        full = [
+            (1.34, 2.22, 0.09, 3.72, 0.52),
+            (1.72, 2.04, 0.11, 3.58, 0.46),
+            (2.22, 2.58, 0.13, 3.10, 0.36),
+            (2.86, 3.10, 0.16, 2.56, 0.26),
+            (3.54, 3.56, 0.18, 1.88, 0.17),
+            (4.02, 3.88, 0.20, 1.22, 0.10),
+        ]
     if lod == 1:
-        full = [full[index] for index in (0, 1, 3, 5)]
+        full = [full[index] for index in ((0, 1, 3, 5) if CYCLE < 191 else (0, 2, 4, 5))]
     elif lod == 2:
         full = [full[index] for index in (0, 3, 5)]
     rings = [MTX.densify_ring(airfoil_section(y * sign, x, z, chord, thick), 2 if lod == 0 else 1) for x, y, z, chord, thick in full]
     obj = MTX.loft_from_rings(name, rings, wing, collection, 0.012 if lod == 0 else 0.008, cap=True)
     append_lower_material(obj, underside, limit=0.0)
-    # The root fairing is also hull-colored and starts inside the pressure shell.  It leaves a
-    # continuous lifting shoulder instead of a detached triangular card.
-    root_rings = [
-        MTX.densify_ring(airfoil_section(1.12 * sign, 1.46, 0.08, 3.38, 0.64), 2),
-        MTX.densify_ring(airfoil_section(1.34 * sign, 1.34, 0.09, 3.72, 0.52), 2),
-        MTX.densify_ring(airfoil_section(1.72 * sign, 1.72, 0.11, 3.58, 0.46), 2),
-    ]
-    fairing = MTX.loft_from_rings(f"{name}_RootFairing", root_rings, wing, collection, 0.012, cap=True)
+    # The root fairing is a thick carry-through that begins inside the pressure shell.  A lighter
+    # hull-panel role at the first stations keeps the attachment legible instead of reading as a
+    # detached dark card.
+    if CYCLE >= 191:
+        root_rings = [
+            MTX.densify_ring(airfoil_section(0.82 * sign, 1.02, 0.16, 3.62, 0.84), 2),
+            MTX.densify_ring(airfoil_section(1.18 * sign, 1.18, 0.17, 3.72, 0.76), 2),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 1.52, 0.18, 3.54, 0.62), 2),
+        ]
+        root_material = mats["Material_HullPanel"]
+    else:
+        root_rings = [
+            MTX.densify_ring(airfoil_section(1.12 * sign, 1.46, 0.08, 3.38, 0.64), 2),
+            MTX.densify_ring(airfoil_section(1.34 * sign, 1.34, 0.09, 3.72, 0.52), 2),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 1.72, 0.11, 3.58, 0.46), 2),
+        ]
+        root_material = wing
+    fairing = MTX.loft_from_rings(f"{name}_RootFairing", root_rings, root_material, collection, 0.012, cap=True)
     append_lower_material(fairing, underside, limit=-0.02)
     bits = [obj, fairing]
     if lod < 2:
+        if CYCLE >= 191:
+            # At both stations the flap sits aft of the main trailing edge, leaving a real dark
+            # slot rather than an overlapping black patch hidden inside the wing footprint.
+            flap_specs = [
+                (2.24, -1.74, 0.76, 0.12, 0.14),
+                (3.40, 1.42, 0.48, 0.16, 0.10),
+            ]
+            slot = MTX.loft_from_rings(
+                f"{name}_FlapSlot",
+                [
+                    wing_slot_section(2.20 * sign, -1.82, 0.11, 0.12, 0.055),
+                    wing_slot_section(2.30 * sign, -1.66, 0.10, 0.12, 0.055),
+                    wing_slot_section(3.34 * sign, 1.40, 0.10, 0.15, 0.050),
+                    wing_slot_section(3.46 * sign, 1.54, 0.09, 0.15, 0.050),
+                ],
+                mats["Material_Gap"],
+                collection,
+                0.003,
+                cap=True,
+            )
+            bits.append(slot)
+        else:
+            flap_specs = [
+                (2.42, -0.58, 0.92, 0.15, 0.12),
+                (3.52, -0.44, 0.54, 0.18, 0.07),
+            ]
         flap = MTX.loft_from_rings(
             f"{name}_Flap",
-            [
-                MTX.densify_ring(airfoil_section(2.42 * sign, -0.58, 0.15, 0.92, 0.12), 1),
-                MTX.densify_ring(airfoil_section(3.52 * sign, -0.44, 0.18, 0.54, 0.07), 1),
-            ],
+            [MTX.densify_ring(airfoil_section(y * sign, x_le, z, chord, thick), 1) for y, x_le, chord, z, thick in flap_specs],
             underside,
             collection,
             0.004,
@@ -615,22 +813,44 @@ def add_canards(mats, collection, lod):
 
 
 def build_radiator(hull, mats, collection, lod):
-    ok = MTX.safe_boolean_cut(hull, f"RadiatorWell_{TAG}", (-1.15, 2.05, 0.55), (0.56, 0.42, 0.18))
+    if CYCLE >= 191:
+        # Move the service well onto the dorsal spine behind the cockpit.  The old starboard
+        # pocket lived beneath the wing crown and was technically real but invisible in chase.
+        well_loc = (-1.35, 0.38, 0.78)
+        well_scale = (0.74, 0.48, 0.25)
+        cassette_loc = (-1.35, 0.38, 0.66)
+        cassette_inner = (0.62, 0.34, 0.16)
+        fin_y = 0.63
+        fin_z = 0.86
+        fin_x0 = -1.86
+        fin_step = 0.17
+        fin_scale = (0.032, 0.22, 0.15)
+    else:
+        well_loc = (-1.15, 2.05, 0.55)
+        well_scale = (0.56, 0.42, 0.18)
+        cassette_loc = (-1.15, 2.10, 0.50)
+        cassette_inner = (0.48, 0.24, 0.13)
+        fin_y = 2.30
+        fin_z = 0.54
+        fin_x0 = -1.53
+        fin_step = 0.13
+        fin_scale = (0.035, 0.17, 0.14)
+    ok = MTX.safe_boolean_cut(hull, f"RadiatorWell_{TAG}", well_loc, well_scale)
     bits = []
     bits.extend(MTX.add_five_wall_tub(
         f"RadiatorCassette_{TAG}",
-        (-1.15, 2.10, 0.50),
-        (0.48, 0.24, 0.13),
+        cassette_loc,
+        cassette_inner,
         0.045,
         mats["Material_Gap"],
         collection,
     ) or [])
-    count = 7 if lod == 0 else (4 if lod == 1 else 0)
+    count = 7 if lod == 0 else (4 if lod == 1 else (3 if CYCLE >= 191 else 0))
     for index in range(count):
         bits.append(MTX.add_box(
             f"RadiatorFin_{TAG}_{index}",
-            (-1.53 + index * 0.13, 2.30, 0.54),
-            (0.035, 0.17, 0.14),
+            (fin_x0 + index * fin_step, fin_y, fin_z),
+            fin_scale,
             mats["Material_Radiator"],
             collection,
             0.002,
@@ -753,9 +973,12 @@ def build_lod(lod, mats):
         (-4.96, 2.20, 0.89, 0.10, 0.28, 0.30, 0.92),
     ]
     if lod == 1:
-        specs = [all_specs[index] for index in range(0, len(all_specs), 2)]
-        if specs[-1] != all_specs[-1]:
-            specs.append(all_specs[-1])
+        indices = (
+            (0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 18, 19)
+            if CYCLE < 191 else
+            (0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 19)
+        )
+        specs = [all_specs[index] for index in indices]
     else:
         specs = [all_specs[index] for index in (0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 19)]
 
@@ -765,7 +988,12 @@ def build_lod(lod, mats):
         # carry-through wings, cockpit, and twin drives own the silhouette.
         tapered = []
         for x, hw, hh, zc, flat, shoulder, keel in specs:
-            if CYCLE >= 189:
+            if CYCLE >= 191:
+                # Narrow the aft pressure shell into the raised drive houses so the transom is a
+                # tapered shoulder, not a rectangular cap hiding both mouths from chase.
+                width_scale = 0.58 if x < -4.2 else (0.64 if x < -3.4 else (0.74 if x < -1.8 else (0.90 if x < 0.6 else 0.96)))
+                height_scale = 0.76 if x < -4.2 else (0.82 if x < -3.4 else (0.90 if x < -2.2 else 0.96))
+            elif CYCLE >= 189:
                 width_scale = 0.78 if x < -1.8 else (0.90 if x < 0.6 else 0.96)
                 height_scale = 0.90 if x < -2.2 else 0.96
             else:
@@ -801,10 +1029,13 @@ def build_lod(lod, mats):
         if obj is not None and obj.name in bpy.data.objects:
             obj.parent = root
 
-    # Keep the continuous body dense enough for the historical hull-resolution guard while
-    # letting LOD1/2 remove the camera-subpixel hardware. The authored cross sections remain the
-    # shape; subdivision only supplies stable mid-poly shading and bake support.
-    MTX.subdivide_mesh(hull, 2 if lod == 0 else 3)
+    # Keep every LOD above the historical hull-resolution guard, but make the ladder genuinely
+    # cheaper: LOD0 carries the finest subdivision, while LOD1/2 retain enough shell resolution
+    # for the openings and silhouette with progressively fewer station samples.
+    if CYCLE >= 191:
+        MTX.subdivide_mesh(hull, {0: 4, 1: 3, 2: 2}[lod])
+    else:
+        MTX.subdivide_mesh(hull, 2 if lod == 0 else 3)
     sockets = MTX.sockets()
     for name, location in sockets.items():
         MTX.add_empty(name, location, collection, root)

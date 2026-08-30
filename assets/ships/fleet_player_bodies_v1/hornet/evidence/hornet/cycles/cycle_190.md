@@ -3,7 +3,7 @@
 **Counted:** yes as a full-job construction attempt; `REVISE` pending independent review, not
 accepted or wired.
 **Live retained:** C85 (`FDC3636BFC74FA0204D96AE0CE49A4F1D713AB040C74563CB07037B64EB37682`).
-**LOD0 sha256:** `AA8C98077309CB25950437D1C801F82732C4535AD2EC8A99938EC2F79C78F615`
+**LOD0 sha256:** `D2BD418C466E5F4D8EA938D39EC5729F7021029FC561C6CA8B4BE89F69E25BA8`
 **LOD0:** 12,714 hull triangles / 26,406 total triangles / 12,910,220 bytes.
 
 ## Full-job intent

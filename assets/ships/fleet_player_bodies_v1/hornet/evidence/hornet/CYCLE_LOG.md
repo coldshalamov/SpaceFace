@@ -167,6 +167,7 @@
 | 187 | yes | 2C18970F | REVISE | Set-back, raised cockpit excavation and controlled aft taper. The final corrected pass makes the canopy read in chase; material density still needs review. Not wired. |
 | 188 | yes | 2D7724A2 | REVISE | Dedicated dark wing crown and steel-blue hull value hierarchy make the carry-through planform legible. Not wired. |
 | 189 | yes | 83578368 | REVISE | More aggressive aft pressure-shell taper keeps the drive throats from reading as a rectangular pod. Not wired. |
-| 190 | yes | AA8C9807 | REVISE pending independent review | C189 form retained; hull/armor seam bands softened in unique basecolor/ORM/normal maps to reduce checkerboard aliasing while preserving UV0/UV1 density. Not wired. |
+| 190 | yes | D2BD418C | REVISE pending independent review | C189 form retained; hull/armor seam bands softened in unique basecolor/ORM/normal maps to reduce checkerboard aliasing while preserving UV0/UV1 density. Exact C190 evidence hash corrected. Not wired. |
+| 191 | yes | 3BA42DC9 | REVISE pending independent review | Chase correction: aft shell tapers into upward/rearward twin throat houses; cockpit is enlarged/set back; wings gain real root section/flap slot; dorsal radiator well moves into the chase read; LOD0/1/2 now strictly reduce. Not wired. |
 
 Hitch-plus / A-list: not independently established. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

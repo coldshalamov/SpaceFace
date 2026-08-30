@@ -31,7 +31,7 @@ Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras i
 
 C52 implements 1 + 3.
 
-## C186-C190 active candidate preflight
+## C186-C191 active candidate preflight
 
 The active lane freezes the live C85 identity and interfaces before form work:
 
@@ -40,33 +40,35 @@ The active lane freezes the live C85 identity and interfaces before form work:
 | Asset identity | `SF_HORNET_PRODUCTION_V1`, `hornet_production_v1`, player interceptor, +X forward; C85 remains wired/live. |
 | Runtime interface | Existing parts-library path, three LOD slots, socket map, collision envelope, and display-scale contract are unchanged. |
 | Source technique | Continuous chined pressure-shell loft with wing carry-through; no three-house reset, no cabin/seat kit, no Hitch/Kestrel edits. |
-| Canopy | Hull boolean excavation plus five-wall tub, raised open-bottom dark glass shell, thin metal frames. |
-| Drive | Two hull Boolean throat openings, proud flange, ceramic collar, soot bore, rooted vane star; no emissive disc. |
-| Wings | Closed airfoil loft with tapered thickness and root fairing; C188+ uses the dedicated armor role on the crown. |
-| Surface | Unique per-role UV0 basecolor/ORM/tangent-normal maps at 1024/512/512 plus UV1 tiled material detail; C190 only softens seam bands. |
+| Canopy | Hull Boolean excavation plus five-wall tub, enlarged/set-back raised open-bottom dark glass shell, four-sided metal frame. |
+| Drive | Two hull Boolean throat openings continued into upward/rearward tapered houses, proud flange, ceramic collar, soot bore, rooted vane star; no emissive disc. |
+| Wings | Closed airfoil loft with a deep inboard section, hull-panel carry-through fairing, and a real recessed trailing flap slot; C188+ uses the dedicated armor role on the crown. |
+| Surface | Unique per-role UV0 basecolor/ORM/tangent-normal maps at 1024/512/512 plus UV1 tiled material detail; C190 softened seam bands and C191 keeps the same density path. |
+| LOD ladder | C191 uses 45,802 / 31,194 / 18,046 total triangles and 60 / 49 / 36 draws; all hulls remain above the 12,000 technical floor. |
 | Supported evidence cameras | `play_chase` D=144, `play_chase_abeam` D=144, `play_chase_close` D=58; `grazing_close` and `drive_rear` are diagnostic only. |
 
 ### Visible-zone and material bill
 
 The pressure shell is cool steel-blue dielectric paint with faceted chines and restrained course
 seams. Hull panels carry a slightly darker blue-gray role. Wings/canards use a dark teal armor role
-with real section thickness; mechanical housings are dark metallic; drive collars are warm ceramic;
-canopy glass is opaque near-black with a clear frame boundary; cyan and red are limited service and
-warning marks. The hull, canopy, wing roots, radiator pocket, drive throats, hoses, repair patch,
-and stencil are all authored zones. No DCC-default material is retained as a quality decision.
+with a deep inboard section and visible carry-through; mechanical drive houses are dark metallic;
+drive collars are warm ceramic; canopy glass is opaque near-black with a four-sided frame boundary;
+the dorsal radiator cassette is a dark recessed service well. Cyan and red are limited service and
+warning marks. The hull, canopy, wing roots, radiator well, drive throats, hoses, repair patch, and
+stencil are all authored zones. No DCC-default material is retained as a quality decision.
 
 ### Gate status before independent review
 
 | Gate | Status |
 |---|---|
 | G0 identity/interfaces | `evidence_ready`; C85 frozen, no runtime promotion. |
-| G1 proportional fiction | `evidence_ready`; continuous shell/wing carry-through documented in C186-C190 records. |
-| G2 material truth | `evidence_ready`; per-role maps, ORM, tangent-normal, and UV1 detail generated; C190 seam correction documented. |
+| G1 proportional fiction | `evidence_ready`; continuous shell/wing carry-through and chase-visible primary openings documented in C186-C191 records. |
+| G2 material truth | `evidence_ready`; per-role maps, ORM, tangent-normal, and UV1 detail generated; C190 seam correction and C191 retained density documented. |
 | G3 technical/export | `evidence_ready`; all three LODs export, hull resolution guard passes, drive/canopy/radiator cuts report success. |
 | G4 whole-asset visual review | `blocked`; independent controller-owned chase review is still required and no self-acceptance is claimed. |
 | G5 runtime admission | `blocked`; promotion is intentionally withheld pending G4 and exact candidate acceptance. |
 
-The five full-job cycle records are `cycle_186.md` through `cycle_190.md`. Their stills are legal
+The six full-job cycle records are `cycle_186.md` through `cycle_191.md`. Their stills are legal
 chase captures, but these records do not close G4 or authorize wiring.
 
 ## C67 construction (face wells, no Exact boolean)
