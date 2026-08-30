@@ -5783,9 +5783,9 @@
       "priority": "P1",
       "file": "works/place_works_refinery.glb",
       "tris": 7442,
-      "bytes": 8294420,
+      "bytes": 8295200,
       "textureSize": 1024,
-      "note": "PQ-131.04 — authored one-cell Asteroid Works furnace-stack-tank refinery with explicit 7442/1840/560-triangle LODs. Runtime hooks: furnace_slit, stack_vent, lamp. Cycle 03 whole-asset top, edge, site, clay, matched-LOD, material-isolation, hook, and state-emission evidence independently reviewed KEEP against source SHA-256 1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0; release/runtime G6 and player-route G7 remain separate.",
+      "note": "PQ-131.04 — authored one-cell Asteroid Works furnace-stack-tank refinery with explicit 7442/1840/560-triangle LODs. Runtime hooks: furnace_slit, stack_vent, lamp. Cycle 03 visible LOD/map KEEP remains F5D1E2E3/F87B0C95/46DABCE9; combined export SHA-256 55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795 after repairing functional hook/collision TRS. Release/runtime G6 and player-route G7 remain separate.",
       "hooks": [
         "furnace_slit",
         "stack_vent",

@@ -1,8 +1,8 @@
 // PQ-131.04 — authored gallery Refinery release/runtime wire.
 //
-// The artifact checks bind release/package identity to the independently accepted source. The
-// behavior checks drive the shared Works loader so LOD selection, hook hierarchy, furnace heat,
-// lamp isolation, authored route selection, and idempotent retirement are exercised together.
+// Artifact checks bind release/package identity to the Cycle 03 visible LOD/maps and the
+// transform-corrected combined export. Behavior checks drive the shared Works loader so
+// functional anchors land on the charging well, lamp fixture, and flue outlet — not origin.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -27,6 +27,11 @@ const SOURCE_GLB = resolve(ROOT, 'assets/ships/parts/works/place_works_refinery.
 const SOURCE_LODS = [0, 1, 2].map((lod) => (
   resolve(ROOT, `assets/works/refinery/source/refinery_lod${lod}.glb`)
 ));
+const LOD0_MAPS = Object.freeze({
+  basecolor: resolve(ROOT, 'assets/works/refinery/source/textures/refinery_lod0_basecolor.png'),
+  normal: resolve(ROOT, 'assets/works/refinery/source/textures/refinery_lod0_normal.png'),
+  orm: resolve(ROOT, 'assets/works/refinery/source/textures/refinery_lod0_orm.png'),
+});
 const RELEASE_GLB = resolve(ROOT, 'assets/ships/release/parts/works/place_works_refinery.glb');
 const RELEASE_MANIFEST = resolve(ROOT, 'assets/ships/release/release_manifest.json');
 const PILOTS = resolve(ROOT, 'assets/ships/render-packages/pilots.json');
@@ -34,13 +39,30 @@ const PACKAGE_JSON = resolve(ROOT, 'assets/ships/release/render-packages/works-r
 const PACKAGE_GLB = resolve(ROOT, 'assets/ships/release/render-packages/works-refinery/render.glb');
 const MACHINE_FACTORY = resolve(ROOT, 'src/render/asteroidInteriorPreview.js');
 
-const EXPECTED_SOURCE_SHA = '1d0f648e023aed996a76be91255c869cbaf1554f3d25de9ead701f1bc62022c0';
+const EXPECTED_SOURCE_SHA = '55b35c4e28d23972e7e130bce35bd3d8a5aeec261ee022b992f5d1c490692795';
+const EXPECTED_SOURCE_BYTES = 8295200;
 const EXPECTED_LOD_SHA = Object.freeze([
   'f5d1e2e37351159919f8a9614e1a0384df06776c5f6a5714fd71e97bd91285a7',
   'f87b0c95768002b7d62d06cbb1e64db026e2679c7db016b0f1fc1d2b22d66ef6',
   '46dabce9edfc6504a135f2bd5abd5f86f2fe849fa8074faa96a50254c7770b1f',
 ]);
+const EXPECTED_LOD0_MAPS = Object.freeze({
+  basecolor: '1597e7002955ed41a8957a8e6362699f6fc1fd96a2bd4951c5baa008eb2e9452',
+  normal: '160fbd102019ca1ae49156c83c0c6a3191c9a869e17f163672a2b1cc7490162d',
+  orm: '554141cdaee28eb4b25e214c00e087739bbb91e61880c91260f72c536f364052',
+});
 const EXPECTED_LOD_TRIS = Object.freeze([7442, 1840, 560]);
+const EXPECTED_MARKERS = Object.freeze({
+  furnace_slit: [-0.2199999988079071, 0.2919999957084656, -0.03999999910593033],
+  stack_vent: [0.18000000715255737, 1.1200000047683716, -0.800000011920929],
+  lamp: [0.3100000023841858, 0.7400000095367432, -0.6499999761581421],
+});
+const EXPECTED_COLLISION_T = Object.freeze([0, 0.6000000238418579, 0]);
+const EXPECTED_COLLISION_S = Object.freeze([
+  1.0499999523162842,
+  0.6000000238418579,
+  1.0499999523162842,
+]);
 
 function json(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
@@ -59,6 +81,23 @@ function glbJson(path) {
 
 function vecFromMatrix(matrix) {
   return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(matrix));
+}
+
+function geomBox(metadata, suffix) {
+  const geo = metadata.geometry.find((entry) => String(entry.nodeId).endsWith(suffix));
+  assert.ok(geo, `package geometry includes ${suffix}`);
+  return new THREE.Box3(
+    new THREE.Vector3(...geo.bounds.min),
+    new THREE.Vector3(...geo.bounds.max),
+  );
+}
+
+function assertNearFeature(box, point, limit, label) {
+  const distance = box.distanceToPoint(point);
+  assert.ok(
+    distance <= limit,
+    `${label} must sit on its physical feature (distance ${distance}, limit ${limit})`,
+  );
 }
 
 function packageBlueprint(metadata) {
@@ -118,14 +157,17 @@ function injectedLease(blueprint) {
   };
 }
 
-test('the Refinery release and package remain bound to the accepted source and LODs', () => {
+test('the Refinery release and package remain bound to the accepted visible LODs', () => {
   const releaseManifest = json(RELEASE_MANIFEST);
   const release = releaseManifest.assets.find((row) => row.id === 'place_works_refinery');
   assert.ok(release, 'release manifest has the Refinery row');
   assert.equal(sha256(SOURCE_GLB), EXPECTED_SOURCE_SHA);
   assert.deepEqual(SOURCE_LODS.map(sha256), EXPECTED_LOD_SHA);
+  assert.equal(sha256(LOD0_MAPS.basecolor), EXPECTED_LOD0_MAPS.basecolor);
+  assert.equal(sha256(LOD0_MAPS.normal), EXPECTED_LOD0_MAPS.normal);
+  assert.equal(sha256(LOD0_MAPS.orm), EXPECTED_LOD0_MAPS.orm);
   assert.equal(release.sourceSha256, EXPECTED_SOURCE_SHA);
-  assert.equal(readFileSync(SOURCE_GLB).length, 8294420);
+  assert.equal(readFileSync(SOURCE_GLB).length, EXPECTED_SOURCE_BYTES);
   assert.equal(sha256(RELEASE_GLB), release.releaseSha256);
   assert.equal(readFileSync(RELEASE_GLB).length, release.releaseBytes);
   assert.equal(release.ktx2Textures, release.textures, 'every release texture is KTX2');
@@ -153,29 +195,55 @@ test('the Refinery release and package remain bound to the accepted source and L
     metadata.runtime.markers.map((marker) => marker.name).sort(),
     [...REFINERY_HOOKS].sort(),
   );
+  // Asteroid Works occupancy is the cell grid. This helper is the authored envelope in
+  // the GLB contract; the package compiler correctly emits no physics collision for it.
+  assert.deepEqual(metadata.collisions, []);
 });
 
-test('the Refinery release preserves collision and functional hook identities', () => {
+test('the Refinery release preserves non-identity collision and functional hook transforms', () => {
   const release = glbJson(RELEASE_GLB);
   const nodes = new Map((release.nodes || []).map((node) => [node.name, node]));
   const collision = nodes.get('COLLISION_HULL');
   assert.ok(collision, 'the non-render collision helper survives the release build');
   assert.equal(collision.mesh, undefined);
   assert.equal(collision.extras?.spaceface?.collision, true);
+  assert.deepEqual(collision.translation, EXPECTED_COLLISION_T);
+  assert.deepEqual(collision.scale, EXPECTED_COLLISION_S);
 
-  for (const name of REFINERY_HOOKS) {
+  for (const [name, expected] of Object.entries(EXPECTED_MARKERS)) {
     const node = nodes.get(name);
     assert.ok(node, `${name} survives the release build`);
     assert.equal(node.mesh, undefined, `${name} remains an empty functional transform`);
     assert.equal(node.extras?.spacefaceSocket, true);
+    assert.deepEqual(node.translation, expected, `${name} keeps its authored transform`);
+    assert.ok(
+      Math.hypot(...expected) > 0.05,
+      `${name} is not an identity/origin empty`,
+    );
   }
   assert.ok(nodes.get('LOD0_furnace_slit'));
   assert.ok(nodes.get('LOD0_lamp_lens'));
   assert.ok(nodes.get('LOD0_refinery'));
 });
 
-test('the shared Works loader exposes Refinery LODs, isolated furnace, and isolated lamp', async () => {
+test('package and runtime anchors land on the well, lamp fixture, and flue outlet', async () => {
   const metadata = json(PACKAGE_JSON);
+  const byMarker = new Map(metadata.runtime.markers.map((marker) => [marker.name, marker]));
+  const slitBox = geomBox(metadata, 'lod0-furnace-slit');
+  const lampBox = geomBox(metadata, 'lod0-lamp-lens');
+  const bodyBox = geomBox(metadata, 'lod0-refinery');
+
+  for (const [name, expected] of Object.entries(EXPECTED_MARKERS)) {
+    const marker = byMarker.get(name);
+    assert.ok(marker, `package records ${name}`);
+    const pos = vecFromMatrix(marker.matrix);
+    assert.ok(pos.distanceTo(new THREE.Vector3(...expected)) < 1e-6, `${name} package matrix is not identity`);
+  }
+  assertNearFeature(slitBox, vecFromMatrix(byMarker.get('furnace_slit').matrix), 0.02, 'furnace_slit');
+  assertNearFeature(lampBox, vecFromMatrix(byMarker.get('lamp').matrix), 0.03, 'lamp');
+  const vent = vecFromMatrix(byMarker.get('stack_vent').matrix);
+  assert.equal(bodyBox.containsPoint(vent), true, 'stack_vent sits on the authored flue, not the origin');
+
   const blueprint = packageBlueprint(metadata);
   const lease = injectedLease(blueprint);
   const loader = createWorksPartLoader({ renderer: mockRenderer(), lease });
@@ -184,12 +252,19 @@ test('the shared Works loader exposes Refinery LODs, isolated furnace, and isola
   assert.ok(source, 'Refinery resolves through the shared Works lease');
   assert.deepEqual(lease.loads, [WORKS_PARTS.refinery.lod0]);
   assert.equal(source.userData.worksPartId, 'refinery');
-  for (const name of REFINERY_HOOKS) {
-    assert.ok(source.userData.worksHooks[name], `${name} is exposed to the renderer`);
-  }
 
   const byName = new Map();
   source.traverse((obj) => { if (obj.name) byName.set(obj.name, obj); });
+  for (const [name, expected] of Object.entries(EXPECTED_MARKERS)) {
+    const hook = source.userData.worksHooks[name];
+    assert.ok(hook, `${name} is exposed to the renderer`);
+    hook.updateMatrixWorld(true);
+    const world = hook.getWorldPosition(new THREE.Vector3());
+    assert.ok(
+      world.distanceTo(new THREE.Vector3(...expected)) < 1e-5,
+      `${name} instantiated anchor is ${world.toArray()}, not the physical feature ${expected}`,
+    );
+  }
   for (const lod of [0, 1, 2]) {
     assert.equal(byName.get(`LOD${lod}_furnace_slit`).parent.name, 'furnace_slit');
     assert.equal(byName.get(`LOD${lod}_lamp_lens`).parent.name, 'lamp');
@@ -213,6 +288,13 @@ test('the shared Works loader exposes Refinery LODs, isolated furnace, and isola
   const sharedFurnaceMaterial = byName.get('LOD0_furnace_slit').material;
   const built = bindAuthoredRefinery(source);
   assert.equal(built.group.rotation.x, Math.PI / 2, 'Y-up glTF is seated into the XY cut plane');
+  built.group.updateMatrixWorld(true);
+  const seatedFurnace = built.dyn.furnaceAnchor.getWorldPosition(new THREE.Vector3());
+  const seatedLamp = built.dyn.lampAnchor.getWorldPosition(new THREE.Vector3());
+  const seatedVent = built.dyn.stackVent.getWorldPosition(new THREE.Vector3());
+  assert.ok(seatedFurnace.length() > 0.05, 'seated furnace light is not at the cell origin');
+  assert.ok(seatedLamp.length() > 0.05, 'seated lamp fixture is not at the cell origin');
+  assert.ok(seatedVent.length() > 0.05, 'seated stack vent is not at the cell origin');
   assert.notEqual(byName.get('LOD0_lamp_lens').material, sharedLampMaterial, 'lamp gets an instance material');
   assert.notEqual(byName.get('LOD0_furnace_slit').material, sharedFurnaceMaterial, 'furnace slit gets an instance material');
   assert.equal(byName.get('LOD0_refinery').material, staticMaterial, 'jacket/stack/tank keep the shared atlas');
@@ -230,7 +312,6 @@ test('the shared Works loader exposes Refinery LODs, isolated furnace, and isola
     );
   }
   assert.notEqual(staticMaterial.emissiveIntensity, 1.5, 'heat does not lift the shared atlas');
-  assert.ok(built.dyn.stackVent, 'stack_vent remains an authored empty at the flue outlet');
 
   assert.equal(loader.releaseWorksPart(source), true);
   assert.equal(loader.releaseWorksPart(source), false, 'duplicate async teardown is harmless');

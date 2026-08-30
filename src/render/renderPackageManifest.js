@@ -2014,12 +2014,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-refinery",
-    "expectedContentHash": "2b0b3606f5d262e13eb6f537b9311ca5dfa0a068ecb347cbe726d526da8202d2",
+    "expectedContentHash": "d127cb5c13d5c03441aff465dbdcd3a790221a0c49c19ba7843d7800a84f580e",
     "key": "works-refinery",
     "metadataUrl": "assets/ships/release/render-packages/works-refinery/render-package.json",
     "runtimeAssetId": "place_works_refinery",
     "slot": "place",
-    "sourceSha256": "7bbeea1d153b7d52ad07f94c1e274c637c051f3f0eddede14e5cddbc03e0e905",
+    "sourceSha256": "f612bfc5950039c1a740a7a93af235d0a6c21aeaa95fcc014c902566629ecb87",
     "sourceUrl": "assets/ships/release/parts/works/place_works_refinery.glb"
   }
 ];

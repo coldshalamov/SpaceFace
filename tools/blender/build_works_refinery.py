@@ -27,7 +27,7 @@ from pathlib import Path
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 TOOLS = Path(__file__).resolve().parent
 ROOT = TOOLS.parents[1]
@@ -78,6 +78,18 @@ TX, TY = 0.76, -0.28
 TANK_R, TANK_HALF = 0.148, 0.32
 PIPE_R = 0.020
 LAMP_LOC = (SX + 0.13, SY - 0.15, 0.74)
+COLLISION_LOC = (0.0, 0.0, 0.60)
+COLLISION_SCALE = (1.05, 1.05, 0.60)
+
+
+def blender_zup_to_gltf(vec):
+    x, y, z = (float(vec[0]), float(vec[1]), float(vec[2]))
+    return (x, z, -y)
+
+
+def blender_zup_scale_to_gltf(vec):
+    sx, sy, sz = (float(vec[0]), float(vec[1]), float(vec[2]))
+    return (sx, sz, sy)
 
 ROLES = (
     "structure",
@@ -837,10 +849,16 @@ def inflate_mesh(obj, amount):
 
 
 def parent_keep(obj, parent):
+    # Fresh empties do not report authored location through matrix_world until
+    # the dependency graph evaluates. The parent-inverse cancellation used in
+    # Cycle 03 preserved Blender world placement but exported hook/collision
+    # empties at identity while leaving mesh children at absolute coordinates.
+    # Runtime lights and site-register lamp scaling then pivoted at the origin.
+    bpy.context.view_layer.update()
     mw = obj.matrix_world.copy()
     obj.parent = parent
-    obj.matrix_parent_inverse = parent.matrix_world.inverted()
-    obj.matrix_world = mw
+    obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.matrix_basis = parent.matrix_world.inverted() @ mw
 
 
 def add_empty(name, loc, collection, parent=None, size=0.08):
@@ -848,12 +866,14 @@ def add_empty(name, loc, collection, parent=None, size=0.08):
     collection.objects.link(obj)
     obj.empty_display_type = "PLAIN_AXES"
     obj.empty_display_size = size
-    obj.location = loc
+    if parent is not None:
+        bpy.context.view_layer.update()
+        obj.parent = parent
+        obj.matrix_parent_inverse = Matrix.Identity(4)
+    obj.location = Vector(loc)
     obj["socket"] = True
     obj["spacefaceSocket"] = True
     obj["spaceface"] = {"socket": True, "role": "works_hook"}
-    if parent:
-        parent_keep(obj, parent)
     return obj
 
 
@@ -2071,7 +2091,24 @@ def stamp_glb_contract(path: Path, contract: dict) -> None:
     write_glb(path, gltf, rest)
 
 
-def inspect_glb(path: Path):
+def node_translation(node):
+    if "matrix" in node:
+        matrix = node["matrix"]
+        return [float(matrix[12]), float(matrix[13]), float(matrix[14])]
+    return [float(v) for v in (node.get("translation") or (0.0, 0.0, 0.0))]
+
+
+def node_scale(node):
+    if "matrix" in node:
+        matrix = node["matrix"]
+        sx = math.hypot(float(matrix[0]), float(matrix[1]), float(matrix[2]))
+        sy = math.hypot(float(matrix[4]), float(matrix[5]), float(matrix[6]))
+        sz = math.hypot(float(matrix[8]), float(matrix[9]), float(matrix[10]))
+        return [sx, sy, sz]
+    return [float(v) for v in (node.get("scale") or (1.0, 1.0, 1.0))]
+
+
+def inspect_glb(path: Path, hook_locs=None):
     gltf, _ = read_glb(path)
     nodes = gltf.get("nodes") or []
     meshes = gltf.get("meshes") or []
@@ -2079,6 +2116,7 @@ def inspect_glb(path: Path):
     accessors = gltf.get("accessors") or []
     lod_tris = {0: 0, 1: 0, 2: 0}
     lod_draws = {0: 0, 1: 0, 2: 0}
+    by_name = {n.get("name"): n for n in nodes}
     for node in nodes:
         name = node.get("name") or ""
         mesh_index = node.get("mesh")
@@ -2103,14 +2141,67 @@ def inspect_glb(path: Path):
             count = int(acc.get("count") or 0)
             lod_tris[lod] += count // 3
     hooks = {h: ("found" if h in names else "MISSING") for h in HOOK_NAMES}
+    hook_translations = {}
+    invalid_hook_translations = []
+    expected_hooks = {
+        name: blender_zup_to_gltf(loc)
+        for name, loc in (hook_locs or {}).items()
+        if name in HOOK_NAMES
+    }
+    for name in HOOK_NAMES:
+        node = by_name.get(name)
+        if node is None:
+            invalid_hook_translations.append({"name": name, "actual": None, "expected": list(expected_hooks.get(name) or [])})
+            continue
+        actual = node_translation(node)
+        hook_translations[name] = actual
+        if math.hypot(*actual) < 0.05:
+            invalid_hook_translations.append({
+                "name": name,
+                "actual": actual,
+                "expected": list(expected_hooks.get(name) or []),
+                "reason": "identity_or_origin",
+            })
+            continue
+        expected = expected_hooks.get(name)
+        if expected and any(abs(a - e) > 1e-4 for a, e in zip(actual, expected)):
+            invalid_hook_translations.append({
+                "name": name,
+                "actual": actual,
+                "expected": list(expected),
+            })
+    collision = by_name.get("COLLISION_HULL")
+    collision_translation = node_translation(collision) if collision else None
+    collision_scale = node_scale(collision) if collision else None
+    expected_collision_t = blender_zup_to_gltf(COLLISION_LOC)
+    expected_collision_s = blender_zup_scale_to_gltf(COLLISION_SCALE)
+    collision_ok = bool(
+        collision
+        and collision.get("mesh") is None
+        and collision_translation
+        and collision_scale
+        and all(abs(a - e) < 1e-4 for a, e in zip(collision_translation, expected_collision_t))
+        and all(abs(a - e) < 1e-4 for a, e in zip(collision_scale, expected_collision_s))
+    )
     return {
         "names": names,
         "hooks": hooks,
+        "hookTranslations": hook_translations,
+        "invalidHookTranslations": invalid_hook_translations,
+        "collisionTranslation": collision_translation,
+        "collisionScale": collision_scale,
+        "collisionOk": collision_ok,
         "root": ROOT_NAME if ROOT_NAME in names else None,
         "lodTriangles": lod_tris,
         "lodDraws": lod_draws,
         "materials": len(gltf.get("materials") or []),
         "nodes": len(nodes),
+        "ok": (
+            all(v == "found" for v in hooks.values())
+            and not invalid_hook_translations
+            and collision_ok
+            and ROOT_NAME in names
+        ),
     }
 
 
@@ -2620,6 +2711,7 @@ def combine_lods(lod_paths, hook_locs, lod_reports):
         "stack_vent": add_empty("stack_vent", hook_locs["stack_vent"], bpy.context.scene.collection, root, 0.07),
         "lamp": add_empty("lamp", hook_locs["lamp"], bpy.context.scene.collection, root, 0.06),
     }
+    bpy.context.view_layer.update()
     mesh_names = []
     lod_tri = {0: 0, 1: 0, 2: 0}
     for lod, path in enumerate(lod_paths):
@@ -2654,12 +2746,14 @@ def combine_lods(lod_paths, hook_locs, lod_reports):
     bpy.context.scene.collection.objects.link(chull)
     chull.empty_display_type = "CUBE"
     chull.empty_display_size = 1.0
-    chull.scale = Vector((1.05, 1.05, 0.60))
-    chull.location = Vector((0.0, 0.0, 0.60))
     chull["sf_collision"] = True
     chull["nonRender"] = True
     chull["spaceface"] = {"collision": True, "helper": True, "nonRender": True, "kind": "box"}
-    parent_keep(chull, root)
+    bpy.context.view_layer.update()
+    chull.parent = root
+    chull.matrix_parent_inverse = Matrix.Identity(4)
+    chull.location = Vector(COLLISION_LOC)
+    chull.scale = Vector(COLLISION_SCALE)
 
     contract = {
         "contractVersion": 1,
@@ -2754,7 +2848,18 @@ def combine_lods(lod_paths, hook_locs, lod_reports):
     }
     write_text_lf(SOURCE_DIR / "refinery_inventory.json", json.dumps(inventory, indent=2) + "\n")
     save_blend(SOURCE_DIR / "works_refinery.blend")
-    return inventory, contract, combined_works, combined_parts
+    inspection = inspect_glb(combined_parts, hook_locs)
+    if not inspection.get("ok"):
+        raise RuntimeError(
+            "combined export lost functional transforms: "
+            + json.dumps({
+                "invalidHookTranslations": inspection.get("invalidHookTranslations"),
+                "collisionTranslation": inspection.get("collisionTranslation"),
+                "collisionScale": inspection.get("collisionScale"),
+                "collisionOk": inspection.get("collisionOk"),
+            }, indent=2)
+        )
+    return inventory, contract, combined_works, combined_parts, inspection
 
 
 def run_visible_faces(glb: Path, json_out: Path):
@@ -2843,7 +2948,7 @@ def build_all():
         lod_paths.append(out)
         lod_reports.append(report)
 
-    inventory, contract, combined, parts = combine_lods(lod_paths, hook_locs, lod_reports)
+    inventory, contract, combined, parts, inspection = combine_lods(lod_paths, hook_locs, lod_reports)
     stills, pixel_facts = capture_stills(combined)
     still_hashes = {
         path.name: sha256(path)
@@ -2851,7 +2956,6 @@ def build_all():
     }
     vf_json = EVID_DIR / "works_visible_faces.json"
     vf_code, vf_path = run_visible_faces(parts, vf_json)
-    inspection = inspect_glb(parts)
 
     hashes = {
         "cycle": CYCLE,
@@ -2926,6 +3030,51 @@ def build_all():
     return epoch
 
 
+def recombine_from_accepted_lods():
+    """Rebuild only the combined export from frozen Cycle 03 LOD GLBs.
+
+    Does not regenerate meshes, textures, stills, or Cycle 01/02 evidence.
+    Hook locations come from the accepted Cycle 03 hookWorld record.
+    """
+    hashes_path = FAMILY / "HASHES.json"
+    hashes = json.loads(hashes_path.read_text(encoding="utf-8"))
+    epoch = json.loads((FAMILY / "evidence" / "cycle_003.json").read_text(encoding="utf-8"))
+    hook_locs = {name: tuple(epoch["hookWorld"][name]) for name in HOOK_NAMES}
+    lod_paths = []
+    lod_reports = []
+    for lod in (0, 1, 2):
+        row = hashes["lods"][f"lod{lod}"]
+        path = ROOT / row["path"]
+        digest = sha256(path)
+        if digest != row["sha256"]:
+            raise RuntimeError(f"accepted LOD{lod} hash drifted: {digest} != {row['sha256']}")
+        lod_paths.append(path)
+        lod_reports.append({"lod": lod, "triangles": row["triangles"], "path": row["path"], "sha256": digest})
+    inventory, _contract, _combined, parts, inspection = combine_lods(lod_paths, hook_locs, lod_reports)
+    hashes["partsSha256"] = sha256(parts)
+    hashes["sourceSha256"] = inventory["sha256"]
+    hashes["blendSha256"] = sha256(SOURCE_DIR / "works_refinery.blend")
+    hashes["builderSha256"] = sha256(Path(__file__))
+    hashes["hookGltfTranslations"] = inspection["hookTranslations"]
+    hashes["collisionGltf"] = {
+        "translation": inspection["collisionTranslation"],
+        "scale": inspection["collisionScale"],
+    }
+    write_text_lf(hashes_path, json.dumps(hashes, indent=2) + "\n")
+    print(json.dumps({
+        "ok": True,
+        "mode": "recombine",
+        "partsSha256": hashes["partsSha256"],
+        "sourceSha256": hashes["sourceSha256"],
+        "lodsUnchanged": {f"lod{i}": hashes["lods"][f"lod{i}"]["sha256"] for i in range(3)},
+        "hookTranslations": inspection["hookTranslations"],
+        "collisionTranslation": inspection["collisionTranslation"],
+        "collisionScale": inspection["collisionScale"],
+        "bytes": inventory["bytes"],
+    }, indent=2))
+    return inspection
+
+
 def main():
     args = argv_after()
     if "--contact-sheet-only" in args:
@@ -2935,7 +3084,12 @@ def main():
         return
     if "--inspect" in args:
         glb = PARTS_DIR / COMBINED_NAME
-        print(json.dumps(inspect_glb(glb), indent=2))
+        epoch = json.loads((FAMILY / "evidence" / "cycle_003.json").read_text(encoding="utf-8"))
+        hook_locs = {name: tuple(epoch["hookWorld"][name]) for name in HOOK_NAMES}
+        print(json.dumps(inspect_glb(glb, hook_locs), indent=2))
+        return
+    if "--recombine" in args:
+        recombine_from_accepted_lods()
         return
     build_all()
 
