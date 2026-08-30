@@ -19,5 +19,6 @@ and not a whole-asset G1/G2/G4 close.
   - B: WIRE_ALL (no floats)
   - C: WIRE_ALL (no floats)
   - Synthesis: admit only the unanimous pair. Tally / claim / ash / whistle stay released on disk.
-  - Wired release SHA-256: lane pin `c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45`; cold locker `fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25`
+  - Wired release SHA-256: lane pin `c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45`; cold locker `bc59994f9fc9b6e084571abefbacc01fd7b706298f442a6777c69afc6724abb8`
+  - 2026-08-30 package repair: generated semantic node names changed the cold-locker release hash without changing its visual payload.
 - **Gates:** G1/G2/G4 remain OPEN for the whole family. A selector admit is not a closed surfacing pass.

@@ -35,7 +35,7 @@ const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 
 const WIRED_LANE_FURNITURE_RELEASE_SHA256 = Object.freeze({
   place_lane_pin: 'c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45',
-  place_cold_locker: 'fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25',
+  place_cold_locker: 'bc59994f9fc9b6e084571abefbacc01fd7b706298f442a6777c69afc6724abb8',
 });
 
 // Still-rejected in 8257fd9e — packaged and kept on disk, but must not reach live traffic.

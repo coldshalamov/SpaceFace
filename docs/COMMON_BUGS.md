@@ -506,9 +506,9 @@ bounded tail of retired records so the reason survives the disposal that erases 
 (In this particular bug that tail came back empty, which was itself informative: stations never
 enter the prepared-boundary path at all. They are built by `_drainMeshBuildQueue`.)
 
-### Still red, for an unrelated reason — do not re-diagnose this as the station
+### Resolved downstream asset-package failure — do not re-diagnose this as the station
 
-With the station fixed the probe now runs past the Helios assertion and stops later, at
+Before the 2026-08-30 package-graph repair, the probe ran past the Helios assertion and stopped later, at
 `loaderDiagnostics.available`:
 
 ```
@@ -516,8 +516,8 @@ assets/ships/release/parts/places/place_cold_locker.glb violates the authored-pa
 - released part has no render package, and the source route is development-only.
 ```
 
-Three Helios lane-furniture places — `place_cold_locker`, `place_ash_pin`, `place_tally_post` — are
-unpackageable, so the runtime loader rejects them. `poi_helios_tally` sits at `(120, 180)`, about
+Three Helios lane-furniture places — `place_cold_locker`, `place_ash_pin`, `place_tally_post` — were
+unpackageable, so the runtime loader rejected them. `poi_helios_tally` sits at `(120, 180)`, about
 216 WU from spawn, so the starting sector requests one of them immediately.
 
 The cause is in the release build, not the authoring. Node counts, source vs release:
@@ -533,16 +533,16 @@ place_ash_pin              source  27 / 0 unnamed     release  28 / 1 unnamed   
 place_tally_post           source  31 / 0 unnamed     release  32 / 1 unnamed   <-- blocked
 ```
 
-Every place that packages cleanly round-trips its node count exactly. The three blocked ones each
-**gain** one node in the release build, and the gained node is the nameless one — it carries a mesh,
-a scale and a translation. The only structural transform in `build-sg04-release-assets.mjs` is
-`meshopt`, so that is where to look. **Re-running the release build will not fix this**, scoped with
-`--only <ids> --no-clean` or otherwise: the builder is what introduces the node, so a rebuild
-reproduces it. The builder needs to name what it creates.
+Every place that packaged cleanly round-tripped its node count exactly. The three blocked ones each
+**gained** one node in the release build, and the gained node was the nameless one — it carries a mesh,
+a scale and a translation. The 2026-08-30 fix makes `build-sg04-release-assets.mjs` name generated
+mesh nodes deterministically after its transforms. Cold locker now packages and remains live;
+tally post and ash pin are explicitly development-only until their held visual review is redone.
 
-`generate-render-package-pilots.mjs` then skips them — `semantic node names must be non-empty and
-unique (unnamed)` — and reports `all 113 release assets packaged`, because a skipped asset is not
-counted as missing. That is the same "green check encodes a false claim" shape as the filter above.
+`generate-render-package-pilots.mjs` used to skip them — `semantic node names must be non-empty and
+unique (unnamed)` — and then reported a false complete count. It now fails closed for every
+non-development release asset and reports 223 packaged production assets plus three explicit
+development-only exclusions.
 
 This predates the station fix and was simply masked by it: assertions run in order, and the Helios
 one is earlier in the file.
