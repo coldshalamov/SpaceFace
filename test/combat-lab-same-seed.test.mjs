@@ -170,6 +170,17 @@ test('buildSandboxLaunchConfig and requestSandboxGame forward the same seed twic
   assert.deepEqual(payloads[0].payload, payloads[1].payload);
 });
 
+test('Lagrange Combat Lab launch config targets its authored arena center', () => {
+  const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === 'lagrange_crucible');
+  assert.ok(arena, 'Lagrange Crucible must remain a Combat Lab arena');
+  const config = buildSandboxLaunchConfig({ scenarioId: 'combat-lab' }, {
+    combatLabSetup: toolkitSetup({ arenaId: arena.id }),
+  });
+  assert.equal(config.sectorId, 'sector_helios_prime');
+  assert.deepEqual(config.spawnPos, { x: -500, z: 800 });
+  assert.equal(config.combatLabSetup.arenaId, arena.id);
+});
+
 test('validated Combat Lab seed is present on the game:new payload', () => {
   const setup = toolkitSetup({ seed: 1 });
   const validated = validateCombatLabSetup(setup);
