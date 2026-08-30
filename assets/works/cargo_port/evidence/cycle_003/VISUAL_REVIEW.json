@@ -1,0 +1,70 @@
+{
+  "schema": "spaceface.worksCargoPortVisualReview.v1",
+  "assetId": "place_works_cargo_port",
+  "cycle": 3,
+  "candidateSha256": "6DD2D23C7948A52C90CE2966A3F851870997B79BFD6CF0235AE8CF139A13D377",
+  "reviewer": "cycle03_source_author",
+  "scope": "iteration_decision_not_gate_acceptance",
+  "originalResolutionInspection": true,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "viewsInspected": [
+    "works_top",
+    "works_edge",
+    "works_top_clay",
+    "works_edge_clay",
+    "works_top_grazing",
+    "works_top_normal",
+    "works_top_orm",
+    "works_top_matid",
+    "works_top_hooks",
+    "crate_stage_01",
+    "crate_stage_02",
+    "crate_stage_03",
+    "crate_stage_04",
+    "crate_stage_05",
+    "crate_stage_sheet",
+    "pod_seated_top",
+    "pod_seated_edge",
+    "pod_launch_clear_top",
+    "pod_launch_clear_edge",
+    "works_top_lod1",
+    "works_top_lod2",
+    "works_site",
+    "works_site_id",
+    "works_site_lod2"
+  ],
+  "changedZones": [
+    "keyed docking well through the pod cap, with rim wall thickness and dark floor",
+    "one manufactured open C-clamp flowing onto the +X apron lip",
+    "pod docking value zoning: rim darker than Cycle 02, well interior samples dark port oxide"
+  ],
+  "dominantRetainedZones": [
+    "horseshoe flange and +X loading throat",
+    "five additive XY crate footprints",
+    "+Z seated versus +1.55 wu launch-clear",
+    "hooks, envelope, LOD identity",
+    "Cycle 01 and Cycle 02 frozen evidence"
+  ],
+  "visibleSuccesses": [
+    "works_top and works_edge clay show a real keyed opening in the pod cap with inner walls, not a filled oval under a plate.",
+    "The cradle reads as one open C whose arms continue onto the apron lip at 120 px per cell.",
+    "Hottest measured luma on works_top lands on warm cradle/freight, not the docking face. The well is the dark depth cue with emission off.",
+    "LOD1 and LOD2 keep the well as a hole and the C-clamp planform.",
+    "Launch-clear stills keep the authored +Z climb; five crate stages remain additive unique footprints."
+  ],
+  "remainingVisibleRisks": [
+    "At 19 px per cell the five modules still collapse into one freight family even though port, pod, and cargo remain separate.",
+    "The keyed chord on the docking opening is a construction read at 120 px per cell and becomes subpixel in the site register.",
+    "G3 remains blocked: atlas normal/AO/curvature are not exact-mesh high/cage bakes."
+  ],
+  "technicalRisks": [
+    "The candidate is not wired, released, runtime-captured, or independently reviewed; G1, G2, G4, G6, and G7 remain open.",
+    "No named collision hull is authored; envelope is the measured source bbox only, same contract as Cycle 02."
+  ],
+  "decision": "source_cycle03_implemented",
+  "gatePassClaimed": false,
+  "independentReview": false
+}
