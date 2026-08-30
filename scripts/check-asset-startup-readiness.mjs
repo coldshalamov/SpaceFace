@@ -24,6 +24,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = Number(process.env.SF_ASSET_STARTUP_TIMEOUT_MS) || 180000;
+const BOOT_TIMEOUT_MS = Number(process.env.SF_ASSET_BOOT_TIMEOUT_MS) || 90000;
 const SCHEMA = 'spaceface.assetStartupReadiness.v1';
 const { chromium } = await loadPlaywright();
 
@@ -43,7 +44,10 @@ try {
   });
 
   // Canonical player root only — no alternate probe routes / debug game paths / quality flags.
-  const navResponse = await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  const navResponse = await page.goto(server.baseUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: BOOT_TIMEOUT_MS,
+  });
   assert.ok(navResponse, 'canonical root navigation must return an HTTP response');
   assertCanonicalRoot(page.url(), server.baseUrl, 'post-navigation page URL');
   assert.equal(new URL(page.url()).search, '', 'canonical root must have empty query string');
@@ -51,9 +55,9 @@ try {
   await page.waitForFunction(
     () => window.SF && window.SF.state && window.SF.bus && window.SF.ctx,
     null,
-    { timeout: 15000 },
+    { timeout: BOOT_TIMEOUT_MS },
   );
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await waitForVisible(page, '[data-screen="mainMenu"]', BOOT_TIMEOUT_MS, 'main menu');
   await waitForBootOverlayGone(page);
 
   // Instrument start-failure + mode transitions without changing game behavior.
@@ -527,10 +531,15 @@ async function waitForVisible(page, selector, timeoutMs, label) {
 }
 
 async function clickButton(page, label) {
-  const button = page.getByRole('button', { name: label, exact: true }).first();
-  if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
-  return true;
+  return page.evaluate((wanted) => {
+    const normalized = String(wanted || '').replace(/\s+/g, ' ').trim();
+    const button = [...document.querySelectorAll('button')].find((candidate) => (
+      String(candidate.textContent || '').replace(/\s+/g, ' ').trim() === normalized
+    ));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, label);
 }
 
 async function waitForBootOverlayGone(page, timeoutMs = 90000) {

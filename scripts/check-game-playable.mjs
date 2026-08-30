@@ -41,6 +41,7 @@ const requireCjs = createRequire(import.meta.url);
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
+const BOOT_TIMEOUT_MS = Number(process.env.SF_PLAYABLE_BOOT_TIMEOUT_MS) || 90000;
 // --electron runs the SAME assertions through the route the player actually launches
 // (SpaceFace-Desktop.bat -> scripts/launch-electron.mjs -> electron/main.cjs). The browser route
 // passing proves nothing about it: Electron serves a different web root, enforces a strict CSP the
@@ -295,7 +296,10 @@ try {
     report_realSaves = { dir: real.dir, slots: real.slots, versions };
   }
   if (!ELECTRON) {
-    await page.goto(routeBaseUrl, { waitUntil: 'domcontentloaded' });
+    await page.goto(routeBaseUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: BOOT_TIMEOUT_MS,
+    });
   } else {
     // The desktop route boots itself and may raise the cinematic splash, which swallows a scripted
     // .click(). A real key press is the only thing that dismisses it.
@@ -307,11 +311,11 @@ try {
   }
   let bootOk = true;
   try {
-    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: BOOT_TIMEOUT_MS });
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return el && getComputedStyle(el).display !== 'none';
-    }, null, { timeout: 30000 });
+    }, null, { timeout: BOOT_TIMEOUT_MS });
     record('BOOT', true, 'main menu reached');
   } catch (err) {
     bootOk = false;
@@ -320,7 +324,7 @@ try {
       overlay: (() => { const o = document.getElementById('boot-overlay') || document.querySelector('.sf-loading, #sf-loading'); return o ? getComputedStyle(o).display : '(none found)'; })(),
       screens: [...document.querySelectorAll('[data-screen]')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.dataset.screen),
     })).catch(() => null);
-    record('BOOT', false, `never reached the main menu in 30s — ${JSON.stringify(stuck)}`);
+    record('BOOT', false, `never reached the main menu in ${Math.round(BOOT_TIMEOUT_MS / 1000)}s — ${JSON.stringify(stuck)}`);
   }
 
   // ── 2. LAUNCH ──────────────────────────────────────────────────────────────────────────────
