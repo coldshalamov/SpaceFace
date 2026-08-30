@@ -1,0 +1,55 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 185,
+  "counted": true,
+  "controllerVerdict": "REJECT",
+  "promotion": false,
+  "liveUnchanged": true,
+  "techniqueDisposition": "RETIRE_SCRIPTED_RING_LOFT_AND_PARENTED_PRIMITIVES",
+  "candidate": {
+    "lod": 0,
+    "triangles": 10766,
+    "path": "evidence/hornet/cycles/cycle_185/candidates/hornet_production_v1_lod0.glb",
+    "bytes": 454660,
+    "sha256": "B6CA117F2713DCB617C1DBA5E88E0C0538B31BCEBD7DCEBB90D07C95DC5DD96B",
+    "size": [31.834, 20.148, 4.493],
+    "root": "HORNET_LOD0_ROOT",
+    "assetId": "SF_HORNET_PRODUCTION_V1",
+    "sockets": 11,
+    "emission": 0
+  },
+  "liveBaseline": {
+    "path": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
+    "bytes": 23545452,
+    "sha256": "FDC3636BFC74FA0204D96AE0CE49A4F1D713AB040C74563CB07037B64EB37682",
+    "size": [10.541, 7.1, 2.554],
+    "comparisonStills": "evidence/hornet/cycles/cycle_185/live_c85_compare"
+  },
+  "scaleFailure": {
+    "builderScale": 2.962962962962963,
+    "candidateToLiveLengthRatio": 3.02,
+    "verdict": "frozen visible envelope violated"
+  },
+  "reviews": [
+    {
+      "view": "play_chase",
+      "model": "cursor-grok-4.6-xhigh",
+      "chatId": "55abc0bb-6c45-4f69-9605-e0522b0b35fd",
+      "verdict": "REVISE"
+    },
+    {
+      "view": "play_chase_close",
+      "model": "cursor-grok-4.6-xhigh",
+      "chatId": "8bb84ff0-4a6f-4214-81a8-fc0b9689df7d",
+      "verdict": "REVISE"
+    },
+    {
+      "view": "play_chase_abeam",
+      "model": "cursor-grok-4.6-xhigh",
+      "chatId": "ae327710-5008-47e4-9ef4-51d8f43d1035",
+      "verdict": "REVISE"
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_185"
+}

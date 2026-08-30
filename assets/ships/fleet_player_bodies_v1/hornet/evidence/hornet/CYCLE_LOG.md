@@ -162,5 +162,6 @@
 | 182 | yes | 01EB9BCD | REVISE/REVISE/REVISE | Narrow visor is a sticker; sunk bells hid the wells from close. Not wired. |
 | 183 | yes | 690C2D58 | REVISE/REVISE/REVISE | Mid visor still a painted square; transom reads as a white cap. Not wired. |
 | 184 | yes | 2A1DB61D | REVISE/REVISE/REVISE | Wider cockpit lip + aft punches. Only 1.8/2.0/1.7% of ship pixels moved vs C183 - a visor nudge, not a full job. Not wired. |
+| 185 | yes | B6CA117F | REJECT/REVISE/REVISE/REVISE | Full three-house reset. Connected shell, canopy tub, and twin throats built; final picture still a box with attached wings, and visible length was 3.02x live. Retire this scripted ring-loft technique. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

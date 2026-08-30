@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "glb": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\release\\parts\\wholeships\\hornet_production_v1.glb",
+  "out": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare",
+  "focus": [
+    0.2795,
+    0.0,
+    0.0972
+  ],
+  "boundsMin": [
+    -4.991,
+    -3.55,
+    -1.18
+  ],
+  "boundsMax": [
+    5.55,
+    3.55,
+    1.3744
+  ],
+  "size": [
+    10.541,
+    7.1,
+    2.5544
+  ],
+  "lightScale": 0.976,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Accent",
+      "triangles": 216,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Armor",
+      "triangles": 5040,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 324,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Ceramic",
+      "triangles": 4280,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 24791,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 17184,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Radiator",
+      "triangles": 1944,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 2256,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 324,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 56359,
+  "stills": {
+    "play_chase.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare\\play_chase.png",
+    "play_chase_abeam.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare\\play_chase_close.png"
+  },
+  "clay": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare\\clay_play_chase.png",
+  "clayClose": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\live_c85_compare\\clay_play_chase_close.png"
+}

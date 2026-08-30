@@ -1,0 +1,432 @@
+{
+  "ok": true,
+  "glb": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\candidates\\hornet_production_v1_lod0.glb",
+  "out": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185",
+  "focus": [
+    0.637,
+    0.0,
+    0.6598
+  ],
+  "boundsMin": [
+    -14.963,
+    -11.1111,
+    -1.5511
+  ],
+  "boundsMax": [
+    16.237,
+    11.1111,
+    2.8706
+  ],
+  "size": [
+    31.2,
+    22.2222,
+    4.4216
+  ],
+  "lightScale": 2.8889,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Canard_Port",
+      "triangles": 180,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canard_Stbd",
+      "triangles": 180,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 396,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyFrameAft",
+      "triangles": 108,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyFrameFore",
+      "triangles": 108,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyFramePort",
+      "triangles": 108,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyFrameStbd",
+      "triangles": 108,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyTubFloor",
+      "triangles": 108,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyTubWallAft",
+      "triangles": 108,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyTubWallFore",
+      "triangles": 108,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyTubWallPort",
+      "triangles": 108,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_CanopyTubWallStbd",
+      "triangles": 108,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_DriveBore_Port",
+      "triangles": 188,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_DriveBore_Stbd",
+      "triangles": 188,
+      "materials": [
+        "Material_Soot"
+      ]
+    },
+    {
+      "name": "LOD0_DriveCeramic_Port",
+      "triangles": 212,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_DriveCeramic_Stbd",
+      "triangles": 212,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_DriveHub_Port",
+      "triangles": 276,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_DriveHub_Stbd",
+      "triangles": 276,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_DriveRim_Port",
+      "triangles": 236,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_DriveRim_Stbd",
+      "triangles": 236,
+      "materials": [
+        "Material_Frame"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_2",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_3",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_4",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_5",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_6",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Port_7",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_2",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_3",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_4",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_5",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_6",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_DriveVane_Stbd_7",
+      "triangles": 108,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Port",
+      "triangles": 180,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Flap_Stbd",
+      "triangles": 180,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_GunCheek_Port",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_GunCheek_Stbd",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 1040,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorBack",
+      "triangles": 108,
+      "materials": [
+        "Material_Gap"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_2",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_3",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_4",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_RadiatorFin_5",
+      "triangles": 108,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Port",
+      "triangles": 306,
+      "materials": [
+        "Material_Wing"
+      ]
+    },
+    {
+      "name": "LOD0_Wing_Stbd",
+      "triangles": 306,
+      "materials": [
+        "Material_Wing"
+      ]
+    },
+    {
+      "name": "LOD0_WingRib_Port_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_WingRib_Port_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_WingRib_Stbd_0",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_WingRib_Stbd_1",
+      "triangles": 108,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_WingRootFairing_Port",
+      "triangles": 196,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_WingRootFairing_Stbd",
+      "triangles": 196,
+      "materials": [
+        "Material_Hull"
+      ]
+    }
+  ],
+  "triangles": 9088,
+  "stills": {
+    "play_chase.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\play_chase.png",
+    "play_chase_abeam.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\play_chase_close.png"
+  },
+  "clay": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\clay_play_chase.png",
+  "clayClose": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\clay_play_chase_close.png"
+}
