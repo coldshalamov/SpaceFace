@@ -1,23 +1,20 @@
 """PQ-050.04 Ironback MTX builder. Hitch untouched. --mtx-cycle N writes exact-GLB chase stills.
 
-Cycle 32 is a source-only D=144 hierarchy correction from the Cycle 31
-independent REVISE. Cycle 31's one dorsal cut became a darker slot through
-an oxide loaf: three hopper drums collapsed to one trough, the pulse pair
-read as one hole, and the saw outclassed crusher and grab. This cycle keeps
-one industrial chassis but makes three separately readable process
-registers — three hopper hatch bays with hull bulkheads between drum
-crowns, two matched open pulse wells with no roof over port, and one tool
-rail/yard of four equal-class heads out of the wells. Preserve blunt
-salvage-barge role, 11 sockets, collision, legal occupancy/scale, oxide /
-dry ceramic / gunmetal truth, LOD monotonicity, and no camera / light /
-decal / emission / cabin cheats. Cycle 01–31 source and evidence stay
+Cycle 33 is a source-only D=144 crusher-pose correction from the Cycle 32
+independent REVISE. Hopper bays, matched pulse wells, saw, drill, hanging
+grab, cab/hull join, materials, camera, lighting, occupancy, sockets, and
+collision stay as Cycle 32. Only the crusher changes: its two opposed mill
+plates/jaws hang in open negative space on the near bow shoulder so both
+plates and the working gap count as one mill at native default chase, in
+the same visual class as the already-readable grab. Do not enlarge the saw
+or send the mill back under the bow. Cycle 01–32 source and evidence stay
 byte-for-byte untouched. Close occupancy is the locked +X length axis at
 41.28 WU under the derived D=58 band; do not shorten, dolly, hide
 geometry, or fake width.
 
 Usage::
 
-  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 32
+  blender --background --python tools/blender/build_ironback_mtx.py -- --mtx-cycle 33
 """
 
 from __future__ import annotations
@@ -62,7 +59,7 @@ from spaceface_chase_camera import (  # noqa: E402
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "ironback"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX = 1024
-CYCLE = 32
+CYCLE = 33
 ASSEMBLY_HULL_UNITS = 1.72
 IRONBACK_COLLISION_RADIUS = 24.0
 for i, tok in enumerate(sys.argv):
@@ -1315,7 +1312,9 @@ def add_cutter_arm(tag, root, out_sign, along, head, lod, mats, collection, repa
     if head == "saw":
         reach, out, lift = 0.92, 1.22, 0.42
     elif head == "crusher":
-        reach, out, lift = 0.88, 1.20, 0.40
+        # Outboard and slightly below the shoulder so the mill hangs in
+        # near-side negative space instead of running +X under the bow.
+        reach, out, lift = 1.16, 1.24, 0.06
     elif head == "drill":
         reach, out, lift = 0.86, 1.24, 0.34
     else:
@@ -1369,47 +1368,62 @@ def add_cutter_arm(tag, root, out_sign, along, head, lod, mats, collection, repa
             obj.select_set(False)
             apply_euler(obj, tilt)
     elif head == "crusher":
-        add_box(f"CrushHouse_{tag}", (hx - 0.06 * along, hy, hz + 0.18), (0.36, 0.40, 0.28), armor, collection, 0.005)
-        add_cylinder(f"CrushPivot_{tag}", (hx, hy, hz + 0.20), 0.20, 0.36, mech, collection, 12, 0.003, (0, 0, 0))
-        add_box(f"CrushWrist_{tag}", (hx - 0.10 * along, hy, hz + 0.10), (0.24, 0.28, 0.18), armor, collection, 0.004)
-        for jaw, y_sign in (("A", -1.0), ("B", 1.0)):
-            add_section_mesh(
-                f"MillPlate_{jaw}_{tag}",
-                [
-                    [
-                        (hx - 0.12 * along, hy + y_sign * 0.18, hz - 0.10),
-                        (hx - 0.12 * along, hy + y_sign * 0.40, hz - 0.10),
-                        (hx - 0.12 * along, hy + y_sign * 0.40, hz + 0.86),
-                        (hx - 0.12 * along, hy + y_sign * 0.18, hz + 0.86),
-                    ],
-                    [
-                        (hx + 1.18 * along, hy + y_sign * 0.22, hz - 0.06),
-                        (hx + 1.18 * along, hy + y_sign * 0.46, hz - 0.06),
-                        (hx + 1.18 * along, hy + y_sign * 0.46, hz + 0.82),
-                        (hx + 1.18 * along, hy + y_sign * 0.22, hz + 0.82),
-                    ],
-                ],
-                armor, collection, 0.006, cap=True,
-            )
-            add_section_mesh(
-                f"MillTooth_{jaw}_{tag}",
-                [
-                    [
-                        (hx + 0.08 * along, hy + y_sign * 0.16, hz + 0.12),
-                        (hx + 0.08 * along, hy + y_sign * 0.34, hz + 0.12),
-                        (hx + 0.08 * along, hy + y_sign * 0.34, hz + 0.66),
-                        (hx + 0.08 * along, hy + y_sign * 0.16, hz + 0.66),
-                    ],
-                    [
-                        (hx + 1.08 * along, hy + y_sign * 0.14, hz + 0.10),
-                        (hx + 1.08 * along, hy + y_sign * 0.32, hz + 0.10),
-                        (hx + 1.08 * along, hy + y_sign * 0.32, hz + 0.62),
-                        (hx + 1.08 * along, hy + y_sign * 0.14, hz + 0.62),
-                    ],
-                ],
-                ceramic, collection, 0.003, cap=True,
-            )
-        add_box(f"MillMouth_{tag}", (hx + 0.52 * along, hy, hz + 0.16), (0.32, 0.14, 0.10), thruster, collection, 0.002)
+        # Two mill plates hang outboard (+Y on ForeS) toward the chase camera.
+        # They face each other across X with an open-up working gap, so both
+        # plates and the mouth count at D=144. Do not run them +X under the bow.
+        add_box(
+            f"CrushHouse_{tag}",
+            (hx - 0.04 * along, hy - 0.10 * out_sign, hz + 0.10),
+            (0.28, 0.22, 0.18),
+            armor, collection, 0.005,
+        )
+        add_cylinder(f"CrushPivot_{tag}", (hx, hy + 0.04 * out_sign, hz + 0.16), 0.11, 0.52, mech, collection, 12, 0.003, (0, math.pi / 2, 0))
+        add_box(f"CrushWrist_{tag}", (hx - 0.08 * along, hy - 0.04 * out_sign, hz + 0.04), (0.20, 0.18, 0.14), armor, collection, 0.004)
+        out_len, thick, height, droop, lean = 1.18, 0.18, 0.76, 0.16, 0.26
+        gap0, gap1 = 0.12, 0.16
+        plate_t = (0.02, 0.40, 0.80, 1.18) if lod <= 1 else (0.02, 0.62, 1.18)
+        tooth_t = (0.10, 1.08) if lod <= 1 else (0.10, 1.08)
+        for jaw, x_sign in (("A", -1.0), ("B", 1.0)):
+            rings = []
+            for out_t in plate_t:
+                k = out_t / out_len
+                half = gap0 + (gap1 - gap0) * k
+                py = hy + out_t * out_sign
+                pz = hz - droop * k
+                xi_b = hx + x_sign * half
+                xo_b = hx + x_sign * (half + thick)
+                xi_t = hx + x_sign * (half + lean)
+                xo_t = hx + x_sign * (half + lean + thick)
+                rings.append([
+                    (xi_b, py, pz - 0.10),
+                    (xo_b, py, pz - 0.10),
+                    (xo_t, py, pz + height),
+                    (xi_t, py, pz + height),
+                ])
+            add_section_mesh(f"MillPlate_{jaw}_{tag}", rings, armor, collection, 0.006, cap=True)
+            liner = []
+            for out_t in tooth_t:
+                k = out_t / out_len
+                half = gap0 + (gap1 - gap0) * k
+                py = hy + out_t * out_sign
+                pz = hz - droop * k
+                xi = hx + x_sign * (half - 0.012)
+                xo = hx + x_sign * (half + 0.07)
+                xi_t = hx + x_sign * (half + lean - 0.012)
+                xo_t = hx + x_sign * (half + lean + 0.07)
+                liner.append([
+                    (xi, py, pz + 0.06),
+                    (xo, py, pz + 0.06),
+                    (xo_t, py, pz + height * 0.86),
+                    (xi_t, py, pz + height * 0.86),
+                ])
+            add_section_mesh(f"MillTooth_{jaw}_{tag}", liner, ceramic, collection, 0.003, cap=True)
+        add_box(
+            f"MillMouth_{tag}",
+            (hx, hy + 0.22 * out_sign, hz + 0.08),
+            (0.10, 0.16, 0.08),
+            thruster, collection, 0.002,
+        )
     elif head == "drill":
         add_cylinder(f"DrillHouse_{tag}", (hx, hy, hz + 0.04), 0.34, 0.40, armor, collection, 12, 0.005, (math.pi / 2, 0, 0))
         n = 8 if lod == 0 else 6
@@ -2290,7 +2304,7 @@ def main():
         "occupancy": occupancy,
         "stillSha256": identity["stillSha256"],
         "disposition": "revise",
-        "method": "hierarchy_register_correction",
+        "method": "crusher_pose_correction",
     }
     (FAMILY / "evidence" / "ironback").mkdir(parents=True, exist_ok=True)
     (FAMILY / "evidence" / "ironback" / f"cycle_{CYCLE:02d}.json").write_bytes((json.dumps(report, indent=2) + "\n").encode("utf-8"))
