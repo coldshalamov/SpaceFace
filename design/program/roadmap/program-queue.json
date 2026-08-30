@@ -6545,7 +6545,7 @@
       "priority": 301,
       "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.01"
       ],
@@ -6567,7 +6567,9 @@
         "npm run check:assets:live",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-02-massline-release-REPORT.md"
+      ],
       "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
     },
     {
@@ -6576,7 +6578,7 @@
       "priority": 302,
       "title": "Build the Massline express-liner render package",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.02"
       ],
@@ -6587,6 +6589,8 @@
       "paths": [
         "assets/ships/render-packages/pilots.json",
         "assets/ships/release/render-packages/massline-express-liner-v1/",
+        "assets/ships/release/render-packages/massline-express-liner-v1-lod1/",
+        "assets/ships/release/render-packages/massline-express-liner-v1-lod2/",
         "src/render/renderPackageManifest.js"
       ],
       "checks": [
@@ -6597,7 +6601,9 @@
         "npm run check:render-package-plan",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-03-massline-render-package-REPORT.md"
+      ],
       "brief": "Add the exact new release source to the pilot input and generate its shipping `massline-express-liner-v1` render package and generated runtime manifest through the sanctioned builder. Prove pilot, package, instance-plan, and no-fallback binding before any `express` selection changes."
     },
     {
@@ -6606,7 +6612,7 @@
       "priority": 303,
       "title": "Map only existing express traffic to the Massline express-liner",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-049.03"
       ],
@@ -6615,17 +6621,19 @@
       ],
       "paths": [
         "src/render/partsLibrary.js",
-        "test/massline-express-liner-runtime.test.mjs"
+        "test/pq049-massline-express-liner.test.mjs"
       ],
       "checks": [
-        "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
+        "node --test test/pq048-passenger-liner-service.test.mjs test/pq049-massline-express-liner.test.mjs",
         "npm run check:traffic",
         "npm run check:asset-status",
         "npm run check:asset-reachability",
         "npm run check:assets:live",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-04-massline-runtime-map-REPORT.md"
+      ],
       "brief": "After current writers release `partsLibrary.js`, add only the `express` entries to its traffic-role whole-ship file and asset-ID maps, then prove an existing passenger-only express record resolves the new release body. Do not touch `ship_mule`, traffic, itinerary, passenger custody, cargo/economy, or any other role mapping."
     },
     {
@@ -6653,7 +6661,7 @@
       "checks": [
         "npm run check:traffic",
         "npm run check:massline2:live",
-        "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
+        "node --test test/pq048-passenger-liner-service.test.mjs test/pq049-massline-express-liner.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
