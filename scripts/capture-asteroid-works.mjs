@@ -210,6 +210,20 @@ try {
   });
   if (!opened.ok) throw new Error('no live asteroid found for the works capture');
   await page.waitForFunction(() => !!window.SF.state.drill, null, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const h = document.querySelector('.ast-canvas')?.__ast3d;
+    return !!(h && typeof h.inclusionKit === 'function' && h.inclusionKit().ready);
+  }, null, { timeout: 30000 });
+  const inclusionKit = await page.evaluate(() => {
+    return document.querySelector('.ast-canvas').__ast3d.inclusionKit();
+  });
+  console.log('Inclusion Kit live binding:', JSON.stringify(inclusionKit));
+  if (!inclusionKit.sourceStanding || inclusionKit.authoredOre + inclusionKit.authoredGas <= 0) {
+    failures.push(`Inclusion Kit did not reach the live cell surface: ${JSON.stringify(inclusionKit)}`);
+  }
+  if (inclusionKit.fallbackOre || inclusionKit.fallbackGas) {
+    failures.push(`Inclusion Kit double-drew procedural fallback cells: ${JSON.stringify(inclusionKit)}`);
+  }
   await page.waitForTimeout(1200);
   await shot('01-cutaway-fresh.png');
 

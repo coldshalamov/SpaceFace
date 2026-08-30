@@ -69,6 +69,14 @@ import {
   recordWorksInstanceResources,
   resolveWorksConduitPiece,
 } from './worksPartLoader.js';
+import {
+  createWorksInclusionCatalog,
+  createWorksInclusionInstance,
+  releaseWorksInclusionInstance,
+  selectWorksInclusionVariant,
+  setWorksInclusionRegister,
+  worksInclusionFamilyForCommodity,
+} from './worksInclusionKit.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -3592,6 +3600,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let mkStampT = 0;             // 0..1 fade, 600ms per law §5
   let mkStampCell = -1;
   const gasByCell = new Map();  // idx -> { group, vapor, cracks, phase, baseScale, hot }
+  const authoredOreByCell = new Map();
+  let inclusionKitCatalog = null;
+  let authoredInclusionKitGroup = null;
+  let authoredMkStamp = null;
   const machines = new Map();   // machineId -> { group, defId, dyn, col, row, geoSig, arms, pulses }
   let ghost = null;             // { defId, group }
   let overlaySig = '';
@@ -3602,6 +3614,49 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let lastRevealCell = { col: -1, row: -1 };
   const timers = { gasFlash: 0, cargoFlash: 0 };
   let pulseEntries = [];        // [{mat, base, amp}] — rover + derrick
+
+  // One standing combined kit supplies every per-cell ore, gas, scar, and lock instance. The
+  // instances borrow its GPU resources and are always detached before the standing lease retires.
+  const authoredInclusionMount = createSingleFlightMount(async () => {
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    const group = await loader.loadStandingPart('inclusion_kit');
+    if (worksTearingDown || disposed || glTeardownDone) {
+      if (group) loader.releaseWorksPart(group);
+      return null;
+    }
+    if (!group) return null;
+    if (authoredInclusionKitGroup !== group) {
+      try {
+        inclusionKitCatalog = createWorksInclusionCatalog(group);
+      } catch (error) {
+        // loadStandingPart caches successful groups. A contract failure must evict that standing
+        // lease or every retry would inherit the same invalid group and its resources forever.
+        loader.releaseWorksPart(group);
+        throw error;
+      }
+      authoredInclusionKitGroup = group;
+    }
+    rebuildAuthoredInclusionPresentation();
+    return group;
+  });
+
+  function mountAuthoredInclusionKit() {
+    if (worksTearingDown || disposed || glTeardownDone) return Promise.resolve(null);
+    return authoredInclusionMount.invoke().catch((error) => {
+      console.error('[asteroidRenderer3d] authored Inclusion Kit load failed; procedural inclusions stand', error);
+      return null;
+    });
+  }
+
+  function releaseAuthoredInclusionKit() {
+    authoredInclusionMount.reset();
+    clearAuthoredInclusionInstances();
+    const group = authoredInclusionKitGroup;
+    authoredInclusionKitGroup = null;
+    inclusionKitCatalog = null;
+    if (group && worksLoader) worksLoader.releaseWorksPart(group);
+  }
 
   // ---------------------------------------------------------------- PQ-130.07 "the sim speaks"
   // Law §5: every sim event gets a BOARD expression with the law's own timings, and none of them
@@ -3745,6 +3800,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
   void mountAuthoredRover();
+  void mountAuthoredInclusionKit();
 
 
   // shared geometry that must survive per-cell group disposal
@@ -3826,6 +3882,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
   function setZoomRegister(reg) {
     if (worksLoader) worksLoader.setRegister(reg);
+    setAllAuthoredInclusionRegisters(reg);
     if (zoomRegister === reg && !zoomAnim) return;
     zoomRegister = reg;
     const to = reg === 'site' ? siteZoomK() : 1;
@@ -4152,6 +4209,115 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
+  function inclusionRotation(family, c, r, salt) {
+    const h = hash32(family, c, r, salt, 'rotation');
+    if (family === 'iron' || family === 'nickel' || family === 'silver' || family === 'gold') {
+      return (h % 4) * (Math.PI / 2);
+    }
+    return (h / 4294967296) * Math.PI * 2;
+  }
+
+  function makeAuthoredInclusion(family, c, r, z, salt = 'cell') {
+    if (!inclusionKitCatalog) return null;
+    const variant = selectWorksInclusionVariant({ family, col: c, row: r, salt });
+    const instance = createWorksInclusionInstance(inclusionKitCatalog, variant, zoomRegister);
+    instance.position.set(worldX(c), worldY(r), z);
+    instance.rotation.z = family === 'lock' ? 0 : inclusionRotation(family, c, r, salt);
+    instance.userData.worksInclusionCell = tileIndex(c, r);
+    return instance;
+  }
+
+  function setAllAuthoredInclusionRegisters(register) {
+    for (const instance of authoredOreByCell.values()) setWorksInclusionRegister(instance, register);
+    for (const rec of gasByCell.values()) {
+      if (rec.authored) setWorksInclusionRegister(rec.authored, register);
+    }
+    for (const scar of ventedScars.values()) {
+      if (scar.userData && scar.userData.worksInclusionShared) {
+        setWorksInclusionRegister(scar, register);
+      }
+    }
+    if (authoredMkStamp) setWorksInclusionRegister(authoredMkStamp, register);
+  }
+
+  function removeAuthoredOreAtIndex(idx) {
+    const instance = authoredOreByCell.get(idx);
+    if (!instance) return false;
+    authoredOreByCell.delete(idx);
+    releaseWorksInclusionInstance(instance);
+    return true;
+  }
+
+  function clearAuthoredOreInstances() {
+    for (const instance of authoredOreByCell.values()) releaseWorksInclusionInstance(instance);
+    authoredOreByCell.clear();
+  }
+
+  function clearAuthoredMkStamp() {
+    if (!authoredMkStamp) return;
+    releaseWorksInclusionInstance(authoredMkStamp);
+    authoredMkStamp = null;
+  }
+
+  function clearAuthoredInclusionInstances() {
+    clearAuthoredOreInstances();
+    for (const rec of gasByCell.values()) {
+      if (rec.authored) {
+        releaseWorksInclusionInstance(rec.authored);
+        rec.authored = null;
+      }
+    }
+    clearVentedScars();
+    clearAuthoredMkStamp();
+  }
+
+  // Swap the complete inclusion surface as one transaction. Until the standing kit is ready the
+  // procedural board remains playable; once ready, no cell double-draws the old and new shapes.
+  function rebuildAuthoredInclusionPresentation() {
+    if (!field || !inclusionKitCatalog || worksTearingDown || disposed || glTeardownDone) return;
+    const scarCells = [...ventedScars.keys()].map((idx) => ({
+      c: idx % COLS,
+      r: Math.floor(idx / COLS),
+    }));
+
+    clearAuthoredOreInstances();
+    for (const [, bucket] of oreBuckets) {
+      oreRoot.remove(bucket.mesh);
+      bucket.mesh.dispose();
+    }
+    oreBuckets = new Map();
+    oreCellIndex = new Map();
+    oreWakes.length = 0;
+
+    if (digGasHot) digGasHot = null;
+    for (const [, rec] of gasByCell) {
+      if (rec.authored) releaseWorksInclusionInstance(rec.authored);
+      gasRoot.remove(rec.group);
+    }
+    gasByCell.clear();
+    clearVentedScars();
+    if (mkStamp) {
+      oreRoot.remove(mkStamp);
+      mkStamp = null;
+    }
+    clearAuthoredMkStamp();
+    mkStampCell = -1;
+
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const tile = field[c] && field[c][r];
+        if (!tile) continue;
+        if (tile.type === 'gas') syncGasAt(c, r);
+        else if (tile.type === 'vein') syncOreAt(c, r);
+      }
+    }
+    // Loading the kit is a representation swap, not a fresh survey event: do not make every vein
+    // on an established board pop simultaneously when the async asset finishes decoding.
+    for (const instance of authoredOreByCell.values()) instance.scale.setScalar(1);
+    oreWakes.length = 0;
+    for (const cell of scarCells) addVentedScar(cell.c, cell.r);
+  }
+
   function oreBucketFor(oreId, locked) {
     const key2 = `${oreId}:${locked ? 1 : 0}`;
     let b = oreBuckets.get(key2);
@@ -4204,12 +4370,46 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const idx = tileIndex(c, r);
     const wanted = !!(tile && tile.type === 'vein' && tile.ore);
     const existing = oreCellIndex.get(idx);
+    const authoredExisting = authoredOreByCell.get(idx);
     if (!wanted) {
       if (existing) killOreInstance(existing);
+      if (authoredExisting) removeAuthoredOreAtIndex(idx);
       return;
     }
     const req = tile.tierReq || drillTierReqForOre(tile.ore);
     const locked = drillSys.getDrillTier() < req;
+    const authoredFamily = worksInclusionFamilyForCommodity(tile.ore);
+    if (inclusionKitCatalog && authoredFamily) {
+      if (existing) killOreInstance(existing);
+      const variant = selectWorksInclusionVariant({
+        family: authoredFamily,
+        col: c,
+        row: r,
+        salt: tile.ore,
+      });
+      if (authoredExisting
+          && authoredExisting.userData.worksInclusionVariant === variant
+          && authoredExisting.userData.worksInclusionOreId === tile.ore) {
+        authoredExisting.userData.worksInclusionLocked = locked;
+        return;
+      }
+      if (authoredExisting) removeAuthoredOreAtIndex(idx);
+      const instance = createWorksInclusionInstance(inclusionKitCatalog, variant, zoomRegister);
+      const rotZ = inclusionRotation(authoredFamily, c, r, tile.ore);
+      const z = padZ(c, r) - 0.035;
+      instance.position.set(worldX(c), worldY(r), z);
+      instance.rotation.z = rotZ;
+      instance.userData.worksInclusionCell = idx;
+      instance.userData.worksInclusionOreId = tile.ore;
+      instance.userData.worksInclusionLocked = locked;
+      instance.userData.worksInclusionFamily = authoredFamily;
+      oreRoot.add(instance);
+      authoredOreByCell.set(idx, instance);
+      if (!motionReduce) instance.scale.setScalar(0.25);
+      oreWakes.push({ instance, idx, scale: 1, t0: timeSNow });
+      return;
+    }
+    if (authoredExisting) removeAuthoredOreAtIndex(idx);
     const key2 = `${tile.ore}:${locked ? 1 : 0}`;
     if (existing && existing.bucket.key === key2) return;
     if (existing) killOreInstance(existing);
@@ -4242,12 +4442,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const idx = tileIndex(c, r);
     const existing = oreCellIndex.get(idx);
     if (existing) killOreInstance(existing);
+    removeAuthoredOreAtIndex(idx);
   }
 
   function removeGasAt(c, r) {
     const idx = tileIndex(c, r);
     const rec = gasByCell.get(idx);
     if (!rec) return;
+    if (rec.authored) releaseWorksInclusionInstance(rec.authored);
     gasRoot.remove(rec.group);
     gasByCell.delete(idx);
     if (digGasHot === rec) digGasHot = null;
@@ -4269,21 +4471,47 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const face = padZ(c, r);
     const group = new THREE.Group();
     group.position.set(worldX(c), worldY(r), 0);
-    // The dark centre — a socket the light cannot reach.
-    const core = new THREE.Mesh(gasCoreGeo, gasCoreMat);
-    core.position.z = face - 0.02;
-    core.rotation.z = rnd01(c, r, 'gk') * Math.PI * 2;
-    core.scale.setScalar(S);
-    group.add(core);
-    // Radial hairline fissures, seated on the pad so the raking key finds their flanks.
     const cracks = [];
-    const cm = new THREE.Mesh(gasCrackGeos[hash32(c, r, 'gcr') % gasCrackGeos.length], gasCrackMat);
-    cm.position.z = face - 0.012;
-    cm.rotation.z = rnd01(c, r, 'gcz') * Math.PI * 2;
-    cm.scale.setScalar(S);
-    cm.castShadow = true;
-    group.add(cm);
-    cracks.push(cm);
+    let core = null;
+    let authored = null;
+    if (inclusionKitCatalog) {
+      const variant = selectWorksInclusionVariant({ family: 'gas', col: c, row: r, salt: 'gas' });
+      authored = createWorksInclusionInstance(inclusionKitCatalog, variant, zoomRegister);
+      authored.position.set(0, 0, face - 0.025);
+      authored.rotation.z = inclusionRotation('gas', c, r, 'gas');
+      authored.userData.worksInclusionCell = idx;
+      group.add(authored);
+      // The accepted fissure is the resting shape. This old crack mesh is retained only as the
+      // brief hot-under-bit event overlay, hidden at rest, so the two representations never stack.
+      const hotCrack = new THREE.Mesh(
+        gasCrackGeos[hash32(c, r, 'gcr') % gasCrackGeos.length],
+        gasCrackHotMat,
+      );
+      hotCrack.position.z = face - 0.006;
+      hotCrack.rotation.z = rnd01(c, r, 'gcz') * Math.PI * 2;
+      hotCrack.scale.setScalar(S);
+      hotCrack.castShadow = true;
+      hotCrack.visible = false;
+      group.add(hotCrack);
+      cracks.push(hotCrack);
+    } else {
+      // Failure fallback: a dark socket and radial fissures keep the board playable and legible.
+      core = new THREE.Mesh(gasCoreGeo, gasCoreMat);
+      core.position.z = face - 0.02;
+      core.rotation.z = rnd01(c, r, 'gk') * Math.PI * 2;
+      core.scale.setScalar(S);
+      group.add(core);
+      const cm = new THREE.Mesh(
+        gasCrackGeos[hash32(c, r, 'gcr') % gasCrackGeos.length],
+        gasCrackMat,
+      );
+      cm.position.z = face - 0.012;
+      cm.rotation.z = rnd01(c, r, 'gcz') * Math.PI * 2;
+      cm.scale.setScalar(S);
+      cm.castShadow = true;
+      group.add(cm);
+      cracks.push(cm);
+    }
     // The breath: a small wisp that drifts, seeping out of the core.
     const vapor = new THREE.Mesh(gasVaporGeo, gasMat);
     vapor.position.z = face + 0.14;
@@ -4292,7 +4520,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     vapor.scale.set(baseScale, baseScale, baseScale * 0.55);
     group.add(vapor);
     gasRoot.add(group);
-    gasByCell.set(idx, { group, vapor, cracks, phase: rnd01(c, r, 'gp') * Math.PI * 2, baseScale, hot: false });
+    gasByCell.set(idx, {
+      group,
+      vapor,
+      cracks,
+      core,
+      authored,
+      phase: rnd01(c, r, 'gp') * Math.PI * 2,
+      baseScale,
+      hot: false,
+    });
   }
 
   // A blown pocket leaves a permanent scar (law §3.5 "vented pocket", D2 permanence). The sim clears
@@ -4301,17 +4538,24 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function addVentedScar(c, r) {
     const idx = tileIndex(c, r);
     if (ventedScars.has(idx)) return;
-    const m = new THREE.Mesh(ventedScarGeo, ventedMat);
-    m.position.set(worldX(c), worldY(r), Z.back + 0.07);
-    m.rotation.z = rnd01(c, r, 'vs') * Math.PI * 2;
-    m.scale.setScalar(S);
-    m.receiveShadow = true;
+    const m = inclusionKitCatalog
+      ? makeAuthoredInclusion('scar', c, r, Z.back + 0.07, 'vented-scar')
+      : new THREE.Mesh(ventedScarGeo, ventedMat);
+    if (!inclusionKitCatalog) {
+      m.position.set(worldX(c), worldY(r), Z.back + 0.07);
+      m.rotation.z = rnd01(c, r, 'vs') * Math.PI * 2;
+      m.scale.setScalar(S);
+      m.receiveShadow = true;
+    }
     gasRoot.add(m);
     ventedScars.set(idx, m);
   }
 
   function clearVentedScars() {
-    for (const [, m] of ventedScars) gasRoot.remove(m);
+    for (const [, m] of ventedScars) {
+      if (m.userData && m.userData.worksInclusionShared) releaseWorksInclusionInstance(m);
+      else gasRoot.remove(m);
+    }
     ventedScars.clear();
   }
 
@@ -6697,6 +6941,37 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       ? (tile.tierReq || drillTierReqForOre(tile.ore)) : 0;
     const locked = !!req && drillSys.getDrillTier() < req;
     const idx = locked ? tileIndex(aim.col, aim.row) : -1;
+    if (inclusionKitCatalog) {
+      if (mkStamp) {
+        oreRoot.remove(mkStamp);
+        mkStamp = null;
+      }
+      if (idx !== mkStampCell) {
+        mkStampCell = idx;
+        if (idx >= 0) {
+          clearAuthoredMkStamp();
+          authoredMkStamp = makeAuthoredInclusion(
+            'lock',
+            aim.col,
+            aim.row,
+            padZ(aim.col, aim.row) + 0.012,
+            'mk-lock',
+          );
+          authoredMkStamp.userData.worksInclusionTierReq = req;
+          authoredMkStamp.traverse((obj) => {
+            if (obj.isMesh) obj.renderOrder = 22;
+          });
+          oreRoot.add(authoredMkStamp);
+        }
+      }
+      const target = idx >= 0 ? 1 : 0;
+      mkStampT = Math.max(0, Math.min(1, mkStampT + (target ? dt / 0.6 : -dt / 0.2)));
+      if (authoredMkStamp) {
+        authoredMkStamp.visible = mkStampT > 0.015;
+        authoredMkStamp.scale.setScalar(0.86 + mkStampT * 0.14);
+      }
+      return;
+    }
     if (idx !== mkStampCell) {
       mkStampCell = idx;
       if (idx >= 0) {
@@ -6828,6 +7103,29 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         ventedScars: ventedScars.size,
         podFlight: podT,
         mkStamp: mkStampT,
+      };
+    },
+    inclusionKit() {
+      let authoredGas = 0;
+      let fallbackGas = 0;
+      for (const rec of gasByCell.values()) {
+        if (rec.authored) authoredGas += 1;
+        else fallbackGas += 1;
+      }
+      let authoredScars = 0;
+      for (const scar of ventedScars.values()) {
+        if (scar.userData && scar.userData.worksInclusionShared) authoredScars += 1;
+      }
+      return {
+        ready: !!inclusionKitCatalog,
+        sourceStanding: !!authoredInclusionKitGroup,
+        authoredOre: authoredOreByCell.size,
+        authoredGas,
+        authoredScars,
+        authoredLock: !!authoredMkStamp,
+        fallbackOre: oreCellIndex.size,
+        fallbackGas,
+        register: zoomRegister,
       };
     },
     // The contact ring each machine's clamp arms are actually built from THIS frame, read off the
@@ -7247,7 +7545,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function setGasHot(rec, hot) {
     rec.hot = hot;
-    for (const cm of rec.cracks) cm.material = hot ? gasCrackHotMat : gasCrackMat;
+    for (const cm of rec.cracks) {
+      if (rec.authored) cm.visible = hot;
+      else cm.material = hot ? gasCrackHotMat : gasCrackMat;
+    }
   }
 
   // ---------------------------------------------------------------- particles + floaters
@@ -7701,7 +8002,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     oreBuckets = new Map();
     oreCellIndex = new Map();
     oreWakes.length = 0;
-    for (const [, m] of gasByCell) gasRoot.remove(m.group);
+    clearAuthoredOreInstances();
+    for (const [, m] of gasByCell) {
+      if (m.authored) releaseWorksInclusionInstance(m.authored);
+      gasRoot.remove(m.group);
+    }
     gasByCell.clear();
     clearVentedScars();
     clearSeamAnnotations();
@@ -7711,6 +8016,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     mkStampCell = -1;
     mkStampT = 0;
     if (mkStamp) mkStamp.visible = false;
+    clearAuthoredMkStamp();
     for (const id of [...machines.keys()]) removeMachine(id);
     overlaySig = '';
     rebuildOverlays(null);
@@ -7806,6 +8112,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // Single-flight: joins the setup-time load if it is still in the air, no-ops once it stands,
     // and only re-arms after a genuine miss.
     void mountAuthoredRover();
+    void mountAuthoredInclusionKit();
 
     // ore capacity: survey can only reveal what the field already holds
     oreCaps = new Map();
@@ -8057,6 +8364,20 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // ore wake pops (the survey's reward beat)
     for (let i = oreWakes.length - 1; i >= 0; i--) {
       const w = oreWakes[i];
+      if (w.instance) {
+        if (authoredOreByCell.get(w.idx) !== w.instance) {
+          oreWakes.splice(i, 1);
+          continue;
+        }
+        const t = motionReduce ? 1 : (timeS - w.t0) / 0.24;
+        const k = t >= 1 ? 1 : (1 - Math.pow(1 - Math.max(0, t), 2));
+        const overshoot = t < 1 && !motionReduce
+          ? 1 + Math.sin(Math.min(1, t) * Math.PI) * 0.14
+          : 1;
+        w.instance.scale.setScalar(w.scale * (0.25 + 0.75 * k) * overshoot);
+        if (t >= 1) oreWakes.splice(i, 1);
+        continue;
+      }
       // the vein may have been drilled out mid-pop — never resurrect a killed instance
       if (!w.entry.bucket.cells.has(w.entry.idx)) { oreWakes.splice(i, 1); continue; }
       const t = motionReduce ? 1 : (timeS - w.t0) / 0.24;
@@ -8106,6 +8427,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // release through, which is why the old teardown branch could never fire.
     releaseAuthoredRover();
     releaseAuthoredDerrick();
+    releaseAuthoredInclusionKit();
     Promise.resolve(retireWorksAssets('works-screen-exit')).then(finishDispose, finishDispose);
   }
   function finishDispose() {
@@ -8113,7 +8435,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     glTeardownDone = true;
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();
-    for (const [, g] of gasByCell) gasRoot.remove(g.group);
+    for (const [, g] of gasByCell) {
+      if (g.authored) releaseWorksInclusionInstance(g.authored);
+      gasRoot.remove(g.group);
+    }
     gasByCell.clear();
     clearVentedScars();
     for (const id of [...machines.keys()]) removeMachine(id);

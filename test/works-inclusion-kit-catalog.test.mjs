@@ -154,6 +154,7 @@ test('per-cell instances recenter without mutating or taking ownership of source
   assert.equal(releaseWorksInclusionInstance(instance), true);
   assert.equal(instance.parent, null);
   assert.equal(instance.children.length, 0);
+  assert.equal(releaseWorksInclusionInstance(instance), false);
   assert.equal(releaseWorksInclusionInstance(new THREE.Group()), false);
 });
 

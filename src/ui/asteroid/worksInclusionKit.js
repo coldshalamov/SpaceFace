@@ -189,8 +189,10 @@ export function createWorksInclusionInstance(catalog, variant, register = 'work'
 /** Detach a clone without disposing the standing loader's shared geometry/material/texture set. */
 export function releaseWorksInclusionInstance(instance) {
   if (!instance || !instance.userData || !instance.userData.worksInclusionShared) return false;
+  if (instance.userData.worksInclusionReleased) return false;
   if (instance.parent) instance.parent.remove(instance);
   instance.clear();
   instance.userData.worksInclusionLodMeshes = [];
+  instance.userData.worksInclusionReleased = true;
   return true;
 }
