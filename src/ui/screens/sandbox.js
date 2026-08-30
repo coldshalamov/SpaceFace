@@ -128,7 +128,11 @@ function injectStyle() {
     padding: var(--sp-1) var(--sp-2); font-family: var(--sf-data-face); font-size: 13px; width: 100%;
   }
   .sf-sandbox-lab-seed { display: flex; gap: var(--sp-2); align-items: center; min-width: 0; }
-  .sf-sandbox-lab-seed input { flex: 1; min-width: 0; }
+  /* The generic menu input rule has no width. Reserve enough room for a replay seed beside Roll
+     so it cannot collapse into a token-sized box in the Lab form. */
+  .sf-sandbox-lab-seed input#sf-sandbox-lab-seed {
+    box-sizing: border-box; flex: 1 1 14ch; width: 100%; min-width: 14ch;
+  }
   .sf-sandbox-lab-status {
     font-size: 12px; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center;
   }
@@ -769,15 +773,16 @@ export const sandboxScreen = {
     }
     const telemetry = sandboxScreen._telemetryDispose;
     if (telemetry && typeof telemetry.resume === 'function') telemetry.resume();
+    const labControls = sandboxScreen._labControls;
+    if (labControls && typeof labControls.refresh === 'function') labControls.refresh();
   },
   onHide() {
     if (typeof sandboxScreen._telemetryDispose === 'function') {
       sandboxScreen._telemetryDispose();
     }
-    if (sandboxScreen._labControls && typeof sandboxScreen._labControls.dispose === 'function') {
-      sandboxScreen._labControls.dispose();
-      sandboxScreen._labControls = null;
-    }
+    // ScreenManager caches this DOM. Keep the controls' listeners while it is hidden so onShow()
+    // can refresh the existing Runtime controls after a Lab launch; mount() still disposes before
+    // replacing the host, so a true remount cannot duplicate listeners.
   },
   refresh() {},
 };

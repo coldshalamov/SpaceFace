@@ -323,6 +323,28 @@ function rendererProgramKeys(renderer) {
   }).filter(Boolean))];
 }
 
+/**
+ * The driver cache also carries warm programs for deferred/non-opening work. Require only the
+ * programs still bound to the exact opening draw subjects; Three may legitimately evict an unused
+ * warm program between the loading receipt and the first submit.
+ */
+function rendererProgramKeysForOpeningSubjects(renderer, subjects) {
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return rendererProgramKeys(renderer);
+  const keys = new Set();
+  let observed = false;
+  for (const subject of subjects || []) {
+    for (const material of materialList(subject)) {
+      const program = properties.get(material) && properties.get(material).currentProgram;
+      if (!program) continue;
+      observed = true;
+      if (program.cacheKey) keys.add(String(program.cacheKey));
+      else if (program.id != null) keys.add(`id:${program.id}`);
+    }
+  }
+  return observed ? [...keys].sort() : rendererProgramKeys(renderer);
+}
+
 function textureSourceIdentity(texture) {
   if (!texture) return null;
   const source = texture.source && texture.source.data;
@@ -1000,7 +1022,7 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     // Program subject keys select the exact leaves before compile. The actual driver cache keys
     // are only authoritative after Three has compiled those leaves, so the receipt captures the
     // real renderer census here instead of pretending a producer subject key is a driver key.
-    programCacheKeys: [...before.programCacheKeys].sort(),
+    programCacheKeys: rendererProgramKeysForOpeningSubjects(renderer, plan && plan.compileSubjects),
     geometryBufferIds: [...resourceIdentitySets.geometryBufferIds],
     blockingTextureIds: [...resourceIdentitySets.blockingTextureIds],
     shadowResourceIds: plan && Array.isArray(plan.shadowResources)

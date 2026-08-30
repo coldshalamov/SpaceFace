@@ -116,6 +116,33 @@ async function testCacheInvalidationCannotHideOwnedTask() {
   assert.equal(disposeCalls, 1);
 }
 
+function testEvictedRenderPackageTaskIsDroppedBeforeReadmission() {
+  assert.equal(typeof assetLoader.discardEvictedRenderPackageTask, 'function',
+    'assetLoader must expose the stale package-task boundary used by a repeated New Game');
+  if (typeof assetLoader.discardEvictedRenderPackageTask !== 'function') return;
+
+  const cacheKey = 'assets/ships/release/parts/wholeships/kestrel.glb::hull';
+  const staleTask = Promise.resolve({ renderPackage: { evicted: true } });
+  const replacementTask = Promise.resolve({ renderPackage: { evicted: false } });
+  const runtime = runtimeFixture();
+  runtime.assets.set(cacheKey, staleTask);
+
+  assert.equal(assetLoader.discardEvictedRenderPackageTask(
+    runtime, cacheKey, staleTask, { renderPackage: { evicted: true } },
+  ), true, 'a released Kestrel package must reopen its source-url task cache for the next player boundary');
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'the evicted task is removed so the canonical hash-bound pilot must be re-admitted');
+
+  runtime.assets.set(cacheKey, replacementTask);
+  assert.equal(assetLoader.discardEvictedRenderPackageTask(
+    runtime, cacheKey, staleTask, { renderPackage: { evicted: true } },
+  ), false, 'an older completion cannot erase a newer re-admission task');
+  assert.strictEqual(runtime.assets.get(cacheKey), replacementTask);
+  assert.equal(assetLoader.discardEvictedRenderPackageTask(
+    runtime, cacheKey, replacementTask, { renderPackage: { evicted: false } },
+  ), false, 'a resident package remains cached for the active boundary');
+}
+
 async function testRetirementWaitsForOwnedTasks() {
   assert.equal(typeof assetLoader.retireAuthoredAssetRuntime, 'function',
     'assetLoader must export the runtime retirement lifecycle');
@@ -423,6 +450,7 @@ await testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns();
 await testImmediateRetirementOwnsAdmittedTaskBeforeFactoryRuns();
 await testRetirementWaitsForOwnedTasks();
 await testCacheInvalidationCannotHideOwnedTask();
+testEvictedRenderPackageTaskIsDroppedBeforeReadmission();
 await testMixedSettlementAndIdempotentDecoderCleanup();
 testRetiringRuntimeRejectsNewTasks();
 await testRegistryRemovesMappingAndGuardsDisposal();

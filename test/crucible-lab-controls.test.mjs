@@ -590,6 +590,21 @@ test('Lab Step is disabled unless the screen-manager aggregate holds the sim', (
   });
 });
 
+test('cached Lab controls refresh from an inactive mount into a live Lab session', () => {
+  withFakeDocument(() => {
+    const { ctx, state } = makeCtx({
+      run: { kind: 'lab', phase: 'inactive', seed: 7, score: 0 },
+    });
+    const { host, handle } = mountLab(ctx);
+    const invulnerable = findRowChild(host, 'Invulnerable: off');
+    assert.equal(invulnerable.disabled, true, 'pre-launch session controls stay inert');
+
+    state.run = { kind: 'lab', phase: 'active', seed: 7, score: 0 };
+    handle.refresh();
+    assert.equal(invulnerable.disabled, false, 'cached session controls rearm after the live Lab begins');
+  });
+});
+
 function stubSimulationRunner(stepOnce) {
   const runner = {
     advance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
