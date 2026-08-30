@@ -29,7 +29,7 @@ export const TACTICAL_SYMBOLS = Object.freeze({
   }),
   hostile: Object.freeze({
     id: 'hostile', label: 'HOSTILE', shape: 'heading-chevron', colour: TACTICAL_MAP_PALETTE.hostile,
-    channel: 'directional chevron + selected fill + threat weight', priority: 80,
+    channel: 'filled directional chevron + selection ring + threat weight', priority: 80,
   }),
   station: Object.freeze({
     id: 'station', label: 'STATION', shape: 'berth-hex', colour: TACTICAL_MAP_PALETTE.station,
@@ -243,8 +243,8 @@ export function drawObjectiveCorridor(g, cue) {
 
   g.save();
   g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
-  g.lineWidth = corridorMode === 'full' ? 1.5 : 1.25;
-  g.globalAlpha = corridorMode === 'full' ? 0.72 : 0.54;
+  g.lineWidth = corridorMode === 'full' ? 1.75 : 1.4;
+  g.globalAlpha = corridorMode === 'full' ? 0.85 : 0.62;
   g.setLineDash([3, 6]);
   g.lineDashOffset = 0;
 
@@ -388,9 +388,12 @@ export function drawHostileGlyph(g, x, y, heading = null, {
   g.save();
   g.translate(x, y);
   if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
-  g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
-  g.fillStyle = selected ? TACTICAL_MAP_PALETTE.hostile : TACTICAL_MAP_PALETTE.groundPlate;
-  g.lineWidth = capital ? 2.2 : 1.7;
+  // Threats are always filled: a dark outline chevron disappears against a busy dial, and "can I
+  // see the danger" is the radar's primary job. Selection is carried by the target ring, so the
+  // glyph itself only needs a thin dark edge to stay crisp over bright scene bleed at the rim.
+  g.fillStyle = TACTICAL_MAP_PALETTE.hostile;
+  g.strokeStyle = selected ? TACTICAL_MAP_PALETTE.ink : 'rgba(5,12,16,0.85)';
+  g.lineWidth = selected ? 1.4 : 1;
   g.beginPath();
   g.moveTo(0, -5.2 * scale);
   g.lineTo(4.2 * scale, 4 * scale);
@@ -401,6 +404,7 @@ export function drawHostileGlyph(g, x, y, heading = null, {
   g.stroke();
   if (capital) {
     g.globalAlpha = 0.7;
+    g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
     g.lineWidth = 1;
     g.beginPath();
     g.moveTo(0, -8.4);

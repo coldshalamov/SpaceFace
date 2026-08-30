@@ -52,6 +52,11 @@ const RADAR_SPATIAL_MIN_ASTEROIDS = 96;
 const RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4;
 const MAX_SEMANTIC_HOSTILES = 32;
 const MAX_SEMANTIC_INFRASTRUCTURE = 20;
+// Asteroids are cartography, not contacts: the belt renders as a faint density field on a coarse
+// grid, and only the nearest few rocks earn individual dots. Hundreds of blips at 4 km scale read
+// as grey fog that drowns every real signal on the dial.
+const ASTEROID_FIELD_CELLS = 9;
+const ASTEROID_DOT_LIMIT = 14;
 
 const FACTION_COLOR = Object.freeze({
   faction_scn: '#4DA8FF',
@@ -166,7 +171,7 @@ function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
   g.lineWidth = 1;
   g.strokeStyle = colour;
   for (let i = 1; i < history.length; i += 1) {
-    g.globalAlpha = (i / history.length) * 0.34;
+    g.globalAlpha = (i / history.length) * 0.2;
     const x0 = center - (history[i - 1].x - playerX) * scale;
     const y0 = center - (history[i - 1].z - playerZ) * scale;
     const x1 = center - (history[i].x - playerX) * scale;
@@ -200,6 +205,7 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
   g.save();
   g.translate(x, y);
   if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
+  g.globalAlpha = selected ? 1 : 0.8;
   g.strokeStyle = colour;
   g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
   g.lineWidth = selected ? 1.8 : 1.35;
@@ -372,7 +378,7 @@ function drawObjectiveLabel(g, cue) {
   );
   g.fillStyle = 'rgba(5,12,16,0.95)';
   g.fillRect(placement.x, placement.y, placement.width, placement.height);
-  g.strokeStyle = 'rgba(255,192,100,0.82)';
+  g.strokeStyle = 'rgba(217,160,84,0.6)';
   g.lineWidth = 1;
   g.strokeRect(placement.x + 0.5, placement.y + 0.5, placement.width - 1, placement.height - 1);
   g.textAlign = 'left';
@@ -391,9 +397,21 @@ function drawRangePlate(g, metrics, range, expanded) {
   // The visible radar is a CIRCLE masked out of the square canvas (overflow:hidden on a 50%
   // radius box). A corner-anchored plate sits outside the inscribed circle, so the mask shears
   // it to "RANG". Inset the plate's outer corner onto the 45° chord with margin.
-  const inset = Math.round(metrics.size * 0.18);
+  // Anchor at the TOP-right: the bottom edge shares its lane with the command deck, which can
+  // cover the plate's tail mid-word. Verify the plate's outer corner sits inside the inscribed
+  // circle (the canvas is circle-masked) and grow the inset until it does.
+  let inset = Math.round(metrics.size * 0.18);
+  const radius = metrics.size / 2;
+  for (let i = 0; i < 40; i++) {
+    const cornerX = metrics.size - inset;
+    const cornerY = inset + height;
+    const dx = cornerX - radius;
+    const dy = cornerY - radius;
+    if (Math.hypot(dx, dy) <= radius - 4) break;
+    inset += 4;
+  }
   const x = metrics.size - width - inset;
-  const y = metrics.size - height - inset;
+  const y = inset;
   g.fillStyle = 'rgba(5,12,16,0.90)';
   g.fillRect(x, y, width, height);
   g.strokeStyle = 'rgba(174,183,182,0.42)';
@@ -425,9 +443,9 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
   g.clip();
-  g.fillStyle = 'rgba(255,84,112,0.045)';
-  g.strokeStyle = outside ? 'rgba(255,205,95,0.86)' : 'rgba(255,84,112,0.76)';
-  g.lineWidth = outside ? 1.6 : 1.25;
+  g.fillStyle = 'rgba(255,84,112,0.03)';
+  g.strokeStyle = outside ? 'rgba(255,205,95,0.68)' : 'rgba(255,84,112,0.58)';
+  g.lineWidth = outside ? 1.25 : 1;
   g.setLineDash(outside ? [7, 4] : [4, 5]);
   g.beginPath();
   g.arc(x, y, zoneRadius, 0, Math.PI * 2);
@@ -447,10 +465,11 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
 
 function drawBackground(g, center, radius) {
   g.clearRect(0, 0, center * 2, center * 2);
+  // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
   const gradient = g.createRadialGradient(center, center, 0, center, center, radius);
-  gradient.addColorStop(0, 'rgba(3,18,28,0.64)');
-  gradient.addColorStop(0.68, 'rgba(4,20,32,0.34)');
-  gradient.addColorStop(1, 'rgba(10,48,58,0.12)');
+  gradient.addColorStop(0, 'rgba(3,14,22,0.82)');
+  gradient.addColorStop(0.68, 'rgba(4,17,27,0.62)');
+  gradient.addColorStop(1, 'rgba(8,38,48,0.38)');
   g.fillStyle = gradient;
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
@@ -460,7 +479,7 @@ function drawBackground(g, center, radius) {
   g.beginPath();
   g.arc(center, center, radius, 0, Math.PI * 2);
   g.clip();
-  g.strokeStyle = 'rgba(57,208,255,0.10)';
+  g.strokeStyle = 'rgba(79,143,221,0.05)';
   g.lineWidth = 1;
   const step = radius / 3;
   for (let d = step; d <= radius; d += step) {
@@ -477,14 +496,14 @@ function drawBackground(g, center, radius) {
   }
   for (const fraction of [0.25, 0.5, 1]) {
     g.strokeStyle = fraction === 1
-      ? 'rgba(0,240,255,0.20)'
-      : 'rgba(0,240,255,0.10)';
+      ? 'rgba(0,240,255,0.16)'
+      : 'rgba(0,240,255,0.07)';
     g.lineWidth = fraction === 1 ? 1.25 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
-  g.strokeStyle = 'rgba(0,240,255,0.13)';
+  g.strokeStyle = 'rgba(0,240,255,0.09)';
   g.beginPath();
   g.moveTo(center, center - radius);
   g.lineTo(center, center + radius);
@@ -709,7 +728,7 @@ export function createRadar(ctx) {
     // One crisp sweep line preserves sensor motion without washing the entire instrument in bloom.
     const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
     g.save();
-    g.strokeStyle = 'rgba(99,243,255,0.20)';
+    g.strokeStyle = 'rgba(99,243,255,0.12)';
     g.lineWidth = 1;
     g.beginPath();
     g.moveTo(center, center);
@@ -748,7 +767,7 @@ export function createRadar(ctx) {
     const rangeRatio = rangeRingRatioForEntity(player, range);
     const weaponRingRadius = radius * rangeRatio;
     g.save();
-    g.strokeStyle = 'rgba(99,243,255,0.18)';
+    g.strokeStyle = 'rgba(99,243,255,0.13)';
     g.lineWidth = 1;
     g.setLineDash([3, 4]);
     g.beginPath();
@@ -774,9 +793,9 @@ export function createRadar(ctx) {
     }
 
     let targetAsteroid = null;
-    g.save();
-    g.globalAlpha = 0.38;
-    g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
+    const fieldCellPx = size / ASTEROID_FIELD_CELLS;
+    const fieldCells = new Map();
+    const nearRocks = [];
     for (let i = 0; i < asteroidSource.length; i += 1) {
       const entity = asteroidSource[i];
       if (
@@ -789,12 +808,44 @@ export function createRadar(ctx) {
       ) continue;
       const dx = entity.pos.x - playerX;
       const dz = entity.pos.z - playerZ;
-      if (dx * dx + dz * dz > rangeSq) continue;
+      const distanceSq = dx * dx + dz * dz;
+      if (distanceSq > rangeSq) continue;
       const x = center - dx * radarScale;
       const y = center - dz * radarScale;
-      drawAsteroidBlip(g, x, y);
+      const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
+      const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
+      const key = gy * ASTEROID_FIELD_CELLS + gx;
+      fieldCells.set(key, (fieldCells.get(key) || 0) + 1);
+      if (
+        nearRocks.length < ASTEROID_DOT_LIMIT
+        || distanceSq < nearRocks[nearRocks.length - 1].distanceSq
+      ) {
+        nearRocks.push({ x, y, distanceSq });
+        nearRocks.sort((a, b) => a.distanceSq - b.distanceSq);
+        if (nearRocks.length > ASTEROID_DOT_LIMIT) nearRocks.length = ASTEROID_DOT_LIMIT;
+      }
       if (entity.id === targetId) targetAsteroid = { x, y };
     }
+    if (fieldCells.size) {
+      g.save();
+      g.beginPath();
+      g.arc(center, center, radius, 0, Math.PI * 2);
+      g.clip();
+      g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
+      for (const [key, count] of fieldCells) {
+        const gx = key % ASTEROID_FIELD_CELLS;
+        const gy = (key - gx) / ASTEROID_FIELD_CELLS;
+        g.globalAlpha = Math.min(0.13, 0.03 + count * 0.011);
+        g.beginPath();
+        g.arc((gx + 0.5) * fieldCellPx, (gy + 0.5) * fieldCellPx, fieldCellPx * 0.58, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.restore();
+    }
+    g.save();
+    g.globalAlpha = 0.55;
+    g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
+    for (const rock of nearRocks) drawAsteroidBlip(g, rock.x, rock.y);
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
@@ -1116,7 +1167,7 @@ function drawContactThreatPulse(g, x, y, selected, now, reducedMotion) {
   const phase = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
   g.save();
   g.strokeStyle = TACTICAL_MAP_PALETTE.hostile;
-  g.globalAlpha = selected ? 0.75 : 0.28 + 0.28 * phase;
+  g.globalAlpha = selected ? 0.6 : 0.16 + 0.18 * phase;
   g.lineWidth = selected ? 1.5 : 1;
   g.beginPath();
   g.arc(x, y, selected ? 9.5 : 8 + phase * 2, 0, Math.PI * 2);

@@ -132,7 +132,7 @@ const checks = [
       'drawWaypointEdgeArrow',
       'waypointLabel',
       "strokeText('?'",
-      'nearestOffScreenHostile',
+      'nearestOffRangeHostile',
     ],
   },
   {
