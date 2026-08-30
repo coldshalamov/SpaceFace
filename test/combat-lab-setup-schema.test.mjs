@@ -285,4 +285,7 @@ test('Combat Lab catalogs are frozen, unique, and cite only live ids', () => {
       `arena ${arena.id} spawnPos (${arena.spawnPos.x}, ${arena.spawnPos.z}) matches an authored zone center in ${arena.sectorId}`,
     );
   }
+
+  const lagrange = SECTOR_ZONES.sector_helios_prime.find((zone) => zone.id === 'zone_helios_lagrange');
+  assert.deepEqual(lagrange?.center, { x: -500, z: 800 });
 });
