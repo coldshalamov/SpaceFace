@@ -741,10 +741,10 @@ function injectCommsCss() {
     border:1px solid rgba(147,174,195,.34); border-radius:2px 0 0 2px; color:#aebdce;
     font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
     transition:color .12s, border-color .12s; text-shadow:none; }
-  .sf-comm-backlog-btn:hover { border-color:#7fb3e6; color:#e7edf5; }
-  .sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:#7fb3e6;
+  .sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:#e7edf5; }
+  .sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd);
     animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
-  @keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(131,206,216,.15); } to { box-shadow:inset 0 -2px #7fb3e6; } }
+  @keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(79,143,221,.15); } to { box-shadow:inset 0 -2px var(--accent,#4f8fdd); } }
   .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
     width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
     background:rgba(4,9,18,.96); border:1px solid var(--accent); border-radius:9px; box-shadow:0 10px 50px rgba(0,0,0,.7);

@@ -1935,19 +1935,19 @@ export function createHud(ctx, alerts) {
     .sf-tell {
       position:absolute; left:0; top:0; display:none; align-items:center; gap:6px;
       max-width:min(42vw, 280px); padding:5px 10px 5px 8px; border-radius:4px;
-      background:rgba(5,9,18,.88); border:1px solid rgba(255,92,92,.55);
+      background:rgba(5,9,18,.88); border:1px solid rgba(217,95,106,.55);
       color:var(--ink, #d7e6ff); font-family:var(--mono, Consolas, monospace);
       font-size:12px; letter-spacing:.04em; line-height:1.2; white-space:nowrap;
       will-change:transform, opacity; opacity:0;
       box-shadow:0 2px 10px rgba(0,0,0,.35);
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
-    .sf-tell--FLYBY { border-color:rgba(255,92,92,.7); }
-    .sf-tell--TETHER { border-color:rgba(255,179,92,.7); }
-    .sf-tell--CHARGE { border-color:rgba(255,92,92,.7); }
+    .sf-tell--FLYBY { border-color:rgba(217,95,106,.7); }
+    .sf-tell--TETHER { border-color:rgba(217,160,84,.7); }
+    .sf-tell--CHARGE { border-color:rgba(217,95,106,.7); }
     .sf-tell__icon { font-size:12px; opacity:.95; flex:0 0 auto; }
-    .sf-tell__kind { font-weight:700; letter-spacing:.06em; font-size:12px; color:#ff5c5c; }
-    .sf-tell--TETHER .sf-tell__kind { color:#ffb35c; }
+    .sf-tell__kind { font-weight:700; letter-spacing:.06em; font-size:12px; color:var(--sf-foe,#d95f6a); }
+    .sf-tell--TETHER .sf-tell__kind { color:var(--sf-goal,#d9a054); }
     .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:12px;
       text-transform:none; overflow:hidden; text-overflow:ellipsis; }
     .sf-tell__dir { color:rgba(215,230,255,.9); font-size:12px; margin-left:2px; flex:0 0 auto; }

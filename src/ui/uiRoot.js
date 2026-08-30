@@ -1596,11 +1596,11 @@ function injectHudCss() {
      leaves the camera. The attached plate repeats the same GOAL identity as the tracker/radar and
      goes compact when the projected target passes behind a persistent HUD anchor. */
   .sf-objarrow { position:absolute; left:0; top:0; width:16px; height:16px; z-index:11;
-    pointer-events:none; will-change:transform; filter:drop-shadow(0 0 5px rgba(255,179,92,.5)); }
+    pointer-events:none; will-change:transform; filter:drop-shadow(0 0 5px rgba(223,160,84,.5)); }
   .sf-objarrow__glyph { position:absolute; left:50%; top:50%; display:block; }
   .sf-objarrow--onscreen .sf-objarrow__glyph { width:14px; height:14px;
     transform:translate(-50%,-50%) rotate(45deg); border:2px solid #fff;
-    background:rgba(255,179,92,.26); box-shadow:0 0 0 2px var(--visor-amber); }
+    background:rgba(223,160,84,.26); box-shadow:0 0 0 2px var(--visor-amber); }
   .sf-objarrow--edge .sf-objarrow__glyph { width:0; height:0;
     transform:translate(-50%,-50%) rotate(var(--sf-arrow-angle, 0rad));
     border-style:solid; border-width:7px 0 7px 12px;
@@ -2076,11 +2076,11 @@ function injectHudCss() {
   .sf-sch-ship--empty .sf-sch-hull .sx-shipmark__cut,
   .sf-sch-ship--empty .sf-sch-hull .sx-shipmark__battery { stroke-opacity:.45; }
   .sf-sch-ship--fill .sf-sch-hull {
-    fill:color-mix(in srgb, var(--hud-cyan, #4ec3e6) 22%, transparent);
-    stroke:var(--hud-cyan, #4ec3e6); stroke-width:1.2;
+    fill:color-mix(in srgb, var(--hud-cyan, #4f8fdd) 22%, transparent);
+    stroke:var(--hud-cyan, #4f8fdd); stroke-width:1.2;
   }
   .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__cut { fill:none; stroke-opacity:.7; }
-  .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__battery { fill:var(--hud-cyan, #4ec3e6); stroke:none; }
+  .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__battery { fill:var(--hud-cyan, #4f8fdd); stroke:none; }
   .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__sensor { fill:var(--hud-paper, #e7edf5); stroke:none; }
   /* Damage state is carried by the stroke colour of the hull you have left, not by a wash over the
      whole instrument -- the word CRITICAL is already printed alongside for forced-colors. */
@@ -2133,10 +2133,12 @@ function injectHudCss() {
   .sf-bar { width:100%; height:3px; background:rgba(164,181,197,.13); border-radius:1px; overflow:hidden; }
   .sf-bars .sf-bar { overflow:visible; }  /* only ship-condition gauges let their glow escape */
   .sf-bar__fill { border-radius:1px; box-shadow:none; }
-  .sf-bar--energy .sf-bar__fill { background:#4ec3e6; box-shadow:0 0 8px -2px #4ec3e6; }
-  .sf-bar--boost .sf-bar__fill { background:#a08cf0; box-shadow:0 0 8px -2px #a08cf0; }
-  .sf-bar--heat .sf-bar__fill { background:#ff8a4a; box-shadow:0 0 8px -2px #ff8a4a; }
-  .sf-bar--fuel .sf-bar__fill { background:#4ecba8; box-shadow:0 0 8px -2px #4ecba8; }
+  /* Vitals gauges join the global palette: one accent for energy, calm amber/red/green by meaning.
+     The neon family's glows go too — flat 3px fills, same as the weapon-heat bar below. */
+  .sf-bar--energy .sf-bar__fill { background:var(--hud-cyan, #4f8fdd); }
+  .sf-bar--boost .sf-bar__fill { background:var(--hud-amber, #dfa04e); }
+  .sf-bar--heat .sf-bar__fill { background:#c99563; }
+  .sf-bar--fuel .sf-bar__fill { background:var(--sf-you, #4fbf8f); }
   .sf-wpn-heats {
     position:relative; left:auto; bottom:auto !important; grid-column:1 / -1; width:100%;
     flex-direction:column; gap:3px; padding-top:5px; border-top:1px solid rgba(148,178,205,.12);
@@ -2277,11 +2279,15 @@ function injectHudCss() {
   }
   .sf-rightdock { right:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
   .sf-rightdock > * { flex:0 0 auto; width:100%; }
+  /* Back on the standard plate: chromeless brackets lost the row text to the render — a lit gas
+     giant or an asteroid trail passes straight through the roster. The dock's material is the
+     HUD's own translucent plate, same as the law card above it. */
   .sf-overview {
     width:100%; gap:0; padding:3px 0;
-    background:none; border:none; border-radius:0; box-shadow:none !important;
+    background:rgba(10,14,20,.85);
+    border:1px solid var(--hud-line); border-radius:var(--hud-radius, 3px);
+    box-shadow:none !important;
     font-family:var(--hud-data); font-size:12px; overflow:hidden;
-    ${bracketCss()}
   }
   .sf-overview::before {
     content:'LOCAL CONTACTS'; display:block; padding:3px 10px 6px; color:var(--hud-muted);
@@ -2307,9 +2313,10 @@ function injectHudCss() {
   }
   /* The card's identity was a 2px red top border on an opaque plate. De-boxed, that identity moves
      to the threat badge (targetPanel.js) — a shape, not a plate edge. */
-  .sf-overview, .sf-target, .sf-radar-objective-key { text-shadow:var(--sf-ink); }
-  .sf-overview-row__name, .sf-overview-row__right, .sf-overview-row__detail,
-  .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer,
+  /* The roster sits on a plate now, so it drops the per-glyph ink scrim: the 7px black blur was
+     what smeared the 12px ellipsis dots into a fake underscore ('Relief-Freigh_'). The target
+     card is still chromeless and keeps it. */
+  .sf-target, .sf-radar-objective-key { text-shadow:var(--sf-ink); }
   .sf-target__name, .sf-target__meta, .sf-target__faction { text-shadow:var(--sf-ink); }
   /* Muted grey was a legible "secondary" against an opaque plate. Against the actual render — a
      lit gas giant fills this corner in the reference sector — it disappears. Captured, not
@@ -2344,7 +2351,7 @@ function injectHudCss() {
   .sf-target__rangebar { position:relative; flex:1; height:3px; background:rgba(164,181,197,.16); overflow:hidden; }
   .sf-target__rangefill {
     display:block; height:100%; width:100%; transform-origin:left center; transform:scaleX(0);
-    background:var(--hud-cyan, #4ec3e6);
+    background:var(--hud-cyan, #4f8fdd);
   }
   .sf-target__dist { font-family:var(--hud-data); font-size:12px; color:var(--hud-paper); text-shadow:var(--sf-ink); }
 
@@ -2527,8 +2534,11 @@ function injectHudCss() {
     color:var(--hud-steel); opacity:.7; }
   .sf-prail__slots { display:flex; gap:4px; }
 
+  /* The backing is near-opaque on purpose: a near-camera rock renders on the canvas BEHIND this
+     DOM chip, and at .55 alpha it shone straight through the key glyph ('7' over an asteroid).
+     Same plate material as the rest of the flight HUD. Empty sockets below stay unbacked. */
   .sf-pslot { position:relative; width:38px; height:38px; padding:0; border:1px solid var(--hud-edge);
-    background:rgba(4,10,18,.55); color:var(--hud-paper); display:flex; flex-direction:column;
+    background:rgba(10,14,20,.85); color:var(--hud-paper); display:flex; flex-direction:column;
     align-items:center; justify-content:center; cursor:default; }
   .sf-pslot__key { position:absolute; top:1px; left:3px; font-family:var(--hud-data); font-size:12px;
     line-height:1; color:var(--hud-steel); }

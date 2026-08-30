@@ -5,7 +5,7 @@
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { sectorLawProfile } from './securityReadout.js';
-import { deboxCss, INK_SHADOW } from './hudBrackets.js';
+import { INK_SHADOW } from './hudBrackets.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const ENTRY_TTL_S = 5;
@@ -252,24 +252,29 @@ function injectStyle() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-  /* J07 de-box: this was an opaque plate stacked directly above the contact dock, and two
-     plates in a column read as a wall. Open telemetry with corner brackets; the headline keeps
-     its own colour so the receipt is still the loudest thing in the dock when it arrives. */
+  /* The law card sits back on the HUD's standard translucent plate (same material as the contact
+     roster below it): corner brackets over open vacuum lost the headline to the render — a lit
+     gas giant fills this corner, and the band tuner chip used to anchor inside the block. */
   #sf-sector-law { position:relative; width:100%; z-index:1070;
     box-sizing:border-box; padding:9px 11px 10px; pointer-events:none; contain:layout paint style;
-    ${deboxCss()} color:#e7edf5; text-shadow:${INK_SHADOW};
+    background:rgba(10,14,20,.85); border:1px solid var(--hud-line, rgba(148,178,205,.18));
+    border-radius:var(--hud-radius, 3px); box-shadow:none;
+    color:#e7edf5; text-shadow:${INK_SHADOW};
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
   .sf-law__head { display:flex; justify-content:space-between; gap:12px;
-    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em; color:#7fb3e6; }
+    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em;
+    color:var(--accent,#4f8fdd); }
   .sf-law__headline { margin-top:5px; font:700 14px/1.2 var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.035em; }
   .sf-law__meta { margin-top:3px; font:500 12px/1.35 var(--hud-data,"IBM Plex Mono",monospace); letter-spacing:.05em; color:#718298; }
   .sf-law__detail { margin-top:5px; font-size:12px; line-height:1.4; color:#aebdce; }
-  #sf-sector-law.sf-law--medium, #sf-sector-law.sf-law--low { border-color:rgba(216,164,93,.4); border-top-color:#d8a45d; }
-  #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:#ffb35c; }
-  #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(238,108,117,.48); border-top-color:#ee6c75; }
-  #sf-sector-law.sf-law--lawless .sf-law__head, #sf-sector-law.sf-law--danger .sf-law__head { color:#ff5c5c; }
+  /* Level colour is the semantic set, by meaning: lawful/high reads as the Concord accent,
+     medium/low as goal amber, lawless/incident as foe red. The plate edge carries the same tint. */
+  #sf-sector-law.sf-law--medium, #sf-sector-law.sf-law--low { border-color:rgba(217,160,84,.4); border-top-color:var(--sf-goal,#d9a054); }
+  #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:var(--sf-goal,#d9a054); }
+  #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(217,95,106,.45); border-top-color:var(--sf-foe,#d95f6a); }
+  #sf-sector-law.sf-law--lawless .sf-law__head, #sf-sector-law.sf-law--danger .sf-law__head { color:var(--sf-foe,#d95f6a); }
   #sf-sector-law.sf-law--receipt .sf-law__headline { color:#4f8fdd; font-size:12px; }
   @media (max-width:900px), (max-height:620px) {
     #ui-root > #sf-sector-law { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }

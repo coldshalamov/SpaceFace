@@ -21,9 +21,11 @@ export function quiessenceCensusProgress(state) {
 }
 
 export const BAND_HUD_CSS = `
-  /* Keep the tuner out of the radar and contact-roster column by default. Players can still
+  /* Keep the tuner out of the radar and contact-roster column by default. It anchors in the sky
+     LEFT of the dock: the dock grew when the sector-law card moved into it, and at the old
+     top-right anchor the chip sat directly on the law card's headline. Players can still
      Ctrl-drag it anywhere that reads better for their own flight setup. */
-  .sf-band-hud { position:absolute; right:20px; top:150px; bottom:auto; z-index:18; pointer-events:auto; }
+  .sf-band-hud { position:absolute; right:calc(20px + var(--sf-dock-w, 220px) + var(--sf-safe-inset-x, 0px)); top:150px; bottom:auto; z-index:18; pointer-events:auto; }
   #hud > .sf-band-hud { pointer-events:auto; }
   .sf-band-hud__button { min-width:176px; min-height:34px; display:flex; align-items:center;
     justify-content:space-between; gap:12px; padding:7px 10px; border:1px solid rgba(135,165,190,.38);
