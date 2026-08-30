@@ -8162,7 +8162,7 @@
       "priority": 359,
       "title": "Refinery, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-131.00"
       ],

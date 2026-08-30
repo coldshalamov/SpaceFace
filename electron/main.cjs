@@ -21,6 +21,7 @@ const {
 const {
   LOCAL_STORAGE_DUMP_SOURCE,
   PLAYER_STORE_ORIGIN_ROUTE,
+  resolveMountedPlayerStoreDir,
   resolvePlayerSaveDir,
   writePlayerStoreKeysSync,
 } = require('../scripts/lib/playerSaveStore.cjs');
@@ -43,7 +44,9 @@ const KTX2_TRANSCODER_WORKER_PATH = 'vendor/addons/libs/basis/basis_transcoder.w
 const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval';";
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
-const playerStoreDir = launchConfig.isolatedEvidence ? null : resolvePlayerSaveDir(process.env);
+const playerStoreDir = launchConfig.isolatedEvidence
+  ? (resolveMountedPlayerStoreDir(process.env) || null)
+  : resolvePlayerSaveDir(process.env);
 const migratePlayerStore = process.env.SPACEFACE_MIGRATE_PLAYER_STORE === '1';
 // Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
 // through the explicit dual gate; the environment variable alone has no effect on normal play.

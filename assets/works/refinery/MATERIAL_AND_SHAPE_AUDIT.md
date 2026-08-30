@@ -1,13 +1,15 @@
-# Works refinery — Cycle 03 material and shape audit
+# Works refinery — Cycle 04 accepted material, shape, and route audit
 
-**Asset:** `place_works_refinery`. **State:** `design_candidate`. **Disposition:** `review_pending`.
-Independent G1/G2/G4 not launched. Technical receipt only.
+**Asset:** `place_works_refinery`. **State:** `released_player_route`. **Disposition:** `KEEP`.
+Independent whole-asset G1/G2/G4: `KEEP` by `/root/refinery_exact_visual_review` on the exact current
+candidate. Controller Browser/Electron G6/G7: `KEEP` in `evidence/cycle_004_route/EPOCH.json`.
 
-Recovery inspection at the supported 120 px and 19 px works cameras: **KEEP for the Cycle 03
-correction scope**. This does not close independent whole-asset G7.
+The Cycle 03 form/material evidence remains the current visible mesh. Cycle 04 corrected only hook
+and collision transforms, then proved the exact release as a palette ghost, idle installed machine,
+and real running refinery on the canonical Browser and Electron route.
 
 Candidate: `assets/ships/parts/works/place_works_refinery.glb`
-SHA256: `1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0`
+SHA256: `55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795`
 
 Supported views: `works_top` / `works_edge` / `works_site` at 1920×1080, 31° persp, 120 / 120 / 19 px/cell.
 
@@ -79,10 +81,12 @@ Hidden-face dry-run is per LOD (`works_visible_faces.json`). Coarse 80×45 grid 
 
 ---
 
-## Remaining visual risk (honest)
+## Remaining visual risk (honest, accepted)
 
 - Stack from the top camera is a rust disk with a smaller cap and a rooted elbow; it will never look like a side-elevation flue.
 - Site 22 px pairing preserves three values and a gallery slit, but construction detail necessarily reduces to silhouette and value.
 - Edge camera is still nearly straight down by law; feet, gussets, and side-course depth remain modest.
 - LOD2 drops the separate lip, burner pack, well liner, wrapped straps, and rect takeoff mesh.
-- G1/G2/G4 whole-asset open until independent review of this hash.
+- The accepted player route uses LOD0 at work register and LOD1 at site register; LOD2 remains a
+  package/residency tier rather than an ordinary on-screen Works view.
+- No G1/G2/G4/G6/G7 gate remains open for this exact hash and route.

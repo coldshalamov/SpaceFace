@@ -187,6 +187,7 @@ async function loadMain({
         return {
           LOCAL_STORAGE_DUMP_SOURCE: '({})',
           PLAYER_STORE_ORIGIN_ROUTE: '/__spaceface_player_store/origin',
+          resolveMountedPlayerStoreDir() { return path.join(ROOT, '.tmp-evidence-player-saves'); },
           resolvePlayerSaveDir() { return path.join(ROOT, '.tmp-player-saves'); },
           writePlayerStoreKeysSync() { return {}; },
         };

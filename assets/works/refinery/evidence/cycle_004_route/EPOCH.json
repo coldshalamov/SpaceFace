@@ -1,0 +1,151 @@
+{
+  "schema": "spaceface.worksRouteEvidence.v1",
+  "assetId": "place_works_refinery",
+  "cycle": 4,
+  "epoch": "cycle_004_route",
+  "capturedAt": "2026-08-30",
+  "capturedFromParentCommit": "2a6dc046",
+  "captureChangesCommittedWithEvidence": true,
+  "sourceCandidate": {
+    "sha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+    "independentVerdict": "KEEP",
+    "reviewer": "/root/refinery_exact_visual_review",
+    "scope": "whole_asset_exact_source_candidate"
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_refinery.glb",
+    "sha256": "f612bfc5950039c1a740a7a93af235d0a6c21aeaa95fcc014c902566629ecb87",
+    "bytes": 3338480
+  },
+  "renderPackage": {
+    "metadataPath": "assets/ships/release/render-packages/works-refinery/render-package.json",
+    "metadataSha256": "82cc12c1d022e7ac2ef0dfc9362dfcabab7c6a75d325e71aedf1255bf5e0901b",
+    "renderGlbPath": "assets/ships/release/render-packages/works-refinery/render.glb",
+    "renderGlbSha256": "e1a578574602d77c2b5b478103ad8dd3c82140e93aec0da26b68911293d3c7f3",
+    "contentHash": "18fed338b4ac5c602005b0a8967c397b3b34799e16fe6150da834cfa38b71cfc",
+    "runtimeHash": "f5d15a2fe6bc92527e964c7720d087723577ead1b12ec9ad0c2285f9a0aff0cf"
+  },
+  "route": {
+    "entry": "canonical root -> New Game -> flight -> live asteroid -> Asteroid Works",
+    "ghost": "real sm_refinery palette selection at cell 13,3",
+    "install": "asteroidSites.installMachine(sm_refinery) beside a real anchored Massline Core",
+    "operation": "real power and lane overlays, 40 iron seeded into the site lane, then 30 one-second site updates",
+    "fallbackDrawn": false,
+    "ghostFallbackDrawn": false,
+    "requiredHooks": ["furnace_slit", "stack_vent", "lamp"],
+    "missingHooks": [],
+    "workLod": "LOD0",
+    "siteLod": "LOD1",
+    "baseColorSpace": "srgb",
+    "normalColorSpace": "srgb-linear",
+    "runningState": "running",
+    "runningRatePerMin": {
+      "cmdty_refined_metals": 1.5
+    },
+    "laneStoredAfterRun": 38.5,
+    "pageErrors": []
+  },
+  "captures": {
+    "browserGhostWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_ghost_work.png",
+      "sha256": "8AFC57C499C5B97D0FE6D69FC301CA9B37D531153883565E90019CD0B5DB43D4",
+      "bytes": 3511291,
+      "resolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "browserGhostSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_ghost_site.png",
+      "sha256": "7808AFD6F0667ED78FAD912632239E159F4479F3282A01D8FE3E078F68015180",
+      "bytes": 1166043,
+      "resolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "browserIdleWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_idle_work.png",
+      "sha256": "269D13BF37E31176F665412FC6757402F072221BE5D3BE494A4ECD75FF4A7B6C",
+      "bytes": 3622192,
+      "resolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "browserIdleSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_idle_site.png",
+      "sha256": "173B1FFEF6758EC27DEF1FA99287C7C69583D61CD40F4E87B2E88E22023F23A3",
+      "bytes": 1203457,
+      "resolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "browserRunningWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_running_work.png",
+      "sha256": "48306CF65A73FCB5459F85CAAF225BCCAD88D30C4E397195148EC270C8CBDC1D",
+      "bytes": 3649237,
+      "resolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "browserRunningSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/browser_running_site.png",
+      "sha256": "4FB234430B7AFFC20A557A9F9C6808F87E4A2567888860641293C80649EF53DC",
+      "bytes": 1203906,
+      "resolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "electronGhostWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_ghost_work.png",
+      "sha256": "B2E6158D060B333A0DF2B22888EABE7CEF3B9D438E7E558C12BC157A8C4CF5B0",
+      "bytes": 5331201,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "electronGhostSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_ghost_site.png",
+      "sha256": "F728A711E4AEE12A140483AF1956C53B395D29BCD509A978CE199F58C9068997",
+      "bytes": 1806223,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "electronIdleWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_idle_work.png",
+      "sha256": "DA3417B12DAC1E6A1C904A0E45FE6020321AD064E0EDF18F82006B94C3305328",
+      "bytes": 5520457,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "electronIdleSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_idle_site.png",
+      "sha256": "52A19DF4D1AF86A123508942FCCEE77CF619522C652D8DD96815F26BEEFA2417",
+      "bytes": 1875863,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "electronRunningWork": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_running_work.png",
+      "sha256": "5320AB07684E4A2813B700401141F8B2A413763597FFFA6504B80ED215467E35",
+      "bytes": 5536687,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "electronRunningSite": {
+      "path": "assets/works/refinery/evidence/cycle_004_route/electron_running_site.png",
+      "sha256": "6AF871C403230026EE63261A78FCAD59DF8D5C1FB805005D73EB228BB2F888B2",
+      "bytes": 1876367,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD1"
+    }
+  },
+  "gates": {
+    "G1": "pass-independent-source",
+    "G2": "pass-independent-source",
+    "G4": "pass-independent-source",
+    "G6": "pass-release-runtime",
+    "G7": "pass-browser-electron-route"
+  },
+  "routeVerdict": "KEEP",
+  "routeReviewer": "/root",
+  "openP0": 0,
+  "openP1": 0
+}

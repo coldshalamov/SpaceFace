@@ -51,6 +51,7 @@ test('explicit isolated-evidence mode selects a non-player port, profile, and lo
     const config = resolveElectronLaunchConfig(env);
 
     assert.equal(env.SPACEFACE_ELECTRON_TEST_MODE, ELECTRON_ISOLATED_EVIDENCE_MODE);
+    assert.equal(env.SPACEFACE_PLAYER_STORE_DIR, path.join(userDataDir, 'player-saves'));
     assert.deepEqual(config, {
       isolatedEvidence: true,
       port: 0,
@@ -117,6 +118,10 @@ test('isolated listeners reject the player port and profile deletion requires sh
 
   const launch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'contract-cleanup' });
   assert.equal(path.dirname(launch.userDataDir), electronEvidenceProfileRoot());
+  assert.equal(
+    launch.options.env.SPACEFACE_PLAYER_STORE_DIR,
+    path.join(launch.userDataDir, 'player-saves'),
+  );
   assert.equal(existsSync(launch.userDataDir), true);
   assert.throws(() => launch.cleanup(), /shutdown|closed|proof/i);
   assert.equal(existsSync(launch.userDataDir), true, 'failed cleanup authorization must preserve the profile');
@@ -134,6 +139,8 @@ test('desktop shell applies isolated userData before acquiring its single-instan
     'port 0 must resolve to the actual listener port');
   assert.match(source, /ISOLATED_PORT_RETRY_LIMIT[\s\S]*server\.close/,
     'isolated shell must close and retry a forbidden resolved player port before window creation');
+  assert.match(source, /resolveMountedPlayerStoreDir\(process\.env\)/,
+    'isolated shell must mount its temporary shared-store route instead of returning a 404');
 });
 
 test('all release evidence Electron routes use the shared isolation helper', () => {

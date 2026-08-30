@@ -37,6 +37,10 @@ export function buildIsolatedElectronEnv({
     SPACEFACE_ELECTRON_TEST_MODE: ELECTRON_ISOLATED_EVIDENCE_MODE,
     SPACEFACE_ELECTRON_TEST_PORT: String(parsedPort),
     SPACEFACE_ELECTRON_TEST_USER_DATA: profile.resolved,
+    // Mount the shared-store route inside the owned temporary profile. Evidence runs must not
+    // touch player slots, but an unmounted route makes the common save client 404 and silently
+    // changes Browser/Electron behavior. The profile cleanup owns this directory too.
+    SPACEFACE_PLAYER_STORE_DIR: path.join(profile.resolved, 'player-saves'),
   };
 }
 

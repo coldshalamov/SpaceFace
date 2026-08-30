@@ -1,6 +1,6 @@
 {
-  "cycle": 3,
-  "disposition": "review_pending",
+  "cycle": 4,
+  "disposition": "accepted",
   "rootNode": "SF_WORKS_REFINERY_V1",
   "hooks": [
     "furnace_slit",
@@ -91,5 +91,17 @@
       0.6000000238418579,
       1.0499999523162842
     ]
+  },
+  "independentReview": {
+    "verdict": "KEEP",
+    "reviewer": "/root/refinery_exact_visual_review",
+    "scope": "whole_asset_exact_source_candidate",
+    "candidateSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795"
+  },
+  "routeAcceptance": {
+    "verdict": "KEEP",
+    "reviewer": "/root",
+    "scope": "exact_release_browser_electron_route",
+    "evidence": "assets/works/refinery/evidence/cycle_004_route/EPOCH.json"
   }
 }

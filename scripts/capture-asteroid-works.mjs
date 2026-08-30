@@ -8,9 +8,10 @@
 //
 // PQ-131 art units: node scripts/capture-asteroid-works.mjs --part=<id>
 // writes works-part-<id>-work.png and works-part-<id>-site.png at 1920×1080.
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer as createNetServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -200,6 +201,52 @@ async function captureAuthoredWorksPart(partId) {
         cell: { col, row },
         install: { ok: install.ok === true, reason: install.reason || null, siteId: install.siteId || null },
       };
+    } else if (id === 'refinery') {
+      const sf = window.SF;
+      const st = sf.state;
+      const d = st.drill;
+      const asteroidId = d.asteroidId;
+      const asteroid = st.entities.get(asteroidId);
+      const sites = sf.registry.get('asteroidSites');
+      const hollow = (nextCol, nextRow) => {
+        const previous = d.field[nextCol][nextRow];
+        if (previous?.type === 'empty') return;
+        d.field[nextCol][nextRow] = {
+          type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
+        };
+        if (asteroid?.data) {
+          if (!Array.isArray(asteroid.data.drillCleared)) asteroid.data.drillCleared = [];
+          const index = nextRow * 28 + nextCol;
+          if (!asteroid.data.drillCleared.includes(index)) asteroid.data.drillCleared.push(index);
+        }
+        sf.bus.emit('drill:break', {
+          col: nextCol,
+          row: nextRow,
+          type: previous?.type || 'matrix',
+          ore: previous?.ore || null,
+          wasVein: !!previous?.ore,
+          wasGas: previous?.type === 'gas',
+        });
+      };
+      for (const [col, row] of [[14, 1], [14, 2], [14, 3], [13, 3]]) hollow(col, row);
+      d.avatar.col = 14;
+      d.avatar.row = 2;
+      d.avatar.fromCol = 14;
+      d.avatar.fromRow = 2;
+      const core = sites.installMachine({
+        asteroidId,
+        defId: 'sm_massline_core',
+        col: 14,
+        row: 1,
+      });
+      result = {
+        ok: core.ok === true,
+        id,
+        defId: 'sm_refinery',
+        cell: { col: 13, row: 3 },
+        siteId: core.siteId || null,
+        core: { ok: core.ok === true, reason: core.reason || null },
+      };
     } else {
       result = await h.loadWorksPart(id);
     }
@@ -210,6 +257,118 @@ async function captureAuthoredWorksPart(partId) {
   }, partId);
   if (!mounted || !mounted.ok) {
     throw new Error(`loadWorksPart(${partId}) failed: ${JSON.stringify(mounted)}`);
+  }
+  if (partId === 'refinery') {
+    const defId = 'sm_refinery';
+    const runtimeLabel = PART_ELECTRON ? 'electron' : 'browser';
+    const key = page.locator('.aw-palette [data-item-id="sm_refinery"]');
+    await key.waitFor({ state: 'visible', timeout: 15_000 });
+    await key.click();
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowDown');
+    await page.evaluate(() => {
+      const h = document.querySelector('.ast-canvas').__ast3d;
+      h.frameCell(13, 3);
+      h.setZoomRegister('work');
+    });
+    await page.waitForFunction(() => {
+      const h = document.querySelector('.ast-canvas')?.__ast3d;
+      const visual = h && typeof h.ghostVisual === 'function' ? h.ghostVisual('sm_refinery') : null;
+      return visual && visual.authored && !visual.pending && !visual.fallback
+        && visual.visible && visual.cell?.[0] === 13 && visual.cell?.[1] === 3;
+    }, null, { timeout: 30_000 });
+    const ghost = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.ghostVisual('sm_refinery'));
+    const shot = async (phase, register) => {
+      await page.evaluate((nextRegister) => {
+        const h = document.querySelector('.ast-canvas').__ast3d;
+        h.setZoomRegister(nextRegister);
+        if (nextRegister === 'work') h.frameCell(13, 3);
+      }, register);
+      await page.waitForTimeout(450);
+      const name = `works-part-refinery-${runtimeLabel}-${phase}-${register}.png`;
+      await page.screenshot({ path: join(OUT_DIR, name), type: 'png' });
+      return name;
+    };
+    const captures = {
+      ghostWork: await shot('ghost', 'work'),
+      ghostSite: await shot('ghost', 'site'),
+    };
+    await page.keyboard.press('KeyB');
+    const installed = await page.evaluate(({ siteId }) => {
+      const sf = window.SF;
+      const sites = sf.registry.get('asteroidSites');
+      const site = sites.getSite(siteId);
+      const install = sites.installMachine({
+        asteroidId: sf.state.drill.asteroidId,
+        defId: 'sm_refinery',
+        col: 13,
+        row: 3,
+      });
+      return {
+        ok: install.ok === true,
+        reason: install.reason || null,
+        siteId: install.siteId || siteId,
+        machineId: install.machineId || null,
+        anchored: !!site?.anchored,
+      };
+    }, { siteId: mounted.siteId });
+    if (!installed.ok) throw new Error(`real Refinery install failed: ${JSON.stringify(installed)}`);
+    await page.waitForFunction(() => {
+      const h = document.querySelector('.ast-canvas')?.__ast3d;
+      const visual = h && typeof h.machineVisual === 'function' ? h.machineVisual('sm_refinery') : null;
+      return visual && visual.authored && !visual.fallback;
+    }, null, { timeout: 30_000 });
+    const idle = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.machineVisual('sm_refinery'));
+    captures.idleWork = await shot('idle', 'work');
+    captures.idleSite = await shot('idle', 'site');
+    const running = await page.evaluate(({ siteId }) => {
+      const sf = window.SF;
+      const sites = sf.registry.get('asteroidSites');
+      const site = sites.getSite(siteId);
+      for (const [col, row] of [[14, 2], [14, 3]]) {
+        sites.setOverlay(siteId, 'power', col, row, true);
+        sites.setOverlay(siteId, 'lane', col, row, true);
+      }
+      sites._runtime(site);
+      const lane = site.laneStores[0];
+      if (lane) lane.store.cmdty_ore_iron = 40;
+      for (let i = 0; i < 30; i++) {
+        sf.state.simTime += 1;
+        sites.update(1, sf.state);
+      }
+      const projection = sites.projection(siteId);
+      const machine = projection?.machines?.find((candidate) => candidate.defId === 'sm_refinery') || null;
+      return {
+        siteId,
+        machineId: machine?.id || null,
+        state: machine?.status?.state || null,
+        limit: machine?.status?.limit || null,
+        ratePerMin: machine?.status?.ratePerMin || {},
+        laneStored: projection?.lanes?.reduce((sum, next) => sum + (next.stored || 0), 0) || 0,
+      };
+    }, { siteId: installed.siteId });
+    if (!['running', 'throttled', 'limited'].includes(running.state)) {
+      throw new Error(`Refinery did not reach a running state: ${JSON.stringify(running)}`);
+    }
+    await page.waitForTimeout(700);
+    const live = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.machineVisual('sm_refinery'));
+    captures.runningWork = await shot('running', 'work');
+    captures.runningSite = await shot('running', 'site');
+    const pageErrors = issues ? issues.errorIssues() : [];
+    if (pageErrors.length) {
+      throw new Error(`Refinery route page errors: ${pageErrors.map((issue) => issue.text || issue).join(' | ')}`);
+    }
+    console.log('works-part refinery route accepted', JSON.stringify({
+      runtime: runtimeLabel,
+      defId,
+      ghost,
+      idle,
+      running,
+      live,
+      captures,
+    }, null, 2));
+    return;
   }
   if (partId === 'extractor') {
     await page.waitForFunction(() => {
@@ -1431,7 +1590,8 @@ function findSystemBrowser() {
 async function startFreshServer() {
   const port = await findFreePort(8210);
   const baseUrl = `http://127.0.0.1:${port}/`;
-  const gameServer = createGameServer({ root: ROOT, async: true });
+  const playerStoreDir = mkdtempSync(join(tmpdir(), 'spaceface-works-capture-'));
+  const gameServer = createGameServer({ root: ROOT, async: true, playerStoreDir });
   await new Promise((resolve, reject) => {
     gameServer.once('error', reject);
     gameServer.once('listening', () => resolve());
@@ -1440,8 +1600,13 @@ async function startFreshServer() {
   return {
     baseUrl,
     kill: () => new Promise((resolve, reject) => {
-      if (!gameServer.listening) { resolve(); return; }
-      gameServer.close((error) => (error ? reject(error) : resolve()));
+      const finish = (error) => {
+        try { rmSync(playerStoreDir, { recursive: true, force: true }); } catch (_) {}
+        if (error) reject(error);
+        else resolve();
+      };
+      if (!gameServer.listening) { finish(); return; }
+      gameServer.close(finish);
     }),
   };
 }
