@@ -67,6 +67,9 @@ function injectStyle() {
   .sf-slot .sf-slot-name {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; color: var(--sf-paper);
   }
+  /* The selected row's name is the screen's ONE display-size element (grammar test
+     instrument-hierarchy-six-screens pins this selector); unselected rows stay at 15px,
+     so no two rows ever render at competing large sizes. */
   .sf-slot.sel .sf-slot-name {
     font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
     letter-spacing: 0; text-transform: none; color: var(--sf-paper);
@@ -83,9 +86,17 @@ function injectStyle() {
   .sf-slot-badge--foe { color: var(--sf-foe); border-color: color-mix(in srgb, var(--sf-foe) 45%, transparent); }
   .sf-slot .sf-slot-context { font-size: 13px; color: var(--sf-calm); margin-top: 2px; }
   .sf-slot.empty .sf-slot-context { color: var(--sf-calm); }
+  /* Meta lines stay on fixed bounds so a wrapped timestamp can never spill across a
+     row's border into the next row's title. Context is one clean ellipsized line;
+     the detail line clamps at two with a real ellipsis — never a raw mid-word cut. */
+  .sf-slot .sf-slot-context {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .sf-slot .sf-slot-detail, .sf-slot .sf-fig {
     font-size: 13px; color: var(--sf-calm); font-family: var(--sf-data-face);
     font-weight: 500; font-variant-numeric: tabular-nums; margin-top: var(--sp-1);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden; overflow-wrap: anywhere;
   }
   .sf-slot .sf-slot-actions { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
   .sf-slot .sf-slot-actions button.sf-tab { min-width: 68px; padding: var(--sp-1) var(--sp-3); cursor: pointer; }
@@ -336,8 +347,12 @@ export const saveLoadScreen = {
     const ids = ['quick'];
     if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
     for (let i = 1; i <= SLOT_COUNT - 1; i++) ids.push(String(i));
-    // include any extra slots present in the index but not in our default list
-    Object.keys(slots).forEach((k) => { if (!ids.includes(k) && k !== 'autosave' && k !== 'auto') ids.push(k); });
+    // Include only standard player-facing extras from the index. Anything else in the store
+    // (dev harness worlds like "m2-seamless-world", import scratch slots) is internal: it has
+    // no save/load actions of its own and rendered as an incomplete row, so it is filtered.
+    Object.keys(slots).forEach((k) => {
+      if (!ids.includes(k) && /^(quick|autosave|auto|\d+)$/.test(k)) ids.push(k);
+    });
     if (!refs.selected || !ids.includes(refs.selected)) {
       refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
         ? ctx.state.save.currentSlot

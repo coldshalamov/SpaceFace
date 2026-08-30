@@ -92,7 +92,7 @@
   top: 10px;
   right: 18px;
   font: 500 12px/1.35 var(--mono);
-  letter-spacing: .2em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--mf-stamp);
   pointer-events: none;
@@ -152,7 +152,7 @@
   left: 2px;
   right: auto;
   font-size: 12px;
-  letter-spacing: .3em;
+  letter-spacing: .06em;
   color: #5d6f7d;
 }
 
@@ -168,7 +168,7 @@
   font-family: var(--mf-display);
   font-weight: 600;
   font-size: 18px;
-  letter-spacing: .2em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   text-align: left;
   color: var(--ink);
@@ -194,7 +194,7 @@
   font-family: var(--mono);
   font-weight: 500;
   font-size: 12px;
-  letter-spacing: .22em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--ink-mute);
 }
@@ -503,7 +503,7 @@
 .screen.sf-menu button.sf-tab {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .1em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   background: color-mix(in srgb, var(--panel) 60%, transparent);
@@ -593,7 +593,6 @@
 }
 .screen.sf-menu .sf-menu-save-summary.has-save {
   color: var(--ink-dim);
-  border-left-color: var(--accent);
 }
 
 /* ---- 7. Title lockup ------------------------------------------------------------
@@ -606,7 +605,7 @@
   font-family: var(--mf-display);
   font-weight: 600;
   font-size: clamp(38px, 4.8vw, 54px);
-  letter-spacing: .22em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   text-align: left;
   color: var(--ink);
@@ -625,12 +624,19 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  align-self: flex-start;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .3em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   text-align: left;
-  color: var(--ink-mute);
+  /* Lighter ink plus a subtle dark plate: the tag sits directly on the nebula
+     backdrop (bare menu has no panel behind it) and --ink-mute dropped below
+     legible contrast there. */
+  color: var(--ink-dim);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  padding: 5px 12px 5px 9px;
+  border-radius: 2px;
 }
 .screen.sf-menu .sf-title-tag::before {
   content: "";

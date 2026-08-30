@@ -80,9 +80,27 @@ function injectStyle() {
   .sf-ng-header { flex:0 0 auto; margin:0; padding:22px 32px 15px;
     border-bottom:1px solid var(--mf-line-1); }
   .sf-menu .sf-ng-body { flex:1 1 auto; min-height:0; overflow-x:hidden; overflow-y:auto;
-    display:flex; flex-direction:column; gap:15px; padding:18px 32px 20px; scrollbar-gutter:stable; }
-  .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 32px 18px;
+    display:flex; flex-direction:column; gap:15px; padding:18px 32px 20px; scrollbar-gutter:stable;
+    /* The setup content is taller than the shell by design; the shared 6px fascia scrollbar
+       read as "no scroll affordance" (the ship preview looked clipped at the fold), so the
+       body carries its own clearly visible track + thumb. Deliberately no scrollbar-width /
+       scrollbar-color here: the standard properties flip Chromium to its auto-hiding overlay
+       scrollbar and the custom webkit scrollbar below would never draw. */
+  }
+  .sf-menu .sf-ng-body::-webkit-scrollbar { width:10px; }
+  .sf-menu .sf-ng-body::-webkit-scrollbar-track {
+    background:color-mix(in srgb, var(--panel) 55%, transparent); border-radius:5px; }
+  .sf-menu .sf-ng-body::-webkit-scrollbar-thumb {
+    background:color-mix(in srgb, var(--accent) 60%, transparent); border-radius:5px;
+    border:2px solid transparent; background-clip:padding-box; }
+  .sf-menu .sf-ng-body::-webkit-scrollbar-thumb:hover { background:color-mix(in srgb, var(--accent) 85%, transparent); }
+  .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 32px 18px; position:relative;
     border-top:1px solid var(--mf-line-1); background:rgba(6,9,13,.55); }
+  /* Fold affordance: the setup body scrolls (content is ~2x the shell) but this renderer can
+     hide scrollbars, which made the ship preview look clipped at the fold. A soft fade into
+     the footer reads as "more below" without depending on scrollbar painting. */
+  .sf-menu .sf-ng-footer::before { content:""; position:absolute; left:0; right:0; top:-22px; height:22px;
+    background:linear-gradient(180deg, rgba(6,9,13,0), rgba(6,9,13,.78) 82%); pointer-events:none; z-index:2; }
   /* Authored starter portrait: film-frame treatment — inner hairline frame, bottom
      scrim, and a mono caption. A pre-rendered production view avoids decoding the
      flight GLB in a second WebGL context while preserving the exact ship identity. */

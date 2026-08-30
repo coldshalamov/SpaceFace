@@ -53,6 +53,12 @@ function injectStyle() {
     color:var(--accent);
     letter-spacing:.06em;
   }
+  /* The brief's mono helper lines (next step + save status) read at --ink-mute,
+     which is marginal over the dark wash; raise them to the muted ink level. */
+  .screen.sf-menu .sf-pause-brief .sf-slot-sub,
+  .screen.sf-menu .sf-pause-brief .sf-muted {
+    color:var(--ink-dim);
+  }
   `;
   document.head.appendChild(s);
 }
