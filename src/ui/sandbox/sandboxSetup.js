@@ -975,12 +975,33 @@ export function spawnBudgetedLabPackage(ctx, packageSpec) {
 export function applySandboxSetup(ctx, config) {
   if (!ctx || !ctx.state || !ctx.state.player) return;
   const cfg = config || {};
+  let combatLabSetup = null;
+  if (cfg.combatLabSetup) {
+    const lab = validateCombatLabSetup(cfg.combatLabSetup);
+    if (!lab.ok || !lab.value) {
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        const detail = lab.issues && lab.issues[0] && lab.issues[0].message
+          ? lab.issues[0].message
+          : 'invalid setup';
+        ctx.bus.emit('toast', {
+          text: 'Combat Lab setup invalid: ' + detail,
+          kind: 'error',
+          ttl: 6,
+        });
+      }
+    } else {
+      combatLabSetup = lab.value;
+    }
+  }
 
   // 1. Credits first (tech unlock + ship/module paths can charge credits).
   if (typeof cfg.credits === 'number') setCredits(ctx, cfg.credits);
 
   // 2. Tech (must precede grant/fit/ship so requiresTech gates pass; also grants RP unlock-all needs).
-  if (cfg.unlockAllTech) unlockAllTech(ctx);
+  // A Lab setup is an experiment possibility set, not an Adventure research grant. Walk the
+  // canonical tech/economy writers on this fresh ephemeral game so tier-2+ selected hardware can
+  // pass ships.moduleFitBlocker; save excludes the live Lab run established below.
+  if (cfg.unlockAllTech || combatLabSetup) unlockAllTech(ctx);
 
   // 3. Ship swap (after tech so the hull isn't gated; before modules so they land on the new hull).
   setShip(ctx, cfg.shipId);
@@ -998,6 +1019,17 @@ export function applySandboxSetup(ctx, config) {
   // 6. Reputation (independent of the above).
   if (cfg.maxReputation) maxReputation(ctx);
 
+  // Begin the Lab before any sector transition can autosave its experimental position, research,
+  // or loadout into Adventure. runSession remains the sole state.run writer.
+  if (combatLabSetup && ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('run:beginRequested', {
+      kind: 'lab',
+      ruleset: null,
+      seed: combatLabSetup.seed,
+      arenaId: combatLabSetup.arenaId,
+    });
+  }
+
   // 7. Sector (materializes a fresh sector; do this before spawning enemies/drill so they land in
   //    the right place and aren't evicted by the sector swap).
   enterSectorIfSet(ctx, cfg.sectorId);
@@ -1008,55 +1040,30 @@ export function applySandboxSetup(ctx, config) {
     relocateToZone(ctx, cfg.sectorId, cfg.spawnAtZoneId, cfg.spawnAtZoneOffset);
   }
 
-  // 7c. Combat Lab setup: hull/loadout through ships writers, then a budgeted enemy package.
-  // Validate here, not only in the builder — requestSandboxGame stages an arbitrary config
-  // and the game:started hook passes it straight through.
-  if (cfg.combatLabSetup) {
-    const lab = validateCombatLabSetup(cfg.combatLabSetup);
-    if (!lab.ok || !lab.value) {
-      if (ctx.bus && typeof ctx.bus.emit === 'function') {
-        const detail = lab.issues && lab.issues[0] && lab.issues[0].message
-          ? lab.issues[0].message
-          : 'invalid setup';
-        ctx.bus.emit('toast', {
-          text: 'Combat Lab setup invalid: ' + detail,
-          kind: 'error',
-          ttl: 6,
-        });
-      }
-    } else {
-      const setup = lab.value;
-      applyCombatLabSetup(ctx, setup);
-      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
-      const sectorId = cfg.sectorId || (arena && arena.sectorId);
-      const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
-        ? cfg.spawnPos
-        : (arena && arena.spawnPos);
-      if (sectorId && spawnPos) {
-        relocatePlayer(ctx, sectorId, spawnPos, `sandbox:combat-lab:${setup.arenaId}`);
-      }
-      const enemyPackage = COMBAT_LAB_ENEMY_PACKAGES.find((entry) => (
-        entry.id === setup.enemyPackageId
-      ));
-      if (enemyPackage) {
-        spawnBudgetedLabPackage(ctx, {
-          id: enemyPackage.id,
-          entries: enemyPackage.entries,
-          maxConcurrent: enemyPackage.maxConcurrent,
-          spawnDistance: enemyPackage.spawnDistance,
-          seed: setup.seed,
-        });
-      }
-      // LD-1: begin AFTER game:started / applied setup. Never write state.run; runSession is
-      // the sole writer and accepts a begin only from phase inactive (a fresh New Game).
-      if (ctx.bus && typeof ctx.bus.emit === 'function') {
-        ctx.bus.emit('run:beginRequested', {
-          kind: 'lab',
-          ruleset: null,
-          seed: setup.seed,
-          arenaId: setup.arenaId,
-        });
-      }
+  // 7c. Combat Lab setup: already validated above because run/tech must precede the sector, then
+  // apply the selected hull/loadout through ships writers and spawn a budgeted enemy package.
+  if (combatLabSetup) {
+    const setup = combatLabSetup;
+    applyCombatLabSetup(ctx, setup);
+    const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
+    const sectorId = cfg.sectorId || (arena && arena.sectorId);
+    const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
+      ? cfg.spawnPos
+      : (arena && arena.spawnPos);
+    if (sectorId && spawnPos) {
+      relocatePlayer(ctx, sectorId, spawnPos, `sandbox:combat-lab:${setup.arenaId}`);
+    }
+    const enemyPackage = COMBAT_LAB_ENEMY_PACKAGES.find((entry) => (
+      entry.id === setup.enemyPackageId
+    ));
+    if (enemyPackage) {
+      spawnBudgetedLabPackage(ctx, {
+        id: enemyPackage.id,
+        entries: enemyPackage.entries,
+        maxConcurrent: enemyPackage.maxConcurrent,
+        spawnDistance: enemyPackage.spawnDistance,
+        seed: setup.seed,
+      });
     }
   }
 

@@ -14,6 +14,7 @@ import {
 } from '../src/data/combatLabSetups.js';
 import {
   buildSandboxLaunchConfig,
+  applySandboxSetup,
   installSandboxGameStartedHook,
   requestSandboxGame,
   spawnBudgetedLabPackage,
@@ -194,6 +195,106 @@ test('validated Combat Lab seed is present on the game:new payload', () => {
   assert.ok(gameNew, 'game:new was emitted');
   assert.equal(Object.hasOwn(gameNew.payload, 'seed'), true);
   assert.equal(gameNew.payload.seed, setup.seed);
+});
+
+test('Combat Lab unlocks through owners, begins its ephemeral run before arena entry, and fits the live toolkit', () => {
+  const setup = toolkitSetup({ arenaId: 'lagrange_crucible', wave: 1 });
+  const config = buildSandboxLaunchConfig({ scenarioId: 'combat-lab' }, { combatLabSetup: setup });
+  const order = [];
+  const expectedTech = new Map([
+    ['wpn_concussion_cannon_m', 'tech_kinetic_drivers'],
+    ['wpn_gravity_marker_s', 'tech_graviton_drives'],
+    ['wpn_momentum_sink_s', 'tech_graviton_drives'],
+  ]);
+  const playerEntity = { id: 'player', pos: { x: 0, z: 0 } };
+  const player = {
+    credits: 5000,
+    researchPoints: 0,
+    activeShipIndex: 0,
+    ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+    moduleInventory: [],
+    researchedNodes: [],
+  };
+  let nextInstanceId = 1;
+  let nextEntityId = 100;
+  const bus = {
+    emit(event, payload) {
+      order.push(event);
+      if (event === 'run:beginRequested') {
+        state.run = { kind: payload.kind, seed: payload.seed, arenaId: payload.arenaId };
+      }
+    },
+  };
+  const ships = {
+    buyShip({ defId }) {
+      player.ownedShips = [{ defId, fittings: [] }];
+      player.activeShipIndex = 0;
+      return true;
+    },
+    researchable() { return true; },
+    unlockTech(nodeId) {
+      if (player.researchedNodes.includes(nodeId)) return false;
+      order.push('ships.unlockTech');
+      player.researchedNodes.push(nodeId);
+      return true;
+    },
+    grantModule({ defId }) {
+      player.moduleInventory.push({ instanceId: nextInstanceId++, defId });
+      return true;
+    },
+    fitModule({ slotIndex, instanceId }) {
+      const index = player.moduleInventory.findIndex((entry) => entry.instanceId === instanceId);
+      if (index < 0) return false;
+      const item = player.moduleInventory[index];
+      if (!player.researchedNodes.includes(expectedTech.get(item.defId))) return false;
+      player.moduleInventory.splice(index, 1);
+      player.ownedShips[0].fittings[slotIndex] = item.defId;
+      return true;
+    },
+  };
+  const state = {
+    playerId: 'player',
+    player,
+    entities: new Map([['player', playerEntity]]),
+    render: { cameraCtrl: { snapToPlayer() {} } },
+  };
+  const ctx = {
+    state,
+    bus,
+    registry: {
+      get(name) {
+        if (name === 'ships') return ships;
+        if (name === 'economy') {
+          return {
+            grantCredits(amount) { player.credits += amount; },
+          };
+        }
+        if (name === 'world') {
+          return {
+            enterSector() { order.push('world.enterSector'); },
+            relocatePlayerInSector() { return true; },
+          };
+        }
+        if (name === 'spawnBudget') {
+          return {
+            request(amount) { return amount; },
+            bindEntity() { return true; },
+            releaseSome() { return 0; },
+          };
+        }
+        return null;
+      },
+    },
+    helpers: { spawnEntity() { return nextEntityId++; } },
+  };
+
+  applySandboxSetup(ctx, config);
+
+  assert.deepEqual(player.ownedShips[0].fittings.slice(0, 3), setup.loadout.map((entry) => entry.defId));
+  const beginIndex = order.indexOf('run:beginRequested');
+  assert.ok(beginIndex >= 0, 'Lab run began');
+  assert.ok(order.indexOf('ships.unlockTech') < beginIndex, 'tech possibility was prepared before the Lab run began');
+  assert.ok(beginIndex < order.indexOf('world.enterSector'), 'Lab run began before arena sector entry');
 });
 
 test('spawnBudgetedLabPackage admits through spawnBudget and reports rejected surplus', () => {

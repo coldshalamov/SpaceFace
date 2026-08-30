@@ -400,6 +400,7 @@
     "check:live-whole-ship-admission": "node scripts/check-live-whole-ship-admission.mjs",
     "check:crucible:route": "node scripts/check-crucible-route.mjs",
     "check:crucible:lab-route": "node scripts/check-crucible-lab-route.mjs",
+    "check:crucible:lab-route:electron": "node scripts/check-crucible-lab-route.mjs --electron",
     "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",
     "check:playable:saves": "node scripts/check-game-playable.mjs --electron --real-saves",
     "check:hud-j07": "node --test test/j07-hud-contract.test.mjs",

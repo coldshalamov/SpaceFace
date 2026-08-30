@@ -54,7 +54,17 @@ function injectStyle() {
   // in styles/menu.css. We deliberately use the same .sf-menu tokens so the testing screen reads as
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
-  .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
+  .screen.sf-sandbox.sf-menu {
+    max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face);
+    overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  }
+  /* Sandbox is longer than the shared fixed-height menu chassis. Let the whole instrument scroll
+     as one document and forbid its STAGE/APRON flex children from shrinking beneath their content;
+     otherwise the stage paints through its shrunken box and the live-tool apron sits on top of it. */
+  .screen.sf-sandbox > .sf-stage,
+  .screen.sf-sandbox > .sf-apron {
+    flex: 0 0 auto; min-height: auto; width: 100%; box-sizing: border-box;
+  }
   .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
   .sf-sandbox.sf-menu h1 {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;

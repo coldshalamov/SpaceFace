@@ -874,8 +874,17 @@ test('renderer wires startup to captured authored admissions, never the installe
   assert.match(source, /createOpeningSubmissionPlan/, 'startup must build an exact first-picture leaf plan');
   assert.match(source, /state\.render\.captureOpeningSubmissionPlan/, 'startup must capture the exact plan');
   assert.match(source,
-    /afterBrowserPaint\([\s\S]{0,1600}?resumeDeferredPipelineAdmissions/,
-    'late authored roots resume only after the first playable paint');
+    /afterBrowserPaint\(\(\)\s*=>\s*\{\s*applyFirstPlayablePaintRelease\(this\);\s*\}\)/,
+    'the browser paint latch must delegate to the first-playable release owner');
+  const releaseStart = source.indexOf('export function applyFirstPlayablePaintRelease');
+  const releaseEnd = source.indexOf('/** Opening defer must clear', releaseStart);
+  assert.ok(releaseStart >= 0 && releaseEnd > releaseStart,
+    'renderer must expose one bounded first-playable release function');
+  const releaseBody = source.slice(releaseStart, releaseEnd);
+  assert.match(releaseBody, /releaseOpeningMeshDefer/,
+    'first playable paint releases the opening mesh hold');
+  assert.match(releaseBody, /resumeDeferredPipelineAdmissions/,
+    'late authored roots resume only inside the first-playable release');
 });
 
 test('renderer entry points delegate route selection instead of branching on bloom controls', async () => {

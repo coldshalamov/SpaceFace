@@ -66,13 +66,13 @@ export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
   'spaceface.pq020-ceres-additive-world-sites.v1';
 export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
   'spaceface.pq020-ceres-additive-dressing.v1';
-// Re-pinned 2026-08-18. The only input that moved is worldSite.releaseSha256: the Cathedral
-// binding had been carrying the pre-rebuild hash, so this digest was green against a value
-// no file on disk produced. Nothing structural changed -- entity, collider, proxy, operation
-// and spatial counts are identical either side of the correction. Prior digest was
-// b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d.
+// Re-pinned 2026-08-30 for PQ-133.01's authored Cinder Sluice approach. The only structural-cost
+// field that moved is authored.zones (5 -> 6); entity, collider, spatial, Cathedral, proxy,
+// operation, residency, and presentation rows remain identical. The new zone is the exact
+// Combat Lab arena center (-300, 200), not extra runtime dressing. Prior digest was
+// a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
+  'b54ce38b7ee7e37cd08a81a9de2fe15499dd8833b545be618263a1ac8d9b120d';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({

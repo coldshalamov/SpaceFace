@@ -10,7 +10,7 @@ import {
 const SITE_ID = 'world_site_wreck_cathedral';
 const PLACE_ID = 'place_landmark_wreck_cathedral';
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
+  'b54ce38b7ee7e37cd08a81a9de2fe15499dd8833b545be618263a1ac8d9b120d';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -121,6 +121,14 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.receiptDigest, second.receiptDigest);
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
+  assert.deepEqual(first.structuralCost.authored, {
+    stations: 2,
+    gates: 4,
+    fields: 3,
+    hazards: 1,
+    pois: 5,
+    zones: 6,
+  });
   assert.deepEqual(first.structuralCost.entities, {
     total: 124,
     byType: { asteroid: 90, fx: 12, ship: 2, station: 6, wreck: 14 },

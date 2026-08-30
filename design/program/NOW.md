@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-133.01 Combat Lab integration | root | IMPLEMENTING | `package.json`; `scripts/check-crucible-lab-route.mjs`; `scripts/lib/pq020CeresTopology.mjs`; `src/data/sectorZones.js`; `src/render/assetLoader.js`; `src/render/openingSubmissionPlan.js`; `src/render/renderer.js`; `src/ui/sandbox/sandboxSetup.js`; `src/ui/screens/sandbox.js`; `test/asset-runtime-disposal.test.mjs`; `test/combat-lab-setup-schema.test.mjs`; `test/combat-lab-same-seed.test.mjs`; `test/crucible-lab-controls.test.mjs`; `test/opening-submission-plan.test.mjs`; `test/pq020-ceres-topology.test.mjs`; `test/render-target-pipeline-warmup.test.mjs`; `design/program/roadmap/active/PQ-133.md`; `design/program/roadmap/program-queue.json`; `design/program/roadmap/receipts/PQ-133.01.md`; `design/program/roadmap/evidence/pq133-01-combat-lab/`; `CANONICAL_BUILD_MAP.md` | Integrate reviewed fixes, verify the real Browser and Electron Lab routes, bind honest receipt/checkoff, commit/push, remove row. |
 
 ## Uncommitted work without a confirmed live thread
 

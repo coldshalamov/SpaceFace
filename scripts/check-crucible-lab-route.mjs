@@ -10,7 +10,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'spaceface-crucible-lab-route-'));
@@ -20,10 +25,15 @@ const ENEMY_PACKAGE_ID = 'wasp_flight';
 const EXPECTED = Object.freeze({ sectorId: 'sector_helios_prime', x: -500, z: 800 });
 const POSITION_EPSILON = 1e-6;
 const BROWSER_CLOSE_TIMEOUT_MS = 5000;
+const ELECTRON_ROUTE = process.argv.includes('--electron');
+const RUNTIME_LABEL = ELECTRON_ROUTE ? 'Electron' : 'Browser';
+const SCREENSHOT_SUFFIX = ELECTRON_ROUTE ? '-electron' : '';
 
-const { chromium } = await loadPlaywright();
+const { chromium, _electron: electron } = await loadPlaywright();
 let server = null;
 let browser = null;
+let electronApp = null;
+let isolatedElectronLaunch = null;
 let phase = 'BOOT';
 const results = [];
 
@@ -96,6 +106,7 @@ async function readLiveWitness(page) {
     const sf = window.SF;
     const state = sf && sf.state;
     const player = state && state.entities && state.entities.get(state.playerId);
+    const ownedShip = state?.player?.ownedShips?.[state.player.activeShipIndex];
     const budget = sf && sf.ctx && sf.ctx.helpers && sf.ctx.helpers.spawnBudget;
     const owned = (state && Array.isArray(state.entityList) ? state.entityList : [])
       .filter((entity) => entity && entity.alive && budget && typeof budget.ownerForEntity === 'function'
@@ -130,6 +141,10 @@ async function readLiveWitness(page) {
       } : null,
       sectorId: state && state.world && state.world.currentSectorId,
       playerPos: player && player.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      playerBuild: ownedShip ? {
+        hullId: ownedShip.defId || null,
+        fittings: Array.isArray(ownedShip.fittings) ? [...ownedShip.fittings] : [],
+      } : null,
       owned,
       controlsVisible: visible(controls),
       runtimeControls: controls ? [...controls.querySelectorAll('button')].map((button) => ({
@@ -143,9 +158,11 @@ async function readLiveWitness(page) {
       telemetryText: telemetry ? telemetry.textContent.replace(/\s+/g, ' ').trim() : '',
       labForm: {
         starterId: document.querySelector('#sf-sandbox-lab-starter')?.value || null,
+        hullId: document.querySelector('#sf-sandbox-lab-hull')?.value || null,
         enemyPackageId: document.querySelector('#sf-sandbox-lab-enemy')?.value || null,
         arenaId: document.querySelector('#sf-sandbox-lab-arena')?.value || null,
         seed: document.querySelector('#sf-sandbox-lab-seed')?.value || null,
+        wave: document.querySelector('#sf-sandbox-lab-wave')?.value || null,
       },
       seedInput: seed ? { visible: visible(seed), width: seed.getBoundingClientRect().width } : null,
     };
@@ -279,6 +296,32 @@ async function readLoadingAdmissionLatch(page) {
   }));
 }
 
+async function readSandboxLayoutWitness(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('.screen.sf-sandbox');
+    const stage = root?.querySelector(':scope > .sf-stage');
+    const apron = root?.querySelector(':scope > .sf-apron');
+    if (!root || !stage || !apron) return null;
+    const stageChildren = [...stage.children].filter((node) => {
+      const style = getComputedStyle(node);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    const stageContentBottom = stageChildren.reduce(
+      (bottom, node) => Math.max(bottom, node.getBoundingClientRect().bottom),
+      stage.getBoundingClientRect().top,
+    );
+    const apronTop = apron.getBoundingClientRect().top;
+    return {
+      overflowY: getComputedStyle(root).overflowY,
+      scrollHeight: root.scrollHeight,
+      clientHeight: root.clientHeight,
+      stageContentBottom,
+      apronTop,
+      contentOverlapPx: Math.max(0, stageContentBottom - apronTop),
+    };
+  });
+}
+
 async function beginPlayerVisualTrace(page) {
   await page.evaluate(() => {
     const samples = [];
@@ -368,14 +411,23 @@ function assertRunWitness(witness, label, { allowPaused = false } = {}) {
   assert.ok(witness.playerPos, `${label}: player exists`);
   assert.ok(Math.abs(witness.playerPos.x - EXPECTED.x) <= POSITION_EPSILON, `${label}: player x is authored center`);
   assert.ok(Math.abs(witness.playerPos.z - EXPECTED.z) <= POSITION_EPSILON, `${label}: player z is authored center`);
+  assert.equal(witness.playerBuild?.hullId, 'ship_hornet', `${label}: selected Hornet is the active hull`);
+  assert.deepEqual(witness.playerBuild?.fittings?.slice(0, 3), [
+    'wpn_concussion_cannon_m',
+    'wpn_gravity_marker_s',
+    'wpn_momentum_sink_s',
+  ], `${label}: selected Physics Toolkit is fitted through the live ship owner`);
   assert.ok(witness.owned.length > 0, `${label}: budget-owned Lab enemies materialized`);
 }
 
 function assertVisibleLabWitness(witness, label) {
   assertRunWitness(witness, label, { allowPaused: true });
+  assert.equal(witness.labForm.starterId, 'physics_toolkit', `${label}: selected starter remains visible`);
+  assert.equal(witness.labForm.hullId, 'ship_hornet', `${label}: selected hull remains visible`);
   assert.equal(witness.labForm.enemyPackageId, ENEMY_PACKAGE_ID, `${label}: selected enemy package remains visible`);
   assert.equal(witness.labForm.arenaId, ARENA_ID, `${label}: selected arena remains visible`);
   assert.equal(witness.labForm.seed, String(SEED), `${label}: selected seed remains visible`);
+  assert.equal(witness.labForm.wave, '1', `${label}: selected starting wave remains visible`);
   assert.equal(witness.seedInput?.visible, true, `${label}: seed input is visible`);
   assert.ok(witness.seedInput.width >= 96, `${label}: seed input remains legible (${witness.seedInput.width}px)`);
   assert.equal(witness.controlsVisible, true, `${label}: Combat Lab controls are visible`);
@@ -413,22 +465,62 @@ async function closeBrowserWithinDeadline(instance) {
   ]);
 }
 
-try {
-  console.log('\nCrucible Lab Browser route\n');
+async function openBrowserRoute() {
   server = await startServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
   await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch { /* browser storage unavailable */ }
+    try {
+      sessionStorage.setItem('sf.cinematicSeen', '1');
+      localStorage.setItem('sf.firstRunIntroSeen', '1');
+    } catch { /* browser storage unavailable */ }
   });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
+  return page;
+}
+
+async function openElectronRoute() {
+  if (!electron) throw new Error('this Playwright build has no _electron; cannot drive the desktop route');
+  isolatedElectronLaunch = createIsolatedElectronLaunch({
+    root: ROOT,
+    taskId: 'crucible-lab-route',
+    timeout: 180000,
+    baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
+  });
+  electronApp = await electron.launch(isolatedElectronLaunch.options);
+  const page = await electronApp.firstWindow({ timeout: 180000 });
+  installCspSafePlaywrightPolling(page);
+  await electronApp.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return;
+    win.setContentSize(1440, 900);
+    win.show();
+    win.focus();
+    if (win.moveTop) win.moveTop();
+  });
+  await page.bringToFront().catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 180000 });
+  assertIsolatedElectronRootUrl(page.url());
+  return page;
+}
+
+try {
+  console.log(`\nCrucible Lab ${RUNTIME_LABEL} route\n`);
+  const page = ELECTRON_ROUTE ? await openElectronRoute() : await openBrowserRoute();
+  const issues = collectPageIssues(page);
 
   phase = 'BOOT';
   console.log('  phase=BOOT navigating normal game root');
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 90000 });
+  if (ELECTRON_ROUTE) {
+    const splash = page.locator('#cinematic-splash');
+    if (await splash.isVisible().catch(() => false)) {
+      await page.keyboard.press('Space');
+      await splash.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    }
+  }
   await page.locator('[data-screen="mainMenu"]').waitFor({ state: 'visible', timeout: 90000 });
-  record(phase, true, 'normal game root reached with isolated player store');
+  record(phase, true, `normal ${RUNTIME_LABEL.toLowerCase()} game root reached with isolated player store`);
 
   phase = 'SANDBOX';
   await clickExact(page, 'Sandbox');
@@ -450,11 +542,16 @@ try {
     return !!launch && !launch.disabled;
   }, null, { timeout: 10000 });
   await page.locator('#sf-sandbox-lab-seed').scrollIntoViewIfNeeded();
+  const layout = await readSandboxLayoutWitness(page);
+  assert.ok(layout, 'Sandbox stage/apron layout witness is available');
+  assert.ok(layout.contentOverlapPx <= 1,
+    `Sandbox stage content must not paint under its apron (${layout.contentOverlapPx}px overlap)`);
+  assert.match(layout.overflowY, /auto|scroll/, 'long Sandbox chassis owns a real vertical scroll route');
   await page.screenshot({
     path: (() => {
       const dir = join(ROOT, '.devshots', 'crucible-lab-route');
       mkdirSync(dir, { recursive: true });
-      return join(dir, 'lagrange-config.png');
+      return join(dir, `lagrange-config${SCREENSHOT_SUFFIX}.png`);
     })(),
     fullPage: false,
   });
@@ -482,7 +579,7 @@ try {
     path: (() => {
       const dir = join(ROOT, '.devshots', 'crucible-lab-route');
       mkdirSync(dir, { recursive: true });
-      return join(dir, 'lagrange-lab.png');
+      return join(dir, `lagrange-lab${SCREENSHOT_SUFFIX}.png`);
     })(),
     fullPage: false,
   });
@@ -516,13 +613,17 @@ try {
   const errors = issues.errorIssues();
   assert.deepEqual(errors, [], `page errors: ${JSON.stringify(summarizeIssues(errors))}`);
   record(phase, true, 'no page errors or failed requests');
-  console.log('\nCRUCIBLE LAB ROUTE PASS');
+  console.log(`\nCRUCIBLE LAB ${RUNTIME_LABEL.toUpperCase()} ROUTE PASS`);
 } catch (error) {
   record(phase, false, error && error.message ? error.message : String(error));
-  console.log('\nCRUCIBLE LAB ROUTE FAIL');
+  console.log(`\nCRUCIBLE LAB ${RUNTIME_LABEL.toUpperCase()} ROUTE FAIL`);
   process.exitCode = 1;
 } finally {
   await closeBrowserWithinDeadline(browser);
   if (server) server.kill();
+  if (electronApp) {
+    await electronApp.close().catch(() => {});
+    try { isolatedElectronLaunch?.cleanup({ runtimeClosed: true }); } catch { /* preserve profile if cleanup proof fails */ }
+  }
   try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch { /* best effort cleanup */ }
 }
