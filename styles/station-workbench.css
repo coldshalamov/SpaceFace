@@ -544,8 +544,8 @@ button.sx-fab-in { cursor:pointer; }
 
 .sx-fac-network { overflow:hidden; }
 .sx-fac-network > header { position:absolute; z-index:3; top:13px; left:15px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
-.sx-fac-network > header span { color:var(--sx-worklight); font:600 12px/1 var(--sx-mono); letter-spacing:var(--sf-track-micro); }
-.sx-fac-network > header b { color:#666963; font:400 13px/1.2 var(--sx-ui); }
+.sx-fac-network > header span { color:color-mix(in srgb, var(--sf-calm) 78%, var(--sf-paper)); font:600 12px/1 var(--sx-ui); letter-spacing:var(--sf-track-micro); }
+.sx-fac-network > header b { color:var(--ink-dim); font:400 13px/1.2 var(--sx-ui); }
 .sx-fac-network > svg { position:absolute; z-index:0; inset:0; width:100%; height:100%; overflow:visible; }
 .sx-fac-network > svg line { stroke:var(--relation); stroke-width:calc(.22 + var(--weight) * .9); stroke-opacity:calc(.26 + var(--weight)); stroke-dasharray:1.5 1.4; vector-effect:non-scaling-stroke; }
 .sx-fac-network__core { position:absolute; z-index:2; top:50%; width:122px; height:86px; display:grid; place-items:center; align-content:center; gap:3px; transform:translate(-50%,-50%); border:1px solid #565043; }
@@ -953,6 +953,15 @@ button.sx-fab-in { cursor:pointer; }
   box-shadow:0 22px 55px rgba(0,0,0,.5);
 }
 .sx-fab-out-card { border:0; }
+
+
+/* Flight host (THE SHIP, F2) fixes: the ship selector card overflowed the 90px rail
+   row and clipped at the viewport top; and the CONDITION band's verb ("SOUND") was
+   space-between-flung to the far edge of a full-width band, reading as an orphaned
+   heading with no body. Selector row sizes to content; verb sits beside its label. */
+.sx-sw.sx-sw--flight { grid-template-rows: auto minmax(0, 1fr) auto; }
+.sx-sw.sx-sw--flight .sx-sw__rail { min-height: 0; }
+.sx-sw .sx-sw-band--condition .sx-sw-band__head { justify-content: flex-start; gap: 10px; }
 
 /* SHIPWORKS — the ship bay owns the surface. The rail is merely a projected
    hull carousel and the power circuit floats at the bottom edge. */

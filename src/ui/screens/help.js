@@ -131,7 +131,7 @@ const SECTIONS = [
     ['Countermeasure', 'countermeasure', 'X'],
     // The primary/alias pair remains live and rebindable. Directional line control is contextual.
     ['Massline tap: latch / cut', 'tether', 'Space / F'],
-    ['Massline line control', null, 'Hold + ↑/↓/←→: reel/pay out/orbit; Shift pump'],
+    ['Massline directional control', null, 'Hold + ↑/↓/←→: reel/pay out/orbit; Shift pump'],
     ['Massline dedicated reel in', 'reelIn', '—'],
     ['Massline dedicated pay out', 'reelOut', '—'],
     // PQ-011: the anchor seed turns empty space into a swing anchor. Keyboard verb (rebindable);

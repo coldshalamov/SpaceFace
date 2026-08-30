@@ -175,15 +175,7 @@
   text-shadow: 0 1px 12px rgba(0, 0, 0, .4);
   border-bottom: 1px solid var(--mf-line-1);
 }
-#screens .sf-menu h1:not(.sf-title-logo)::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 3px;
-  height: 13px;
-  background: var(--accent);
-  border-radius: 1px;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
-}
+#screens .sf-menu h1:not(.sf-title-logo)::before { content: none; }
 #screens .sf-menu .sf-ng-header h1:not(.sf-title-logo) { border-bottom: 0; padding-bottom: 0; }
 
 .screen.sf-menu h2 {

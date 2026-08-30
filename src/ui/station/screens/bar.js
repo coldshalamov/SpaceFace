@@ -76,7 +76,7 @@ const BAR_CSS = `
 }
 .sx-bar canvas.sx-portrait { filter: grayscale(1) contrast(1.05) brightness(.94); }
 .sx-bar .sx-talk:has(.sx-talk__reply.is-idle) { grid-template-rows: auto auto minmax(0, 1fr); }
-.sx-bar .sx-talk__reply.is-idle { padding: 26px clamp(30px, 5vw, 78px) 10px; }
+.sx-bar .sx-talk__reply.is-idle { padding: 26px clamp(30px, 5vw, 78px) 10px; align-content: center; }
 .sx-bar .sx-talk__reply.is-idle::before { content: "TRANSCRIPT / NO LINES YET"; }
 .sx-bar .sx-talk__reply.is-idle .sx-talk__quote { font-size: 44px; opacity: .2; }
 .sx-bar .sx-talk__reply.is-idle p { color: var(--sf-calm, #9aa4b0); font-size: clamp(16px, 1.35vw, 19px); }

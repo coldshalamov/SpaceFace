@@ -96,11 +96,8 @@ function injectStyle() {
   .sf-menu .sf-ng-body::-webkit-scrollbar-thumb:hover { background:color-mix(in srgb, var(--accent) 85%, transparent); }
   .sf-menu .sf-ng-footer { flex:0 0 auto; margin:0; padding:14px 32px 18px; position:relative;
     border-top:1px solid var(--mf-line-1); background:rgba(6,9,13,.55); }
-  /* Fold affordance: the setup body scrolls (content is ~2x the shell) but this renderer can
-     hide scrollbars, which made the ship preview look clipped at the fold. A soft fade into
-     the footer reads as "more below" without depending on scrollbar painting. */
-  .sf-menu .sf-ng-footer::before { content:""; position:absolute; left:0; right:0; top:-22px; height:22px;
-    background:linear-gradient(180deg, rgba(6,9,13,0), rgba(6,9,13,.78) 82%); pointer-events:none; z-index:2; }
+  /* No fold fade: it darkened the starting-ship preview's bottom edge and read as "clipped".
+     The body's always-painted custom scrollbar is the scroll affordance. */
   /* Authored starter portrait: film-frame treatment — inner hairline frame, bottom
      scrim, and a mono caption. A pre-rendered production view avoids decoding the
      flight GLB in a second WebGL context while preserving the exact ship identity. */
@@ -112,7 +109,7 @@ function injectStyle() {
     background:linear-gradient(180deg, transparent 58%, rgba(4,7,11,.78) 100%); pointer-events:none; }
   .sf-ng-preview__still { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 49%; }
   .sf-ng-preview__cap { position:absolute; left:14px; bottom:10px; z-index:2; font-family:var(--mono);
-    font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:rgba(157,220,240,.9); }
+    font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent, #4f8fdd); }
   .sf-ng-legacy { display:grid; gap:9px; padding:12px 0; border-top:1px solid var(--mf-line-2);
     border-bottom:1px solid var(--mf-line-2); }
   .sf-ng-legacy__toggle { display:flex; align-items:center; gap:9px; color:var(--ink); font-family:var(--mf-display);

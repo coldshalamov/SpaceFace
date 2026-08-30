@@ -295,6 +295,11 @@ const CSS = `
 .sx-app .sx-ct .sx-ct-row {
   flex: 1 1 236px; width: auto; min-width: 200px; max-width: 340px;
 }
+/* OPEN DEFECT (2026-08-30 polish pipeline): the Active Missions attention card still
+   renders clipped inside this band — the card is cut by the .sx-ct grid row budget, not
+   by this strip's own overflow, so band-level sizing cannot reach it. Needs the missions
+   grid row revisited (give the band a content-sized row or move the attention card into
+   the dossier). Documented in review/VISUAL_BUG_SWEEP_2026-08-30.md as open. */
 /* The dossier grid gave the route row minmax(150px,1fr) — on a tall host it
    stretched into a near-black void between the header and the outcome row — and
    never gave the authored summary a cell, so it auto-placed BELOW the accept
