@@ -75,13 +75,14 @@ stays `false` until an independent reviewer confirms coverage against the exact 
 
 ## Shape-grammar failure and assembly sequence
 
-The current candidate is a long pointed loft with thin rails, box heads, and surface garnish. Its
-play-size image reads as a spearhead; clay confirms that the hopper and arm identity do not carry the
-silhouette. The rewrite sequence is therefore: broad pressure frame and stepped armor shoulders ->
-deep open processing well -> four rooted turntable/yoke assemblies -> authored boom sections and
-work heads -> embedded pulse-plate drive beds and deep chambers -> cab tub/cage -> underside/thermal/service systems
--> unique UV/bake/material response -> meaning-preserving LODs. If clay still reads as a dart with
-sticks after the arm/hopper stage, change the macro method rather than adding kit.
+Cycle 31 rebuilds the dorsal half as one process spine cut through the manufactured shell, not
+kits on a loaf. Sequence: blunt barge envelope and closed keel -> hopper register as a hull-cut
+receiving bay with proud rim, ceramic apron, three saddle-mounted drum crowns, and open floor ->
+connecting trench -> pulse register as two hull-cut dry wells with a narrow oxide bridge and shared
+rim language -> tool yard as shoulder waist, rail, and end-frames with four distinct heads in
+negative space -> cab tub/cage -> underside/thermal/service -> unique UV/bake/material response ->
+meaning-preserving LODs. If clay still reads as hull plus attachments at D=144, change the spine
+cut rather than enlarging attachments.
 
 ## Generated component reference
 
