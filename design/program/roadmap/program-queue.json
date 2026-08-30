@@ -6514,7 +6514,7 @@
       "priority": 300,
       "title": "Reauthor the Massline express-liner DCC candidate and authored LOD evidence",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -6534,7 +6534,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-049-01-massline-express-source-REPORT.md"
+      ],
       "brief": "Create a fresh Tier-B stepped civic pressure-drum liner from the stopped donor as reference only. Complete G0, a reproducible asset-local builder, supported views, passenger/drive/dock/service/tether material truth, then editable source and authored LOD0/1/2 with hash-bound whole-asset G1/G2/G4 evidence. This is source/candidate production only: no manifests, render package, runtime map, or accepted claim."
     },
     {
