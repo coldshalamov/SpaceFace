@@ -1904,12 +1904,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-rover",
-    "expectedContentHash": "6a7746577125dfbd03ae759d69029f1ad9f18a4788a0c68388ffcbbda644dde6",
+    "expectedContentHash": "b4629d64dfd9686fc6a3125d3fd4ae791ae755719dffb71c1a8a44bb541a997a",
     "key": "works-rover",
     "metadataUrl": "assets/ships/release/render-packages/works-rover/render-package.json",
     "runtimeAssetId": "place_works_rover",
     "slot": "place",
-    "sourceSha256": "4bccb413c661ca76543deda0496c741ced5c7e58dd9a9b3601dc0555ceab4248",
+    "sourceSha256": "e51f1a23db77650120a667382f3ac5bddfa1c30af1d8a6820592f7a182077124",
     "sourceUrl": "assets/ships/release/parts/works/place_works_rover.glb"
   },
   {

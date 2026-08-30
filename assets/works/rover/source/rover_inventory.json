@@ -3,7 +3,7 @@
   "combined": "assets/works/rover/source/rover.glb",
   "partsSource": "assets/ships/parts/works/place_works_rover.glb",
   "lodTriangles": {
-    "lod0": 11846,
+    "lod0": 11470,
     "lod1": 1914,
     "lod2": 1158
   },
@@ -25,12 +25,12 @@
   "meshNames": [
     "LOD0_Bit",
     "LOD0_Merged_Material_Chevron",
-    "LOD0_Merged_Material_Chevron_Boom",
     "LOD0_Merged_Material_Glass",
     "LOD0_Merged_Material_Lamp",
     "LOD0_Merged_Material_Livery",
     "LOD0_Merged_Material_Rubble",
     "LOD0_Merged_Material_Scar",
+    "LOD0_Merged_Material_Scar_Boom",
     "LOD0_Merged_Material_Steel",
     "LOD0_Merged_Material_Steel_Boom",
     "LOD0_Merged_Material_Track",
@@ -83,6 +83,6 @@
     "LOD2_track_L",
     "LOD2_track_R"
   ],
-  "bytes": 16875252,
-  "sha256": "2FAEC331992B53502C17261EB58F1FF839B782A73285C696304B02617F7D04EF"
+  "bytes": 17551028,
+  "sha256": "480473187E436315B0546461566E43A63B9C19495E4EB8D06A6A61BCE60CEED3"
 }

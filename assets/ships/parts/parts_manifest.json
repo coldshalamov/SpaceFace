@@ -5655,8 +5655,8 @@
       "category": "works",
       "priority": "P0",
       "file": "works/place_works_rover.glb",
-      "tris": 11846,
-      "bytes": 16875252,
+      "tris": 11470,
+      "bytes": 17551028,
       "textureSize": 2048,
       "tintable": {
         "hull": "Material_Atlas_LOD0"

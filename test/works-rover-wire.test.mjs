@@ -26,6 +26,7 @@ import {
   createRoverControlScaffold,
   createSingleFlightMount,
   isolateWorksMeshMaterials,
+  setAuthoredRoverCutterSpin,
   validateAuthoredRoverCutters,
   validateAuthoredRoverHooks,
 } from '../src/ui/asteroid/asteroidRenderer3d.js';
@@ -268,41 +269,63 @@ test('the RELEASE part carries a named cutter mesh per LOD beneath bit_tip', () 
   }
 });
 
-test('the release cutter sits on the cutter axis, so spinning it turns the tool in place', () => {
+test('every release cutter sits on its authored axis, so spinning turns the tool in place', () => {
   // Ground truth comes from the uncompressed source part, which this reader can decode; the
   // release build re-centres each mesh under KHR_mesh_quantization, so the release node origin is
   // asserted against that measured axis rather than against a copied number.
-  const sourceCutter = sourceNodes.get('LOD0_Bit');
-  assert.ok(sourceCutter, 'LOD0_Bit must exist in the combined source part');
-  const bounds = worldBounds(source.json, source.bin, sourceCutter);
-  const size = new THREE.Vector3();
-  bounds.getSize(size);
-  const centre = new THREE.Vector3();
-  bounds.getCenter(centre);
-
-  assert.ok(
-    size.x > size.y * 1.5 && size.x > size.z * 1.5,
-    `the cutter's long axis must be +X (measured ${size.x.toFixed(3)} x ${size.y.toFixed(3)} `
-    + `x ${size.z.toFixed(3)}); the runtime spins it about local X`,
-  );
-
-  const sourceOrigin = worldTranslation(sourceCutter);
-  assert.ok(
-    Math.hypot(sourceOrigin.y - centre.y, sourceOrigin.z - centre.z) < 2e-3,
-    `the authored cutter origin ${sourceOrigin.toArray()} must lie on its own axis; an origin off `
-    + 'the axis makes the spin an orbit',
-  );
-
   for (const name of CUTTER_NAMES) {
+    const sourceCutter = sourceNodes.get(name);
+    assert.ok(sourceCutter, `${name} must exist in the combined source part`);
+    const bounds = worldBounds(source.json, source.bin, sourceCutter);
+    const size = bounds.getSize(new THREE.Vector3());
+    const centre = bounds.getCenter(new THREE.Vector3());
+    const sourceOrigin = worldTranslation(sourceCutter);
     const origin = worldTranslation(releaseNodes.get(name));
-    assert.ok(
-      Math.hypot(origin.y - centre.y, origin.z - centre.z) < 2e-3,
-      `${name} left the cutter axis in the release build (${origin.toArray()})`,
-    );
-    assert.ok(
-      origin.x >= bounds.min.x - 1e-2 && origin.x <= bounds.max.x + 1e-2,
-      `${name} origin ${origin.x} is outside the cutter's own axial span`,
-    );
+    const closeDrum = name === 'LOD0_Bit';
+    if (closeDrum) {
+      assert.ok(
+        size.y < size.x && size.y < size.z,
+        `LOD0's milling-drum axis must be +Y after Y-up export (measured `
+        + `${size.x.toFixed(3)} x ${size.y.toFixed(3)} x ${size.z.toFixed(3)})`,
+      );
+      for (const [label, point] of [['source', sourceOrigin], ['release', origin]]) {
+        assert.ok(
+          Math.hypot(point.x - centre.x, point.z - centre.z) < 2e-3,
+          `${name} ${label} origin ${point.toArray()} is off its +Y axis`,
+        );
+        assert.ok(
+          point.y >= bounds.min.y - 1e-2 && point.y <= bounds.max.y + 1e-2,
+          `${name} ${label} origin ${point.y} is outside its +Y axial span`,
+        );
+      }
+    } else {
+      assert.ok(
+        size.x > size.y * 1.5 && size.x > size.z * 1.5,
+        `${name}'s axial head must remain +X (measured ${size.x.toFixed(3)} x `
+        + `${size.y.toFixed(3)} x ${size.z.toFixed(3)})`,
+      );
+      for (const [label, point] of [['source', sourceOrigin], ['release', origin]]) {
+        assert.ok(
+          Math.hypot(point.y - centre.y, point.z - centre.z) < 2e-3,
+          `${name} ${label} origin ${point.toArray()} is off its +X axis`,
+        );
+        assert.ok(
+          point.x >= bounds.min.x - 1e-2 && point.x <= bounds.max.x + 1e-2,
+          `${name} ${label} origin ${point.x} is outside its +X axial span`,
+        );
+      }
+    }
+  }
+});
+
+test('the authored Rover spins the close drum and retained site heads on their real axes', () => {
+  const cutters = CUTTER_NAMES.map((name) => Object.assign(new THREE.Object3D(), { name }));
+  setAuthoredRoverCutterSpin(cutters, 0.75);
+  assert.equal(cutters[0].rotation.y, 0.75, 'LOD0 vertical milling drum spins about local +Y');
+  assert.equal(cutters[0].rotation.x, 0);
+  for (const cutter of cutters.slice(1)) {
+    assert.equal(cutter.rotation.x, 0.75, `${cutter.name} axial head spins about local +X`);
+    assert.equal(cutter.rotation.y, 0);
   }
 });
 

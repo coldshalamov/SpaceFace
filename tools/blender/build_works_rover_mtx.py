@@ -1,24 +1,26 @@
-"""PQ-131.01 Works rover MTX builder. Cycle 80: LOD1 is the site mesh.
+"""PQ-131.01 Works rover MTX builder. Cycle 84: give the cutter barrel depth.
 
-Cycle 79 rebuilt the value ladder on LOD0 and lit a mine into the site frame.
-Two causal lies remained, and they were the same lie: the site register never
-saw LOD1. `works_site` was rendered from rover_lod0.glb, and LOD1 was the
-LOD0 construction plus DECIMATE COLLAPSE to 4,000 triangles — MTX-48's named
-fake. Collapse closes the hopper and the roof pane and smears glass into hull.
+Cycle 80 put the authored LOD1 mesh on the real site camera and earned a
+hash-bound independent KEEP there. Its unchanged LOD0 remained REVISE at top
+and edge: the boom read as a striped rectangular bar, the cutter as a small
+spark, and the dark material roles compressed into one H.
 
-Cycle 80 authors LOD1 (and LOD2) as site-scale meshes that keep openings and
-material breaks, and it shoots `works_site` from rover_lod1.glb:
+Cycle 83 exposed the dark cutter face and earned a top-camera KEEP, but its
+thin raised disc and bright hub collapsed in the supported edge view to a coin
+with a white spark. Cycle 84 repairs that exact close-camera construction:
 
   * no COLLAPSE decimate on any LOD;
-  * LOD1 drops sub-pixel micro (cleats, cage, mullion, courses, bolts) that
-    aliases at 19 px/cell into sparkle, and keeps the five planform masses as
-    geometry: stadium belts, hopper hole, raised cab with a real pane, offset
-    boom, minority yellow;
-  * track_L / track_R at LOD1 are the belt itself (the UV-scroll mesh), not a
-    joined pile of grousers;
-  * LOD0 is the works_top / works_edge mesh and is not retuned this cycle;
+  * LOD0 uses one thick scalloped drum that overlaps its axial housing, so the
+    top keeps a round working face while the edge gets a cylindrical side band;
+  * the six separate one-pixel tooth boxes are folded into the drum silhouette;
+  * the hub becomes a small, non-emissive scar-steel boss instead of a bright
+    tool-steel spark;
+  * LOD0 glass, hopper liner, and scar steel get their own deliberate value
+    bands while track rubber and deck plate stay frozen;
+  * LOD1/2 keep the Cycle-80 geometry and atlas values so site readability is
+    not traded for close-camera polish;
   * the hopper well stays the cycle-78 cavity: no steel lip ring, no steel
-    well walls, no boom cap.
+    well walls, no boom cap, and no yellow hull.
 
 Authored at works scale: 1.87 x 1.76 x 0.99 wu, origin at cell centre, +Z up,
 tracks' underside at z = 0. Root node `rover`. LOD meshes named
@@ -60,7 +62,7 @@ FAMILY = ROOT / "assets" / "works" / "rover"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
 TEX = TEX_BY_LOD[0]
-CYCLE = 80
+CYCLE = 84
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--mtx-cycle="):
         CYCLE = int(tok.split("=", 1)[1])
@@ -84,6 +86,7 @@ ATLAS_TILE = {
     "lamp": 6,
     "rubble": 7,
     "scar": 8,
+    "drum": 9,
 }
 # #ffd23f safety yellow — reserved tiles copy the live livery so the atlas
 # mean cannot drift off the brief when unused tiles are sampled.
@@ -132,6 +135,16 @@ ROLE_RGB = {
     "rubble": (0.14, 0.11, 0.08),
     "scar": (0.177, 0.167, 0.157),
 }
+# Cycle 81 changes only the close-camera atlas. The site camera's LOD1 earned
+# an exact-candidate KEEP on Cycle 80, so its bytes and value hierarchy remain
+# the reference unless a later independent site review names a visible defect.
+LOD0_ROLE_RGB = {
+    **ROLE_RGB,
+    "glass": (0.130, 0.130, 0.145),
+    "rubble": (0.215, 0.170, 0.130),
+    "scar": (0.220, 0.210, 0.200),
+    "drum": (0.060, 0.066, 0.078),
+}
 # v-bands inside a role tile: (v_lo, v_hi) -> (base rgb, roughness, metallic).
 STEEL_BANDS = (
     (0.00, 0.50, STEEL_PLATE_RGB, 0.64, 0.26),
@@ -164,6 +177,7 @@ ROLE_FLAT = {
     "lamp": (1.00, 1.00, 1.00),
     "rubble": (1.00, 0.50, 0.00),
     "scar": (0.50, 0.00, 1.00),
+    "drum": (0.00, 0.50, 1.00),
     "atlas": (0.5, 0.5, 0.5),
 }
 EMIT_ALPHA = {"lamp": 0.85, "bit": 0.02}
@@ -266,6 +280,12 @@ PLANFORM_FLOORS = {
     "LIVERY_HUE": ("range", (44.0, 54.0)),
     "LIVERY_SAT": (">=", 0.70),
     "EDGE_SHOWS_WALL": (">=", 1.10),
+    "CUTTER_SPAN_PX": (">=", 10.0),
+    "GLASS_LUMA": ("range", (12.0, 16.0)),
+    "HOPPER_LUMA": ("range", (22.0, 28.0)),
+    "HOPPER_TRACK_DELTA": (">=", 8.0),
+    "DECK_HOPPER_DELTA": (">=", 18.0),
+    "SCAR_TRACK_DELTA": (">=", 12.0),
     # Cycle 79 additions. TRACK_CONTRAST_* is a SIGNED cycle-3 row: it wants the
     # belts brighter than the pad by 18 levels. Cycle 79's mandate is the exact
     # opposite — the belts must be the darkest mass on the machine — so that row
@@ -458,7 +478,7 @@ def save_rgba_png(path: Path, pixels, width, height, colorspace="sRGB"):
     bpy.data.images.remove(img)
 
 
-def role_maps(role, rgb, size=None, prefix=None):
+def role_maps(role, rgb, size=None, prefix=None, lod=None):
     """Return (albedo, orm, normal) float32 HxWx4 arrays. Does not write files."""
     size = TEX if size is None else size
     br, bg, bb = rgb
@@ -483,6 +503,8 @@ def role_maps(role, rgb, size=None, prefix=None):
         pw, ph = 36, 36
     elif role == "scar":
         pw, ph = 40, 28
+    elif role == "drum":
+        pw, ph = 32, 24
     else:
         pw, ph = 0, 0
 
@@ -590,7 +612,10 @@ def role_maps(role, rgb, size=None, prefix=None):
         r = np.clip(br * (0.90 + film * 0.30) + dirt * 0.035, 0, 1)
         g = np.clip(bg * (0.90 + film * 0.30) + dirt * 0.030, 0, 1)
         b = np.clip(bb * (0.92 + film * 0.28) + dirt * 0.024, 0, 1)
-        rough = np.clip(0.40 + dirt * 0.16, 0.04, 0.95)
+        if lod == 0:
+            rough = np.clip(0.14 + dirt * 0.04, 0.04, 0.95)
+        else:
+            rough = np.clip(0.40 + dirt * 0.16, 0.04, 0.95)
         metal = np.full((size, size), 0.02, dtype=np.float32)
     elif role == "bit":
         # Heat tint only in the top fifth of the tile (tip UVs). The rest stays
@@ -619,6 +644,14 @@ def role_maps(role, rgb, size=None, prefix=None):
         b = np.clip(bb * (0.48 + gf * 0.06), 0, 1)
         rough = np.clip(0.58 + dirt * 0.16, 0.04, 0.95)
         metal = np.clip(0.58 + chip * 0.20, 0.0, 1.0)
+    elif role == "drum":
+        # Dark forged cutter steel. Teeth share this role so their silhouette,
+        # not a ring of bright pixels, communicates the working face.
+        r = np.clip(br * (0.88 + gf * 0.12) - dirt * 0.10, 0, 1)
+        g = np.clip(bg * (0.90 + gf * 0.10) - dirt * 0.09, 0, 1)
+        b = np.clip(bb * (0.92 + (1 - gf) * 0.08) - dirt * 0.08, 0, 1)
+        rough = np.clip(0.52 + dirt * 0.14 - edge * 0.03, 0.18, 0.90)
+        metal = np.clip(0.72 + edge * 0.08 - dirt * 0.06, 0.0, 1.0)
     else:
         r = np.full((size, size), br, dtype=np.float32)
         g = np.full((size, size), bg, dtype=np.float32)
@@ -654,7 +687,8 @@ def role_maps(role, rgb, size=None, prefix=None):
     r, g, b = plane(r), plane(g), plane(b)
     ao, rough, metal = plane(ao), plane(rough), plane(metal)
     nx, ny, nz = plane(nx), plane(ny), plane(nz)
-    emit = np.full((size, size), float(EMIT_ALPHA.get(role, 0.0)), dtype=np.float32)
+    emit_value = 0.0 if lod == 0 and role == "bit" else float(EMIT_ALPHA.get(role, 0.0))
+    emit = np.full((size, size), emit_value, dtype=np.float32)
     ones = np.ones((size, size, 1), dtype=np.float32)
     albedo = np.concatenate([r[..., None], g[..., None], b[..., None], emit[..., None]], axis=2)
     orm = np.concatenate([ao[..., None], rough[..., None], metal[..., None], ones], axis=2)
@@ -711,7 +745,7 @@ def paste_clamped(atlas, patch, u0, v0, tile, gutter):
             atlas[vi + inner + gy, ui + inner + gx] = patch[-1, -1]
 
 
-def pack_atlas(size):
+def pack_atlas(size, lod):
     albedo = np.zeros((size, size, 4), dtype=np.float32)
     orm = np.zeros((size, size, 4), dtype=np.float32)
     nrm = np.zeros((size, size, 4), dtype=np.float32)
@@ -724,8 +758,11 @@ def pack_atlas(size):
     tile = size // 4
     inner = tile - 2 * gutter
     mapping = {}
+    role_rgb = LOD0_ROLE_RGB if lod == 0 else ROLE_RGB
     for role, index in ATLAS_TILE.items():
-        maps = role_maps(role, ROLE_RGB[role], size=inner)
+        if role == "drum" and lod != 0:
+            continue
+        maps = role_maps(role, role_rgb[role], size=inner, lod=lod)
         u0, v0, tile_px, gut = tile_rect_px(index, size)
         paste_clamped(albedo, maps[0], u0, v0, tile_px, gut)
         paste_clamped(orm, maps[1], u0, v0, tile_px, gut)
@@ -739,7 +776,9 @@ def pack_atlas(size):
             "inner": inner,
         }
     for index, (role, rgb) in RESERVED_TILES.items():
-        maps = role_maps(role, rgb, size=inner)
+        if lod == 0 and index == ATLAS_TILE["drum"]:
+            continue
+        maps = role_maps(role, rgb, size=inner, lod=lod)
         u0, v0, tile_px, gut = tile_rect_px(index, size)
         paste_clamped(albedo, maps[0], u0, v0, tile_px, gut)
         paste_clamped(orm, maps[1], u0, v0, tile_px, gut)
@@ -815,7 +854,7 @@ def wire_atlas(material, bsdf, maps, coat=0.0):
 
 def create_atlas(lod):
     size = TEX_BY_LOD[lod]
-    albedo, orm, nrm, mapping = pack_atlas(size)
+    albedo, orm, nrm, mapping = pack_atlas(size, lod)
     prefix = f"rover_atlas_lod{lod}"
     maps = (
         write_pixels(f"{prefix}_basecolor", albedo, size, "sRGB"),
@@ -837,7 +876,7 @@ def create_atlas(lod):
 
 def create_role_materials(lod):
     mats = {}
-    for name, role in (
+    role_rows = [
         ("Material_Livery", "livery"),
         ("Material_Chevron", "chevron"),
         ("Material_Steel", "steel"),
@@ -847,11 +886,15 @@ def create_role_materials(lod):
         ("Material_Lamp", "lamp"),
         ("Material_Rubble", "rubble"),
         ("Material_Scar", "scar"),
-    ):
+    ]
+    if lod == 0:
+        role_rows.append(("Material_Drum", "drum"))
+    role_rgb = LOD0_ROLE_RGB if lod == 0 else ROLE_RGB
+    for name, role in role_rows:
         material = bpy.data.materials.new(f"{name}_LOD{lod}")
         material.name = f"{name}_LOD{lod}"
         bsdf = principled(material)
-        rgb = ROLE_RGB[role]
+        rgb = role_rgb[role]
         bsdf.inputs["Base Color"].default_value = (*rgb, 1)
         material["spacefaceRole"] = role
         mats[name] = material
@@ -1269,11 +1312,56 @@ def add_track_outer_lip(prefix, xc, yc, half_len, radius, sign, z_top, material,
     return made
 
 
-def add_faceted_bit(prefix, loc, bit_mat, steel, collection, lod, bevel):
+def add_faceted_bit(prefix, loc, body_mat, drum_mat, tool_mat, collection, lod, bevel):
     tx, ty, tz = loc
+    if lod == 0:
+        # Cycle 83's thin raised disc fixed the supported top view but became a
+        # coin with a bright spark in the supported flank view. Keep the same
+        # top-view diameter while giving the working end real barrel depth. A
+        # single scalloped prism supplies the teeth in its silhouette instead
+        # of six detached one-pixel boxes.
+        housing = add_cylinder(
+            f"{prefix}Housing", (tx - 0.12, ty, tz), 0.085, 0.22,
+            body_mat, collection, vertices=10, bevel=bevel,
+            rot=(0, math.pi / 2, 0),
+        )
+        housing["sf_boom"] = True
+        drum_cx = tx - 0.08
+        drum_z = tz + 0.04
+        drum_half_depth = 0.09
+        drum_ring = []
+        for i in range(12):
+            ang = 2.0 * math.pi * i / 12.0
+            radius = 0.122 if i % 2 == 0 else 0.100
+            drum_ring.append((
+                drum_cx + math.cos(ang) * radius,
+                ty + math.sin(ang) * radius,
+            ))
+        drum = loft_from_rings(
+            f"{prefix}Drum",
+            [
+                [(x, y, drum_z - drum_half_depth) for x, y in drum_ring],
+                [(x, y, drum_z + drum_half_depth) for x, y in drum_ring],
+            ],
+            drum_mat, collection, bevel=bevel, cap=True,
+        )
+        drum["sf_boom"] = True
+        drum["sf_v0"] = 0.10
+        drum["sf_v1"] = 0.80
+        hub = add_cylinder(
+            f"{prefix}Hub",
+            (drum_cx, ty, drum_z + drum_half_depth + 0.012),
+            0.025, 0.024,
+            body_mat, collection, vertices=10, bevel=bevel,
+        )
+        hub["sf_boom"] = True
+        return housing
+
+    # Site LODs retain the compact Cycle-80 head. At 19 px/cell the drum teeth
+    # would alias into sparkle and the current silhouette already has KEEP.
     head = add_cylinder(
         f"{prefix}Head", (tx - 0.14, ty, tz), 0.078, 0.26,
-        bit_mat, collection, vertices=8 if lod else 8,
+        body_mat, collection, vertices=8,
         bevel=bevel, rot=(0, math.pi / 2, 0),
     )
     head["sf_boom"] = True
@@ -1281,7 +1369,7 @@ def add_faceted_bit(prefix, loc, bit_mat, steel, collection, lod, bevel):
     head["sf_v1"] = 0.62
     collar = add_box(
         f"{prefix}Collar", (tx - 0.22, ty, tz), (0.050, 0.062, 0.062),
-        bit_mat, collection, bevel=bevel, rot=(0, 0, 0),
+        body_mat, collection, bevel=bevel, rot=(0, 0, 0),
     )
     collar["sf_boom"] = True
     collar["sf_v0"] = 0.0
@@ -1292,14 +1380,14 @@ def add_faceted_bit(prefix, loc, bit_mat, steel, collection, lod, bevel):
     # reaches its heat band.
     tip = add_box(
         f"{prefix}Tip", (tx - 0.02, ty, tz), (0.062, 0.052, 0.052),
-        steel, collection, bevel=0.0, rot=(0, 0, math.pi / 8),
+        tool_mat, collection, bevel=0.0, rot=(0, 0, math.pi / 8),
     )
     tip["sf_boom"] = True
     tip["sf_v0"] = 0.30
     tip["sf_v1"] = 0.72
     point = add_box(
         f"{prefix}Point", (tx + 0.022, ty, tz), (0.030, 0.033, 0.033),
-        steel, collection, bevel=0.0, rot=(0, 0, math.pi / 8),
+        tool_mat, collection, bevel=0.0, rot=(0, 0, math.pi / 8),
     )
     point["sf_boom"] = True
     point["sf_v0"] = 0.84
@@ -1506,6 +1594,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     lamp_mat = mats["Material_Lamp"]
     rubble = mats["Material_Rubble"]
     scar_mat = mats["Material_Scar"]
+    drum_mat = mats.get("Material_Drum", scar_mat)
 
     bevel_body = 0.012 if lod == 0 else 0.0
     bevel_plate = 0.005 if lod == 0 else 0.0
@@ -2129,12 +2218,23 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     for part in (yoke_l, yoke_r, pin):
         machined(part)
         part["sf_boom"] = True
-    knuckle = add_box("BoomKnuckle", (px - 0.02, py, pz), (0.05, 0.18, 0.13), chevron, collection, bevel=bevel_body)
+    if lod == 0:
+        knuckle_scale = (0.10, 0.22, 0.16)
+        knuckle_mat = scar_mat
+        boom_dims = (0.18, 0.11, 0.16, 0.12)
+        boom_mat = scar_mat
+    else:
+        # Preserve the exact Cycle-80 site LOD construction and atlas bind.
+        knuckle_scale = (0.05, 0.18, 0.13)
+        knuckle_mat = chevron
+        boom_dims = (0.38, 0.26, 0.32, 0.22)
+        boom_mat = chevron
+    knuckle = add_box("BoomKnuckle", (px - 0.02, py, pz), knuckle_scale, knuckle_mat, collection, bevel=bevel_body)
     knuckle["sf_boom"] = True
     boom = add_boxed_beam(
         "BoomArm", px + 0.02, tx - 0.10, py, pz,
-        0.38, 0.26, 0.32, 0.22,
-        chevron, collection, bevel_body, stations=4 if lod == 0 else 3,
+        *boom_dims,
+        boom_mat, collection, bevel_body, stations=3,
     )
     set_bevel(boom, segments=1)
     boom["sf_boom"] = True
@@ -2144,39 +2244,16 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     # the arm's brightness, with no taper and no end return - a decal doing a
     # structural job. This one reads by its shadow and its silhouette bump.
     spine_x0, spine_x1 = px + 0.06, tx - 0.20
-    if lod == 0:
-        spine_n = 5
-        spine_pitch = (spine_x1 - spine_x0) / float(spine_n)
-        for i in range(spine_n):
-            t = i / float(spine_n - 1)
-            cx = spine_x0 + (spine_x1 - spine_x0) * t
-            seg = add_box(
-                f"BoomSpine_{i}", (cx, py, pz + 0.185 - 0.020 * t),
-                (spine_pitch * 0.52, 0.052 - 0.017 * t, 0.030 - 0.009 * t),
-                steel, collection, bevel=0.003,
-            )
-            set_bevel(seg, segments=1)
-            machined(seg)
-            seg["sf_boom"] = True
-            if i < spine_n - 1:
-                joint = add_box(
-                    f"BoomSpineJoint_{i}",
-                    (cx + spine_pitch * 0.5, py, pz + 0.180 - 0.020 * t),
-                    (0.012, 0.040, 0.024), steel, collection, bevel=0.0,
-                )
-                machined(joint)
-                joint["sf_boom"] = True
-    else:
-        # One mill-scale rail. Four collapsed segments became a stripe; one
-        # authored rail reads as a load path at 19 px/cell.
-        rail = add_box(
-            "BoomSpine_0",
-            (0.5 * (spine_x0 + spine_x1), py, pz + 0.175),
-            (0.5 * (spine_x1 - spine_x0), 0.044, 0.026),
-            steel, collection, bevel=0.0,
-        )
-        machined(rail)
-        rail["sf_boom"] = True
+    # One load rail at every LOD. The former five bright LOD0 segments made a
+    # barcode on top of the chevron plank instead of a load path.
+    rail = add_box(
+        "BoomSpine_0",
+        (0.5 * (spine_x0 + spine_x1), py, pz + 0.175),
+        (0.5 * (spine_x1 - spine_x0), 0.044, 0.026),
+        steel, collection, bevel=0.0,
+    )
+    machined(rail)
+    rail["sf_boom"] = True
     for tag, cx, hz in (("Root", spine_x0 - 0.014, 0.062), ("Tip", spine_x1 + 0.012, 0.046)):
         ret = add_box(
             f"BoomSpineReturn{tag}", (cx, py, pz + 0.185 - hz),
@@ -2189,23 +2266,20 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
             "BoomWebS",
             (px, py - 0.11, pz - 0.05), (tx - 0.16, py - 0.050, pz - 0.022),
             (tx - 0.16, py - 0.050, pz + 0.040), (px, py - 0.11, pz + 0.07),
-            0.008, chevron, collection, 0.002,
+            0.008, scar_mat, collection, 0.002,
         )
         web["sf_boom"] = True
         web_p = add_folded_sheet(
             "BoomWebP",
             (px, py + 0.11, pz - 0.05), (tx - 0.16, py + 0.050, pz - 0.022),
             (tx - 0.16, py + 0.050, pz + 0.040), (px, py + 0.11, pz + 0.07),
-            0.008, chevron, collection, 0.002,
+            0.008, scar_mat, collection, 0.002,
         )
         web_p["sf_boom"] = True
         ram = add_service_pipe("BoomRam", (px, py, pz - 0.06), (tx - 0.22, py, pz - 0.02), steel, collection, radius=0.026)
         machined(ram)
         ram["sf_boom"] = True
-        ram2 = add_service_pipe("BoomRamB", (px + 0.04, py + 0.05, pz - 0.04), (tx - 0.30, py + 0.04, pz - 0.01), steel, collection, radius=0.015)
-        machined(ram2)
-        ram2["sf_boom"] = True
-    add_faceted_bit("Bit", BIT_TIP, scar_mat, bit_mat, collection, lod, 0.002 if lod == 0 else 0.0)
+    add_faceted_bit("Bit", BIT_TIP, scar_mat, drum_mat, bit_mat, collection, lod, 0.002 if lod == 0 else 0.0)
     add_empty("bit_tip", BIT_TIP, collection, boom_pivot, size=0.05)
 
     # ------------------------------------------------------------- tailgate
@@ -3118,6 +3192,15 @@ def planform_report(still_dir: Path):
     roles = role_masks_from_id(mask_arr, obj_sil)
     beauty_luma = luma_of(top_arr)
     clay_luma = luma_of(clay_arr)
+
+    def role_median(role):
+        pixels = beauty_luma[roles[role]]
+        return float(np.median(pixels) * 255.0) if pixels.size else 0.0
+
+    role_luma = {
+        role: role_median(role)
+        for role in ("track", "steel", "glass", "rubble", "scar", "bit", "drum")
+    }
     travel_along_x = True
     if textured.get("bbox"):
         x0, y0, x1, y1 = textured["bbox"]
@@ -3145,6 +3228,24 @@ def planform_report(still_dir: Path):
     else:
         sat_frac = 0.0
     c3["LIVERY_SAT_RENDERED"] = _row("LIVERY_SAT_RENDERED", round(sat_frac, 4))
+
+    bit_mask = roles["bit"] | roles["drum"]
+    cutter_span_px = 0.0
+    if bit_mask.any():
+        _bit_y, bit_x = np.nonzero(bit_mask)
+        cutter_span_px = float(int(bit_x.max()) - int(bit_x.min()) + 1)
+    c3["CUTTER_SPAN_PX"] = _row("CUTTER_SPAN_PX", cutter_span_px)
+    c3["GLASS_LUMA"] = _row("GLASS_LUMA", round(role_luma["glass"], 4))
+    c3["HOPPER_LUMA"] = _row("HOPPER_LUMA", round(role_luma["rubble"], 4))
+    c3["HOPPER_TRACK_DELTA"] = _row(
+        "HOPPER_TRACK_DELTA", round(role_luma["rubble"] - role_luma["track"], 4)
+    )
+    c3["DECK_HOPPER_DELTA"] = _row(
+        "DECK_HOPPER_DELTA", round(role_luma["steel"] - role_luma["rubble"], 4)
+    )
+    c3["SCAR_TRACK_DELTA"] = _row(
+        "SCAR_TRACK_DELTA", round(role_luma["scar"] - role_luma["track"], 4)
+    )
 
     depth_wu = None
     if depth_path.exists():
@@ -3315,6 +3416,7 @@ def planform_report(still_dir: Path):
         "clayRaw": clay,
         "objectBboxPx": textured.get("bbox"),
         "objectSilhouettePixels": textured.get("silhouettePixels"),
+        "roleLumaMedians255": {key: round(value, 4) for key, value in role_luma.items()},
         "depthWu": depth_wu,
         "normalStdev": nrm_std,
         "normalStdevLivery": nrm_liv,

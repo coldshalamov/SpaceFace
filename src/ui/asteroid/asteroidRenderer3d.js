@@ -245,6 +245,20 @@ export function validateAuthoredRoverCutters(meshes) {
   return list;
 }
 
+export function setAuthoredRoverCutterSpin(meshes, theta) {
+  const list = Array.isArray(meshes) ? meshes : [];
+  for (let i = 0; i < list.length; i++) {
+    const mesh = list[i];
+    if (!mesh || !mesh.rotation) continue;
+    // The close-register cutter is a vertical milling drum: Blender +Z becomes
+    // glTF/Three +Y. Retained site cutters are axial heads whose length is +X.
+    // Applying one axis to every LOD makes one of the two constructions orbit
+    // or tumble when the register changes.
+    if (mesh.name === 'LOD0_Bit') mesh.rotation.y = theta;
+    else mesh.rotation.x = theta;
+  }
+}
+
 // Module load REPORTS a divergence; it must never throw. uiRoot.registerScreens() swallows a
 // module-evaluation rejection with a console.warn and skips the screen, so a throw here would
 // delete the whole mining board from the game while boot and every headless check stayed green
@@ -1835,8 +1849,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     prepareTrackScroll(trackR);
     // THE CUTTER. The authored part carries one LOD<n>_Bit mesh per LOD, parented under bit_tip;
     // the loader hands them back already bound. Two things have to be true for the bit to read as
-    // a working tool: it spins on its own axis (local +X is the cutter's length after the Y-up
-    // export), and it is the only thing that heats. The whole vehicle shares ONE atlas material,
+    // a working tool: each authored LOD spins on its own declared construction axis, and it is the
+    // only thing that heats. The whole vehicle shares ONE atlas material,
     // so heat MUST be driven on a per-mesh clone — writing emissive on the shared material lights
     // the tub, the tracks, the glass and the boom orange every time the drill warms up.
     const cutterMeshes = validateAuthoredRoverCutters(group.userData.worksCutterMeshes).slice();
@@ -1899,10 +1913,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           trackPhaseMaps[i].needsUpdate = true;
         }
       },
-      // Local +X is the cutter's own length. Spinning bit_tip instead would swing the bit around
-      // the socket like a rotor: the exported socket sits off the cutter's centreline.
+      // Rotate each mesh about its own centred origin. Spinning bit_tip instead would swing the
+      // cutter around the socket like a rotor because the socket is only an attachment marker.
       setBitSpin(theta) {
-        for (let i = 0; i < cutterMeshes.length; i++) cutterMeshes[i].rotation.x = theta;
+        setAuthoredRoverCutterSpin(cutterMeshes, theta);
       },
     };
     return {

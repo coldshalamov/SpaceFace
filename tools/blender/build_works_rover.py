@@ -159,11 +159,33 @@ def _strip_blender_dup(name: str) -> str:
 
 
 def _join_cutter(imported, lod: int):
-    """Keep the complete forged head and bright point as one runtime-driven cutter."""
-    expected = {
-        f"LOD{lod}_Merged_Material_Scar_Boom",
-        f"LOD{lod}_Merged_Material_Bit_Boom",
-    }
+    """Collect only the geometry that should rotate beneath ``bit_tip``.
+
+    LOD0's Cycle-84 head is one dark scalloped drum. Its scar-steel housing and
+    boss deliberately stay with the boom: joining the material-wide
+    ``Scar_Boom`` primitive would rotate the boom webs and housing with the
+    cutter. Retained site LODs still use the older forged-head + tool-point
+    construction and therefore keep their two-material join.
+    """
+    if lod == 0:
+        expected = {"LOD0_Merged_Material_Drum_Boom"}
+        active_raw = "LOD0_Merged_Material_Drum_Boom"
+        mount_raw = "LOD0_Merged_Material_Scar_Boom"
+        imported_raw = {
+            obj.get("_sf_raw") for obj in imported if obj.type == "MESH"
+        }
+        if mount_raw not in imported_raw:
+            raise RuntimeError(
+                f"LOD0 cutter requires a stationary scar-steel housing; missing {mount_raw}"
+            )
+        requirement = "scalloped drum"
+    else:
+        expected = {
+            f"LOD{lod}_Merged_Material_Scar_Boom",
+            f"LOD{lod}_Merged_Material_Bit_Boom",
+        }
+        active_raw = f"LOD{lod}_Merged_Material_Bit_Boom"
+        requirement = "forged and tool-steel meshes"
     parts = [
         obj for obj in imported
         if obj.type == "MESH" and obj.get("_sf_raw") in expected
@@ -171,7 +193,7 @@ def _join_cutter(imported, lod: int):
     found = {obj.get("_sf_raw") for obj in parts}
     if found != expected:
         raise RuntimeError(
-            f"LOD{lod} cutter requires forged and tool-steel meshes; "
+            f"LOD{lod} cutter requires {requirement}; "
             f"expected {sorted(expected)}, found {sorted(found)}"
         )
     bpy.ops.object.select_all(action="DESELECT")
@@ -179,10 +201,15 @@ def _join_cutter(imported, lod: int):
         obj.select_set(True)
     cutter = next(
         obj for obj in parts
-        if obj.get("_sf_raw") == f"LOD{lod}_Merged_Material_Bit_Boom"
+        if obj.get("_sf_raw") == active_raw
     )
     bpy.context.view_layer.objects.active = cutter
-    bpy.ops.object.join()
+    if len(parts) > 1:
+        bpy.ops.object.join()
+    # The runtime rotates the mesh, not the attachment socket. Keep the world
+    # geometry fixed while placing the node origin on the cutter's own axis so
+    # rotation is a spin rather than an orbit around bit_tip.
+    bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
     cutter.name = CUTTER_NAMES[lod]
     cutter["_sf_raw"] = CUTTER_NAMES[lod]
     cutter["_sf_cutter"] = True
