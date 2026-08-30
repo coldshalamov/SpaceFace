@@ -1,0 +1,398 @@
+00:00.016  color_management | Using OCIO=C:\Program Files\Blender Foundation\Blender 5.1\5.1\datafiles\colormanagement\config.ocio
+Reloading external rigs...
+Reloading external metarigs...
+18:05:44 | INFO: Data are loaded, start creating Blender stuff
+18:05:44 | INFO: Blender create Mesh node LOD0_massline_core_lamp
+18:05:44 | INFO: Blender create Mesh node LOD1_massline_core_lamp
+18:05:44 | INFO: Blender create Mesh node LOD2_massline_core_lamp
+18:05:44 | INFO: Blender create Mesh node LOD0_massline_core
+18:05:44 | INFO: Blender create Mesh node LOD1_massline_core
+18:05:44 | INFO: Blender create Mesh node LOD2_massline_core
+18:05:45 | INFO: Blender create Mesh node LOD0_massline_core_spin
+18:05:45 | INFO: Blender create Mesh node LOD1_massline_core_spin
+18:05:45 | INFO: Blender create Mesh node LOD2_massline_core_spin
+18:05:45 | INFO: glTF import finished in 0.09s
+{
+  "schema": "spaceface.worksVisibleFacesDiagnostic.v2",
+  "glb": "C:\\sf-agents\\luna-massline-core-revise\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+  "glbSha256": "7D69451045708E0530F5C63CF068DB241D6B85746D4DA855858A7376B6EA6D69",
+  "generator": {
+    "path": "tools/blender/works_visible_faces.py",
+    "sha256": "C38B611CC7F90371FD7ADB28A489E3F7A5ACCDD678047C1E4340D8455BC784DC",
+    "blenderVersion": "5.1.2"
+  },
+  "authority": {
+    "role": "diagnostic_only",
+    "supportsVisibleFaceObservation": true,
+    "supportsHiddenFaceProof": false,
+    "supportsGeometryDeletion": false
+  },
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "resolution": [
+    1920,
+    1080
+  ],
+  "sampling": {
+    "method": "one ray per render-pixel centre inside projected active-LOD bounds",
+    "pixelPad": 1,
+    "records": [
+      {
+        "pixelBounds": [
+          901,
+          476,
+          1023,
+          599
+        ],
+        "sampleCount": 15006,
+        "hitCount": 11832,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 858,
+          "LOD0_massline_core": 10966,
+          "LOD0_massline_core_spin": 8
+        },
+        "lod": 0,
+        "framing": "works_top"
+      },
+      {
+        "pixelBounds": [
+          1718,
+          476,
+          1856,
+          599
+        ],
+        "sampleCount": 16974,
+        "hitCount": 14085,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1026,
+          "LOD0_massline_core": 13039,
+          "LOD0_massline_core_spin": 20
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          67,
+          476,
+          206,
+          599
+        ],
+        "sampleCount": 17097,
+        "hitCount": 13873,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1037,
+          "LOD0_massline_core": 12816,
+          "LOD0_massline_core_spin": 20
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          0.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          901,
+          8,
+          1023,
+          139
+        ],
+        "sampleCount": 15982,
+        "hitCount": 13230,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 946,
+          "LOD0_massline_core": 12262,
+          "LOD0_massline_core_spin": 22
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          901,
+          939,
+          1023,
+          1068
+        ],
+        "sampleCount": 15738,
+        "hitCount": 12877,
+        "objectHitCount": {
+          "LOD0_massline_core": 11884,
+          "LOD0_massline_core_lamp": 971,
+          "LOD0_massline_core_spin": 22
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          0.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1479,
+          145,
+          1612,
+          274
+        ],
+        "sampleCount": 17157,
+        "hitCount": 14067,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1011,
+          "LOD0_massline_core": 13042,
+          "LOD0_massline_core_spin": 14
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          1479,
+          804,
+          1612,
+          931
+        ],
+        "sampleCount": 16891,
+        "hitCount": 13822,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1023,
+          "LOD0_massline_core": 12785,
+          "LOD0_massline_core_spin": 14
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          311,
+          145,
+          445,
+          274
+        ],
+        "sampleCount": 17286,
+        "hitCount": 13885,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1019,
+          "LOD0_massline_core": 12851,
+          "LOD0_massline_core_spin": 15
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          311,
+          804,
+          445,
+          931
+        ],
+        "sampleCount": 17018,
+        "hitCount": 13659,
+        "objectHitCount": {
+          "LOD0_massline_core_lamp": 1019,
+          "LOD0_massline_core": 12625,
+          "LOD0_massline_core_spin": 15
+        },
+        "lod": 0,
+        "framing": "works_edge",
+        "edgeDir": [
+          -1.0,
+          -1.0
+        ]
+      },
+      {
+        "pixelBounds": [
+          949,
+          529,
+          971,
+          551
+        ],
+        "sampleCount": 484,
+        "hitCount": 299,
+        "objectHitCount": {
+          "LOD1_massline_core_lamp": 24,
+          "LOD1_massline_core": 275
+        },
+        "lod": 1,
+        "framing": "works_site"
+      },
+      {
+        "pixelBounds": [
+          949,
+          529,
+          971,
+          551
+        ],
+        "sampleCount": 484,
+        "hitCount": 283,
+        "objectHitCount": {
+          "LOD2_massline_core_lamp": 20,
+          "LOD2_massline_core": 263
+        },
+        "lod": 2,
+        "framing": "works_site"
+      }
+    ]
+  },
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_massline_core_lamp",
+      "lod": 0,
+      "faces": 252,
+      "observedVisible": 78,
+      "unobserved": 174,
+      "unobservedFrac": 0.6905
+    },
+    {
+      "object": "LOD1_massline_core_lamp",
+      "lod": 1,
+      "faces": 108,
+      "observedVisible": 8,
+      "unobserved": 100,
+      "unobservedFrac": 0.9259
+    },
+    {
+      "object": "LOD2_massline_core_lamp",
+      "lod": 2,
+      "faces": 92,
+      "observedVisible": 8,
+      "unobserved": 84,
+      "unobservedFrac": 0.913
+    },
+    {
+      "object": "LOD0_massline_core",
+      "lod": 0,
+      "faces": 5306,
+      "observedVisible": 1429,
+      "unobserved": 3877,
+      "unobservedFrac": 0.7307
+    },
+    {
+      "object": "LOD1_massline_core",
+      "lod": 1,
+      "faces": 1506,
+      "observedVisible": 115,
+      "unobserved": 1391,
+      "unobservedFrac": 0.9236
+    },
+    {
+      "object": "LOD2_massline_core",
+      "lod": 2,
+      "faces": 434,
+      "observedVisible": 48,
+      "unobserved": 386,
+      "unobservedFrac": 0.8894
+    },
+    {
+      "object": "LOD0_massline_core_spin",
+      "lod": 0,
+      "faces": 798,
+      "observedVisible": 64,
+      "unobserved": 734,
+      "unobservedFrac": 0.9198
+    },
+    {
+      "object": "LOD1_massline_core_spin",
+      "lod": 1,
+      "faces": 260,
+      "observedVisible": 0,
+      "unobserved": 260,
+      "unobservedFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_spin",
+      "lod": 2,
+      "faces": 68,
+      "observedVisible": 0,
+      "unobserved": 68,
+      "unobservedFrac": 1.0
+    }
+  ],
+  "observedVisibleFaces": 1750,
+  "unobservedFaces": 7074,
+  "faces": 8824,
+  "unobservedFrac": 0.8017,
+  "note": "Observation-only dry run. Unobserved does not mean hidden: pixel-centre rays can miss subpixel or antialiased coverage. This record cannot authorize culling or geometry deletion. LODs were evaluated one at a time."
+}
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+
+--- stderr ---

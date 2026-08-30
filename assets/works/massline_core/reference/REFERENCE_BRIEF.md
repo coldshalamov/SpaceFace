@@ -1,7 +1,7 @@
-# Works Massline Core — reference brief (Cycle 09 form/readability revision)
+# Works Massline Core — reference brief (Cycle 10 form/readability revision)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 9. This page is the
+(signature installed machine). **State:** `design_candidate`. Cycle 10. This page is the
 contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
 `review_pending` / `revise`; this cycle does not launch reviewers.
 
@@ -21,7 +21,9 @@ and +X hatch in every LOD, and corrects the Blender emissive-isolation V orienta
 changing the production glTF texture/UV pair. Cycle 09 makes a raised non-circular square
 anchor frame the unequivocal first load path, shrinks the redundant collar/race mass, widens
 the floor and its shadow reveals, and carries a larger hooded lamp and layered hatch through
-LOD2. Material values remain separated under the same
+LOD2. Cycle 10 deepens and widens the channel into three separated physical bands, enlarges
+the hood/socket/arm and mechanical hatch, and makes the LOD1/LOD2 square silhouettes materially
+different while retaining readable trench and asymmetric fixture cues. Material values remain separated under the same
 Works lighting without introducing safety-yellow livery. No identity, hook, camera, or envelope
 contract changes.
 
@@ -118,12 +120,12 @@ on the cut face (z = 0). Footprint stays inside ±1.10.
 | Liner outer radius / height | 0.36 / 0.012–0.62 |
 | Mouth lip | r 0.288–0.388, z 0.56–0.74 |
 | Inner race (ring_spin) | 0.340–0.395 / z 0.470–0.535 (nested rebate, not a proud cap) |
-| U-channel collar | inner flange r 0.390–0.440; floor r 0.468–0.532; outer flange r 0.560–0.625; z 0.028–0.420, cavity +Z |
-| Square anchor frame | inner opening ±0.700, outer ±0.900, wall 0.200, top z 0.515–0.523; four real load walls |
+| U-channel collar | inner flange r 0.390–0.475; floor r 0.521–0.569; outer flange r 0.615–0.705; z 0.028–0.560, cavity +Z |
+| Square anchor frame | LOD0 outer ±1.04 / wall 0.220; LOD1 outer ±0.94 / wall 0.180; LOD2 outer ±1.02 / wall 0.270; top z 0.560–0.605; four real load walls |
 | Square flange / skirt | outer ±1.04, deck z 0.125–0.235, skirt height 0.420, wall 0.160, top return 0.050 |
 | Corner pads | 0.30 square, height 0.145, on the rock |
-| Lamp | +Y frame (0.18, 0.90), arm + socket + broad hood cavity/return + recessed lens |
-| Service hatch | +X deck (0.84, −0.20), ~0.50 × 0.41, proud layered cover |
+| Lamp | +Y frame (0.18, 0.90), wear-metal arm + socket + broad hood cavity/return + recessed lens |
+| Service hatch | +X anchor wall (0.84, −0.20; LOD2 center 0.82), ~0.56 × 0.48 at far LOD, proud layered structural cover with small oxide latch |
 
 Hooks:
 
@@ -149,7 +151,7 @@ Working scene: `tools/blender/build_works_massline_core.py`.
 | Collar / shoes / hood / arm paint | billed | Formed steel plate, welded hat courses | Dark alkyd `#191714`–`#2a2622`, dielectric, edge wear | Rough 0.52–0.68, metal 0.06–0.12 | Safety yellow; shiny plastic; uniform AO dirt |
 | Wear metal (race, bolts, hatch lip) | billed | Machined steel, grease, abrasion | Restrained bare `#303338`–`#3a3e44` | Rough 0.38–0.50, metal 0.70–0.80 | Chrome; coin highlight |
 | Well liner | billed | Dry refractory / sintered mineral | Dark dusty `#0c0a09`–`#1a1614` | Rough 0.84–0.94, metal 0.01–0.04 | Brown disk/plug; metal paint; glowing well |
-| Service accent | billed | Primed hatch strap / ID plate | Restrained warm oxide `#6a4a32` | Rough 0.50–0.62, metal 0.18–0.28 | Yellow; large orange brick |
+| Service accent | billed | Small primed hatch latch / ID plate | Restrained warm oxide `#6a4a32` | Rough 0.50–0.62, metal 0.18–0.28 | Yellow; large orange brick; orange strip |
 | Lamp lens | billed | Recessed dielectric | Warm `#dcc28a`, **emissive only here** | Rough 0.22–0.30, metal 0.02 | Beacon; painted tab; emissive ring |
 | Pad underside / rock interface | billed | Scaled mill scale, fines | Darker than shoe top | High rough, low metal | Floating; no contact |
 
@@ -176,7 +178,7 @@ repair hatch. Clay must read that without textures.
 8. **Manufacture** — U-section, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
 9. **LOD** — LOD1/LOD2 keep hole, square outer, U-trench, lamp, ring hook at 19 px/cell.
 
-Cycle 09 remaining review risk: the revised square-anchor-first balance, explicit three-piece
-U-trench/skirt section, far-LOD cues, and emissive-isolation orientation must still receive
-a fresh original-resolution exact-hash whole-asset review, including the player route. The candidate remains
+Cycle 10 remaining review risk: the deeper three-piece U-trench section, enlarged hood/socket/arm,
+layered hatch, materially distinct far-LOD silhouettes, and emissive-isolation orientation must still
+receive a fresh original-resolution exact-hash whole-asset review, including the player route. The candidate remains
 `review_pending` / `revise`; do not treat this cycle as KEEP.

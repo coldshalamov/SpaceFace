@@ -3,7 +3,7 @@
   "assetId": "place_works_massline_core",
   "identity": "SF_WORKS_MASSLINE_CORE_V1",
   "packet": "PQ-131.02",
-  "cycle": 9,
+  "cycle": 10,
   "state": "design_candidate",
   "disposition": "review_pending",
   "allSupportedViewZonesClassified": false,
@@ -50,7 +50,7 @@
     {
       "id": "service_accent",
       "disposition": "billed",
-      "substrate": "primed steel hatch",
+      "substrate": "primed steel hatch latch",
       "finish": "restrained warm oxide",
       "supportedViews": [
         "works_top"

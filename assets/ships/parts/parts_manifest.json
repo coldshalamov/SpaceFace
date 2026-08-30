@@ -5736,10 +5736,10 @@
       "category": "works",
       "priority": "P1",
       "file": "works/place_works_massline_core.glb",
-      "tris": 6268,
-      "bytes": 3288888,
+      "tris": 6356,
+      "bytes": 3286172,
       "textureSize": 1024,
-      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 6268/1914/570-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 09 makes the raised square anchor wall the first read, subordinates the circular collar, authors a physically separated recessed U-channel floor and flanges, and carries modeled hooded-lamp/layered-hatch cues into far LODs. Truthful cool-steel value separation is preserved; the Blender emissive diagnostic uses imported glTF V orientation so only the +Y lamp lens emits. Whole-asset G1/G2/G4 remain open and the exact source SHA-256 is 2E06D1E0EACD7319416AFD5587DD4D719228FC46004E26F8FEA02020BBCC59BC. Release/runtime G6 and player-route G7 remain separate.",
+      "note": "PQ-131.02 — authored one-cell Asteroid Works claim-anchor wellhead with explicit 6356/1874/594-triangle LODs. Runtime hooks: ring_spin and lamp. Cycle 10 deepens and widens the U-channel into separated inner-flange, recessed-floor, and outer-flange bands; enlarges the hood/socket/arm and layered mechanical hatch; and carries materially distinct square silhouettes with trench and asymmetry cues into far LODs. Truthful cool-steel value separation is preserved; the Blender emissive diagnostic uses imported glTF V orientation so only the +Y lamp lens emits. Whole-asset G1/G2/G4 remain open and the exact source SHA-256 is 7D69451045708E0530F5C63CF068DB241D6B85746D4DA855858A7376B6EA6D69. Release/runtime G6 and player-route G7 remain separate.",
       "hooks": [
         "ring_spin",
         "lamp"
@@ -5751,8 +5751,8 @@
       "mount": "origin",
       "bounds": {
         "min": [-1.04, -1.04, 0],
-        "max": [1.12, 1.115, 0.735],
-        "dimensionsM": [2.16, 2.155, 0.735]
+        "max": [1.11, 1.12, 0.735],
+        "dimensionsM": [2.15, 2.16, 0.735]
       }
     },
     {

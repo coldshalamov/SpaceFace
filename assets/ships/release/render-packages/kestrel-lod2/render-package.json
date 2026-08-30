@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "686d1f6d7de38c62a20343562391b1faaf98cced8a46548aaf8d0037d7602069",
+  "contentHash": "42e9fa42258f304fc9ece36e5a41c978c661ab2bb51fb1169cfeded5ef561690",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1475,7 +1475,7 @@
     },
     "sourceManifest": {
       "bytes": 159134,
-      "sha256": "a7d07a58b2cede16605a68588b0feb7eb250742e6af01c6cb6cc0fe3842731f6",
+      "sha256": "007236fa70f8c1a17be68c37313853571abd12d0fee26176220c406c31ecad47",
       "uri": "pilots.json"
     }
   },
@@ -2302,7 +2302,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_lod2.glb"
   },
-  "runtimeHash": "20141c1ac748671c043257909dcb3e6f4fd3da35bc5b8a0ee9c88c867b99386c",
+  "runtimeHash": "839a17dfacdb1e95d6723cc3063765bf87d552b0112cf00657ad8d2b5255e01a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
