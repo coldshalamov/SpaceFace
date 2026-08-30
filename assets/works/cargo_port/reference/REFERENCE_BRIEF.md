@@ -205,3 +205,26 @@ flange, +X throat, and freezes `evidence/cycle_001` plus `evidence/cycle_002`.
 
 Cycle 03 evidence lives in `evidence/cycle_003/`. G1/G2/G4 remain open. This is an
 implementing decision, not controller acceptance.
+
+---
+
+## Cycle 04 correction (this candidate)
+
+Independent review of Cycle 03: REVISE, source-only. At supported Works scale the
+cell still read as a round dock/portal on a pad of boxes. The C-clamp, keyed cut,
+pod face, and five freight types did not separate at ~120 px/cell; at ~19 px/cell
+the cell was one brown stamp.
+
+Cycle 04 keeps the same hooks, envelope, launch axis, five-stage crate contract,
+horseshoe flange, +X throat, and freezes `evidence/cycle_001`, `cycle_002`, and
+`cycle_003`.
+
+| Defect | Cycle 04 construction |
+|---|---|
+| Round portal / cool disc / green lamp | D-shaped keyed docking opening with wall thickness that survives at 120 px. Dark floor, dark rim, no glow, cool disc, green lamp panel, or lit circular badge. |
+| Boxed cradle on the pad | One open C-clamp planted on the deck whose arms flare +X and are the apron lip. |
+| Five similar squares | Bar trunk, cube with planform X, long instrument, hollow frame, L-pair. Additive unique XY. |
+| One brown site stamp | Darker port, warmer freight, dark pod well. Families separate without labels. |
+
+Cycle 04 evidence lives in `evidence/cycle_004/`. G1/G2/G4 remain open. This is an
+implementing decision, not controller acceptance.
