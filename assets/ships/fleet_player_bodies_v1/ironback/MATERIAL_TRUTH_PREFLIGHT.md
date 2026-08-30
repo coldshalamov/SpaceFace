@@ -75,15 +75,14 @@ stays `false` until an independent reviewer confirms coverage against the exact 
 
 ## Shape-grammar failure and assembly sequence
 
-Cycle 32 rebuilds the dorsal half as three separately readable process registers on one chassis,
-not one dark slot through an oxide loaf. Sequence: blunt barge envelope and closed keel -> hopper
-register as three hull-cut hatch bays with oxide bulkheads between them, proud drum crowns,
-ceramic apron, and a short feed throat -> closed split deck -> pulse register as two matched open
-wells with low rims, dark floors, and a deck-height oxide strip (no roof over port) -> tool yard
-as one hopper-shoulder rail with four equal-class heads in negative space, clear of the wells ->
-cab tub/cage -> underside/thermal/service -> unique UV/bake/material response -> meaning-preserving
-LODs. If clay at D=144 still shows one trough, one pulse hole, or a saw that outclasses crusher
-and grab, change the register cuts rather than enlarging attachments.
+Cycle 33 keeps Cycle 32's three process registers and poses only the crusher. Sequence: blunt
+barge envelope and closed keel -> three hopper hatch bays with oxide bulkheads, proud drum crowns,
+ceramic apron, and a short feed throat -> closed split deck -> two matched open pulse wells ->
+tool yard with saw, drill, hanging grab, and two opposed mill plates hanging in open negative
+space on the near bow shoulder so both plates and the working gap count at D=144 -> cab tub/cage
+-> underside/thermal/service -> unique UV/bake/material response -> meaning-preserving LODs. If
+clay at D=144 still hides the mill under the bow, change only the crusher pose; do not enlarge
+the saw or reopen hopper, pulse, cab, drill, or grab.
 
 ## Generated component reference
 
