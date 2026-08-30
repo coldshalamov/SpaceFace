@@ -61,6 +61,13 @@ export function wrapParallaxCoordinate(base, globalFocus, factor, tile) {
   return ((value + half) % period + period) % period - half;
 }
 
+/** Scale an authored instance center into the currently effective wrap cell. */
+export function parallaxDistributionCoordinate(base, authoredTile, effectiveTile) {
+  const source = Number.isFinite(authoredTile) && authoredTile > 0 ? authoredTile : 1;
+  const target = Number.isFinite(effectiveTile) && effectiveTile > 0 ? effectiveTile : source;
+  return (Number.isFinite(base) ? base : 0) * target / source;
+}
+
 class ParallaxLayers {
   constructor(scene, state, bus, initialPalette) {
     this.scene = scene;
@@ -205,6 +212,7 @@ class ParallaxLayers {
     const motionUniforms = {
       worldFocus: { value: new THREE.Vector2() },
       factor: { value: spec.factor },
+      authoredTile: { value: spec.tile },
       tile: { value: spec.tile },
     };
     const material = createChipMaterial(this._sharedMaps, colorMul);
@@ -477,6 +485,7 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
 
     shader.uniforms.uParallaxWorldFocus = motionUniforms.worldFocus;
     shader.uniforms.uParallaxFactor = motionUniforms.factor;
+    shader.uniforms.uParallaxAuthoredTile = motionUniforms.authoredTile;
     shader.uniforms.uParallaxTile = motionUniforms.tile;
     if (spin) {
       shader.uniforms.uParallaxPrimaryTime = spinUniforms.primaryTime;
@@ -487,6 +496,7 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
       '#include <common>',
       'uniform vec2 uParallaxWorldFocus;',
       'uniform float uParallaxFactor;',
+      'uniform float uParallaxAuthoredTile;',
       'uniform float uParallaxTile;',
     ];
     if (spin) {
@@ -532,8 +542,10 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
       [
         '#include <begin_vertex>',
         'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
+        'vec2 sfParallaxDistributionCenter = sfParallaxBaseCenter',
+        '  * (uParallaxTile / max(0.0001, uParallaxAuthoredTile));',
         'vec2 sfParallaxWrappedCenter = mod(',
-        '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
+        '  sfParallaxDistributionCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
         '  uParallaxTile',
         ') - uParallaxTile * 0.5;',
         'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',

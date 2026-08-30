@@ -364,7 +364,7 @@
     "check:electron:new-game": "node scripts/check-electron-new-game-launch.mjs",
     "check:non-graphics": "node scripts/check-non-graphics-ci.mjs",
     "check:sector-palettes": "node scripts/check-sector-palettes.mjs",
-    "check:parallax": "node scripts/check-parallax-layers.mjs",
+    "check:parallax": "node --test test/parallax-wrap-density.test.mjs && node scripts/check-parallax-layers.mjs",
     "check:assets:live": "node scripts/probe-authored-assets-live.mjs",
     "check:visual-stability": "node test/visual-probe-server.test.mjs && node scripts/probe-ship-visual-stability.mjs",
     "check:gpu-path": "node scripts/probe-gpu-path.mjs --headed",
