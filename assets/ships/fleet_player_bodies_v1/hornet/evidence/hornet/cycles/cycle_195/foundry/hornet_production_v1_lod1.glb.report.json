@@ -1,0 +1,688 @@
+{
+  "bbox": {
+    "dims": [
+      11.0098,
+      2.7255,
+      8.3
+    ],
+    "max": [
+      5.52,
+      1.6055,
+      4.15
+    ],
+    "min": [
+      -5.4898,
+      -1.12,
+      -4.15
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Canard_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Canard_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Canopy_GlassShell_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Fore_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "CanopyFrame_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "COLLISION_HULL_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.035",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.036",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.037",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.038",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.039",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.040",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.041",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.042",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.043",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.044",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.045",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.046",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.047",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.049",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.050",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.051",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.052",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.053",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.054",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.055",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.056",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.057",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.058",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.059",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.060",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.061",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.062",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.063",
+        "primitives": 1
+      },
+      {
+        "name": "Cylinder.005",
+        "primitives": 1
+      },
+      {
+        "name": "Cylinder.007",
+        "primitives": 1
+      },
+      {
+        "name": "DriveCeramic_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "DriveCeramic_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "DriveFlange_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "DriveFlange_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "DriveHouse_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "DriveHouse_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Hull_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorHeaderFeed_C195.001",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorRootMount_C195_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "RadiatorRootMount_C195_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_Flap_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_FlapSlot_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_LowerLoadPath_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Port_RootFairing_Mesh.001",
+        "primitives": 2
+      },
+      {
+        "name": "Wing_Stbd_Flap_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_FlapSlot_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_LowerLoadPath_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "Wing_Stbd_RootFairing_Mesh.001",
+        "primitives": 2
+      },
+      {
+        "name": "ZoneDriveBand_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneDriveBand_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneDriveService_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneDriveService_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneNoseAccessBreak_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneNoseAccessBreak_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneNoseService_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneNoseService_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneSpineCrown_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneSpineRib_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneSpineRib_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneSpineShoulder_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneSpineShoulder_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneWingHinge_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneWingHinge_Stbd_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneWingTorque_Port_Mesh.001",
+        "primitives": 1
+      },
+      {
+        "name": "ZoneWingTorque_Stbd_Mesh.001",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 76
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat"
+  ],
+  "file": "hornet_production_v1_lod1.glb",
+  "geometry": {
+    "primitives": 76,
+    "tangentPrimitives": 75,
+    "tangentsPresent": true,
+    "uvSets": [
+      0,
+      1
+    ]
+  },
+  "materials": {
+    "count": 12,
+    "usage": {
+      "Material_Armor.001": 4,
+      "Material_Canopy.001": 1,
+      "Material_Ceramic.001": 2,
+      "Material_Frame.001": 17,
+      "Material_Gap": 1,
+      "Material_Gap.001": 10,
+      "Material_Hull.001": 1,
+      "Material_HullPanel.001": 5,
+      "Material_Mechanical.001": 23,
+      "Material_Radiator.001": 4,
+      "Material_Soot.001": 2,
+      "Material_Wing.001": 6
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL.001",
+    "Canard_Port.001",
+    "Canard_Stbd.001",
+    "CanopyFrame_Fore.001",
+    "CanopyFrame_Port.001",
+    "CanopyFrame_Stbd.001",
+    "CanopyTub_C195_Aft.001",
+    "CanopyTub_C195_Floor.001",
+    "CanopyTub_C195_Fore.001",
+    "CanopyTub_C195_Port.001",
+    "CanopyTub_C195_Stbd.001",
+    "Canopy_GlassShell.001",
+    "DriveBore_Port.001",
+    "DriveBore_Stbd.001",
+    "DriveCeramic_Port.001",
+    "DriveCeramic_Stbd.001",
+    "DriveFlange_Port.001",
+    "DriveFlange_Stbd.001",
+    "DriveHouse_Port.001",
+    "DriveHouse_Stbd.001",
+    "DriveVane_Port_0.001",
+    "DriveVane_Port_1.001",
+    "DriveVane_Port_2.001",
+    "DriveVane_Port_3.001",
+    "DriveVane_Stbd_0.001",
+    "DriveVane_Stbd_1.001",
+    "DriveVane_Stbd_2.001",
+    "DriveVane_Stbd_3.001",
+    "GunCheek_Port.001",
+    "GunCheek_Stbd.001",
+    "HORNET_LOD1_ROOT",
+    "LOD1_Hull",
+    "RadiatorCassette_C195_Aft.001",
+    "RadiatorCassette_C195_Floor.001",
+    "RadiatorCassette_C195_Fore.001",
+    "RadiatorCassette_C195_Port.001",
+    "RadiatorCassette_C195_Stbd.001",
+    "RadiatorCore_C195.001",
+    "RadiatorFin_C195_0.001",
+    "RadiatorFin_C195_1.001",
+    "RadiatorFin_C195_2.001",
+    "RadiatorFloor_C195.001",
+    "RadiatorHeaderFeed_C195.001",
+    "RadiatorHeader_C195.001",
+    "RadiatorMount_C195_Port.001",
+    "RadiatorMount_C195_Stbd.001",
+    "RadiatorRootMount_C195_Port.001",
+    "RadiatorRootMount_C195_Stbd.001",
+    "SOCKET_Camera_Focus.001",
+    "SOCKET_Cargo_Ventral.001",
+    "SOCKET_Engine_Main.001",
+    "SOCKET_Mining_Front.001",
+    "SOCKET_RCS_Port.001",
+    "SOCKET_RCS_Starboard.001",
+    "SOCKET_Trail_Main.001",
+    "SOCKET_Trail_Port.001",
+    "SOCKET_Trail_Starboard.001",
+    "SOCKET_Utility_Dorsal.001",
+    "SOCKET_Weapon_Front.001",
+    "Wing_Port.001",
+    "Wing_Port_Flap.001",
+    "Wing_Port_FlapSlot.001",
+    "Wing_Port_LowerLoadPath.001",
+    "Wing_Port_RootFairing.001",
+    "Wing_Stbd.001",
+    "Wing_Stbd_Flap.001",
+    "Wing_Stbd_FlapSlot.001",
+    "Wing_Stbd_LowerLoadPath.001",
+    "Wing_Stbd_RootFairing.001",
+    "ZoneDriveBand_Port.001",
+    "ZoneDriveBand_Stbd.001",
+    "ZoneDriveService_Port.001",
+    "ZoneDriveService_Stbd.001",
+    "ZoneNoseAccessBreak_Port.001",
+    "ZoneNoseAccessBreak_Stbd.001",
+    "ZoneNoseService_Port.001",
+    "ZoneNoseService_Stbd.001",
+    "ZoneSpineCrown.001",
+    "ZoneSpineRib_Port.001",
+    "ZoneSpineRib_Stbd.001",
+    "ZoneSpineShoulder_Port.001",
+    "ZoneSpineShoulder_Stbd.001",
+    "ZoneWingHinge_Port.001",
+    "ZoneWingHinge_Stbd.001",
+    "ZoneWingTorque_Port.001",
+    "ZoneWingTorque_Stbd.001"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_armor_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_armor_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_armor_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_ceramic_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_ceramic_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_ceramic_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hull_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hull_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hull_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hullpanel_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hullpanel_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_hullpanel_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_mechanical_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_mechanical_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_mechanical_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_radiator_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_radiator_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_radiator_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_wing_basecolor",
+      "resolution": "2048x2048",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_wing_normal",
+      "resolution": "2048x2048",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "hornet_form_c195_lod2048_wing_orm",
+      "resolution": "2048x2048",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 86,
+    "nonAppliedCount": 45,
+    "nonAppliedNodes": [
+      "CanopyTub_C195_Aft.001",
+      "CanopyTub_C195_Floor.001",
+      "CanopyTub_C195_Fore.001",
+      "CanopyTub_C195_Port.001",
+      "CanopyTub_C195_Stbd.001",
+      "DriveBore_Port.001",
+      "DriveBore_Stbd.001",
+      "DriveCeramic_Port.001",
+      "DriveCeramic_Stbd.001",
+      "DriveFlange_Port.001",
+      "DriveFlange_Stbd.001",
+      "DriveVane_Port_0.001",
+      "DriveVane_Port_1.001",
+      "DriveVane_Port_2.001",
+      "DriveVane_Port_3.001",
+      "DriveVane_Stbd_0.001",
+      "DriveVane_Stbd_1.001",
+      "DriveVane_Stbd_2.001",
+      "DriveVane_Stbd_3.001",
+      "GunCheek_Port.001",
+      "GunCheek_Stbd.001",
+      "RadiatorCassette_C195_Aft.001",
+      "RadiatorCassette_C195_Floor.001",
+      "RadiatorCassette_C195_Fore.001",
+      "RadiatorCassette_C195_Port.001",
+      "RadiatorCassette_C195_Stbd.001",
+      "RadiatorCore_C195.001",
+      "RadiatorFin_C195_0.001",
+      "RadiatorFin_C195_1.001",
+      "RadiatorFin_C195_2.001",
+      "RadiatorFloor_C195.001",
+      "RadiatorHeader_C195.001",
+      "RadiatorMount_C195_Port.001",
+      "RadiatorMount_C195_Stbd.001",
+      "SOCKET_Camera_Focus.001",
+      "SOCKET_Cargo_Ventral.001",
+      "SOCKET_Engine_Main.001",
+      "SOCKET_Mining_Front.001",
+      "SOCKET_RCS_Port.001",
+      "SOCKET_RCS_Starboard.001",
+      "SOCKET_Trail_Main.001",
+      "SOCKET_Trail_Port.001",
+      "SOCKET_Trail_Starboard.001",
+      "SOCKET_Utility_Dorsal.001",
+      "SOCKET_Weapon_Front.001"
+    ]
+  },
+  "tris": 35150,
+  "verdict": {
+    "budget": null,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

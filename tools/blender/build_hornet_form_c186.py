@@ -398,6 +398,19 @@ def create_form_materials():
             "Material_Mechanical": ((0.12, 0.19, 0.23), "mechanical", 0.82, 0.36, 18.0),
             "Material_Radiator": ((0.27, 0.38, 0.39), "mechanical", 0.62, 0.44, 18.0),
         })
+    if CYCLE >= 195:
+        # C195 is a whole-hull articulation pass. Keep the four functional zones in one calm
+        # hierarchy: pressure skin, overlapping service panels, deep mechanical breaks, and only
+        # a small warm thermal core. The added geometry below does the separation; maps remain
+        # uniform per role so no broad grid or decal is carrying the read.
+        specs.update({
+            "Material_Hull": ((0.40, 0.48, 0.56), "hull", 0.0, 0.46, 0.42),
+            "Material_HullPanel": ((0.22, 0.31, 0.38), "hull", 0.0, 0.52, 0.36),
+            "Material_Armor": ((0.085, 0.15, 0.19), "armor", 0.16, 0.50, 0.55),
+            "Material_Wing": ((0.085, 0.17, 0.22), "armor", 0.18, 0.49, 0.36),
+            "Material_Mechanical": ((0.085, 0.15, 0.18), "mechanical", 0.82, 0.36, 18.0),
+            "Material_Radiator": ((0.25, 0.36, 0.37), "mechanical", 0.62, 0.44, 18.0),
+        })
     mats = {}
     for name, (rgb, role, metallic, roughness, detail_scale) in specs.items():
         material = bpy.data.materials.new(name)
@@ -450,6 +463,8 @@ def create_form_materials():
         simple_specs["Material_Frame"] = ((0.17, 0.23, 0.28), 0.72, 0.42, "mechanical")
     if CYCLE >= 194:
         simple_specs["Material_Frame"] = ((0.12, 0.19, 0.23), 0.78, 0.40, "mechanical")
+    if CYCLE >= 195:
+        simple_specs["Material_Frame"] = ((0.10, 0.17, 0.20), 0.78, 0.40, "mechanical")
     for name, (rgb, metallic, roughness, role) in simple_specs.items():
         material = bpy.data.materials.new(name)
         bsdf = MTX.principled(material)
@@ -1419,6 +1434,158 @@ def add_surface_story(mats, collection, lod):
     return bits
 
 
+def add_hull_articulation(mats, collection, lod):
+    """Build four connected service zones that carry the whole-hull chase read.
+
+    C194 fixed the wing and radiator in isolation, but the remaining pressure shell still read as
+    a broad uninterrupted skin beside Hitch. C195 uses a small number of large, shadow-catching
+    plates, seams, and ribs that follow the ship's existing functional flow: cockpit service,
+    central shoulder/spine, wing carry-through, and aft drive service. Every piece is real volume
+    and uses an existing authored material role; none is a decal or a random greeble.
+    """
+    if CYCLE < 195:
+        return []
+
+    bits = []
+
+    def sheet(name, corners, material, thickness, bevel=0.006):
+        bits.append(MTX.add_folded_sheet(name, corners[0], corners[1], corners[2], corners[3], thickness, material, collection, bevel))
+
+    hull_panel = mats["Material_HullPanel"]
+    mechanical = mats["Material_Mechanical"]
+    frame = mats["Material_Frame"]
+    gap = mats["Material_Gap"]
+
+    # Zone 1: nose/canopy service shoulders. These wrap the existing framed canopy and terminate
+    # before the center spine, so the cockpit remains the identity anchor rather than a floating
+    # black sticker.
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        sheet(
+            f"ZoneNoseService_{tag}",
+            [
+                (3.62, sign * 0.72, 0.83),
+                (2.72, sign * 0.94, 0.88),
+                (1.96, sign * 0.82, 0.75),
+                (2.36, sign * 0.58, 0.68),
+            ],
+            hull_panel,
+            0.065,
+            0.006,
+        )
+        if lod < 2:
+            # A single dark access break under each shoulder gives the panel a real seam and
+            # shadow without turning the nose into a repeated tile field.
+            sheet(
+                f"ZoneNoseAccessBreak_{tag}",
+                [
+                    (2.16, sign * 0.56, 0.70),
+                    (1.52, sign * 0.64, 0.72),
+                    (1.46, sign * 0.57, 0.64),
+                    (1.98, sign * 0.49, 0.66),
+                ],
+                gap,
+                0.035,
+                0.003,
+            )
+
+    # Zone 2: central spine and shoulder load paths. The paired rails flank the radiator rather
+    # than hiding it, tying the cockpit service shoulder into the aft engine structure.
+    sheet(
+        "ZoneSpineCrown",
+        [(1.54, -0.24, 0.72), (1.54, 0.24, 0.72), (-0.82, 0.24, 0.76), (-0.82, -0.24, 0.76)],
+        hull_panel,
+        0.055,
+        0.005,
+    )
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        sheet(
+            f"ZoneSpineShoulder_{tag}",
+            [
+                (1.42, sign * 0.70, 0.66),
+                (0.34, sign * 0.92, 0.70),
+                (-0.72, sign * 0.94, 0.66),
+                (-1.52, sign * 0.76, 0.62),
+            ],
+            mechanical,
+            0.075,
+            0.006,
+        )
+        if lod < 2:
+            sheet(
+                f"ZoneSpineRib_{tag}",
+                [
+                    (-0.12, sign * 0.94, 0.64),
+                    (-0.30, sign * 0.94, 0.78),
+                    (-0.54, sign * 0.83, 0.73),
+                    (-0.34, sign * 0.82, 0.60),
+                ],
+                frame,
+                0.050,
+                0.004,
+            )
+
+    # Zone 3: wing-root/underside mechanism. This is a large torque-box plate that overlaps the
+    # accepted C194 root fairing and lower load path, making the two structures read as one formed
+    # carry-through with a recessed hinge pocket.
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        sheet(
+            f"ZoneWingTorque_{tag}",
+            [
+                (1.86, sign * 1.00, 0.26),
+                (0.70, sign * 1.28, 0.10),
+                (-0.30, sign * 1.17, -0.10),
+                (0.42, sign * 0.93, -0.02),
+            ],
+            mechanical,
+            0.085,
+            0.007,
+        )
+        if lod < 2:
+            sheet(
+                f"ZoneWingHinge_{tag}",
+                [
+                    (1.48, sign * 1.04, 0.24),
+                    (1.06, sign * 1.10, 0.28),
+                    (0.84, sign * 1.00, 0.18),
+                    (1.28, sign * 0.96, 0.14),
+                ],
+                frame,
+                0.050,
+                0.004,
+            )
+
+    # Zone 4: aft drive service structure. A pair of tapered plates roots the drive houses into
+    # the shell and leaves the existing ceramic throats open; no extra rings or emissive garnish.
+    for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
+        sheet(
+            f"ZoneDriveService_{tag}",
+            [
+                (-3.18, sign * 0.88, 0.42),
+                (-3.82, sign * 0.94, 0.70),
+                (-4.34, sign * 0.98, 0.92),
+                (-3.96, sign * 1.22, 0.64),
+            ],
+            mechanical,
+            0.075,
+            0.006,
+        )
+        if lod < 2:
+            sheet(
+                f"ZoneDriveBand_{tag}",
+                [
+                    (-3.46, sign * 0.92, 0.56),
+                    (-3.78, sign * 0.96, 0.73),
+                    (-4.05, sign * 1.12, 0.74),
+                    (-3.70, sign * 1.10, 0.53),
+                ],
+                frame,
+                0.055,
+                0.004,
+            )
+
+    return bits
+
+
 def collision_mesh(collection, root):
     verts = [
         (-5.22, -2.55, -1.12), (-5.22, 2.55, -1.12), (-5.22, -2.55, 1.12), (-5.22, 2.55, 1.12),
@@ -1532,7 +1699,8 @@ def build_lod(lod, mats):
         wings.extend(build_wing(f"Wing_{tag}", sign, mats, collection, lod))
     canards = add_canards(mats, collection, lod)
     surface_bits = add_surface_story(mats, collection, lod)
-    built = [hull, *canopy_bits, *drive_bits, *radiator_bits, *wings, *canards, *surface_bits]
+    articulation_bits = add_hull_articulation(mats, collection, lod)
+    built = [hull, *canopy_bits, *drive_bits, *radiator_bits, *wings, *canards, *surface_bits, *articulation_bits]
 
     for obj in built:
         if obj is not None and obj.name in bpy.data.objects:
