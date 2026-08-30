@@ -31,7 +31,7 @@ Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras i
 
 C52 implements 1 + 3.
 
-## C186-C191 active candidate preflight
+## C186-C192 active candidate preflight
 
 The active lane freezes the live C85 identity and interfaces before form work:
 
@@ -40,21 +40,23 @@ The active lane freezes the live C85 identity and interfaces before form work:
 | Asset identity | `SF_HORNET_PRODUCTION_V1`, `hornet_production_v1`, player interceptor, +X forward; C85 remains wired/live. |
 | Runtime interface | Existing parts-library path, three LOD slots, socket map, collision envelope, and display-scale contract are unchanged. |
 | Source technique | Continuous chined pressure-shell loft with wing carry-through; no three-house reset, no cabin/seat kit, no Hitch/Kestrel edits. |
-| Canopy | Hull Boolean excavation plus five-wall tub, enlarged/set-back raised open-bottom dark glass shell, four-sided metal frame. |
+| Canopy | Hull Boolean excavation plus five-wall tub, enlarged/set-back raised open-bottom dark glass shell, four-sided metal frame. C192 preserves the framed opening while reducing frame contrast. |
 | Drive | Two hull Boolean throat openings continued into upward/rearward tapered houses, proud flange, ceramic collar, soot bore, rooted vane star; no emissive disc. |
-| Wings | Closed airfoil loft with a deep inboard section, hull-panel carry-through fairing, and a real recessed trailing flap slot; C188+ uses the dedicated armor role on the crown. |
-| Surface | Unique per-role UV0 basecolor/ORM/tangent-normal maps at 1024/512/512 plus UV1 tiled material detail; C190 softened seam bands and C191 keeps the same density path. |
-| LOD ladder | C191 uses 45,802 / 31,194 / 18,046 total triangles and 60 / 49 / 36 draws; all hulls remain above the 12,000 technical floor. |
+| Wings | Closed airfoil loft with a deeper C192 inboard section, hull-panel carry-through fairing, visible lower load path, and a real recessed trailing flap slot; C188+ uses the dedicated armor role on the crown. |
+| Surface | Unique per-role UV0 basecolor/ORM/tangent-normal maps at C192 4096/2048/1024 plus UV1 tiled material detail; C192 removes broad saddle sheets and carries construction through geometry and restrained role values. |
+| LOD ladder | C192 uses 46,568 / 31,896 / 19,008 total triangles, 32,992 / 24,020 / 12,634 hull triangles, and 67 / 58 / 47 primitive submits (63 / 54 / 43 mesh nodes); every series is strictly reducing and every hull remains above the 12,000 technical floor. |
+| Texel density | C192 measures 372.0 px/m on LOD0 (`4096 / 11.01 m`), meeting MTX-17's 256–512 px/m LOD0 target. LOD1/LOD2 intentionally step down to 186.0 / 93.0 px/m with the map ladder. |
 | Supported evidence cameras | `play_chase` D=144, `play_chase_abeam` D=144, `play_chase_close` D=58; `grazing_close` and `drive_rear` are diagnostic only. |
 
 ### Visible-zone and material bill
 
 The pressure shell is cool steel-blue dielectric paint with faceted chines and restrained course
 seams. Hull panels carry a slightly darker blue-gray role. Wings/canards use a dark teal armor role
-with a deep inboard section and visible carry-through; mechanical drive houses are dark metallic;
-drive collars are warm ceramic; canopy glass is opaque near-black with a four-sided frame boundary;
-the dorsal radiator cassette is a dark recessed service well. Cyan and red are limited service and
-warning marks. The hull, canopy, wing roots, radiator well, drive throats, hoses, repair patch, and
+with a deeper C192 inboard section, visible underside load path, and carry-through; mechanical drive
+houses are dark metallic; drive collars are warm ceramic; canopy glass is opaque near-black with a
+four-sided frame boundary; the dorsal radiator is a recessed cassette with rim, floor/walls, core,
+header, and rooted mounts rather than a black comb. Cyan and red are limited service and warning
+marks. The hull, canopy, wing roots, radiator cassette, drive throats, hoses, repair patch, and
 stencil are all authored zones. No DCC-default material is retained as a quality decision.
 
 ### Gate status before independent review
@@ -62,13 +64,13 @@ stencil are all authored zones. No DCC-default material is retained as a quality
 | Gate | Status |
 |---|---|
 | G0 identity/interfaces | `evidence_ready`; C85 frozen, no runtime promotion. |
-| G1 proportional fiction | `evidence_ready`; continuous shell/wing carry-through and chase-visible primary openings documented in C186-C191 records. |
-| G2 material truth | `evidence_ready`; per-role maps, ORM, tangent-normal, and UV1 detail generated; C190 seam correction and C191 retained density documented. |
-| G3 technical/export | `evidence_ready`; all three LODs export, hull resolution guard passes, drive/canopy/radiator cuts report success. |
+| G1 proportional fiction | `evidence_ready`; continuous shell/wing carry-through, C192 lower load path/flap slot, and chase-visible primary openings documented in C186-C192 records. |
+| G2 material truth | `evidence_ready`; C192 per-role 4096/2048/1024 maps, ORM, tangent-normal, UV1 detail, restrained values, and MTX-17 LOD0 density documented. |
+| G3 technical/export | `evidence_ready`; all three C192 LODs export, strict triangle/draw reduction and hull guard pass, drive/canopy/radiator cuts report success. |
 | G4 whole-asset visual review | `blocked`; independent controller-owned chase review is still required and no self-acceptance is claimed. |
 | G5 runtime admission | `blocked`; promotion is intentionally withheld pending G4 and exact candidate acceptance. |
 
-The six full-job cycle records are `cycle_186.md` through `cycle_191.md`. Their stills are legal
+The seven full-job cycle records are `cycle_186.md` through `cycle_192.md`. Their stills are legal
 chase captures, but these records do not close G4 or authorize wiring.
 
 ## C67 construction (face wells, no Exact boolean)

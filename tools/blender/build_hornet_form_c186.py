@@ -41,6 +41,13 @@ CYCLE = cycle_from_args()
 MTX.CYCLE = CYCLE
 TAG = f"C{CYCLE:03d}"
 
+# MTX-17 is a source-asset contract, not a screenshot claim.  The C191 shell spans roughly
+# 11.0 authored metres, so C192's hero map has to be at least 2,816 px to clear the 256 px/m
+# lower bound.  Use a power-of-two ladder with a density-preserving source bake so the procedural
+# plate periods do not become a finer checker when the map edge is raised.
+C192_TEX_BY_LOD = {0: 4096, 1: 2048, 2: 1024}
+FORM_AUTHORED_LENGTH_M = 11.01
+
 
 def _set_input(node, name, value):
     socket = node.inputs.get(name)
@@ -109,31 +116,36 @@ def soften_plate_seams(maps, role):
     The sanctioned role-map generator deliberately bakes narrow plate seams.  At the
     close chase distance, C186-C189's repeated 96x64/72x48 seams were aliasing into a
     uniform grid across the whole airframe.  C190 retains the same unique UV0/ORM/normal
-    maps and UV1 detail, but blends only the two-pixel seam bands toward their immediate
-    plate so they read as restrained course breaks instead of a debug texture.
+    maps and UV1 detail, but blends only the seam bands toward their immediate plate so they
+    read as restrained course breaks instead of a debug texture. C192 removes the remaining
+    repeated contrast from the baked bands; the shell construction is carried by geometry and
+    role value, not a tiled checker.
     """
     if CYCLE < 190 or role not in {"hull", "armor"}:
         return maps
-    periods = {"hull": (96, 64), "armor": (72, 48)}
-    pw, ph = periods[role]
     for image in maps:
         width, height = image.size[:]
+        scale = max(1.0, width / 1024.0)
+        periods = {"hull": (96, 64), "armor": (72, 48)}
+        pw, ph = (int(round(value * scale)) for value in periods[role])
+        band = max(2, int(round(2.0 * scale)))
+        seam_blend = 0.0 if CYCLE >= 192 else 0.30
         pixels = list(image.pixels)
         for y in range(height):
             for x in range(width):
                 sx, sy = x % pw, y % ph
-                if sx not in (0, 1, pw - 2, pw - 1) and sy not in (0, 1, ph - 2, ph - 1):
+                if sx not in (*range(band), *range(pw - band, pw)) and sy not in (*range(band), *range(ph - band, ph)):
                     continue
-                if sx in (0, 1, pw - 2, pw - 1):
-                    nx = (x + 2) % width if sx in (0, 1) else (x - 2) % width
+                if sx in (*range(band), *range(pw - band, pw)):
+                    nx = (x + band) % width if sx < band else (x - band) % width
                     ny = y
                 else:
                     nx = x
-                    ny = (y + 2) % height if sy in (0, 1) else (y - 2) % height
+                    ny = (y + band) % height if sy < band else (y - band) % height
                 target = 4 * (y * width + x)
                 source = 4 * (ny * width + nx)
                 for channel in range(3):
-                    pixels[target + channel] = pixels[target + channel] * 0.30 + pixels[source + channel] * 0.70
+                    pixels[target + channel] = pixels[target + channel] * seam_blend + pixels[source + channel] * (1.0 - seam_blend)
         image.pixels = pixels
         image.update()
         image.filepath_raw = str(MTX.TEX_DIR / f"{image.name}.png")
@@ -167,6 +179,19 @@ def create_form_materials():
             "Material_Mechanical": ((0.16, 0.20, 0.24), "mechanical", 0.90, 0.30, 24.0),
             "Material_Ceramic": ((0.34, 0.27, 0.20), "ceramic", 0.0, 0.68, 36.0),
         })
+    if CYCLE >= 192:
+        # C191's dark plates and bright engine frames collapsed into a toy-kit value grouping.
+        # Keep the role separation, but lift the armor/wing values and move the frame toward
+        # blue-black structural steel so the hull remains the bright pressure-shell authority.
+        specs.update({
+            "Material_Hull": ((0.36, 0.45, 0.54), "hull", 0.0, 0.46, 0.42),
+            "Material_HullPanel": ((0.27, 0.36, 0.44), "hull", 0.0, 0.52, 0.36),
+            "Material_Armor": ((0.105, 0.17, 0.22), "armor", 0.16, 0.50, 0.55),
+            "Material_Wing": ((0.125, 0.225, 0.285), "armor", 0.12, 0.44, 0.62),
+            "Material_Mechanical": ((0.13, 0.18, 0.22), "mechanical", 0.78, 0.36, 24.0),
+            "Material_Ceramic": ((0.25, 0.20, 0.15), "ceramic", 0.0, 0.68, 36.0),
+            "Material_Radiator": ((0.17, 0.23, 0.25), "mechanical", 0.68, 0.42, 52.0),
+        })
     mats = {}
     for name, (rgb, role, metallic, roughness, detail_scale) in specs.items():
         material = bpy.data.materials.new(name)
@@ -174,12 +199,24 @@ def create_form_materials():
         _set_input(bsdf, "Base Color", (*rgb, 1.0))
         _set_input(bsdf, "Metallic", metallic)
         _set_input(bsdf, "Roughness", roughness)
+        map_target = MTX.TEX
+        # Generate the procedural pattern at the C191 1024 source frequency, then scale the
+        # authored image to its contract edge. This raises measured texel density without making
+        # plate periods four times tighter in physical metres.
+        map_source = min(map_target, 1024) if CYCLE >= 192 else map_target
         maps = MTX.role_maps(
             role,
             rgb,
-            size=MTX.TEX,
-            prefix=f"form_c{CYCLE:03d}_lod{MTX.TEX}_{name.replace('Material_', '').lower()}",
+            size=map_source,
+            prefix=f"form_c{CYCLE:03d}_lod{map_target}_{name.replace('Material_', '').lower()}",
         )
+        if CYCLE >= 192 and map_source != map_target:
+            for image in maps:
+                image.scale(map_target, map_target)
+                image.filepath_raw = str(MTX.TEX_DIR / f"{image.name}.png")
+                image.file_format = "PNG"
+                image.save()
+                image.pack()
         soften_plate_seams(maps, role)
         wire_form_maps(material, bsdf, maps, coat=0.22 if role == "hull" else 0.08, uv1_scale=detail_scale)
         material["spacefaceRole"] = role
@@ -192,6 +229,8 @@ def create_form_materials():
         "Material_Soot": ((0.012, 0.014, 0.016), 0.0, 0.84, "soot"),
         "Material_Gap": ((0.018, 0.022, 0.026), 0.0, 0.76, "gap"),
     }
+    if CYCLE >= 192:
+        simple_specs["Material_Frame"] = ((0.17, 0.23, 0.28), 0.72, 0.42, "mechanical")
     for name, (rgb, metallic, roughness, role) in simple_specs.items():
         material = bpy.data.materials.new(name)
         bsdf = MTX.principled(material)
@@ -695,7 +734,16 @@ def build_wing(name, sign, mats, collection, lod):
     # gridded slab in the play frame; the root fairing below remains hull-colored.
     wing = mats["Material_Wing"] if CYCLE >= 188 else mats["Material_Hull"]
     underside = mats["Material_Wing"]
-    if CYCLE >= 191:
+    if CYCLE >= 192:
+        full = [
+            (1.16, 2.00, 0.16, 3.86, 1.04),
+            (1.44, 2.22, 0.18, 3.58, 0.88),
+            (2.06, 2.70, 0.20, 3.02, 0.66),
+            (2.76, 3.16, 0.21, 2.40, 0.48),
+            (3.45, 3.56, 0.21, 1.72, 0.30),
+            (4.02, 3.88, 0.20, 1.12, 0.16),
+        ]
+    elif CYCLE >= 191:
         # C190's wing was technically closed, but its flap lived inside the main planform and
         # the root fairing had no section the chase could read.  This ladder gives the wing a
         # deep inboard section, an actual carry-through, and a trailing flap behind a recessed
@@ -727,7 +775,14 @@ def build_wing(name, sign, mats, collection, lod):
     # The root fairing is a thick carry-through that begins inside the pressure shell.  A lighter
     # hull-panel role at the first stations keeps the attachment legible instead of reading as a
     # detached dark card.
-    if CYCLE >= 191:
+    if CYCLE >= 192:
+        root_rings = [
+            MTX.densify_ring(airfoil_section(0.70 * sign, 0.94, 0.12, 3.72, 1.10), 2),
+            MTX.densify_ring(airfoil_section(1.16 * sign, 1.10, 0.15, 3.78, 0.94), 2),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 1.44, 0.18, 3.56, 0.76), 2),
+        ]
+        root_material = mats["Material_Hull"]
+    elif CYCLE >= 191:
         root_rings = [
             MTX.densify_ring(airfoil_section(0.82 * sign, 1.02, 0.16, 3.62, 0.84), 2),
             MTX.densify_ring(airfoil_section(1.18 * sign, 1.18, 0.17, 3.72, 0.76), 2),
@@ -744,8 +799,45 @@ def build_wing(name, sign, mats, collection, lod):
     fairing = MTX.loft_from_rings(f"{name}_RootFairing", root_rings, root_material, collection, 0.012, cap=True)
     append_lower_material(fairing, underside, limit=-0.02)
     bits = [obj, fairing]
+    if CYCLE >= 192:
+        # A load-bearing lower spar gives the wing a visible underside section and a real root
+        # path into the hull instead of leaving a dark paper blade above the body.
+        load_rings = [
+            MTX.densify_ring(airfoil_section(0.56 * sign, 0.62, -0.12, 1.82, 0.38), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.12 * sign, 0.84, -0.08, 1.78, 0.32), 2 if lod == 0 else 1),
+            MTX.densify_ring(airfoil_section(1.72 * sign, 1.16, 0.00, 1.56, 0.24), 2 if lod == 0 else 1),
+        ]
+        bits.append(MTX.loft_from_rings(
+            f"{name}_LowerLoadPath",
+            load_rings,
+            mats["Material_HullPanel"],
+            collection,
+            0.008 if lod == 0 else 0.005,
+            cap=True,
+        ))
     if lod < 2:
-        if CYCLE >= 191:
+        if CYCLE >= 192:
+            # The C192 flap is aft of the main trailing edge at both span stations. The wider
+            # slot has enough projected width to survive the default player framing.
+            flap_specs = [
+                (2.24, -1.72, 0.82, 0.12, 0.18),
+                (3.40, 1.38, 0.54, 0.16, 0.12),
+            ]
+            slot = MTX.loft_from_rings(
+                f"{name}_FlapSlot",
+                [
+                    wing_slot_section(2.18 * sign, -1.84, 0.16, 0.15, 0.080),
+                    wing_slot_section(2.32 * sign, -1.60, 0.15, 0.15, 0.080),
+                    wing_slot_section(3.32 * sign, 1.38, 0.14, 0.17, 0.070),
+                    wing_slot_section(3.48 * sign, 1.58, 0.13, 0.17, 0.070),
+                ],
+                mats["Material_Gap"],
+                collection,
+                0.003,
+                cap=True,
+            )
+            bits.append(slot)
+        elif CYCLE >= 191:
             # At both stations the flap sits aft of the main trailing edge, leaving a real dark
             # slot rather than an overlapping black patch hidden inside the wing footprint.
             flap_specs = [
@@ -813,7 +905,20 @@ def add_canards(mats, collection, lod):
 
 
 def build_radiator(hull, mats, collection, lod):
-    if CYCLE >= 191:
+    if CYCLE >= 192:
+        # C191 exposed a real well, but its dark floor and fins photographed as a comb.  Keep
+        # the service opening recessed while giving it a structural cassette: a framed rim,
+        # visible walls, a header rail, and mounts that visibly bite into the spine.
+        well_loc = (-1.35, 0.38, 0.80)
+        well_scale = (0.78, 0.52, 0.28)
+        cassette_loc = (-1.35, 0.38, 0.68)
+        cassette_inner = (0.66, 0.38, 0.18)
+        fin_y = 0.64
+        fin_z = 0.80
+        fin_x0 = -1.88
+        fin_step = 0.25
+        fin_scale = (0.045, 0.28, 0.045)
+    elif CYCLE >= 191:
         # Move the service well onto the dorsal spine behind the cockpit.  The old starboard
         # pocket lived beneath the wing crown and was technically real but invisible in chase.
         well_loc = (-1.35, 0.38, 0.78)
@@ -841,11 +946,49 @@ def build_radiator(hull, mats, collection, lod):
         f"RadiatorCassette_{TAG}",
         cassette_loc,
         cassette_inner,
-        0.045,
-        mats["Material_Gap"],
+        0.070 if CYCLE >= 192 else 0.045,
+        mats["Material_Frame"] if CYCLE >= 192 else mats["Material_Gap"],
         collection,
     ) or [])
+    if CYCLE >= 192:
+        # The dark floor and a restrained metallic core make the recess legible; the framed wall
+        # remains the authored rim and the core gives the fins a real heat-exchanger substrate.
+        bits.append(MTX.add_box(
+            f"RadiatorFloor_{TAG}",
+            (cassette_loc[0], cassette_loc[1], cassette_loc[2] - cassette_inner[2] + 0.020),
+            (cassette_inner[0] * 0.92, cassette_inner[1] * 0.92, 0.018),
+            mats["Material_Gap"],
+            collection,
+            0.003,
+        ))
+        bits.append(MTX.add_box(
+            f"RadiatorCore_{TAG}",
+            (cassette_loc[0], cassette_loc[1], cassette_loc[2] + 0.075),
+            (cassette_inner[0] * 0.84, cassette_inner[1] * 0.80, 0.055),
+            mats["Material_Radiator"],
+            collection,
+            0.004,
+        ))
+        bits.append(MTX.add_box(
+            f"RadiatorHeader_{TAG}",
+            (cassette_loc[0] + cassette_inner[0] - 0.070, cassette_loc[1], cassette_loc[2] + 0.035),
+            (0.070, cassette_inner[1] * 0.96, 0.060),
+            mats["Material_Frame"],
+            collection,
+            0.006,
+        ))
+        for mount_tag, mount_y in (("Port", cassette_loc[1] - cassette_inner[1] - 0.055), ("Stbd", cassette_loc[1] + cassette_inner[1] + 0.055)):
+            bits.append(MTX.add_box(
+                f"RadiatorMount_{TAG}_{mount_tag}",
+                (cassette_loc[0] - cassette_inner[0] * 0.66, mount_y, cassette_loc[2] + 0.025),
+                (0.115, 0.065, 0.095),
+                mats["Material_Mechanical"],
+                collection,
+                0.006,
+            ))
     count = 7 if lod == 0 else (4 if lod == 1 else (3 if CYCLE >= 191 else 0))
+    if CYCLE >= 192:
+        count = 5 if lod == 0 else (4 if lod == 1 else 3)
     for index in range(count):
         bits.append(MTX.add_box(
             f"RadiatorFin_{TAG}_{index}",
@@ -860,7 +1003,7 @@ def build_radiator(hull, mats, collection, lod):
 
 def add_surface_story(mats, collection, lod):
     bits = []
-    if lod < 2:
+    if lod < 2 and CYCLE < 192:
         panel = mats["Material_HullPanel"]
         for sign, tag in ((-1.0, "Port"), (1.0, "Stbd")):
             bits.append(MTX.add_folded_sheet(
@@ -874,6 +1017,9 @@ def add_surface_story(mats, collection, lod):
                 collection,
                 0.003,
             ))
+    # C191's broad dark saddle sheets competed with the primary shell and made the craft read
+    # like a toy kit.  C192 leaves the pressure-shell material hierarchy quiet here; the wing
+    # carry-through and the authored service well now provide the only structural breaks.
     if lod == 0:
         bits.append(add_decal(
             "WarningStencil_Spray",
@@ -1051,29 +1197,45 @@ def build_lod(lod, mats):
     for obj in meshes:
         obj.data.calc_loop_triangles()
         total_triangles += len(obj.data.loop_triangles)
+    mesh_nodes = len(meshes)
+    # A mesh with two or more material slots exports one visible primitive per slot.  Reporting
+    # mesh nodes understated the actual draw submissions (C191 parsed 64/51/38 versus 60/49/36).
+    primitive_submits = sum(max(1, len(obj.data.materials)) for obj in meshes)
+    texture_ladder = C192_TEX_BY_LOD if CYCLE >= 192 else {0: 1024, 1: 512, 2: 512}
     report = {
         "lod": lod,
         "triangles": total_triangles,
         "hullTriangles": hull_triangles,
-        "draws": len(meshes),
+        "draws": primitive_submits,
+        "meshNodes": mesh_nodes,
+        "primitiveSubmits": primitive_submits,
         "materials": sorted({slot.name for obj in meshes for slot in obj.material_slots}),
         "construction": "continuous_chined_pressure_shell_with_integrated_wing_carrythrough",
         "canopyCut": bool(canopy_bits),
         "driveWells": drive_reports,
         "radiatorWell": bool(radiator_ok),
         "textureMapSize": MTX.TEX,
-        "textureMapLadder": {"lod0": 1024, "lod1": 512, "lod2": 512},
+        "textureMapLadder": {f"lod{level}": size for level, size in texture_ladder.items()},
+        "texelDensityPxPerM": round(MTX.TEX / FORM_AUTHORED_LENGTH_M, 1),
+        "texelDensityTargetPxPerM": [256, 512],
     }
-    print(f"{TAG} LOD{lod}: hull={hull_triangles} tris={total_triangles} draws={len(meshes)}")
+    print(f"{TAG} LOD{lod}: hull={hull_triangles} tris={total_triangles} draws={primitive_submits} meshNodes={mesh_nodes}")
     return collection, report
 
 
 def main():
     # Delegate reset/export/render bookkeeping to the existing sanctioned Hornet builder.  Its
-    # main loop sets MTX.TEX for each LOD and writes cycle JSON plus chase stills.
+    # main loop sets MTX.TEX for each LOD and writes cycle JSON plus chase stills. C192 raises the
+    # Hornet-only texture ladder in memory; the shared builder file remains untouched.
     MTX.build_lod = build_lod
     MTX.create_materials = create_form_materials
-    MTX.main()
+    previous_ladder = MTX.TEX_BY_LOD
+    if CYCLE >= 192:
+        MTX.TEX_BY_LOD = C192_TEX_BY_LOD
+    try:
+        MTX.main()
+    finally:
+        MTX.TEX_BY_LOD = previous_ladder
 
 
 if __name__ == "__main__":
