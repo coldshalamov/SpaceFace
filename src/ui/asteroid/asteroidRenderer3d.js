@@ -1096,6 +1096,119 @@ export function createCargoPortMountLifecycle({
   });
 }
 
+// Courier climb on the authored Cargo Port. Rise is the 1.55 wu collar-clear, then the pose holds
+// long enough to read (and to capture) before the pod leaves. The old board-plane yellow capsule
+// is a different object and must not stand next to this one.
+export const CARGO_POD_RISE_S = 1.7;
+export const CARGO_POD_CLEAR_HOLD_S = 1.25;
+
+export function createCargoPodLaunchClock({
+  riseS = CARGO_POD_RISE_S,
+  holdS = CARGO_POD_CLEAR_HOLD_S,
+} = {}) {
+  let phase = 'idle';
+  let elapsed = 0;
+
+  const sample = () => {
+    if (phase === 'rising') {
+      const span = riseS > 0 ? riseS : CARGO_POD_RISE_S;
+      return {
+        phase,
+        pose: Math.max(0, Math.min(1, elapsed / span)),
+        visible: true,
+      };
+    }
+    if (phase === 'holding') {
+      return { phase, pose: 1, visible: true };
+    }
+    return { phase: 'idle', pose: 0, visible: false };
+  };
+
+  return Object.freeze({
+    notifyLaunch() {
+      phase = 'rising';
+      elapsed = 0;
+      return sample();
+    },
+    reset() {
+      phase = 'idle';
+      elapsed = 0;
+      return sample();
+    },
+    step(dt, { motionReduce = false } = {}) {
+      let remaining = Math.max(0, Number(dt) || 0);
+      if (phase === 'rising' && motionReduce) {
+        phase = 'holding';
+        elapsed = 0;
+      }
+      while (remaining > 0 && phase !== 'idle') {
+        if (phase === 'rising') {
+          const left = Math.max(0, riseS - elapsed);
+          if (remaining >= left) {
+            remaining -= left;
+            phase = 'holding';
+            elapsed = 0;
+          } else {
+            elapsed += remaining;
+            remaining = 0;
+          }
+        } else if (phase === 'holding') {
+          const left = Math.max(0, holdS - elapsed);
+          if (remaining >= left) {
+            remaining -= left;
+            phase = 'idle';
+            elapsed = 0;
+          } else {
+            elapsed += remaining;
+            remaining = 0;
+          }
+        } else {
+          break;
+        }
+      }
+      return sample();
+    },
+    sample,
+  });
+}
+
+export function countDrawnWorksMeshes(root) {
+  let n = 0;
+  if (!root) return 0;
+  root.traverse((obj) => {
+    if (!obj.isMesh || obj.visible === false) return;
+    let parent = obj.parent;
+    while (parent) {
+      if (parent.visible === false) return;
+      parent = parent.parent;
+    }
+    n += 1;
+  });
+  return n;
+}
+
+// Placement ghost is the empty port: crates off, pod seated in the well. LOD tags stay in charge
+// of which hull is drawn.
+export function presentAuthoredCargoPortGhost(source) {
+  if (!source || typeof source.traverse !== 'function') return 0;
+  const hooks = source.userData.worksHooks || {};
+  for (let i = 0; i < 5; i++) {
+    const crate = hooks[`crate_${i}`];
+    if (crate) crate.visible = false;
+  }
+  if (hooks.pod_root) hooks.pod_root.visible = true;
+  source.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.frustumCulled = false;
+    obj.renderOrder = 24;
+  });
+  return countDrawnWorksMeshes(source);
+}
+
+export function shouldDrawProceduralCourierPod(authoredCargoMounted) {
+  return !authoredCargoMounted;
+}
+
 // PQ-131.06 — authored Conduit transaction, kept pure so its async lifecycle is testable without
 // a canvas or WebGL context. A successful transaction never asks for the procedural network at all.
 // The fallback is an error path, not a hidden second renderer sitting behind accepted authored art.
@@ -3410,9 +3523,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // Courier launch — law §5: "pod visibly slides up the shaft, clears the surface". Detected off
   // site.fleet.launches, which the sim increments on every departure; the screen does not forward
   // site:courierLaunched to the renderer and its owner is out of this leaf's write set.
-  const POD_RISE_S = 1.7;
+  // Authored Cargo Port owns the cell-local collar climb. The board-plane yellow capsule is only
+  // the fallback when that authored seat is absent.
+  const POD_RISE_S = CARGO_POD_RISE_S;
+  const cargoLaunch = createCargoPodLaunchClock();
   let podMesh = null;
-  let podT = -1;                  // <0 = parked
+  let podT = -1;                  // <0 = parked (procedural shaft pod only)
   let lastLaunches = null;        // null until the first frame that sees a site (never 0: a return
                                   // visit to a producing site must not replay its whole history)
 
@@ -4411,10 +4527,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           else rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
         if (rec.dyn.setPodLaunch) {
-          const launching = podT >= 0;
+          const launch = cargoLaunch.sample();
           const ready = !!(site.fleet && site.fleet.podsReady > 0);
-          rec.dyn.setPodVisible(ready || launching);
-          rec.dyn.setPodLaunch(launching ? (motionReduce ? 1 : Math.max(0, Math.min(1, podT))) : 0);
+          rec.dyn.setPodVisible(launch.visible || ready);
+          rec.dyn.setPodLaunch(launch.pose);
         } else if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
         // The want chip: what this machine is waiting for, as a colour or a bolt. `status.limit`
         // is the sim's own answer — `input:<goodId>` when a recipe is starved, `power` when the
@@ -5411,8 +5527,34 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const cloned = (wasArray ? o.material : [o.material]).map((m) => {
         const t = m.clone();
         t.transparent = true;
-        t.opacity = 0.45;
+        t.opacity = 0.55;
         t.depthWrite = false;
+        t.side = THREE.FrontSide;
+        t.alphaTest = 0;
+        t.alphaMap = null;
+        t.premultipliedAlpha = false;
+        // Cargo (and some other Works) atlases store unused alpha ≈ 0. Transparent materials
+        // then multiply to nothing. Keep albedo RGB and let opacity be the only fade.
+        t.customProgramCacheKey = () => 'works-ghost-rgb-alpha';
+        t.onBeforeCompile = (shader) => {
+          if (!shader || typeof shader.fragmentShader !== 'string') return;
+          shader.fragmentShader = shader.fragmentShader
+            .replace(
+              '#include <map_fragment>',
+              `#ifdef USE_MAP
+	vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+	#ifdef DECODE_VIDEO_TEXTURE
+		sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
+	#endif
+	diffuseColor.rgb *= sampledDiffuseColor.rgb;
+#endif`,
+            )
+            .replace(
+              'diffuseColor *= sampledDiffuseColor;',
+              'diffuseColor.rgb *= sampledDiffuseColor.rgb;',
+            );
+        };
+        t.needsUpdate = true;
         t._own = true;
         if (instanceOwned) instanceOwned.push(t);
         if (disposeSource) m.dispose();
@@ -5420,6 +5562,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       });
       o.material = wasArray ? cloned : cloned[0];
       o.castShadow = false;
+      o.frustumCulled = false;
+      o.renderOrder = 24;
     });
   }
 
@@ -5512,18 +5656,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           return loader ? loader.loadWorksPart('cargo_port') : null;
         },
         prepare(source) {
+          const built = bindAuthoredCargoPort(source);
+          built.dyn.setCrateStage(0);
+          built.dyn.setPodVisible(true);
+          built.dyn.setPodLaunch(0);
           const instanceOwned = [];
-          applyGhostTransparency(source, { instanceOwned });
+          applyGhostTransparency(built.group, { instanceOwned });
           recordWorksInstanceResources(source, instanceOwned);
-          const seat = new THREE.Group();
-          seat.name = 'cargo_port_ghost_seat';
-          seat.rotation.x = Math.PI / 2;
-          seat.add(source);
-          return { group: seat, source };
+          presentAuthoredCargoPortGhost(source);
+          return built;
         },
         mount(record) {
           rec.group.add(record.group);
           rec.authoredSource = record.source;
+          rec.authoredSeat = record.group;
+          rec.dyn = record.dyn || {};
           rec.authoredPending = false;
           rec.proceduralFallback = false;
         },
@@ -6163,6 +6310,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (lastLaunches === null) { lastLaunches = n; return; }
     if (n <= lastLaunches) return;
     lastLaunches = n;
+    eventLog.courierLaunches++;
+    mark('courierLaunch', ENTRY_COL, 0);
+    const authored = authoredCargoRec();
+    if (authored && authored.dyn && authored.dyn.setPodLaunch) {
+      cargoLaunch.notifyLaunch();
+      if (podMesh) podMesh.visible = false;
+      return;
+    }
+    cargoLaunch.reset();
     if (!podMesh) {
       podMesh = new THREE.Mesh(podGeo, podMat);
       podMesh.castShadow = true;
@@ -6170,8 +6326,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       scene.add(podMesh);
     }
     podT = 0;
-    eventLog.courierLaunches++;
-    mark('courierLaunch', ENTRY_COL, 0);
   }
 
   // Everything the seam layer draws, once per frame.
@@ -6431,16 +6585,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const stats = rec && rec.cargoLifecycle ? rec.cargoLifecycle.stats() : null;
       const ghostRec = ghost && ghost.defId === 'sm_cargo_port' ? ghost : null;
       const ghostStats = ghostRec && ghostRec.cargoLifecycle ? ghostRec.cargoLifecycle.stats() : null;
+      const launch = cargoLaunch.sample();
+      const ghostRoot = ghostRec && ghostRec.group && ghostRec.group.visible ? ghostRec.group : null;
+      let podWorld = null;
+      if (rec && rec.dyn && rec.dyn.pod && typeof rec.dyn.pod.getWorldPosition === 'function') {
+        const v = rec.dyn.pod.getWorldPosition(new THREE.Vector3());
+        podWorld = { x: Number(v.x.toFixed(3)), y: Number(v.y.toFixed(3)), z: Number(v.z.toFixed(3)) };
+      }
       return {
         installedPhase: stats ? stats.phase : (rec && rec.authoredSource ? 'authored' : (rec ? 'empty' : 'absent')),
         authored: !!(rec && rec.authoredSource),
         fallback: !!(rec && rec.proceduralFallback),
         crateStage: rec && rec.dyn && rec.dyn.crateStage ? rec.dyn.crateStage() : crateStageNow,
         podLaunch: rec && rec.dyn && rec.dyn.podLaunch ? rec.dyn.podLaunch() : 0,
+        podVisible: !!(rec && rec.dyn && rec.dyn.pod && rec.dyn.pod.visible),
+        podWorld,
+        launchPhase: launch.phase,
         overlayCratesVisible: !!(crateMesh && crateMesh.visible),
+        proceduralPodVisible: !!(podMesh && podMesh.visible),
         ghostPhase: ghostStats ? ghostStats.phase : (ghostRec ? (ghostRec.authoredSource ? 'authored' : 'empty') : 'absent'),
         ghostAuthored: !!(ghostRec && ghostRec.authoredSource),
         ghostFallback: !!(ghostRec && ghostRec.proceduralFallback),
+        ghostVisible: !!(ghostRec && ghostRec.group && ghostRec.group.visible),
+        ghostDrawnMeshes: countDrawnWorksMeshes(ghostRoot),
+        ghostCell: ghostRec && Number.isInteger(ghostRec.col) ? [ghostRec.col, ghostRec.row] : null,
       };
     },
     // ---- law §7 / §6.5 / §6.7 "The site reads" (PQ-130.10b) ----
@@ -6654,7 +6822,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // rather than the geometry's unscaled 7px slab.
     const barK = (HOVER_PX / pxPerWorldUnit()) / CURSOR_BAR_H;
     for (const b of cursorBars) b.scale.y = barK;
-    if (!cursor) { if (ghost) ghost.group.visible = false; return; }
+    if (!cursor) {
+      if (ghost) {
+        if (ui && ui.mode === 'build' && ui.buildDefId) ghost.group.visible = false;
+        else clearGhost();
+      }
+      return;
+    }
     const cx = worldX(cursor.col);
     const cy = worldY(cursor.row);
     cursorGroup.position.set(cx, cy, Z.face);
@@ -6662,7 +6836,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const g = ensureGhost(ui.buildDefId);
       if (g) {
         g.group.visible = true;
-        g.group.position.set(cx, cy, 0.02);
+        g.group.position.set(cx, cy, 0);
+        g.col = cursor.col;
+        g.row = cursor.row;
       }
       frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xff6242);   // --aw-mint / --aw-coral
       frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive
@@ -6681,7 +6857,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // The refused verdict is the hairline frame's coral, and that is ALL it is: a bracket in the
       // same cell doubles the ink and starts reading as a filled box again.
     } else {
-      if (ghost) ghost.group.visible = false;
+      if (ghost) {
+        if (ui && ui.mode === 'build' && ui.buildDefId) ghost.group.visible = false;
+        else clearGhost();
+      }
       frameMat.color.setHex(HOVER_INK);
       frameMat.opacity = HOVER_ALPHA;
     }
@@ -6945,8 +7124,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     }
 
-    // the courier climbing the shaft
-    if (podT >= 0) {
+    cargoLaunch.step(dt, { motionReduce });
+    const authoredCargo = authoredCargoRec();
+    const authoredLaunch = !!(authoredCargo && authoredCargo.dyn && authoredCargo.dyn.setPodLaunch);
+    if (authoredLaunch && podMesh) podMesh.visible = false;
+    // the courier climbing the shaft — only when the authored Cargo Port is not the launch body
+    if (podT >= 0 && !authoredLaunch) {
       podT += dt / POD_RISE_S;
       if (podT >= 1) { podT = -1; if (podMesh) podMesh.visible = false; }
       else if (podMesh) {
@@ -7295,6 +7478,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (const chip of wantChipPool) chip.mesh.visible = false;
     lastLaunches = null;                       // re-baselined on the first frame that sees the site
     podT = -1;
+    cargoLaunch.reset();
     if (podMesh) podMesh.visible = false;
     for (const m of roverScars) m.visible = false;
     roverScarsShown = 0;

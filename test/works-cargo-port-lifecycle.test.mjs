@@ -8,8 +8,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import {
+  createCargoPodLaunchClock,
   createCargoPortMountLifecycle,
   isolateWorksMeshMaterials,
+  shouldDrawProceduralCourierPod,
 } from '../src/ui/asteroid/asteroidRenderer3d.js';
 import { createWorksPartLoader } from '../src/ui/asteroid/worksPartLoader.js';
 
@@ -235,4 +237,15 @@ test('teardown during load releases the late source once and never builds a fall
   assert.deepEqual(h.mounted, []);
   assert.equal(h.fallbackBuilds.length, 0);
   assert.equal(h.lifecycle.stats().phase, 'disposed');
+});
+
+test('authored launch-clear and the procedural capsule never stand together', () => {
+  const clock = createCargoPodLaunchClock();
+  clock.notifyLaunch();
+  clock.step(0.9);
+  assert.equal(clock.sample().visible, true);
+  assert.equal(shouldDrawProceduralCourierPod(true), false);
+  clock.step(10);
+  assert.equal(clock.sample().visible, false);
+  assert.equal(shouldDrawProceduralCourierPod(false), true);
 });

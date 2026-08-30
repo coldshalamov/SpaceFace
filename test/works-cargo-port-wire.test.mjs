@@ -247,6 +247,12 @@ test('the shared Works loader exposes Cargo LODs, isolated dynamics, crates, and
   const podWorldAfter = built.dyn.pod.getWorldPosition(new THREE.Vector3());
   const thrusterAfter = byName.get('LOD0_pod_thruster').getWorldPosition(new THREE.Vector3());
   assert.ok(podWorldAfter.distanceTo(podWorldBefore) > 1.5, 'the seated-to-clear climb is a real displacement');
+  assert.ok(
+    Math.abs(podWorldAfter.z - podWorldBefore.z - CARGO_PORT_LAUNCH_CLEAR_WU) < 1e-4,
+    'after seating, launch-clear is world +Z (out of the collar toward the camera)',
+  );
+  assert.ok(Math.abs(podWorldAfter.x - podWorldBefore.x) < 1e-4, 'launch-clear does not slide in X');
+  assert.ok(Math.abs(podWorldAfter.y - podWorldBefore.y) < 1e-4, 'launch-clear does not slide across the gallery');
   assert.ok(thrusterAfter.distanceTo(thrusterBefore) > 1.5, 'the thruster rides the pod out of the well');
   assert.ok(
     Math.abs(thrusterAfter.distanceTo(podWorldAfter) - thrusterBefore.distanceTo(podWorldBefore)) < 1e-4,
