@@ -5778,6 +5778,32 @@
       }
     },
     {
+      "id": "place_works_refinery",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_refinery.glb",
+      "tris": 7442,
+      "bytes": 8294420,
+      "textureSize": 1024,
+      "note": "PQ-131.04 — authored one-cell Asteroid Works furnace-stack-tank refinery with explicit 7442/1840/560-triangle LODs. Runtime hooks: furnace_slit, stack_vent, lamp. Cycle 03 whole-asset top, edge, site, clay, matched-LOD, material-isolation, hook, and state-emission evidence independently reviewed KEEP against source SHA-256 1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "furnace_slit",
+        "stack_vent",
+        "lamp"
+      ],
+      "sockets": [
+        "furnace_slit",
+        "stack_vent",
+        "lamp"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.8001, -0.6, 0],
+        "max": [0.9213662147521973, 0.946225643157959, 1.2000000476837158],
+        "dimensionsM": [1.721466302871704, 1.546225643157959, 1.2000000476837158]
+      }
+    },
+    {
       "id": "place_works_fabricator",
       "category": "works",
       "priority": "P1",

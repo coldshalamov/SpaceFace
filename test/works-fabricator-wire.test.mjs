@@ -219,7 +219,7 @@ test('the shared Works loader exposes Fabricator LODs, isolated lamp, and exact 
 test('installed and ghost Fabricators select the authored route; obsolete procedural body is absent', () => {
   assert.equal(authoredWorksMachineKind('sm_fabricator'), 'fabricator');
   assert.equal(authoredWorksMachineKind('sm_extractor'), 'extractor');
-  assert.equal(authoredWorksMachineKind('sm_refinery'), null);
+  assert.equal(authoredWorksMachineKind('sm_massline_core'), 'massline_core');
   const source = readFileSync(MACHINE_FACTORY, 'utf8');
   assert.doesNotMatch(source, /kind\s*===\s*['"]fabricator['"]/);
 });

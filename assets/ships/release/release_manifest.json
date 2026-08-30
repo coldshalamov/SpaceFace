@@ -3538,6 +3538,25 @@
       "ktx2Textures": 24,
       "meshoptBufferViews": 43,
       "contractNodeCount": 21
+    },
+    {
+      "id": "place_works_refinery",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_refinery.glb",
+      "release": "assets/ships/release/parts/works/place_works_refinery.glb",
+      "sourceSha256": "1d0f648e023aed996a76be91255c869cbaf1554f3d25de9ead701f1bc62022c0",
+      "releaseSha256": "7bbeea1d153b7d52ad07f94c1e274c637c051f3f0eddede14e5cddbc03e0e905",
+      "sourceBytes": 8294420,
+      "releaseBytes": 3338228,
+      "textures": 9,
+      "ktx2Textures": 9,
+      "meshoptBufferViews": 29,
+      "contractNodeCount": 9,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

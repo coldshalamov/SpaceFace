@@ -2011,6 +2011,16 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "4449a4e1e246465d939e4105eb8ea35f4c9d4824b263e93f559dce56fa095bdf",
     "sourceUrl": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod2.glb"
+  },
+  {
+    "assetId": "sf.render.works-refinery",
+    "expectedContentHash": "2b0b3606f5d262e13eb6f537b9311ca5dfa0a068ecb347cbe726d526da8202d2",
+    "key": "works-refinery",
+    "metadataUrl": "assets/ships/release/render-packages/works-refinery/render-package.json",
+    "runtimeAssetId": "place_works_refinery",
+    "slot": "place",
+    "sourceSha256": "7bbeea1d153b7d52ad07f94c1e274c637c051f3f0eddede14e5cddbc03e0e905",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_refinery.glb"
   }
 ];
 

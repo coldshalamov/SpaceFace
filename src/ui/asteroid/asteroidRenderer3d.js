@@ -61,6 +61,7 @@ import {
   EXTRACTOR_HOOKS,
   FABRICATOR_HOOKS,
   MASSLINE_CORE_HOOKS,
+  REFINERY_HOOKS,
   recordWorksInstanceResources,
 } from './worksPartLoader.js';
 
@@ -302,7 +303,23 @@ const MACHINE_KIND = {
 export function authoredWorksMachineKind(defId) {
   const kind = MACHINE_KIND[defId];
   if (kind === 'core') return 'massline_core';
-  return kind === 'extractor' || kind === 'fabricator' ? kind : null;
+  return kind === 'extractor' || kind === 'fabricator' || kind === 'refinery' ? kind : null;
+}
+
+function authoredWorksMachineLabel(kind) {
+  if (kind === 'massline_core') return 'Massline Core';
+  if (kind === 'fabricator') return 'Fabricator';
+  if (kind === 'extractor') return 'Extractor';
+  if (kind === 'refinery') return 'Refinery';
+  return kind;
+}
+
+function bindAuthoredWorksMachine(kind, source) {
+  if (kind === 'massline_core') return bindAuthoredMasslineCore(source);
+  if (kind === 'fabricator') return bindAuthoredFabricator(source);
+  if (kind === 'extractor') return bindAuthoredExtractor(source);
+  if (kind === 'refinery') return bindAuthoredRefinery(source);
+  throw new Error(`[asteroidRenderer3d] no authored bind for ${kind}`);
 }
 
 const FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
@@ -699,6 +716,72 @@ export function bindAuthoredMasslineCore(group) {
     dyn: {
       ring: hooks.ring_spin,
       setOrbitTheta(theta) { hooks.ring_spin.rotation.y = ringBaseY + theta; },
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.lamp,
+    },
+  };
+}
+
+// PQ-131.04 — bind the accepted furnace-stack-tank Refinery. Beauty export keeps the charging-well
+// lens dark; the live route drives that isolated slit 0-1 while the status lamp is the only other
+// instance material. stack_vent stays an authored empty at the flue outlet. The atlas on the
+// jacket/stack/tank is shared and never cloned.
+const REFINERY_FURNACE_EMISSIVE = new THREE.Color(1, 0.45, 0.12);
+
+export function bindAuthoredRefinery(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Refinery group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of REFINERY_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Refinery is missing ${name}`);
+  }
+
+  const seat = new THREE.Group();
+  seat.name = 'refinery_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+
+  const furnaceMeshes = [];
+  const lampMeshes = [];
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    if (/^LOD[012]_furnace_slit$/.test(obj.name || '')) furnaceMeshes.push(obj);
+    if (/^LOD[012]_lamp_lens$/.test(obj.name || '')) lampMeshes.push(obj);
+  });
+  const instanceOwned = [];
+  const furnaceMats = isolateWorksMeshMaterials(furnaceMeshes, instanceOwned);
+  const lampMats = isolateWorksMeshMaterials(lampMeshes, instanceOwned);
+  for (let i = 0; i < furnaceMats.length; i++) {
+    furnaceMats[i].emissive.copy(REFINERY_FURNACE_EMISSIVE);
+    furnaceMats[i].emissiveIntensity = 0.08;
+  }
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  const fallbackFurnace = new THREE.MeshStandardMaterial({ color: 0x160c05 });
+  fallbackFurnace.emissive.copy(REFINERY_FURNACE_EMISSIVE);
+  fallbackFurnace.emissiveIntensity = 0.08;
+  instanceOwned.push(fallbackFurnace);
+  recordWorksInstanceResources(group, instanceOwned);
+  const furnaceOwned = furnaceMats.length ? furnaceMats : [fallbackFurnace];
+
+  return {
+    group: seat,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      furnace: furnaceOwned[0],
+      furnaceMats: furnaceOwned,
+      setFurnaceIntensity(intensity) {
+        const value = Number.isFinite(intensity) ? intensity : 0.08;
+        for (let i = 0; i < furnaceOwned.length; i++) furnaceOwned[i].emissiveIntensity = value;
+      },
+      furnaceAnchor: hooks.furnace_slit,
+      stackVent: hooks.stack_vent,
       lamp: lampMats[0] || fallbackLamp,
       lampMats: lampMats.length ? lampMats : [fallbackLamp],
       lampAnchor: hooks.lamp,
@@ -3587,9 +3670,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
-    const label = kind === 'massline_core'
-      ? 'Massline Core'
-      : (kind === 'fabricator' ? 'Fabricator' : 'Extractor');
+    const label = authoredWorksMachineLabel(kind);
     try {
       source = await loader.loadWorksPart(kind);
       if (!source) {
@@ -3601,9 +3682,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         loader.releaseWorksPart(source);
         return null;
       }
-      const authored = kind === 'massline_core'
-        ? bindAuthoredMasslineCore(source)
-        : (kind === 'fabricator' ? bindAuthoredFabricator(source) : bindAuthoredExtractor(source));
+      const authored = bindAuthoredWorksMachine(kind, source);
       rec.group.add(authored.group);
       rec.authoredSource = source;
       rec.authoredSeat = authored.group;
@@ -3815,10 +3894,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (rec.dyn.setBeltPhase) {
           rec.dyn.setBeltPhase(timeS * 0.58, running && !motionReduce);
         }
-        if (rec.dyn.furnace) {
+        if (rec.dyn.setFurnaceIntensity || rec.dyn.furnace || (rec.dyn.furnaceMats && rec.dyn.furnaceMats.length)) {
           const hot = running;
-          rec.dyn.furnace.emissiveIntensity = hot
+          const intensity = hot
             ? (motionReduce ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
+          if (rec.dyn.setFurnaceIntensity) rec.dyn.setFurnaceIntensity(intensity);
+          else {
+            const furnaceMats = rec.dyn.furnaceMats && rec.dyn.furnaceMats.length
+              ? rec.dyn.furnaceMats
+              : [rec.dyn.furnace];
+            for (let i = 0; i < furnaceMats.length; i++) furnaceMats[i].emissiveIntensity = intensity;
+          }
         }
         if (rec.dyn.setProgress || rec.dyn.progressBar) {
           const p = status && Number.isFinite(status.progress) ? Math.max(0, Math.min(1, status.progress)) : 0;
@@ -4640,9 +4726,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const loader = ensureWorksLoader();
     if (!loader) return null;
     let source = null;
-    const label = kind === 'massline_core'
-      ? 'Massline Core'
-      : (kind === 'fabricator' ? 'Fabricator' : 'Extractor');
+    const label = authoredWorksMachineLabel(kind);
     try {
       source = await loader.loadWorksPart(kind);
       if (!source) {
