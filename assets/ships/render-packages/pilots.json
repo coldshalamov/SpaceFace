@@ -3277,6 +3277,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-gas-tap",
       "metadataUrl": "assets/ships/release/render-packages/works-gas-tap/render-package.json"
+    },
+    {
+      "key": "works-inclusion-kit",
+      "assetId": "sf.render.works-inclusion-kit",
+      "runtimeAssetId": "place_works_inclusion_kit",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_inclusion_kit",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_inclusion_kit.glb",
+      "releaseSha256": "d635ffd87d38e14092ec38b2f63fb830965f0ccb57f33db83d83da2ea97ce88b",
+      "releaseBytes": 1630564,
+      "rootNode": "SF_WORKS_INCLUSION_KIT_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-inclusion-kit",
+      "metadataUrl": "assets/ships/release/render-packages/works-inclusion-kit/render-package.json"
     }
   ]
 }

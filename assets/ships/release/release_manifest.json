@@ -3823,6 +3823,25 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "place_works_inclusion_kit",
+      "kind": "part:works",
+      "source": "assets/ships/parts/works/place_works_inclusion_kit.glb",
+      "release": "assets/ships/release/parts/works/place_works_inclusion_kit.glb",
+      "sourceSha256": "e690aea63108d697a2d53fe8ba6ea5136f4e7a1f725572df6fb5d73f9101cd83",
+      "releaseSha256": "d635ffd87d38e14092ec38b2f63fb830965f0ccb57f33db83d83da2ea97ce88b",
+      "sourceBytes": 6693936,
+      "releaseBytes": 1630564,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 324,
+      "contractNodeCount": 54,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

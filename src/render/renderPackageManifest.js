@@ -2161,6 +2161,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "6dda02f6ae2efaa406d4cabd87519dd449b209d6176902e13427f77a71acf51e",
     "sourceUrl": "assets/ships/release/parts/works/place_works_gas_tap.glb"
+  },
+  {
+    "assetId": "sf.render.works-inclusion-kit",
+    "expectedContentHash": "17f1d2c0d45fdd8251023cc4744650e4b95bd3101ec9d432fc9370d4bbe2152e",
+    "key": "works-inclusion-kit",
+    "metadataUrl": "assets/ships/release/render-packages/works-inclusion-kit/render-package.json",
+    "runtimeAssetId": "place_works_inclusion_kit",
+    "slot": "place",
+    "sourceSha256": "d635ffd87d38e14092ec38b2f63fb830965f0ccb57f33db83d83da2ea97ce88b",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_inclusion_kit.glb"
   }
 ];
 

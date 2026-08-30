@@ -5856,6 +5856,24 @@
       }
     },
     {
+      "id": "place_works_inclusion_kit",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_inclusion_kit.glb",
+      "tris": 24028,
+      "bytes": 6693936,
+      "textureSize": 2048,
+      "note": "PQ-131.10 — combined Asteroid Works geological/process inclusion kit with 18 deterministic silver, gold, iron, nickel, exotic, ice, gas, vented-scar, and MK-lock variants, each carrying explicit LOD0/1/2 children. Cycle 02 whole-family top, edge, site, clay, material-isolation, and no-emission evidence independently reviewed KEEP against source/parts SHA-256 E690AEA63108D697A2D53FE8BA6EA5136F4E7A1F725572DF6FB5D73F9101CD83; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-6.2345200181007385, -0.38999998569488525, -2.7409700751304626],
+        "max": [6.215309977531433, 0.43977999687194824, 2.7447900772094727],
+        "dimensionsM": [12.449829995632172, 0.8297799825668335, 5.485760152339935]
+      }
+    },
+    {
       "id": "place_works_cargo_port",
       "category": "works",
       "priority": "P1",

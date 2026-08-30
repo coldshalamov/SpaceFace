@@ -7,6 +7,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -192,6 +193,7 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
       }
 
       const document = await io.read(sourceAbs);
+      ensureAssetContractMetadata(document);
       splitIncompatibleTextureSlots(document);
       const transforms = [];
       const textureCount = Number(sourceInspection.metrics.textureCount) || 0;
@@ -750,6 +752,36 @@ export function stampReleaseContractMetadata(document, textureCount) {
     );
   }
   return { assetContracts: 1, sceneContracts, nodeContracts };
+}
+
+// Some accepted Blender exports carry the same canonical contract on the scene and authored root
+// but omit glTF asset.extras. Hydrate only the in-memory release document when those two carriers
+// agree exactly; the source bytes remain hash-guarded and untouched.
+export function ensureAssetContractMetadata(document) {
+  const root = document.getRoot();
+  const asset = root.getAsset();
+  if (asset.extras?.spacefaceAsset) return { source: 'asset' };
+
+  const sceneContracts = root.listScenes()
+    .map((scene) => scene.getExtras()?.spacefaceAsset)
+    .filter(Boolean);
+  const nodeContracts = root.listNodes()
+    .map((node) => node.getExtras()?.spacefaceAsset)
+    .filter(Boolean);
+  if (sceneContracts.length !== 1 || nodeContracts.length !== 1) {
+    throw new Error(
+      'place release requires one matching scene and canonical-root spacefaceAsset contract '
+      + 'when asset-level metadata is absent',
+    );
+  }
+  if (!isDeepStrictEqual(sceneContracts[0], nodeContracts[0])) {
+    throw new Error('place release scene and canonical-root spacefaceAsset contracts disagree');
+  }
+  asset.extras = {
+    ...(asset.extras || {}),
+    spacefaceAsset: structuredClone(sceneContracts[0]),
+  };
+  return { source: 'scene+canonical-root' };
 }
 
 function releaseDeliverableRole(source) {

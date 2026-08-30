@@ -1,0 +1,6006 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-inclusion-kit",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "17f1d2c0d45fdd8251023cc4744650e4b95bd3101ec9d432fc9370d4bbe2152e",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.834929943084717,
+          0.1323285549879074,
+          0.44624197483062744
+        ],
+        "min": [
+          2.7655299305915833,
+          -0.3900185227394104,
+          -0.46389198303222656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "16f4d70ff7c174067212396b739722f7bf4392b1293f48f58c2cf1228d29a3ab",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1.primitive.0",
+      "indexCount": 3774,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3374
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5396600365638733,
+          0.4331805408000946,
+          0.4364260137081146
+        ],
+        "min": [
+          -1.6362900137901306,
+          -0.006080545950680971,
+          -0.4561859965324402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4651e8a42d906d0537810851fe74a392330f6284f0954d27630297e2a1e35148",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1.primitive.0",
+      "indexCount": 4536,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 4016
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6306400299072266,
+          0.28003042936325073,
+          0.4196220338344574
+        ],
+        "min": [
+          0.5715800523757935,
+          -0.000030440442060353234,
+          -0.41849201917648315
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e02435426c86835ee5e3cb5076a806084f72ed4deeb3f8586b5080bc9eca25e5",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1.primitive.0",
+      "indexCount": 4224,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3692
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4516500234603882,
+          0.08882293105125427,
+          2.7448031306266785
+        ],
+        "min": [
+          -1.6980100274085999,
+          -0.1800229400396347,
+          1.7097769975662231
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06535739559d68419cde1f4c0f9174e657f54d9aba51ec435bb20fddef44c813",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1.primitive.0",
+      "indexCount": 3684,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3510
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.607199966907501,
+          0.0889555960893631,
+          2.7112741470336914
+        ],
+        "min": [
+          -4.089809954166412,
+          -0.2299456000328064,
+          1.6804559230804443
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54d315481fc69ecc8b50600bc896a7d791157dea462983b45b1f41e527061ba6",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-radial-v1.primitive.0",
+      "indexCount": 4308,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-radial-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3942
+    },
+    {
+      "bounds": {
+        "max": [
+          1.897570013999939,
+          0.09018371999263763,
+          2.532478094100952
+        ],
+        "min": [
+          0.41015005111694336,
+          -0.1999737173318863,
+          1.8477120101451874
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf09f5d43b9976fe5fad6152700a82826b32db50d3ef32711e6f79278cffb4c3",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1.primitive.0",
+      "indexCount": 3408,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3240
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4783100485801697,
+          0.12457185238599777,
+          -1.7135376334190369
+        ],
+        "min": [
+          -1.7702600359916687,
+          -0.000021852960344403982,
+          -2.6485424637794495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b7caf0b7d97889f645893b11c6c726e5feb522cd770fb68d56e81f0c7087833",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1.primitive.0",
+      "indexCount": 4674,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_GOLD_LEAF_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 4054
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8314599990844727,
+          0.15836201608181,
+          -1.8249706327915192
+        ],
+        "min": [
+          0.4411100149154663,
+          0.000007989530786289833,
+          -2.5463894605636597
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d90a06dc5d8763c801057cd81bb5ede215001259dffe65f88ec31079fe7615c6",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1.primitive.0",
+      "indexCount": 3774,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_GOLD_RIBBON_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3456
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.814580023288727,
+          0.09040110558271408,
+          2.614586114883423
+        ],
+        "min": [
+          -6.230549991130829,
+          -0.0000011055008144467138,
+          1.7441839575767517
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f411b9cbfa0fcb23caf769a12d8acadcd890efe920b8045a875076f1323f69d0",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1.primitive.0",
+      "indexCount": 3594,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3317
+    },
+    {
+      "bounds": {
+        "max": [
+          6.215309977531433,
+          0.09094475209712982,
+          0.4885159730911255
+        ],
+        "min": [
+          4.807079970836639,
+          0.0000052445820983848535,
+          -0.5129359364509583
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1fb8bc5a9b7c7348fdcd1abbb0b7f05288b2cfec7081a0a0c819f1db9bb99913",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1.primitive.0",
+      "indexCount": 3648,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3351
+    },
+    {
+      "bounds": {
+        "max": [
+          4.056689977645874,
+          0.2461591362953186,
+          -1.7672356367111206
+        ],
+        "min": [
+          2.6062299609184265,
+          0.000040852162783266976,
+          -2.668754458427429
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "94bd9eaf9e43e1da4090f5678a07e44966e71644b45fae6156e8820d15ebc99d",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1.primitive.0",
+      "indexCount": 3612,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3421
+    },
+    {
+      "bounds": {
+        "max": [
+          6.110230028629303,
+          0.11599918454885483,
+          -1.7100907564163208
+        ],
+        "min": [
+          4.806760013103485,
+          8.113312901514291e-7,
+          -2.740829348564148
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f6aa5fa3c2f6cdead023452e0c1ead3372d1e0c046d0e434c62da070aff58be",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1.primitive.0",
+      "indexCount": 3540,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_IRON_SPECULAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3268
+    },
+    {
+      "bounds": {
+        "max": [
+          6.139999985694885,
+          0.11354444921016693,
+          2.5999923050403595
+        ],
+        "min": [
+          4.864920020103455,
+          -0.00397444935515523,
+          1.8000077903270721
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf6619032d51dc2e3ba20d6ceda69c3da41fa414555bcf03879920b70fb792d6",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1.primitive.0",
+      "indexCount": 4764,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 4074
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.041949987411499,
+          0.30299773812294006,
+          0.43166521191596985
+        ],
+        "min": [
+          -5.9621700048446655,
+          0.000002250482566523715,
+          -0.4236252009868622
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e18730d763437a6a03cecf8916bd7f00883e386729f5016fe58df74e8f237ea9",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1.primitive.0",
+      "indexCount": 3792,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3486
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.790019929409027,
+          0.19038955867290497,
+          0.45643478631973267
+        ],
+        "min": [
+          -3.7865299582481384,
+          0.00001044176588038681,
+          -0.4344847798347473
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1026eeccbcc7c8ee20daa7c4055a8ca365109b84d8bf20f0ae2c279835caec0",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1.primitive.0",
+      "indexCount": 4164,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3705
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.6451799273490906,
+          0.10932277888059616,
+          -1.7710219323635101
+        ],
+        "min": [
+          -3.999799966812134,
+          0.00001721459011605475,
+          -2.665558159351349
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54653369a1d2bca3db31844531f4a443658c1f8a1fe79bba9a5fbf9a8f89f356",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1.primitive.0",
+      "indexCount": 4440,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_SILVER_SHEET_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3869
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.7609400153160095,
+          0.1389348804950714,
+          -1.7034737467765808
+        ],
+        "min": [
+          -6.197700023651123,
+          0.000025128087145276368,
+          -2.7304763197898865
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2fc4ea3b0268979c6a1d7154fe5017f0507780a08b3179f08215346952ea902",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1.primitive.0",
+      "indexCount": 4536,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_SILVER_WIRE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3896
+    },
+    {
+      "bounds": {
+        "max": [
+          3.989699959754944,
+          0.11879546195268631,
+          2.5897307097911835
+        ],
+        "min": [
+          2.581179976463318,
+          -0.19001546502113342,
+          1.8054094016551971
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b82bc29d31bc11cd753629b13373de5daff4c526d8b5999baf39cf7979dee564",
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1.primitive.0",
+      "indexCount": 3612,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_SF_INCL_VENTED_SCAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 3419
+    },
+    {
+      "bounds": {
+        "max": [
+          3.831109941005707,
+          0.13364146649837494,
+          0.45715436339378357
+        ],
+        "min": [
+          2.7921199798583984,
+          -0.3899914622306824,
+          -0.434074342250824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "de54e2ffd780e0c45fe3335a8cfb85e88c053b729ba65492142cd25cf1f8b489",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-hopper-cube-v1.primitive.0",
+      "indexCount": 1014,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-hopper-cube-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 742
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5438400506973267,
+          0.43332016468048096,
+          0.43648359179496765
+        ],
+        "min": [
+          -1.6389400362968445,
+          -0.008670161478221416,
+          -0.4563535749912262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "957dc3271d4f5317f8ac0ae1d4c88d921e027c0c526401bb95bc3b77228da24c",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1.primitive.0",
+      "indexCount": 1572,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 1235
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6306400299072266,
+          0.279975026845932,
+          0.42159342765808105
+        ],
+        "min": [
+          0.5695500373840332,
+          0.000024982820832519792,
+          -0.41916343569755554
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1b81d4bb79c7bf29caf183a954036b88b16c567df69e42272c8ff15d27255efd",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1.primitive.0",
+      "indexCount": 1200,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 889
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.45437002182006836,
+          0.0908655971288681,
+          2.702228367328644
+        ],
+        "min": [
+          -1.6919100284576416,
+          -0.18000560998916626,
+          1.7104817032814026
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15493cf26b68f7f70f53e9108b0cfef28834c221096342ee400508c9d00adcce",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 837
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.615529954433441,
+          0.09063512086868286,
+          2.6203489005565643
+        ],
+        "min": [
+          -4.088529944419861,
+          -0.2299751341342926,
+          1.7625411748886108
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6365f17cf9a3c3944c355515a8404b2492891502a533c9fee0a044368b27b0d3",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-radial-v1.primitive.0",
+      "indexCount": 1254,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-radial-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 1027
+    },
+    {
+      "bounds": {
+        "max": [
+          1.897570013999939,
+          0.08747246116399765,
+          2.5318686068058014
+        ],
+        "min": [
+          0.4137900471687317,
+          -0.19998246431350708,
+          1.8476914763450623
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "93250dffa1ff658ecaa246b5131903776c808a8cc69bc16f935e2ea696045767",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-shear-v1.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-shear-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 637
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4965600371360779,
+          0.11880248039960861,
+          -1.741348773241043
+        ],
+        "min": [
+          -1.7656400203704834,
+          -0.000022480153347714804,
+          -2.6317613422870636
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9e4e4990c7aa448c378b13167f14c62ddc56fd03cca0756d2050c230515aa4ae",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1.primitive.0",
+      "indexCount": 1578,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_GOLD_LEAF_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 1181
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8314599990844727,
+          0.1583264023065567,
+          -1.8627215027809143
+        ],
+        "min": [
+          0.4387500286102295,
+          0.00004360784441814758,
+          -2.5385685861110687
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "385e7d27da282682d6fe21074587049b72d314e4b66cbc26bfde66e060cbb087",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1.primitive.0",
+      "indexCount": 1038,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_GOLD_RIBBON_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 821
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.8137500286102295,
+          0.08878041803836823,
+          2.6145322024822235
+        ],
+        "min": [
+          -6.2345200181007385,
+          -0.000020415400285855867,
+          1.7441278994083405
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e15a60e46b9c5e5616983809b4b5b9d0382c0ff93cb1fd1f4799b8733a2ba967",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1.primitive.0",
+      "indexCount": 858,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 709
+    },
+    {
+      "bounds": {
+        "max": [
+          6.215309977531433,
+          0.08917348831892014,
+          0.45124974846839905
+        ],
+        "min": [
+          4.807449996471405,
+          -0.000023492384571000002,
+          -0.47620975971221924
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bcd0f50ace455fd207112832f5fd5428b06fe6487aac0764a71d6ec9e09f4cec",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1.primitive.0",
+      "indexCount": 828,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 668
+    },
+    {
+      "bounds": {
+        "max": [
+          4.056689977645874,
+          0.2461676150560379,
+          -1.76726433634758
+        ],
+        "min": [
+          2.604039967060089,
+          0.000032386153179686517,
+          -2.66872575879097
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1751080defb54ce1e3490f397b2e8bf17c0d27d7437d72233b4a9f34e3eeebe0",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-chip-ridge-v1.primitive.0",
+      "indexCount": 828,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-chip-ridge-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 743
+    },
+    {
+      "bounds": {
+        "max": [
+          6.101920008659363,
+          0.11603140085935593,
+          -1.7062345445156097
+        ],
+        "min": [
+          4.810130000114441,
+          -0.000031401883461512625,
+          -2.7346755862236023
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa11a6664833123b6b8e3a49b3ab7a73831f5be1c70490216f4ee176c21333b1",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1.primitive.0",
+      "indexCount": 768,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_IRON_SPECULAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 622
+    },
+    {
+      "bounds": {
+        "max": [
+          6.139999985694885,
+          0.11306318640708923,
+          2.6000015437602997
+        ],
+        "min": [
+          4.866129994392395,
+          -0.0040331813506782055,
+          1.799998551607132
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "678e7c79381a39de0b41109cef7144a41c7ca725a14fe76ae5a39736f4f53dfc",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1.primitive.0",
+      "indexCount": 1488,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 1086
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.042259991168976,
+          0.2849891185760498,
+          0.43060338497161865
+        ],
+        "min": [
+          -5.95728999376297,
+          0.000010889481018239167,
+          -0.4205333888530731
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65affa0be7778fc90db6f6ff66cd4c5a6756c1bcab3bf5e261eaa512fd54a88b",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1.primitive.0",
+      "indexCount": 912,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 736
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.790019929409027,
+          0.19038955867290497,
+          0.43133243918418884
+        ],
+        "min": [
+          -3.7865299582481384,
+          0.00001044176588038681,
+          -0.4356224536895752
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ae0349db639b4684fdefed9a063593fca5cd525c530ecc6332270a9fae7ab7c",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1.primitive.0",
+      "indexCount": 1092,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 849
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.6497899293899536,
+          0.11043425649404526,
+          -1.7770611345767975
+        ],
+        "min": [
+          -3.9805699586868286,
+          -0.000034255775972269475,
+          -2.666088968515396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3cc1013d3acffeace2966737f07b6f2120449083bcc2a80cc597c5edc2a7b99a",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1.primitive.0",
+      "indexCount": 1344,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_SILVER_SHEET_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 1010
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.807129979133606,
+          0.13903234899044037,
+          -1.7623690068721771
+        ],
+        "min": [
+          -6.15012001991272,
+          0.000007648639439139515,
+          -2.7321810722351074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c8c75abc7d49df32a4494f23295b11036f6c5f48bd07c4d09c8a9983ed1a3b7",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-wire-v1.primitive.0",
+      "indexCount": 1080,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_SILVER_WIRE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-wire-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 845
+    },
+    {
+      "bounds": {
+        "max": [
+          3.989699959754944,
+          0.11875569075345993,
+          2.5897665917873383
+        ],
+        "min": [
+          2.5893399715423584,
+          -0.18997567892074585,
+          1.8053735196590424
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ea70adfd253b9af9c431d2a62546b494130ad8f80b1678783aedac91b5b23a9",
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-vented-scar-v1.primitive.0",
+      "indexCount": 822,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_SF_INCL_VENTED_SCAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-vented-scar-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 755
+    },
+    {
+      "bounds": {
+        "max": [
+          3.782539963722229,
+          0.1365712583065033,
+          0.4150191843509674
+        ],
+        "min": [
+          2.8246999382972717,
+          -0.3900112509727478,
+          -0.4150191843509674
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f602e1a38f2046875ee8a4d51ddd93b2ffd74301cb2646be38f9fdfcdab4a94",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-hopper-cube-v1.primitive.0",
+      "indexCount": 510,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-hopper-cube-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5438400506973267,
+          0.4397931396961212,
+          0.4364323318004608
+        ],
+        "min": [
+          -1.598220020532608,
+          -0.008673134259879589,
+          -0.45654231309890747
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28badc255fba370028ee26378aecfc06b750caef39b11c186ea23224302ac70b",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-octahedral-cage-v1.primitive.0",
+      "indexCount": 924,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-octahedral-cage-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 681
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6306400299072266,
+          0.28002533316612244,
+          0.3942909240722656
+        ],
+        "min": [
+          0.5701500177383423,
+          -0.000025324365196865983,
+          -0.4028809368610382
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebf87f74ef95f3ca484c44b1a879abe285617fca4f56d4de82ae504692cc31ce",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-prismatic-truss-v1.primitive.0",
+      "indexCount": 456,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-prismatic-truss-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 277
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.45437002182006836,
+          0.0894290879368782,
+          2.6348877251148224
+        ],
+        "min": [
+          -1.690880000591278,
+          -0.18000909686088562,
+          1.7745723724365234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f38db46133e9771d2170b24730355a57997cd6e48e678e7bf61cedf02e8f763",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-branch-v1.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-branch-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 436
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.625189960002899,
+          0.09031863510608673,
+          2.63915291428566
+        ],
+        "min": [
+          -4.089589953422546,
+          -0.2300286442041397,
+          1.7568571865558624
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "595498d1f5be4b4162b16f83a2f633ee94051561fafc60f81ab610c6f32d68a5",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-radial-v1.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-radial-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 471
+    },
+    {
+      "bounds": {
+        "max": [
+          1.897570013999939,
+          0.0880143940448761,
+          2.532522588968277
+        ],
+        "min": [
+          0.428570032119751,
+          -0.1999843865633011,
+          1.8479875028133392
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7b8b42d0c953c5c8cbd80565d1f64a9f1afb00ed84834a74ac3628d7527d30a",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-shear-v1.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-shear-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 238
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.4978400468826294,
+          0.11879047751426697,
+          -1.7726119756698608
+        ],
+        "min": [
+          -1.7683200240135193,
+          -0.000010472744179423898,
+          -2.632678121328354
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a279bdaaf1054b46fef6791f24343be69013ecd1afb0cb263d5d49d35ed2341",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-leaf-v1.primitive.0",
+      "indexCount": 762,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_GOLD_LEAF_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-leaf-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 543
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8314599990844727,
+          0.15836191177368164,
+          -1.8695551455020905
+        ],
+        "min": [
+          0.4396200180053711,
+          0.000008094227268884424,
+          -2.5359749495983124
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d9be17d63de555b14318181dd21038035469b67d0cb971b545c2ff7e8784b73",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-ribbon-v1.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_GOLD_RIBBON_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-ribbon-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 189
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.873780012130737,
+          0.08882724493741989,
+          2.614557594060898
+        ],
+        "min": [
+          -6.2332199811935425,
+          0.000042748404666781425,
+          1.744552493095398
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e132947a6d1df86eea0e0d1eacac32b01068ea9987c4f1096c5538cdd2009d17",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-fracture-vein-v1.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-fracture-vein-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 185
+    },
+    {
+      "bounds": {
+        "max": [
+          6.215309977531433,
+          0.08932378888130188,
+          0.4855581521987915
+        ],
+        "min": [
+          4.808099985122681,
+          -0.0000037912379866611445,
+          -0.4756581485271454
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "82f561982a9034ff35333ce7a257081bc76c33e384f7f2e22e5f5184ec8a450a",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-sheen-plate-v1.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-sheen-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 177
+    },
+    {
+      "bounds": {
+        "max": [
+          4.056689977645874,
+          0.2462082803249359,
+          -1.7672041058540344
+        ],
+        "min": [
+          2.603559970855713,
+          -0.00000827883013698738,
+          -2.6687859892845154
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac85132af246ccf39e87853505b96406cfd2605a35fcbc533b3af647f9f7108a",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-chip-ridge-v1.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-chip-ridge-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 285
+    },
+    {
+      "bounds": {
+        "max": [
+          6.101920008659363,
+          0.10402105003595352,
+          -1.70750093460083
+        ],
+        "min": [
+          4.822210013866425,
+          -0.00002104789382428862,
+          -2.7410091757774353
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f190a909ef35af0c11699521d780dda89f98eec1ffbe57d7d8cfaf10e617e3e",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-specular-v1.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_IRON_SPECULAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-specular-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 204
+    },
+    {
+      "bounds": {
+        "max": [
+          6.139999985694885,
+          0.11309686303138733,
+          2.600027769804001
+        ],
+        "min": [
+          4.869750022888184,
+          -0.003976868465542793,
+          1.7999723255634308
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62def7b27bbc8012c933cfe21b8f91ecd6e607400b418f2320a071d67496a203",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-mk-lock-plate-v1.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-mk-lock-plate-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 555
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.042389988899231,
+          0.28500354290008545,
+          0.4317612946033478
+        ],
+        "min": [
+          -5.958590000867844,
+          -0.000003543960019669612,
+          -0.4294113218784332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8d27df257534df30fb9130db424f3190669fde6fb39711256f2bfb19d37fadde",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-cubic-v1.primitive.0",
+      "indexCount": 348,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-cubic-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 255
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.8458899557590485,
+          0.19039130210876465,
+          0.43282291293144226
+        ],
+        "min": [
+          -3.740649938583374,
+          0.000008701438673597295,
+          -0.4257829189300537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dc151e2b4cbb50249b341aeeb94e9572afd735b085427ab03bcea4a4ada91f72",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-dendrite-v1.primitive.0",
+      "indexCount": 348,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-dendrite-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 257
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.6770299673080444,
+          0.1065918356180191,
+          -1.7747835516929626
+        ],
+        "min": [
+          -3.985789954662323,
+          0.000028163980459794402,
+          -2.6657165586948395
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b25825387a4e79b74fa5d5f5fd16512bd3bd973b151a94b9bb214c6779e88976",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-sheet-v1.primitive.0",
+      "indexCount": 708,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_SILVER_SHEET_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-sheet-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 481
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.807129979133606,
+          0.1437179148197174,
+          -1.7624245584011078
+        ],
+        "min": [
+          -6.148280024528503,
+          -0.0000279025080089923,
+          -2.6960355639457703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cf0611a776d76a2f1ad6495aa1543b7de1513f46edd34fe9aa6dbe0ef35bfb31",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-wire-v1.primitive.0",
+      "indexCount": 456,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_SILVER_WIRE_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-wire-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 325
+    },
+    {
+      "bounds": {
+        "max": [
+          3.989699959754944,
+          0.11878875643014908,
+          2.5897651314735413
+        ],
+        "min": [
+          2.589039981365204,
+          -0.1900087594985962,
+          1.8053749799728394
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fec7bbd2533e3720b854f7f5efa9f8cd1032b2e1f33656dd203fa34dc9a561ad",
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-vented-scar-v1.primitive.0",
+      "indexCount": 390,
+      "indexed": true,
+      "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_SF_INCL_VENTED_SCAR_V1",
+      "nodeId": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-vented-scar-v1",
+      "primitiveIndex": 0,
+      "vertexCount": 350
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
+      "id": "material:4de517ea62645ece77cc3988",
+      "name": "Material_InclusionAtlas",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "inclusion_kit_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "inclusion_kit_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "inclusion_kit_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeName": "LOD0_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeName": "LOD0_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeName": "LOD0_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeName": "LOD0_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodePath": [
+        0,
+        3,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-radial-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeName": "LOD0_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodePath": [
+        0,
+        4,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeName": "LOD0_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodePath": [
+        0,
+        5,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_GOLD_LEAF_V1",
+      "nodeName": "LOD0_SF_INCL_GOLD_LEAF_V1",
+      "nodePath": [
+        0,
+        6,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_GOLD_RIBBON_V1",
+      "nodeName": "LOD0_SF_INCL_GOLD_RIBBON_V1",
+      "nodePath": [
+        0,
+        7,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeName": "LOD0_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodePath": [
+        0,
+        8,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeName": "LOD0_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodePath": [
+        0,
+        9,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeName": "LOD0_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodePath": [
+        0,
+        10,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_IRON_SPECULAR_V1",
+      "nodeName": "LOD0_SF_INCL_IRON_SPECULAR_V1",
+      "nodePath": [
+        0,
+        11,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeName": "LOD0_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodePath": [
+        0,
+        12,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeName": "LOD0_SF_INCL_NICKEL_CUBIC_V1",
+      "nodePath": [
+        0,
+        13,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeName": "LOD0_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodePath": [
+        0,
+        14,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_SILVER_SHEET_V1",
+      "nodeName": "LOD0_SF_INCL_SILVER_SHEET_V1",
+      "nodePath": [
+        0,
+        15,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_SILVER_WIRE_V1",
+      "nodeName": "LOD0_SF_INCL_SILVER_WIRE_V1",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_SF_INCL_VENTED_SCAR_V1",
+      "nodeName": "LOD0_SF_INCL_VENTED_SCAR_V1",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-hopper-cube-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeName": "LOD1_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeName": "LOD1_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeName": "LOD1_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeName": "LOD1_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodePath": [
+        0,
+        3,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-radial-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeName": "LOD1_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodePath": [
+        0,
+        4,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-shear-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeName": "LOD1_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodePath": [
+        0,
+        5,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_GOLD_LEAF_V1",
+      "nodeName": "LOD1_SF_INCL_GOLD_LEAF_V1",
+      "nodePath": [
+        0,
+        6,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_GOLD_RIBBON_V1",
+      "nodeName": "LOD1_SF_INCL_GOLD_RIBBON_V1",
+      "nodePath": [
+        0,
+        7,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeName": "LOD1_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodePath": [
+        0,
+        8,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeName": "LOD1_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodePath": [
+        0,
+        9,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-chip-ridge-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeName": "LOD1_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodePath": [
+        0,
+        10,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_IRON_SPECULAR_V1",
+      "nodeName": "LOD1_SF_INCL_IRON_SPECULAR_V1",
+      "nodePath": [
+        0,
+        11,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeName": "LOD1_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodePath": [
+        0,
+        12,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeName": "LOD1_SF_INCL_NICKEL_CUBIC_V1",
+      "nodePath": [
+        0,
+        13,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeName": "LOD1_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodePath": [
+        0,
+        14,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_SILVER_SHEET_V1",
+      "nodeName": "LOD1_SF_INCL_SILVER_SHEET_V1",
+      "nodePath": [
+        0,
+        15,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-wire-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_SILVER_WIRE_V1",
+      "nodeName": "LOD1_SF_INCL_SILVER_WIRE_V1",
+      "nodePath": [
+        0,
+        16,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-vented-scar-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_SF_INCL_VENTED_SCAR_V1",
+      "nodeName": "LOD1_SF_INCL_VENTED_SCAR_V1",
+      "nodePath": [
+        0,
+        17,
+        1
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-hopper-cube-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodeName": "LOD2_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-octahedral-cage-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodeName": "LOD2_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-prismatic-truss-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodeName": "LOD2_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-branch-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodeName": "LOD2_SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "nodePath": [
+        0,
+        3,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-radial-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodeName": "LOD2_SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "nodePath": [
+        0,
+        4,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-shear-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodeName": "LOD2_SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "nodePath": [
+        0,
+        5,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-leaf-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_GOLD_LEAF_V1",
+      "nodeName": "LOD2_SF_INCL_GOLD_LEAF_V1",
+      "nodePath": [
+        0,
+        6,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-ribbon-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_GOLD_RIBBON_V1",
+      "nodeName": "LOD2_SF_INCL_GOLD_RIBBON_V1",
+      "nodePath": [
+        0,
+        7,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.100000023841858,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-fracture-vein-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodeName": "LOD2_SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "nodePath": [
+        0,
+        8,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-sheen-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodeName": "LOD2_SF_INCL_ICE_SHEEN_PLATE_V1",
+      "nodePath": [
+        0,
+        9,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-chip-ridge-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodeName": "LOD2_SF_INCL_IRON_CHIP_RIDGE_V1",
+      "nodePath": [
+        0,
+        10,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-specular-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_IRON_SPECULAR_V1",
+      "nodeName": "LOD2_SF_INCL_IRON_SPECULAR_V1",
+      "nodePath": [
+        0,
+        11,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-mk-lock-plate-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodeName": "LOD2_SF_INCL_MK_LOCK_PLATE_V1",
+      "nodePath": [
+        0,
+        12,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.5,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-cubic-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_NICKEL_CUBIC_V1",
+      "nodeName": "LOD2_SF_INCL_NICKEL_CUBIC_V1",
+      "nodePath": [
+        0,
+        13,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-dendrite-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodeName": "LOD2_SF_INCL_NICKEL_DENDRITE_V1",
+      "nodePath": [
+        0,
+        14,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-sheet-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_SILVER_SHEET_V1",
+      "nodeName": "LOD2_SF_INCL_SILVER_SHEET_V1",
+      "nodePath": [
+        0,
+        15,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.299999952316284,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-wire-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_SILVER_WIRE_V1",
+      "nodeName": "LOD2_SF_INCL_SILVER_WIRE_V1",
+      "nodePath": [
+        0,
+        16,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.5,
+        0,
+        -2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-vented-scar-v1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_SF_INCL_VENTED_SCAR_V1",
+      "nodeName": "LOD2_SF_INCL_VENTED_SCAR_V1",
+      "nodePath": [
+        0,
+        17,
+        2
+      ],
+      "parentId": "sf.render.works-inclusion-kit.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.299999952316284,
+        0,
+        2.200000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-inclusion-kit.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_WORKS_INCLUSION_KIT_V1",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-inclusion-kit.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "8ea88003e23fd54b4c6c1f71ee02cae0bf5b6bc3c6f388ce33168477b4f1efbe"
+    },
+    "sourceGlb": {
+      "bytes": 1630564,
+      "sha256": "d635ffd87d38e14092ec38b2f63fb830965f0ccb57f33db83d83da2ea97ce88b",
+      "uri": "place_works_inclusion_kit.glb"
+    },
+    "sourceManifest": {
+      "bytes": 154835,
+      "sha256": "64e3d7430f1995496d2ec5d52b809fa4087b4a9a26ede647138e7dfc93a1e4f1",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 2604488,
+    "sha256": "e496267d4ddcc551c8336ceed18660d746bb44cf931528287dba9e5389c643f5",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.00960502028465271,
+        0.024887308478355408,
+        0.001896977424621582
+      ],
+      "max": [
+        6.215309977531433,
+        0.4397931396961212,
+        2.7448031306266785
+      ],
+      "min": [
+        -6.2345200181007385,
+        -0.3900185227394104,
+        -2.7410091757774353
+      ],
+      "size": [
+        12.449829995632172,
+        0.8298116624355316,
+        5.485812306404114
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 54
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 63,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 65,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 68,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 72,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 74,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_GAS_FISSURE_BRANCH_V1",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_GAS_FISSURE_BRANCH_V1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_GAS_FISSURE_BRANCH_V1",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_GAS_FISSURE_RADIAL_V1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_GAS_FISSURE_RADIAL_V1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_GAS_FISSURE_RADIAL_V1",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_GAS_FISSURE_SHEAR_V1",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_GAS_FISSURE_SHEAR_V1",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_GAS_FISSURE_SHEAR_V1",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_GOLD_LEAF_V1",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_GOLD_LEAF_V1",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_GOLD_LEAF_V1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_GOLD_RIBBON_V1",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_GOLD_RIBBON_V1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.100000023841858,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_GOLD_RIBBON_V1",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_ICE_FRACTURE_VEIN_V1",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_ICE_FRACTURE_VEIN_V1",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_ICE_FRACTURE_VEIN_V1",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_ICE_SHEEN_PLATE_V1",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_ICE_SHEEN_PLATE_V1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_ICE_SHEEN_PLATE_V1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_IRON_CHIP_RIDGE_V1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_IRON_CHIP_RIDGE_V1",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_IRON_CHIP_RIDGE_V1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_IRON_SPECULAR_V1",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_IRON_SPECULAR_V1",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_IRON_SPECULAR_V1",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_MK_LOCK_PLATE_V1",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_MK_LOCK_PLATE_V1",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.5,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_MK_LOCK_PLATE_V1",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_NICKEL_CUBIC_V1",
+        "planIndex": 55,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_NICKEL_CUBIC_V1",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_NICKEL_CUBIC_V1",
+        "planIndex": 57,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_SF_INCL_NICKEL_DENDRITE_V1",
+        "planIndex": 59,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_SF_INCL_NICKEL_DENDRITE_V1",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_SF_INCL_NICKEL_DENDRITE_V1",
+        "planIndex": 61,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_SILVER_SHEET_V1",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_SILVER_SHEET_V1",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.299999952316284,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_SILVER_SHEET_V1",
+        "planIndex": 65,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_SILVER_WIRE_V1",
+        "planIndex": 67,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_SILVER_WIRE_V1",
+        "planIndex": 68,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.5,
+          0,
+          -2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_SILVER_WIRE_V1",
+        "planIndex": 69,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD0_SF_INCL_VENTED_SCAR_V1",
+        "planIndex": 71,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD1_SF_INCL_VENTED_SCAR_V1",
+        "planIndex": 72,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.299999952316284,
+          0,
+          2.200000047683716,
+          1
+        ],
+        "name": "LOD2_SF_INCL_VENTED_SCAR_V1",
+        "planIndex": 73,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_inclusion_kit.glb"
+  },
+  "runtimeHash": "bee8d828d666732e34b19afa1a5edb25ce5f25bd8f772e7b3763931af38bfccb",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.215309977531433,
+          0.4397931396961212,
+          2.7448031306266785
+        ],
+        "min": [
+          -6.2345200181007385,
+          -0.3900185227394104,
+          -2.7410091757774353
+        ]
+      },
+      "id": "sf.render.works-inclusion-kit.body",
+      "nodeIds": [
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-radial-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1",
+        "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-hopper-cube-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-radial-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-shear-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-chip-ridge-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-wire-v1",
+        "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-vented-scar-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-hopper-cube-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-octahedral-cage-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-exotic-prismatic-truss-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-branch-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-radial-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gas-fissure-shear-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-leaf-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-gold-ribbon-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-fracture-vein-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-ice-sheen-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-chip-ridge-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-iron-specular-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-mk-lock-plate-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-cubic-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-nickel-dendrite-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-sheet-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-silver-wire-v1",
+        "sf.render.works-inclusion-kit.mesh.lod2-sf-incl-vented-scar-v1",
+        "sf.render.works-inclusion-kit.root"
+      ]
+    }
+  ]
+}

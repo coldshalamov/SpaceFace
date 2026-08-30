@@ -15,6 +15,7 @@ import {
   assertPlaceSourceHashesUnchanged,
   buildPlacePublicationBindings,
   buildPlacePublicationGuardDescriptors,
+  ensureAssetContractMetadata,
   parseSelectedPlaceIds,
   patchPlaceManifestRows,
   resolveSelectedPlaceAssets,
@@ -320,6 +321,60 @@ test('release metadata replaces source-pending state on asset, scene, and canoni
       }),
     }, 0),
     /asset-level spacefaceAsset contract/,
+  );
+});
+
+test('release build hydrates a missing asset contract only from one matching scene/root pair', () => {
+  const contract = {
+    assetId: 'place_works_inclusion_kit',
+    partId: 'place_works_inclusion_kit',
+    deliverableRole: 'source_kit_unwired',
+  };
+  const carrier = (value) => ({
+    extras: value ? { spacefaceAsset: structuredClone(value) } : {},
+    getExtras() { return this.extras; },
+  });
+  const asset = { extras: { generatorNote: 'preserved' } };
+  const scene = carrier(contract);
+  const canonicalRoot = carrier({
+    deliverableRole: contract.deliverableRole,
+    partId: contract.partId,
+    assetId: contract.assetId,
+  });
+  const document = {
+    getRoot: () => ({
+      getAsset: () => asset,
+      listScenes: () => [scene],
+      listNodes: () => [canonicalRoot, carrier(null)],
+    }),
+  };
+
+  assert.deepEqual(ensureAssetContractMetadata(document), { source: 'scene+canonical-root' });
+  assert.deepEqual(asset.extras, {
+    generatorNote: 'preserved',
+    spacefaceAsset: contract,
+  });
+  assert.deepEqual(ensureAssetContractMetadata(document), { source: 'asset' });
+
+  assert.throws(
+    () => ensureAssetContractMetadata({
+      getRoot: () => ({
+        getAsset: () => ({ extras: {} }),
+        listScenes: () => [carrier(contract)],
+        listNodes: () => [carrier({ ...contract, assetId: 'different' })],
+      }),
+    }),
+    /scene and canonical-root spacefaceAsset contracts disagree/,
+  );
+  assert.throws(
+    () => ensureAssetContractMetadata({
+      getRoot: () => ({
+        getAsset: () => ({ extras: {} }),
+        listScenes: () => [carrier(contract)],
+        listNodes: () => [],
+      }),
+    }),
+    /one matching scene and canonical-root spacefaceAsset contract/,
   );
 });
 
