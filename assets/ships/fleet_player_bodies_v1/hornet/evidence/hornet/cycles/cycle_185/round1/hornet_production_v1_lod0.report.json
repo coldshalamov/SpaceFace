@@ -1,0 +1,120 @@
+{
+  "ok": true,
+  "asset": "ship_hornet",
+  "revision": "cycle_185_full_job_reset",
+  "lod": 0,
+  "source": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\source\\wholeships\\hornet_production_v1_lod0.glb",
+  "output": "C:\\sf-agents\\grok-pq05001-hornet-cycle185-20260830\\assets\\ships\\fleet_player_bodies_v1\\hornet\\evidence\\hornet\\cycles\\cycle_185\\candidates\\hornet_production_v1_lod0.glb",
+  "scale": 2.962962962962963,
+  "canopy": {
+    "tub": true
+  },
+  "drives": [
+    {
+      "tag": "Port",
+      "aft": true,
+      "center": [
+        -4.55,
+        -0.36,
+        0.14
+      ]
+    },
+    {
+      "tag": "Stbd",
+      "aft": true,
+      "center": [
+        -4.55,
+        0.36,
+        0.14
+      ]
+    }
+  ],
+  "radiator": true,
+  "size": [
+    31.2,
+    22.222,
+    4.422
+  ],
+  "triangles": 9102,
+  "objects": [
+    "COLLISION_HULL",
+    "LOD0_Canard_Port",
+    "LOD0_Canard_Stbd",
+    "LOD0_Canopy",
+    "LOD0_CanopyFrameAft",
+    "LOD0_CanopyFrameFore",
+    "LOD0_CanopyFramePort",
+    "LOD0_CanopyFrameStbd",
+    "LOD0_CanopyTubFloor",
+    "LOD0_CanopyTubWallAft",
+    "LOD0_CanopyTubWallFore",
+    "LOD0_CanopyTubWallPort",
+    "LOD0_CanopyTubWallStbd",
+    "LOD0_DriveBore_Port",
+    "LOD0_DriveBore_Stbd",
+    "LOD0_DriveCeramic_Port",
+    "LOD0_DriveCeramic_Stbd",
+    "LOD0_DriveHub_Port",
+    "LOD0_DriveHub_Stbd",
+    "LOD0_DriveRim_Port",
+    "LOD0_DriveRim_Stbd",
+    "LOD0_DriveVane_Port_0",
+    "LOD0_DriveVane_Port_1",
+    "LOD0_DriveVane_Port_2",
+    "LOD0_DriveVane_Port_3",
+    "LOD0_DriveVane_Port_4",
+    "LOD0_DriveVane_Port_5",
+    "LOD0_DriveVane_Port_6",
+    "LOD0_DriveVane_Port_7",
+    "LOD0_DriveVane_Stbd_0",
+    "LOD0_DriveVane_Stbd_1",
+    "LOD0_DriveVane_Stbd_2",
+    "LOD0_DriveVane_Stbd_3",
+    "LOD0_DriveVane_Stbd_4",
+    "LOD0_DriveVane_Stbd_5",
+    "LOD0_DriveVane_Stbd_6",
+    "LOD0_DriveVane_Stbd_7",
+    "LOD0_Flap_Port",
+    "LOD0_Flap_Stbd",
+    "LOD0_GunCheek_Port",
+    "LOD0_GunCheek_Stbd",
+    "LOD0_Hull",
+    "LOD0_RadiatorBack",
+    "LOD0_RadiatorFin_0",
+    "LOD0_RadiatorFin_1",
+    "LOD0_RadiatorFin_2",
+    "LOD0_RadiatorFin_3",
+    "LOD0_RadiatorFin_4",
+    "LOD0_RadiatorFin_5",
+    "LOD0_Wing_Port",
+    "LOD0_Wing_Stbd",
+    "LOD0_WingRib_Port_0",
+    "LOD0_WingRib_Port_1",
+    "LOD0_WingRib_Stbd_0",
+    "LOD0_WingRib_Stbd_1",
+    "LOD0_WingRootFairing_Port",
+    "LOD0_WingRootFairing_Stbd"
+  ],
+  "bytes": 452496,
+  "sha256": "566fb0857f821b44ee6e38378a47d50f83878f8104dc898916d50fb43ed5aa20",
+  "root": "HORNET_LOD0_ROOT",
+  "assetId": "SF_HORNET_PRODUCTION_V1",
+  "socketNames": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Trail_Port",
+    "SOCKET_Trail_Starboard",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "collisionObjects": [
+    "COLLISION_HULL"
+  ],
+  "emission": 0,
+  "authorVerdict": "REVIEW_REQUIRED"
+}
