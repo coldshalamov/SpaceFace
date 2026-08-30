@@ -549,6 +549,32 @@ test('opening submission receipt fails closed on an uncaptured first-draw resour
   assert.ok(shadowFailure.uncapturedShadowResourceIds.length > 0);
 });
 
+test('opening submission receipt ignores an evicted program not owned by an exact draw subject', () => {
+  const root = new THREE.Group();
+  productionMetadata(root);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  material.customProgramCacheKey = () => 'opening';
+  const leaf = mesh('opening-leaf', material);
+  root.add(leaf);
+  const plan = createOpeningSubmissionPlan(planOptions(root, 'opening'));
+  const openingProgram = { cacheKey: 'opening' };
+  const unrelatedProgram = { cacheKey: 'unrelated-loading-program' };
+  const renderer = {
+    info: { programs: [openingProgram, unrelatedProgram], memory: { geometries: 5, textures: 7 } },
+    properties: { get: (candidate) => candidate === material ? { currentProgram: openingProgram } : {} },
+  };
+  const receipt = createOpeningSubmissionReceipt(renderer, plan);
+
+  renderer.info.programs = [openingProgram];
+  const accepted = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(accepted.ok, true, 'a non-plan loading program may be evicted before first draw');
+
+  renderer.info.programs = [unrelatedProgram];
+  const failed = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(failed.ok, false, 'the exact opening material program remains required');
+  assert.deepEqual(failed.missingProgramKeys, ['opening']);
+});
+
 test('production startup no longer invokes a hidden opening discovery render or global loading compile', async () => {
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const readiness = await readFile(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');

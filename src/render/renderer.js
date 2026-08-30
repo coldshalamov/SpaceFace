@@ -4844,6 +4844,10 @@ export const render = {
         state.render.firstPlayableResourceIdentitySets = null;
         this._deferNoncriticalMeshStreaming = false;
         state.render.deferNoncriticalMeshStreaming = false;
+        // This latch is per opening run. Leaving the previous flight's post-paint release armed
+        // lets background admissions race the next exact first-picture census and invalidates its
+        // captured program identities before the new run can present.
+        this._postOpeningPipelineAdmissionReleased = false;
         this._pendingPostOpeningSector = null;
         this._openingFirstPicturePrepared = false;
         this._openingPictureHoldSinceMs = null;

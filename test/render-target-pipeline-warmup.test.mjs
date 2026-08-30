@@ -17,6 +17,16 @@ import {
 import { SpaceRenderGraph } from '../src/render/post/spaceRenderGraph.js';
 import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
 
+test('a new loading transition resets the prior run post-opening admission latch', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const loadingStart = source.indexOf("if (mode === 'loading') {");
+  const loadingEnd = source.indexOf("if (mode !== 'flight') return;", loadingStart);
+  assert.ok(loadingStart >= 0 && loadingEnd > loadingStart, 'renderer owns an explicit loading transition');
+  const loadingTransition = source.slice(loadingStart, loadingEnd);
+  assert.match(loadingTransition, /this\._postOpeningPipelineAdmissionReleased\s*=\s*false/,
+    'every new loading run must hold background admissions until its exact first-picture census is complete');
+});
+
 test('pipeline warm-up compiles against the exact render target and restores renderer state', async () => {
   const previousTarget = { name: 'previous-target' };
   const hdrTarget = { name: 'flight-hdr-target' };

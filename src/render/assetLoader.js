@@ -946,6 +946,13 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
 
   const record = await task;
   if (!record) return null;
+  // Render-package eviction clears the package loader's content-hash cache, but this outer
+  // source-url task cache also retains the assembled record. Do not hand an evicted package back
+  // to a new player boundary: discard only that stale task so the canonical pilot is decoded and
+  // hash-validated again for its next residency generation.
+  if (discardEvictedRenderPackageTask(runtime, cacheKey, task, record)) {
+    return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+  }
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
   const owner = options.residencyOwner || runtime.defaultResidencyOwner;
   if (owner) {
@@ -955,6 +962,16 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
     });
   }
   return record;
+}
+
+/** The package cache owns a different key from this source-url task cache. When package residency
+ * evicts the former, release only the matching stale task so the next boundary reloads the same
+ * hash-bound pilot rather than reusing an evicted assembled record. */
+export function discardEvictedRenderPackageTask(runtime, cacheKey, task, record) {
+  if (!runtime || !runtime.assets || record?.renderPackage?.evicted !== true) return false;
+  if (runtime.assets.get(cacheKey) !== task) return false;
+  runtime.assets.delete(cacheKey);
+  return true;
 }
 
 async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
