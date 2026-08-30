@@ -41,8 +41,8 @@ const CSS = `
 .sf-fx-tree__node--produce.is-active { fill: var(--good); }
 .sf-fx-tree__node--consume.is-active { fill: var(--warn); }
 .sf-fx-tree__lbl { font-family: var(--mono); fill: var(--ink-dim); font-size: 12px; letter-spacing: .04em; }
-.sf-fx-tree__lbl--role { font-size: 12px; fill: var(--ink-mute); letter-spacing: .14em; text-transform: uppercase; }
-.sf-fx-tree__cap { font-family: var(--mono); fill: var(--ink-mute); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.sf-fx-tree__lbl--role { font-size: 12px; fill: var(--ink-mute); letter-spacing:.06em; text-transform: uppercase; }
+.sf-fx-tree__cap { font-family: var(--mono); fill: var(--ink-mute); font-size: 12px; letter-spacing:.06em; text-transform: uppercase; }
 @keyframes sf-fx-tree-march { to { stroke-dashoffset: -8; } }
 @media (prefers-reduced-motion: reduce) { .sf-fx-tree__edge.is-flowing { animation: none; } }
 html.sf-reduce-motion .sf-fx-tree__edge.is-flowing { animation: none; }

@@ -673,7 +673,7 @@ function injectStyle() {
   font-family: var(--sf-subhead-face);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   color: var(--sf-calm);
   text-transform: uppercase;
 }
@@ -707,7 +707,7 @@ function injectStyle() {
   font-weight: 600;
   line-height: 1.35;
   color: var(--sf-calm);
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
@@ -859,7 +859,7 @@ function injectStyle() {
   font-size:12px;
   font-weight: 600;
   color:var(--sf-calm);
-  letter-spacing:.18em;
+  letter-spacing:.06em;
   text-transform:uppercase;
   text-align:center;
 }
@@ -960,7 +960,7 @@ function injectStyle() {
   font-family: var(--sf-subhead-face);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   color: var(--sf-calm);
   text-align: center;
   border-bottom: 1px solid var(--sf-edge);

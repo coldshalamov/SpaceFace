@@ -136,16 +136,16 @@ const PALETTES = {
 // ---------------------------------------------------------------------------------------------------
 export const SEMANTIC_PALETTE = {
   // --- radar / target states (canvas — color was the sole channel; shape is the fix) ---
-  hostile:  { color: '#ff5470', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', glyph: 'target',      label: 'Hostile' },
+  hostile:  { color: '#d95f6a', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', glyph: 'target',      label: 'Hostile' },
   neutral:  { color: '#9aa8bc', cssVar: '--sf-neutral',  shape: 'square',   icon: '■', glyph: 'info',        label: 'Neutral' },
-  friendly: { color: '#62e08a', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', glyph: 'info',        label: 'Friendly' },
+  friendly: { color: '#4fbf8f', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', glyph: 'info',        label: 'Friendly' },
   ally:     { color: '#4f8fdd', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', glyph: 'chevron',     label: 'Ally / You' },
   target:   { color: '#ffffff', cssVar: null,            shape: 'ring',     icon: '◎', glyph: 'target',      label: 'Target' },
 
   // --- status bars (label-redundant today; registered for completeness + colorblind hues) ---
-  hull:     { color: '#ff5470', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
+  hull:     { color: '#d95f6a', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
   shield:   { color: '#4f8fdd', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
-  energy:   { color: '#ffd84a', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
+  energy:   { color: '#d4b45f', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
   // NOTE: armor IS a real stat — entities carry armorHp/armorMax and combat/damage.js consumes
   // them; the command bar pins an ARMR row (commandBar.js). The non-armor bars (energy=cap, heat,
   // boost) are listed alongside hull/shield/armor for completeness.

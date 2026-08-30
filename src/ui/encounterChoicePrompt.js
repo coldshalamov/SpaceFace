@@ -178,7 +178,7 @@ function injectStyle(doc) {
     background:linear-gradient(135deg,rgba(5,13,24,.98),rgba(3,7,14,.94)); color:#eef8ff;
     font-family:var(--mono,Consolas,monospace); box-shadow:0 18px 36px rgba(0,0,0,.36); pointer-events:auto; }
   #sf-encounter-choice[hidden] { display:none !important; }
-  .sf-encounter-choice__eyebrow { color:#9bdcff; font-size:12px; font-weight:700; letter-spacing:.2em; }
+  .sf-encounter-choice__eyebrow { color:#9bdcff; font-size:12px; font-weight:700; letter-spacing:.06em; }
   #sf-encounter-choice-title { margin:7px 0 0; font:700 17px/1.2 var(--mono,Consolas,monospace); letter-spacing:.025em; }
   .sf-encounter-choice__status { margin:6px 0 0; color:#b6c9da; font-size:12px; line-height:1.35; }
   .sf-encounter-choice__actions { display:grid; gap:6px; margin-top:13px; }

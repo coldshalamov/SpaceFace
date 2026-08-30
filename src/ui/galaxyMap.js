@@ -2236,7 +2236,7 @@ const CSS = `
   font-family: var(--mf-display);
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -2244,7 +2244,7 @@ const CSS = `
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--mf-stamp);
 }
@@ -2384,7 +2384,7 @@ const CSS = `
   cursor: pointer;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   transition: border-color .12s ease, color .12s ease, background .12s ease;
 }
@@ -2405,7 +2405,7 @@ const CSS = `
 #sf-galaxymap .gm-level {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .14em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   white-space: nowrap;
@@ -2428,7 +2428,7 @@ const CSS = `
 #sf-galaxymap .gm-weather-word {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--accent-3);
 }
@@ -2438,7 +2438,7 @@ const CSS = `
 #sf-galaxymap .gm-weather-data {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   color: var(--ink-dim);
 }
 #sf-galaxymap .gm-weather-bar {
@@ -2509,7 +2509,7 @@ const CSS = `
   font-family: var(--mf-ui);
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .1em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   transition: border-color .12s ease, color .12s ease, background .12s ease;
 }
@@ -2541,7 +2541,7 @@ const CSS = `
 #sf-galaxymap .gm-hints-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 8px;
@@ -2603,7 +2603,7 @@ const CSS = `
   gap: 8px;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .22em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   padding-bottom: 2px;
@@ -2627,7 +2627,7 @@ const CSS = `
 #sf-galaxymap .gm-layer-bank-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 6px;
@@ -2664,7 +2664,7 @@ const CSS = `
 #sf-galaxymap .gm-layer-btn .gm-layer-name {
   font-size: 12px;
   font-weight: 500;
-  letter-spacing: .09em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   transition: color .12s ease;
@@ -2711,7 +2711,7 @@ const CSS = `
 #sf-galaxymap .gm-rail-commodity label {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   color: var(--ink-mute);
   text-transform: uppercase;
 }
@@ -2743,7 +2743,7 @@ const CSS = `
   gap: 8px;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
 }
@@ -2766,7 +2766,7 @@ const CSS = `
 #sf-galaxymap .gm-hint-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 5px;
@@ -2816,7 +2816,7 @@ const CSS = `
   font-family: var(--mf-display);
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink);
   border-bottom: 1px solid var(--mf-line-1);
@@ -2856,7 +2856,7 @@ const CSS = `
 #sf-galaxymap .gm-ins-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 6px;
@@ -2864,7 +2864,7 @@ const CSS = `
 #sf-galaxymap .gm-ins-kind {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .2em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--mf-stamp);
 }
@@ -2917,7 +2917,7 @@ const CSS = `
   font-family: var(--mf-ui);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: .1em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   transition: background .12s ease, transform .1s ease;
 }
@@ -3012,7 +3012,7 @@ const CSS = `
   border-color: rgba(178, 186, 198, .34);
   color: #c3c8d0;
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   margin-top: 0;
   padding: 8px 12px;
 }
@@ -3062,7 +3062,7 @@ const CSS = `
   background: #0e1113;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -3192,7 +3192,7 @@ const CSS = `
   align-items: baseline;
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .14em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
   margin-bottom: 5px;
@@ -3435,7 +3435,7 @@ html.sf-dyslexia #sf-galaxymap {
   font-family: var(--mf-display);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: .16em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
   transition: color .12s ease;
@@ -3462,7 +3462,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-rail-sum-n {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   color: var(--mf-stamp);
 }
 #sf-galaxymap .gm-rail-body {
@@ -3493,7 +3493,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-rail-item-tag {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--accent-2);
 }
@@ -3560,7 +3560,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-nav-row-k {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--mf-stamp);
   padding-top: 2px;
@@ -3701,7 +3701,7 @@ html.sf-dyslexia #sf-galaxymap {
   font-family: var(--mf-display);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: .14em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -3717,7 +3717,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-ribbon-arrival {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   color: var(--ink-dim);
 }
 #sf-galaxymap .gm-ribbon-legs {
@@ -3752,7 +3752,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-ribbon-haz {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .1em;
+  letter-spacing:.06em;
   text-transform: uppercase;
 }
 #sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--warn); }
@@ -3813,7 +3813,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-deck-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .22em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute);
 }
@@ -3823,7 +3823,7 @@ html.sf-dyslexia #sf-galaxymap {
   color: var(--ink-dim);
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   padding: 3px 8px;
   cursor: pointer;
@@ -3865,7 +3865,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-deck-commodity {
   color: var(--ink);
   text-transform: uppercase;
-  letter-spacing: .08em;
+  letter-spacing:.06em;
 }
 #sf-galaxymap .gm-deck-lane {
   overflow: hidden;
@@ -3889,7 +3889,7 @@ html.sf-dyslexia #sf-galaxymap {
 #sf-galaxymap .gm-deck-empty-title {
   font-family: var(--mono);
   font-size: 12px;
-  letter-spacing: .18em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
   margin-bottom: 4px;

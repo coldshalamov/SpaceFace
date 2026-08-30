@@ -86,7 +86,7 @@ function injectStyle() {
   }
   .sf-codex-locked { opacity: .55; font-style: italic; color: var(--sf-calm); }
   .sf-codex-graffiti {
-    font-family: var(--sf-subhead-face); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    font-family: var(--sf-subhead-face); font-weight: 600; letter-spacing:.06em; text-transform: uppercase;
     font-size: 13px; color: var(--sf-paper);
   }
   .sf-codex-empty {

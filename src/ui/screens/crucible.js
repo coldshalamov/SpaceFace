@@ -28,7 +28,7 @@ function injectStyle() {
   s.textContent = `
   .sf-menu.sf-crucible-door { gap:16px; padding:32px 36px; min-width:400px; max-width:min(92vw,720px); }
   #screens .sf-menu.sf-crucible-door h1 { justify-content:center; margin:0; padding-bottom:10px;
-    font-family:var(--mono); letter-spacing:.28em; font-size:22px; text-transform:uppercase; }
+    font-family:var(--mono); letter-spacing:.06em; font-size:22px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-sub { text-align:center; color:var(--ink-dim); font-size:13px;
     line-height:1.55; margin-top:-8px; }
   .sf-menu.sf-crucible-door .sf-crd-hulls { display:grid; gap:10px;
@@ -37,7 +37,7 @@ function injectStyle() {
     border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible-door .sf-crd-hull[aria-pressed="true"] { border-color:var(--accent-3); }
-  .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mono); letter-spacing:.14em;
+  .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mono); letter-spacing:.06em;
     font-size:13px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-size:12px; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-seed { display:flex; gap:10px; align-items:center;
@@ -61,7 +61,7 @@ function injectStyle() {
   .sf-menu.sf-crucible-results .sf-crres__band { display:flex; flex-direction:column; gap:7px;
     padding:10px 0 0; border-top:1px solid var(--line); }
   .sf-menu.sf-crucible-results .sf-crres__band-title { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    font-weight:600; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--sf-calm); }
   .sf-menu.sf-crucible-results .sf-crres__lead { font-size:13px; line-height:1.55;
     color:var(--sf-paper); }
@@ -115,7 +115,7 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-fig span { font-size:12px; color:var(--ink-dim);
     letter-spacing:.06em; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-rec__head { display:flex; align-items:baseline;
-    justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.08em;
+    justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.06em;
     text-transform:uppercase; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-ladder { display:grid; gap:4px; max-height:196px;
     overflow-y:auto; overscroll-behavior:contain; }
@@ -145,7 +145,7 @@ function injectStyle() {
   .sf-menu.sf-crucible-results .sf-crres__causal { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .sf-menu.sf-crucible-results .sf-crres__causal-tag {
     padding:3px 8px; border-radius:2px; font-family:var(--mono); font-size:12px;
-    letter-spacing:.08em; color:var(--ink);
+    letter-spacing:.06em; color:var(--ink);
     background:color-mix(in srgb, var(--sx-cool, #62cfe0) 16%, transparent);
     box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sx-cool, #62cfe0) 34%, transparent);
   }

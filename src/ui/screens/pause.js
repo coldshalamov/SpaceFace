@@ -51,7 +51,7 @@ function injectStyle() {
   }
   .screen.sf-menu .sf-pause-brief .sf-slot-sub:first-child {
     color:var(--accent);
-    letter-spacing:.18em;
+    letter-spacing:.06em;
   }
   `;
   document.head.appendChild(s);

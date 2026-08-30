@@ -305,7 +305,7 @@ function injectCmpStyle() {
     box-shadow: 0 8px 32px rgba(0,0,0,.6); pointer-events: none; animation: sf-fadein .15s ease both; }
   .st-sy-cmp-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
   .st-sy-cmp-name { font-size: .92rem; color: #fff; font-weight: 600; }
-  .st-sy-cmp-role { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .st-sy-cmp-role { font-size: .62rem; letter-spacing:.06em; text-transform: uppercase; color: var(--accent); }
   .st-sy-cmp-desc { font-size: .74rem; color: var(--ink-dim); margin-bottom: 10px; line-height: 1.35; }
   .st-sy-cmp-grid { display: grid; grid-template-columns: 1.1fr 1fr .3fr 1fr; gap: 3px 8px; font-size: .8rem;
     font-family: var(--mono); }

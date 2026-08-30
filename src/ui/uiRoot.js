@@ -1444,12 +1444,12 @@ function injectHudCss() {
      (hull = red, shield = cyan) so a target's defensive state stays parseable. */
   .sf-bar--hull .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 6px var(--visor-red); }
   .sf-bar--shield .sf-bar__fill { background:var(--visor-cyan); box-shadow:0 0 6px var(--visor-cyan); }
-  .sf-bar--energy .sf-bar__fill { background:var(--visor-amber); box-shadow:0 0 6px var(--visor-amber); }
-  .sf-bar--heat .sf-bar__fill { background:#ff8a3d; box-shadow:0 0 6px #ff8a3d; }
+  .sf-bar--energy .sf-bar__fill { background:var(--visor-amber); }
+  .sf-bar--heat .sf-bar__fill { background:#d9854e; }
   .sf-bar--heat.sf-bar--overheated .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 10px var(--visor-red); }
   .sf-barrow.sf-bar--venting .sf-bar--heat .sf-bar__fill,
   .sf-bar--heat.sf-bar--venting .sf-bar__fill { background:var(--visor-red); box-shadow:0 0 10px var(--visor-red); animation:sf-barpulse .4s ease-in-out infinite alternate; }
-  .sf-bar--boost .sf-bar__fill { background:#c98cff; box-shadow:0 0 6px #c98cff; }
+  .sf-bar--boost .sf-bar__fill { background:var(--accent, #4f8fdd); }
   .sf-bar--low .sf-bar__fill { animation:sf-barpulse 1s ease-in-out infinite alternate; }
   .sf-bar--ready .sf-bar__fill { animation:sf-barready 1.1s ease-in-out infinite alternate; }
   @keyframes sf-barpulse { from { box-shadow:0 0 4px var(--visor-red-dim); } to { box-shadow:0 0 10px 1px var(--visor-red); } }
@@ -1465,7 +1465,7 @@ function injectHudCss() {
      toggles .sf-nav--lock for that case; route/tutorial guidance renders plain (§3E). */
   .sf-nav--lock .sf-nav-label::before { content:'[ TARGET LOCK: '; color:var(--text-secondary); }
   .sf-nav--lock .sf-nav-label::after { content:' ]'; color:var(--text-secondary); }
-  .sf-nav-meta { font-family:var(--mono); font-size:12px; letter-spacing:.1em; color:var(--text-secondary);
+  .sf-nav-meta { font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--text-secondary);
     margin-top:3px; text-shadow:none; }
   .sf-nav-meta .sf-nav-dist { color:var(--text-primary); }
   .sf-nav--lock .sf-nav-meta .sf-nav-dist::before { content:'[ '; color:var(--text-secondary); }
@@ -1479,7 +1479,7 @@ function injectHudCss() {
   #action-bar { position:absolute; bottom:28px; left:50%; transform:translateX(-50%);
     display:flex; gap:16px; }
   .action-slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .action-slot .bind { font-family:var(--mono); font-size:.66rem; letter-spacing:.08em;
+  .action-slot .bind { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
     color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .icon-box { position:relative; width:44px; height:44px; border:1px solid var(--visor-cyan-dim);
     border-radius:4px; display:flex; justify-content:center; align-items:center;
@@ -1517,7 +1517,7 @@ function injectHudCss() {
      is enabled on the tether stat only, so no other readout changes shape. */
   #sf-tetherstat { flex-wrap:wrap; }
   .sf-stat__hint { flex-basis:100%; margin-top:2px; font-family:var(--sf-data-face); font-size:12px;
-    letter-spacing:.08em; color:var(--sf-calm); opacity:.85; }
+    letter-spacing:.06em; color:var(--sf-calm); opacity:.85; }
   .sf-stat__hint[hidden] { display:none; }
   .sf-stat--info .sf-stat__k { border-bottom:1px dotted rgba(255,255,255,.25); padding-bottom:1px; }
   .sf-stat--info:hover .sf-stat__k { color:var(--visor-cyan); border-bottom-color:var(--visor-cyan-dim); }
@@ -1544,7 +1544,7 @@ function injectHudCss() {
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
   .sf-radar-objective-key { width:100%; text-align:center; color:var(--visor-amber);
-    font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:.1em;
+    font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:.06em;
     text-transform:uppercase; text-shadow:none; }
   /* HUD sub-panel surface — now chromeless. Legibility comes from hard text-shadow on the content. */
   .sf-hudpanel { background:none; border:none; box-shadow:none; }
@@ -1554,7 +1554,7 @@ function injectHudCss() {
   .sf-target__name { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
     text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     text-shadow:none; }
-  .sf-target__faction { font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-shadow:none; }
+  .sf-target__faction { font-family:var(--mono); font-size:12px; letter-spacing:.06em; text-shadow:none; }
   .sf-target__meta { display:flex; justify-content:flex-end; gap:14px; font-family:var(--mono); font-size:12px;
     color:var(--text-secondary); text-shadow:none; }
   .sf-target .sf-bar__fill { box-shadow:none; transition:none; }
@@ -1565,7 +1565,7 @@ function injectHudCss() {
   /* Damage triangle (BP-02): E/K/X effectiveness vs the target's current outer layer. Three tiny
      labeled bars; the best family highlights so "what should I be shooting" reads instantly. */
   .sf-target__triangle { display:flex; align-items:center; gap:7px; margin-top:5px; font-family:var(--mono); }
-  .sf-target__tri-label { font-size:12px; letter-spacing:.08em; color:var(--text-secondary); opacity:.7; }
+  .sf-target__tri-label { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:.7; }
   .sf-target__tri-layer { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:.6; margin-left:auto; }
   .sf-tri { display:flex; align-items:center; gap:3px; }
   /* Focusable so the tier-2 why (data-why: Energy/Kinetic/Explosive) answers keyboard focus, not
@@ -1608,7 +1608,7 @@ function injectHudCss() {
   .sf-objarrow__label { position:absolute; max-width:280px; padding:4px 7px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     background:rgba(5,9,18,.94); border-left:1px solid var(--sf-edge);
-    color:var(--text-primary); font-size:12px; font-weight:700; letter-spacing:.08em;
+    color:var(--text-primary); font-size:12px; font-weight:700; letter-spacing:.06em;
     line-height:1.35; text-shadow:none; }
   .sf-objarrow[data-edge="left"] .sf-objarrow__label { left:20px; top:50%; transform:translateY(-50%); }
   .sf-objarrow[data-edge="right"] .sf-objarrow__label { right:20px; top:50%; transform:translateY(-50%); }
@@ -1758,7 +1758,7 @@ function injectHudCss() {
   .sf-momentum-sink__axis::before { left:0; border-left:1px solid rgba(255,222,176,.9); transform:rotate(-45deg); }
   .sf-momentum-sink__axis::after { right:0; border-right:1px solid rgba(255,222,176,.9); transform:rotate(45deg); }
   .sf-momentum-sink__label { position:absolute; left:50%; top:60px; transform:translateX(-50%);
-    color:#ffd8a3; font-size:12px; letter-spacing:.1em; white-space:nowrap;
+    color:#ffd8a3; font-size:12px; letter-spacing:.06em; white-space:nowrap;
     text-shadow:0 1px 2px #080402, 0 0 6px rgba(255,136,64,.72); }
 
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
@@ -1820,14 +1820,14 @@ function injectHudCss() {
 
   /* Capacitor readout near weapon area */
   .sf-cap-readout { position:absolute; left:18px; bottom:18px; pointer-events:none;
-    font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--ink-dim); }
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--ink-dim); }
 
   @media (max-width: 760px), (max-height: 620px) {
     #pilot-portrait { width:54px; height:54px; top:10px; right:10px; }
     #toasts { left:calc(12px + var(--sf-safe-inset-x, 0px)); right:calc(12px + var(--sf-safe-inset-x, 0px)); width:auto; transform:none; }
     .sf-toast { width:auto; max-width:none; font-size:12px; padding:8px 10px; }
     #alerts { left:calc(10px + var(--sf-safe-inset-x, 0px)); right:calc(10px + var(--sf-safe-inset-x, 0px)); top:84px; width:auto; }
-    .sf-alert { max-width:100%; font-size:12px; letter-spacing:.08em; white-space:normal; text-align:center; justify-content:center; }
+    .sf-alert { max-width:100%; font-size:12px; letter-spacing:.06em; white-space:normal; text-align:center; justify-content:center; }
 
     #action-bar { display:none !important; }
 
@@ -1927,7 +1927,7 @@ function injectHudCss() {
     text-shadow:none; }
   .sf-mt-obj { font-family:var(--mono); font-size:13px; line-height:1.35; color:var(--text-primary); margin-bottom:5px;
     text-shadow:none; }
-  .sf-mt-time { font-family:var(--mono); font-size:12px; color:var(--visor-amber); letter-spacing:.1em;
+  .sf-mt-time { font-family:var(--mono); font-size:12px; color:var(--visor-amber); letter-spacing:.06em;
     text-shadow:none; }
   .sf-mt-time.sf-mt-urgent { color:var(--visor-amber); text-shadow:none; }
   @media (max-width: 760px) {
@@ -2123,7 +2123,7 @@ function injectHudCss() {
     align-items:center; gap:7px; min-height:17px;
   }
   .sf-barrow__label {
-    width:auto; font-family:var(--hud-display); font-size:12px; font-weight:600; letter-spacing:.1em;
+    width:auto; font-family:var(--hud-display); font-size:12px; font-weight:600; letter-spacing:.06em;
     color:var(--hud-muted); text-shadow:none;
   }
   .sf-barrow__num {
@@ -2143,7 +2143,7 @@ function injectHudCss() {
   }
   .sf-wpn-heat { display:grid; grid-template-columns:62px minmax(0, 1fr); gap:7px; align-items:center; }
   .sf-wpn-heat__label {
-    width:auto; font-family:var(--hud-display); font-size:12px; font-weight:600; letter-spacing:.08em;
+    width:auto; font-family:var(--hud-display); font-size:12px; font-weight:600; letter-spacing:.06em;
     color:var(--hud-muted); text-shadow:none;
   }
   .sf-wpn-heat__bar { width:100%; height:2px; background:rgba(164,181,197,.13); overflow:hidden; }
@@ -2163,7 +2163,7 @@ function injectHudCss() {
     margin:0; padding:0;
   }
   .sf-stat { font-family:var(--hud-data); gap:5px; }
-  .sf-stat__k { font-family:var(--hud-display); font-size:12px; font-weight:700; color:var(--hud-muted); letter-spacing:.1em; text-shadow:none; }
+  .sf-stat__k { font-family:var(--hud-display); font-size:12px; font-weight:700; color:var(--hud-muted); letter-spacing:.06em; text-shadow:none; }
   .sf-stat__v { font-size:12px; color:var(--hud-paper); font-variant-numeric:tabular-nums; text-shadow:0 1px 2px rgba(0,0,0,.55); white-space:nowrap; }
   .sf-stat--speed .sf-stat__v { font-family:var(--hud-display); font-size:17px; font-weight:700; }
   /* Massline chips — only while latched; wrap instead of overflowing the deck. */
@@ -2185,7 +2185,7 @@ function injectHudCss() {
     border-bottom-color:rgba(148,178,205,.44); border-radius:2px;
   }
   .sf-tchip__verb {
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.08em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-paper);
   }
   .sf-tchip__hint {
@@ -2212,7 +2212,7 @@ function injectHudCss() {
   }
   .sf-commtape[hidden] { display:none !important; }
   .sf-commtape__band {
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.2em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     color:var(--hud-muted); text-shadow:var(--sf-ink);
   }
   .sf-commtape__slots { display:flex; align-items:center; gap:7px; pointer-events:auto; }
@@ -2225,7 +2225,7 @@ function injectHudCss() {
   }
   .sf-commtape .sf-fx-comms-trace__crest { color:var(--hud-cyan); }
   .sf-commtape .sf-fx-comms-trace__wave {
-    font-family:var(--hud-data); font-size:12px; letter-spacing:.08em;
+    font-family:var(--hud-data); font-size:12px; letter-spacing:.06em;
     color:var(--hud-cyan); text-shadow:0 0 8px rgba(78,195,230,.45), 0 1px 2px rgba(0,0,0,.72);
   }
   .sf-commtape .sf-comm-backlog-btn,
@@ -2258,7 +2258,7 @@ function injectHudCss() {
   .sf-mt-obj { font-family:var(--hud-body) !important; font-size:12px; line-height:1.35; font-weight:500; color:var(--hud-paper); margin-bottom:4px; }
   .sf-mt-time { font-family:var(--hud-data) !important; font-size:12px; letter-spacing:.04em; color:#c4a77e; }
   .sf-nav-readout { padding:6px 10px; }
-  .sf-nav-label { font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--hud-cyan); }
+  .sf-nav-label { font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em; color:var(--hud-cyan); }
   .sf-nav-meta { font-family:var(--hud-data); font-size:12px; letter-spacing:.035em; color:var(--hud-muted); }
 
   /* ===== J07 · Ink on Vacuum — the right dock is ONE column, not three widths =====
@@ -2416,7 +2416,7 @@ function injectHudCss() {
   .sf-ml-instrument { width:100%; margin-top:4px; }
   .sf-ml-instrument[hidden] { display:none !important; }
   .sf-ml-instrument__row { display:flex; align-items:center; gap:8px; }
-  .sf-ml-instrument__k { font-family:var(--hud-display); font-size:12px; letter-spacing:.1em; color:var(--hud-muted); }
+  .sf-ml-instrument__k { font-family:var(--hud-display); font-size:12px; letter-spacing:.06em; color:var(--hud-muted); }
   .sf-ml-instrument__track { flex:1; height:3px; background:rgba(164,181,197,.18); }
   .sf-ml-instrument__fill { display:block; height:100%; width:100%; transform-origin:left center; background:var(--hud-amber, #dfa04e); }
   .sf-ml-instrument__v { font-size:12px; color:var(--hud-paper); }
@@ -2431,7 +2431,7 @@ function injectHudCss() {
   .sf-toast--success, .sf-toast--good, .sf-toast--error, .sf-toast--danger, .sf-toast--warn { border-left-width:1px; }
   .sf-alert {
     min-width:220px; justify-content:center; padding:7px 18px; border-radius:2px;
-    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.1em;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.06em;
     background:linear-gradient(90deg, rgba(9,15,24,.68), rgba(18,27,39,.92), rgba(9,15,24,.68));
     border:1px solid rgba(148,178,205,.26); border-top-color:rgba(78,195,230,.4);
     box-shadow:0 10px 26px rgba(0,0,0,.28);

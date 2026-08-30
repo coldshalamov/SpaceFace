@@ -80,7 +80,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 #sf-command-bar .sf-cb-k {
   font-family: var(--mono, monospace);
   font-size: calc(9px * var(--ui-scale, 1));
-  letter-spacing: .14em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute, #5a7aa0);
 }
@@ -97,7 +97,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 #sf-command-bar .sf-cb-brand {
   font-family: var(--mono, monospace);
   font-size: calc(13px * var(--ui-scale, 1));
-  letter-spacing: .22em;
+  letter-spacing:.06em;
   color: var(--console-cyan, #4f8fdd);
 }
 #sf-command-bar .sf-cb-sector {
@@ -124,7 +124,7 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   width: 34px;
   font-family: var(--mono, monospace);
   font-size: calc(9px * var(--ui-scale, 1));
-  letter-spacing: .1em;
+  letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute, #5a7aa0);
 }

@@ -36,7 +36,7 @@ function injectStyle() {
   s.textContent = `
   .sf-menu.sf-crucible { gap:16px; padding:30px 34px; min-width:420px; max-width:min(94vw,980px); }
   #screens .sf-menu.sf-crucible h1 { justify-content:center; margin:0; padding-bottom:10px;
-    font-family:var(--mono); letter-spacing:.26em; font-size:20px; text-transform:uppercase; }
+    font-family:var(--mono); letter-spacing:.06em; font-size:20px; text-transform:uppercase; }
   .sf-menu.sf-crucible .sf-cru-sub { text-align:center; color:var(--ink-dim); font-size:13px;
     letter-spacing:.06em; margin-top:-8px; }
   .sf-menu.sf-crucible .sf-cru-cards { display:grid; gap:12px;
@@ -46,7 +46,7 @@ function injectStyle() {
     padding:14px 15px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible .sf-cru-card:hover,
   .sf-menu.sf-crucible .sf-cru-card:focus-visible { border-color:var(--accent-3); outline:none; }
-  .sf-menu.sf-crucible .sf-cru-verb { font-family:var(--mono); letter-spacing:.2em; font-size:15px;
+  .sf-menu.sf-crucible .sf-cru-verb { font-family:var(--mono); letter-spacing:.06em; font-size:15px;
     text-transform:uppercase; color:var(--accent-3); }
   .sf-menu.sf-crucible .sf-cru-name { font-family:var(--mono); font-size:12px; color:var(--ink-dim); }
   .sf-menu.sf-crucible .sf-cru-blurb { font-size:13px; line-height:1.5; color:var(--ink); }

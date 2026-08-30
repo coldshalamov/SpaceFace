@@ -90,7 +90,7 @@ function injectStyles() {
     .sf-ending-epilogue__eyebrow,
     .sf-ending-epilogue__section-title {
       margin: 0; font-family: var(--mono, monospace); text-transform: uppercase;
-      letter-spacing: .2em; color: #76d9f3;
+      letter-spacing:.06em; color: #76d9f3;
     }
     .sf-ending-epilogue__eyebrow { font-size: 12px; margin-bottom: 14px; }
     .sf-ending-epilogue__title {
@@ -108,7 +108,7 @@ function injectStyles() {
     .sf-ending-epilogue__dismiss {
       margin-top: 34px; min-height: 42px; padding: 9px 18px; border: 1px solid rgba(118, 217, 243, .72);
       border-radius: 3px; background: rgba(33, 107, 130, .12); color: #dff8ff;
-      font: 12px var(--mono, monospace); letter-spacing: .15em; cursor: pointer;
+      font: 12px var(--mono, monospace); letter-spacing:.06em; cursor: pointer;
     }
     .sf-ending-epilogue__dismiss:hover { background: rgba(52, 158, 190, .2); }
     .sf-ending-epilogue__dismiss:focus-visible { outline: 3px solid #f5c35b; outline-offset: 4px; }

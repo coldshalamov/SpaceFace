@@ -59,14 +59,14 @@ const ASTEROID_FIELD_CELLS = 9;
 const ASTEROID_DOT_LIMIT = 14;
 
 const FACTION_COLOR = Object.freeze({
-  faction_scn: '#4DA8FF',
-  faction_mts: '#46E08A',
+  faction_scn: '#5b93d6',
+  faction_mts: '#4fbf8f',
   faction_dmc: '#C9772E',
-  faction_reach: '#FF4D5E',
-  faction_quiet: '#B06CFF',
-  faction_vael: '#2FCFA0',
-  faction_free: '#4ECBE0',
-  faction_choir: '#E85FD0',
+  faction_reach: '#d95f6a',
+  faction_quiet: '#a78bca',
+  faction_vael: '#46b98c',
+  faction_free: '#5aa8c9',
+  faction_choir: '#c987b5',
 });
 
 const CAPITAL_ROLES = new Set(['battlecruiser', 'flagship', 'gunship', 'carrier', 'dreadnought']);

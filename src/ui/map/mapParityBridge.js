@@ -275,7 +275,7 @@ function injectStyle(documentRef) {
   font-family:var(--mf-mono,"IBM Plex Mono",ui-monospace,monospace);
   font-size:12px;
   font-weight:700;
-  letter-spacing:.10em;
+  letter-spacing:.06em;
 }
 #sf-galaxymap .gm-parity-key__grid {
   display:grid;

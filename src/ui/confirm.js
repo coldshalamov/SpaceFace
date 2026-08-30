@@ -32,7 +32,7 @@ function injectStyle() {
     border:1px solid var(--panel-edge); border-radius:var(--r-lg); padding:var(--sp-5);
     box-shadow:var(--sh-3), 0 0 0 1px rgba(79,143,221,.08) inset;
     animation:sf-fadein var(--dur) var(--ease) both; }
-  .sf-confirm__title { font-family:var(--mono); font-size:var(--t-lg); letter-spacing:.12em;
+  .sf-confirm__title { font-family:var(--mono); font-size:var(--t-lg); letter-spacing:.06em;
     text-transform:uppercase; color:var(--accent); text-shadow:0 0 14px rgba(79,143,221,.4);
     margin:0 0 var(--sp-2); }
   .sf-confirm__title.sf-confirm__title--danger { color:var(--danger);

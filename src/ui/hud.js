@@ -952,9 +952,9 @@ function injectDeathStyle() {
   .sf-death[hidden] { display:none !important; }
   .sf-death.show { animation:sf-death-seq 2.4s ease forwards; }
   @keyframes sf-death-seq { 0%{opacity:0;} 8%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
-  .sf-death__big { font-family:var(--mono,Consolas,monospace); font-size:46px; letter-spacing:.22em; color:#ff5470;
+  .sf-death__big { font-family:var(--mono,Consolas,monospace); font-size:46px; letter-spacing:.06em; color:#ff5470;
     text-shadow:0 0 30px rgba(255,84,112,.7), 0 2px 4px #000; }
-  .sf-death__sub { font-family:var(--mono,Consolas,monospace); font-size:14px; letter-spacing:.3em; color:#ffd2da; text-transform:uppercase; }
+  .sf-death__sub { font-family:var(--mono,Consolas,monospace); font-size:14px; letter-spacing:.06em; color:#ffd2da; text-transform:uppercase; }
   body.sf-deathflash::after { content:''; position:fixed; inset:0; z-index:1400; pointer-events:none;
     background:radial-gradient(circle at 50% 50%, rgba(255,40,70,0) 30%, rgba(255,30,60,.55) 100%); animation:sf-deathflash .7s ease forwards; }
   @keyframes sf-deathflash { 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
@@ -984,11 +984,11 @@ function injectTravelTapeStyle() {
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.2em; text-transform:uppercase; }
+    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
   .sf-vtape__state { color:var(--vt-brass); }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:#a08c6a; }
-  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.14em; }
+  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; }
   /* --- the tape itself: a linear 0..headroom scale --- */
   .sf-vtape__track { position:relative; height:11px; border-radius:2px; overflow:hidden;
     background:rgba(0,0,0,.55); border:1px solid color-mix(in srgb, var(--vt-brass) 22%, transparent); }
@@ -1005,12 +1005,12 @@ function injectTravelTapeStyle() {
   .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
     background:color-mix(in srgb, var(--vt-amber) 85%, transparent); transition:left .1s linear; }
   .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:12px; letter-spacing:.14em; color:var(--vt-amber); opacity:.9; }
+    font-size:12px; letter-spacing:.06em; color:var(--vt-amber); opacity:.9; }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
   .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
-    font-size:12px; letter-spacing:.14em; color:var(--vt-brass); }
+    font-size:12px; letter-spacing:.06em; color:var(--vt-brass); }
   /* --- approach row: the stopping arc (W1-9) --- */
   .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
@@ -1023,14 +1023,14 @@ function injectTravelTapeStyle() {
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
     border-left:1px solid var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.12em;
+  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em;
     color:#9a8a6c; text-transform:uppercase; }
   .sf-vtape--overshoot .sf-vtape__arcstop { background:color-mix(in srgb, #d4573f 70%, transparent); }
   .sf-vtape--overshoot .sf-vtape__arclabel { color:#e0876f; }
   /* --- BRAKE NOW --- */
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
     padding:2px 0; border-top:1px solid color-mix(in srgb, var(--vt-amber) 30%, transparent);
-    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.24em; color:var(--vt-amber); }
+    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
   .sf-vtape__brakeglyph { font-size:12px; }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
@@ -1946,7 +1946,7 @@ export function createHud(ctx, alerts) {
     .sf-tell--TETHER { border-color:rgba(255,179,92,.7); }
     .sf-tell--CHARGE { border-color:rgba(255,92,92,.7); }
     .sf-tell__icon { font-size:12px; opacity:.95; flex:0 0 auto; }
-    .sf-tell__kind { font-weight:700; letter-spacing:.14em; font-size:12px; color:#ff5c5c; }
+    .sf-tell__kind { font-weight:700; letter-spacing:.06em; font-size:12px; color:#ff5c5c; }
     .sf-tell--TETHER .sf-tell__kind { color:#ffb35c; }
     .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:12px;
       text-transform:none; overflow:hidden; text-overflow:ellipsis; }

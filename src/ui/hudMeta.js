@@ -238,8 +238,8 @@ export const HUD_META_CSS = `
     padding-left:8px; border-left:1px solid var(--sf-edge);
     pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .5s ease; }
   .sf-stableload--visible { display:flex; opacity:1; }
-  .sf-stableload__k { font-size:12px; letter-spacing:.14em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-stableload__v { font-size:12px; letter-spacing:.08em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-stableload__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-stableload__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-stableload--p3 { border-left-color:var(--visor-red); }
   .sf-stableload--p3 .sf-stableload__v { color:var(--visor-red); text-shadow:var(--text-shadow-hard), var(--visor-glow-red);
     animation:sf-stablepulse 2.5s ease-in-out infinite alternate; }
@@ -248,7 +248,7 @@ export const HUD_META_CSS = `
   .sf-tagflicker { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); pointer-events:none;
     opacity:0; transition:opacity .12s ease; z-index:12; }
   .sf-tagflicker--show { opacity:1; }
-  .sf-tagflicker__tag { font-family:var(--mono); font-size:12px; letter-spacing:.16em; color:var(--good);
+  .sf-tagflicker__tag { font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--good);
     padding:4px 12px; border:1px solid var(--good); border-radius:4px;
     text-shadow:var(--text-shadow-hard), 0 0 8px rgba(98,224,138,.5); }
   .sf-tagflicker--overwrite .sf-tagflicker__tag { color:var(--visor-red); border-color:var(--visor-red);
@@ -257,16 +257,16 @@ export const HUD_META_CSS = `
      (Chromeless: stays clear of the now-borderless bottom-right radar/target dock.) */
   .sf-hudphase { position:absolute; top:96px; left:50%; transform:translateX(-50%);
     display:flex; align-items:center; gap:7px; pointer-events:none; opacity:.85; }
-  .sf-hudphase__k { font-size:12px; letter-spacing:.14em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-hudphase__v { font-size:12px; letter-spacing:.08em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-hudphase--p2 .sf-hudphase__v { color:var(--accent-2); text-shadow:var(--text-shadow-hard); }
   .sf-hudphase--p3 .sf-hudphase__v { color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
   .sf-hudlegacy { position:absolute; top:116px; left:50%; transform:translateX(-50%); max-width:min(680px,72vw);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; font-size:12px;
-    letter-spacing:.11em; color:var(--text-secondary); opacity:.72; text-shadow:var(--text-shadow-hard); }
+    letter-spacing:.06em; color:var(--text-secondary); opacity:.72; text-shadow:var(--text-shadow-hard); }
   /* manifest ghost (Phase 2 silent correction) */
   .sf-manifest-ghost { position:absolute; left:50%; top:54%; transform:translateX(-50%); pointer-events:none;
-    font-family:var(--mono); font-size:12px; letter-spacing:.12em; color:var(--text-secondary); opacity:0;
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:0;
     transition:opacity .4s ease; text-shadow:var(--text-shadow-hard), 0 0 8px rgba(0,0,0,.8); }
   .sf-manifest-ghost--show { opacity:.6; }
   @media (max-width: 760px) {

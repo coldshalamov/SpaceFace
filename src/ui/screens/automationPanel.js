@@ -268,10 +268,10 @@ const CSS = `
   display: flex; flex-direction: column; gap: 10px; }
 #sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; }
 #sf-automation .au-top-right { display: flex; align-items: center; gap: 14px; }
-#sf-automation .au-title { font-size: 1.2em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+#sf-automation .au-title { font-size: 1.2em; letter-spacing:.06em; text-transform: uppercase; color: var(--accent);
   text-shadow: 0 0 12px rgba(79,143,221,.5); }
 #sf-automation .au-credits { font-family: var(--mono); font-size: .9em; color: var(--energy); }
-#sf-automation .au-close { font-family: var(--mono); font-size: .74em; letter-spacing: .08em; text-transform: uppercase;
+#sf-automation .au-close { font-family: var(--mono); font-size: .74em; letter-spacing:.06em; text-transform: uppercase;
   padding: 5px 12px; border-radius: 6px; color: var(--ink-dim); }
 #sf-automation .au-close:hover { color: #fff; border-color: var(--accent); }
 #sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: .8em; }
@@ -294,7 +294,7 @@ const CSS = `
   border: 1px solid var(--panel-edge); border-radius: 8px; background: rgba(10,18,30,.62);
   padding: 12px 13px; }
 #sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-color: rgba(79,143,221,.42); }
-#sf-automation .au-kicker { font-family: var(--mono); font-size: .68em; letter-spacing: .13em; text-transform: uppercase;
+#sf-automation .au-kicker { font-family: var(--mono); font-size: .68em; letter-spacing:.06em; text-transform: uppercase;
   color: var(--accent-2); }
 #sf-automation .au-next-title { font-size: 1em; color: var(--ink); }
 #sf-automation .au-next-body { font-size: .82em; line-height: 1.35; color: var(--ink-dim); }
@@ -305,12 +305,12 @@ const CSS = `
 #sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 #sf-automation .au-metric { min-width: 0; border: 1px solid rgba(79,143,221,.16); border-radius: 6px;
   background: rgba(6,10,18,.5); padding: 8px 9px; }
-#sf-automation .au-metric .k { font-family: var(--mono); font-size: .66em; letter-spacing: .09em; text-transform: uppercase;
+#sf-automation .au-metric .k { font-family: var(--mono); font-size: .66em; letter-spacing:.06em; text-transform: uppercase;
   color: var(--ink-mute); }
 #sf-automation .au-metric .v { margin-top: 4px; font-family: var(--mono); font-size: .88em; color: var(--ink); }
 #sf-automation .au-metric .s { margin-top: 3px; font-size: .72em; line-height: 1.25; color: var(--ink-dim); }
 #sf-automation .au-note { font-size: .78em; color: var(--ink-dim); line-height: 1.35; margin-top: 6px; }
-#sf-automation .au-section-h { font-family: var(--mono); font-size: .76em; letter-spacing: .14em; text-transform: uppercase;
+#sf-automation .au-section-h { font-family: var(--mono); font-size: .76em; letter-spacing:.06em; text-transform: uppercase;
   color: var(--ink-mute); border-bottom: 1px solid var(--panel-edge); padding-bottom: 5px; margin-bottom: 2px; }
 #sf-automation .au-card { display: flex; align-items: center; gap: 14px; padding: 11px 13px;
   background: rgba(10,18,30,.6); border: 1px solid var(--panel-edge); border-radius: 8px; }
@@ -328,7 +328,7 @@ const CSS = `
   border-bottom: 1px solid rgba(79,143,221,.16); background: linear-gradient(90deg, rgba(6,10,18,.46), rgba(12,23,36,.58), rgba(6,10,18,.46)); }
 #sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
 #sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid rgba(79,143,221,.2); border-right: 1px solid rgba(79,143,221,.2); }
-#sf-automation .au-flow-k { font-family: var(--mono); font-size: .62em; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-mute); }
+#sf-automation .au-flow-k { font-family: var(--mono); font-size: .62em; letter-spacing:.06em; text-transform: uppercase; color: var(--ink-mute); }
 #sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: .84em; }
 #sf-automation .au-flow-core strong { white-space: normal; }
 #sf-automation .au-flow-v { font-family: var(--mono); font-size: .72em; color: var(--ink-dim); }

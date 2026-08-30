@@ -29,7 +29,7 @@ function injectStyle() {
    carries no padding/scroller of its own — the plate already provides both. */
 #sf-base { display:flex; flex-direction:column; gap:14px; padding:0; min-width:min(92vw,720px);
   pointer-events:auto; }
-#sf-base .base-title { font-family:var(--mono); letter-spacing:.22em; font-size:17px;
+#sf-base .base-title { font-family:var(--mono); letter-spacing:.06em; font-size:17px;
   color:var(--accent); text-transform:uppercase; }
 #sf-base .base-sub { color:var(--ink-mute); font-size:12px; }
 #sf-base .base-plan { border:1px solid rgba(219,152,56,.28); border-radius:2px; padding:10px 12px;
@@ -37,7 +37,7 @@ function injectStyle() {
 #sf-base .base-plan--ok { border-color:rgba(88,201,138,.35); background:rgba(24,42,34,.4); }
 #sf-base .base-plan--warn { border-color:rgba(227,161,61,.38); background:rgba(48,38,20,.4); }
 #sf-base .base-plan--bad { border-color:rgba(237,105,97,.38); background:rgba(46,24,22,.4); }
-#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+#sf-base .base-plan-k { color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
 #sf-base .base-plan--ok .base-plan-k { color:var(--good); }
 #sf-base .base-plan--warn .base-plan-k { color:var(--warn); }
 #sf-base .base-plan--bad .base-plan-k { color:var(--danger); }
@@ -67,7 +67,7 @@ function injectStyle() {
 #sf-base .base-ledger-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
 #sf-base .base-ledger-cell { border-left:1px solid var(--sf-edge); padding-left:8px; }
 #sf-base .base-ledger-k { color:var(--ink-mute); font-family:var(--mono); font-size:12px;
-  letter-spacing:.12em; text-transform:uppercase; }
+  letter-spacing:.06em; text-transform:uppercase; }
 #sf-base .base-ledger-v { color:var(--ink); font-size:12px; margin-top:2px; }
 #sf-base .base-freight { display:flex; gap:8px; flex-wrap:wrap; }
 #sf-base .base-receipt { color:var(--ink-dim); font-size:12px; }
@@ -466,7 +466,7 @@ export const baseScreen = {
 
     // ---- operating identity (M5 / SPEC3-F6): one claim, one visible job ----
     const specHead = document.createElement('div');
-    specHead.style.cssText = 'font-family:var(--mono);letter-spacing:.1em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
+    specHead.style.cssText = 'font-family:var(--mono);letter-spacing:.06em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
     specHead.textContent = 'Operating identity';
     wrap.appendChild(specHead);
 
@@ -615,7 +615,7 @@ export const baseScreen = {
 
     // ---- build shop ----
     const shopHead = document.createElement('div');
-    shopHead.style.cssText = 'font-family:var(--mono);letter-spacing:.1em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
+    shopHead.style.cssText = 'font-family:var(--mono);letter-spacing:.06em;font-size:12px;color:var(--ink-dim);text-transform:uppercase;margin-top:6px;';
     shopHead.textContent = 'Build module';
     wrap.appendChild(shopHead);
 

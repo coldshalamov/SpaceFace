@@ -241,10 +241,10 @@ function injectStyle(doc) {
     background:linear-gradient(135deg,rgba(20,16,7,.98),rgba(8,10,13,.95)); color:#fff4d4;
     font-family:var(--mono,Consolas,monospace); box-shadow:0 18px 36px rgba(0,0,0,.36); pointer-events:auto; }
   #sf-lawful-inspection[hidden] { display:none !important; }
-  .sf-lawful-inspection__eyebrow { color:#f3ca68; font-size:12px; font-weight:700; letter-spacing:.2em; }
+  .sf-lawful-inspection__eyebrow { color:#f3ca68; font-size:12px; font-weight:700; letter-spacing:.06em; }
   #sf-lawful-inspection-title { margin:7px 0 0; font:700 17px/1.2 var(--mono,Consolas,monospace); letter-spacing:.025em; }
   .sf-lawful-inspection__status { margin:6px 0 0; color:#eadbb7; font-size:12px; line-height:1.35; }
-  .sf-lawful-inspection__escape { min-height:1.35em; margin:7px 0 0; color:#e8bd56; font:700 12px/1.35 var(--mono,Consolas,monospace); letter-spacing:.12em; }
+  .sf-lawful-inspection__escape { min-height:1.35em; margin:7px 0 0; color:#e8bd56; font:700 12px/1.35 var(--mono,Consolas,monospace); letter-spacing:.06em; }
   .sf-lawful-inspection__actions { display:grid; gap:6px; margin-top:12px; }
   .sf-lawful-inspection__actions button { min-height:42px; position:relative; padding:8px 11px 8px 44px;
     border:1px solid rgba(243,202,104,.45); background:rgba(216,170,51,.11); color:#fff4d4;

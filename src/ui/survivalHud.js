@@ -326,17 +326,17 @@ export const survivalHud = {
     padding:9px 11px; border-left:1px solid var(--sf-edge);
     background:rgba(6,12,22,.62); color:var(--sf-paper); }
   .sf-crun__label { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
-    letter-spacing:.18em; text-transform:uppercase; color:var(--sf-calm); }
+    letter-spacing:.06em; text-transform:uppercase; color:var(--sf-calm); }
   .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
   .sf-crun__row--figs { flex-wrap:wrap; gap:4px 8px; }
   .sf-crun__wave { font-family:var(--sf-data-face); font-weight:500; font-size:17px;
     font-variant-numeric:tabular-nums; color:var(--sf-goal); }
   .sf-crun__phase { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
-    letter-spacing:.14em; color:var(--sf-calm); margin-left:auto; }
+    letter-spacing:.06em; color:var(--sf-calm); margin-left:auto; }
   .sf-crun__phase--hot { color:var(--sf-foe); }
   .sf-crun__threat { display:flex; align-items:center; gap:7px; }
   .sf-crun__word { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
-    letter-spacing:.14em; color:var(--sf-calm); }
+    letter-spacing:.06em; color:var(--sf-calm); }
   .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:4px;
     background:rgba(211,230,255,.16); overflow:hidden; }
   .sf-crun__track--xp { height:3px; }

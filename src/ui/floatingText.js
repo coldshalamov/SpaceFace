@@ -243,9 +243,9 @@ function injectStyle() {
   .sf-ft--shield { color:#7fe0ff; font-size:14px; }
   .sf-ft--player { color:#ff5470; font-size:18px; }
   .sf-ft--big { font-size:24px; }
-  .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.18em; }
-  .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.16em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
-  .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.1em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
+  .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.06em; }
+  .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.06em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
+  .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.06em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
   .sf-ft--ore { color:#4fbf8f; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;

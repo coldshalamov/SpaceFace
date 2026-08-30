@@ -71,7 +71,7 @@ function injectStyle() {
     justify-content:flex-start; padding:0 0 36px 36px; }
   .sf-continue-fade.open { opacity:1; }
   .sf-continue-fade__loc { font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
-    letter-spacing:.26em; font-size:12px; color:#93a6b3; text-transform:uppercase;
+    letter-spacing:.06em; font-size:12px; color:#93a6b3; text-transform:uppercase;
     border-left:1px solid rgba(78,195,230,.55); padding-left:12px; }
   `;
   document.head.appendChild(s);
