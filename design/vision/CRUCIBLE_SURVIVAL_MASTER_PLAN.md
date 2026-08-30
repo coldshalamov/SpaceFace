@@ -6867,6 +6867,12 @@ This roadmap is ordered to maximize learning and minimize architectural duplicat
 
 The proposal is registered as durable direction, current overlapping work is mapped, and the first executable slice is shaped against live code.
 
+> **Program boundary (2026-08-30):** this Phase 0 direction is assimilated by `PQ-133.00` and
+> revalidated against candidate `87eb7542`. The current owner/seam map is
+> `design/program/roadmap/active/PQ-133_SEAM_AUDIT.md`; lifecycle and acceptance remain in the
+> queue and active packet. This note is routing provenance only: this file remains a durable design
+> proposal/experiment quarry, not a status ledger.
+
 ### Work
 
 - Place this document at the intended repo path.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-08-30",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -8358,7 +8358,7 @@
       "priority": 366,
       "title": "Assimilation + seam audit",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "crucible-run-state"
@@ -8374,8 +8374,10 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Plan moved to design/vision, registry/program-map/build-map rows, queue admission, and a seam map (PQ-133_SEAM_AUDIT.md) naming exact owners, files, reusable code, missing seams, tests, performance limits, and the shape of the first two packets."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-133.00.md"
+      ],
+      "brief": "Plan moved to design/vision, registry/program-map/build-map rows, queue admission, and a current seam map (PQ-133_SEAM_AUDIT.md) naming exact owners, files, reusable code, missing seams, tests, performance limits, and the first two executable leaves. Implemented at the candidate base; acceptance remains unproven because this is an assimilation/support unit."
     },
     {
       "id": "PQ-133.01",
