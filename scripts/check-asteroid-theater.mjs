@@ -92,17 +92,79 @@ try {
     await page.waitForFunction(() => {
       const hook = document.querySelector('.ast-canvas')?.__ast3d;
       const rover = hook && typeof hook.rover === 'function' ? hook.rover() : null;
-      return rover && rover.authored && rover.visible && rover.assetId === 'rover' && rover.cutterCount === 3;
+      return rover && rover.authored && rover.visible && rover.assetId === 'rover' && rover.cutterCount === 2;
     }, null, { timeout: 15000 }).catch(() => {});
     const roverRoute = await page.evaluate(() => {
       const hook = document.querySelector('.ast-canvas')?.__ast3d;
       return hook && typeof hook.rover === 'function' ? hook.rover() : null;
     });
     if (!roverRoute || !roverRoute.authored || !roverRoute.visible
-        || roverRoute.assetId !== 'rover' || roverRoute.cutterCount !== 3) {
+        || roverRoute.assetId !== 'rover' || roverRoute.cutterCount !== 2) {
       failures.push(`${label}: PQ-131.01 authored Rover is absent or incomplete (${JSON.stringify(roverRoute)})`);
     } else {
-      notes.push(`${label}: PQ-131.01 authored Rover visible with ${roverRoute.cutterCount} cutter LODs`);
+      notes.push(`${label}: PQ-131.01 authored Rover visible with ${roverRoute.cutterCount} admitted cutter LODs`);
+    }
+
+    // PQ-131.01 LOD A/B: hold the real site camera/register while swapping only the admitted
+    // Rover representation. This is deliberately a debug-hook sample, not a gameplay control;
+    // it proves the on-screen LOD1 tradeoff against the exact live scene and then restores work
+    // register state before the rest of the theater assertions run.
+    await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      if (hook && typeof hook.setZoomRegister === 'function') hook.setZoomRegister('site');
+    });
+    await page.waitForTimeout(700);
+    const roverLodAbReady = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      return !!hook && typeof hook.setRoverLodForTest === 'function'
+        && typeof hook.scenePassInfo === 'function';
+    });
+    if (!roverLodAbReady) {
+      failures.push(`${label}: PQ-131.01 Rover LOD A/B hook missing`);
+    } else {
+      const site = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.rover());
+      // Force and sample in separate browser turns. The wait lets the normal rAF loop draw at
+      // the forced visibility state before scenePassInfo resets and reads renderer.info.
+      const sampleRoverLod = async (level) => {
+        const selected = await page.evaluate((next) => (
+          document.querySelector('.ast-canvas').__ast3d.setRoverLodForTest(next)
+        ), level);
+        await page.waitForTimeout(150);
+        const sample = await page.evaluate(() => {
+          const hook = document.querySelector('.ast-canvas').__ast3d;
+          return {
+            lod: hook.rover().lod,
+            scenePass: hook.scenePassInfo(),
+          };
+        });
+        return { level, selected, ...sample };
+      };
+      const lod0 = await sampleRoverLod('lod0');
+      const lod1 = await sampleRoverLod('lod1');
+      await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.setZoomRegister('work'));
+      await page.waitForTimeout(300);
+      const restored = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.rover());
+      const roverLodAb = { ok: true, site, lod0, lod1, restored };
+      const a = roverLodAb.lod0.scenePass || {};
+      const b = roverLodAb.lod1.scenePass || {};
+      notes.push(`${label}: Rover site A/B ${roverLodAb.site.lod.nodeLod || 'none'} -> `
+        + `LOD0 ${a.triangles || 0} tris/${a.calls || 0} calls, `
+        + `LOD1 ${b.triangles || 0} tris/${b.calls || 0} calls`);
+      if (roverLodAb.site.register !== 'site' || roverLodAb.site.lod.nodeLod !== 'lod1') {
+        failures.push(`${label}: site register did not select the admitted LOD1 (`
+          + `${JSON.stringify(roverLodAb.site.lod)})`);
+      }
+      if (roverLodAb.lod0.lod.tags.includes('lod2') || roverLodAb.lod1.lod.tags.includes('lod2')) {
+        failures.push(`${label}: Rover A/B exposed archived LOD2 in the live tag set`);
+      }
+      if (Number.isFinite(a.triangles) && Number.isFinite(b.triangles)
+          && a.triangles > 0 && b.triangles > 0 && b.triangles >= a.triangles) {
+        failures.push(`${label}: site LOD1 did not reduce live scene triangles (`
+          + `${a.triangles} -> ${b.triangles})`);
+      }
+      if (roverLodAb.restored.register !== 'work' || roverLodAb.restored.lod.nodeLod !== 'lod0') {
+        failures.push(`${label}: Rover LOD A/B did not restore the work register`);
+      }
     }
     const result = await page.evaluate(({ BANNED }) => {
       const out = { problems: [], words: 0, wordList: [] };

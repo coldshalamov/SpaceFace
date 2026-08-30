@@ -1,12 +1,12 @@
 """PQ-131.01 Works rover — production builder.
 
-Rebuilds the three LOD sources (via the cycle-78 MTX form), then exports ONE
-Y-up glTF with:
+Rebuilds the three standalone LOD sources (via the cycle-78 MTX form), then
+exports ONE Y-up glTF with the two LODs admitted by the Works runtime:
 
-- LOD roots named LOD0_* / LOD1_* / LOD2_*
+- LOD roots named LOD0_* / LOD1_*
 - named sockets the runtime drives (boom_pivot, bit_tip, hopper_fill_0..4,
   hopper_lid, lamp_socket, vent_stack, track_L, track_R, scar_plate)
-- one named LOD<n>_Bit cutter mesh per LOD, parented beneath bit_tip
+- one named LOD<n>_Bit cutter mesh per shipped LOD, parented beneath bit_tip
 - spacefaceAsset on the glTF asset, the scene, and the canonical root
 
 Authored at works scale: 1.87 x 1.76 x 0.99 wu, origin at cell centre, +Z up
@@ -44,7 +44,12 @@ HOOK_MESHES = tuple(mtx.HOOK_MESHES)
 EMPTY_HOOKS = ("boom_pivot", "bit_tip", "lamp_socket", "vent_stack")
 CUTTER_SOCKET = "bit_tip"
 CUTTER_STEM = "Bit"
-CUTTER_NAMES = tuple(f"LOD{lod}_{CUTTER_STEM}" for lod in (0, 1, 2))
+# LOD2 remains a standalone authoring input for future review, but it is not admitted by either
+# Works register. Keeping the authoring build separate makes that boundary explicit and prevents
+# an unused tier from being decoded, resident, and hidden in every player session.
+AUTHORING_LODS = (0, 1, 2)
+SHIPPED_LODS = (0, 1)
+CUTTER_NAMES = tuple(f"LOD{lod}_{CUTTER_STEM}" for lod in SHIPPED_LODS)
 
 
 def sha256(path: Path) -> str:
@@ -67,7 +72,7 @@ def rebuild_lods():
     FAMILY.mkdir(parents=True, exist_ok=True)
     mtx.TEX_DIR.mkdir(parents=True, exist_ok=True)
     reports = []
-    for lod in (0, 1, 2):
+    for lod in AUTHORING_LODS:
         mtx.reset_scene()
         mtx.TEX = mtx.TEX_BY_LOD[lod]
         atlas_maps, atlas_mat, _tile = mtx.create_atlas(lod)
@@ -223,7 +228,7 @@ def _join_cutter(imported, lod: int):
 
 def combine_lods():
     _clear_scene()
-    lod_paths = [SOURCE_DIR / f"rover_lod{lod}.glb" for lod in (0, 1, 2)]
+    lod_paths = [SOURCE_DIR / f"rover_lod{lod}.glb" for lod in SHIPPED_LODS]
     for path in lod_paths:
         if not path.exists():
             raise FileNotFoundError(f"missing LOD source {path}")
@@ -234,10 +239,10 @@ def combine_lods():
     root.empty_display_size = 0.12
 
     sockets = {}
-    lod_tri = {0: 0, 1: 0, 2: 0}
+    lod_tri = {lod: 0 for lod in SHIPPED_LODS}
     mesh_names = []
 
-    for lod, path in enumerate(lod_paths):
+    for lod, path in zip(SHIPPED_LODS, lod_paths):
         imported = _import_lod(path, lod)
         for obj in imported:
             raw = _strip_blender_dup(obj.name)
@@ -365,13 +370,9 @@ def combine_lods():
         "textureAuthorship": "deterministic 4x4 atlas PBR (livery/chevron/steel/track/glass/bit/lamp/rubble/scar)",
         "textureSize": 2048,
         "deliverableRole": "production_multi_lod",
-        "lods": ["lod0", "lod1", "lod2"],
-        "exportedLods": ["lod0", "lod1", "lod2"],
-        "lodTriangles": {
-            "lod0": int(lod_tri[0]),
-            "lod1": int(lod_tri[1]),
-            "lod2": int(lod_tri[2]),
-        },
+        "lods": [f"lod{lod}" for lod in SHIPPED_LODS],
+        "exportedLods": [f"lod{lod}" for lod in SHIPPED_LODS],
+        "lodTriangles": {f"lod{lod}": int(lod_tri[lod]) for lod in SHIPPED_LODS},
         "triangleCount": int(lod_tri[0]),
         "sockets": list(HOOK_NAMES),
         "hooks": list(HOOK_NAMES),
@@ -431,6 +432,10 @@ def combine_lods():
         "assetId": ASSET_ID,
         "combined": str(combined_works.relative_to(ROOT)).replace("\\", "/"),
         "partsSource": str(combined_parts.relative_to(ROOT)).replace("\\", "/"),
+        "shippedLods": [f"lod{lod}" for lod in SHIPPED_LODS],
+        "archivedAuthoringLods": [
+            f"lod{lod}" for lod in AUTHORING_LODS if lod not in SHIPPED_LODS
+        ],
         "lodTriangles": contract["lodTriangles"],
         "hooks": list(HOOK_NAMES),
         "meshNames": sorted(mesh_names),
@@ -545,7 +550,19 @@ def main(argv=None):
         reports = rebuild_lods()
     inventory = combine_lods()
     if reports:
+        # Reports for all three standalone authoring renders remain useful for future LOD review,
+        # but only the admitted two-tier graph is called `lodReports` in the shipped inventory.
         inventory["lodReports"] = [
+            {
+                "lod": r["lod"],
+                "triangles": r["triangles"],
+                "draws": r["draws"],
+                "bbox": r.get("bbox"),
+                "hooks": r.get("hooks"),
+            }
+            for r in reports if r["lod"] in SHIPPED_LODS
+        ]
+        inventory["authoringLodReports"] = [
             {
                 "lod": r["lod"],
                 "triangles": r["triangles"],

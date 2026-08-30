@@ -5660,12 +5660,12 @@
       "priority": "P0",
       "file": "works/place_works_rover.glb",
       "tris": 11470,
-      "bytes": 17551028,
+      "bytes": 16686992,
       "textureSize": 2048,
       "tintable": {
         "hull": "Material_Atlas_LOD0"
       },
-      "note": "PQ-131.01 — Asteroid Works gallery crawler, the only safety-yellow object in the mine. Authored at works scale with explicit 11846/1914/1158-triangle LODs. Runtime hooks: boom_pivot, bit_tip, hopper_fill_0..4, hopper_lid, lamp_socket, vent_stack, track_L, track_R, scar_plate. Cycle 80 whole-asset top, edge, and live-scale site views independently reviewed KEEP.",
+      "note": "PQ-131.01 — Asteroid Works gallery crawler, the only safety-yellow object in the mine. Authored at works scale with shipped 11470/1914-triangle LOD0/LOD1 representations; standalone LOD2 remains archived authoring input and is not part of the combined runtime asset. Runtime hooks: boom_pivot, bit_tip, hopper_fill_0..4, hopper_lid, lamp_socket, vent_stack, track_L, track_R, scar_plate. Cycle 80 whole-asset top, edge, and live-scale site views independently reviewed KEEP.",
       "hooks": [
         "boom_pivot",
         "bit_tip",

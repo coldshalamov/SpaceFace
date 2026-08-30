@@ -42,9 +42,12 @@ import {
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const SOURCE_GLB = resolve(ROOT, 'assets/ships/parts/works/place_works_rover.glb');
 const RELEASE_GLB = resolve(ROOT, 'assets/ships/release/parts/works/place_works_rover.glb');
+const ARCHIVED_LOD2_GLB = resolve(ROOT, 'assets/works/rover/source/rover_lod2.glb');
+const PACKAGE_GLB = resolve(ROOT, 'assets/ships/release/render-packages/works-rover/render.glb');
+const PACKAGE_METADATA = resolve(ROOT, 'assets/ships/release/render-packages/works-rover/render-package.json');
 const PREVIEW_SOURCE = resolve(ROOT, 'src/render/asteroidInteriorPreview.js');
 const RENDERER_SOURCE = resolve(ROOT, 'src/ui/asteroid/asteroidRenderer3d.js');
-const CUTTER_NAMES = ['LOD0_Bit', 'LOD1_Bit', 'LOD2_Bit'];
+const CUTTER_NAMES = ['LOD0_Bit', 'LOD1_Bit'];
 
 test('the pending Rover control scaffold cannot render a procedural stand-in', () => {
   const scaffold = createRoverControlScaffold();
@@ -72,12 +75,12 @@ test('an authored Rover with a missing runtime hook fails closed', () => {
   );
 });
 
-test('an authored Rover missing any register cutter fails closed', () => {
+test('an authored Rover missing any admitted register cutter fails closed', () => {
   const cutters = CUTTER_NAMES.map((name) => Object.assign(new THREE.Object3D(), { name }));
   assert.equal(validateAuthoredRoverCutters(cutters), cutters);
   assert.throws(
-    () => validateAuthoredRoverCutters(cutters.slice(0, 2)),
-    /authored Rover is missing LOD2_Bit/,
+    () => validateAuthoredRoverCutters(cutters.slice(0, 1)),
+    /authored Rover is missing LOD1_Bit/,
   );
 });
 
@@ -212,9 +215,20 @@ assert.ok(
   `the works rover RELEASE part is missing at ${RELEASE_GLB}; run `
   + 'node scripts/build-place-release-assets.mjs --ids place_works_rover',
 );
+assert.ok(
+  existsSync(ARCHIVED_LOD2_GLB),
+  `the standalone LOD2 authoring input is missing at ${ARCHIVED_LOD2_GLB}`,
+);
+assert.ok(
+  existsSync(PACKAGE_GLB) && existsSync(PACKAGE_METADATA),
+  'the Rover render package is missing; run node scripts/build-render-package-pilots.mjs --only=works-rover',
+);
 
 const source = readGlb(SOURCE_GLB);
 const release = readGlb(RELEASE_GLB);
+const archivedLod2 = readGlb(ARCHIVED_LOD2_GLB);
+const packageGlb = readGlb(PACKAGE_GLB);
+const packageMetadata = JSON.parse(readFileSync(PACKAGE_METADATA, 'utf8'));
 const sourceNodes = nodeTable(source.json);
 const releaseNodes = nodeTable(release.json);
 
@@ -234,14 +248,14 @@ test('WORKS_PARTS.rover resolves to the works release part and lists every runti
 
 // ------------------------------------------------------------------ the release artifact
 
-test('the RELEASE part carries a named cutter mesh per LOD beneath bit_tip', () => {
+test('the RELEASE part carries a named cutter mesh per admitted LOD beneath bit_tip', () => {
   const extras = release.json.asset?.extras?.spacefaceAsset || {};
   assert.equal(extras.assetId, 'place_works_rover');
   assert.equal(extras.slot, 'place');
   assert.equal(extras.cutterSocket, CUTTER_SOCKET, 'the contract must name the cutter socket');
   assert.deepEqual(
     [...(extras.cutterMeshes || [])].sort(), [...CUTTER_NAMES].sort(),
-    'the contract must name one cutter mesh per LOD',
+    'the contract must name one cutter mesh per admitted LOD',
   );
 
   const socket = releaseNodes.get(CUTTER_SOCKET);
@@ -267,6 +281,25 @@ test('the RELEASE part carries a named cutter mesh per LOD beneath bit_tip', () 
     );
     assert.ok(triangleCount(release.json, entry.node) > 0, `${name} must carry geometry`);
   }
+});
+
+test('LOD2 remains archived authoring input and is absent from every production Rover graph', () => {
+  const sourceContract = source.json.asset?.extras?.spacefaceAsset || {};
+  const releaseContract = release.json.asset?.extras?.spacefaceAsset || {};
+  const archivedNames = (archivedLod2.json.nodes || []).map((node) => String(node.name || ''));
+  const packageNames = (packageGlb.json.nodes || []).map((node) => String(node.name || ''));
+  const packageNodeNames = (packageMetadata.nodes || []).map((node) => String(node.nodeName || ''));
+  const packagePrimitiveNames = (packageMetadata.runtime?.primitives || [])
+    .map((primitive) => String(primitive.name || primitive.nodeName || primitive.node || ''));
+
+  assert.ok(archivedNames.some((name) => /^LOD2_/i.test(name)), 'standalone LOD2 remains available for authoring review');
+  assert.equal(sourceNodes.has('LOD2_Bit'), false, 'combined source must not carry LOD2_Bit');
+  assert.equal(releaseNodes.has('LOD2_Bit'), false, 'release part must not carry LOD2_Bit');
+  assert.deepEqual(sourceContract.exportedLods, ['lod0', 'lod1']);
+  assert.deepEqual(releaseContract.exportedLods, ['lod0', 'lod1']);
+  assert.equal(packageNames.some((name) => /^LOD2_/i.test(name)), false, 'render GLB must not carry LOD2 nodes');
+  assert.equal(packageNodeNames.some((name) => /^LOD2_/i.test(name)), false, 'package node table must not carry LOD2');
+  assert.equal(packagePrimitiveNames.some((name) => /^LOD2_/i.test(name)), false, 'runtime table must not carry LOD2');
 });
 
 test('every release cutter sits on its authored axis, so spinning turns the tool in place', () => {
@@ -340,7 +373,7 @@ test('the release build preserved every cutter triangle and every semantic hook'
   for (const hook of ROVER_HOOKS) {
     assert.ok(releaseNodes.has(hook), `hook ${hook} must be a node in the release part`);
   }
-  for (const lod of ['LOD0_', 'LOD1_', 'LOD2_']) {
+  for (const lod of ['LOD0_', 'LOD1_']) {
     assert.ok(
       [...releaseNodes.keys()].some((name) => name.startsWith(lod)),
       `${lod}* meshes must survive; assetLoader tags LOD by node-name prefix`,
@@ -452,7 +485,8 @@ test('loadWorksPart binds every hook and parents the cutter to bit_tip, keeping 
   }
 
   const tags = group.userData.worksLodTags || [];
-  for (const tag of ['lod0', 'lod1', 'lod2']) assert.ok(tags.includes(tag), `${tag} tag`);
+  assert.deepEqual(tags, ['lod0', 'lod1'], 'the runtime exposes only the two admitted Rover LODs');
+  assert.equal(tags.includes('lod2'), false, 'LOD2 is archived authoring input, not a runtime tag');
 
   const visible = () => {
     const seen = {};
@@ -542,7 +576,7 @@ test('instance clones are retired by releaseWorksPart; blueprint resources are n
   await loader.dispose('test');
 });
 
-test('real rover lamp preparation isolates every LOD from the shared hull atlas', async () => {
+test('real rover lamp preparation isolates every admitted LOD from the shared hull atlas', async () => {
   const blueprint = blueprintFromPart();
   const renderer = createMockRenderer();
   const loader = createWorksPartLoader({ renderer, lease: createCountingLease(blueprint) });
@@ -554,7 +588,7 @@ test('real rover lamp preparation isolates every LOD from the shared hull atlas'
     if (/Lamp/.test(obj.name) && !/Boom/.test(obj.name)) lamps.push(obj);
     else if (/Livery|Steel|Glass/.test(obj.name)) hull.push(obj);
   });
-  assert.equal(lamps.length, 3, 'the real combined part carries one merged lamp mesh per LOD');
+  assert.equal(lamps.length, 2, 'the real combined part carries one merged lamp mesh per admitted LOD');
   assert.ok(hull.length > 0, 'the real combined part exposes non-lamp atlas consumers');
 
   const sharedAtlas = lamps[0].material;

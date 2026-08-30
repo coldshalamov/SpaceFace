@@ -239,7 +239,9 @@ export function validateAuthoredRoverHooks(hooks) {
 export function validateAuthoredRoverCutters(meshes) {
   const list = Array.isArray(meshes) ? meshes : [];
   const names = new Set(list.map((mesh) => mesh && mesh.name));
-  for (const name of ['LOD0_Bit', 'LOD1_Bit', 'LOD2_Bit']) {
+  // Works has two supported camera registers: close/work (LOD0) and site (LOD1). LOD2
+  // has no selector path and must not be admitted into the resident combined asset.
+  for (const name of ['LOD0_Bit', 'LOD1_Bit']) {
     if (!names.has(name)) throw new Error(`[asteroidRenderer3d] authored Rover is missing ${name}`);
   }
   return list;
@@ -252,7 +254,7 @@ export function setAuthoredRoverCutterSpin(meshes, theta) {
     if (!mesh || !mesh.rotation) continue;
     // The close-register cutter is a vertical milling drum: Blender +Z becomes
     // glTF/Three +Y. Retained site cutters are axial heads whose length is +X.
-    // Applying one axis to every LOD makes one of the two constructions orbit
+    // Applying one axis to every admitted LOD makes one of the two constructions orbit
     // or tumble when the register changes.
     if (mesh.name === 'LOD0_Bit') mesh.rotation.y = theta;
     else mesh.rotation.x = theta;
@@ -2029,6 +2031,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       tags,
       untaggedMeshes: group.userData.worksUntaggedMeshes || 0,
     };
+  }
+  // Debug-only A/B seam for the actual Rover scene. The normal selector remains register-driven;
+  // this hook lets a route probe hold the site camera while comparing its admitted representations
+  // without loading a second asset or exposing an archived LOD2. It is attached only to the
+  // existing __ast3d diagnostics object below, never to gameplay controls.
+  function setRoverLodForTest(level) {
+    if (level !== 'lod0' && level !== 'lod1') {
+      throw new Error(`[asteroidRenderer3d] Rover test LOD must be lod0 or lod1, got ${level}`);
+    }
+    if (!authoredRoverGroup) return null;
+    authoredRoverGroup.userData.worksNodeLod = level;
+    authoredRoverGroup.traverse((obj) => {
+      if (!obj.isMesh || !obj.userData.worksLod) return;
+      obj.visible = obj.userData.worksLod === level;
+    });
+    return inspectWorksLod(authoredRoverGroup);
   }
   function measureWorksBox(group, includeHidden) {
     worksBox.makeEmpty();
@@ -7410,6 +7428,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         pending: roverBuilt.pending === true,
         assetId: authoredRoverGroup?.userData?.worksPartId || null,
         cutterCount: Array.isArray(roverBuilt.cutters) ? roverBuilt.cutters.length : 0,
+        register: zoomRegister,
+        lod: inspectWorksLod(authoredRoverGroup),
       };
     },
     worksStats() { return worksLoader ? worksLoader.stats() : null; },
@@ -7451,6 +7471,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return worksLoader ? worksLoader.stats() : null;
     },
     worksLod() { return inspectWorksLod(worksProofGroup); },
+    setRoverLodForTest,
     compareWorksProof,
     worksProofNegativeControl,
     disposeWorksProof() { dispose(); },

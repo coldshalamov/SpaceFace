@@ -2,10 +2,16 @@
   "assetId": "place_works_rover",
   "combined": "assets/works/rover/source/rover.glb",
   "partsSource": "assets/ships/parts/works/place_works_rover.glb",
+  "shippedLods": [
+    "lod0",
+    "lod1"
+  ],
+  "archivedAuthoringLods": [
+    "lod2"
+  ],
   "lodTriangles": {
     "lod0": 11470,
-    "lod1": 1914,
-    "lod2": 1158
+    "lod1": 1914
   },
   "hooks": [
     "boom_pivot",
@@ -62,27 +68,8 @@
     "LOD1_hopper_lid",
     "LOD1_scar_plate",
     "LOD1_track_L",
-    "LOD1_track_R",
-    "LOD2_Bit",
-    "LOD2_Merged_Material_Chevron_Boom",
-    "LOD2_Merged_Material_Glass",
-    "LOD2_Merged_Material_Lamp",
-    "LOD2_Merged_Material_Livery",
-    "LOD2_Merged_Material_Rubble",
-    "LOD2_Merged_Material_Scar",
-    "LOD2_Merged_Material_Steel",
-    "LOD2_Merged_Material_Steel_Boom",
-    "LOD2_Merged_Material_Track",
-    "LOD2_hopper_fill_0",
-    "LOD2_hopper_fill_1",
-    "LOD2_hopper_fill_2",
-    "LOD2_hopper_fill_3",
-    "LOD2_hopper_fill_4",
-    "LOD2_hopper_lid",
-    "LOD2_scar_plate",
-    "LOD2_track_L",
-    "LOD2_track_R"
+    "LOD1_track_R"
   ],
-  "bytes": 17551028,
-  "sha256": "480473187E436315B0546461566E43A63B9C19495E4EB8D06A6A61BCE60CEED3"
+  "bytes": 16686992,
+  "sha256": "C1BBBDD44AAAE52AA591B5E6F5948F090CBC180C5936C5CC0702B1F4831FEA17"
 }
