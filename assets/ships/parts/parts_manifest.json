@@ -5830,6 +5830,42 @@
       }
     },
     {
+      "id": "place_works_cargo_port",
+      "category": "works",
+      "priority": "P1",
+      "file": "works/place_works_cargo_port.glb",
+      "tris": 13058,
+      "bytes": 3833156,
+      "textureSize": 1024,
+      "note": "PQ-131.09 — authored one-cell Asteroid Works cargo port with a keyed D-well, one apron-integrated open C cradle, five distinct +X freight planforms, and a seated versus launch-clear courier pod. Explicit 13058/3244/1124-triangle LODs. Runtime hooks: crate_0..4, cradle, pod_root, pod_thruster. Cycle 04 source independently reviewed KEEP at b109dc88e14f58f58e6a3f590877b34ec5c2bdb9 against source SHA-256 F4B8C87DF96FCE899C540E71F1ED76CFE2422D751DC5B1AB1214F2C0D1189614; release/runtime G6 and player-route G7 remain separate.",
+      "hooks": [
+        "crate_0",
+        "crate_1",
+        "crate_2",
+        "crate_3",
+        "crate_4",
+        "cradle",
+        "pod_root",
+        "pod_thruster"
+      ],
+      "sockets": [
+        "crate_0",
+        "crate_1",
+        "crate_2",
+        "crate_3",
+        "crate_4",
+        "cradle",
+        "pod_root",
+        "pod_thruster"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.0079, -0.88, 0],
+        "max": [1.1336, 0.701, 1.002],
+        "dimensionsM": [2.1415, 1.581, 1.002]
+      }
+    },
+    {
       "id": "place_works_conduit_power_straight",
       "category": "works",
       "priority": "P0",

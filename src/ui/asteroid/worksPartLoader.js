@@ -62,6 +62,19 @@ export const REFINERY_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+export const CARGO_PORT_HOOKS = Object.freeze([
+  'crate_0',
+  'crate_1',
+  'crate_2',
+  'crate_3',
+  'crate_4',
+  'cradle',
+  'pod_root',
+  'pod_thruster',
+]);
+
+export const CARGO_PORT_LAUNCH_CLEAR_WU = 1.55;
+
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
 function conduitPart(family, kind) {
@@ -164,6 +177,12 @@ export const WORKS_PARTS = Object.freeze({
     lod1: null,
     slot: 'place',
     hooks: REFINERY_HOOKS,
+  }),
+  cargo_port: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_cargo_port.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: CARGO_PORT_HOOKS,
   }),
   place_works_conduit_power_straight: conduitPart('power', 'straight'),
   place_works_conduit_power_corner: conduitPart('power', 'corner'),
@@ -342,8 +361,10 @@ function hookForMeshStem(stem, hooks) {
   if (hooks[stem]) return hooks[stem];
   // Render packages flatten authored hierarchy into world matrices. Rebuild each accepted Works
   // part's functional children while keeping their world pose. Derrick drums/cable/lamps, the
-  // Extractor head/belt/lamp, Fabricator gantry/lamp, Massline Core ring/lamp, and Refinery
-  // furnace-slit/lamp then move from their authored pivots rather than the asset origin.
+  // Extractor head/belt/lamp, Fabricator gantry/lamp, Massline Core ring/lamp, Refinery
+  // furnace-slit/lamp, and Cargo Port crates/cradle/pod then move from their authored pivots
+  // rather than the asset origin.
+  if (stem === 'pod') return hooks.pod_root || null;
   if (/^drum(?:_|$)/.test(stem)) return hooks.drum_spin || null;
   if (/^cable(?:_|$)/.test(stem)) return hooks.cable_anchor || null;
   if (/^lamp_L(?:_|$)/.test(stem)) return hooks.lamp_L || null;
@@ -368,6 +389,7 @@ function bindWorksHookHierarchy(root, hooks) {
   const boom = hooks.boom_pivot;
   const bit = hooks[CUTTER_SOCKET];
   if (bit && boom) reparentKeepWorld(bit, boom);
+  if (hooks.pod_thruster && hooks.pod_root) reparentKeepWorld(hooks.pod_thruster, hooks.pod_root);
   const cutters = [];
   for (let i = 0; i < meshes.length; i++) {
     const mesh = meshes[i];

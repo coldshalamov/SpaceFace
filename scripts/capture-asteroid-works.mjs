@@ -575,6 +575,13 @@ try {
   // Back to drive mode; let the screen re-read the projection and photograph the running site.
   await page.keyboard.press('KeyB');
   await page.waitForTimeout(1400);
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.ast-canvas');
+    const h = canvas && canvas.__ast3d;
+    if (!h || typeof h.cargoPort !== 'function') return false;
+    const port = h.cargoPort();
+    return port.installedPhase === 'authored' || port.installedPhase === 'fallback';
+  }, null, { timeout: 20000 }).catch(() => {});
   await shot('03-site-running.png');
 
   // PQ-130.07 law §5 "Machine starved/unpowered": the housing goes dark and a small GOLD WANT CHIP
@@ -676,12 +683,27 @@ try {
       return { port: [port.col, port.row], rig: null };
     });
     await page.waitForTimeout(3400);            // camera leash eases at <= 6 cells/s
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.ast-canvas');
+      const h = canvas && canvas.__ast3d;
+      if (!h || typeof h.cargoPort !== 'function') return false;
+      const port = h.cargoPort();
+      return port.installedPhase === 'authored' || port.installedPhase === 'fallback';
+    }, null, { timeout: 20000 }).catch(() => {});
     const crates = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.crates());
+    const cargo = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.cargoPort());
     await shot('11c-port-crates.png');
     console.log(`11c-port-crates.png: port ${parked && parked.port} · rig ${parked && parked.rig}`
       + ` · stage ${crates.stage}${staged ? ' (staged)' : ' (earned)'} · visible ${crates.visible}`
+      + ` · authored ${cargo.authored} overlay ${crates.overlayVisible}`
       + ` · standing on ${crates.onFloor ? `cell ${crates.cell}` : "the port's own plinth"}`);
     if (!crates.visible) failures.push('11c-port-crates.png: the port shows no crates at all');
+    if (cargo.authored && crates.overlayVisible) {
+      failures.push('11c-port-crates.png: authored crates and the procedural pile are both on camera');
+    }
+    if (!(cargo.authored || cargo.fallback)) {
+      failures.push('11c-port-crates.png: Cargo Port never settled on authored or fallback');
+    }
   }
 
   // The same instrument over a MACHINE: status lamp + one cause line + the 3x3 contact ring

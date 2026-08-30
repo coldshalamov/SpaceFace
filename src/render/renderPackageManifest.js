@@ -2141,6 +2141,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "3531b1abe9dda932b98d0928251030b6e323ede9962ebf570e70f817e07df1e8",
     "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_junction.glb"
+  },
+  {
+    "assetId": "sf.render.works-cargo-port",
+    "expectedContentHash": "67ba411b937f9f3d7df03c4f00b8a62b8e0fae3bb1e95177ad5bb320c06e3537",
+    "key": "works-cargo-port",
+    "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json",
+    "runtimeAssetId": "place_works_cargo_port",
+    "slot": "place",
+    "sourceSha256": "c9ec946b8dc54181bbe021412f79ae940ca89b8191aa2ba52b81fc44b62da253",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_cargo_port.glb"
   }
 ];
 

@@ -325,7 +325,7 @@ test('installed and ghost Refineries select the authored route; other Works asse
   assert.equal(authoredWorksMachineKind('sm_fabricator'), 'fabricator');
   assert.equal(authoredWorksMachineKind('sm_extractor'), 'extractor');
   assert.equal(authoredWorksMachineKind('sm_gas_tap'), null);
-  assert.equal(authoredWorksMachineKind('sm_cargo_port'), null);
+  assert.equal(authoredWorksMachineKind('sm_cargo_port'), 'cargo_port');
   const source = readFileSync(MACHINE_FACTORY, 'utf8');
   assert.doesNotMatch(source, /kind\s*===\s*['"]refinery['"]/);
 });

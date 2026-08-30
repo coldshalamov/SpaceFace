@@ -57,6 +57,8 @@ import {
 } from '../../render/asteroidInteriorPreview.js';
 import {
   createWorksPartLoader,
+  CARGO_PORT_HOOKS,
+  CARGO_PORT_LAUNCH_CLEAR_WU,
   DERRICK_HOOKS,
   EXTRACTOR_HOOKS,
   FABRICATOR_HOOKS,
@@ -304,7 +306,9 @@ const MACHINE_KIND = {
 export function authoredWorksMachineKind(defId) {
   const kind = MACHINE_KIND[defId];
   if (kind === 'core') return 'massline_core';
-  return kind === 'extractor' || kind === 'fabricator' || kind === 'refinery' ? kind : null;
+  return kind === 'extractor' || kind === 'fabricator' || kind === 'refinery' || kind === 'cargo_port'
+    ? kind
+    : null;
 }
 
 function authoredWorksMachineLabel(kind) {
@@ -312,6 +316,7 @@ function authoredWorksMachineLabel(kind) {
   if (kind === 'fabricator') return 'Fabricator';
   if (kind === 'extractor') return 'Extractor';
   if (kind === 'refinery') return 'Refinery';
+  if (kind === 'cargo_port') return 'Cargo Port';
   return kind;
 }
 
@@ -320,6 +325,7 @@ function bindAuthoredWorksMachine(kind, source) {
   if (kind === 'fabricator') return bindAuthoredFabricator(source);
   if (kind === 'extractor') return bindAuthoredExtractor(source);
   if (kind === 'refinery') return bindAuthoredRefinery(source);
+  if (kind === 'cargo_port') return bindAuthoredCargoPort(source);
   throw new Error(`[asteroidRenderer3d] no authored bind for ${kind}`);
 }
 
@@ -849,6 +855,245 @@ export function bindAuthoredFabricator(group) {
       lampAnchor: hooks.lamp,
     },
   };
+}
+
+// PQ-131.09 — bind the accepted keyed-well Cargo Port. crate_0..4 are cumulative freight
+// planforms on the +X apron; pod_root translates along glTF +Y (Blender +Z) from the seated
+// well pose to the 1.55 wu launch-clear pose. Only pod, crate, and thruster materials are
+// instance-owned; the port/cradle atlas stays shared.
+export function bindAuthoredCargoPort(group) {
+  if (!group || typeof group.traverse !== 'function') {
+    throw new TypeError('[asteroidRenderer3d] authored Cargo Port group is required');
+  }
+  const hooks = group.userData.worksHooks || {};
+  for (const name of CARGO_PORT_HOOKS) {
+    if (!hooks[name]) throw new Error(`[asteroidRenderer3d] authored Cargo Port is missing ${name}`);
+  }
+
+  const seat = new THREE.Group();
+  seat.name = 'cargo_port_seat';
+  seat.rotation.x = Math.PI / 2;
+  seat.add(group);
+
+  const crateMeshes = [];
+  const podMeshes = [];
+  const thrusterMeshes = [];
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    const stem = String(obj.name || '').replace(/^LOD[012]_/, '');
+    if (/^crate_[0-4]$/.test(stem)) crateMeshes.push(obj);
+    else if (stem === 'pod') podMeshes.push(obj);
+    else if (stem === 'pod_thruster') thrusterMeshes.push(obj);
+  });
+
+  const instanceOwned = [];
+  isolateWorksMeshMaterials(crateMeshes, instanceOwned);
+  isolateWorksMeshMaterials(podMeshes, instanceOwned);
+  const lampMats = isolateWorksMeshMaterials(thrusterMeshes, instanceOwned);
+  const fallbackLamp = new THREE.MeshStandardMaterial({ color: 0x1c1812 });
+  fallbackLamp.emissive.setHex(0x000000);
+  fallbackLamp.emissiveIntensity = 0;
+  instanceOwned.push(fallbackLamp);
+  recordWorksInstanceResources(group, instanceOwned);
+
+  const crates = [];
+  for (let i = 0; i < 5; i++) crates.push(hooks[`crate_${i}`]);
+  const podBaseY = hooks.pod_root.position.y;
+  let crateStage = 0;
+  let podLaunch = 0;
+
+  function setCrateStage(stage) {
+    const n = Number.isFinite(stage) ? Math.max(0, Math.min(5, stage | 0)) : 0;
+    crateStage = n;
+    for (let i = 0; i < crates.length; i++) crates[i].visible = i < n;
+  }
+  setCrateStage(0);
+
+  return {
+    group: seat,
+    pulses: [],
+    authored: true,
+    source: group,
+    dyn: {
+      crates,
+      cradle: hooks.cradle,
+      pod: hooks.pod_root,
+      podThruster: hooks.pod_thruster,
+      podBaseY,
+      podTravel: CARGO_PORT_LAUNCH_CLEAR_WU,
+      setCrateStage,
+      crateStage() { return crateStage; },
+      setPodLaunch(amount) {
+        const p = Number.isFinite(amount) ? Math.max(0, Math.min(1, amount)) : 0;
+        podLaunch = p;
+        hooks.pod_root.position.y = podBaseY + CARGO_PORT_LAUNCH_CLEAR_WU * p;
+      },
+      podLaunch() { return podLaunch; },
+      setPodVisible(visible) {
+        hooks.pod_root.visible = !!visible;
+      },
+      lamp: lampMats[0] || fallbackLamp,
+      lampMats: lampMats.length ? lampMats : [fallbackLamp],
+      lampAnchor: hooks.pod_thruster,
+    },
+  };
+}
+
+// PQ-131.09 — one Cargo Port authored/fallback transaction. Success never constructs the
+// procedural stand-in. Failure builds exactly one fallback. Authored and fallback are never
+// both standing. Late arrivals after a newer generation or teardown are released once.
+export function createCargoPortMountLifecycle({
+  load,
+  prepare,
+  mount,
+  unmount,
+  release,
+  buildFallback,
+  disposeFallback,
+  isClosed = () => false,
+} = {}) {
+  for (const [name, fn] of Object.entries({
+    load, prepare, mount, unmount, release, buildFallback, disposeFallback,
+  })) {
+    if (typeof fn !== 'function') {
+      throw new TypeError(`[cargoPortMount] ${name} must be a function`);
+    }
+  }
+
+  let generation = 0;
+  let current = null;
+  let fallback = null;
+  let state = Object.freeze({
+    generation,
+    phase: 'empty',
+    authored: false,
+    fallback: false,
+    failure: null,
+  });
+
+  const publish = (next) => {
+    state = Object.freeze({
+      generation,
+      phase: next.phase,
+      authored: next.authored,
+      fallback: next.fallback,
+      failure: next.failure || null,
+    });
+    return state;
+  };
+
+  const releaseRecord = (record) => {
+    if (!record || record.released) return false;
+    record.released = true;
+    if (record.mounted) {
+      record.mounted = false;
+      unmount(record);
+    }
+    if (record.source) release(record.source, record);
+    return true;
+  };
+
+  const retireVisible = () => {
+    if (current) {
+      releaseRecord(current);
+      current = null;
+    }
+    if (fallback !== null) {
+      disposeFallback(fallback);
+      fallback = null;
+    }
+  };
+
+  const cancelled = (attemptGeneration) => (
+    attemptGeneration !== generation || isClosed()
+  );
+
+  async function rebuild() {
+    generation += 1;
+    const attemptGeneration = generation;
+    retireVisible();
+    publish({ phase: 'loading', authored: false, fallback: false, failure: null });
+
+    const abort = () => ({ status: 'cancelled', state });
+    const fail = (reason) => {
+      if (cancelled(attemptGeneration)) return { status: 'cancelled', state };
+      fallback = buildFallback(reason);
+      publish({
+        phase: 'fallback',
+        authored: false,
+        fallback: true,
+        failure: reason,
+      });
+      return { status: 'fallback', state };
+    };
+
+    let source = null;
+    try {
+      source = await load();
+    } catch (error) {
+      return fail(error && error.message ? error.message : String(error));
+    }
+    if (cancelled(attemptGeneration)) {
+      if (source) releaseRecord({ source, released: false, mounted: false });
+      return abort();
+    }
+    if (!source) return fail('authored load returned no part');
+
+    let prepared = null;
+    try {
+      prepared = prepare(source);
+    } catch (error) {
+      releaseRecord({ source, released: false, mounted: false });
+      return fail(error && error.message ? error.message : String(error));
+    }
+    if (cancelled(attemptGeneration)) {
+      releaseRecord({ source, released: false, mounted: false });
+      return abort();
+    }
+    if (!prepared) {
+      releaseRecord({ source, released: false, mounted: false });
+      return fail('authored part preparation failed');
+    }
+
+    const record = {
+      ...prepared,
+      source,
+      released: false,
+      mounted: false,
+    };
+    try {
+      mount(record);
+      record.mounted = true;
+    } catch (error) {
+      releaseRecord(record);
+      return fail(error && error.message ? error.message : String(error));
+    }
+    if (cancelled(attemptGeneration)) {
+      releaseRecord(record);
+      return abort();
+    }
+
+    current = record;
+    publish({ phase: 'authored', authored: true, fallback: false, failure: null });
+    return { status: 'authored', state };
+  }
+
+  function cancel(reason = 'cancelled') {
+    generation += 1;
+    retireVisible();
+    publish({
+      phase: reason === 'disposed' ? 'disposed' : 'empty',
+      authored: false,
+      fallback: false,
+      failure: null,
+    });
+  }
+
+  return Object.freeze({
+    rebuild,
+    cancel,
+    stats: () => state,
+  });
 }
 
 // PQ-131.06 — authored Conduit transaction, kept pure so its async lifecycle is testable without
@@ -3885,9 +4130,78 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
 
+  function ownProceduralMachine(group) {
+    group.traverse((o) => {
+      if (o.isMesh) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const mt of mats) mt._own = true;
+      }
+    });
+  }
+
+  function ensureCargoPortInstallLifecycle(rec) {
+    if (rec.cargoLifecycle) return rec.cargoLifecycle;
+    rec.cargoLifecycle = createCargoPortMountLifecycle({
+      async load() {
+        const loader = ensureWorksLoader();
+        return loader ? loader.loadWorksPart('cargo_port') : null;
+      },
+      prepare(source) {
+        return bindAuthoredCargoPort(source);
+      },
+      mount(record) {
+        rec.group.add(record.group);
+        rec.authoredSource = record.source;
+        rec.authoredSeat = record.group;
+        rec.dyn = record.dyn || {};
+        rec.pulses = record.pulses || [];
+        rec.proceduralFallback = false;
+      },
+      unmount(record) {
+        if (record.group && record.group.parent) record.group.parent.remove(record.group);
+        rec.authoredSource = null;
+        rec.authoredSeat = null;
+      },
+      release(source) {
+        if (worksLoader) worksLoader.releaseWorksPart(source);
+      },
+      buildFallback(reason) {
+        console.error('[asteroidRenderer3d] authored Cargo Port load failed; the procedural port stands', reason);
+        const built = makeMachine('cargo_port', S, envMap);
+        ownProceduralMachine(built.group);
+        rec.group.add(built.group);
+        rec.dyn = built.dyn || {};
+        rec.pulses = built.pulses || [];
+        rec.proceduralFallback = true;
+        rec.fallbackGroup = built.group;
+        return built;
+      },
+      disposeFallback(built) {
+        if (built && built.group) {
+          if (built.group.parent) built.group.parent.remove(built.group);
+          disposeGroup(built.group);
+        }
+        rec.proceduralFallback = false;
+        rec.fallbackGroup = null;
+      },
+      isClosed: () => !rec.alive || worksTearingDown || disposed || glTeardownDone
+        || machines.get(rec.machineId) !== rec,
+    });
+    return rec.cargoLifecycle;
+  }
+
   function releaseAuthoredMachine(rec) {
     if (!rec) return;
     rec.alive = false;
+    if (rec.cargoLifecycle) {
+      rec.cargoLifecycle.cancel('disposed');
+      rec.cargoLifecycle = null;
+      rec.authoredSource = null;
+      rec.authoredSeat = null;
+      rec.fallbackGroup = null;
+      rec.proceduralFallback = false;
+      return;
+    }
     if (rec.authoredSeat && rec.authoredSeat.parent) rec.authoredSeat.parent.remove(rec.authoredSeat);
     const source = rec.authoredSource;
     rec.authoredSeat = null;
@@ -3901,14 +4215,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const built = authoredKind
       ? { group: new THREE.Group(), dyn: {}, pulses: [] }
       : makeMachine(kind, S, envMap);
-    if (!authoredKind) {
-      built.group.traverse((o) => {
-        if (o.isMesh) {
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          for (const mt of mats) mt._own = true;
-        }
-      });
-    }
+    if (!authoredKind) ownProceduralMachine(built.group);
     built.group.name = authoredKind ? `authored_${authoredKind}_mount` : built.group.name;
     built.group.position.set(worldX(m.col), worldY(m.row), 0);
     siteRoot.add(built.group);
@@ -3917,9 +4224,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       group: built.group, defId: m.defId, dyn: built.dyn || {}, col: m.col, row: m.row,
       geoSig: '', arms: null, pulses: built.pulses || [], alive: true,
       authoredSource: null, authoredSeat: null,
+      proceduralFallback: false, fallbackGroup: null, cargoLifecycle: null,
     };
     machines.set(m.id, rec);
-    if (authoredKind) void mountAuthoredMachine(rec, authoredKind);
+    if (authoredKind === 'cargo_port') void ensureCargoPortInstallLifecycle(rec).rebuild();
+    else if (authoredKind) void mountAuthoredMachine(rec, authoredKind);
     return rec;
   }
 
@@ -4101,7 +4410,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           if (rec.dyn.setProgress) rec.dyn.setProgress(p);
           else rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
-        if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
+        if (rec.dyn.setPodLaunch) {
+          const launching = podT >= 0;
+          const ready = !!(site.fleet && site.fleet.podsReady > 0);
+          rec.dyn.setPodVisible(ready || launching);
+          rec.dyn.setPodLaunch(launching ? (motionReduce ? 1 : Math.max(0, Math.min(1, podT))) : 0);
+        } else if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
         // The want chip: what this machine is waiting for, as a colour or a bolt. `status.limit`
         // is the sim's own answer — `input:<goodId>` when a recipe is starved, `power` when the
         // bus cannot feed it — so the chip names the real shortage, not a guess from the state name.
@@ -4789,6 +5103,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return 5;
   }
 
+  function authoredCargoRec() {
+    for (const rec of machines.values()) {
+      if (rec.defId === 'sm_cargo_port' && rec.dyn && rec.dyn.setCrateStage) return rec;
+    }
+    return null;
+  }
+
   function syncCrates(site, projection) {
     const port = site ? site.machines.find((m) => m.defId === 'sm_cargo_port') : null;
     const total = site
@@ -4796,6 +5117,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       : (projection ? storeTotal(projection.exportBuffer) : 0);
     const stage = port ? crateStageFor(total) : 0;
     crateStageNow = stage;
+    const authored = authoredCargoRec();
+    if (authored) {
+      authored.dyn.setCrateStage(stage);
+      if (crateMesh) crateMesh.visible = false;
+      crateCell = stage ? [authored.col, authored.row] : null;
+      return;
+    }
+    const pending = [...machines.values()].find((m) => (
+      m.defId === 'sm_cargo_port' && m.cargoLifecycle && m.cargoLifecycle.stats().phase === 'loading'
+    ));
+    if (pending) {
+      if (crateMesh) crateMesh.visible = false;
+      crateCell = null;
+      return;
+    }
     if (!stage) { crateCell = null; if (crateMesh) crateMesh.visible = false; return; }
     if (!crateGeos[stage]) crateGeos[stage] = makeCrateStackGeo(stage);
     if (!crateMesh) {
@@ -5068,11 +5404,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- ghost
+  function applyGhostTransparency(root, { disposeSource = false, instanceOwned = null } = {}) {
+    root.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const wasArray = Array.isArray(o.material);
+      const cloned = (wasArray ? o.material : [o.material]).map((m) => {
+        const t = m.clone();
+        t.transparent = true;
+        t.opacity = 0.45;
+        t.depthWrite = false;
+        t._own = true;
+        if (instanceOwned) instanceOwned.push(t);
+        if (disposeSource) m.dispose();
+        return t;
+      });
+      o.material = wasArray ? cloned : cloned[0];
+      o.castShadow = false;
+    });
+  }
+
   function clearGhost() {
     if (!ghost) return;
     ghost.alive = false;
     fxRoot.remove(ghost.group);
-    if (ghost.authoredSource && worksLoader) {
+    if (ghost.cargoLifecycle) {
+      ghost.cargoLifecycle.cancel('disposed');
+    } else if (ghost.authoredSource && worksLoader) {
       worksLoader.releaseWorksPart(ghost.authoredSource);
     } else if (!ghost.authoredPending) {
       disposeGroup(ghost.group);
@@ -5134,6 +5491,72 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     clearGhost();
     if (!defId) return null;
     const authoredKind = authoredWorksMachineKind(defId);
+    if (authoredKind === 'cargo_port') {
+      const group = new THREE.Group();
+      group.name = 'authored_cargo_port_ghost_mount';
+      group.renderOrder = 24;
+      fxRoot.add(group);
+      const rec = {
+        defId,
+        group,
+        alive: true,
+        authoredSource: null,
+        authoredPending: true,
+        proceduralFallback: false,
+        cargoLifecycle: null,
+      };
+      ghost = rec;
+      rec.cargoLifecycle = createCargoPortMountLifecycle({
+        async load() {
+          const loader = ensureWorksLoader();
+          return loader ? loader.loadWorksPart('cargo_port') : null;
+        },
+        prepare(source) {
+          const instanceOwned = [];
+          applyGhostTransparency(source, { instanceOwned });
+          recordWorksInstanceResources(source, instanceOwned);
+          const seat = new THREE.Group();
+          seat.name = 'cargo_port_ghost_seat';
+          seat.rotation.x = Math.PI / 2;
+          seat.add(source);
+          return { group: seat, source };
+        },
+        mount(record) {
+          rec.group.add(record.group);
+          rec.authoredSource = record.source;
+          rec.authoredPending = false;
+          rec.proceduralFallback = false;
+        },
+        unmount(record) {
+          if (record.group && record.group.parent) record.group.parent.remove(record.group);
+          rec.authoredSource = null;
+        },
+        release(source) {
+          if (worksLoader) worksLoader.releaseWorksPart(source);
+        },
+        buildFallback(reason) {
+          rec.authoredPending = false;
+          rec.proceduralFallback = true;
+          console.error('[asteroidRenderer3d] authored Cargo Port ghost load failed; the procedural seat stands', reason);
+          const built = makeMachine('cargo_port', S, envMap);
+          applyGhostTransparency(built.group, { disposeSource: true });
+          rec.group.add(built.group);
+          rec.fallbackGroup = built.group;
+          return built;
+        },
+        disposeFallback(built) {
+          if (built && built.group) {
+            if (built.group.parent) built.group.parent.remove(built.group);
+            disposeGroup(built.group);
+          }
+          rec.fallbackGroup = null;
+          rec.proceduralFallback = false;
+        },
+        isClosed: () => !rec.alive || ghost !== rec || worksTearingDown || disposed || glTeardownDone,
+      });
+      void rec.cargoLifecycle.rebuild();
+      return rec;
+    }
     if (authoredKind) {
       const group = new THREE.Group();
       group.name = `authored_${authoredKind}_ghost_mount`;
@@ -5151,22 +5574,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return rec;
     }
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
-    built.group.traverse((o) => {
-      if (o.isMesh) {
-        const wasArray = Array.isArray(o.material);
-        const cloned = (wasArray ? o.material : [o.material]).map((m) => {
-          const t = m.clone();
-          t.transparent = true;
-          t.opacity = 0.45;
-          t.depthWrite = false;
-          t._own = true;
-          m.dispose(); // the fresh originals from makeMachine are never rendered
-          return t;
-        });
-        o.material = wasArray ? cloned : cloned[0];
-        o.castShadow = false;
-      }
-    });
+    applyGhostTransparency(built.group, { disposeSource: true });
     built.group.renderOrder = 24;
     fxRoot.add(built.group);
     ghost = { defId, group: built.group, alive: true, authoredSource: null, authoredPending: false };
@@ -6008,9 +6416,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     machineContacts() {
       const out = [];
       for (const [id, rec] of machines) {
-        out.push({ id, defId: rec.defId, col: rec.col, row: rec.row, geoSig: rec.geoSig });
+        const cargo = rec.cargoLifecycle ? rec.cargoLifecycle.stats() : null;
+        out.push({
+          id, defId: rec.defId, col: rec.col, row: rec.row, geoSig: rec.geoSig,
+          authored: !!rec.authoredSource,
+          fallback: !!rec.proceduralFallback,
+          mountPhase: cargo ? cargo.phase : (rec.authoredSource ? 'authored' : null),
+        });
       }
       return out;
+    },
+    cargoPort() {
+      const rec = authoredCargoRec() || [...machines.values()].find((m) => m.defId === 'sm_cargo_port') || null;
+      const stats = rec && rec.cargoLifecycle ? rec.cargoLifecycle.stats() : null;
+      const ghostRec = ghost && ghost.defId === 'sm_cargo_port' ? ghost : null;
+      const ghostStats = ghostRec && ghostRec.cargoLifecycle ? ghostRec.cargoLifecycle.stats() : null;
+      return {
+        installedPhase: stats ? stats.phase : (rec && rec.authoredSource ? 'authored' : (rec ? 'empty' : 'absent')),
+        authored: !!(rec && rec.authoredSource),
+        fallback: !!(rec && rec.proceduralFallback),
+        crateStage: rec && rec.dyn && rec.dyn.crateStage ? rec.dyn.crateStage() : crateStageNow,
+        podLaunch: rec && rec.dyn && rec.dyn.podLaunch ? rec.dyn.podLaunch() : 0,
+        overlayCratesVisible: !!(crateMesh && crateMesh.visible),
+        ghostPhase: ghostStats ? ghostStats.phase : (ghostRec ? (ghostRec.authoredSource ? 'authored' : 'empty') : 'absent'),
+        ghostAuthored: !!(ghostRec && ghostRec.authoredSource),
+        ghostFallback: !!(ghostRec && ghostRec.proceduralFallback),
+      };
     },
     // ---- law §7 / §6.5 / §6.7 "The site reads" (PQ-130.10b) ----
     // What the NETWORK LAYER is drawing this frame, read off the live objects: which run belongs to
@@ -6109,9 +6540,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     },
     // The port pile: 0 = nothing shipped yet, 1..5 = the stages the export buffer has earned.
     crates() {
+      const authored = authoredCargoRec();
       return {
         stage: crateStageNow,
-        visible: !!(crateMesh && crateMesh.visible),
+        visible: authored ? crateStageNow > 0 : !!(crateMesh && crateMesh.visible),
+        authored: !!authored,
+        overlayVisible: !!(crateMesh && crateMesh.visible),
         // Where the pile actually stands. `onFloor` false means every neighbour was taken and the
         // pile is sitting on the port's own plinth — legible, but the tighter fallback.
         cell: crateCell ? crateCell.slice() : null,

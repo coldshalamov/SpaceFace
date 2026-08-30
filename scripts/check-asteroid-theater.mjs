@@ -996,6 +996,13 @@ try {
           failures.push(`${label}: §7 an empty, idle lane still carries ${nEmpty.net.flowDots} flow dots`);
         }
         // ---- the port stacks crates, keyed to the buffer at two different fills.
+        await page.waitForFunction(() => {
+          const canvas = document.querySelector('.ast-canvas');
+          const h = canvas && canvas.__ast3d;
+          if (!h || typeof h.cargoPort !== 'function') return false;
+          const port = h.cargoPort();
+          return port.installedPhase === 'authored' || port.installedPhase === 'fallback';
+        }, null, { timeout: 20000 }).catch(() => {});
         const crateAt = async (units) => page.evaluate((arg) => {
           const sf = window.SF;
           const site = sf.registry.get('asteroidSites').getSite(arg.siteId);
