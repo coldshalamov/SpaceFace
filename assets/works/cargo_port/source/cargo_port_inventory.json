@@ -2,7 +2,7 @@
   "assetId": "place_works_cargo_port",
   "root": "SF_WORKS_CARGO_PORT_V1",
   "packet": "PQ-131.09",
-  "cycle": 2,
+  "cycle": 3,
   "productionState": "design_candidate",
   "launchAxis": {
     "blender": "+Z",
@@ -41,8 +41,8 @@
   "triangles": [
     {
       "lod": 0,
-      "port_tris": 7176,
-      "pod_tris": 2430,
+      "port_tris": 6624,
+      "pod_tris": 1462,
       "crate_tris": [
         1404,
         1188,
@@ -54,8 +54,8 @@
     },
     {
       "lod": 1,
-      "port_tris": 824,
-      "pod_tris": 574,
+      "port_tris": 692,
+      "pod_tris": 268,
       "crate_tris": [
         924,
         612,
@@ -67,8 +67,8 @@
     },
     {
       "lod": 2,
-      "port_tris": 592,
-      "pod_tris": 274,
+      "port_tris": 572,
+      "pod_tris": 174,
       "crate_tris": [
         60,
         72,
@@ -88,85 +88,85 @@
     "max": [
       1.08,
       0.7,
-      1.064
+      1.002
     ],
     "sizeWu": [
       2.0879,
       1.58,
-      1.064
+      1.002
     ],
     "sizeCells": [
       0.949,
       0.7182,
-      0.4836
+      0.4555
     ],
     "zMin": 0.0
   },
   "hashes": {
-    "combined": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
-    "parts": "81BF7466450434AA0E2CA055D793548CCC8150107D7E51046922B7525E11A532",
-    "lod0": "B188024BA14598F9709A44EF375A1D022897805189C4A4652B976D3AD4D7E355",
-    "lod1": "1E3E92417C6C98BA5B035E58E22190A72158D41CFDD238BCAD2E1FD757B625AB",
-    "lod2": "1614DD6A843C504754721E291E75C15E92C99A71EDAFDE5907009FBA823F7CDE",
-    "atlas_basecolor": "BFA11F2DC3CF3CA16C5108269768135630D6423186F29F564EC9ACD3C2E4FCA1",
-    "atlas_orm": "4B314AE54DD7692C468E681AEE6C08E71DAFF6B730AE2D69CABB0B2FBDD94974",
+    "combined": "6DD2D23C7948A52C90CE2966A3F851870997B79BFD6CF0235AE8CF139A13D377",
+    "parts": "6DD2D23C7948A52C90CE2966A3F851870997B79BFD6CF0235AE8CF139A13D377",
+    "lod0": "BEA38D7C05A397054A7B551D6A36820E7753315BF36D006545C776ABFA26B016",
+    "lod1": "C2F5B98C274F0EC61BA331BBEA556C14A975B8EA9D3E9B11CD0F7C43AC58500C",
+    "lod2": "623252602ABD117CCFA6178013FB39FB6A14CEE4C48BD678A0FDB4CA7CC263D7",
+    "atlas_basecolor": "B639F49DF6554A5283FA096A5A0368969672FD1F84697ECB484A37BC8A34E052",
+    "atlas_orm": "6C555E155F773F5771A3B4C1BBF3275130C9C935666EB36EAD58946F02A3031C",
     "atlas_normal": "8296F9E825B9BDC8DADAB6D651072BE0AC1468430118D782D09E97A72E1F8429",
     "ref_01": "67344F641C1E704549110EA624B69877FC781AB73CC864B73EDABE5DFCED7174",
     "ref_02": "17FEF1588BEFBA68121AC34D0418057D3C0AEF4D8C3EBD3612DB957063C2D9F9",
     "ref_03": "995864893A2035C6BAC71B8B33483F044E306EC70845337940EF688348136684",
     "ref_04": "5E0BC217E1144D50EE80011F981ABA7CD86A9BD639EE1C68D059C85EF1D7993C",
     "stills": {
-      "works_top": "E51CA809C5065D229C473B63BF57656267EBC72F96E905C3E4CF00E776E3FEA2",
-      "works_edge": "A2C8A3395EC385F946EAFE20A57ACF9108E686F97E8102527F7B64A5AEA65DC8",
-      "works_top_clay": "196D6BBBD9A0598CD696C798207B918227110C0533440EB2AA85C58878FD3D67",
-      "works_edge_clay": "DA3E1B147552F503661BD5860AAF361FF64C7A818B6687E5255FBE4DDA1AB034",
-      "works_top_grazing": "1A6237EE433F699B3B66299E736E1ADC624D7FD113E303C45812A8EB7E55B731",
-      "works_top_normal": "AC3BBE5DE0445F89BED9699F7BE14DA41921970C5C1B992CA86CB407B22CA1B1",
-      "works_top_orm": "440E0C0D3D1EF70BE3865901ABCA4238D94B725CD9911435FAA833D946752411",
-      "works_top_matid": "671AECC999198B9867F1F71B3CE5C8AE53EFF60568A7757414D1516FE81117E7",
-      "works_top_hooks": "B0677A8BB720B481F956344AB7EB05A248FBE6BF0B35B38289F0B61ACF89E377",
-      "crate_stage_01": "4B2E123981CB43388E55EC32263EC65C1368B077A7E048ED85E63D25C6A72268",
-      "crate_stage_02": "509559CCC468C1EFA402B5F405CCE5535F380A41AE16C7BDCF4FC38712C38C4C",
-      "crate_stage_03": "FAC251A40DD6EA8D165E52B2DDCD52D4D384908D86A488DE08D99AE122AFE91D",
-      "crate_stage_04": "BA410A417EF85926ACD75B9ADB42570EA9DD21F6C9873096EC43F4DCEA014AC6",
-      "crate_stage_05": "34FAD21AF1B681622F183CA916DA4CBBC941BDA70E3DB42979A091AAA5ED5ED2",
-      "crate_stage_sheet": "C97675C3B7342C5B8FF641CFAE382529090BA0BD0D69F706E5723F87317FF20D",
-      "pod_seated_top": "4DD320C18C8BD45F2BA166BC569109D96185C874254875D75EC39A63764CFB31",
-      "pod_seated_edge": "403FF541F209BE7C1A8DE1911BBEA813A96F20C1C4A154ED7F8737E61FFC2A31",
-      "pod_launch_clear_top": "8500D167517373E72DDE395F9F0A438CF2B9C3880225F91D85D4148F4CA59305",
-      "pod_launch_clear_edge": "AAA4101BC89DF930B75416AAE0D056256DCA2971C3257CE0C80835428CB429B6",
-      "works_top_lod1": "7412DC869C76A5CAAD37685E58B82E98818E89AF59A8B0EB00B7EB38BE5DD157",
-      "works_site": "4D8B079F6682C287A21BA00564F6E31B841E0C15688C43B21C6F4A316824FD7B",
-      "works_site_id": "186266A098189FE2FD6E6F048C75EF948E0DD5629EC72332C09F9ADA56BBE969",
-      "works_top_lod2": "48003813980B697187765388BEC278574AA60422437555F0F14C4A14CB0E7152",
-      "works_site_lod2": "E255032C44482DC9C0DA52B8E394911B78A46DB3D15631C2BA84037917EC461D"
+      "works_top": "75E1769D2518FD4B7655629CBFB616547A6B8D2A622072DADB9088C82E1B86ED",
+      "works_edge": "351C28B30360084E66BFC7FE6B1C854BFBA050CD48FFA7561238784717177F61",
+      "works_top_clay": "79AAA2CEEE9597501B431B1889BB590052D3DE8E688B44C34D7389489C202110",
+      "works_edge_clay": "84323B88F27C96387149655D776B076FA4C0DC7F57702B2B19EFFC644D8E00A5",
+      "works_top_grazing": "BADC6C9EFDE68238A7CBA8DB3D0E8221D13D2436245D9C80E0A44A08F04DBA73",
+      "works_top_normal": "10794203A075A034053775EE8C7CA77E9BCD09962E07A09BE2000DA3315A9970",
+      "works_top_orm": "9CD887E152DDD17E56D73C772DD0D30968B713D7A6789B2CE3F9FECD50FAF105",
+      "works_top_matid": "ACEE23731DE6A29ABA0841CDC4183AE1C79D87EEB44E6F9ADF6E4BBFBEC9366E",
+      "works_top_hooks": "D520DD5ECBC3E241020A18F7D0550AE4AC7F5090EB7E21202801E564651D731A",
+      "crate_stage_01": "EFB07EA5F468080E286671D8125FF262BF623F106C54A3BDD488DCFCC14AB17C",
+      "crate_stage_02": "A568F12DD11ACE9ADE283E242341B9C7FD57B39970F4AE09A37B7AEEEA201118",
+      "crate_stage_03": "B30093B1D2B6313257157AD401D297148173165BF13C01015E5B28588010C93E",
+      "crate_stage_04": "85F0F5462D62C61D55F5AA25836A2F3182C899C07E99B525B07A9A2F1D72B943",
+      "crate_stage_05": "18D1AB4E1EBA4915D3E7AAAD15DC12C0599D48EF57B381BF907E6DF6310654CE",
+      "crate_stage_sheet": "344AE91DB49574FFBE5EAE6FD3F4AC9ED0BDC39901309B45D06CD042082D5DD8",
+      "pod_seated_top": "25E89329A3E602723408055524C4FF5393A5900446DA25255E8CE58028AFBEF4",
+      "pod_seated_edge": "9638DAD5E24FAF39F84CA5DF8723950D05F19DD644F001DA885B03FC1437E164",
+      "pod_launch_clear_top": "F2D9440EBBE58A5374C3091A3C247F406ADCDCDB9B8035536574D7DEC9BBF043",
+      "pod_launch_clear_edge": "3819EB837E21E24320EA41D286B5CFF2843F1C943B17FBE34FB73B9F8BC63084",
+      "works_top_lod1": "4BDC7F0FF237AD9A2A31636C8EEA80237A0764333611BA017FAF4795A042FEED",
+      "works_site": "86BECC399624E3C8D1AA3CCE3F7BEAC98706B1FDB7FDCC70383F28E148F34FDA",
+      "works_site_id": "A9005E55045AD0BDA37387DEECB21F8B38DCF9CBBCA8CEEF598F5F90902AC6F9",
+      "works_top_lod2": "7D209D20EED1DBF6842725D72E23DF19A05BEC2BD7B97EF4F6280643C1A3ACA4",
+      "works_site_lod2": "913E3AD7B0260843DE25A74DFA2F29C46356A490DA80B7C379419F2E031AF869"
     }
   },
   "stills": {
-    "works_top": "assets/works/cargo_port/evidence/cycle_002/works_top.png",
-    "works_edge": "assets/works/cargo_port/evidence/cycle_002/works_edge.png",
-    "works_top_clay": "assets/works/cargo_port/evidence/cycle_002/works_top_clay.png",
-    "works_edge_clay": "assets/works/cargo_port/evidence/cycle_002/works_edge_clay.png",
-    "works_top_grazing": "assets/works/cargo_port/evidence/cycle_002/works_top_grazing.png",
-    "normal": "assets/works/cargo_port/evidence/cycle_002/works_top_normal.png",
-    "orm": "assets/works/cargo_port/evidence/cycle_002/works_top_orm.png",
-    "works_top_matid": "assets/works/cargo_port/evidence/cycle_002/works_top_matid.png",
-    "works_top_hooks": "assets/works/cargo_port/evidence/cycle_002/works_top_hooks.png",
-    "crate_stage_1": "assets/works/cargo_port/evidence/cycle_002/crate_stage_01.png",
-    "crate_stage_2": "assets/works/cargo_port/evidence/cycle_002/crate_stage_02.png",
-    "crate_stage_3": "assets/works/cargo_port/evidence/cycle_002/crate_stage_03.png",
-    "crate_stage_4": "assets/works/cargo_port/evidence/cycle_002/crate_stage_04.png",
-    "crate_stage_5": "assets/works/cargo_port/evidence/cycle_002/crate_stage_05.png",
-    "crate_stage_sheet": "assets/works/cargo_port/evidence/cycle_002/crate_stage_sheet.png",
-    "pod_seated_top": "assets/works/cargo_port/evidence/cycle_002/pod_seated_top.png",
-    "pod_seated_edge": "assets/works/cargo_port/evidence/cycle_002/pod_seated_edge.png",
-    "pod_launch_clear_top": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_top.png",
-    "pod_launch_clear_edge": "assets/works/cargo_port/evidence/cycle_002/pod_launch_clear_edge.png",
-    "works_top_lod1": "assets/works/cargo_port/evidence/cycle_002/works_top_lod1.png",
-    "works_site": "assets/works/cargo_port/evidence/cycle_002/works_site.png",
-    "works_site_id": "assets/works/cargo_port/evidence/cycle_002/works_site_id.png",
-    "works_top_lod2": "assets/works/cargo_port/evidence/cycle_002/works_top_lod2.png",
-    "works_site_lod2": "assets/works/cargo_port/evidence/cycle_002/works_site_lod2.png"
+    "works_top": "assets/works/cargo_port/evidence/cycle_003/works_top.png",
+    "works_edge": "assets/works/cargo_port/evidence/cycle_003/works_edge.png",
+    "works_top_clay": "assets/works/cargo_port/evidence/cycle_003/works_top_clay.png",
+    "works_edge_clay": "assets/works/cargo_port/evidence/cycle_003/works_edge_clay.png",
+    "works_top_grazing": "assets/works/cargo_port/evidence/cycle_003/works_top_grazing.png",
+    "normal": "assets/works/cargo_port/evidence/cycle_003/works_top_normal.png",
+    "orm": "assets/works/cargo_port/evidence/cycle_003/works_top_orm.png",
+    "works_top_matid": "assets/works/cargo_port/evidence/cycle_003/works_top_matid.png",
+    "works_top_hooks": "assets/works/cargo_port/evidence/cycle_003/works_top_hooks.png",
+    "crate_stage_1": "assets/works/cargo_port/evidence/cycle_003/crate_stage_01.png",
+    "crate_stage_2": "assets/works/cargo_port/evidence/cycle_003/crate_stage_02.png",
+    "crate_stage_3": "assets/works/cargo_port/evidence/cycle_003/crate_stage_03.png",
+    "crate_stage_4": "assets/works/cargo_port/evidence/cycle_003/crate_stage_04.png",
+    "crate_stage_5": "assets/works/cargo_port/evidence/cycle_003/crate_stage_05.png",
+    "crate_stage_sheet": "assets/works/cargo_port/evidence/cycle_003/crate_stage_sheet.png",
+    "pod_seated_top": "assets/works/cargo_port/evidence/cycle_003/pod_seated_top.png",
+    "pod_seated_edge": "assets/works/cargo_port/evidence/cycle_003/pod_seated_edge.png",
+    "pod_launch_clear_top": "assets/works/cargo_port/evidence/cycle_003/pod_launch_clear_top.png",
+    "pod_launch_clear_edge": "assets/works/cargo_port/evidence/cycle_003/pod_launch_clear_edge.png",
+    "works_top_lod1": "assets/works/cargo_port/evidence/cycle_003/works_top_lod1.png",
+    "works_site": "assets/works/cargo_port/evidence/cycle_003/works_site.png",
+    "works_site_id": "assets/works/cargo_port/evidence/cycle_003/works_site_id.png",
+    "works_top_lod2": "assets/works/cargo_port/evidence/cycle_003/works_top_lod2.png",
+    "works_site_lod2": "assets/works/cargo_port/evidence/cycle_003/works_site_lod2.png"
   },
   "errors": [],
   "g1g2g4": "open",
@@ -221,17 +221,17 @@
     "max": [
       -0.022,
       0.1325,
-      1.064
+      1.002
     ],
     "sizeWu": [
       0.3913,
       0.3925,
-      0.904
+      0.842
     ],
     "sizeCells": [
       0.1779,
       0.1784,
-      0.4109
+      0.3827
     ],
     "zMin": 0.16
   }

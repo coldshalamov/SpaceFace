@@ -186,3 +186,22 @@ envelope, launch axis, and budgets, and freezes `evidence/cycle_001`.
 
 Working scene is still `tools/blender/build_works_cargo_port.py`. Cycle 02 evidence lives in
 `evidence/cycle_002/`. G1/G2/G4 remain open.
+
+---
+
+## Cycle 03 correction (this candidate)
+
+Independent review of Cycle 02: REVISE, source-only. The docking face was a bright plate
+stacked on a filled/capped oval. The cradle read as boxes attached to a capped loft.
+
+Cycle 03 keeps the same hooks, envelope, launch axis, five crate footprints, horseshoe
+flange, +X throat, and freezes `evidence/cycle_001` plus `evidence/cycle_002`.
+
+| Defect | Cycle 03 construction |
+|---|---|
+| Capped docking plug / bright plate | Keyed well cut through the pod cap: rim with wall thickness, inward walls, dark floor. Opening remains a hole in clay, material, and LOD stills. |
+| Box cradle on a loft | One manufactured open C-clamp whose arms continue onto the +X apron lip. Not a C-channel bar glued to a saddle. |
+| Hottest value on the docking plate | Docking rim is machined but darker than Cycle 02; well interior samples dark port oxide so the hole is the primary depth cue. Emission stays off except the recessed aft lamp. |
+
+Cycle 03 evidence lives in `evidence/cycle_003/`. G1/G2/G4 remain open. This is an
+implementing decision, not controller acceptance.
