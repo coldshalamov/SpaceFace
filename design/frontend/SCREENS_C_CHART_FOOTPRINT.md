@@ -1,6 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 # Screens C — THE CHART and THE FOOTPRINT
 
+
+> **2026-08-30 IDENTITY NOTE:** the visual identity mandates in this document that predate the
+> 2026-08 revision (neon cyan/teal/mint/purple accents, Saira SemiCondensed, tracked-out micro
+> labels, coloured left rails, glass/glow treatments) are **superseded** by
+> [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) §3/§4 (2026-08 revision): neutral charcoal,
+> one blue accent #4f8fdd, desaturated semantics, Plex Sans/Mono, no rails/glass/glow/tracking.
+> Read this document for its structural and interaction design; take every colour, type, and
+> surface treatment from the grammar.
+
 **Status:** executable per-screen specification. Subordinate to
 [`design/frontend/INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) (type, colour roles, motion
 contract, CREST/STAGE/APRON/DRAWER, disclosure tiers, naming rules, technique catalogue) and to

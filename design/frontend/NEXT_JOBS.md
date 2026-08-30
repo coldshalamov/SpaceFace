@@ -1,6 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 # What To Build Next
 
+
+> **2026-08-30 IDENTITY NOTE:** the visual identity mandates in this document that predate the
+> 2026-08 revision (neon cyan/teal/mint/purple accents, Saira SemiCondensed, tracked-out micro
+> labels, coloured left rails, glass/glow treatments) are **superseded** by
+> [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) §3/§4 (2026-08 revision): neutral charcoal,
+> one blue accent #4f8fdd, desaturated semantics, Plex Sans/Mono, no rails/glass/glow/tracking.
+> Read this document for its structural and interaction design; take every colour, type, and
+> surface treatment from the grammar.
+
 **Status:** sequenced job list for continued frontend work, written after the Phase 0 / Phase 1
 implementation review. Companion to [`A_LIST_GAPS.md`](./A_LIST_GAPS.md) (standards) and
 [`ADDITIONS.md`](./ADDITIONS.md) (features). This file answers *"what next, in what order, and what

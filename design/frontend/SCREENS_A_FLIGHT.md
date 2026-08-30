@@ -1,6 +1,15 @@
 <!-- LIFETIME: ACTIVE -->
 # Screens A — The Flight Layer
 
+
+> **2026-08-30 IDENTITY NOTE:** the visual identity mandates in this document that predate the
+> 2026-08 revision (neon cyan/teal/mint/purple accents, Saira SemiCondensed, tracked-out micro
+> labels, coloured left rails, glass/glow treatments) are **superseded** by
+> [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) §3/§4 (2026-08 revision): neutral charcoal,
+> one blue accent #4f8fdd, desaturated semantics, Plex Sans/Mono, no rails/glass/glow/tracking.
+> Read this document for its structural and interaction design; take every colour, type, and
+> surface treatment from the grammar.
+
 **Binding parent:** [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md). Type, colour roles, motion
 verbs, disclosure tiers, naming, banned patterns and the definition-of-done all come from there and
 are not restated. Where this document gives a number, that number is the implementation value.
