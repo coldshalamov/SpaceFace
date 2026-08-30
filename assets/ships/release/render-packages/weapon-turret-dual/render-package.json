@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a2c1ff3d27c62dfd7de28b6efdc5c6bdbed69d99ba8f29bb75b954ee6311d09e",
+  "contentHash": "d3df93c6ee3f541f8ebd38862c351d0399d689f1de7974baf6e768816d404d84",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -769,7 +769,7 @@
     },
     "sourceManifest": {
       "bytes": 159130,
-      "sha256": "7b2afccfa30f42b89bc8ff89aab28c3bebb4dd7ce9df621e491ea388089295b7",
+      "sha256": "365dea1a1cde016e0fce92056c53d5aca3bd39a783bcf697d9d4a111785eb009",
       "uri": "pilots.json"
     }
   },
@@ -1174,7 +1174,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "ec076f077da05ffa703bdf716254013c4cbc8a67748dc9058b89ee93c7aaaa7a",
+  "runtimeHash": "99ed9cf2266a59aa4ed4a8d6d24397f1c00a403ea228382863708848c36f79b3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

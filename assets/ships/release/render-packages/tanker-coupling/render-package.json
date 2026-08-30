@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "695bdc2ccd493736d2afe705b0e55a34cd74a0fa6e7e4a94b1ced6571cfd8f34",
+  "contentHash": "7470500ba4f262f2d8a70993ce4d8f22a17c709e7c8796be4c96ff1fa803cb5b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1860,7 +1860,7 @@
     },
     "sourceManifest": {
       "bytes": 159130,
-      "sha256": "7b2afccfa30f42b89bc8ff89aab28c3bebb4dd7ce9df621e491ea388089295b7",
+      "sha256": "365dea1a1cde016e0fce92056c53d5aca3bd39a783bcf697d9d4a111785eb009",
       "uri": "pilots.json"
     }
   },
@@ -2688,7 +2688,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "854511db8bb3729156807a4953612275445200828ecddbfcd580006b1759983b",
+  "runtimeHash": "efd806817da4cd7f0ba85749c04223d79ab2612fb0cec913e1d26ca26e0bc034",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
