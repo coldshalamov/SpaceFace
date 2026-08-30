@@ -29,6 +29,7 @@ import {
   enqueueBoundaryUpgrade,
   upgradeAuthoredCargoCapsuleBoundaryForProbe,
 } from '../src/render/partsLibrary.js';
+import { prepareSectorEntry, preloadAuthoredParts } from '../src/render/assetLoader.js';
 
 function deferred() {
   let resolve;
@@ -39,6 +40,130 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+async function flushMicrotasks() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+test('sector prewarm prefetch keeps request order with a bounded decode lane', async () => {
+  const requests = ['a', 'b', 'c', 'd', 'e'].map((url) => ({ url, slot: 'hull' }));
+  const started = [];
+  const gates = new Map();
+  let active = 0;
+  let peak = 0;
+  const loading = preloadAuthoredParts(requests, {}, {
+    concurrency: 2,
+    loadPart: async (url) => {
+      started.push(url);
+      active++;
+      peak = Math.max(peak, active);
+      const gate = deferred();
+      gates.set(url, gate);
+      try {
+        return await gate.promise;
+      } finally {
+        active--;
+      }
+    },
+  });
+
+  await flushMicrotasks();
+  assert.deepEqual(started, ['a', 'b']);
+  assert.equal(peak, 2, 'the sector lane admits at most two decodes at once');
+
+  gates.get('a').resolve('record-a');
+  await flushMicrotasks();
+  assert.deepEqual(started, ['a', 'b', 'c']);
+  gates.get('b').resolve('record-b');
+  await flushMicrotasks();
+  gates.get('c').resolve('record-c');
+  await flushMicrotasks();
+  gates.get('d').resolve('record-d');
+  await flushMicrotasks();
+  gates.get('e').resolve('record-e');
+
+  assert.deepEqual(await loading, [
+    'record-a', 'record-b', 'record-c', 'record-d', 'record-e',
+  ], 'bounded workers preserve the authored request order');
+  assert.equal(peak, 2);
+});
+
+test('sector prewarm cancellation releases its waiter without awaiting shared decode completion', async () => {
+  const cancellation = deferred();
+  const gates = new Map();
+  const started = [];
+  let active = true;
+  const loading = preloadAuthoredParts(
+    ['a', 'b', 'c'].map((url) => ({ url, slot: 'hull' })),
+    {},
+    {
+      concurrency: 2,
+      isActive: () => active,
+      cancelPromise: cancellation.promise,
+      loadPart: async (url) => {
+        started.push(url);
+        const gate = deferred();
+        gates.set(url, gate);
+        return gate.promise;
+      },
+    },
+  );
+
+  await flushMicrotasks();
+  assert.deepEqual(started, ['a', 'b']);
+  active = false;
+  cancellation.resolve('superseded-sector');
+  assert.deepEqual(await loading, [],
+    'a superseded sector does not hold the next generation behind its decode promises');
+
+  // The shared package tasks are allowed to finish after logical cancellation. They are observed
+  // by the prefetch helper and therefore cannot become unhandled rejections.
+  gates.get('a').resolve('late-a');
+  gates.get('b').resolve('late-b');
+  await flushMicrotasks();
+  assert.deepEqual(started, ['a', 'b']);
+});
+
+test('sector entry cancellation does not await load or shader warm promises from a stale generation', async () => {
+  const cancellation = deferred();
+  const load = deferred();
+  const warm = deferred();
+  let active = true;
+  let released = 0;
+  let warmed = 0;
+  const preparing = prepareSectorEntry({}, 'sector-stale', [{ url: 'a', slot: 'hull' }], {
+    owner: {},
+    residency: {
+      releaseOwner() { released++; },
+      rotateSector() { throw new Error('stale generation must not rotate residency'); },
+    },
+    isEntryActive: () => active,
+    cancelPromise: cancellation.promise,
+    loadPart: () => load.promise,
+    warmShaders: async () => {
+      warmed++;
+      await warm.promise;
+    },
+  });
+
+  await flushMicrotasks();
+  load.resolve({ url: 'admitted-a' });
+  await flushMicrotasks();
+  assert.equal(warmed, 1);
+  active = false;
+  cancellation.resolve('superseded-sector');
+  const receipt = await preparing;
+  assert.equal(receipt.cancelled, true);
+  assert.equal(receipt.rotated, false);
+  assert.equal(released, 1);
+  warm.resolve();
+  await flushMicrotasks();
+
+  // Both underlying stages may finish after logical cancellation, but the stale entry has already
+  // returned its cancellation receipt and never reaches the residency rotation call.
+});
 
 test('sector prewarm repeats the synchronous census only for an unseeded or dirty active record', () => {
   assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh(null), false);

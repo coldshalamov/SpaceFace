@@ -527,16 +527,52 @@ export async function loadAuthoredPart(url, options = {}) {
   return blueprint;
 }
 
-export async function preloadAuthoredParts(requests, renderer) {
-  const records = [];
-  // GLB fetches are local; decode, transcode, resource registration, and first upload are the costly
-  // operations. Keep one admission in flight so the preparation runway cannot become its own spike.
+export async function preloadAuthoredParts(requests, renderer, options = {}) {
+  const pending = [];
   for (const rawRequest of requests || []) {
     const request = typeof rawRequest === 'string' ? { url: rawRequest } : rawRequest;
     if (!request || !request.url) continue;
-    records.push(await loadAuthoredPart(request.url, { ...request, renderer }));
+    pending.push(request);
   }
-  return records;
+  if (pending.length === 0) return [];
+
+  const records = new Array(pending.length);
+  const loadPart = typeof options.loadPart === 'function' ? options.loadPart : loadAuthoredPart;
+  const isActive = typeof options.isActive === 'function' ? options.isActive : () => true;
+  const concurrency = Math.max(1, Math.min(
+    pending.length,
+    Math.floor(Number(options.concurrency) || 1),
+  ));
+  const cancelled = {};
+  const cancelPromise = options.cancelPromise && typeof options.cancelPromise.then === 'function'
+    ? Promise.resolve(options.cancelPromise).then(() => cancelled)
+    : null;
+  let next = 0;
+
+  // GLB fetches are local, but decode/transcode and resource registration are not free. The
+  // default remains serial for the canonical library. Sector prewarm may opt into a small bounded
+  // lane because its 40-60 package requests otherwise hold the entry gate for longer than the
+  // authored-boundary work itself; this is still capped so a sector cannot become a decode spike.
+  const worker = async () => {
+    while (isActive()) {
+      const index = next++;
+      if (index >= pending.length) return;
+      const request = pending[index];
+      if (!isActive()) return;
+      const load = Promise.resolve().then(() => loadPart(request.url, { ...request, renderer }));
+      // Cancellation intentionally returns before an underlying shared package decode settles.
+      // Observe its eventual rejection so a superseded generation cannot create an unhandled task.
+      load.catch(() => {});
+      const record = cancelPromise
+        ? await Promise.race([load, cancelPromise])
+        : await load;
+      if (record === cancelled || !isActive()) return;
+      records[index] = record;
+    }
+  };
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return records.filter((record) => record !== undefined);
 }
 
 /**
@@ -593,6 +629,10 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
       owner,
     });
   };
+  const cancellationSignal = {};
+  const cancelPromise = options.cancelPromise && typeof options.cancelPromise.then === 'function'
+    ? Promise.resolve(options.cancelPromise).then(() => cancellationSignal)
+    : null;
 
   // `loadPart` and `residency` are injectable so the ordering contract can be exercised for real
   // headlessly. A check that re-implemented this body would only prove itself consistent.
@@ -602,7 +642,7 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
   try {
     for (const request of requested) {
       if (!isEntryActive()) return cancelled();
-      records.push(await loadPart(request.url, {
+      const load = Promise.resolve().then(() => loadPart(request.url, {
         ...request,
         renderer,
         sectorId: exactSectorId,
@@ -610,6 +650,14 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
         residencyRole: 'sector-prewarm',
         isResidencyOwnerActive: isEntryActive,
       }));
+      // A departed sector must not wait for a shared package decode before its successor can own
+      // this entity id. The decode remains observed and may finish for another active consumer.
+      load.catch(() => {});
+      const record = cancelPromise
+        ? await Promise.race([load, cancelPromise])
+        : await load;
+      if (record === cancellationSignal || !isEntryActive()) return cancelled();
+      records.push(record);
     }
     if (!isEntryActive()) return cancelled();
 
@@ -624,7 +672,12 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
 
     if (typeof options.warmShaders === 'function') {
       failureReason = 'sector-prewarm-shader-warm-failed';
-      await options.warmShaders(records.filter(Boolean), exactSectorId);
+      const warm = Promise.resolve().then(() => options.warmShaders(records.filter(Boolean), exactSectorId));
+      warm.catch(() => {});
+      const warmed = cancelPromise
+        ? await Promise.race([warm, cancelPromise])
+        : await warm;
+      if (warmed === cancellationSignal || !isEntryActive()) return cancelled();
     }
     if (!isEntryActive()) return cancelled();
 

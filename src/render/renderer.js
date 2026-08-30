@@ -4383,6 +4383,9 @@ export const render = {
     const releaseSectorPrewarm = (record, reason) => {
       if (!record || record.active !== true) return 0;
       record.active = false;
+      // Unblock the prefetch wait immediately. The shared render-package decode may finish in the
+      // background, but a departed sector must not keep its successor behind that stale promise.
+      record.cancelPrefetch?.(reason);
       record.boundaryAbort = this._sectorBoundaryPreparations.abortRecords(
         record.boundaryRecords,
         reason,
@@ -4414,7 +4417,14 @@ export const render = {
           residencyRole: 'sector-prewarm',
           sectorId: record.sectorId,
           isResidencyOwnerActive: () => record.active === true,
-        })), renderer);
+        })), renderer, {
+          // Keep this lane separate from the canonical library's serial bootstrap. Two package
+          // decodes overlap enough to keep a sector entry below the phase budget while retaining
+          // a hard upper bound on transient decode pressure.
+          concurrency: 2,
+          isActive: () => record.active === true,
+          cancelPromise: record.prefetchCancelPromise,
+        });
       });
       return record.promise;
     };
@@ -4456,6 +4466,17 @@ export const render = {
         return existing;
       }
       if (existing) releaseSectorPrewarm(existing, 'incoming-sector-prewarm-superseded');
+      let prefetchCancelled = false;
+      let cancelPrefetchSignal;
+      const prefetchCancelPromise = new Promise((resolve) => {
+        cancelPrefetchSignal = resolve;
+      });
+      const cancelPrefetch = (reason = 'sector-prewarm-cancelled') => {
+        if (prefetchCancelled) return false;
+        prefetchCancelled = true;
+        cancelPrefetchSignal(reason);
+        return true;
+      };
       const record = {
         sectorId: exactSectorId,
         generation: ++this._sectorPrewarmGeneration,
@@ -4482,6 +4503,8 @@ export const render = {
         rotationCertificationRequired: false,
         populationSeeded: false,
         populationCoverageDirty: true,
+        cancelPrefetch,
+        prefetchCancelPromise,
       };
       this._incomingSectorPrewarm = record;
       refreshSectorPrewarmPopulation(record);
@@ -4682,7 +4705,11 @@ export const render = {
           warmShaders: async () => {
             prewarm.rotationCertificationRequired = true;
             prewarm.certification = null;
-            await pipelinePrecompile;
+            // A superseded entry may already be inside prepareSectorEntry when its pipeline probe
+            // is still linking. Let the logical generation leave immediately; the underlying
+            // renderer work is shared and remains observed by its own promise.
+            await Promise.race([pipelinePrecompile, prewarm.prefetchCancelPromise]);
+            if (prewarm.active !== true) return;
             const settled = await settleSectorBoundaryPreparations(prewarm, {
               includePrefetch: true,
               publish: true,
