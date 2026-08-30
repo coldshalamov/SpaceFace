@@ -1,15 +1,17 @@
-# Massline Core — material and shape audit (Cycle 07)
+# Massline Core — material and shape audit (Cycle 08)
 
 Identity `SF_WORKS_MASSLINE_CORE_V1`. Packet `PQ-131.02`. State `design_candidate`.
 Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.
 
 ## Shape grammar
 
-Cycle 06's square-flange wellhead is the frozen identity for this revision:
+Cycle 07's square-flange wellhead is the frozen identity for this revision:
 a square wellhead flange with a round bore; continuous U-channel opening +Z;
 folded square angle skirt; corner pads; nested dark race; and one side-mounted
-hooded lamp with a visible cavity. Cycle 07 changes the circular-to-square mass
-balance, section depth/width, material value separation, and far-LOD feature geometry;
+hooded lamp with a visible cavity. Cycle 08 substantially subordinates the circular
+collar, splits the U-channel into inner flange / recessed floor / outer flange,
+raises the square load wall, strengthens far-LOD asymmetry, and corrects the
+Blender emissive diagnostic's glTF V orientation;
 identity, hooks, envelope, and camera contract stay fixed.
 
 Clay must read: dark circular hole in a squat square machine, U-channel trench,
@@ -38,9 +40,11 @@ compass-rose / plus-dot / generic slab is a fail.
 ## Construction sequence
 
 1. Tapered dark liner, real lip, open through, true inner wall.
-2. Continuous deep U-channel collar, cavity +Z, four cardinal lap straps.
+2. Three-piece recessed U-channel (inner flange / dark floor / outer flange),
+   cavity +Z, with four cardinal lap straps.
 3. Square deck (round bore) + raised folded angle load wall + corner pads on the rock.
 4. Narrow nested dark inner bearing race (ring_spin) with a retained far-LOD shoulder.
-5. One layered hatch on the +X deck, one enlarged hooded lamp on the +Y frame.
+5. One enlarged layered hatch on the +X deck, one hooded lamp with a returned
+   lip on the +Y frame; only its recessed lens emits.
 
 Every visible part has a load path into the liner or the skirt. No occupancy fins.

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e4a44447db3b7fdcbd5804efba9ccd42c6043ceb43d62581ac7daa3e2a37d3a1",
+  "contentHash": "aac5700bdc63068162f98be8d0477698a4fa4b643b79bbbbf51c93ce83b2136b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,8 +343,8 @@
       "uri": "skid_trio.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "180cf648f367cc9858c8e288d6995192af4b5597269032f8aa47a0b0a3d4f695",
+      "bytes": 159134,
+      "sha256": "712542cd8b25edbb24f8c1dae1cffbc0e91d6e78cce9337e90c81b35dc44efc0",
       "uri": "pilots.json"
     }
   },
@@ -486,7 +486,7 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_trio.glb"
   },
-  "runtimeHash": "8a958cdf1e72cc1f6764dedf6a2a7806552305f57b1870250718052892bda54b",
+  "runtimeHash": "8a79bd94300dcc757eafab058d3f0378cab47ef2726513b5ce3ef775d09a2a80",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
