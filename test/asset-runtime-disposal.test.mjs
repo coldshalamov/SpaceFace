@@ -136,7 +136,7 @@ function testEvictedRenderPackageTaskIsDroppedBeforeReadmission() {
   runtime.assets.set(cacheKey, replacementTask);
   assert.equal(assetLoader.discardEvictedRenderPackageTask(
     runtime, cacheKey, staleTask, { renderPackage: { evicted: true } },
-  ), false, 'an older completion cannot erase a newer re-admission task');
+  ), true, 'a concurrent older completion still retries instead of returning an evicted package');
   assert.strictEqual(runtime.assets.get(cacheKey), replacementTask);
   assert.equal(assetLoader.discardEvictedRenderPackageTask(
     runtime, cacheKey, replacementTask, { renderPackage: { evicted: false } },

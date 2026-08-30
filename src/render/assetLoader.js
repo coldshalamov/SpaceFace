@@ -969,8 +969,9 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
  * hash-bound pilot rather than reusing an evicted assembled record. */
 export function discardEvictedRenderPackageTask(runtime, cacheKey, task, record) {
   if (!runtime || !runtime.assets || record?.renderPackage?.evicted !== true) return false;
-  if (runtime.assets.get(cacheKey) !== task) return false;
-  runtime.assets.delete(cacheKey);
+  // Concurrent callers can observe the same fulfilled stale task. Only its cache owner may erase
+  // it, but every observer must retry instead of returning the evicted package record.
+  if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
   return true;
 }
 
