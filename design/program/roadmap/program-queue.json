@@ -8416,7 +8416,7 @@
       "priority": 368,
       "title": "Ten-wave shell (Phase 2)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.01"
       ],
@@ -8439,7 +8439,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-133.02.md"
+      ],
       "brief": "Complete replayable ten-wave run with existing weapons, enemies, fields, pickups and one greybox arena: pure wave schema + planner (CRU-009/010), survivalRun phase machine (CRU-011), spawn materialization bridge through spawnBudget (CRU-012), completion/cleanup (CRU-013), run wallet + XP (CRU-014), physical credit pickup + sweep (CRU-015), seeded three-choice draft v0 (CRU-016), refit transaction through canonical fit APIs (CRU-017), results + causal death summary + same-seed restart (CRU-018). Campaign-contamination test A.8 is mandatory."
     },
     {
