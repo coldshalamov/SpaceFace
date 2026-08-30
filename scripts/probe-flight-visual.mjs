@@ -8,21 +8,43 @@ import { PNG } from 'pngjs';
 
 import { collectPageIssues, isIgnorableWebglValidation, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  awaitVisualProbeOperation,
+  awaitVisualProbePhase,
+  createVisualProbePhaseTracker,
+} from './lib/visualProbePhases.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const outDir = join(ROOT, '.devshots');
-const { chromium } = await loadPlaywright();
+const startupPhaseTracker = createVisualProbePhaseTracker();
+const { chromium } = await awaitVisualProbeOperation(
+  startupPhaseTracker,
+  'playwright-load',
+  () => loadPlaywright(),
+);
 
 const requestedBaseUrl = process.env.SF_PROBE_URL || '';
-let server = requestedBaseUrl ? await ensureServer(requestedBaseUrl) : await startFreshServer();
+let server = await awaitVisualProbePhase(
+  startupPhaseTracker,
+  'server-ready',
+  () => requestedBaseUrl ? ensureServer(requestedBaseUrl) : startFreshServer(),
+  { requestedBaseUrl: requestedBaseUrl || null },
+);
 const baseUrl = requestedBaseUrl || server.baseUrl;
-let browser = await launchProbeBrowser();
+let browser = await awaitVisualProbeOperation(
+  startupPhaseTracker,
+  'browser-launch',
+  () => launchProbeBrowser(),
+);
 const viewports = [
   { name: 'desktop', width: 1280, height: 720, deviceScaleFactor: 1 },
   { name: 'mobile', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true },
 ];
 const results = [];
 const MAX_VISUAL_PROBE_ATTEMPTS = 3;
+const NAVIGATION_TIMEOUT_MS = 90_000;
+const SF_BOOT_TIMEOUT_MS = 90_000;
+const AUTHORED_LIBRARY_TIMEOUT_MS = 90_000;
 const FLIGHT_START_TIMEOUT_MS = 70000;
 const cleanRuns = readPositiveIntArg(['--clean-runs', '--runs'], 1);
 const writeShots = !process.argv.includes('--no-write');
@@ -32,21 +54,25 @@ const compactOutput = process.argv.includes('--compact-output') || cleanRuns > 1
 
 try {
   for (let runIndex = 1; runIndex <= cleanRuns; runIndex++) {
-    const runResults = await Promise.all(viewports.map((viewport) => {
+    const runResults = [];
+    for (const viewport of viewports) {
       logProgress(`run ${runIndex}/${cleanRuns} ${viewport.name}`);
-      return runViewportProbeWithRetry(browser, viewport, runIndex);
-    }));
+      runResults.push(await runViewportProbeWithRetry(browser, viewport, runIndex));
+    }
     results.push(...runResults);
   }
 } finally {
-  await closeProbeBrowser(browser);
-  await stopProbeServer(server);
+  startupPhaseTracker.start('cleanup-complete', { scope: 'browser-and-server' });
+  await awaitVisualProbeOperation(startupPhaseTracker, 'browser-close', () => closeProbeBrowser(browser));
+  await awaitVisualProbeOperation(startupPhaseTracker, 'server-close', () => stopProbeServer(server));
+  startupPhaseTracker.complete('cleanup-complete');
 }
 
 const ok = results.every((r) => r.ok);
 console.log(JSON.stringify({
   ok,
   baseUrl,
+  phases: startupPhaseTracker.snapshot(),
   cleanRuns,
   strictWarnings,
   compactOutput,
@@ -58,12 +84,14 @@ async function runViewportProbeWithRetry(browser, viewport, runIndex) {
   const attempts = [];
   let lastResult = null;
   for (let i = 0; i < MAX_VISUAL_PROBE_ATTEMPTS; i++) {
+    const phaseTracker = createVisualProbePhaseTracker();
     let result;
     try {
-      result = await runViewportProbe(browser, viewport, runIndex);
+      result = await runViewportProbe(browser, viewport, runIndex, phaseTracker);
     } catch (err) {
-      result = failedProbeResult(viewport, runIndex, err);
+      result = failedProbeResult(viewport, runIndex, err, phaseTracker);
     }
+    if (result) result.phaseReport = phaseTracker.snapshot();
     lastResult = result;
     attempts.push(summarizeProbeAttempt(result, i + 1));
     if (result.ok) return { ...result, attempts };
@@ -72,24 +100,46 @@ async function runViewportProbeWithRetry(browser, viewport, runIndex) {
   return { ...lastResult, attempts };
 }
 
-async function runViewportProbe(browser, viewport, runIndex) {
+async function runViewportProbe(browser, viewport, runIndex, phaseTracker = createVisualProbePhaseTracker()) {
   const step = createProbeStepLogger(viewport, runIndex);
+  const wait = (operation, fn, detail = null) => (
+    awaitVisualProbeOperation(phaseTracker, operation, fn, detail)
+  );
+  const phase = (name, fn, detail = null) => (
+    awaitVisualProbePhase(phaseTracker, name, fn, detail)
+  );
   step('new-page');
-  const page = await browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile });
+  phaseTracker.start('server-ready', { baseUrl, viewport: viewport.name });
+  const page = await wait(
+    'new-page',
+    () => browser.newPage({ viewport, deviceScaleFactor: viewport.deviceScaleFactor, isMobile: !!viewport.isMobile }),
+    { viewport: viewport.name },
+  );
   const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
 
   try {
-  await page.addInitScript(() => {
+  await wait('add-init-script', () => page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
+  }));
+  phaseTracker.complete('server-ready');
   const url = withDebugFlight(baseUrl);
-  step('goto');
-  await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded' });
-  step('boot-ready');
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 15000 });
-  await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Flight Probe' }));
+  step('document-loaded');
+  await phase('document-loaded', () => gotoWithRetry(page, url, {
+    waitUntil: 'domcontentloaded',
+    timeout: NAVIGATION_TIMEOUT_MS,
+  }), { url, timeoutMs: NAVIGATION_TIMEOUT_MS });
+  step('SF-boot-ready');
+  await phase('SF-boot-ready', () => page.waitForFunction(
+    () => window.SF && window.SF.state && window.SF.bus,
+    null,
+    { timeout: SF_BOOT_TIMEOUT_MS },
+  ), { timeoutMs: SF_BOOT_TIMEOUT_MS });
+  await phase('authored-library-ready', () => waitForAuthoredLibraryReady(page, AUTHORED_LIBRARY_TIMEOUT_MS), {
+    timeoutMs: AUTHORED_LIBRARY_TIMEOUT_MS,
+  });
+  await wait('game:new', () => page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Flight Probe' })));
   step('flight-ready');
-  await page.waitForFunction(
+  await phase('flight-ready', () => page.waitForFunction(
     () => {
       const state = window.SF && window.SF.state;
       if (!state || state.mode !== 'flight' || !state.playerId) return false;
@@ -100,37 +150,43 @@ async function runViewportProbe(browser, viewport, runIndex) {
     },
     null,
     { timeout: FLIGHT_START_TIMEOUT_MS },
-  );
-  await page.waitForTimeout(500);
-  await dismissTutorial(page);
-  await page.waitForTimeout(250);
+  ), { timeoutMs: FLIGHT_START_TIMEOUT_MS });
+  await phase('first-playable-frame', () => waitForFirstPlayableFrame(page, FLIGHT_START_TIMEOUT_MS), {
+    timeoutMs: FLIGHT_START_TIMEOUT_MS,
+  });
+  await wait('settle-after-first-frame', () => page.waitForTimeout(500));
+  await wait('dismiss-tutorial', () => dismissTutorial(page));
+  await wait('settle-after-tutorial', () => page.waitForTimeout(250));
   step('isolate');
-  await isolateFlightProbeScene(page);
-  await waitForSimTicks(page, 5);
+  await phase('scene-isolated', async () => {
+    await wait('isolate-scene', () => isolateFlightProbeScene(page));
+    await wait('isolate-settle-ticks', () => waitForSimTicks(page, 5));
+  });
 
+  phaseTracker.start('sample-started');
   step('controls');
-  const initial = await sampleShip(page);
-  await page.keyboard.down('ArrowRight');
-  await waitForSimTicks(page, 30);
-  const right = await sampleShip(page);
-  await page.keyboard.up('ArrowRight');
-  await waitForSimTicks(page, 6);
-  const releaseStart = await sampleShip(page);
+  const initial = await wait('sample-initial', () => sampleShip(page));
+  await wait('key-down-arrow-right', () => page.keyboard.down('ArrowRight'));
+  await wait('ticks-arrow-right', () => waitForSimTicks(page, 30));
+  const right = await wait('sample-right', () => sampleShip(page));
+  await wait('key-up-arrow-right', () => page.keyboard.up('ArrowRight'));
+  await wait('ticks-right-release-start', () => waitForSimTicks(page, 6));
+  const releaseStart = await wait('sample-release-start', () => sampleShip(page));
   const releaseStartRot = releaseStart.rot;
-  await waitForSimTicks(page, 42);
-  const release = await sampleShip(page, releaseStartRot);
+  await wait('ticks-right-release', () => waitForSimTicks(page, 42));
+  const release = await wait('sample-release', () => sampleShip(page, releaseStartRot));
 
-  await page.keyboard.down('ArrowLeft');
-  await waitForSimTicks(page, 30);
-  const left = await sampleShip(page);
-  await page.keyboard.up('ArrowLeft');
-  await waitForSimTicks(page, 42);
-  const leftRelease = await sampleShip(page);
-  await page.keyboard.down('KeyE');
-  await waitForSimTicks(page, 21);
-  const strafe = await sampleShip(page);
-  await page.keyboard.up('KeyE');
-  await waitForSimTicks(page, 9);
+  await wait('key-down-arrow-left', () => page.keyboard.down('ArrowLeft'));
+  await wait('ticks-arrow-left', () => waitForSimTicks(page, 30));
+  const left = await wait('sample-left', () => sampleShip(page));
+  await wait('key-up-arrow-left', () => page.keyboard.up('ArrowLeft'));
+  await wait('ticks-left-release', () => waitForSimTicks(page, 42));
+  const leftRelease = await wait('sample-left-release', () => sampleShip(page));
+  await wait('key-down-strafe', () => page.keyboard.down('KeyE'));
+  await wait('ticks-strafe', () => waitForSimTicks(page, 21));
+  const strafe = await wait('sample-strafe', () => sampleShip(page));
+  await wait('key-up-strafe', () => page.keyboard.up('KeyE'));
+  await wait('ticks-strafe-release', () => waitForSimTicks(page, 9));
 
   // Reset to a clean, deterministic origin state before the throttle/boost/reverse measurement.
   // The preceding turn phases leave a NON-DETERMINISTIC heading: keyboard-edge/executed-tick races
@@ -146,53 +202,63 @@ async function runViewportProbe(browser, viewport, runIndex) {
   // state; the exact source was not isolated further because the reset avoids it. Resetting to origin
   // with rot=0 makes the whole measurement deterministic and relocates it to clean space, eliminating
   // the collapse. This mirrors the tapDash/mode-switch idiom below; NO gate threshold or tick count changes.
-  await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
+  await wait('reset-before-throttle', () => resetPlayerForProbe(page, {
+    mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100,
+  }));
 
-  await page.keyboard.down('KeyW');
-  await waitForSimTicks(page, 39);
-  const throttle = await sampleShip(page);
-  await page.keyboard.down('ShiftLeft');
-  await waitForSimTicks(page, 39);
-  const boost = await sampleShip(page);
+  await wait('key-down-throttle', () => page.keyboard.down('KeyW'));
+  await wait('ticks-throttle', () => waitForSimTicks(page, 39));
+  const throttle = await wait('sample-throttle', () => sampleShip(page));
+  await wait('key-down-boost', () => page.keyboard.down('ShiftLeft'));
+  await wait('ticks-boost', () => waitForSimTicks(page, 39));
+  const boost = await wait('sample-boost', () => sampleShip(page));
   assertBoostSampleNotPerturbed(throttle, boost);
-  await page.keyboard.up('ShiftLeft');
-  await page.keyboard.up('KeyW');
-  await page.keyboard.down('KeyS');
-  await waitForSimTicks(page, 54);
-  const reverse = await sampleShip(page);
-  await page.keyboard.up('KeyS');
-  await waitForSimTicks(page, 9);
+  await wait('key-up-boost', () => page.keyboard.up('ShiftLeft'));
+  await wait('key-up-throttle', () => page.keyboard.up('KeyW'));
+  await wait('key-down-reverse', () => page.keyboard.down('KeyS'));
+  await wait('ticks-reverse', () => waitForSimTicks(page, 54));
+  const reverse = await wait('sample-reverse', () => sampleShip(page));
+  await wait('key-up-reverse', () => page.keyboard.up('KeyS'));
+  await wait('ticks-reverse-release', () => waitForSimTicks(page, 9));
 
-  await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
-  await page.keyboard.down('ShiftLeft');
-  await waitForSimTicks(page, 2);
-  await page.keyboard.up('ShiftLeft');
-  await waitForSimTicks(page, 15);
-  const tapDash = await sampleShip(page, null, { includeNearby: true });
+  await wait('reset-before-dash', () => resetPlayerForProbe(page, {
+    mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100,
+  }));
+  await wait('key-down-dash', () => page.keyboard.down('ShiftLeft'));
+  await wait('ticks-dash-hold', () => waitForSimTicks(page, 2));
+  await wait('key-up-dash', () => page.keyboard.up('ShiftLeft'));
+  await wait('ticks-dash-release', () => waitForSimTicks(page, 15));
+  const tapDash = await wait('sample-dash', () => sampleShip(page, null, { includeNearby: true }));
 
-  await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 95 }, boostEnergy: 100 });
-  await waitForSimTicks(page, 45);
-  const assistedModeDiagnostics = await getFlightDiagnostics(page);
-  const assistedMode = await sampleShip(page);
-  await resetPlayerForProbe(page, { mode: 'newtonian', rot: 0, vel: { x: 0, z: 95 }, boostEnergy: 100 });
-  await waitForSimTicks(page, 45);
-  const newtonianMode = await sampleShip(page);
-  const modeDiagnostics = await getFlightDiagnostics(page);
-  await resetPlayerForProbe(page, { mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100 });
-  await waitForSimTicks(page, 9);
+  await wait('reset-before-assisted-mode', () => resetPlayerForProbe(page, {
+    mode: 'assisted', rot: 0, vel: { x: 0, z: 95 }, boostEnergy: 100,
+  }));
+  await wait('ticks-assisted-mode', () => waitForSimTicks(page, 45));
+  const assistedModeDiagnostics = await wait('diagnostics-assisted-mode', () => getFlightDiagnostics(page));
+  const assistedMode = await wait('sample-assisted-mode', () => sampleShip(page));
+  await wait('reset-before-newtonian-mode', () => resetPlayerForProbe(page, {
+    mode: 'newtonian', rot: 0, vel: { x: 0, z: 95 }, boostEnergy: 100,
+  }));
+  await wait('ticks-newtonian-mode', () => waitForSimTicks(page, 45));
+  const newtonianMode = await wait('sample-newtonian-mode', () => sampleShip(page));
+  const modeDiagnostics = await wait('diagnostics-newtonian-mode', () => getFlightDiagnostics(page));
+  await wait('reset-after-mode-samples', () => resetPlayerForProbe(page, {
+    mode: 'assisted', rot: 0, vel: { x: 0, z: 0 }, boostEnergy: 100,
+  }));
+  await wait('ticks-after-mode-samples', () => waitForSimTicks(page, 9));
 
   step('diagnostics');
-  const diagnostics = await getFlightDiagnostics(page);
-  const sg02Diagnostics = await enableSg02DynamicBackend(page);
+  const diagnostics = await wait('diagnostics-final', () => getFlightDiagnostics(page));
+  const sg02Diagnostics = await wait('diagnostics-sg02', () => enableSg02DynamicBackend(page));
   step('canvas');
-  const canvasShot = await screenshotCanvas(page);
-  const pixels = await sampleCanvas(page, canvasShot);
+  const canvasShot = await wait('screenshot-canvas', () => screenshotCanvas(page));
+  const pixels = await wait('sample-canvas', () => sampleCanvas(page, canvasShot));
   const suffix = cleanRuns > 1 ? `-run${runIndex}` : '';
   let screenshot = null;
   if (writeShots) {
-    await mkdir(outDir, { recursive: true });
+    await wait('mkdir-output', () => mkdir(outDir, { recursive: true }));
     screenshot = join(outDir, `flight-probe-${viewport.name}${suffix}.png`);
-    await writeFile(screenshot, canvasShot);
+    await wait('write-screenshot', () => writeFile(screenshot, canvasShot));
   }
 
   const ignoredPlatformWarnings = pageIssues.issues.filter(isIgnorablePlatformShaderCompilerWarning);
@@ -240,10 +306,13 @@ async function runViewportProbe(browser, viewport, runIndex) {
     noConsoleWarnings: !strictWarnings || warningSummary.clean,
   };
 
+  phaseTracker.complete('sample-started');
+  phaseTracker.mark('sample-complete', { viewport: viewport.name });
   return {
     run: runIndex,
     viewport: viewport.name,
     ok: Object.values(checks).every(Boolean),
+    phase: 'sample-complete',
     checks,
     initial,
     right,
@@ -269,10 +338,16 @@ async function runViewportProbe(browser, viewport, runIndex) {
     issues: summarizeIssues(includeWarningDetails ? issues : errorIssues),
     ignoredIssues: includeWarningDetails ? summarizeIssues(ignoredIssues) : [],
     screenshot,
+    phaseReport: phaseTracker.snapshot(),
   };
   } finally {
-    if (!page.isClosed()) {
-      try { await page.close(); } catch (_) {}
+    phaseTracker.start('cleanup-complete', { scope: 'viewport', viewport: viewport.name });
+    try {
+      if (!page.isClosed()) await wait('page-close', () => page.close(), { viewport: viewport.name });
+    } catch (error) {
+      logProgress(`run ${runIndex}/${cleanRuns} ${viewport.name} page-close failed: ${error.message}`);
+    } finally {
+      phaseTracker.complete('cleanup-complete');
     }
   }
 }
@@ -295,11 +370,15 @@ function compactProbeResult(result) {
     run: result.run,
     viewport: result.viewport,
     ok: result.ok,
+    phase: result.phase || result.phaseReport && result.phaseReport.current || null,
+    awaitedOperation: result.awaitedOperation || null,
+    phaseReport: result.phaseReport || null,
     failedChecks: failedCheckNames(result.checks),
     checks: result.checks,
     warningSummary: result.warningSummary,
     issueCount: result.issueCount,
     ignoredIssueCount: result.ignoredIssueCount,
+    canvasStatus: result.canvasStatus || (result.pixels ? 'sampled' : 'not-sampled'),
     issues: result.issues,
     ignoredIssues: result.ignoredIssues,
     pixels: result.pixels && {
@@ -337,12 +416,13 @@ function compactProbeResult(result) {
 
 function failedCheckNames(checks) {
   return Object.entries(checks || {})
-    .filter(([, passed]) => !passed)
+    .filter(([, passed]) => passed === false)
     .map(([name]) => name);
 }
 
-function failedProbeResult(viewport, runIndex, err) {
+function failedProbeResult(viewport, runIndex, err, phaseTracker = null) {
   const message = String(err && err.stack || err && err.message || err || 'unknown probe failure');
+  const phaseReport = err && err.phaseReport || phaseTracker && phaseTracker.snapshot() || null;
   return {
     run: runIndex,
     viewport: viewport && viewport.name || 'unknown',
@@ -350,10 +430,10 @@ function failedProbeResult(viewport, runIndex, err) {
     retriable: isRetriableProbeError(message),
     checks: {
       probeCompleted: false,
-      noPageErrors: false,
-      noConsoleWarnings: false,
-      canvasNonBlank: false,
-      sg02DynamicReady: false,
+      noPageErrors: null,
+      noConsoleWarnings: null,
+      canvasNonBlank: null,
+      sg02DynamicReady: null,
     },
     warningSummary: { strict: strictWarnings, count: 0, clean: false, ignoredProbeWarnings: 0 },
     issueCount: 1,
@@ -361,8 +441,12 @@ function failedProbeResult(viewport, runIndex, err) {
     issues: [{ type: 'probeerror', text: message }],
     ignoredIssues: [],
     pixels: null,
+    canvasStatus: 'not-sampled',
     diagnostics: null,
     sg02Diagnostics: null,
+    phase: err && err.probePhase || phaseReport && phaseReport.current || 'unknown',
+    awaitedOperation: err && err.awaitedOperation || null,
+    phaseReport,
   };
 }
 
@@ -403,6 +487,8 @@ function summarizeProbeAttempt(result, attempt) {
   return {
     attempt,
     ok: result.ok,
+    phase: result.phase || result.phaseReport && result.phaseReport.current || null,
+    awaitedOperation: result.awaitedOperation || null,
     failedChecks: failedCheckNames(result.checks),
     issueCount: result.issueCount || 0,
     ignoredIssueCount: result.ignoredIssueCount || 0,
@@ -414,7 +500,7 @@ function isRetriableVisualProbeFailure(result) {
   if (result && result.retriable === true) return true;
   const checks = result && result.checks || {};
   const failedChecks = Object.entries(checks)
-    .filter(([, passed]) => !passed)
+    .filter(([, passed]) => passed === false)
     .map(([name]) => name);
   if (failedChecks.length === 1
     && failedChecks[0] === 'noConsoleWarnings'
@@ -471,6 +557,72 @@ function isRetriableLocalAssetLoadIssue(issue) {
   }
   if (issue.type !== 'warning') return false;
   return /Failed to fetch dynamically imported module: http:\/\/127\.0\.0\.1:\d+\//i.test(text);
+}
+
+async function waitForAuthoredLibraryReady(page, timeoutMs) {
+  const result = await page.evaluate(async (limitMs) => {
+    const state = window.SF && window.SF.state;
+    const render = state && state.render;
+    const ready = render && render.authoredPartLibraryReady;
+    if (!ready || typeof ready.then !== 'function') {
+      return {
+        status: 'missing',
+        mode: state && state.mode || null,
+        hasRenderer: !!(render && render.renderer),
+      };
+    }
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ status: 'timeout' }), Math.max(1, Number(limitMs) || 1));
+    });
+    const settled = Promise.resolve(ready).then(
+      async (library) => {
+        let usable = false;
+        try {
+          const partsLibrary = await import('/src/render/partsLibrary.js');
+          usable = !!(partsLibrary && typeof partsLibrary.isAuthoredPartLibraryUsable === 'function'
+            && partsLibrary.isAuthoredPartLibraryUsable(library));
+        } catch (error) {
+          return {
+            status: 'resolved-but-uninspectable',
+            error: error && error.message ? error.message : String(error),
+          };
+        }
+        return { status: usable ? 'resolved-usable' : 'resolved-unusable' };
+      },
+      (error) => ({
+        status: 'rejected',
+        error: error && error.message ? error.message : String(error),
+      }),
+    );
+    try {
+      return await Promise.race([settled, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }, timeoutMs);
+  if (!result || result.status !== 'resolved-usable') {
+    throw new Error(`authored library readiness ${result && result.status || 'unknown'}: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function waitForFirstPlayableFrame(page, timeoutMs) {
+  return page.waitForFunction(
+    () => {
+      const state = window.SF && window.SF.state;
+      const canvas = document.getElementById('gl-canvas');
+      return !!(state
+        && state.mode === 'flight'
+        && state.render
+        && Number.isFinite(state.render.firstPlayableFrameAt)
+        && canvas
+        && canvas.width > 0
+        && canvas.height > 0);
+    },
+    null,
+    { timeout: timeoutMs },
+  );
 }
 
 async function dismissTutorial(page) {

@@ -5,6 +5,12 @@ import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { finalizeVisualProbeResources } from './lib/visualProbeCleanup.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import {
+  awaitVisualProbeOperation,
+  awaitVisualProbePhase,
+  createVisualProbePhaseTracker,
+  phaseError,
+} from './lib/visualProbePhases.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_FRAMES = 360;
@@ -25,6 +31,7 @@ const AUTHORED_BODY_PROOF = Object.freeze({
   minPlayerScreenRadiusPx: 18,
 });
 const DEFAULT_FLIGHT_START_TIMEOUT_MS = 90000;
+const NAVIGATION_TIMEOUT_MS = 90_000;
 const WIDTH = readIntArg('--width', 1440);
 const HEIGHT = readIntArg('--height', 900);
 const FRAME_COUNT = readIntArg('--frames', DEFAULT_FRAMES);
@@ -32,32 +39,92 @@ const WARMUP_FRAMES = Math.min(readIntArg('--warmup-frames', DEFAULT_WARMUP_FRAM
 const SF_BOOT_TIMEOUT_MS = readIntArg('--boot-timeout', Number(process.env.SF_VISUAL_STABILITY_BOOT_MS) || 90000);
 const FLIGHT_START_TIMEOUT_MS = readIntArg('--flight-timeout', DEFAULT_FLIGHT_START_TIMEOUT_MS);
 
-const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let probeError = null;
+let probeOutput = null;
+const phaseTracker = createVisualProbePhaseTracker();
+const { chromium } = await awaitVisualProbeOperation(
+  phaseTracker,
+  'playwright-load',
+  () => loadPlaywright(),
+);
 
 try {
   const requestedBaseUrl = process.env.SF_PROBE_URL || '';
-  server = await acquireVisualProbeServer({ explicitUrl: requestedBaseUrl, root: ROOT });
-  browser = await launchProbeBrowser();
-  const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
+  server = await awaitVisualProbePhase(
+    phaseTracker,
+    'server-ready',
+    () => acquireVisualProbeServer({ explicitUrl: requestedBaseUrl, root: ROOT }),
+    { requestedBaseUrl: requestedBaseUrl || null },
+  );
+  browser = await awaitVisualProbeOperation(phaseTracker, 'browser-launch', () => launchProbeBrowser());
+  const page = await awaitVisualProbeOperation(
+    phaseTracker,
+    'new-page',
+    () => browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 }),
+    { viewport: { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 } },
+  );
   const pageIssues = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
 
-  await page.addInitScript(() => {
+  await awaitVisualProbeOperation(phaseTracker, 'add-init-script', () => page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
-  await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: SF_BOOT_TIMEOUT_MS });
-  await page.evaluate(() => {
+  }));
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'document-loaded',
+    () => page.goto(withDebugFlight(server.baseUrl), {
+      waitUntil: 'domcontentloaded',
+      timeout: NAVIGATION_TIMEOUT_MS,
+    }),
+    { url: withDebugFlight(server.baseUrl), timeoutMs: NAVIGATION_TIMEOUT_MS },
+  );
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'SF-boot-ready',
+    () => page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, {
+      timeout: SF_BOOT_TIMEOUT_MS,
+    }),
+    { timeoutMs: SF_BOOT_TIMEOUT_MS },
+  );
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'authored-library-ready',
+    () => waitForAuthoredLibraryReady(page, SF_BOOT_TIMEOUT_MS),
+    { timeoutMs: SF_BOOT_TIMEOUT_MS },
+  );
+  await awaitVisualProbeOperation(phaseTracker, 'game:new-and-close-ui', () => page.evaluate(() => {
     window.SF.bus.emit('game:new', { name: 'Visual Stability Probe', seed: 47 });
     window.SF.bus.emit('ui:closeAll', {});
-  });
+  }));
 
-  await waitForPlayableFlight(page, FLIGHT_START_TIMEOUT_MS);
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'flight-ready',
+    () => waitForPlayableFlight(page, FLIGHT_START_TIMEOUT_MS, phaseTracker),
+    { timeoutMs: FLIGHT_START_TIMEOUT_MS },
+  );
 
-  await page.waitForTimeout(750);
-  const stability = await sampleVisualStability(page, {
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'first-playable-frame',
+    () => waitForFirstPlayableFrame(page, FLIGHT_START_TIMEOUT_MS),
+    { timeoutMs: FLIGHT_START_TIMEOUT_MS },
+  );
+  await awaitVisualProbeOperation(phaseTracker, 'settle-after-first-frame', () => page.waitForTimeout(750));
+  await awaitVisualProbePhase(
+    phaseTracker,
+    'scene-isolated',
+    () => page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      return {
+        mode: state && state.mode || null,
+        playerId: state && state.playerId || null,
+        currentSectorId: state && state.world && state.world.currentSectorId || null,
+      };
+    }),
+  );
+  const stability = await awaitVisualProbePhase(phaseTracker, 'sample-started', () => sampleVisualStability(page, {
     frames: FRAME_COUNT,
     warmupFrames: WARMUP_FRAMES,
     minInspectedFrames: DEFAULT_MIN_INSPECTED_FRAMES,
@@ -66,10 +133,11 @@ try {
     playerMinVisibleAuthoredSurfaces: PLAYER_MIN_VISIBLE_AUTHORED_SURFACES,
     playerWholeShipMinVisibleAuthoredSurfaces: PLAYER_WHOLE_SHIP_MIN_VISIBLE_AUTHORED_SURFACES,
     authoredBodyProof: AUTHORED_BODY_PROOF,
-  });
+  }));
+  phaseTracker.mark('sample-complete');
   const errorIssues = pageIssues.errorIssues();
   const ok = stability.failures.length === 0 && errorIssues.length === 0;
-  console.log(JSON.stringify({
+  probeOutput = {
     ok,
     baseUrl: server.baseUrl,
     viewport: { width: WIDTH, height: HEIGHT },
@@ -77,12 +145,30 @@ try {
     warmupFrames: WARMUP_FRAMES,
     stability,
     pageErrors: summarizeIssues(errorIssues),
-  }, null, 2));
+  };
   if (!ok) process.exitCode = 1;
 } catch (error) {
-  probeError = error;
+  probeError = error && error.phaseReport ? error : phaseError(error, phaseTracker);
+  console.error(JSON.stringify({
+    ok: false,
+    phase: probeError.probePhase || phaseTracker.snapshot().current || 'unknown',
+    awaitedOperation: probeError.awaitedOperation || null,
+    error: probeError.message,
+    phases: probeError.phaseReport || phaseTracker.snapshot(),
+  }, null, 2));
 } finally {
-  await finalizeVisualProbeResources({ browser, server, primaryError: probeError });
+  phaseTracker.start('cleanup-complete', { scope: 'browser-and-server' });
+  try {
+    phaseTracker.beforeAwait('probe-cleanup');
+    await finalizeVisualProbeResources({ browser, server, primaryError: probeError });
+  } finally {
+    phaseTracker.complete('cleanup-complete');
+  }
+}
+
+if (probeOutput) {
+  probeOutput.phases = phaseTracker.snapshot();
+  console.log(JSON.stringify(probeOutput, null, 2));
 }
 
 async function sampleVisualStability(page, options) {
@@ -743,9 +829,9 @@ async function sampleVisualStability(page, options) {
   }, options);
 }
 
-async function collectStartupSnapshot(page) {
+async function collectStartupSnapshot(page, { includeLoaderDiagnostics = false } = {}) {
   try {
-    return await page.evaluate(async () => {
+    return await page.evaluate(async ({ includeLoaderDiagnostics }) => {
       const sf = window.SF || null;
       const state = sf && sf.state || null;
       const render = state && state.render || null;
@@ -760,7 +846,7 @@ async function collectStartupSnapshot(page) {
         : [];
       let loaderDiagnostics = null;
       try {
-        if (render && render.renderer) {
+        if (includeLoaderDiagnostics && render && render.renderer) {
           const [assetLoader, partsLibrary] = await Promise.all([
             import('./src/render/assetLoader.js'),
             import('./src/render/partsLibrary.js'),
@@ -793,26 +879,94 @@ async function collectStartupSnapshot(page) {
         ships,
         loaderDiagnostics,
       };
-    });
+    }, { includeLoaderDiagnostics });
   } catch (error) {
     return { error: error && error.message ? error.message : String(error) };
   }
 }
 
-async function waitForPlayableFlight(page, timeoutMs) {
+async function waitForPlayableFlight(page, timeoutMs, tracker = null) {
+  const wait = (operation, fn, detail = null) => tracker
+    ? awaitVisualProbeOperation(tracker, operation, fn, detail)
+    : fn();
   const started = Date.now();
   let last = null;
   while (Date.now() - started < timeoutMs) {
-    await forceStartupRender(page);
-    last = await collectStartupSnapshot(page);
+    await wait('force-startup-render', () => forceStartupRender(page));
+    last = await wait('collect-startup-snapshot', () => collectStartupSnapshot(page));
     const ships = Array.isArray(last && last.ships) ? last.ships : [];
     if (last && last.mode === 'flight' && last.playerId && ships.some((ship) =>
       ship.id === last.playerId && ship.alive !== false && ship.meshState === 'authored')) {
       return last;
     }
-    await page.waitForTimeout(150);
+    await wait('playable-flight-retry-delay', () => page.waitForTimeout(150));
   }
   throw new Error(`flight did not become playable before visual stability probe: ${JSON.stringify(last)}`);
+}
+
+async function waitForAuthoredLibraryReady(page, timeoutMs) {
+  const result = await page.evaluate(async (limitMs) => {
+    const state = window.SF && window.SF.state;
+    const render = state && state.render;
+    const ready = render && render.authoredPartLibraryReady;
+    if (!ready || typeof ready.then !== 'function') {
+      return {
+        status: 'missing',
+        mode: state && state.mode || null,
+        hasRenderer: !!(render && render.renderer),
+      };
+    }
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ status: 'timeout' }), Math.max(1, Number(limitMs) || 1));
+    });
+    const settled = Promise.resolve(ready).then(
+      async (library) => {
+        try {
+          const partsLibrary = await import('/src/render/partsLibrary.js');
+          const usable = !!(partsLibrary && typeof partsLibrary.isAuthoredPartLibraryUsable === 'function'
+            && partsLibrary.isAuthoredPartLibraryUsable(library));
+          return { status: usable ? 'resolved-usable' : 'resolved-unusable' };
+        } catch (error) {
+          return {
+            status: 'resolved-but-uninspectable',
+            error: error && error.message ? error.message : String(error),
+          };
+        }
+      },
+      (error) => ({
+        status: 'rejected',
+        error: error && error.message ? error.message : String(error),
+      }),
+    );
+    try {
+      return await Promise.race([settled, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }, timeoutMs);
+  if (!result || result.status !== 'resolved-usable') {
+    throw new Error(`authored library readiness ${result && result.status || 'unknown'}: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function waitForFirstPlayableFrame(page, timeoutMs) {
+  return page.waitForFunction(
+    () => {
+      const state = window.SF && window.SF.state;
+      const canvas = document.getElementById('gl-canvas');
+      return !!(state
+        && state.mode === 'flight'
+        && state.render
+        && Number.isFinite(state.render.firstPlayableFrameAt)
+        && canvas
+        && canvas.width > 0
+        && canvas.height > 0);
+    },
+    null,
+    { timeout: timeoutMs },
+  );
 }
 
 async function forceStartupRender(page) {

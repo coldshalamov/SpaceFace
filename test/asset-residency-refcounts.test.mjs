@@ -10,6 +10,22 @@ import {
   createAssetResidencyRegistry,
   protectSharedGpuResource,
 } from '../src/render/assetResidency.js';
+import {
+  awaitVisualProbeOperation,
+  awaitVisualProbePhase,
+  createVisualProbePhaseTracker,
+  phaseError,
+} from '../scripts/lib/visualProbePhases.mjs';
+
+const RESIDENCY_NAVIGATION_TIMEOUT_MS = 90_000;
+const RESIDENCY_READY_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.SF_RESIDENCY_READY_TIMEOUT_MS) || 60_000,
+);
+const RESIDENCY_IN_PAGE_AWAIT_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.SF_RESIDENCY_IN_PAGE_AWAIT_TIMEOUT_MS) || 30_000,
+);
 
 function gpuResource(label, byteSize = 1024) {
   let disposals = 0;
@@ -414,40 +430,85 @@ test('thirty-sector traversal plateaus at current plus one warm generation', () 
 test('headless real release-GLB traversal plateaus through live sector events and preview leases', {
   timeout: 120_000,
 }, async () => {
+  const phaseTracker = createVisualProbePhaseTracker();
   const server = createGameServer({ root: ROOT, async: true, devDiagnostics: false });
-  await new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const address = server.address();
   const executablePath = [
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
   ].find(existsSync);
   let browser = null;
+  let page = null;
+  let probeFailure = null;
   try {
-    browser = await chromium.launch({
+    await awaitVisualProbePhase(phaseTracker, 'server-ready', () => new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    }), { host: '127.0.0.1', port: 'ephemeral' });
+    const address = server.address();
+    browser = await awaitVisualProbeOperation(phaseTracker, 'browser-launch', () => chromium.launch({
       headless: true,
       ...(executablePath ? { executablePath } : {}),
       args: ['--no-sandbox', '--disable-extensions'],
-    });
-    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    }));
+    page = await awaitVisualProbeOperation(
+      phaseTracker,
+      'new-page',
+      () => browser.newPage({ viewport: { width: 800, height: 600 } }),
+      { viewport: { width: 800, height: 600 } },
+    );
     const pageMessages = [];
     page.on('console', (message) => pageMessages.push(`${message.type()}: ${message.text()}`));
-    await page.goto(`http://127.0.0.1:${address.port}/?debug=flight`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => !!(
-      window.SF
-      && window.SF.state
-      && window.SF.state.render
-      && window.SF.state.render.renderer
-      && window.SF.state.render.authoredPartLibraryReady
-    ), null, { timeout: 20_000 });
-    await page.evaluate(() => window.SF.state.render.authoredPartLibraryReady);
+    const url = `http://127.0.0.1:${address.port}/?debug=flight`;
+    await awaitVisualProbePhase(phaseTracker, 'document-loaded', () => page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: RESIDENCY_NAVIGATION_TIMEOUT_MS,
+    }), { url, timeoutMs: RESIDENCY_NAVIGATION_TIMEOUT_MS });
+    await awaitVisualProbePhase(
+      phaseTracker,
+      'SF-boot-ready',
+      () => page.waitForFunction(() => !!(
+        window.SF
+        && window.SF.state
+        && window.SF.state.render
+        && window.SF.state.render.renderer
+      ), null, { timeout: RESIDENCY_READY_TIMEOUT_MS }),
+      { timeoutMs: RESIDENCY_READY_TIMEOUT_MS },
+    );
+    await awaitVisualProbePhase(
+      phaseTracker,
+      'authored-library-ready',
+      () => waitForAuthoredLibraryReadyInTest(page, RESIDENCY_READY_TIMEOUT_MS),
+      { timeoutMs: RESIDENCY_READY_TIMEOUT_MS },
+    );
 
-    const proof = await page.evaluate(async () => {
-      const loader = await import('/src/render/assetLoader.js');
-      const residencyModule = await import('/src/render/assetResidency.js');
+    const proof = await awaitVisualProbePhase(phaseTracker, 'sample-started', () => page.evaluate(async ({ inPageAwaitTimeoutMs }) => {
+      const traversalPhases = [];
+      let activePhase = null;
+      const markAwait = (phase, operation) => {
+        activePhase = { phase, operation };
+        traversalPhases.push({ ...activePhase, atMs: performance.now() });
+        window.__SF_REAL_RESIDENCY_TRAVERSAL_PHASE__ = { ...activePhase };
+      };
+      const awaitStep = async (phase, operation, fn) => {
+        markAwait(phase, operation);
+        let timer = null;
+        const timeout = new Promise((resolve, reject) => {
+          timer = setTimeout(() => reject(
+            new Error(`${phase}/${operation} timed out after ${inPageAwaitTimeoutMs}ms`),
+          ), inPageAwaitTimeoutMs);
+        });
+        try {
+          const value = await Promise.race([Promise.resolve().then(fn), timeout]);
+          clearTimeout(timer);
+          return value;
+        } catch (error) {
+          clearTimeout(timer);
+          throw new Error(`${phase}/${operation}: ${error && error.message ? error.message : String(error)}`);
+        }
+      };
+      const loader = await awaitStep('sample-started', 'import:assetLoader', () => import('/src/render/assetLoader.js'));
+      const residencyModule = await awaitStep('sample-started', 'import:assetResidency', () => import('/src/render/assetResidency.js'));
       const renderer = window.SF.state.render.renderer;
       const residency = residencyModule.getAssetResidency(renderer);
       const baseline = residency.canonicalDiagnostics();
@@ -516,7 +577,9 @@ test('headless real release-GLB traversal plateaus through live sector events an
       const settleResidency = async (label) => {
         const renderState = window.SF.state.render;
         const readiness = renderState.pipelinePrecompileReady;
-        if (readiness && typeof readiness.then === 'function') await readiness.catch(() => {});
+        if (readiness && typeof readiness.then === 'function') {
+          await awaitStep('authored-library-ready', `pipeline-precompile:${label}`, () => readiness);
+        }
         const deadline = performance.now() + 2_000;
         while (true) {
           const snapshot = residency.canonicalDiagnostics();
@@ -534,7 +597,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
               + `pending=${snapshot.pendingRequests}, prewarm=${JSON.stringify(boundaryRecords)}`,
             );
           }
-          await new Promise((resolve) => setTimeout(resolve, 20));
+          await awaitStep('sample-started', `residency-settle:${label}`, () => new Promise((resolve) => setTimeout(resolve, 20)));
         }
       };
       const files = [
@@ -560,19 +623,22 @@ test('headless real release-GLB traversal plateaus through live sector events an
         const sector = liveSectors[(index + 1) % liveSectors.length];
         const sectorId = sector.id;
         window.SF.bus.emit('sector:enter', { sectorId, sector });
-        await settleResidency(`sector-enter:${index}`);
+        await awaitStep('sample-started', `sector-enter:${index}:settle`, () => settleResidency(`sector-enter:${index}`));
         const lease = loader.createAuthoredAssetLease(renderer, {
           role: 'preview',
           sectorId,
           ownerId: `sector-preview-${sectorId}-${index}`,
         });
         const file = files[index % files.length];
-        const record = await lease.load(file.url, { slot: file.slot, optional: false });
+        const record = await awaitStep('sample-started', `preview-load:${index}:${file.url}`, () => lease.load(file.url, {
+          slot: file.slot,
+          optional: false,
+        }));
         if (!record || !record.primitives || record.primitives.length === 0) {
-          const runtime = await loader.getAuthoredAssetRuntimeInfo(renderer);
+          const runtime = await awaitStep('sample-started', `preview-diagnostics:${index}`, () => loader.getAuthoredAssetRuntimeInfo(renderer));
           throw new Error(`release GLB failed to decode for traversal sector ${index}: ${JSON.stringify(runtime)}`);
         }
-        await settleResidency(`preview-load:${index}`);
+        await awaitStep('sample-started', `preview-load:${index}:settle`, () => settleResidency(`preview-load:${index}`));
         const snapshot = residency.canonicalDiagnostics();
         const budget = residencyBudgets(snapshot);
         samples.push({
@@ -607,7 +673,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
           && ['RESERVED', 'PREPARING', 'PUBLISHING', 'ABORTING'].includes(record.state)
         ));
         if (previewAssets.length === 0 && final.pendingRequests === 0 && !activePrewarm) break;
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        await awaitStep('sample-started', 'final-eviction-settle', () => new Promise((resolve) => setTimeout(resolve, 20)));
         final = residency.canonicalDiagnostics();
       }
       return {
@@ -616,13 +682,17 @@ test('headless real release-GLB traversal plateaus through live sector events an
         final,
         finalBudget: residencyBudgets(final),
         evictionMs: performance.now() - evictionStartedAt,
+        traversalPhases,
       };
-    }).catch((error) => {
+    }, { inPageAwaitTimeoutMs: RESIDENCY_IN_PAGE_AWAIT_TIMEOUT_MS }).catch((error) => {
       throw new Error(`${error.message}\npage console:\n${pageMessages.slice(-20).join('\n')}`);
-    });
+    }));
+    phaseTracker.mark('sample-complete', { samples: proof.samples.length });
 
     const warmed = proof.samples.slice(3);
     assert.equal(proof.samples.length, 30, 'real traversal completes thirty live sector cycles');
+    assert.ok(proof.traversalPhases.some((entry) => /preview-load:/.test(entry.operation)),
+      'real traversal records the awaited release-GLB load phase');
     assert.ok(warmed.some((sample) => sample.assetSlot === 'hull')
       && warmed.some((sample) => sample.assetSlot === 'place'),
     'real traversal rotates both authored ship and place graphs');
@@ -645,8 +715,119 @@ test('headless real release-GLB traversal plateaus through live sector events an
     assert.ok(proof.evictionMs <= 2000, `preview eviction recovery took ${proof.evictionMs}ms`);
     assert.ok(proof.final.residentBytes <= proof.baseline.residentBytes,
       'real traversal returns to the mandatory bootstrap baseline');
+  } catch (error) {
+    probeFailure = error && error.phaseReport ? error : phaseError(error, phaseTracker);
   } finally {
-    if (browser) await browser.close();
-    await new Promise((resolve) => server.close(resolve));
+    phaseTracker.start('cleanup-complete', { scope: 'browser-and-server' });
+    try {
+      if (page) {
+        await awaitVisualProbeOperation(phaseTracker, 'page-close', () => closeTraversalResource(page));
+      }
+      if (browser) {
+        await awaitVisualProbeOperation(phaseTracker, 'browser-close', () => closeTraversalBrowser(browser));
+      }
+      if (server.listening) {
+        await awaitVisualProbeOperation(phaseTracker, 'server-close', () => closeTraversalServer(server));
+      }
+    } catch (error) {
+      process.stderr.write(`[asset-residency] cleanup phase failed: ${error.message}\n`);
+    } finally {
+      phaseTracker.complete('cleanup-complete');
+    }
+  }
+  if (probeFailure) {
+    throw new Error(
+      `${probeFailure.message}\nprobePhase=${probeFailure.probePhase || 'unknown'}\nphaseReport=${JSON.stringify(phaseTracker.snapshot())}`,
+      { cause: probeFailure },
+    );
   }
 });
+
+async function closeTraversalResource(resource, timeoutMs = 5_000) {
+  if (!resource || typeof resource.close !== 'function') return { closed: true };
+  let settled = false;
+  let closeError = null;
+  const closePromise = Promise.resolve()
+    .then(() => resource.close())
+    .then(() => { settled = true; }, (error) => { settled = true; closeError = error; });
+  await Promise.race([closePromise, delay(timeoutMs)]);
+  if (closeError) throw closeError;
+  return { closed: settled, forced: !settled };
+}
+
+async function closeTraversalBrowser(browser, timeoutMs = 5_000) {
+  const outcome = await closeTraversalResource(browser, timeoutMs);
+  if (outcome.closed) return outcome;
+  const processHandle = typeof browser.process === 'function' ? browser.process() : null;
+  try { processHandle?.kill?.(); } catch (_) {}
+  return { ...outcome, processKilled: !!processHandle };
+}
+
+async function closeTraversalServer(server, timeoutMs = 5_000) {
+  if (!server?.listening) return { closed: true };
+  let settled = false;
+  let closeError = null;
+  const closePromise = new Promise((resolve) => {
+    server.close((error) => {
+      settled = true;
+      closeError = error || null;
+      resolve();
+    });
+  });
+  await Promise.race([closePromise, delay(timeoutMs)]);
+  if (closeError) throw closeError;
+  if (settled) return { closed: true };
+  try { server.closeAllConnections?.(); } catch (_) {}
+  return { closed: false, forced: true };
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForAuthoredLibraryReadyInTest(page, timeoutMs) {
+  const result = await page.evaluate(async (limitMs) => {
+    const state = window.SF && window.SF.state;
+    const render = state && state.render;
+    const ready = render && render.authoredPartLibraryReady;
+    if (!ready || typeof ready.then !== 'function') {
+      return {
+        status: 'missing',
+        mode: state && state.mode || null,
+        hasRenderer: !!(render && render.renderer),
+      };
+    }
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ status: 'timeout' }), Math.max(1, Number(limitMs) || 1));
+    });
+    const settled = Promise.resolve(ready).then(
+      async (library) => {
+        try {
+          const partsLibrary = await import('/src/render/partsLibrary.js');
+          const usable = !!(partsLibrary && typeof partsLibrary.isAuthoredPartLibraryUsable === 'function'
+            && partsLibrary.isAuthoredPartLibraryUsable(library));
+          return { status: usable ? 'resolved-usable' : 'resolved-unusable' };
+        } catch (error) {
+          return {
+            status: 'resolved-but-uninspectable',
+            error: error && error.message ? error.message : String(error),
+          };
+        }
+      },
+      (error) => ({
+        status: 'rejected',
+        error: error && error.message ? error.message : String(error),
+      }),
+    );
+    try {
+      return await Promise.race([settled, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }, timeoutMs);
+  if (!result || result.status !== 'resolved-usable') {
+    throw new Error(`authored library readiness ${result && result.status || 'unknown'}: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
