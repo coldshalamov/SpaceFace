@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-30
-baseCommit: d2b67f9ee6ecfbf5f8e168fcfc1973261b48791a
+baseCommit: ba92ad9cc5a255915c93ca363f2bd0c8d5266ae3
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| Real residency traversal deadlock | `/root` + `/root/visual_probe_residency` | IMPLEMENTING | `test/asset-residency-refcounts.test.mjs`; Luna owns the isolated `src/render/renderer.js` fix | Integrate the renderer fix and rerun the single phase-aware traversal |
 
 ## Uncommitted work without a confirmed live thread
 

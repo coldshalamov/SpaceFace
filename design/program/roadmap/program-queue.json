@@ -8078,7 +8078,7 @@
       "priority": 356,
       "title": "Rover: the hero, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-131.00"
       ],
