@@ -10,6 +10,7 @@ import {
   createSectorBoundaryGenerationManager,
   disposePreparedSectorBoundary,
   isLiveSectorBoundaryRecordCurrent,
+  isSectorPrewarmEntityEligible,
   promoteSectorPrewarmAbortQuarantine,
   promoteSectorPrewarmGenerationInvalidation,
   pruneSettledSectorBoundaryRecords,
@@ -40,6 +41,51 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+test('exact sector boundary prewarm excludes generic and off-runway entities', () => {
+  const player = {
+    id: 1,
+    isPlayer: true,
+    alive: true,
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+  };
+  const state = {
+    playerId: 1,
+    player: { targetId: null },
+    entities: new Map([[1, player]]),
+    camera: { zoom: 144, liveZoom: 144, fov: 50, aspect: 16 / 9, tilt: 60 },
+    settings: { video: { fov: 50 } },
+  };
+  const record = { sectorId: 'sector_test' };
+  const genericNear = {
+    id: 2,
+    type: 'asteroid',
+    alive: true,
+    homeSectorId: 'sector_test',
+    pos: { x: 20, z: 0 },
+  };
+  const authoredNear = {
+    id: 3,
+    type: 'ship',
+    alive: true,
+    homeSectorId: 'sector_test',
+    pos: { x: 20, z: 0 },
+    data: { defId: 'ship_wasp' },
+  };
+  const authoredFar = {
+    ...authoredNear,
+    id: 4,
+    pos: { x: 8_000, z: 0 },
+  };
+
+  assert.equal(isSectorPrewarmEntityEligible(record, genericNear, state), false,
+    'the shared spawnable archetype list does not make a generic entity authored');
+  assert.equal(isSectorPrewarmEntityEligible(record, authoredNear, state), true,
+    'an exact authored identity on the entry runway joins hidden publication');
+  assert.equal(isSectorPrewarmEntityEligible(record, authoredFar, state), false,
+    'off-runway authored identities stay on ordinary bounded streaming');
+});
 
 async function flushMicrotasks() {
   await Promise.resolve();

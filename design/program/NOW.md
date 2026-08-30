@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Real residency traversal deadlock | `/root` + `/root/visual_probe_residency` | IMPLEMENTING | `test/asset-residency-refcounts.test.mjs`; Luna owns the isolated `src/render/renderer.js` fix | Integrate the renderer fix and rerun the single phase-aware traversal |
 
 ## Uncommitted work without a confirmed live thread
 

@@ -26,6 +26,10 @@ const RESIDENCY_IN_PAGE_AWAIT_TIMEOUT_MS = Math.max(
   1_000,
   Number(process.env.SF_RESIDENCY_IN_PAGE_AWAIT_TIMEOUT_MS) || 30_000,
 );
+const RESIDENCY_FLIGHT_TIMEOUT_MS = Math.max(
+  1_000,
+  Number(process.env.SF_RESIDENCY_FLIGHT_TIMEOUT_MS) || 90_000,
+);
 
 function gpuResource(label, byteSize = 1024) {
   let disposals = 0;
@@ -428,7 +432,10 @@ test('thirty-sector traversal plateaus at current plus one warm generation', () 
 });
 
 test('headless real release-GLB traversal plateaus through live sector events and preview leases', {
-  timeout: 120_000,
+  // Cold navigation and authored-library readiness have their own phase-labelled bounds above.
+  // Keep the outer test budget large enough for those bounds plus the 30-sector traversal and
+  // cleanup, so Node does not erase the actionable phase error first.
+  timeout: 480_000,
 }, async () => {
   const phaseTracker = createVisualProbePhaseTracker();
   const server = createGameServer({ root: ROOT, async: true, devDiagnostics: false });
@@ -480,6 +487,40 @@ test('headless real release-GLB traversal plateaus through live sector events an
       'authored-library-ready',
       () => waitForAuthoredLibraryReadyInTest(page, RESIDENCY_READY_TIMEOUT_MS),
       { timeoutMs: RESIDENCY_READY_TIMEOUT_MS },
+    );
+    await awaitVisualProbeOperation(
+      phaseTracker,
+      'game:new',
+      () => page.evaluate(() => window.SF.bus.emit('game:new', {
+        name: 'Residency Traversal Probe',
+        seed: 47,
+      })),
+    );
+    await awaitVisualProbePhase(
+      phaseTracker,
+      'flight-ready',
+      () => page.waitForFunction(() => {
+        const state = window.SF && window.SF.state;
+        const player = state && state.entities && state.entities.get(state.playerId);
+        return !!(state && state.mode === 'flight' && player && player.alive !== false);
+      }, null, { timeout: RESIDENCY_FLIGHT_TIMEOUT_MS }),
+      { timeoutMs: RESIDENCY_FLIGHT_TIMEOUT_MS },
+    );
+    await awaitVisualProbePhase(
+      phaseTracker,
+      'first-playable-frame',
+      () => page.waitForFunction(() => {
+        const state = window.SF && window.SF.state;
+        const canvas = document.getElementById('gl-canvas');
+        return !!(state
+          && state.mode === 'flight'
+          && state.render
+          && Number.isFinite(state.render.firstPlayableFrameAt)
+          && canvas
+          && canvas.width > 0
+          && canvas.height > 0);
+      }, null, { timeout: RESIDENCY_FLIGHT_TIMEOUT_MS }),
+      { timeoutMs: RESIDENCY_FLIGHT_TIMEOUT_MS },
     );
 
     const proof = await awaitVisualProbePhase(phaseTracker, 'sample-started', () => page.evaluate(async ({ inPageAwaitTimeoutMs }) => {
@@ -578,7 +619,68 @@ test('headless real release-GLB traversal plateaus through live sector events an
         const renderState = window.SF.state.render;
         const readiness = renderState.pipelinePrecompileReady;
         if (readiness && typeof readiness.then === 'function') {
-          await awaitStep('authored-library-ready', `pipeline-precompile:${label}`, () => readiness);
+          try {
+            await awaitStep('authored-library-ready', `pipeline-precompile:${label}`, () => readiness);
+          } catch (error) {
+            const renderSystem = window.SF.registry && window.SF.registry.get('render');
+            const summarizePrewarm = (record) => {
+              if (!record) return null;
+              const boundaryRows = [...(record.boundaryRecords || [])];
+              const boundaryStates = {};
+              for (const prepared of boundaryRows) {
+                const key = prepared?.state || 'UNKNOWN';
+                boundaryStates[key] = (boundaryStates[key] || 0) + 1;
+              }
+              return {
+                sectorId: record.sectorId,
+                generation: record.generation,
+                active: record.active,
+                requestCount: record.requests?.length || 0,
+                requestKeyCount: record.requestKeys?.size || 0,
+                boundaryRevision: record.boundaryRevision,
+                boundaryCount: boundaryRows.length,
+                boundaryStates,
+                boundaryFailures: boundaryRows.filter((prepared) => prepared?.failure || prepared?.error)
+                  .slice(0, 8)
+                  .map((prepared) => ({
+                    id: prepared?.id,
+                    state: prepared?.state,
+                    failure: prepared?.failure?.message || prepared?.error?.message || null,
+                  })),
+                liveBoundaryIds: [...(record.liveBoundaryPromises?.keys?.() || [])].slice(0, 12),
+                prefetchError: record.prefetchError?.message || null,
+                rotationCertificationRequired: record.rotationCertificationRequired === true,
+                certificationRevision: record.certification?.boundaryRevision ?? null,
+              };
+            };
+            const residencySnapshot = residency.canonicalDiagnostics();
+            const details = {
+              label,
+              currentSectorId: window.SF.state.world?.currentSectorId || null,
+              incoming: summarizePrewarm(renderSystem?._incomingSectorPrewarm),
+              pending: summarizePrewarm(renderSystem?._authoredSectorPrewarmPending),
+              current: summarizePrewarm(renderSystem?._currentSectorPrewarm),
+              pendingRequests: residencySnapshot.pendingRequests,
+              sectorAssets: residencySnapshot.assets.filter((asset) => (
+                asset.roles.includes('sector-prewarm')
+                  || asset.roles.includes('sector-prepared-boundary')
+                  || asset.roles.includes('sector-prepared-live-boundary')
+              )).slice(0, 12).map((asset) => ({
+                key: asset.key,
+                roles: asset.roles,
+                sectors: asset.sectors,
+              })),
+              preparationRecords: (() => {
+                const rows = typeof renderState.sectorBoundaryPrewarm?.inspect === 'function'
+                  ? renderState.sectorBoundaryPrewarm.inspect()
+                  : [];
+                const states = {};
+                for (const row of rows) states[row.state] = (states[row.state] || 0) + 1;
+                return { count: rows.length, states, sample: rows.slice(0, 12) };
+              })(),
+            };
+            throw new Error(`${error.message}; prewarm=${JSON.stringify(details)}`);
+          }
         }
         const deadline = performance.now() + 2_000;
         while (true) {
@@ -613,17 +715,24 @@ test('headless real release-GLB traversal plateaus through live sector events an
       const liveSectors = Object.values(window.SF.state.world && window.SF.state.world.sectors || {})
         .filter((sector) => sector && sector.id);
       if (liveSectors.length < 2) throw new Error('live traversal requires at least two authored sectors');
+      const worldSystem = window.SF.registry && window.SF.registry.get('world');
+      if (!worldSystem || typeof worldSystem.enterSector !== 'function') {
+        throw new Error('live traversal requires the registered world.enterSector production seam');
+      }
       const samples = [];
       let previousLease = null;
       let previousSector = window.SF.state.world && window.SF.state.world.currentSectorId || 'sector_helios_prime';
 
       for (let index = 0; index < 30; index++) {
-        window.SF.bus.emit('sector:exit', { sectorId: previousSector });
         if (previousLease) previousLease.release('real-runtime-sector-departed');
         const sector = liveSectors[(index + 1) % liveSectors.length];
         const sectorId = sector.id;
-        window.SF.bus.emit('sector:enter', { sectorId, sector });
-        await awaitStep('sample-started', `sector-enter:${index}:settle`, () => settleResidency(`sector-enter:${index}`));
+        worldSystem.enterSector(sectorId, {
+          fromJump: true,
+          via: 'residency-traversal',
+          fromSectorId: previousSector,
+        });
+        await settleResidency(`sector-enter:${index}`);
         const lease = loader.createAuthoredAssetLease(renderer, {
           role: 'preview',
           sectorId,
@@ -638,7 +747,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
           const runtime = await awaitStep('sample-started', `preview-diagnostics:${index}`, () => loader.getAuthoredAssetRuntimeInfo(renderer));
           throw new Error(`release GLB failed to decode for traversal sector ${index}: ${JSON.stringify(runtime)}`);
         }
-        await awaitStep('sample-started', `preview-load:${index}:settle`, () => settleResidency(`preview-load:${index}`));
+        await settleResidency(`preview-load:${index}`);
         const snapshot = residency.canonicalDiagnostics();
         const budget = residencyBudgets(snapshot);
         samples.push({
@@ -655,13 +764,19 @@ test('headless real release-GLB traversal plateaus through live sector events an
       }
 
       const evictionStartedAt = performance.now();
-      window.SF.bus.emit('sector:exit', { sectorId: previousSector });
       previousLease.release('real-runtime-traversal-complete');
       const drainSectorOne = liveSectors[1];
       const drainSectorTwo = liveSectors[2 % liveSectors.length];
-      window.SF.bus.emit('sector:enter', { sectorId: drainSectorOne.id, sector: drainSectorOne });
-      window.SF.bus.emit('sector:exit', { sectorId: drainSectorOne.id });
-      window.SF.bus.emit('sector:enter', { sectorId: drainSectorTwo.id, sector: drainSectorTwo });
+      worldSystem.enterSector(drainSectorOne.id, {
+        fromJump: true,
+        via: 'residency-traversal-drain',
+        fromSectorId: previousSector,
+      });
+      worldSystem.enterSector(drainSectorTwo.id, {
+        fromJump: true,
+        via: 'residency-traversal-drain',
+        fromSectorId: drainSectorOne.id,
+      });
       let final = residency.canonicalDiagnostics();
       while (performance.now() - evictionStartedAt <= 2000) {
         const previewAssets = final.assets.filter((asset) => asset.roles.includes('preview'));
@@ -699,7 +814,8 @@ test('headless real release-GLB traversal plateaus through live sector events an
     const cacheOnlyBytes = warmed.map((sample) => sample.cacheOnlyBytes);
     const unexplainedBytes = warmed.map((sample) => sample.unexplainedBytes);
     assert.ok(Math.max(...cacheOnlyBytes) <= 64 * 1024 * 1024,
-      'cache-only render-package residency stays inside the 64MiB residual budget');
+      `cache-only render-package residency stays inside the 64MiB residual budget `
+        + `(max=${Math.max(...cacheOnlyBytes)})`);
     assert.ok(Math.max(...unexplainedBytes) <= 64 * 1024 * 1024,
       'unexplained resident bytes stay inside the 64MiB residual budget');
     assert.ok(warmed.every((sample) => sample.previewAssets <= 2),

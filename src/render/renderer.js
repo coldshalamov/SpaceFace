@@ -621,6 +621,24 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
 }
 
+/** Exact hidden-boundary eligibility for an intentional sector entry.
+ *
+ * Package prefetch retains the sector's shared spawnable archetypes, but that shared list is not
+ * evidence that an individual entity has an authored presentation. Hidden publication is reserved
+ * only for real authored identities that are already on the entry glass/runway; everything farther
+ * away keeps the ordinary two-build streaming path instead of joining one whole-sector atomic gate.
+ */
+export function isSectorPrewarmEntityEligible(record, entity, state) {
+  if (!record || !entity || entity.alive === false || entity.id === state?.playerId) return false;
+  if (String(entitySectorId(entity) || '') !== String(record.sectorId || '')) return false;
+  if (!isEntityAuthoredUpgradeRelevant(entity, state)) return false;
+  return authoredPrewarmRequestsForEntities([entity], {
+    sectorId: record.sectorId,
+    playerId: state?.playerId,
+    includeSpawnableArchetypes: false,
+  }).length > 0;
+}
+
 /**
  * Service render residency without turning the ordinary distance poll into a full reconciliation.
  * Full scans remain the event-driven safety net; queued boundaries keep the established two-build
@@ -4137,7 +4155,15 @@ export const render = {
     });
     const sectorPrewarmRequests = (sectorId) => {
       const player = state.entities && state.entities.get(state.playerId);
-      return authoredPrewarmRequestsForEntities(state.entityList, {
+      const exactSectorId = String(sectorId || '');
+      const authoredRunwayEntities = (state.entityList || []).filter((entity) => (
+        entity
+          && entity.alive !== false
+          && entity.id !== state.playerId
+          && String(entitySectorId(entity) || '') === exactSectorId
+          && isEntityAuthoredUpgradeRelevant(entity, state)
+      ));
+      return authoredPrewarmRequestsForEntities(authoredRunwayEntities, {
         sectorId,
         playerId: state.playerId,
         playerPos: player && player.pos,
@@ -4149,15 +4175,9 @@ export const render = {
       record.boundaryRevision = (Number(record.boundaryRevision) || 0) + count;
       record.certification = null;
     };
-    const sectorPrewarmEntityIsEligible = (record, entity) => !!record
-      && !!entity
-      && entity.alive !== false
-      && entity.id !== state.playerId
-      && String(entitySectorId(entity) || '') === record.sectorId
-      && authoredPrewarmRequestsForEntities([entity], {
-        sectorId: record.sectorId,
-        playerId: state.playerId,
-      }).length > 0;
+    const sectorPrewarmEntityIsEligible = (record, entity) => (
+      isSectorPrewarmEntityEligible(record, entity, state)
+    );
     const sectorPrewarmCoverageOptions = (record) => ({
       entities: state.entities,
       entityList: state.entityList,
@@ -4534,10 +4554,15 @@ export const render = {
           ? this._incomingSectorPrewarm
           : null);
       if (!pending) return;
-      appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
-        sectorId: pending.sectorId,
-        playerId: state.playerId,
-      }));
+      if (sectorPrewarmEntityIsEligible(pending, entity)) {
+        appendSectorPrewarmRequests(pending, authoredPrewarmRequestsForEntities([entity], {
+          sectorId: pending.sectorId,
+          playerId: state.playerId,
+          // The record already owns the global spawnable-archetype warm set. A single unrelated
+          // entity must not look authored merely because that shared list is non-empty.
+          includeSpawnableArchetypes: false,
+        }));
+      }
       stageSectorPrewarmBoundaries(pending, [entity]);
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
@@ -4778,6 +4803,14 @@ export const render = {
             }
           }
         }
+        // sector:exit performs an immediate and microtask cache sweep, but hidden-boundary teardown
+        // is asynchronous. A departed package can therefore lose its last presentation owner only
+        // after both exit sweeps have run. This settlement boundary is the first authoritative point
+        // where those releases are complete; reclaim cache-only package leases here so repeated
+        // jumps plateau instead of retaining every package ever traversed.
+        this._assetResidency?.releaseUnreferencedCacheOwners?.(
+          'sector-prewarm-settled-cache-only',
+        );
         this._publishAssetResidencyDiagnostics();
       });
       state.render.pipelinePrecompileReady = preparation;
