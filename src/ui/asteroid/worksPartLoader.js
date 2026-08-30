@@ -196,6 +196,12 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: GAS_TAP_HOOKS,
   }),
+  inclusion_kit: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_inclusion_kit.glb',
+    lod1: null,
+    slot: 'place',
+    hooks: Object.freeze([]),
+  }),
   place_works_conduit_power_straight: conduitPart('power', 'straight'),
   place_works_conduit_power_corner: conduitPart('power', 'corner'),
   place_works_conduit_power_t: conduitPart('power', 't'),
