@@ -43,7 +43,7 @@ export function runRenderUpdatePhase({
       render.renderFrame(alpha, frameDt, presentationFrame);
     }
   } catch (err) {
-    renderError = err;
+    renderError = reportRenderError(render, splitRender ? 'render.prepare' : 'render.frame', err);
   } finally {
     renderMs += clock() - t;
   }
@@ -64,7 +64,7 @@ export function runRenderUpdatePhase({
     try {
       if (!renderError && renderedPreparedScene) render.drawPreparedFrame();
     } catch (err) {
-      drawError = err;
+      drawError = reportRenderError(render, 'render.draw', err);
     } finally {
       renderMs += clock() - t;
       record('render', renderMs);
@@ -122,4 +122,34 @@ function defaultNow() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : 0;
+}
+
+function reportRenderError(render, stage, error) {
+  try {
+    if (render && typeof render.recordRenderError === 'function') {
+      render.recordRenderError(stage, error);
+    }
+  } catch (_) {
+    // Error reporting must not turn a contained render fault into a loop-killing diagnostic fault.
+  }
+  if (error && typeof error === 'object') {
+    try {
+      if (!error.renderStage) {
+        Object.defineProperty(error, 'renderStage', {
+          configurable: true,
+          enumerable: false,
+          value: stage,
+          writable: true,
+        });
+      }
+      const message = typeof error.message === 'string' ? error.message : String(error);
+      const prefix = `[${stage}]`;
+      if (!message.startsWith(prefix)) error.message = `${prefix} ${message}`;
+      return error;
+    } catch (_) {
+      // Some host errors are non-extensible; return the original object and preserve identity.
+      return error;
+    }
+  }
+  return new Error(`[${stage}] ${String(error)}`);
 }

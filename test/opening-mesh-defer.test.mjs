@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   applyFirstPlayablePaintRelease,
+  enqueueMissingMeshBuilds,
   freezeOpeningGraphPublication,
   releaseOpeningMeshDefer,
 } from '../src/render/renderer.js';
@@ -117,4 +118,35 @@ test('the paint release keeps working when the first painted frame is no longer 
   assert.equal(owner.state.render.firstPlayableFrameAt, undefined);
   assert.equal(owner._deferNoncriticalMeshStreaming, false);
   assert.equal(owner._firstPlayablePaintScheduled, false);
+});
+
+test('opening defer release preserves pending mesh ids for the next reconciliation pass', () => {
+  const transitions = [];
+  const owner = {
+    _deferNoncriticalMeshStreaming: true,
+    _meshReconcileDirty: false,
+    _openingFirstPicturePrepared: true,
+    _firstPlayablePaintScheduled: true,
+    _noteRenderContinuityTransition(reason, metadata) {
+      transitions.push({ reason, ...metadata });
+    },
+  };
+  releaseOpeningMeshDefer(owner, 'flight');
+
+  const queue = [11];
+  const queuedIds = new Set(queue);
+  enqueueMissingMeshBuilds(
+    [
+      { id: 11, type: 'ship' },
+      { id: 12, type: 'ship' },
+      { id: 13, type: 'asteroid' },
+    ],
+    new Map(),
+    queuedIds,
+    queue,
+  );
+
+  assert.equal(owner._meshReconcileDirty, true, 'release requests a follow-up mesh census');
+  assert.deepEqual(queue, [11, 12, 13], 'already-pending work stays queued while new ships are admitted first');
+  assert.deepEqual(transitions, [{ reason: 'opening-defer-release', mode: 'flight' }]);
 });

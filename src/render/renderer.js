@@ -90,6 +90,7 @@ import {
 } from './openingAdmission.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
+import { createRenderContinuityCensus } from './renderContinuityCensus.js';
 import {
   beginPostRenderTargetFrameOrigin,
   endPostRenderTargetFrameOrigin,
@@ -313,6 +314,16 @@ function isDebugRuntime() {
   return true;
 }
 const SF_DEBUG = isDebugRuntime();
+
+function renderContinuityRequested(query) {
+  if (!SF_DEBUG) return false;
+  if (typeof globalThis !== 'undefined' && globalThis.__SF_RENDER_CONTINUITY__ === true) return true;
+  if (!query || typeof query.get !== 'function') return false;
+  const value = query.get('renderContinuity')
+    ?? query.get('render-continuity')
+    ?? query.get('continuity');
+  return value === '' || value === '1' || value === 'true';
+}
 
 // ---- contact shadow disc (module-level cache so one texture serves all entities) ----------------
 let _shadowTex = null;
@@ -2642,6 +2653,9 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         this._contextLost = true;
+        this._noteRenderContinuityTransition('context-loss', {
+          generation: this._contextRecovery && this._contextRecovery.generation,
+        });
         this._authoredPreparationEpoch++;
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
@@ -2797,6 +2811,9 @@ export const render = {
                 }
                 return;
               }
+              this._noteRenderContinuityTransition('context-restored', {
+                generation: this._contextRecovery && this._contextRecovery.generation,
+              });
               this._publishAssetResidencyDiagnostics();
               bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
             });
@@ -3218,6 +3235,15 @@ export const render = {
     this._renderResidencyPollS = 0;
     this._sectorHandoffStreamHoldS = 0;
     this._sectorHandoffSectorId = null;
+    // Render continuity is a debug witness, never a normal-route traversal. It is constructed only
+    // for an explicit development opt-in (`?renderContinuity=1` or window.__SF_RENDER_CONTINUITY__).
+    this._renderContinuity = renderContinuityRequested(query)
+      ? createRenderContinuityCensus({ enabled: true })
+      : null;
+    this._renderContinuityTransition = null;
+    this._lastRenderError = null;
+    this._renderErrorCount = 0;
+    state.render.renderContinuity = this._renderContinuity;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -3242,6 +3268,11 @@ export const render = {
         settings: () => ({ video: { ...((state.settings && state.settings.video) || {}) } }),
         scenePools: () => getAuthoredInstancePoolDiagnostics(scene),
         post: () => this._getPostDiagnostics(),
+        continuity: () => this._renderContinuity
+          ? this._renderContinuity.getReport()
+          : null,
+        renderError: () => this._lastRenderError,
+        renderErrorCount: () => this._renderErrorCount,
         vfx: () => {
           const sys = ctx.registry && ctx.registry.get('vfx');
           return sys && typeof sys.inspect === 'function' ? sys.inspect() : {};
@@ -4460,9 +4491,11 @@ export const render = {
       includePrefetch: true,
     });
     bus.on('jump:chargeStart', ({ targetSectorId } = {}) => {
+      this._noteRenderContinuityTransition('sector-transition', { targetSectorId: targetSectorId ?? null });
       beginIncomingSectorPrewarm(targetSectorId);
     });
     bus.on('jump:chargeAbort', () => {
+      this._noteRenderContinuityTransition('sector-transition-aborted');
       const incoming = this._incomingSectorPrewarm;
       if (incoming) releaseSectorPrewarm(incoming, 'jump-charge-aborted');
       this._incomingSectorPrewarm = null;
@@ -4485,6 +4518,7 @@ export const render = {
       stageSectorPrewarmBoundaries(pending, [entity]);
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
+      this._noteRenderContinuityTransition('sector-transition', { sectorId: sectorId ?? null });
       const pending = this._authoredSectorPrewarmPending;
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!pending || pending.active !== true || pending.sectorId !== exactSectorId) return;
@@ -4493,6 +4527,7 @@ export const render = {
       }
     });
     bus.on('sector:exit', ({ sectorId } = {}) => {
+      this._noteRenderContinuityTransition('sector-residency', { sectorId: sectorId ?? null });
       if (this._assetResidency) {
         applySectorExitResidency(this._assetResidency, sectorId);
       }
@@ -4721,6 +4756,10 @@ export const render = {
       state.render.pipelinePrecompileReady = preparation;
     });
     bus.on('mode:changed', ({ mode } = {}) => {
+      this._noteRenderContinuityTransition(
+        mode === 'loading' ? 'loading-transition' : mode === 'flight' ? 'flight-transition' : 'mode-transition',
+        { mode },
+      );
       if (mode === 'loading') {
         this._openingEnvFrozen = false;
         releaseOpeningGraphPublication(this);
@@ -6221,7 +6260,14 @@ export const render = {
     // On change, reproject cached local meshes/camera/VFX by delta (entities stay galactic-global).
     if (this._frameMembrane) {
       const rebase = this._frameMembrane.sync(this.state);
-      if (rebase.changed) this._applyFrameOriginRebase(rebase.dx, rebase.dz);
+      if (rebase.changed) {
+        this._applyFrameOriginRebase(rebase.dx, rebase.dz);
+        this._noteRenderContinuityTransition('origin-rebase', {
+          originSequence: rebase.seq,
+          dx: rebase.dx,
+          dz: rebase.dz,
+        });
+      }
     }
     // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
     // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
@@ -6335,6 +6381,7 @@ export const render = {
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
+    this._sampleRenderContinuity(frameDt);
     if (useCpu) perf.recordRenderWork('prepareFrame', performance.now() - t0);
     return true;
   },
@@ -6572,6 +6619,96 @@ export const render = {
   renderFrame(alpha, frameDt, presentationFrame = null) {
     if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
     this.drawPreparedFrame();
+  },
+
+  /** Record a contained presentation failure with the stage that owns it. */
+  recordRenderError(stage, error, metadata = {}) {
+    const label = String(stage || 'render');
+    const detail = {
+      schema: 'spaceface.renderError.v1',
+      stage: label,
+      phase: label.replace(/^render[.:]?/, '') || label,
+      name: error && error.name ? String(error.name) : 'Error',
+      message: String(error && error.message ? error.message : error || 'Unknown render error').slice(0, 240),
+      frameId: Number.isFinite(metadata.frameId)
+        ? metadata.frameId
+        : Number.isFinite(this._entityFrame?.frameId) ? this._entityFrame.frameId : null,
+      mode: metadata.mode ?? this.state?.mode ?? null,
+      route: metadata.route ?? this._lastRenderPath ?? null,
+      contextLost: this._contextLost === true,
+    };
+    this._lastRenderError = detail;
+    this._renderErrorCount = (this._renderErrorCount || 0) + 1;
+    if (this.state && this.state.render) {
+      this.state.render.lastRenderError = detail;
+      this.state.render.renderErrorCount = this._renderErrorCount;
+    }
+    if (this._renderContinuity) {
+      this._renderContinuity.recordError(label, error, {
+        frame: detail.frameId,
+        mode: detail.mode,
+        route: detail.route,
+      });
+    }
+    return detail;
+  },
+
+  /** Retain a named transition so the debug census can distinguish authorized lifecycle gaps. */
+  _noteRenderContinuityTransition(reason, metadata = {}) {
+    if (!this._renderContinuity) return null;
+    const entry = {
+      reason: String(reason || 'lifecycle-transition'),
+      frame: Number.isFinite(this._entityFrame?.frameId) ? this._entityFrame.frameId : null,
+      ...metadata,
+    };
+    this._renderContinuityTransition = entry;
+    if (this._renderContinuity) this._renderContinuity.recordTransition(entry.reason, entry);
+    return entry;
+  },
+
+  recordRenderTransition(reason, metadata = {}) {
+    return this._noteRenderContinuityTransition(reason, metadata);
+  },
+
+  _sampleRenderContinuity(frameDt) {
+    const census = this._renderContinuity;
+    if (!census || !census.enabled) return null;
+    const queueLength = this._meshBuildQueue && this._meshBuildQueue.length || 0;
+    const queueHead = this._meshBuildQueueHead || 0;
+    const result = census.observe({
+      state: this.state,
+      entities: this.state && this.state.entityList,
+      entityMap: this.state && this.state.entities,
+      meshes: this._meshes,
+      scene: this.scene,
+      entityFrame: this._entityFrame,
+      snapshot: this._snapshotFence && this._snapshotFence.latestSnapshot(),
+      activityFrame: this._activityFrame,
+      currentSectorId: this.state && this.state.world && this.state.world.currentSectorId,
+      assetResidency: this.state && this.state.render && this.state.render.assetResidency,
+      asteroidInstancePool: this._asteroidInstancePool,
+      origin: this._frameMembrane && this._frameMembrane.origin,
+      originSequence: this._frameMembrane && this._frameMembrane.seq,
+      lifecycle: this._presentationFrame,
+      contextRecovery: this._contextRecovery,
+      authorizedTransition: this._renderContinuityTransition,
+      lastRenderError: this._lastRenderError,
+      frameId: this._entityFrame && this._entityFrame.frameId,
+      frameDt,
+      queue: {
+        deferred: this._deferNoncriticalMeshStreaming === true,
+        pending: Math.max(0, queueLength - queueHead),
+        head: queueHead,
+        scheduled: queueLength > queueHead,
+        opening: this._openingFirstPicturePrepared === true,
+        firstPicturePrepared: this._openingFirstPicturePrepared === true,
+      },
+    });
+    if (result && this.state && this.state.render) {
+      this.state.render.renderContinuityReport = result;
+      this._renderContinuityTransition = null;
+    }
+    return result;
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays
@@ -7155,6 +7292,9 @@ export function applyFirstPlayablePaintRelease(owner) {
 /** Opening defer must clear even if the first painted frame is no longer flight. */
 export function releaseOpeningMeshDefer(owner, mode) {
   if (!owner) return owner;
+  if (typeof owner._noteRenderContinuityTransition === 'function') {
+    owner._noteRenderContinuityTransition('opening-defer-release', { mode: mode ?? null });
+  }
   releaseOpeningGraphPublication(owner);
   owner._deferNoncriticalMeshStreaming = false;
   if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
