@@ -801,7 +801,10 @@ function careerChipHtml(chip, state) {
   const collapsed = !!chip.collapsed;
   const place = careerContactLocation(chip, state);
   const consequence = careerConsequencePreview(chip, state);
-  const placeLine = [place.contact, place.location].filter(Boolean).join(' · ');
+  // The contact slot repeats the professional path title on origin/ladder cards ("Hunter" under
+  // "WARRANT ORIGIN" on the Hunter card) — say it once: drop the contact when it IS the title.
+  const placeContact = (place.contact && place.contact !== title) ? place.contact : null;
+  const placeLine = [placeContact, place.location].filter(Boolean).join(' · ');
 
   let actions = '';
   if (chip.canOriginAccept) {
@@ -884,12 +887,12 @@ function careerChipHtml(chip, state) {
       : '')
     + (placeLine
       ? '<div class="sf-mlog-career-place" aria-label="'
-        + escapeHtml([place.contact ? ('Contact ' + place.contact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
+        + escapeHtml([placeContact ? ('Contact ' + placeContact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
         + '">'
-        + (place.contact
-          ? '<span class="sf-mlog-career-contact">' + escapeHtml(place.contact) + '</span>'
+        + (placeContact
+          ? '<span class="sf-mlog-career-contact">' + escapeHtml(placeContact) + '</span>'
           : '')
-        + (place.contact && place.location ? '<span class="sf-mlog-career-place-sep" aria-hidden="true"> · </span>' : '')
+        + (placeContact && place.location ? '<span class="sf-mlog-career-place-sep" aria-hidden="true"> · </span>' : '')
         + (place.location
           ? '<span class="sf-mlog-career-location">' + escapeHtml(place.location) + '</span>'
           : '')
@@ -1581,33 +1584,41 @@ export const missionLogScreen = {
       if (mgr) mgr.popScreen();
     });
 
+    // Scrollable body. Everything below the header scrolls as one ordinary block column. The old
+    // layout left these sections as direct flex children of the fixed-height modal, where the
+    // combined CURRENT ACTION + CAREER LADDER content overflowed: .sf-stage's min-height:0 let the
+    // recommend region collapse to a sliver, so its card painted over the career chips (the "ghost
+    // text"), and overflow:hidden sliced the last career card at the modal's bottom border.
+    const body = el('div', 'sf-mlog-body');
+    rootEl.appendChild(body);
+
     // Active missions section
     const activeH = el('div', 'sf-mlog-section-h', 'ACTIVE MISSIONS');
-    rootEl.appendChild(activeH);
+    body.appendChild(activeH);
 
     const list = el('div', 'sf-mlog-list sf-apron');
-    rootEl.appendChild(list);
+    body.appendChild(list);
     this._listEl = list;
 
     // Story context is retained in the data model but not painted as a parallel command card.
     // CURRENT ACTION below owns "what now"; the active list owns contract detail.
     const storyH = el('div', 'sf-mlog-section-h sf-mlog-section-story', 'STORY OBJECTIVE');
     storyH.hidden = true;
-    rootEl.insertBefore(storyH, activeH);
+    body.insertBefore(storyH, activeH);
     const storyEl = el('div', 'sf-mlog-story');
     storyEl.hidden = true;
-    rootEl.insertBefore(storyEl, activeH);
+    body.insertBefore(storyEl, activeH);
     this._storyHeader = storyH;
     this._storyEl = storyEl;
 
     // Replaces the equal-weight RECOMMENDED NEXT grid with one explicit command rail.
     const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'CURRENT ACTION');
     recH.id = 'sf-mlog-current-action-heading';
-    rootEl.insertBefore(recH, activeH);
+    body.insertBefore(recH, activeH);
     const recEl = el('div', 'sf-mlog-recommend sf-stage');
     recEl.setAttribute('role', 'region');
     recEl.setAttribute('aria-labelledby', recH.id);
-    rootEl.insertBefore(recEl, activeH);
+    body.insertBefore(recEl, activeH);
     this._recommendHeader = recH;
     this._recommendEl = recEl;
 
@@ -1616,25 +1627,25 @@ export const missionLogScreen = {
     const careerH = el('div', 'sf-mlog-section-h sf-mlog-section-career', 'CAREER LADDER');
     careerH.id = 'sf-mlog-career-heading';
     careerH.hidden = true;
-    rootEl.insertBefore(careerH, activeH);
+    body.insertBefore(careerH, activeH);
     const careerEl = el('div', 'sf-mlog-career-list');
     careerEl.setAttribute('role', 'region');
     careerEl.setAttribute('aria-labelledby', 'sf-mlog-career-heading');
     careerEl.hidden = true;
-    rootEl.insertBefore(careerEl, activeH);
+    body.insertBefore(careerEl, activeH);
     this._careerHeader = careerH;
     this._careerEl = careerEl;
 
     // Completed missions section
     const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
     compH.innerHTML = '<span>COMPLETED</span><button class="sf-mlog-toggle" type="button" aria-expanded="false" aria-controls="sf-mlog-completed-list">Show</button>';
-    rootEl.appendChild(compH);
+    body.appendChild(compH);
     this._compHeader = compH;
 
     const compList = el('div', 'sf-mlog-comp-list');
     compList.id = 'sf-mlog-completed-list';
     compList.style.display = 'none';
-    rootEl.appendChild(compList);
+    body.appendChild(compList);
     this._compListEl = compList;
     this._compVisible = false;
 
@@ -2217,6 +2228,8 @@ const CSS = `
   padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
   background: var(--sf-surface);
 }
+/* The one scroll region: header stays fixed, everything below scrolls as a normal block column. */
+.sf-mlog-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .sf-mlog-title, .sf-mlog-section-h, .sf-mlog-rec-label, .sf-mlog-card-type,
 .sf-mlog-story-beat, .sf-mlog-career-status, .sf-mlog-career-step, .sf-mlog-term b,
 .sf-mlog-command-fact b, .sf-mlog-receipt-outcome, .sf-mlog-comp-subhead, .sf-mlog-ending-code {
@@ -2383,7 +2396,7 @@ const CSS = `
 .sf-mlog-career-btn-abandon:hover:not(:disabled) { border-color: var(--sf-foe); color: var(--sf-foe); }
 .sf-mlog-career-btn-choice { border-color: var(--sf-goal-edge); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
 
-.sf-mlog-list { flex: 1; overflow-y: auto; padding: var(--sp-2) var(--sp-4) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
+.sf-mlog-list { padding: var(--sp-2) var(--sp-4) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
 .sf-mlog-empty { color: var(--sf-calm); font-size: 14px; padding: var(--sp-4) var(--sp-1); }
 
 .sf-mlog-card {

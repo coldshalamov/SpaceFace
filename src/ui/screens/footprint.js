@@ -39,6 +39,33 @@ const CONSEQUENCE_EMPTY_LABEL = 'NOTHING HUNTS YOU YET';
 const HEAT_GLYPHS = '░▒▓▣◇';
 const DRAWER_SORTS = Object.freeze(['time', 'delta']);
 
+const STYLE_ID = 'sf-footprint-style';
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  // Screen-local overrides only (the shared fp- grammar lives in styles/ui.css): the no-selection
+  // readout must size to its content instead of stretching to the apron's full height — the old
+  // full-height box was ~90% dead void — and its inline chart verb stays quiet (hairline + calm).
+  s.textContent = `
+  .fp-apron-grid { align-items: start; }
+  .fp-readout { align-self: start; }
+  .fp-readout-verb {
+    margin-top: 6px; padding: 5px 10px;
+    border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px);
+    background: transparent; color: var(--sf-calm);
+    font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3;
+    cursor: pointer; box-shadow: none;
+    transition: border-color var(--sf-t-latch, .12s) var(--sf-ease, ease), color var(--sf-t-latch, .12s) var(--sf-ease, ease);
+  }
+  .fp-readout-verb:hover { border-color: var(--sf-goal); color: var(--sf-paper); }
+  .fp-readout-verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+  .fp-readout-verb:active { transform: none; }
+  `;
+  document.head.appendChild(s);
+}
+
 function asNumber(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -280,6 +307,7 @@ export const footprintScreen = {
     rootEl.id = 'sf-footprint';
     rootEl.classList.add('sf-footprint', 'sf-instrument');
     rootEl.innerHTML = '';
+    injectStyle();
 
     const crest = document.createElement('section');
     crest.className = 'sf-crest';
@@ -720,7 +748,8 @@ export const footprintScreen = {
     if (!chain) {
       this._readout.innerHTML = `
         <h3 class="fp-readout-head">Trace a chain</h3>
-        <p class="fp-readout-line">Select an ACT, INCIDENT, STANDING, or CONSEQUENCE node to light its path.</p>`;
+        <p class="fp-readout-line">Select an ACT, INCIDENT, STANDING, or CONSEQUENCE node to light its path.</p>
+        <button type="button" class="fp-readout-verb" data-fp-verb="chart-empty">Show on chart</button>`;
       return;
     }
     const why = nodeWhy(node);
@@ -782,8 +811,11 @@ export const footprintScreen = {
       { id: 'bribe', label: 'BRIBE', state: v.bribeState },
       { id: 'find-accuser', label: 'FIND THE ACCUSER', state: v.accuser },
       { id: 'take-amends', label: 'TAKE AMENDS CONTRACT', state: v.amends },
-      { id: 'show-chart', label: 'SHOW ON CHART', state: v.showChart },
     ];
+    // Exactly ONE "Show on chart" control at a time: with a chain selected the rail verb carries
+    // it (active when the chain is tied to a place); with no selection the readout's quiet inline
+    // verb is the only route to the chart, so the disabled duplicate card is dropped entirely.
+    if (this._selectedChain()) defs.push({ id: 'show-chart', label: 'SHOW ON CHART', state: v.showChart });
     const html = defs.map((entry) => {
       const disabled = entry.state.enabled ? '' : ' disabled';
       const reason = entry.state.reason || '';
@@ -1080,6 +1112,13 @@ export const footprintScreen = {
     const chain = this._selectedChain();
     const status = this._verbState();
     if (!state || !bus) return;
+    if (verbId === 'chart-empty') {
+      // No-selection readout verb: open the chart unframed. The rail's chain-framed verb is the
+      // active twin once a chain is selected; this one stays honest about having no target.
+      openGalaxyMap(this._ctx, { focus: MAP_FOCUS.GALAXY, source: 'footprint-readout-empty' });
+      bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     if (verbId === 'pay-bounty' && status.payBounty.enabled) {
       const payload = { source: 'footprint' };
       bus.emit('economy:payBounty', payload);

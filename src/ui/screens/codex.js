@@ -174,7 +174,13 @@ function injectStyle() {
     .sf-codex-beat.current { border-left-color: Highlight; }
   }
   .sf-codex.sf-menu h1 { color: var(--sf-paper); }
-  .sf-codex.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  /* No accent tick beside the title — the hairline divider under the crest is the only rule. */
+  .sf-codex.sf-menu h1::before { display: none; }
+  /* The status box is a stacked panel, not the crest's space-between row: as a row it squeezed the
+     stat grid into a one-tile column (sliced at the pane edge) and left the right half empty. */
+  .sf-codex .sf-codex-status.sf-crest {
+    flex-direction: column; align-items: stretch; gap: var(--sp-2);
+  }
   @media (prefers-reduced-motion: reduce) {
     .sf-codex, .sf-codex * { animation: none !important; transition: none !important; }
   }

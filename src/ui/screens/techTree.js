@@ -259,32 +259,32 @@ function buildLayout(nodes) {
     bucketCount[key] = slot + 1;
     layout[n.id] = { depth: d, slot };
   }
-  // compute x by branch column (each branch reserves enough columns for its widest bucket)
-  const branchMaxSlot = {};
+  // Branch band rows: each branch wraps onto its own horizontal band instead of reserving its own
+  // column band across one very wide canvas. The widest branch (combat, 6 slots) now bounds the
+  // canvas width (~1086px), so every card fits the scroll viewport at 100% zoom instead of the
+  // rightmost cards clipping mid-word against the details-panel divider. Total height grows and
+  // scrolls vertically — the natural axis for a .tt-scroll pane.
+  const branchRows = {};
   for (const n of nodes) {
-    const l = layout[n.id];
-    const cur = branchMaxSlot[n.branch] || 0;
-    if (l.slot + 1 > cur) branchMaxSlot[n.branch] = l.slot + 1;
+    branchRows[n.branch] = Math.max(branchRows[n.branch] || 0, layout[n.id].depth + 1);
   }
-  // branch base column offset
-  const branchBaseX = {};
-  let accCols = 0;
+  const branchTop = {};
+  let bandY = PAD_Y;
   for (const b of BRANCHES) {
-    branchBaseX[b.id] = accCols;
-    accCols += (branchMaxSlot[b.id] || 1);
+    branchTop[b.id] = bandY;
+    bandY += (branchRows[b.id] || 1) * (NODE_H + ROW_GAP) + ROW_GAP;
   }
   const positions = {};
   let maxX = 0, maxY = 0;
   for (const n of nodes) {
     const l = layout[n.id];
-    const col = branchBaseX[n.branch] + l.slot;
-    const x = PAD_X + col * (NODE_W + COL_GAP);
-    const y = PAD_Y + l.depth * (NODE_H + ROW_GAP);
+    const x = PAD_X + l.slot * (NODE_W + COL_GAP);
+    const y = (branchTop[n.branch] || 0) + l.depth * (NODE_H + ROW_GAP);
     positions[n.id] = { x, y };
     maxX = Math.max(maxX, x + NODE_W);
     maxY = Math.max(maxY, y + NODE_H);
   }
-  return { byId, positions, width: maxX + PAD_X, height: maxY + PAD_Y, branchBaseX, branchMaxSlot };
+  return { byId, positions, width: maxX + PAD_X, height: maxY + PAD_Y, branchTop };
 }
 
 export const techTreeScreen = {
@@ -368,8 +368,7 @@ export const techTreeScreen = {
       const my = ev.clientY - rect.top + scrollEl.scrollTop;
       const ratio = this._zoom / prevZoom;
 
-      this._canvas.style.transformOrigin = '0 0';
-      this._canvas.style.transform = `scale(${this._zoom})`;
+      this._applyZoom();
 
       // After scaling, adjust scroll to keep cursor-point stable
       scrollEl.scrollLeft = mx * ratio - (ev.clientX - rect.left);
@@ -388,6 +387,7 @@ export const techTreeScreen = {
     if (ctx) this._ctx = ctx;
     invalidateCanvasFonts();
     this._sizeCanvas();
+    this._fitZoom();
     this.refresh(this._ctx);
   },
 
@@ -442,10 +442,39 @@ export const techTreeScreen = {
     this._dpr = Math.min(window.devicePixelRatio || 1, 2);
     const lw = this._layout ? this._layout.width : 800;
     const lh = this._layout ? this._layout.height : 600;
-    this._canvas.style.width = lw + 'px';
-    this._canvas.style.height = lh + 'px';
     this._canvas.width = Math.round(lw * this._dpr);
     this._canvas.height = Math.round(lh * this._dpr);
+    this._applyZoom();
+  },
+
+  /**
+   * Scale the canvas ELEMENT to the zoom (layout box and paint scale together). The previous CSS
+   * transform left the layout box at 100%, so a zoomed-out view scrolled over blank canvas.
+   * Hit-testing already divides by _zoom, and canvasFontScaled compensates the drawn font sizes,
+   * so both stay correct under element scaling.
+   */
+  _applyZoom() {
+    if (!this._canvas || !this._layout) return;
+    const zoom = this._zoom || 1;
+    this._canvas.style.width = Math.round(this._layout.width * zoom) + 'px';
+    this._canvas.style.height = Math.round(this._layout.height * zoom) + 'px';
+    if (this._zoomBadge) this._zoomBadge.textContent = Math.round(zoom * 100) + '%';
+  },
+
+  /**
+   * First paint fits the whole DAG to the scroll viewport when that stays legible, and never goes
+   * past 100%. The floor is 0.9: below that the 12px type floor makes canvas fonts physically
+   * wider than the lines the node cards reserve (wrapText lineH 15px), so text would overlap —
+   * better to keep 100% and scroll. The branch-band layout already fits at 100% in normal windows;
+   * this only absorbs slightly narrow ones.
+   */
+  _fitZoom() {
+    if (!this._root || !this._layout) return;
+    const scrollEl = this._root.querySelector('.tt-scroll');
+    if (!scrollEl || !(scrollEl.clientWidth > 0)) return;
+    const fit = Math.min(1, scrollEl.clientWidth / Math.max(1, this._layout.width));
+    this._zoom = Math.max(0.9, Math.floor(fit * 100) / 100);
+    this._applyZoom();
   },
 
   _draw() {
@@ -461,15 +490,14 @@ export const techTreeScreen = {
     const roles = canvasRoles();
     const zoom = this._zoom || 1;
 
-    // branch column headers — MICRO, calm: branch identity is column + word, not hue
+    // branch band headers — MICRO, calm: branch identity is band + word, not hue
     g.textAlign = 'left'; g.textBaseline = 'top';
     for (const b of BRANCHES) {
-      const baseCol = this._layout.branchBaseX[b.id];
-      if (baseCol == null) continue;
-      const x = PAD_X + baseCol * (NODE_W + COL_GAP);
+      const top = this._layout.branchTop[b.id];
+      if (top == null) continue;
       g.fillStyle = roles.calm;
       g.font = canvasFontScaled(600, 12, zoom, 'subhead');
-      g.fillText(b.label.toUpperCase(), x, 14);
+      g.fillText(b.label.toUpperCase(), PAD_X, top - 22);
     }
 
     // ---- prereq edges ----

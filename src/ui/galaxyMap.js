@@ -2215,16 +2215,9 @@ const CSS = `
   min-height: var(--gm-header-h, 58px);
   box-sizing: border-box;
 }
-#sf-galaxymap .gm-head::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 22px;
-  width: 30%;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), #6b4a26 68%, transparent);
-  pointer-events: none;
-}
+/* The header's old ::before "worklight" (a 3px amber gradient strip pinned to the modal's
+   top-left) read as a stray clipped artifact and is a gradient accent fill — removed; the
+   hairline border-bottom is the header's only rule. */
 
 #sf-galaxymap .gm-title-lockup {
   display: flex;
@@ -2681,24 +2674,27 @@ const CSS = `
 #sf-galaxymap .gm-layer-btn.active { border-color: #8a6a3c; background: linear-gradient(180deg, #1a1d20, #131614); }
 #sf-galaxymap .gm-layer-btn.active .gm-layer-ico { color: var(--accent-3); }
 #sf-galaxymap .gm-layer-btn.active .gm-layer-name { color: var(--ink); }
+/* Lens key hues. The bright cyan (services) and bright purple (events/faction) diamonds moved to
+   desaturated identity anchors — blue #5b93d6, violet #a78bca family — matching their canvas
+   marks; the other lenses keep their existing hues. */
 #sf-galaxymap .gm-layer-btn[data-layer="route"] .gm-layer-state    { border-color: #e8a33d; }
 #sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #d9a054; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"] .gm-layer-state   { border-color: #58c98a; }
-#sf-galaxymap .gm-layer-btn[data-layer="events"] .gm-layer-state   { border-color: #d184ea; }
+#sf-galaxymap .gm-layer-btn[data-layer="events"] .gm-layer-state   { border-color: #a78bca; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"] .gm-layer-state { border-color: #ed6961; }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"] .gm-layer-state  { border-color: #b092e8; }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"] .gm-layer-state  { border-color: #8d83bd; }
 #sf-galaxymap .gm-layer-btn[data-layer="hazard"] .gm-layer-state   { border-color: #e0763d; }
-#sf-galaxymap .gm-layer-btn[data-layer="services"] .gm-layer-state { border-color: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="services"] .gm-layer-state { border-color: #5b93d6; }
 #sf-galaxymap .gm-layer-btn[data-layer="holdings"] .gm-layer-state { border-color: #8ec47a; }
 #sf-galaxymap .gm-layer-btn[data-layer="discovery"] .gm-layer-state{ border-color: #8ea6c8; }
 #sf-galaxymap .gm-layer-btn[data-layer="route"].active .gm-layer-state    { background: #e8a33d; }
 #sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #d9a054; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"].active .gm-layer-state   { background: #58c98a; }
-#sf-galaxymap .gm-layer-btn[data-layer="events"].active .gm-layer-state   { background: #d184ea; }
+#sf-galaxymap .gm-layer-btn[data-layer="events"].active .gm-layer-state   { background: #a78bca; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"].active .gm-layer-state { background: #ed6961; }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"].active .gm-layer-state  { background: #b092e8; }
+#sf-galaxymap .gm-layer-btn[data-layer="faction"].active .gm-layer-state  { background: #8d83bd; }
 #sf-galaxymap .gm-layer-btn[data-layer="hazard"].active .gm-layer-state   { background: #e0763d; }
-#sf-galaxymap .gm-layer-btn[data-layer="services"].active .gm-layer-state { background: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="services"].active .gm-layer-state { background: #5b93d6; }
 #sf-galaxymap .gm-layer-btn[data-layer="holdings"].active .gm-layer-state { background: #8ec47a; }
 #sf-galaxymap .gm-layer-btn[data-layer="discovery"].active .gm-layer-state{ background: #8ea6c8; }
 
@@ -6850,33 +6846,19 @@ export const galaxyMapScreen = {
   /**
    * OVERVIEW — never empty, and never a wall.
    *
-   * With a selection it shows that selection's detail. With NO selection it shows the four
-   * always-present navigation answers from `resolveMapNavContext` — the SAME object the on-canvas
-   * cartouche and the framing buttons read, so the panel and the chart cannot contradict each
-   * other about where the player is or where they are going. That reuse is the point: the old
-   * no-selection body re-derived a different set of facts (credits, cargo, heat, hull, trade
-   * lanes, quotes) and showed all of them at once.
+   * With a selection it shows that selection's detail. With NO selection it keeps only what the
+   * on-canvas cartouche does not already say: the pocket-careers line and the click hint. The four
+   * navigation answers (POSITION / TRACKING / DESTINATION / NEXT LEG) used to be repeated here
+   * verbatim from `resolveMapNavContext` — the same object `drawNavCartouche` renders onto the
+   * chart itself — so the panel read as a duplicated readout glued next to its own copy.
    */
   _overviewTabHtml(state, selectionHtml) {
     if (selectionHtml) return selectionHtml;
-    const ctx = this._navContext(state);
-    const rows = (ctx && ctx.rows) || [];
-    const rowsHtml = rows.map((row) => `
-      <div class="gm-nav-row" data-tone="${escapeMapHtml(row.tone)}">
-        <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
-        <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
-        ${row.detail ? `<span class="gm-nav-row-d">${escapeMapHtml(row.detail)}</span>` : ''}
-      </div>`).join('');
     // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
     // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
     // no-selection panel never grows a block that says nothing.
     const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
-      <div class="gm-ins-section">
-        <div class="gm-ins-kind">Survey table / Navigation</div>
-        <div class="gm-ins-target-name">Where you are</div>
-        ${rowsHtml}
-      </div>
       ${careersHtml}
       <div class="gm-ins-section">
         <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
@@ -8873,7 +8855,7 @@ export const galaxyMapScreen = {
         g.save();
         g.strokeStyle = eventSignal.wars > 0
           ? hexToRgba(INK.red, 0.74)
-          : 'rgba(177, 132, 228, 0.76)';
+          : 'rgba(167, 139, 202, 0.76)';
         g.lineWidth = 1.3 + Math.min(1.2, intensity * 0.22);
         g.setLineDash(eventSignal.wars > 0 ? [2.4, 2.6] : [4.2, 4.5]);
         g.beginPath(); g.arc(x, y, r + 10.5, 0, Math.PI * 2); g.stroke();
@@ -8884,10 +8866,10 @@ export const galaxyMapScreen = {
         const bx = x - r - 7;
         const by = y - r - 9;
         g.fillStyle = INK.plateHard;
-        g.strokeStyle = eventSignal.wars > 0 ? INK.red : '#b092e8';
+        g.strokeStyle = eventSignal.wars > 0 ? INK.red : '#a78bca';
         g.lineWidth = 1;
         g.beginPath(); g.rect(bx, by, bw, 11); g.fill(); g.stroke();
-        g.fillStyle = eventSignal.wars > 0 ? INK.red : '#d8c6ff';
+        g.fillStyle = eventSignal.wars > 0 ? INK.red : '#d5cbee';
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillText(badge, bx + bw / 2, by + 5.5);
@@ -8939,7 +8921,7 @@ export const galaxyMapScreen = {
         const sig = sectorSignalFor(state, n.id);
         if (sig && sig.contestMargin < 0.16) {
           g.save();
-          g.fillStyle = '#b092e8';
+          g.fillStyle = '#8d83bd';
           const bx = x + r + 7, by = y - r - 5;
           g.beginPath();
           g.moveTo(bx, by - 4); g.lineTo(bx + 4, by); g.lineTo(bx, by + 4); g.lineTo(bx - 4, by);
@@ -10690,11 +10672,11 @@ function drawServicePictograms(g, cx, cy, services) {
   let x = cx - totalW / 2 + size / 2;
   g.save();
   for (const svc of services) {
-    g.strokeStyle = 'rgba(86, 187, 178, 0.55)';
+    g.strokeStyle = 'rgba(91, 147, 214, 0.55)';
     g.fillStyle = INK.plateHard;
     g.lineWidth = 0.8;
     g.beginPath(); g.rect(x - size / 2, cy - size / 2, size, size); g.fill(); g.stroke();
-    drawServicePictogram(g, svc, x, cy, 3.4, INK.teal);
+    drawServicePictogram(g, svc, x, cy, 3.4, '#5b93d6');
     x += size + gap;
   }
   g.restore();

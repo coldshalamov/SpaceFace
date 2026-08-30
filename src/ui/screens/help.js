@@ -42,7 +42,17 @@ function injectStyle() {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
     letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
   }
-  .sf-help.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
+  /* No accent tick beside the title — hairline only. */
+  .sf-help.sf-menu h1::before { display: none; }
+  /* The crest is a space-between row in ui.css, which flung the tab's display heading to the
+     modal's top-right while the HELP kicker sat top-left. Stack them, left-aligned. */
+  .sf-help .sf-crest { flex-direction: column; align-items: flex-start; gap: 0; }
+  /* Scroll affordance: while more content sits below the fold, the pane's bottom edge fades out.
+     The class is toggled from scroll state, so it clears at the true bottom. */
+  .sf-help .sf-settings-pane.sf-scroll-below {
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  }
   .sf-help-now {
     font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
     color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0 0 var(--sp-2);
@@ -251,6 +261,7 @@ export const helpScreen = {
     body.style.overflowY = 'auto';
     body.style.flex = '1';
     body.style.minHeight = '0';
+    body.addEventListener('scroll', () => this._syncScrollAffordance(), { passive: true });
     rootEl.appendChild(body);
 
     const foot = el('div', 'sf-foot sf-apron');
@@ -309,6 +320,15 @@ export const helpScreen = {
       case 'Ores':      this._renderOres(); break;
       case 'Factions':  this._renderFactions(); break;
     }
+    this._syncScrollAffordance();
+  },
+
+  /** Fade the pane's bottom edge only while content actually continues below the fold. */
+  _syncScrollAffordance() {
+    const body = this._body;
+    if (!body) return;
+    const moreBelow = body.scrollTop + body.clientHeight < body.scrollHeight - 4;
+    body.classList.toggle('sf-scroll-below', moreBelow);
   },
 
   _renderControls(ctx) {
