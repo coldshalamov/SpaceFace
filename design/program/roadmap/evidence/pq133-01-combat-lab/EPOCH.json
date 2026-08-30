@@ -1,0 +1,59 @@
+{
+  "schema": "spaceface.program-evidence-epoch.v1",
+  "packetId": "PQ-133.01",
+  "candidateCommit": "78760ab2eb5f34de92cfd880a2e66969a0584d17",
+  "capturedOn": "2026-08-30",
+  "seed": 1864401122,
+  "setup": {
+    "hullId": "ship_hornet",
+    "starterId": "physics_toolkit",
+    "fittings": [
+      "wpn_concussion_cannon_m",
+      "wpn_gravity_marker_s",
+      "wpn_momentum_sink_s"
+    ],
+    "enemyPackageId": "wasp_flight",
+    "arenaId": "lagrange_crucible",
+    "sectorId": "sector_helios_prime",
+    "spawnPos": { "x": -500, "z": 800 },
+    "wave": 1
+  },
+  "routeResult": {
+    "browser": "PASS",
+    "electron": "PASS",
+    "ownedEnemies": 6,
+    "sameSeedRelaunch": "PASS",
+    "openingSubmissionAdmission": "PASS",
+    "pageAndRequestErrors": 0
+  },
+  "artifacts": [
+    {
+      "path": "lagrange-config.png",
+      "runtime": "browser",
+      "pixels": "1440x900",
+      "bytes": 892036,
+      "sha256": "85B6EE20CE2F6707F0A042F1D3A5386DB2EA32A006E9CADA95E4BD28A6BB1DE7"
+    },
+    {
+      "path": "lagrange-lab.png",
+      "runtime": "browser",
+      "pixels": "1440x900",
+      "bytes": 877597,
+      "sha256": "DC7BF75D7E0C16D72A798183ACD38BAC0654975185EF0DD1989A76D10FBB875D"
+    },
+    {
+      "path": "lagrange-config-electron.png",
+      "runtime": "electron",
+      "pixels": "1800x1125",
+      "bytes": 1250366,
+      "sha256": "779DD91229D7825B9F8389644F410F88B5B7AD7A56F3FB3AC97DF5A84E56AE16"
+    },
+    {
+      "path": "lagrange-lab-electron.png",
+      "runtime": "electron",
+      "pixels": "1800x1125",
+      "bytes": 1230626,
+      "sha256": "694668F2474D102350A01E0377FB1988F929CF74A3F3F96D3439EC2D9A74B8C9"
+    }
+  ]
+}

@@ -8385,7 +8385,7 @@
       "priority": 367,
       "title": "Combat Lab extension (Phase 1)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.00"
       ],
@@ -8405,7 +8405,9 @@
         "npm run check:save-schema",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-133.01.md"
+      ],
       "brief": "Extend the existing Sandbox on the real New Game path: orthogonal state.run contract (CRU-002), Combat Lab setup schema for hull/loadout/enemy package/arena/seed/wave (CRU-003), setup UI and same-seed restart (CRU-004), runtime controls pause/step/speed/refill/invuln (CRU-005), telemetry overlay v1 (CRU-006), build code v0 (CRU-007), one deterministic physics-swarm lab scenario (CRU-008). No scored run, no drafts, no modifiers, no new weapons."
     },
     {
