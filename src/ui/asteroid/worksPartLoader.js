@@ -4,8 +4,9 @@
 // That lease already binds KTX2Loader via detectSupport, shares the Basis transcoder, and admits
 // render packages. Do not construct a second KTX2Loader, transcoder path, or meshopt decoder here.
 //
-// Fail-closed on unknown ids (programmer error). Fail-open on assets: a load failure resolves to
-// null and the caller keeps its procedural mesh. Never mutate blueprint materials or geometry.
+// Fail-closed on unknown ids (programmer error). Asset-load failure resolves null and leaves the
+// caller to choose an explicit policy; accepted authored objects must not gain an implicit fallback.
+// Never mutate blueprint materials or geometry.
 import * as THREE from 'three';
 import {
   createAuthoredAssetLease,
@@ -531,9 +532,8 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       url,
       message: error && error.message ? error.message : String(error),
     };
-    // Loud on purpose. The authored rover is not accepted yet, so the caller keeps its procedural
-    // fallback and the screen stays playable — but a silent null here is exactly how a dead
-    // authored asset hid behind a working picture for weeks. Name it every time.
+    // Loud on purpose. A failed authored load returns no picture; silently substituting the
+    // retired procedural object is exactly how a dead release asset hid for weeks.
     console.error(`[worksPartLoader] authored works part "${id}" did not load from ${url}`, error);
     return null;
   }

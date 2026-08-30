@@ -89,6 +89,21 @@ try {
     await page.waitForTimeout(1500); // camera settle + first HUD frame
 
     const label = `${viewport.width}x${viewport.height}`;
+    await page.waitForFunction(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      const rover = hook && typeof hook.rover === 'function' ? hook.rover() : null;
+      return rover && rover.authored && rover.visible && rover.assetId === 'rover' && rover.cutterCount === 3;
+    }, null, { timeout: 15000 }).catch(() => {});
+    const roverRoute = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      return hook && typeof hook.rover === 'function' ? hook.rover() : null;
+    });
+    if (!roverRoute || !roverRoute.authored || !roverRoute.visible
+        || roverRoute.assetId !== 'rover' || roverRoute.cutterCount !== 3) {
+      failures.push(`${label}: PQ-131.01 authored Rover is absent or incomplete (${JSON.stringify(roverRoute)})`);
+    } else {
+      notes.push(`${label}: PQ-131.01 authored Rover visible with ${roverRoute.cutterCount} cutter LODs`);
+    }
     const result = await page.evaluate(({ BANNED }) => {
       const out = { problems: [], words: 0, wordList: [] };
       const screen = document.querySelector('.ast-screen');

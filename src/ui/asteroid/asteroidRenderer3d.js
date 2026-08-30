@@ -49,11 +49,11 @@ import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
 import {
-  makeRockMaterials, makeMachine, makeRover, metalMat,
+  makeRockMaterials, makeMachine, metalMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
-  makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
+  makeVaporPuffGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
 import {
@@ -66,6 +66,7 @@ import {
   GAS_TAP_HOOKS,
   MASSLINE_CORE_HOOKS,
   REFINERY_HOOKS,
+  ROVER_HOOKS,
   recordWorksInstanceResources,
   resolveWorksConduitPiece,
 } from './worksPartLoader.js';
@@ -180,6 +181,68 @@ export function createSingleFlightMount(run) {
     reset() { inFlight = null; },
     get armed() { return inFlight !== null; },
   };
+}
+
+// PQ-131.01 — the authored Rover is asynchronous, but the frame loop still needs stable transform
+// targets until its release GLB arrives. This scaffold owns no mesh, geometry, texture, or THREE
+// material: it can carry animation state without putting the retired procedural rover on camera.
+export function createRoverControlScaffold() {
+  const group = new THREE.Group();
+  group.name = 'rover_authored_pending';
+  const arm = new THREE.Object3D();
+  const auger = new THREE.Object3D();
+  const hopperLid = new THREE.Object3D();
+  const lampAnchor = new THREE.Object3D();
+  arm.add(auger);
+  group.add(arm, hopperLid, lampAnchor);
+  const signal = () => ({ emissive: new THREE.Color(0x000000), emissiveIntensity: 0 });
+  return {
+    group,
+    pulses: [],
+    authored: false,
+    pending: true,
+    scars: [],
+    dyn: {
+      body: group,
+      arm,
+      auger,
+      augerSlide: arm,
+      augerRestX: 0,
+      augerBiteX: 0,
+      bitMat: signal(),
+      bitMats: null,
+      hopperStages: [],
+      hopperLid,
+      lidOpenX: 0,
+      lidShutX: 0,
+      ventOffset: { x: 0, y: 0 },
+      lampAnchor,
+      lampMat: signal(),
+      lampMats: null,
+      cabGlass: signal(),
+      beacon: signal(),
+      beaconMats: null,
+      wheels: [],
+      setTrackPhase() {},
+    },
+  };
+}
+
+export function validateAuthoredRoverHooks(hooks) {
+  const table = hooks || {};
+  for (const name of ROVER_HOOKS) {
+    if (!table[name]) throw new Error(`[asteroidRenderer3d] authored Rover is missing ${name}`);
+  }
+  return table;
+}
+
+export function validateAuthoredRoverCutters(meshes) {
+  const list = Array.isArray(meshes) ? meshes : [];
+  const names = new Set(list.map((mesh) => mesh && mesh.name));
+  for (const name of ['LOD0_Bit', 'LOD1_Bit', 'LOD2_Bit']) {
+    if (!names.has(name)) throw new Error(`[asteroidRenderer3d] authored Rover is missing ${name}`);
+  }
+  return list;
 }
 
 // Module load REPORTS a divergence; it must never throw. uiRoot.registerScreens() swallows a
@@ -1720,32 +1783,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return null;
   }
   function bindAuthoredRover(group) {
-    const hooks = group.userData.worksHooks || {};
+    const hooks = validateAuthoredRoverHooks(group.userData.worksHooks);
     const seat = new THREE.Group();
     seat.name = 'rover_seat';
     seat.rotation.x = Math.PI / 2;
     seat.add(group);
-    const boom = hooks.boom_pivot || new THREE.Object3D();
-    const bit = hooks.bit_tip || new THREE.Object3D();
-    const lid = hooks.hopper_lid || new THREE.Object3D();
-    const lamp = hooks.lamp_socket || new THREE.Object3D();
-    const vent = hooks.vent_stack || new THREE.Object3D();
+    const boom = hooks.boom_pivot;
+    const bit = hooks.bit_tip;
+    const lid = hooks.hopper_lid;
+    const lamp = hooks.lamp_socket;
+    const vent = hooks.vent_stack;
     const fills = [];
     for (let i = 0; i < 5; i++) {
       const hook = hooks[`hopper_fill_${i}`];
-      const meshes = collectNamedMeshes(group, (n) => n === `hopper_fill_${i}` || n.endsWith(`_hopper_fill_${i}`));
-      if (hook) {
-        hook.visible = false;
-        fills.push(hook);
-      } else if (meshes.length) {
-        meshes.forEach((m) => { m.visible = false; });
-        fills.push(meshes[0]);
-      } else {
-        const dummy = new THREE.Object3D();
-        dummy.visible = false;
-        group.add(dummy);
-        fills.push(dummy);
-      }
+      hook.visible = false;
+      fills.push(hook);
     }
     const trackL = collectNamedMeshes(group, (n) => n === 'track_L' || n.endsWith('_track_L'));
     const trackR = collectNamedMeshes(group, (n) => n === 'track_R' || n.endsWith('_track_R'));
@@ -1787,7 +1839,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // export), and it is the only thing that heats. The whole vehicle shares ONE atlas material,
     // so heat MUST be driven on a per-mesh clone — writing emissive on the shared material lights
     // the tub, the tracks, the glass and the boom orange every time the drill warms up.
-    const cutterMeshes = (group.userData.worksCutterMeshes || []).slice();
+    const cutterMeshes = validateAuthoredRoverCutters(group.userData.worksCutterMeshes).slice();
     const cutterMats = [];
     for (let i = 0; i < cutterMeshes.length; i++) {
       const mesh = cutterMeshes[i];
@@ -3376,13 +3428,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     skate.hex = hex;
   }
 
-  // rover — a vehicle, not a dot. The container holds either the procedural fallback or the
-  // authored works part; pose (cell, facing) is applied here so a swap does not lose the seat.
+  // Rover pose lives on a stable container while the authored release part loads. Before that
+  // promise resolves the control scaffold is deliberately invisible; there is no procedural body.
   const rover = new THREE.Group();
   rover.name = 'rover';
   rover.visible = false;
   scene.add(rover);
-  let roverBuilt = makeRover(S, envMap);
+  let roverBuilt = createRoverControlScaffold();
   rover.add(roverBuilt.group);
   let authoredRoverGroup = null;
   // ONE standing authored rover per screen session. Setup arms the swap and begin() re-arms it,
@@ -3401,13 +3453,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     if (!group) return null;
     if (authoredRoverGroup === group) return group;
-    const authored = bindAuthoredRover(group);
+    let authored;
+    try {
+      authored = bindAuthoredRover(group);
+    } catch (error) {
+      loader.releaseWorksPart(group);
+      throw error;
+    }
     const previous = roverBuilt;
     const previousGroup = authoredRoverGroup;
     if (previous && previous.group && previous.group.parent === rover) {
       rover.remove(previous.group);
-      // A superseded AUTHORED seat draws with the lease's shared blueprint resources; only the
-      // procedural fallback owns geometry this renderer may dispose outright.
+      // A superseded authored seat draws with the lease's shared blueprint resources. The pending
+      // scaffold owns no render resources, so disposeGroup only detaches its transform tree.
       if (previous.authored) loader.releaseWorksPart(previousGroup);
       else disposeGroup(previous.group);
     } else if (previousGroup && previousGroup !== group) {
@@ -3418,14 +3476,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     roverBuilt = authored;
     authoredRoverGroup = group;
     rover.add(authored.group);
+    rover.visible = !!field;
     const lamp = roverBuilt.dyn.lampAnchor;
     headlight.position.copy(lamp.position);
     roverBuilt.dyn.body.add(headlight, headTarget);
     headlight.target = headTarget;
     roverScars.length = 0;
-    roverScarsShown = 0;
+    roverScarsShown = Math.min(eventLog.gasBreaches, authored.scars.length);
     for (let i = 0; i < authored.scars.length; i++) {
-      authored.scars[i].visible = false;
+      authored.scars[i].visible = i < roverScarsShown;
       roverScars.push(authored.scars[i]);
     }
     roverAnim.hopStage = -1;
@@ -3434,8 +3493,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function mountAuthoredRover() {
     if (worksTearingDown || disposed || glTeardownDone) return Promise.resolve(null);
     return authoredRoverMount.invoke().catch((error) => {
-      // Loud, and the procedural rover stays on camera: the authored swap is not accepted yet.
-      console.error('[asteroidRenderer3d] authored rover swap failed; the procedural rover stands', error);
+      // Loud and honest: a broken authored asset leaves the Rover absent instead of silently
+      // substituting the retired procedural picture.
+      console.error('[asteroidRenderer3d] authored rover mount failed; no rover was installed', error);
       return null;
     });
   }
@@ -3446,9 +3506,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     authoredRoverMount.reset();
     const group = authoredRoverGroup;
     authoredRoverGroup = null;
-    if (!group) return;
-    if (group.parent) group.parent.remove(group);
-    if (worksLoader) worksLoader.releaseWorksPart(group);
+    rover.visible = false;
+    if (!group && roverBuilt.pending) return;
+    if (headlight.parent) headlight.parent.remove(headlight);
+    if (headTarget.parent) headTarget.parent.remove(headTarget);
+    if (roverBuilt.group && roverBuilt.group.parent === rover) rover.remove(roverBuilt.group);
+    if (group && worksLoader) worksLoader.releaseWorksPart(group);
+    roverScars.length = 0;
+    roverScarsShown = 0;
+    roverBuilt = createRoverControlScaffold();
+    rover.add(roverBuilt.group);
+    headlight.position.copy(roverBuilt.dyn.lampAnchor.position);
+    roverBuilt.dyn.body.add(headlight, headTarget);
+    headlight.target = headTarget;
   }
   // ONE headlamp, and it is a real light (law §4): a warm cone out of the lamp housings onto the
   // rock face the rig is working, with a modest shadow map so the boom and the auger throw their
@@ -3772,33 +3842,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const podMat = metalMat(0xb9b2a4, envMap);
   podMat.roughness = 0.44;
 
-  // BLAST SCARS on the rig's flank (law §5 "a visible scar/chip on the rover"). Three plates are
-  // welded onto the chassis at build time and start hidden; each breach shows one more, so the
-  // vehicle carries the shift's history the way the hopper carries the hold. Scorched paint is
-  // paint that has stopped being paint: near-black, rough, barely any spec — it reads as damage
-  // beside the safety yellow instead of as a decal printed on it.
-  const scarGeos = [makeScorchPlateGeo(0), makeScorchPlateGeo(1), makeScorchPlateGeo(2)];
-  const scarMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2018, roughness: 0.95, metalness: 0.08, envMap, envMapIntensity: 0.18,
-  });
-  {
-    const SCAR_AT = [
-      [S * -0.12, S * 0.10, S * 0.19, 0.35, S * 0.30],
-      [S * 0.16, S * -0.02, S * 0.19, -0.7, S * 0.24],
-      [S * -0.26, S * 0.20, S * 0.19, 1.1, S * 0.21],
-    ];
-    for (let i = 0; i < scarGeos.length; i++) {
-      const [x, y, z, rz, sc] = SCAR_AT[i];
-      const m = new THREE.Mesh(scarGeos[i], scarMat);
-      m.position.set(x, y, z);
-      m.rotation.z = rz;
-      m.scale.setScalar(sc);
-      m.castShadow = false;
-      m.visible = false;
-      roverBuilt.dyn.body.add(m);
-      roverScars.push(m);
-    }
-  }
   void mountAuthoredRover();
   void mountAuthoredInclusionKit();
 
@@ -3807,7 +3850,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, cellQuad, partGeo, chunkGeo,
     ...inclusionGeos.metal, ...inclusionGeos.ice, ...inclusionGeos.exotic, ...bandGeos,
     ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo,
-    ...vaporGeos, ...scarGeos, podGeo]);
+    ...vaporGeos, podGeo]);
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
@@ -7346,6 +7389,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     rendererInfo: snapshotRendererInfo,
     rendererPresentation: snapshotRendererPresentation,
     scenePassInfo: captureScenePass,
+    rover() {
+      return {
+        authored: authoredRoverGroup !== null && roverBuilt.authored === true,
+        visible: rover.visible,
+        pending: roverBuilt.pending === true,
+        assetId: authoredRoverGroup?.userData?.worksPartId || null,
+        cutterCount: Array.isArray(roverBuilt.cutters) ? roverBuilt.cutters.length : 0,
+      };
+    },
     worksStats() { return worksLoader ? worksLoader.stats() : null; },
     worksProofObserverAttached() { return !!worksHostObs; },
     worksProofArmed() { return !!worksProofArmed; },
@@ -8142,7 +8194,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     }
     rebuildCrackInstances();
-    rover.visible = true;
+    rover.visible = authoredRoverGroup !== null;
     pulseEntries = [
       ...roverBuilt.pulses,
       ...(derrickBuilt ? derrickBuilt.pulses : []),
@@ -8510,9 +8562,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     scene.remove(flashLight);
     if (podMesh) { scene.remove(podMesh); podMesh = null; }
     podMat.dispose();
-    for (const m of roverScars) { if (m.parent && !roverBuilt.authored) m.parent.remove(m); }
     roverScars.length = 0;
-    scarMat.dispose();
     releaseAuthoredRover();
     oreArcs.length = 0;
     vapors.length = 0;

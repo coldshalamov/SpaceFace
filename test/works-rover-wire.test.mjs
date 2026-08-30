@@ -23,8 +23,11 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 
 import {
+  createRoverControlScaffold,
   createSingleFlightMount,
   isolateWorksMeshMaterials,
+  validateAuthoredRoverCutters,
+  validateAuthoredRoverHooks,
 } from '../src/ui/asteroid/asteroidRenderer3d.js';
 import {
   createWorksPartLoader,
@@ -38,7 +41,44 @@ import {
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const SOURCE_GLB = resolve(ROOT, 'assets/ships/parts/works/place_works_rover.glb');
 const RELEASE_GLB = resolve(ROOT, 'assets/ships/release/parts/works/place_works_rover.glb');
+const PREVIEW_SOURCE = resolve(ROOT, 'src/render/asteroidInteriorPreview.js');
+const RENDERER_SOURCE = resolve(ROOT, 'src/ui/asteroid/asteroidRenderer3d.js');
 const CUTTER_NAMES = ['LOD0_Bit', 'LOD1_Bit', 'LOD2_Bit'];
+
+test('the pending Rover control scaffold cannot render a procedural stand-in', () => {
+  const scaffold = createRoverControlScaffold();
+  let meshes = 0;
+  scaffold.group.traverse((obj) => { if (obj.isMesh) meshes += 1; });
+  assert.equal(scaffold.pending, true);
+  assert.equal(scaffold.authored, false);
+  assert.equal(meshes, 0, 'the async-load scaffold owns transforms only');
+  assert.equal(scaffold.dyn.hopperStages.length, 0);
+  assert.equal(scaffold.dyn.wheels.length, 0);
+});
+
+test('the retired procedural Rover builder is absent from the live render path', () => {
+  assert.doesNotMatch(readFileSync(PREVIEW_SOURCE, 'utf8'), /\bmakeRover\b/);
+  assert.doesNotMatch(readFileSync(RENDERER_SOURCE, 'utf8'), /\bmakeRover\b/);
+});
+
+test('an authored Rover with a missing runtime hook fails closed', () => {
+  const hooks = Object.fromEntries(ROVER_HOOKS.map((name) => [name, new THREE.Object3D()]));
+  assert.equal(validateAuthoredRoverHooks(hooks), hooks);
+  delete hooks.bit_tip;
+  assert.throws(
+    () => validateAuthoredRoverHooks(hooks),
+    /authored Rover is missing bit_tip/,
+  );
+});
+
+test('an authored Rover missing any register cutter fails closed', () => {
+  const cutters = CUTTER_NAMES.map((name) => Object.assign(new THREE.Object3D(), { name }));
+  assert.equal(validateAuthoredRoverCutters(cutters), cutters);
+  assert.throws(
+    () => validateAuthoredRoverCutters(cutters.slice(0, 2)),
+    /authored Rover is missing LOD2_Bit/,
+  );
+});
 
 // ------------------------------------------------------------------ GLB reading
 
@@ -513,7 +553,7 @@ test('real rover lamp preparation isolates every LOD from the shared hull atlas'
   await loader.dispose('test');
 });
 
-test('a failed authored load reports a named diagnostic and leaves the caller its fallback', async () => {
+test('a failed authored load reports a named diagnostic and returns no substitute', async () => {
   const renderer = createMockRenderer();
   const lease = {
     isActive: () => true,
@@ -531,7 +571,7 @@ test('a failed authored load reports a named diagnostic and leaves the caller it
     console.error = realError;
   }
 
-  assert.equal(group, null, 'a load failure resolves null so the procedural rover stands');
+  assert.equal(group, null, 'a load failure resolves null; the renderer must not install a substitute');
   const stats = loader.stats();
   assert.equal(stats.failed, 1);
   assert.equal(stats.standing, 0, 'a failed load must not occupy the standing slot');
