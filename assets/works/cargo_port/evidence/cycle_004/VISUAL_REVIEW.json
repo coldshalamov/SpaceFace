@@ -1,0 +1,71 @@
+{
+  "schema": "spaceface.worksCargoPortVisualReview.v1",
+  "assetId": "place_works_cargo_port",
+  "cycle": 4,
+  "candidateSha256": "F4B8C87DF96FCE899C540E71F1ED76CFE2422D751DC5B1AB1214F2C0D1189614",
+  "reviewer": "cycle04_source_author",
+  "scope": "iteration_decision_not_gate_acceptance",
+  "originalResolutionInspection": true,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "viewsInspected": [
+    "works_top",
+    "works_edge",
+    "works_top_clay",
+    "works_edge_clay",
+    "works_top_grazing",
+    "works_top_normal",
+    "works_top_orm",
+    "works_top_matid",
+    "works_top_hooks",
+    "crate_stage_01",
+    "crate_stage_02",
+    "crate_stage_03",
+    "crate_stage_04",
+    "crate_stage_05",
+    "crate_stage_sheet",
+    "pod_seated_top",
+    "pod_seated_edge",
+    "pod_launch_clear_top",
+    "pod_launch_clear_edge",
+    "works_top_lod1",
+    "works_top_lod2",
+    "works_site",
+    "works_site_id",
+    "works_site_lod2"
+  ],
+  "changedZones": [
+    "D-shaped keyed docking opening with visible wall thickness and a dark floor, replacing the round portal/cool disc",
+    "one manufactured open C-clamp planted on the deck whose arms flare +X and are the apron lip",
+    "five distinct crate planforms: bar trunk, cube with planform X, long instrument, hollow frame, L-pair",
+    "darker port oxide, warmer freight, dark pod well with no green lamp panel"
+  ],
+  "dominantRetainedZones": [
+    "horseshoe flange and +X loading throat",
+    "five additive unique-XY crate stages",
+    "+Z seated versus +1.55 wu launch-clear",
+    "hooks, envelope, LOD identity",
+    "Cycle 01, Cycle 02, and Cycle 03 frozen evidence"
+  ],
+  "visibleSuccesses": [
+    "works_top and works_top_clay at 120 px per cell show a D+key docking hole with inner walls, not a circular portal or cool disc.",
+    "The C-clamp reads as one open yoke whose arms are the apron lip; it is not a box attached to a pad.",
+    "Five crate planforms separate at 120 px: long bar, X-cube, thin instrument, hollow square, L.",
+    "Hottest value is worn cradle steel, not a docking badge. The well is the darkest feature with emission off.",
+    "LOD1 and LOD2 keep the keyed hole, C planform, and freight family. Launch-clear edge stills show the +Z climb out of the yoke."
+  ],
+  "remainingVisibleRisks": [
+    "At 19 px per cell the five modules still collapse into one freight family even though port, pod well, and cargo remain separate.",
+    "Cradle mill-marks are visible as bright stripes on the C at 120 px; they are existing cradle-role response, not a new texture pass.",
+    "G3 remains blocked: atlas normal/AO/curvature are not exact-mesh high/cage bakes."
+  ],
+  "technicalRisks": [
+    "The candidate is not wired, released, runtime-captured, or independently reviewed; G1, G2, G4, G6, and G7 remain open.",
+    "No named collision hull is authored; envelope is the measured source bbox only, same contract as Cycle 03."
+  ],
+  "decision": "source_cycle04_implemented",
+  "gatePassClaimed": false,
+  "independentReview": false
+}
