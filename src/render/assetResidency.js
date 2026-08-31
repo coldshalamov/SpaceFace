@@ -104,6 +104,52 @@ export function createAssetResidencyRegistry(options = {}) {
       : releasedPrimitiveOwners.has(owner);
   }
 
+  /**
+   * Return a read-only, owner-scoped residency witness for debug diagnostics.
+   *
+   * `isOwnerReleased()` deliberately answers only a tombstone question, so false also covers an
+   * owner the registry has never seen. The continuity census needs to distinguish those states
+   * without exposing the mutable owner/entry Maps. Keep this seam off the normal hot path: callers
+   * opt into the snapshot and receive only copied primitive metadata for the assets still retained
+   * by this exact owner.
+   */
+  function ownerDiagnostics(owner) {
+    const state = owner == null ? null : owners.get(owner) || null;
+    const released = owner != null && isOwnerReleased(owner);
+    if (!state && !released) {
+      return Object.freeze({
+        known: false,
+        active: null,
+        released: false,
+        pendingRequests: 0,
+        assets: Object.freeze([]),
+      });
+    }
+
+    const assetsForOwner = [];
+    if (state) {
+      for (const entry of state.assets) {
+        const metadata = entry.owners.get(owner) || {};
+        assetsForOwner.push(Object.freeze({
+          key: entry.key,
+          generation: entry.generation,
+          state: entry.state,
+          role: metadata.role || null,
+          sectorId: metadata.sectorId == null ? null : String(metadata.sectorId),
+          presentationTier: metadata.presentationTier || null,
+        }));
+      }
+      assetsForOwner.sort((left, right) => left.key.localeCompare(right.key));
+    }
+    return Object.freeze({
+      known: true,
+      active: state ? state.released !== true : false,
+      released: state ? state.released === true : released,
+      pendingRequests: state ? state.requests.size : 0,
+      assets: Object.freeze(assetsForOwner),
+    });
+  }
+
   function markOwnerReleased(owner) {
     if (owner == null) return;
     if (typeof owner === 'object' || typeof owner === 'function') releasedObjectOwners.add(owner);
@@ -762,6 +808,7 @@ export function createAssetResidencyRegistry(options = {}) {
     enforceBudget,
     diagnostics,
     canonicalDiagnostics,
+    ownerDiagnostics,
   });
 }
 

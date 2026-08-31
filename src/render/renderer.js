@@ -6798,6 +6798,14 @@ export const render = {
       activityFrame: this._activityFrame,
       currentSectorId: this.state && this.state.world && this.state.world.currentSectorId,
       assetResidency: this.state && this.state.render && this.state.render.assetResidency,
+      // `reconcileMeshes()` stores the authored boundary in this map, and partsLibrary passes that
+      // exact boundary as the residency owner to every package/part retain. The census may therefore
+      // ask the live registry whether this specific entity owner is released instead of inferring
+      // ownership from the aggregate asset totals. These references are only constructed on the
+      // explicit debug sampling route; the disabled production path returns before this bag exists.
+      residencyOwners: this._meshes,
+      residencyOwnersAreCanonical: true,
+      assetResidencyRegistry: this._assetResidency,
       asteroidInstancePool: this._asteroidInstancePool,
       origin: this._frameMembrane && this._frameMembrane.origin,
       originSequence: this._frameMembrane && this._frameMembrane.seq,

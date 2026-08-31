@@ -11,7 +11,12 @@ export const DEFAULT_RENDER_CONTINUITY_SAMPLE_EVERY = 6;
 export const DEFAULT_RENDER_CONTINUITY_MISS_SAMPLES = 3;
 export const DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS = 256;
 export const DEFAULT_RENDER_CONTINUITY_ALERT_LIMIT = 64;
+export const DEFAULT_RENDER_CONTINUITY_STALLED_LOAD_SAMPLES = 12;
 const MAX_SCENE_NODES = 2048;
+// The option is debug-only, but it still must not turn a query-string opt-in into an unbounded
+// retention path. The normal route uses the much smaller default above.
+const MAX_RENDER_CONTINUITY_OBJECTS = 4096;
+const MAX_RENDER_CONTINUITY_ALERTS = 256;
 
 const AUTHORIZED_REASONS = new Set([
   'despawn',
@@ -24,6 +29,10 @@ const AUTHORIZED_REASONS = new Set([
   'context-loss',
   'lifecycle-transition',
   'opening-defer',
+  'authored-loading',
+  'pipeline-compilation',
+  'root-swap',
+  'deferred-admission',
 ]);
 
 const AUTHORIZED_TRANSITION_REASONS = new Set([
@@ -36,6 +45,14 @@ const AUTHORIZED_TRANSITION_REASONS = new Set([
   'opening-defer-release',
   'sector-transition',
   'sector-residency',
+]);
+
+const EXPECTED_AUTHORED_LOADING_STATES = new Set([
+  'awaiting-authored-admission',
+  'loading',
+  'compiling-pipelines',
+  'authored-prepared',
+  'same-semantic-fallback-prepared',
 ]);
 
 const CHAIN = Object.freeze([
@@ -64,8 +81,20 @@ export function createRenderContinuityCensus(options = {}) {
   let enabled = options.enabled === true;
   const sampleEvery = positiveInt(options.sampleEvery, DEFAULT_RENDER_CONTINUITY_SAMPLE_EVERY);
   const missSamples = positiveInt(options.missSamples, DEFAULT_RENDER_CONTINUITY_MISS_SAMPLES);
-  const maxObjects = positiveInt(options.maxObjects, DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS);
-  const alertLimit = positiveInt(options.alertLimit, DEFAULT_RENDER_CONTINUITY_ALERT_LIMIT);
+  const maxObjects = boundedPositiveInt(
+    options.maxObjects,
+    DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS,
+    MAX_RENDER_CONTINUITY_OBJECTS,
+  );
+  const alertLimit = boundedPositiveInt(
+    options.alertLimit,
+    DEFAULT_RENDER_CONTINUITY_ALERT_LIMIT,
+    MAX_RENDER_CONTINUITY_ALERTS,
+  );
+  const stalledLoadSamples = positiveInt(
+    options.stalledLoadSamples,
+    DEFAULT_RENDER_CONTINUITY_STALLED_LOAD_SAMPLES,
+  );
   const tracks = new Map();
   const alerts = [];
   const transitions = [];
@@ -101,7 +130,8 @@ export function createRenderContinuityCensus(options = {}) {
 
   function sampleContext(context, frame, alertSink, alertCap) {
     sampledFrames++;
-    const entities = collectEntities(context);
+    const entitySelection = collectEntities(context, maxObjects);
+    const entities = entitySelection.values;
     const seen = new Set();
     const rows = [];
     const limit = Math.min(maxObjects, entities.length);
@@ -114,31 +144,48 @@ export function createRenderContinuityCensus(options = {}) {
         track: tracks.get(id),
         missSamples,
       });
-      const track = updateTrack(tracks, id, row, frame, context, missSamples, alertSink, alertCap);
+      const track = updateTrack(
+        tracks,
+        id,
+        row,
+        frame,
+        context,
+        missSamples,
+        stalledLoadSamples,
+        alertSink,
+        alertCap,
+      );
       row.continuity.missSamples = track.missSamples;
       row.continuity.previouslyVisibleInCamera = track.everVisibleInCamera === true;
       row.continuity.disappearance = track.disappearance || null;
+      row.loading.stalledSamples = track.stalledLoadSamples;
+      row.loading.stalled = !!track.stalledLoad;
+      row.loading.stalledLoad = track.stalledLoad || null;
       rows.push(row);
     }
 
     // An entity disappearing from the state table is an authorized despawn. Retain one explicit row
     // for it so the witness explains why the prior visible object is no longer in the sample.
-    for (const [id, track] of tracks) {
-      if (seen.has(id) || track.lastSeenFrame === frame) continue;
-      if (track.everVisibleInCamera !== true) {
+    // A capped Map/iterable is only a partial census. Do not call every previously unseen track a
+    // despawn when the remaining collection entries were intentionally not traversed.
+    if (!entitySelection.truncated) {
+      for (const [id, track] of tracks) {
+        if (seen.has(id) || track.lastSeenFrame === frame) continue;
+        if (track.everVisibleInCamera !== true) {
+          tracks.delete(id);
+          continue;
+        }
+        const row = inspectRenderContinuityObject(null, {
+          ...context,
+          cullReasons: withReason(context.cullReasons, id, 'despawn'),
+        }, { track, missSamples });
+        row.id = id;
+        row.continuity.missSamples = 0;
+        row.continuity.previouslyVisibleInCamera = true;
+        row.continuity.disappearance = null;
+        rows.push(row);
         tracks.delete(id);
-        continue;
       }
-      const row = inspectRenderContinuityObject(null, {
-        ...context,
-        cullReasons: withReason(context.cullReasons, id, 'despawn'),
-      }, { track, missSamples });
-      row.id = id;
-      row.continuity.missSamples = 0;
-      row.continuity.previouslyVisibleInCamera = true;
-      row.continuity.disappearance = null;
-      rows.push(row);
-      tracks.delete(id);
     }
 
     pruneTracks(tracks, frame, maxObjects);
@@ -151,10 +198,13 @@ export function createRenderContinuityCensus(options = {}) {
       enabled: true,
       sampleEvery,
       missSamples,
+      stalledLoadSamples,
       frame,
       sampledFrames,
       objectCount: rows.length,
-      disappearanceCount: alerts.length,
+      objectCollectionTruncated: entitySelection.truncated,
+      disappearanceCount: countAlerts(alerts, 'disappearance'),
+      stalledLoadCount: countAlerts(alerts, 'stalled-load'),
       chain: CHAIN,
       rows,
       alerts: alerts.slice(),
@@ -177,10 +227,13 @@ export function createRenderContinuityCensus(options = {}) {
       enabled: enabled && !disposed,
       sampleEvery,
       missSamples,
+      stalledLoadSamples,
       frame: callFrame,
       sampledFrames,
       objectCount: 0,
-      disappearanceCount: alerts.length,
+      objectCollectionTruncated: false,
+      disappearanceCount: countAlerts(alerts, 'disappearance'),
+      stalledLoadCount: countAlerts(alerts, 'stalled-load'),
       chain: CHAIN,
       rows: [],
       alerts: alerts.slice(),
@@ -242,6 +295,7 @@ export function createRenderContinuityCensus(options = {}) {
     get enabled() { return enabled && !disposed; },
     get sampleEvery() { return sampleEvery; },
     get missSamples() { return missSamples; },
+    get stalledLoadSamples() { return stalledLoadSamples; },
   };
   return api;
 }
@@ -268,6 +322,7 @@ export function inspectRenderContinuityObject(entity, context = {}, options = {}
     ?? null;
   const residency = inspectResidency(entity, root, userData, context, currentSectorId);
   const lifecycle = inspectLifecycle(context, state, render, root, userData);
+  const loading = inspectLoading(root, userData, pipeline, lifecycle, context, state);
   const inCamera = resolveInCamera(entity, record, context, id);
   const presentationTier = entity?.activity?.presentationTier
     ?? record?.presentationTier
@@ -289,6 +344,7 @@ export function inspectRenderContinuityObject(entity, context = {}, options = {}
       presentationTier,
       currentSectorId,
       residency,
+      loading,
       context,
     });
   const alive = entity == null ? false : entity.alive !== false;
@@ -369,6 +425,7 @@ export function inspectRenderContinuityObject(entity, context = {}, options = {}
     instance,
     pipeline,
     residency,
+    loading,
     origin: readOrigin(context, state),
     lifecycle,
     lastRenderError: context.lastRenderError || render.lastRenderError || null,
@@ -395,7 +452,17 @@ export function shouldReportRenderDisappearance({
     && Number(missSamples) >= positiveInt(threshold, DEFAULT_RENDER_CONTINUITY_MISS_SAMPLES);
 }
 
-function updateTrack(tracksById, id, row, frame, context, threshold, alertSink, alertCap) {
+function updateTrack(
+  tracksById,
+  id,
+  row,
+  frame,
+  context,
+  threshold,
+  stalledThreshold,
+  alertSink,
+  alertCap,
+) {
   let track = tracksById.get(id);
   if (!track) {
     track = {
@@ -408,6 +475,8 @@ function updateTrack(tracksById, id, row, frame, context, threshold, alertSink, 
       lastRenderable: false,
       missSamples: 0,
       disappearance: null,
+      stalledLoadSamples: 0,
+      stalledLoad: null,
       lastReason: null,
     };
     tracksById.set(id, track);
@@ -415,16 +484,49 @@ function updateTrack(tracksById, id, row, frame, context, threshold, alertSink, 
   const authorizedReason = row.cull.authorized ? row.cull.reason : null;
   const inCamera = row.cull.inCamera;
   const wasVisible = track.everVisibleInCamera === true;
-  if (row.continuity.renderable === true) {
+  // Loading/admission gaps are expected lifecycle states, not unexplained disappearances. They
+  // still receive their own bounded timer so a queue or package that never settles is visible in
+  // diagnostics instead of being silently excused forever.
+  if (row.loading?.expected === true) {
+    if (row.continuity.renderable === true) track.everVisibleInCamera = true;
+    track.lastRenderable = row.continuity.renderable === true;
+    track.missSamples = 0;
+    track.disappearance = null;
+    if (inCamera === true && row.entity.present !== false && row.entity.alive !== false) {
+      track.stalledLoadSamples++;
+      if (track.stalledLoadSamples >= stalledThreshold && !track.stalledLoad) {
+        const alert = {
+          type: 'stalled-load',
+          id,
+          frame,
+          samples: track.stalledLoadSamples,
+          reason: row.loading.reason || 'expected-loading',
+          loadingState: row.loading.state || null,
+          missing: row.continuity.missing.slice(),
+          lastRenderError: row.lastRenderError || context.lastRenderError || null,
+        };
+        alertsPush(alertSink, alert, alertCap);
+        track.stalledLoad = alert;
+      }
+    } else {
+      track.stalledLoadSamples = 0;
+      track.stalledLoad = null;
+    }
+  } else if (row.continuity.renderable === true) {
     track.everVisibleInCamera = true;
     track.lastRenderable = true;
     track.missSamples = 0;
     track.disappearance = null;
+    track.stalledLoadSamples = 0;
+    track.stalledLoad = null;
   } else if (wasVisible && inCamera === true && !isAuthorizedReason(authorizedReason)) {
     track.lastRenderable = false;
     track.missSamples++;
+    track.stalledLoadSamples = 0;
+    track.stalledLoad = null;
     if (track.missSamples >= threshold && !track.disappearance) {
       const alert = {
+        type: 'disappearance',
         id,
         frame,
         missSamples: track.missSamples,
@@ -439,6 +541,8 @@ function updateTrack(tracksById, id, row, frame, context, threshold, alertSink, 
     track.lastRenderable = false;
     track.missSamples = 0;
     track.disappearance = null;
+    track.stalledLoadSamples = 0;
+    track.stalledLoad = null;
   }
   track.lastReason = row.cull.reason || null;
   track.lastSector = row.residency.currentSectorId;
@@ -453,12 +557,53 @@ function alertsPush(list, alert, cap = DEFAULT_RENDER_CONTINUITY_ALERT_LIMIT) {
   if (list.length > cap) list.splice(0, list.length - cap);
 }
 
-function collectEntities(context) {
-  if (Array.isArray(context.entities)) return context.entities;
-  if (context.entities && typeof context.entities.values === 'function') return [...context.entities.values()];
-  if (context.entityMap && typeof context.entityMap.values === 'function') return [...context.entityMap.values()];
-  if (context.entityList && Array.isArray(context.entityList)) return context.entityList;
-  return [];
+function countAlerts(list, type) {
+  let count = 0;
+  for (const alert of list || []) if (alert?.type === type) count++;
+  return count;
+}
+
+function collectEntities(context, limit = DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS) {
+  const cap = boundedPositiveInt(limit, DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS, MAX_RENDER_CONTINUITY_OBJECTS);
+  if (Array.isArray(context.entities)) {
+    return { values: context.entities, truncated: context.entities.length > cap };
+  }
+  if (context.entities && typeof context.entities.values === 'function') {
+    return takeIterableValues(context.entities.values(), cap);
+  }
+  if (context.entityMap && typeof context.entityMap.values === 'function') {
+    return takeIterableValues(context.entityMap.values(), cap);
+  }
+  if (context.entityList && Array.isArray(context.entityList)) {
+    return { values: context.entityList, truncated: context.entityList.length > cap };
+  }
+  if (context.entities && typeof context.entities[Symbol.iterator] === 'function') {
+    return takeIterableValues(context.entities, cap);
+  }
+  if (context.entityMap && typeof context.entityMap[Symbol.iterator] === 'function') {
+    return takeIterableValues(context.entityMap, cap);
+  }
+  return { values: [], truncated: false };
+}
+
+function takeIterableValues(iterable, limit) {
+  const cap = boundedPositiveInt(limit, DEFAULT_RENDER_CONTINUITY_MAX_OBJECTS, MAX_RENDER_CONTINUITY_OBJECTS);
+  const iterator = iterable && typeof iterable.next === 'function'
+    ? iterable
+    : iterable && typeof iterable[Symbol.iterator] === 'function'
+      ? iterable[Symbol.iterator]()
+      : null;
+  if (!iterator) return { values: [], truncated: false };
+  const values = [];
+  while (values.length < cap) {
+    const next = iterator.next();
+    if (!next || next.done) break;
+    values.push(next.value);
+  }
+  // Close generators/collection iterators when the cap, rather than exhaustion, ended the walk.
+  const truncated = values.length >= cap;
+  if (truncated && typeof iterator.return === 'function') iterator.return();
+  return { values, truncated };
 }
 
 function resolveMesh(entity, context, id) {
@@ -700,19 +845,174 @@ function inspectResidency(entity, root, userData, context, currentSectorId) {
   const local = userData.residency || userData.assetResidency || packageInfo.residency || {};
   const render = context.state?.render || {};
   const aggregate = context.assetResidency || render.assetResidency || null;
+  const owner = resolveResidencyOwner(entity, root, context, entityId(entity));
+  const registry = context.assetResidencyRegistry || context.residencyRegistry
+    || (context.assetResidency && typeof context.assetResidency.isOwnerReleased === 'function'
+      ? context.assetResidency : null);
+  const suppliedOwnerState = resolveResidencyOwnerState(entity, root, context, entityId(entity));
+  const ownerWitness = readOwnerDiagnostics(registry, owner);
+  const suppliedOwnerKnown = suppliedOwnerState && suppliedOwnerState.known !== false;
+  const ownerKnown = owner != null && (suppliedOwnerKnown || ownerWitness?.known === true);
+  const ownerReleased = suppliedOwnerKnown && typeof suppliedOwnerState.released === 'boolean'
+    ? suppliedOwnerState.released
+    : ownerWitness?.known === true ? ownerWitness.released === true : null;
+  const ownerActive = suppliedOwnerKnown && typeof suppliedOwnerState.active === 'boolean'
+    ? suppliedOwnerState.active
+    : ownerWitness?.known === true ? ownerWitness.active === true : owner == null
+      ? local.ownerActive ?? null
+      : null;
+  const liveOwner = ownerKnown === true;
+  const ownerAssets = ownerWitness?.known === true
+    ? ownerWitness.assets
+    : normalizeOwnerAssets(suppliedOwnerState?.assets);
   return {
-    key: local.key ?? packageInfo.residencyKey ?? null,
-    generation: local.generation ?? packageInfo.generation ?? packageInfo.contentHash ?? null,
-    state: local.state ?? null,
-    role: local.role ?? userData.residencyRole ?? null,
+    key: suppliedOwnerState?.key ?? local.key ?? packageInfo.residencyKey ?? null,
+    generation: suppliedOwnerState?.generation
+      ?? local.generation ?? packageInfo.generation ?? packageInfo.contentHash ?? null,
+    state: suppliedOwnerState?.state ?? local.state ?? null,
+    role: suppliedOwnerState?.role ?? local.role ?? userData.residencyRole ?? null,
     entitySectorId: data.sectorId ?? entity?.homeSectorId ?? null,
     currentSectorId,
     aggregateGeneration: aggregate?.generation ?? aggregate?.contextGeneration ?? null,
     aggregateCurrentSectorId: aggregate?.currentSectorId ?? null,
     aggregateWarmSectorId: aggregate?.warmSectorId ?? null,
     aggregatePendingRequests: finiteOrNull(aggregate?.pendingRequests),
-    ownerActive: local.ownerActive ?? null,
+    ownerActive,
+    ownerReleased,
+    ownerKnown,
+    ownerAssets,
+    ownerPendingRequests: finiteOrNull(ownerWitness?.pendingRequests ?? suppliedOwnerState?.pendingRequests),
+    owner: {
+      present: owner != null,
+      active: ownerActive,
+      released: ownerReleased,
+      identity: ownerIdentity(owner),
+      source: liveOwner ? 'live-owner' : owner != null ? 'unknown-owner' : null,
+    },
+    authoritative: liveOwner ? 'live-owner' : null,
     rootPresent: !!root,
+  };
+}
+
+function resolveResidencyOwner(entity, root, context, id) {
+  if (typeof context.residencyOwnerForEntity === 'function') {
+    try {
+      const owner = context.residencyOwnerForEntity(entity, root, id);
+      if (owner != null) return owner;
+    } catch (_) { /* diagnostics must not interrupt the render path */ }
+  }
+  const mapped = resolveMapValue(context.residencyOwners, id);
+  if (mapped != null
+      && (context.residencyOwnersAreCanonical !== true || hasResidencyBoundarySignals(root))) return mapped;
+  if (typeof context.residencyOwner === 'function') {
+    try {
+      const owner = context.residencyOwner(entity, root, id);
+      if (owner != null) return owner;
+    } catch (_) { /* diagnostics must not interrupt the render path */ }
+  } else if (context.residencyOwner != null) {
+    return context.residencyOwner;
+  }
+  // Authored boundaries expose this release hook on the exact Object3D used as the residency
+  // owner. It is a safe fallback for standalone census callers that do not have the renderer map.
+  return typeof root?.userData?.releaseAuthoredAssetResidency === 'function' ? root : null;
+}
+
+function hasResidencyBoundarySignals(root) {
+  const userData = root?.userData || {};
+  const state = userData.authoredAssetState;
+  const visualRoot = userData.authoredVisualRoot;
+  return typeof userData.releaseAuthoredAssetResidency === 'function'
+    || userData.flightRenderPackage != null
+    || userData.renderPackage != null
+    || userData.authoredCompositionId != null
+    || (typeof visualRoot === 'string'
+      && (visualRoot.startsWith('authored-') || visualRoot.startsWith('none-')))
+    || (typeof state === 'string'
+      && (state.startsWith('authored') || EXPECTED_AUTHORED_LOADING_STATES.has(state)));
+}
+
+function resolveResidencyOwnerState(entity, root, context, id) {
+  if (typeof context.residencyOwnerStateForEntity === 'function') {
+    try {
+      return context.residencyOwnerStateForEntity(entity, root, id) || null;
+    } catch (_) { return null; }
+  }
+  return resolveMapValue(context.residencyOwnerState, id)
+    || resolveMapValue(context.residencyOwnerStates, id)
+    || null;
+}
+
+function readOwnerDiagnostics(registry, owner) {
+  if (!registry || owner == null || typeof registry.ownerDiagnostics !== 'function') return null;
+  try { return registry.ownerDiagnostics(owner) || null; } catch (_) { return null; }
+}
+
+function normalizeOwnerAssets(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((asset) => ({
+    key: asset?.key ?? null,
+    generation: asset?.generation ?? null,
+    state: asset?.state ?? null,
+    role: asset?.role ?? null,
+    sectorId: asset?.sectorId ?? null,
+    presentationTier: asset?.presentationTier ?? null,
+  }));
+}
+
+function ownerIdentity(owner) {
+  if (owner == null) return null;
+  if (typeof owner !== 'object' && typeof owner !== 'function') return String(owner);
+  return owner.uuid || owner.name || owner.type || owner.userData?.kind
+    || owner.constructor?.name || 'object';
+}
+
+function inspectLoading(root, userData, pipeline, lifecycle, context, state) {
+  const authoredState = userData.authoredAssetState ?? null;
+  const pipelinePending = pipeline.pending === true
+    || pipeline.ready === false
+    || authoredState === 'compiling-pipelines';
+  const rootSwapPending = !!(
+    userData.wholeShipLodTransitionPromise
+    || userData.lodTransitionPromise
+    || userData.lodTransitioning === true
+    || userData.lod?.transitioning === true
+    || userData.authoredSwapInProgress === true
+    || userData.rootSwapPending === true
+    || userData.presentationSwapPending === true
+  );
+  const deferredAdmission = authoredState === 'authored-prepared'
+    || authoredState === 'same-semantic-fallback-prepared'
+    || typeof userData.__publishPreparedAuthoredBoundary === 'function'
+    || typeof userData.__disposePreparedAuthoredBoundary === 'function';
+  const authoredAdmission = authoredState === 'awaiting-authored-admission'
+    || authoredState === 'loading';
+  const hasAdmissionPromise = isThenable(userData.authoredUpgradePromise)
+    || isThenable(userData.authoredPipelineReady);
+  const openingDeferred = lifecycle.authorizedTransition?.reason === 'opening-defer'
+    && (EXPECTED_AUTHORED_LOADING_STATES.has(authoredState)
+      || userData.authoredAdmissionSubstrate === true
+      || !root);
+  let reason = null;
+  if (rootSwapPending) reason = 'root-swap';
+  else if (pipelinePending) reason = 'pipeline-compilation';
+  else if (deferredAdmission) reason = 'deferred-admission';
+  else if (authoredAdmission || (hasAdmissionPromise && authoredState == null)) {
+    reason = 'authored-loading';
+  } else if (openingDeferred) {
+    reason = 'opening-defer';
+  }
+  return {
+    expected: reason != null,
+    reason,
+    state: authoredState,
+    pipelinePending,
+    rootSwapPending,
+    deferredAdmission,
+    admissionPromise: hasAdmissionPromise,
+    mode: context.mode ?? state.mode ?? null,
+    stalledSamples: 0,
+    stalled: false,
+    stalledLoad: null,
   };
 }
 
@@ -773,6 +1073,7 @@ function resolveAuthorizedCullReason({
   presentationTier,
   currentSectorId,
   residency,
+  loading,
   context,
 }) {
   if (entity && entity.alive === false) return 'despawn';
@@ -789,6 +1090,7 @@ function resolveAuthorizedCullReason({
   if (context.contextRecovery?.pending === true || context.state?.render?.contextRecovery?.pending === true) {
     return 'context-loss';
   }
+  if (loading?.expected === true) return loading.reason || 'authored-loading';
   if (root && !scene.attached && context.mode === 'loading') return 'lifecycle-transition';
   return null;
 }
@@ -938,6 +1240,15 @@ function finiteOrNull(value) {
 function positiveInt(value, fallback) {
   const n = Math.floor(Number(value));
   return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function boundedPositiveInt(value, fallback, maximum) {
+  return Math.min(maximum, positiveInt(value, fallback));
+}
+
+function isThenable(value) {
+  return !!value && (typeof value === 'object' || typeof value === 'function')
+    && typeof value.then === 'function';
 }
 
 function isAuthorizedReason(reason) {

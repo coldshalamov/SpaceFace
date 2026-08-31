@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { runRenderUpdatePhase } from '../src/core/renderUpdatePhase.js';
+import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { installDiagnostics } from '../src/render/diagnostics.js';
 import {
   createRenderContinuityCensus,
@@ -97,6 +98,161 @@ test('render continuity rows expose the entity-to-error chain', () => {
   assert.equal(row.origin.sequence, 7);
   assert.equal(row.lifecycle.state, 'presenting');
   assert.equal(row.lastRenderError.stage, 'render.draw');
+});
+
+test('entity collection caps generic iterables without consuming the rest of the source', () => {
+  const h = sceneHarness();
+  const entities = [1, 2, 3].map((id) => ({
+    id,
+    type: 'ship',
+    alive: true,
+    activity: { presentationTier: 'R0_GLASS' },
+    mesh: h.root,
+  }));
+  let pulls = 0;
+  let closed = false;
+  const iterable = {
+    [Symbol.iterator]() {
+      let index = 0;
+      return {
+        next() {
+          pulls++;
+          if (index >= entities.length) return { done: true };
+          return { value: entities[index++], done: false };
+        },
+        return() {
+          closed = true;
+          return { done: true };
+        },
+      };
+    },
+  };
+  const census = createRenderContinuityCensus({ enabled: true, sampleEvery: 1, maxObjects: 2 });
+  const report = census.sample({ ...contextFor(entities[0], h), entities: iterable });
+
+  assert.equal(report.rows.length, 2);
+  assert.equal(report.objectCollectionTruncated, true);
+  assert.equal(pulls, 2, 'the cap stops the iterator before pulling a third entity');
+  assert.equal(closed, true, 'a capped generator is closed cleanly');
+});
+
+test('a capped collection does not turn unvisited tracks into despawns', () => {
+  const h = sceneHarness();
+  const entities = [1, 2, 3].map((id) => ({
+    id,
+    type: 'ship',
+    alive: true,
+    activity: { presentationTier: 'R0_GLASS' },
+    mesh: h.root,
+  }));
+  const census = createRenderContinuityCensus({ enabled: true, sampleEvery: 1, maxObjects: 2 });
+  census.sample({ ...contextFor(entities[0], h), entities: entities.slice(0, 2) });
+  const report = census.sample({
+    ...contextFor(entities[0], h),
+    entities: [entities[0], entities[2], entities[1]],
+  });
+
+  assert.equal(report.objectCollectionTruncated, true);
+  assert.equal(report.rows.some((row) => row.id === 2 && row.entity.present === false), false);
+  assert.equal(report.alerts.length, 0);
+});
+
+test('residency rows resolve owner activity from the live renderer registry', () => {
+  const h = sceneHarness();
+  const entity = {
+    id: 11,
+    type: 'ship',
+    alive: true,
+    activity: { presentationTier: 'R0_GLASS' },
+    mesh: h.root,
+  };
+  const owner = { type: 'live-boundary', id: 'boundary-11' };
+  const registry = createAssetResidencyRegistry();
+  registry.registerAsset('asset:test', []);
+  registry.retain('asset:test', owner, { role: 'live-boundary', sectorId: 'sector_test' });
+  const context = contextFor(entity, h, {
+    residencyOwners: new Map([[entity.id, owner]]),
+    assetResidencyRegistry: registry,
+  });
+
+  const active = inspectRenderContinuityObject(entity, context);
+  assert.equal(active.residency.authoritative, 'live-owner');
+  assert.equal(active.residency.ownerKnown, true);
+  assert.deepEqual(active.residency.owner, {
+    present: true,
+    active: true,
+    released: false,
+    identity: 'live-boundary',
+    source: 'live-owner',
+  });
+  assert.equal(active.residency.ownerActive, true);
+  assert.equal(active.residency.ownerAssets[0].key, 'asset:test');
+  assert.equal(active.residency.ownerAssets[0].role, 'live-boundary');
+  assert.equal(active.residency.ownerAssets[0].sectorId, 'sector_test');
+
+  registry.releaseOwner(owner, 'continuity-test-release');
+  const retired = inspectRenderContinuityObject(entity, context);
+  assert.equal(retired.residency.ownerActive, false);
+  assert.equal(retired.residency.ownerReleased, true);
+  assert.equal(retired.residency.ownerKnown, true);
+  assert.deepEqual(retired.residency.ownerAssets, []);
+});
+
+test('authored loading states are authorized while a bounded stalled-load witness remains', () => {
+  const h = sceneHarness();
+  const entity = {
+    id: 12,
+    type: 'ship',
+    alive: true,
+    activity: { presentationTier: 'R0_GLASS' },
+    mesh: h.root,
+  };
+  const context = contextFor(entity, h);
+  const cases = [
+    ['loading', 'authored-loading'],
+    ['compiling-pipelines', 'pipeline-compilation'],
+    ['authored-prepared', 'deferred-admission'],
+  ];
+  for (const [state, reason] of cases) {
+    h.root.userData.authoredAssetState = state;
+    h.root.userData.wholeShipLodTransitionPromise = null;
+    const row = inspectRenderContinuityObject(entity, context);
+    assert.equal(row.loading.expected, true, state);
+    assert.equal(row.cull.reason, reason, state);
+    assert.equal(row.cull.authorized, true, state);
+  }
+  h.root.userData.authoredAssetState = 'authored';
+  h.root.userData.wholeShipLodTransitionPromise = { then() {} };
+  const swapping = inspectRenderContinuityObject(entity, context);
+  assert.equal(swapping.loading.expected, true);
+  assert.equal(swapping.loading.reason, 'root-swap');
+  assert.equal(swapping.cull.authorized, true);
+
+  h.root.userData.wholeShipLodTransitionPromise = null;
+  h.root.userData.authoredAssetState = 'authored';
+  const census = createRenderContinuityCensus({
+    enabled: true,
+    sampleEvery: 1,
+    missSamples: 2,
+    stalledLoadSamples: 3,
+  });
+  assert.equal(census.stalledLoadSamples, 3);
+  census.sample(context);
+  h.root.userData.authoredAssetState = 'loading';
+  const loadingContext = { ...context, lastRenderError: null };
+  assert.equal(census.sample(loadingContext).alerts.length, 0);
+  assert.equal(census.sample(loadingContext).alerts.length, 0);
+  const stalled = census.sample(loadingContext);
+  assert.equal(stalled.disappearanceCount, 0);
+  assert.equal(stalled.stalledLoadCount, 1);
+  assert.equal(stalled.alerts[0].type, 'stalled-load');
+  assert.equal(stalled.alerts[0].reason, 'authored-loading');
+  assert.equal(stalled.rows[0].loading.stalled, true);
+
+  h.root.userData.authoredAssetState = 'authored';
+  const recovered = census.sample(context);
+  assert.equal(recovered.rows[0].loading.stalled, false);
+  assert.equal(recovered.stalledLoadCount, 1, 'stalled history remains bounded and queryable');
 });
 
 test('a missing visible leaf reports only after the bounded multi-sample threshold', () => {

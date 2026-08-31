@@ -156,6 +156,50 @@ test('release-before-first-retain is a durable owner tombstone', () => {
   assert.equal(registry.isOwnerReleased(departedBoundary), true);
 });
 
+test('owner diagnostics distinguishes unknown, retained, and released owners', () => {
+  const registry = createAssetResidencyRegistry();
+  const resource = gpuResource('owner-diagnostic-resource', 32);
+  register(registry, 'asset:owner-diagnostic', [resource]);
+  const unknown = {};
+  const owner = {};
+
+  assert.deepEqual(registry.ownerDiagnostics(unknown), {
+    known: false,
+    active: null,
+    released: false,
+    pendingRequests: 0,
+    assets: [],
+  });
+  assert.equal(registry.retain('asset:owner-diagnostic', owner, {
+    role: 'current-sector',
+    sectorId: 'sector_test',
+    presentationTier: 'R0_GLASS',
+  }), true);
+  assert.deepEqual(registry.ownerDiagnostics(owner), {
+    known: true,
+    active: true,
+    released: false,
+    pendingRequests: 0,
+    assets: [{
+      key: 'asset:owner-diagnostic',
+      generation: 1,
+      state: 'resident',
+      role: 'current-sector',
+      sectorId: 'sector_test',
+      presentationTier: 'R0_GLASS',
+    }],
+  });
+
+  registry.releaseOwner(owner, 'owner-diagnostic-release');
+  assert.deepEqual(registry.ownerDiagnostics(owner), {
+    known: true,
+    active: false,
+    released: true,
+    pendingRequests: 0,
+    assets: [],
+  });
+});
+
 test('bootstrap ownership hands off atomically only after every boot asset has a live owner', () => {
   const registry = createAssetResidencyRegistry();
   const bootstrap = {};
