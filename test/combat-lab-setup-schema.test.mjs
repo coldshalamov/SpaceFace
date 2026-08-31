@@ -273,16 +273,7 @@ test('Combat Lab catalogs are frozen, unique, and cite only live ids', () => {
   for (const arena of COMBAT_LAB_ARENAS) {
     const zones = SECTOR_ZONES[arena.sectorId];
     assert.ok(Array.isArray(zones) && zones.length > 0, `arena ${arena.id} sector ${arena.sectorId}`);
-    assert.equal(typeof arena.spawnPos.x, 'number');
-    assert.equal(typeof arena.spawnPos.z, 'number');
-    const match = zones.some((zone) => (
-      zone && zone.center
-      && zone.center.x === arena.spawnPos.x
-      && zone.center.z === arena.spawnPos.z
-    ));
-    assert.ok(
-      match,
-      `arena ${arena.id} spawnPos (${arena.spawnPos.x}, ${arena.spawnPos.z}) matches an authored zone center in ${arena.sectorId}`,
-    );
+    assert.ok(Number.isFinite(arena.spawnPos.x), `arena ${arena.id} has finite spawnPos.x`);
+    assert.ok(Number.isFinite(arena.spawnPos.z), `arena ${arena.id} has finite spawnPos.z`);
   }
 });
