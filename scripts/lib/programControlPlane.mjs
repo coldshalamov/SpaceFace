@@ -942,17 +942,12 @@ export function summarizeDispatchUnit(unit, control) {
   };
 }
 
-// Dispatch order: build work before proof work.
-//
-// Priority numbers were assigned per parent packet, so an old packet's capture unit carries a far
-// lower number than a new packet's implementation unit. Sorting on priority alone therefore handed
-// every fresh thread the same acceptance capture — `PQ-022.refinery-reauthor-h1` at priority 28 won
-// over nine ready implementation units at 230-259 — and threads reported "the next task is the
-// PQ-022 browser capture set" for work whose implementation had long since landed.
-//
-// Kind now orders first and priority breaks ties inside a kind, so `--next` returns something to
-// build. This changes ORDER ONLY: `--ready` still lists every ready unit, no unit is filtered out,
-// and captures/reviews stay dispatchable — they simply stop monopolizing the front of the queue.
+// Dispatch order closes already-started player outcomes before opening more breadth. Raw kind-first
+// ordering prevented old capture work from monopolizing `--next`, but with a large implementation
+// backlog it created the inverse failure: acceptance and promotion could starve forever. Rank by the
+// non-deferred sibling completion ratio first, then the number of open siblings; kind and numeric
+// priority remain deterministic tie-breakers. Dependencies are unchanged and `--ready` still lists
+// every claim-ready unit.
 const DISPATCH_KIND_ORDER = Object.freeze({
   implementation: 0,
   acceptance_repair: 1,
@@ -963,6 +958,18 @@ const DISPATCH_KIND_ORDER = Object.freeze({
   program_control: 6,
 });
 
+function parentProgress(unit, control) {
+  const siblings = control.dispatchUnits.filter((candidate) => (
+    candidate.parentId === unit.parentId && candidate.state !== 'deferred'
+  ));
+  const done = siblings.filter((candidate) => candidate.state === 'done').length;
+  return {
+    done,
+    total: Math.max(1, siblings.length),
+    open: siblings.length - done,
+  };
+}
+
 export function readyDispatchUnits(control) {
   const rank = (unit) => {
     const value = DISPATCH_KIND_ORDER[unit.kind];
@@ -971,5 +978,13 @@ export function readyDispatchUnits(control) {
   };
   return [...control.dispatchUnits]
     .filter((unit) => dispatchUnitReady(unit, control))
-    .sort((a, b) => rank(a) - rank(b) || a.priority - b.priority);
+    .sort((a, b) => {
+      const ap = parentProgress(a, control);
+      const bp = parentProgress(b, control);
+      const progress = bp.done * ap.total - ap.done * bp.total;
+      return progress
+        || ap.open - bp.open
+        || rank(a) - rank(b)
+        || a.priority - b.priority;
+    });
 }

@@ -40,8 +40,9 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 **Two doors for "what to work on"** — the `SPACEFACE COMMANDS` block at the top of
 [`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md):
 
-- `NEXT` → one admitted queue unit, then stop. Use `program-dispatch --next/--ready/--id`.
-  Ordinary `--next` still prefers fleet remaster (`PQ-050`). Hitching is not that door.
+- `NEXT` → one admitted dependency-front unit, then stop. Use
+  `program-dispatch --next/--ready/--id`. `--next` is a compact selector, not a campaign priority;
+  campaigns use the completion-front law in §5.
 - **The game is hitching / stuttering / unplayable-smooth** → §8.4,
   [`design/program/PERF_TABLE_ANALYSIS.md`](./design/program/PERF_TABLE_ANALYSIS.md),
   and [`design/program/PERF_PERSISTENCE_CAMPAIGN.md`](./design/program/PERF_PERSISTENCE_CAMPAIGN.md).
@@ -91,24 +92,22 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   reviews, rebases, proves, and merges. Jules tasks do not edit the bank, queue, NOW board,
   root authority, or expected telemetry envelopes.
 - **Campaign / overnight / “non-INFERENCE work in this map” / “non-inference graphics work” /
-  “do all of it”** → stay on admitted
-  program work and **keep going**. Do not open the INFERENCE method. Do not take a single `--next`
-  and quit. That phrase means **`PQ-050`**, not the dock/hulk handoff and not the expansion-research
-  brief. Default unfinished campaign is **`PQ-050`** (every remaining non-Hitch flyable ship
-  under [`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)).
-  Loop `node scripts/program-dispatch.mjs --id PQ-050`, finish the first claimable ship leaf
-  under the technique contract **and**
-  [`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`](./docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md)
-  (five-plus full-job cycles, three valid **chase-camera** stills, three subagent reviews that list
-  obvious defects at play size, then cleanup), commit, then the next ship, until every PQ-050 leaf is
-  done or honestly blocked. Hitch stays frozen. A factory loft with boxes, a zoomed gray
-  crop, or a seat nobody can see from the chase camera does not close a ship.
-  Only after PQ-050 is exhausted, take other `--ready` implementation units. Acceptance-capture
-  leaves that need a human or a headed machine you do not have may be recorded `unproven` and
-  skipped; do not stall the campaign on them.
+  “do all of it”** → finish any exact unit already being mutated, verify it, commit it, and
+  checkpoint first. Then reconcile current ancestry and receipts once and work the completion front:
+  close the most nearly finished player-visible parent before starting breadth. Existing route
+  acceptance, already-wired assets, and exact repair units precede fresh authoring. No packet owns
+  the whole campaign and no fleet leaf is a prerequisite merely because its number is lower.
+- **Release spine — First Shift:** the existing B0–B5 First-15 ritual in
+  [`design/revamp/PROOF_RITUAL.md`](./design/revamp/PROOF_RITUAL.md) is the first release route:
+  Wake → Derelict → Seam → Snare → Dock → Choice. It is qualified as a child of `PQ-025`, not
+  rebuilt as a new mode or a new top-level packet. Product defects found there return to their
+  current owner; `PQ-025` remains acceptance-only.
+- After First Shift, finish already-exposed work before breadth: current Works release candidates,
+  the Massline Express, then Hornet, Drifter, Ranger, and Ironback. New fleet bodies begin only
+  after those five have a terminal keep/revise/revert disposition.
 
-**PQ-050 campaign law:** Hitch/Kestrel stays frozen. Stay off INFERENCE, the
-dock/hulk remaster, and the expansion-research brief. A live copy is not a
+**PQ-050 campaign law:** Hitch/Kestrel stays frozen. One leaf still owns one ship, but the leaves
+are independent dispositions rather than a serial campaign monopoly. A live copy is not a
 quality-close.
 
 **The player camera is the only close camera.** SpaceFace is a 60° tilted
@@ -497,11 +496,14 @@ The existing queue's `state` field is transitional and can contain legacy accept
 
 ## 5. Selecting and shaping work
 
-Choose the first dependency-front dispatch unit, or an exact unit named by the user, and reduce it to
-the smallest coherent slice that can reach its declared terminal state. `--ready` is the preferred
-integration order, not a list of the only work that exists. `NOW.md` prevents one dirty hunk from
-being overwritten: if that exact hunk is actively changing, continue the task's disjoint work or take
-the next returned unit. Never turn the overlap into a blocked packet, subsystem, or roadmap.
+Choose the exact active unit first. Otherwise select completion-front: among ready units, prefer the
+parent with the greatest proportion of terminal non-deferred leaves and the fewest remaining leaves;
+then use kind and numeric priority as tie-breakers. This closes already-started player outcomes before
+breadth. Dependencies express real technical integration requirements only—not portfolio preference,
+fleet order, or a campaign monopoly. `--ready` remains the complete view. `NOW.md` prevents one dirty
+hunk from being overwritten: if that exact hunk is actively changing, continue the task's disjoint
+work or take the next returned unit. Never turn the overlap into a blocked packet, subsystem, or
+roadmap.
 
 An executable packet must name:
 
@@ -531,7 +533,12 @@ For physics-heavy work, ask four questions early:
 3. What counterplay or failure mode keeps it from becoming a button that wins?
 4. What cue makes mass, force, risk, and ownership legible without requiring hidden telemetry?
 
-For visual work, do not instruct agents to make less. Require the exact authored identity, stable transforms and sockets, appropriate LOD/HLOD, bounded residency, normal-camera review, and one measured route. Placeholder clay is diagnostic only; it is not a shipping style.
+For visual work, do not instruct agents to make less. Require exact authored identity, stable
+transforms and sockets, bounded residency, normal-camera review, and one measured route. LOD is
+contribution-driven, not distance-driven: off-screen work is culled; an on-screen object that stays
+in one projected-pixel band may correctly ship one authored model. Add LOD/HLOD only when ordinary
+play produces materially different on-glass sizes or dense repeated use proves a real draw/residency
+gain. Placeholder clay is diagnostic only; it is not a shipping style.
 
 ## 7. Verification that converges
 
@@ -616,7 +623,7 @@ on the direct player result, not on counters, reports, test volume, or lower def
 |---|---|---|---|
 | **`PQ-051` / `PERF-11-FRAME-LIVENESS`** | Continue and ordinary flight never leave a permanently frozen 3D picture behind a still-moving HTML HUD. | Repair the actual renderer/presentation latch on the real player path: authoritative entity identity, frame/draw exceptions, WebGL context recovery, presentation scheduling, and canvas present. Promote the bounded runtime witness only as the failure classifier needed to fix the owner. Never clear/catch/skip work merely to keep the HUD alive. | On the owner's real save in Browser and Electron: leave loading, fly for 30+ seconds, and observe simulation, movement, renderer frames, and canvas pixels continuing together with no repeating frame error or unrecovered context loss. This is the release-blocking prerequisite for every later performance claim. |
 | **`PQ-052` / `PERF-12-RIGID-OPAQUE-BATCHING`** | Crowded fleets keep their authored appearance while materially reducing GPU submission cost. | Adopt, repair, or reject the existing material-keyed heterogeneous `THREE.BatchedMesh` candidate. Pool only rigid opaque render-package surfaces behind exact material identity; preserve owner release, LOD, damage, semantic proxies, pipeline/residency admission, context recovery, and bounded geometry capacity. Keep canopies, plumes, fans, nav lights, decals, animated surfaces, and transparency-sorted work out of this lane. | A clean same-scene before/after shows a material GPU-frame reduction and fewer opaque submissions/chunks with identical geometry, materials, transforms, animation, damage, and visible pixels. Depends on `PQ-051`, the `PQ-034` measurement seam, and current render-package authority; do not wire the older generic batcher merely because it exists. |
-| **`PQ-053` / `PERF-13-LIVE-LOD-HLOD-IMPOSTORS`** | Near ships and places retain full authored quality while distant fleets, stations, and landmarks become genuinely cheap. | Repair the Wasp separate-file demotion, generalize safe projected-pixel LOD0/1/2 selection to every valid ship family, spawn distant traffic at the appropriate resident level, and produce authored station/place HLOD clusters and far impostors through the offline package pipeline. Bound far greebles, animation, decals, and realtime shadow casting by projected contribution without reducing close detail. | Moving through the same route changes actual resident/drawn geometry and scales triangles, meshes, shadows, and GPU time with projected size without blank frames, visible popping outside the declared transition band, identity/socket drift, or extra LOD0 residency. Depends on `PQ-037`, `PQ-051`, and coordination with `PQ-052`. |
+| **`PQ-053` / `PERF-13-LIVE-LOD-HLOD-IMPOSTORS`** | Near ships and places retain full authored quality while a measured tiny-on-glass or large-place pressure becomes genuinely cheap. | Keep LOD0 on glass by default. Repair an existing alternate-file transition only for a family whose ordinary route proves at least two material projected-pixel bands or dense repeated use; use culling for off-table objects. Large stations/places may use authored HLOD clusters when their real contribution and cost justify it. Bound unreadable greebles, animation, decals, and realtime shadows without reducing close detail. | A fixed same-route A/B proves a material resident/drawn geometry and GPU/submission reduction inside the admitted band, with identical close pixels, no blank frames, no visible popping outside the transition band, and no identity/socket drift. Without that measured pressure this packet closes `not-triggered`. Depends on `PQ-037`, `PQ-051`, and coordination with `PQ-052`. |
 | **`PQ-054` / `PERF-14-BOUNDED-GPU-ADMISSION`** | Continue, New Game, sector entry, and first combat no longer move the same unbounded shader/upload stall between loading and flight. | Finish the finite identity-bound opening pipeline/residency cohort, context-restore fail-closed behavior, low-LOD/opening-shell-first admission, and bounded post-paint draining. Compile and upload only exact critical roots before handoff; later roots use the normal per-root gate. Do not wait on a growing pending set, render the whole live scene as warmup, skip shaders, or raise timeouts as a fix. | The owner's real Continue and a heavy sector entry reach a changing playable canvas; every blocking slice stays within the performance budget's target/hard limits, late admissions cannot extend the opening watermark, and first-use combat/traffic produces no permanent freeze or seconds-scale shader/upload hitch. Depends on `PQ-051` and the live `PQ-037`/pipeline-residency seams. |
 | **`PQ-055` / `PERF-15-IMMUTABLE-ASSET-TRANSPORT`** | Boot, Continue, hub opening, and sector entry stop repeatedly transferring, hashing, decoding, and shipping the same large asset bytes. | Give immutable release assets content-derived cache identity and headers; retain no-cache only for mutable documents and saves. Remove duplicate package/source encodings from the retail bundle where the package is canonical, split the largest places into opening shell plus independently resident detail, and add validators/range or packaged-file transport only where a boot trace justifies them. Keep KTX2 and meshopt; use Brotli for code/text rather than recompressing already-compressed GLBs. | Warm launch and repeat-sector entry reuse immutable bytes; cold entry presents the bounded shell first; installed/runtime bytes fall without missing fallback/dev sources or visual drift; the largest package no longer has to decode as one monolith before useful presentation. Depends on `PQ-037` and coordinates with `PQ-053`/`PQ-054`. |
 | **`PQ-056` / `PERF-16-PRESENTATION-AND-AA-CONSOLIDATION`** | The default image pays once for anti-aliasing and presentation while retaining bloom, grade, grain, vignette, exposure, shadows, and authored detail. | After `PQ-042` selects the real GPU owner, maintain one default present path; prove whether canvas MSAA is dead work behind the single-sampled HDR/fullscreen-composite route, integrate one quality-preserving post-AA solution when needed, and perform only the selected shadow, transparency, opaque-order, depth, or post fusion. Do not promote the optional render graph, add a global depth prepass, or clamp supersampling without a net same-image win. | Same-camera image/temporal parity holds at default settings and the selected GPU scope plus aggregate frame time improves on Browser and Electron. Depends on terminal `PQ-042`; if its evidence selects another owner, this plan narrows to that result or closes with no product mutation. |

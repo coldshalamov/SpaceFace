@@ -4992,6 +4992,36 @@
       "blocker": null
     },
     {
+      "id": "PQ-022.package-provenance-locality",
+      "parentId": "PQ-022",
+      "priority": 395,
+      "title": "Localize render-package provenance to one asset",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-manifest",
+        "renderer"
+      ],
+      "paths": [
+        "assets/ships/render-packages/pilots.json",
+        "scripts/build-render-package-pilots.mjs",
+        "scripts/lib/renderPackageCompiler.mjs",
+        "src/contracts/renderPackage.js",
+        "src/render/renderPackageManifest.js",
+        "test/render-package-compiler.test.mjs",
+        "test/render-package-pilots.test.mjs"
+      ],
+      "checks": [
+        "node --test test/render-package-compiler.test.mjs test/render-package-pilots.test.mjs",
+        "npm run check:render-package-pilots",
+        "npm run check:render-package-coverage"
+      ],
+      "receiptRefs": [],
+      "brief": "Stop embedding the whole pilots.json digest in every package. Bind each package to a stable canonical serialization of only its own pilot/release row plus source GLB and semantic hashes; retain pilots.json and the runtime manifest as global indexes. A one-row mutation may change only that package and the generated index. Preserve deterministic full builds and fail-closed stale binding.",
+      "blocker": null
+    },
+    {
       "id": "PQ-025.perf-owner-facts",
       "parentId": "PQ-025",
       "priority": 218,
@@ -5021,6 +5051,36 @@
       "blocker": null
     },
     {
+      "id": "PQ-025.first-shift",
+      "parentId": "PQ-025",
+      "priority": 396,
+      "title": "Qualify the B0-B5 First Shift on the ordinary route",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "browser-gpu",
+        "validation-broker",
+        "evidence-review"
+      ],
+      "paths": [
+        "design/revamp/PROOF_RITUAL.md",
+        "scripts/check-proof-ritual.mjs",
+        "scripts/check-first-15-runtime.mjs",
+        "design/program/roadmap/active/PQ-025.md",
+        "package.json"
+      ],
+      "checks": [
+        "npm run check:proof-ritual",
+        "npm run check:first-15-runtime",
+        "npm run check:playable",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Using a fresh profile and public controls, extend the existing First-15 driver to complete Wake, Derelict, Seam, Snare, Dock, and Choice through their normal owners; choose one real job, save, and cold-Continue into the same fitted state and context. This is acceptance-only: product defects return to their live owner and hidden state cannot decide or inject success.",
+      "blocker": null
+    },
+    {
       "id": "PQ-025.calibration-qualification",
       "parentId": "PQ-025",
       "priority": 219,
@@ -5034,7 +5094,8 @@
         "PQ-022.promote-corridor-assets",
         "PQ-023.promote-corridor-cues",
         "PQ-024.promote",
-        "PQ-025.perf-owner-facts"
+        "PQ-025.perf-owner-facts",
+        "PQ-025.first-shift"
       ],
       "mutexes": [
         "browser-gpu",
@@ -6673,7 +6734,7 @@
       "priority": 305,
       "title": "Finish and wire Hornet (player interceptor)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "ready",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -6691,7 +6752,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Hornet C85 is a wired candidate, not a quality-close: ledger has MTX-02/03/04/06/07/08 only, C85 has no three subagent reviews, Hitch-plus unmet. Remaining: complete the player-flyable MTX ledger bound to the close hash, five valid reviewed cycles, then recopy only Hornet LOD0/1/2 if the body changes. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
+      "brief": "Hornet C195 at candidate 2184b5ac is independently REVISE and remains unpromoted. Preserve its useful source work, but repair the macro chase-camera silhouette and role hierarchy before another exact-hash review. Do not promote stale generated metadata, do not resume cockpit/interior garnish, and do not require decorative LOD siblings without a measured on-glass band. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",
@@ -6700,9 +6761,7 @@
       "title": "Finish and wire Drifter (player multirole)",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-050.01"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "blender",
         "asset-manifest"
@@ -6728,9 +6787,7 @@
       "title": "Finish and wire Ranger (player explorer)",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-050.02"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "blender",
         "asset-manifest"
@@ -6756,9 +6813,7 @@
       "title": "Finish and wire Ironback (player barge)",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [
-        "PQ-050.03"
-      ],
+      "dependsOn": [],
       "mutexes": [
         "blender",
         "asset-manifest"
@@ -6775,7 +6830,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Polish Ironback only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "brief": "Ironback's production body is already promoted at controller commit 90477d31. Do not author it again from the queue. Reconcile the exact current release/package identity, perform the remaining ordinary-route whole-asset review, and issue its receipt; reopen source only if that review returns REVISE. Hitch stays untouched."
     },
     {
       "id": "PQ-050.05",
@@ -6785,6 +6840,11 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
         "PQ-050.04"
       ],
       "mutexes": [
@@ -6813,7 +6873,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.05"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6841,7 +6906,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.06"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6869,7 +6939,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.07"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6897,7 +6972,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.08"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6925,7 +7005,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.09"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6952,7 +7037,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.10"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -6979,7 +7069,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.11"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7006,7 +7101,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.12"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7034,7 +7134,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.13"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7062,7 +7167,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.14"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7090,7 +7200,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.15"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7118,7 +7233,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.16"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7146,7 +7266,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.17"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7174,7 +7299,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.18"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7202,7 +7332,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.19"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7230,7 +7365,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.20"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",
@@ -7258,7 +7398,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.21"
+        "PQ-025.first-shift",
+        "PQ-049.05",
+        "PQ-050.01",
+        "PQ-050.02",
+        "PQ-050.03",
+        "PQ-050.04"
       ],
       "mutexes": [
         "blender",

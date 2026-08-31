@@ -430,6 +430,60 @@ test('dispatch units expose implementation and review work without false depende
   assert.equal(Object.hasOwn(summary, 'owner'), false, 'ready output must not require a coordinator assignment');
   assert.match(summary.instruction, /Start and finish this unit/);
 
+  const completionFront = queue([
+    row('PQ-010', 10, 'planned'),
+    row('PQ-020', 20, 'planned'),
+  ]);
+  completionFront.dispatchUnits = [
+    ...Array.from({ length: 4 }, (_, index) => ({
+      id: `PQ-010.done-${index}`,
+      parentId: 'PQ-010',
+      priority: index + 1,
+      title: `Completed ${index}`,
+      kind: 'implementation',
+      state: 'done',
+      dependsOn: [],
+      mutexes: [],
+      paths: ['src/example.js'],
+      checks: [],
+      receiptRefs: ['design/receipt.md'],
+      brief: 'Completed sibling.',
+    })),
+    {
+      id: 'PQ-010.accept',
+      parentId: 'PQ-010',
+      priority: 50,
+      title: 'Close the nearly finished parent',
+      kind: 'acceptance_review',
+      state: 'ready',
+      dependsOn: [],
+      mutexes: [],
+      paths: ['design/evidence.md'],
+      checks: [],
+      receiptRefs: [],
+      brief: 'Terminal review.',
+    },
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `PQ-020.build-${index}`,
+      parentId: 'PQ-020',
+      priority: 100 + index,
+      title: `New breadth ${index}`,
+      kind: 'implementation',
+      state: 'ready',
+      dependsOn: [],
+      mutexes: [],
+      paths: ['src/example.js'],
+      checks: [],
+      receiptRefs: [],
+      brief: 'Fresh breadth.',
+    })),
+  ];
+  const completionControl = validateQueueDocument(completionFront);
+  const completionReady = readyDispatchUnits(completionControl);
+  assert.equal(completionReady[0].id, 'PQ-010.accept',
+    'a 4/5-complete parent closes before a 0/10 parent opens more implementation breadth');
+  assert.equal(completionReady.length, 11, '--ready retains every claim-ready unit');
+
   const obsoleteHumanGate = structuredClone(parsed);
   obsoleteHumanGate.dispatchUnits[3].kind = 'human_gate';
   assert.throws(
