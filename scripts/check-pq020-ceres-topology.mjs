@@ -34,6 +34,7 @@ if (!receipt.pass) {
     route: receipt.route,
     structuralCost: receipt.structuralCost,
     additiveWorldSites: receipt.additiveWorldSites,
+    additiveDressing: receipt.additiveDressing,
     requiresHeaded: receipt.requiresHeaded,
     naturalJobs: receipt.naturalJobs,
     offscreenProjection: receipt.offscreenProjection,
@@ -56,9 +57,14 @@ if (!receipt.pass) {
     + ` (${site.live.byType.fx || 0} fx + ${site.live.byType.wreck || 0} wreck),`
     + ` ${site.live.collidable} collidable / ${site.live.colliders} colliders`
   )).join('; ');
+  const additiveDressingSummary = (receipt.additiveDressing?.groups || []).map((group) => (
+    `${group.id}: ${group.live.entities} entities`
+    + ` (${group.live.byType.fx || 0} fx), ${group.live.collidable} collidable`
+  )).join('; ');
   const lines = [
     `PQ-020 Ceres topology PASS — ${receipt.route.siteId} route ${receipt.route.totalDistance} WU`,
     `  additive World Sites: ${additiveSiteSummary}`,
+    `  additive dressing: ${additiveDressingSummary}`,
     `  natural jobs (held-out seeds ${jobs.heldOutSeeds.join(', ')}, no injection):`,
     ...jobs.perSeed.map((row) => (
       `    seed ${row.seed}: roles ${JSON.stringify(row.withMetadata.trafficRoles)}`
