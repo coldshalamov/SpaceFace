@@ -1,18 +1,10 @@
 #!/usr/bin/env node
-// check-first-15-runtime.mjs - browser smoke for the default first-session route.
-//
-// Boots the normal player URL (canonical repo root via server.js), opens New Game, verifies the
-// first-15 rail is visible before scrolling, launches through the normal game:new path, then
-// checks live objective surfaces — including B0 one-verb exclusivity:
-//   • during active B0: no simultaneous non-empty onboarding-panel objective + HUD tracker command
-//   • firstFlight hint wall deferred until B0 completion/silence
-//   • Mission Log remains optional on-demand context (not a second always-on teacher)
-//
-// Does NOT weaken authored-asset startup gates. If that gate blocks flight entry, this probe
-// reports a clear BLOCKER and exits non-zero; source/headless coverage lives in check-first-hour.mjs.
+// Browser acceptance for the ordinary B0–B5 First Shift. The actor reads only visible DOM/canvas
+// controls. Runtime state is sampled after each action as an observer receipt and is never fed back
+// into target selection, movement, or any other actor decision.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer as createNetServer } from 'node:net';
@@ -22,319 +14,586 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-first-15-'));
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-first-15-store-'));
+const BROWSER_PROFILE_DIR = mkdtempSync(join(tmpdir(), 'sf-first-15-profile-'));
+const EVIDENCE_DIR = join(ROOT, '.devshots', 'first-15-runtime');
 const START_TIMEOUT_MS = 90000;
-// firstFlight historically fires after ~3s of flight; sample past that so deferral is observable.
-const B0_SAMPLE_WAIT_MS = 3800;
 const { chromium } = await loadPlaywright();
-
+const receipts = [];
+let phase = 'BOOT';
 let server = null;
-let browser = null;
+let context = null;
+let page = null;
+const issueCollectors = [];
+
+assertNoActorShortcuts();
+mkdirSync(EVIDENCE_DIR, { recursive: true });
 
 try {
   server = await startFreshServer();
-  browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
-  await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
+  ({ context, page } = await openPlayerContext());
+  issueCollectors.push(collectPageIssues(page));
+  await bootToNewGame(page);
+  await verifyNewGameRail(page);
 
-  // Canonical player root only — no alternate probe routes / debug game paths.
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
-  // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
-  // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
-  // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
-  // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
-  // this is an environment allowance, not a behavioural assertion being loosened. Everything
-  // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
-  await waitForBootOverlayGone(page);
+  phase = 'OPENING_SPLASH';
+  await launchPublicly(page);
+  await screenshot(page, 'opening-splash-cleared.png');
 
-  const opened = await clickButton(page, 'New Game');
-  assert.equal(opened, true, 'main menu should expose New Game');
-  await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game route rail');
+  phase = 'B0_WAKE';
+  await assertB0PublicContract(page);
+  await screenshot(page, 'b0-wake.png');
+  await observe(page, phase);
+  await runWake(page);
 
-  const routeReport = await page.evaluate(() => {
-    const visible = (el) => {
-      if (!el) return false;
-      const cs = getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-    };
-    const screen = document.querySelector('[data-screen="newGame"]');
-    const route = document.querySelector('[data-screen="newGame"] .sf-ng-route');
-    const startingShip = [...document.querySelectorAll('[data-screen="newGame"] h2')]
-      .find((el) => (el.textContent || '').trim() === 'Starting Ship');
-    return {
-      screenVisible: visible(screen),
-      routeVisible: visible(route),
-      screenRect: screen ? screen.getBoundingClientRect().toJSON() : null,
-      routeRect: route ? route.getBoundingClientRect().toJSON() : null,
-      startingShipRect: startingShip ? startingShip.getBoundingClientRect().toJSON() : null,
-      steps: [...document.querySelectorAll('[data-screen="newGame"] .sf-ng-route__step')]
-        .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()),
-    };
-  });
+  phase = 'B1_DERELICT';
+  await runDerelict(page);
+  await screenshot(page, 'b1-derelict.png');
+  await observe(page, phase);
 
-  assert.equal(routeReport.screenVisible, true, 'New Game panel should be visible');
-  assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
-  assert.equal(routeReport.steps.length, 4, 'first-15 route rail should have four steps');
-  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam', 'Dock and pick work']) {
-    assert(routeReport.steps.some((step) => step.includes(phrase)), 'route rail missing step: ' + phrase);
-  }
-  assert(routeReport.routeRect.top >= routeReport.screenRect.top && routeReport.routeRect.bottom <= routeReport.screenRect.bottom,
-    'first-15 rail should be visible without scrolling');
-  assert(routeReport.routeRect.bottom <= routeReport.startingShipRect.top,
-    'first-15 rail should appear before the starter ship block');
+  phase = 'B3_GUNNERY';
+  await runGunnery(page);
+  await screenshot(page, 'b3-gunnery.png');
+  await observe(page, phase);
 
-  const launched = await clickButton(page, 'Launch');
-  assert.equal(launched, true, 'New Game should expose Launch');
-  try {
-    await page.waitForFunction(() => {
-      const sf = window.SF;
-      const state = sf && sf.state;
-      const player = state && state.entities && state.entities.get(state.playerId);
-      return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
-    }, null, { timeout: START_TIMEOUT_MS });
-  } catch (err) {
-    const diag = await page.evaluate(() => {
-      const sf = window.SF;
-      const state = sf && sf.state;
-      const body = (document.body && document.body.innerText) || '';
-      const boot = document.getElementById('boot-overlay');
-      return {
-        mode: state && state.mode,
-        hasPlayer: !!(state && state.playerId && state.entities && state.entities.get(state.playerId)),
-        bootHidden: !boot || boot.classList.contains('hidden'),
-        bodySnippet: body.replace(/\s+/g, ' ').trim().slice(0, 600),
-        consoleHint: body.match(/authored ship|preload|procedural fallback|refusing to/i)?.[0] || null,
-      };
-    }).catch(() => ({ mode: null, bodySnippet: '', consoleHint: null }));
-    const blob = `${diag.bodySnippet || ''} ${diag.consoleHint || ''} ${err.message || ''}`;
-    const assetBlocked = /authored ship|preload|procedural fallback|refusing to (start|enter) flight/i.test(blob)
-      || (diag.mode && diag.mode !== 'flight' && !diag.hasPlayer);
-    console.error(
-      'BLOCKER: flight entry failed after Launch'
-      + (assetBlocked
-        ? ' — authored-asset startup gate (or boot path) likely blocked canonical play.'
-        : '.')
-      + '\nDo not weaken main.js asset gates. Source/headless one-verb coverage remains in check-first-hour.mjs.\n'
-      + `diag=${JSON.stringify(diag)}\n`
-      + `cause=${err.message}`,
-    );
-    throw new Error(
-      'Timed out waiting for flight after Launch'
-      + (assetBlocked ? ' (authored-asset / boot blocked — see BLOCKER above)' : '')
-      + ': ' + err.message,
-    );
-  }
+  phase = 'B2_SEAM';
+  await runSeam(page);
+  await screenshot(page, 'b2-seam.png');
+  await observe(page, phase);
 
-  // Hold in B0 long enough that an undeferred firstFlight wall would have fired (~3s).
-  // Pump the page while waiting. A Node-side sleep lets Chromium freeze rAF/timers, so the
-  // opening splash never lifts and B0 never starts.
-  await page.waitForFunction((minSimS) => {
-    const sf = window.SF;
-    const state = sf && sf.state;
-    const ob = state && state.onboarding;
-    if (!state || state.mode !== 'flight' || !ob || !ob.active || ob.finished) return false;
-    const splash = document.querySelector('.sf-firstrun-splash');
-    return !splash && ob.currentBeat === 0 && (state.simTime || 0) >= minSimS;
-  }, B0_SAMPLE_WAIT_MS / 1000, { timeout: 20000 }).catch((err) => {
-    throw new Error('Timed out waiting for B0 thrust sample: ' + err.message);
-  });
+  phase = 'B4_DOCK';
+  await runFirstTrade(page);
+  await screenshot(page, 'b4-first-trade.png');
+  await observe(page, phase);
 
-  // ── B0 one-verb exclusivity sample (before opening Mission Log) ─────────────
-  const b0Report = await page.evaluate(() => {
-    const visibleText = (sel) => {
-      const el = document.querySelector(sel);
-      if (!el) return { text: '', visible: false };
-      let n = el;
-      while (n && n.nodeType === 1) {
-        const cs = getComputedStyle(n);
-        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) {
-          return { text: '', visible: false };
-        }
-        n = n.parentElement;
-      }
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return { text: '', visible: false };
-      return { text: (el.textContent || '').replace(/\s+/g, ' ').trim(), visible: true };
-    };
+  phase = 'B5_CHOICE';
+  const beforeContinue = await runChoice(page);
+  await screenshot(page, 'b5-choice.png');
+  await observe(page, phase);
 
-    const sf = window.SF;
-    const state = sf.state;
-    const ob = state.onboarding || {};
-    const hints = (state.player && state.player.hints) || {};
-    const panel = visibleText('#sf-onboarding .sf-ob-title');
-    const trackerObj = visibleText('.sf-mission-tracker .sf-mt-obj');
-    const trackerRoot = document.querySelector('.sf-mission-tracker');
-    const trackerRootShown = !!(trackerRoot && getComputedStyle(trackerRoot).display !== 'none');
-    // Generic flight copy is preloaded into #control-hints even while the bar is opacity-hidden;
-    // only visible text can compete with the B0 objective.
-    const controlHints = visibleText('#control-hints');
-    const toastBlob = [...document.querySelectorAll('.sf-toast, .toast, [data-kind], [class*="toast"]')]
-      .map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .join(' | ')
-      .slice(0, 500);
-    const voiceText = (sf.ctx && sf.ctx.helpers && sf.ctx.helpers.voice && sf.ctx.helpers.voice.active
-      && sf.ctx.helpers.voice.active.text) || '';
-    const top = sf.ctx.screenManager && sf.ctx.screenManager.top
-      ? sf.ctx.screenManager.top()
-      : null;
+  phase = 'SAVE_SLOT_1';
+  await undockForPublicSave(page);
+  await saveToSlotOne(page);
+  await observe(page, phase);
 
-    return {
-      mode: state.mode,
-      storyBeat: state.story && state.story.beatIndex,
-      onboardingActive: !!ob.active,
-      onboardingFinished: !!ob.finished,
-      currentBeat: ob.currentBeat,
-      panelTitle: panel.text,
-      panelVisible: panel.visible,
-      trackerObj: trackerObj.text,
-      trackerVisible: trackerObj.visible && trackerRootShown,
-      trackerText: (trackerRoot?.textContent || '').replace(/\s+/g, ' ').trim(),
-      firstFlightHint: !!hints.firstFlight,
-      waypoint: state.nav && state.nav.waypoint || null,
-      controlHints: controlHints.visible ? controlHints.text : '',
-      toastBlob,
-      voiceText,
-      topScreen: top,
-      screenStack: state.ui && state.ui.screenStack && state.ui.screenStack.slice(),
-    };
-  });
-
-  assert.equal(b0Report.mode, 'flight', 'Launch should enter flight mode');
-  assert.equal(b0Report.storyBeat, 0, 'first run should start on story beat 0');
-  assert.equal(b0Report.onboardingActive, true, 'B0 sample requires active onboarding');
-  assert.equal(b0Report.onboardingFinished, false, 'B0 sample requires unfinished onboarding');
-  assert.equal(b0Report.currentBeat, 0, 'B0 sample should still be on thrust (currentBeat 0)');
-  // Opening marker must exist and be lifecycle-owned by the staged tutorial or story spine —
-  // never a bare kind:'mission' / local / trade claim while B0 is teaching.
-  assert.ok(b0Report.waypoint, 'opening must expose one authoritative waypoint/goal marker');
-  assert.ok(
-    b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true,
-    'any opening waypoint must remain story/onboarding-owned'
-    + ` (got kind=${b0Report.waypoint.kind} onboarding=${b0Report.waypoint.onboarding})`,
+  // A cold persistent-context restart exercises the same isolated browser profile and server-side
+  // player store. It is intentionally not an in-page `game:load` shortcut.
+  await context.close();
+  server.kill();
+  server = await startFreshServer();
+  ({ context, page } = await openPlayerContext());
+  issueCollectors.push(collectPageIssues(page));
+  phase = 'COLD_CONTINUE';
+  await coldContinuePublicly(page);
+  const afterContinue = await reopenPublicShipworks(page, beforeContinue.mission);
+  assert.deepEqual(afterContinue, beforeContinue,
+    'Slot 1 Continue must preserve the visible mission, fitted weapon/class, and location context');
+  await screenshot(page, 'cold-continue.png');
+  await observe(page, phase);
+  assert.deepEqual(
+    issueCollectors.flatMap((collector) => collector.errorIssues()),
+    [],
+    'First Shift route must not record page errors before or after cold restart',
   );
 
-  const panelCmd = !!(b0Report.panelVisible && b0Report.panelTitle);
-  const trackerCmd = !!(b0Report.trackerVisible && b0Report.trackerObj);
-  assert.ok(
-    !(panelCmd && trackerCmd),
-    'B0 one-verb exclusivity: onboarding-panel objective and HUD tracker command must not both be non-empty '
-    + `during active B0 (panel="${b0Report.panelTitle}" tracker="${b0Report.trackerObj}")`,
-  );
-  assert.ok(
-    panelCmd || trackerCmd,
-    'B0 must still expose exactly one persistent actionable objective surface '
-    + '(panel demoted or tracker primary — not neither)',
-  );
-  if (trackerCmd) {
-    assert.match(
-      b0Report.trackerText,
-      /Story|Tutorial|47-A|signal|anomaly|Mission Log|Objective|beacon|thrust|speed/i,
-      'HUD tracker should expose first objective context when it owns the command',
-    );
-  }
-
-  // firstFlight wall deferred past the historical 3s mark while B0 is still active.
-  assert.equal(
-    b0Report.firstFlightHint,
-    false,
-    'firstFlight hint wall must be deferred until B0 completion/silence '
-    + '(state.player.hints.firstFlight must remain false during active B0)',
-  );
-  const firstFlightWallRe = /W thrusts|W\/Up to thrust|Left stick flies|Nose follows the mouse|A\/D \(or arrows\) turn/i;
-  assert.doesNotMatch(
-    `${b0Report.controlHints} ${b0Report.toastBlob} ${b0Report.voiceText}`,
-    firstFlightWallRe,
-    'firstFlight multi-verb control wall must not surface in control-hints/toasts/voice during active B0',
-  );
-
-  // Mission Log is optional context: must not already own the screen as a forced B0 teacher,
-  // but remains reachable when the player (or this probe) opens it on demand.
-  assert.notEqual(
-    b0Report.topScreen,
-    'missionLog',
-    'Mission Log must not auto-own the screen during B0 (optional context only)',
-  );
-
-  const flightReport = await page.evaluate(() => {
-    const sf = window.SF;
-    const state = sf.state;
-    const beat = state.story && state.story.beatIndex;
-    const waypoint = state.nav && state.nav.waypoint || null;
-    const trackerText = (document.querySelector('.sf-mission-tracker')?.textContent || '').replace(/\s+/g, ' ').trim();
-    const topBefore = sf.ctx.screenManager.top();
-    sf.ctx.screenManager.pushScreen('missionLog');
-    sf.ctx.screenManager.syncVisibility && sf.ctx.screenManager.syncVisibility();
-    const logText = (document.querySelector('[data-screen="missionLog"]')?.textContent || '').replace(/\s+/g, ' ').trim();
-    return {
-      mode: state.mode,
-      beat,
-      waypoint,
-      trackerText,
-      topBefore,
-      topAfter: sf.ctx.screenManager.top(),
-      missionLogText: logText,
-      screenStack: state.ui && state.ui.screenStack && state.ui.screenStack.slice(),
-    };
-  });
-
-  assert.equal(flightReport.topAfter, 'missionLog', 'mission log should open on demand after launch');
-  assert.match(flightReport.missionLogText, /CURRENT ACTION|RECOMMENDED NEXT/i,
-    'mission log should show the current/recommended rail as optional context');
-  // Staged opening owns CURRENT ACTION as the story first-route. Cold-start 47-A remains tracked
-  // for later handoff (ACTIVE MISSIONS cards) but must not replace this opening command text.
-  assert.match(flightReport.missionLogText, /Follow the anomaly/i,
-    'mission log should carry the first route action as optional context');
-  assert.deepEqual(issues.errorIssues(), [], 'first-15 runtime probe should not record page errors');
-
-  console.log(
-    'First-15 runtime route OK: New Game rail -> flight B0 one-verb exclusivity '
-    + `(panelCmd=${panelCmd} trackerCmd=${trackerCmd} firstFlight=deferred) `
-    + '-> optional mission-log context',
-  );
+  console.log(`First Shift browser route OK: ${JSON.stringify({ phase, receipts, beforeContinue, afterContinue })}`);
+} catch (error) {
+  const failure = page ? await observerReceipt(page).catch(() => null) : null;
+  if (page) await screenshot(page, `failure-${phase.toLowerCase()}.png`).catch(() => {});
+  console.error(`FIRST_SHIFT_FAILURE phase=${phase} observer=${JSON.stringify(failure)} receipts=${JSON.stringify(receipts)}`);
+  throw error;
 } finally {
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  if (context) await context.close();
+  if (server) server.kill();
   try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
+  try { rmSync(BROWSER_PROFILE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
-async function waitForVisible(page, selector, timeoutMs, label) {
-  await page.waitForFunction((sel) => {
+async function openPlayerContext() {
+  const opened = await chromium.launchPersistentContext(BROWSER_PROFILE_DIR, {
+    headless: true,
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 1,
+  });
+  await opened.addInitScript(() => {
+    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+  });
+  const openedPage = opened.pages()[0] || await opened.newPage();
+  return { context: opened, page: openedPage };
+}
+
+async function bootToNewGame(actor) {
+  await actor.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await waitForVisible(actor, '[data-screen="mainMenu"]', START_TIMEOUT_MS, 'main menu');
+  await waitForBootOverlayGone(actor);
+  assert.equal(await clickButton(actor, 'New Game'), true, 'main menu exposes New Game');
+  await waitForVisible(actor, '[data-screen="newGame"] .sf-ng-route', 15000, 'new-game route rail');
+}
+
+async function verifyNewGameRail(actor) {
+  const rail = await actor.locator('[data-screen="newGame"] .sf-ng-route').innerText();
+  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam', 'Dock and pick work']) {
+    assert.match(rail, new RegExp(phrase, 'i'), `first-shift rail includes ${phrase}`);
+  }
+}
+
+async function launchPublicly(actor) {
+  const launch = actor.getByRole('button', { name: 'Launch', exact: true }).first();
+  assert.ok(await launch.count(), 'New Game exposes Launch');
+  // Launch starts an SPA run and its real pointer handler synchronously enters shader preparation.
+  // A Locator click waits for that long main-thread handler (and historically for a navigation
+  // which never occurs), turning healthy cold shader work into a 10 s action timeout. Dispatch the
+  // same visible button through a literal pointer coordinate, then observe each startup phase.
+  const launchBox = await launch.boundingBox();
+  assert.ok(launchBox && launchBox.width > 0 && launchBox.height > 0,
+    'New Game Launch has a visible pointer target');
+  await actor.mouse.click(
+    launchBox.x + launchBox.width / 2,
+    launchBox.y + launchBox.height / 2,
+  );
+  await waitForVisible(actor, 'canvas', START_TIMEOUT_MS, 'play canvas');
+  await waitForBootOverlayGone(actor, START_TIMEOUT_MS);
+  await waitForVisible(actor, '.sf-firstrun-splash', 15000, 'first-run splash');
+  await actor.waitForFunction(() => !document.querySelector('.sf-firstrun-splash'), null, {
+    timeout: START_TIMEOUT_MS,
+  }).catch((error) => {
+    throw new Error(`Timed out waiting for first-run splash detachment: ${error.message}`);
+  });
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /thrust until speed passes forty/i,
+    START_TIMEOUT_MS, 'B0 public objective after splash');
+}
+
+async function assertB0PublicContract(actor) {
+  const report = await actor.evaluate(() => {
+    const read = (selector) => {
+      const el = document.querySelector(selector);
+      if (!el) return { visible: false, text: '' };
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return {
+        visible: style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 && rect.height > 1,
+        text: (el.textContent || '').replace(/\s+/g, ' ').trim(),
+      };
+    };
+    return {
+      panel: read('#sf-onboarding .sf-ob-title'),
+      tracker: read('.sf-mission-tracker .sf-mt-obj'),
+      controls: read('#control-hints'),
+      missionLog: read('[data-screen="missionLog"]'),
+    };
+  });
+  assert.ok(report.panel.visible || report.tracker.visible, 'B0 exposes one visible persistent objective');
+  assert.equal(report.panel.visible && !!report.panel.text && report.tracker.visible && !!report.tracker.text, false,
+    'B0 keeps onboarding-panel and HUD tracker objective copy mutually exclusive');
+  assert.doesNotMatch(report.controls.text,
+    /W thrusts|W\/Up to thrust|Left stick flies|Nose follows the mouse|A\/D \(or arrows\) turn/i,
+    'B0 defers the generic firstFlight control wall');
+  assert.equal(report.missionLog.visible, false, 'B0 does not force-open Mission Log');
+  await actor.keyboard.press('KeyJ');
+  await waitForVisible(actor, '[data-screen="missionLog"]', 10000, 'Mission Log opened with public J binding');
+  await waitForText(actor, '[data-screen="missionLog"]', /current action|recommended next/i,
+    10000, 'Mission Log public route context');
+  await actor.keyboard.press('Escape');
+  await actor.waitForFunction(() => {
+    const el = document.querySelector('[data-screen="missionLog"]');
+    return !el || getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden';
+  }, null, { timeout: 10000 });
+}
+
+async function runWake(actor) {
+  await holdKeys(actor, ['KeyW'], 1500);
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /brake below ten/i, 20000, 'B0 brake cue');
+  // Pilot S is reverse plus brake. The dedicated zero-thrust brake proves the same public lesson
+  // without seeding a variable backward approach to the trainer spawned directly ahead.
+  await holdKeys(actor, ['Digit0'], 1400);
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /follow the amber diamond/i, 20000, 'B0 trainer cue');
+  // The marker is authored directly ahead of the live hull. Keep the default Pilot heading and
+  // use the visible cue as feedback; turning from the fixed-world HUD arrow would steer away.
+  await thrustForwardUntil(actor, /hold course/i, 'B0 trainer approach');
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /target the marked derelict/i,
+    20000, 'B1 derelict cue');
+}
+
+async function runDerelict(actor) {
+  // Ctrl is the public nearest-target modifier; the actor uses the visible Derelict objective, not
+  // a private entity id. Holding tether plus thrust reels the live line; a tap cuts it.
+  await tapChord(actor, ['ControlLeft', 'Space']);
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /winch in|cut and coast/i,
+    12000, 'B1 latch/winch cue');
+  await holdKeys(actor, ['Space', 'KeyW'], 3500);
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /cut and coast/i, 12000, 'B1 cut cue');
+  await actor.keyboard.press('Space');
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /fire a short burst/i,
+    20000, 'B3 gunnery cue');
+}
+
+async function runGunnery(actor) {
+  await aimAtPublicObjective(actor);
+  for (let shot = 0; shot < 3; shot++) await holdMouse(actor, 'left', 180);
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /release\. let the heat bar clear/i,
+    12000, 'B3 cooling cue');
+  await actor.waitForTimeout(5000);
+  await driveAwayFromObjectiveUntil(actor, /pulse the scanner/i, 14, 'B3 disengage');
+}
+
+async function runSeam(actor) {
+  await holdKeys(actor, ['Digit0'], 1400);
+  await aimAtPublicObjective(actor);
+  // Gunnery disengagement leaves the ship coasting away from the seam. The seam is still inside
+  // the standard Massline's 390 WU reach, but can sit beyond the 220 WU mining beam. Use the same
+  // public nearest-latch and reel grammar taught on the derelict, then brake while the live line
+  // holds the physical approach. This is player flight, not a hidden position correction.
+  await tapChord(actor, ['ControlLeft', 'Space']);
+  await waitForVisible(actor, '.sf-ml-instrument:not([hidden])',
+    12000, 'B2 seam Massline latch');
+  await holdKeys(actor, ['Space', 'KeyW'], 3000);
+  await holdKeys(actor, ['Digit0'], 1400);
+  await aimAtPublicObjective(actor);
+  await actor.keyboard.press('KeyC');
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /beam the bright seams/i,
+    12000, 'B2 scan receipt');
+  await aimAtPublicObjective(actor);
+  await actor.keyboard.down('Digit0');
+  try {
+    await holdMouse(actor, 'right', 8000);
+  } finally {
+    await actor.keyboard.up('Digit0');
+  }
+  await waitForText(actor, '#sf-onboarding .sf-ob-progress', /SAMPLE:\s*3\s*\/\s*3/i,
+    30000, 'B2 collected samples');
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /helios\. dock when close/i,
+    20000, 'B4 dock cue');
+}
+
+async function runFirstTrade(actor) {
+  // The ordinary public flight computer owns long approaches. Set Waypoint physically flies the
+  // ship; no hidden position or injected arrival is used by this actor.
+  await armPublicWaypoint(actor, 'Helios Station');
+  await waitForText(actor, '.sf-alert--dock .sf-alert__text', /dock at station/i,
+    START_TIMEOUT_MS, 'B4 Helios physical dock range');
+  await actor.keyboard.press('KeyE');
+  await waitForVisible(actor, '.sx-dock', 15000, 'Helios station command dock');
+
+  await actor.locator('button[data-nav="market"]').click();
+  await waitForVisible(actor, '[data-mode="sell"]', 10000, 'market sell control');
+  await actor.locator('[data-mode="sell"]').click();
+  const salvage = actor.locator('[data-cmdty]').filter({ hasText: /salvage/i }).first();
+  assert.ok(await salvage.count(), 'B4 exposes visibly-held salvage to sell');
+  await salvage.click();
+  await actor.getByRole('button', { name: 'Confirm Sale', exact: true }).click();
+
+  await actor.locator('button[data-nav="contracts"]').click();
+  await waitForText(actor, '.sx-ct-dispatch__label', /recommended delivery/i, 12000, 'B4 recommended contract');
+  const recommended = actor.locator('.sx-ct-row').filter({ hasText: /recommended|first trade/i }).first();
+  assert.ok(await recommended.count(), 'B4 presents the real recommended delivery row');
+  await recommended.click();
+  await actor.locator('[data-accept]').click();
+
+  await undockStationPublicly(actor, 'Helios departure before Star Map');
+  await travelToCeresThroughPublicMap(actor);
+  await armPublicWaypoint(actor, 'Ceres Refinery');
+  await waitForText(actor, '.sf-alert--dock .sf-alert__text', /dock at station/i,
+    START_TIMEOUT_MS, 'B4 Ceres physical dock range');
+  await actor.keyboard.press('KeyE');
+  await waitForVisible(actor, '.sx-dock', 15000, 'Ceres station command dock');
+}
+
+async function travelToCeresThroughPublicMap(actor) {
+  await actor.keyboard.press('KeyN');
+  await waitForVisible(actor, '#sf-galaxymap', 15000, 'Star Map');
+  const search = actor.locator('#sf-galaxymap .gm-search-input');
+  await search.fill('Ceres');
+  const ceres = actor.locator('#sf-galaxymap .gm-search-item').filter({ hasText: /ceres/i }).first();
+  assert.ok(await ceres.count(), 'Star Map shows the Ceres destination publicly');
+  await ceres.click();
+  const jump = actor.getByRole('button', { name: /set course.*jump/i }).first();
+  assert.ok(await jump.count(), 'Star Map exposes Set Course & Jump for Ceres');
+  await jump.click({ noWaitAfter: true });
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', /ceres|dock/i, 45000, 'Ceres mission guidance');
+}
+
+async function runChoice(actor) {
+  await actor.locator('button[data-nav="contracts"]').click();
+  await waitForText(actor, '.sx-ct-dispatch__label', /pick one.*haul.*bounty.*survey/i,
+    15000, 'B5 visible choices');
+  const choice = actor.getByRole('tab', { name: /\b(HAUL|BOUNTY|SURVEY)\b/i }).first();
+  assert.ok(await choice.count(), 'B5 has a visible HAUL, BOUNTY, or SURVEY choice');
+  const choiceTitle = (await choice.locator('.sx-ct-row__title').innerText()).replace(/\s+/g, ' ').trim();
+  assert.ok(choiceTitle, 'B5 choice exposes its own public contract title');
+  await choice.click();
+  await actor.locator('[data-accept]').click();
+  const active = actor.locator('.sx-job').filter({ has: actor.locator('.sx-job__title', { hasText: choiceTitle }) }).first();
+  await waitForVisible(actor, '.sx-job__title', 12000, 'chosen B5 active mission title');
+  assert.ok(await active.count(), `B5 active mission preserves visible choice title ${choiceTitle}`);
+  assert.equal((await active.locator('.sx-job__title').innerText()).replace(/\s+/g, ' ').trim(), choiceTitle,
+    'B5 active job title equals the accepted public contract title');
+  const track = active.locator('.sx-job__track');
+  if (await track.getAttribute('aria-pressed') !== 'true') await track.click();
+  await actor.waitForFunction((title) => {
+    const jobs = [...document.querySelectorAll('.sx-job')];
+    const job = jobs.find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim().includes(title));
+    return !!(job && job.querySelector('.sx-job__track[aria-pressed="true"]'));
+  }, choiceTitle, { timeout: 12000 });
+
+  // Capture the fitted class/weapon through the ordinary Shipworks tab before saving. No loadout
+  // or mission data is read from runtime state to decide an action.
+  await actor.locator('button[data-nav="shipworks"]').click();
+  await waitForVisible(actor, '.sx-hardpoint', 10000, 'Shipworks public fit surface');
+  await screenshot(actor, 'b5-fit.png');
+  return publicFingerprint(actor, { mission: choiceTitle, tracked: true });
+}
+
+async function undockForPublicSave(actor) {
+  await undockStationPublicly(actor, 'public station undock before Save');
+}
+
+async function undockStationPublicly(actor, label) {
+  await actor.locator('.sxb-launch').click();
+  const launchAnyway = actor.locator('[data-pop-launch]');
+  if (await launchAnyway.count() && await launchAnyway.isVisible()) await launchAnyway.click();
+  await actor.waitForFunction(() => !document.querySelector('.sx-dock'), null, { timeout: 15000 })
+    .catch((error) => { throw new Error(`Timed out waiting for ${label}: ${error.message}`); });
+  await waitForVisible(actor, 'canvas', 10000, `${label} flight canvas`);
+}
+
+async function saveToSlotOne(actor) {
+  await actor.keyboard.press('Escape');
+  await waitForVisible(actor, '[data-screen="pause"]', 10000, 'pause menu');
+  await actor.getByRole('button', { name: 'Save', exact: true }).click();
+  await waitForVisible(actor, '[data-screen="saveLoad"]', 10000, 'Save / Load');
+  const slotOneSave = actor.locator('[data-why="Save to Slot 1"]');
+  assert.ok(await slotOneSave.count(), 'visible Save / Load exposes exact Slot 1 Save control');
+  await slotOneSave.click();
+  await actor.waitForFunction(() => {
+    const row = [...document.querySelectorAll('.sf-slot')]
+      .find((el) => /slot 1/i.test(el.querySelector('.sf-slot-name')?.textContent || ''));
+    return !!(row && !row.classList.contains('empty')
+      && /Current|Latest/.test(row.textContent || ''));
+  }, null, { timeout: 15000 });
+}
+
+async function coldContinuePublicly(actor) {
+  await actor.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await waitForVisible(actor, '[data-screen="mainMenu"]', START_TIMEOUT_MS, 'cold main menu');
+  await waitForBootOverlayGone(actor);
+  const continueButton = actor.getByRole('button', { name: 'Continue', exact: true }).first();
+  assert.ok(await continueButton.count(), 'main menu exposes Continue from Slot 1');
+  await waitForText(actor, '.sf-menu-save-summary', /slot 1/i, 30000, 'public Slot 1 Continue summary');
+  assert.equal(await continueButton.isDisabled(), false, 'Continue is enabled for the public Slot 1 save');
+  await continueButton.click({ noWaitAfter: true });
+  await waitForVisible(actor, 'canvas', START_TIMEOUT_MS, 'continued play canvas');
+  await waitForVisible(actor, '.sf-mission-tracker', 30000, 'continued active mission tracker');
+}
+
+async function reopenPublicShipworks(actor, expectedMissionTitle) {
+  await waitForText(actor, '.sf-alert--dock .sf-alert__text', /dock at station/i, 30000,
+    'public dock availability after Continue');
+  await actor.keyboard.press('KeyE');
+  await waitForVisible(actor, '.sx-dock', 15000, 'continued station command dock');
+  await actor.locator('button[data-nav="shipworks"]').click();
+  await waitForVisible(actor, '.sx-hardpoint', 10000, 'continued Shipworks fit surface');
+  await actor.locator('button[data-nav="contracts"]').click();
+  await waitForVisible(actor, '.sx-job__title', 10000, 'continued public active mission surface');
+  const active = actor.locator('.sx-job').filter({ has: actor.locator('.sx-job__title', { hasText: expectedMissionTitle }) }).first();
+  assert.ok(await active.count(), 'Continue restores the accepted public mission title');
+  const restoredTitle = (await active.locator('.sx-job__title').innerText()).replace(/\s+/g, ' ').trim();
+  const restoredTracked = await active.locator('.sx-job__track').getAttribute('aria-pressed') === 'true';
+  assert.equal(restoredTracked, true,
+    'Continue restores the public tracked-mission state');
+  await actor.locator('button[data-nav="shipworks"]').click();
+  await waitForVisible(actor, '.sx-hardpoint', 10000, 'restored Shipworks fit surface');
+  return publicFingerprint(actor, { mission: restoredTitle, tracked: restoredTracked });
+}
+
+async function thrustForwardUntil(actor, cue, label) {
+  // Headless fixed-step progress varies with shader/CPU load. Hold the ordinary public control
+  // until the next visible verb instead of guessing how many wall-clock pulses equal 390 WU.
+  await actor.keyboard.down('KeyW');
+  try {
+    await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', cue, START_TIMEOUT_MS, label);
+  } finally {
+    await actor.keyboard.up('KeyW');
+  }
+}
+
+async function armPublicWaypoint(actor, placeName) {
+  await actor.keyboard.press('KeyN');
+  const map = actor.locator('#sf-galaxymap');
+  await map.waitFor({ state: 'visible', timeout: 15000 });
+  const search = map.locator('.gm-search-input');
+  await search.fill(placeName);
+  const result = map.locator('.gm-search-item').filter({ hasText: new RegExp(placeName, 'i') }).first();
+  await result.waitFor({ state: 'visible', timeout: 10000 });
+  await result.click();
+  const setWaypoint = actor.getByRole('button', { name: 'Set Waypoint', exact: true });
+  await setWaypoint.waitFor({ state: 'visible', timeout: 10000 });
+  const box = await setWaypoint.boundingBox();
+  assert.ok(box && box.width > 0 && box.height > 0, `${placeName} exposes a public Set Waypoint target`);
+  await actor.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await actor.waitForTimeout(250);
+  if (await map.isVisible().catch(() => false)) await actor.keyboard.press('Escape');
+  await map.waitFor({ state: 'hidden', timeout: 10000 });
+}
+
+async function driveAwayFromObjectiveUntil(actor, cue, attempts, label) {
+  // Pilot reverse is primarily a brake under assisted flight. A coasting D hold exercises the
+  // authored full-yaw control for one half-turn; after the yaw damps, forward thrust opens range.
+  await holdKeys(actor, ['KeyD'], 1050);
+  await actor.waitForTimeout(350);
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (await visibleTextMatches(actor, '.sf-mission-tracker .sf-mt-obj', cue)) return;
+    await holdKeys(actor, ['KeyW'], 850);
+  }
+  await waitForText(actor, '.sf-mission-tracker .sf-mt-obj', cue, 10000, label);
+}
+
+async function aimAtPublicObjective(actor) {
+  const point = await objectiveArrowPoint(actor);
+  await actor.mouse.move(point.x, point.y);
+}
+
+async function objectiveArrowPoint(actor) {
+  const point = await actor.evaluate(() => {
+    const el = document.querySelector('.sf-objarrow');
+    if (!el) return null;
+    const style = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    if (style.display === 'none' || style.visibility === 'hidden' || rect.width < 2 || rect.height < 2) return null;
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+  // A centered pointer is an ordinary neutral camera input when the goal is already on glass.
+  return point || { x: 640, y: 400 };
+}
+
+async function publicFingerprint(actor, missionFingerprint) {
+  return actor.evaluate((publicMission) => {
+    const text = (selector) => (document.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
+    const hardpoints = [...document.querySelectorAll('.sx-hardpoint')]
+      .map((el) => el.getAttribute('aria-label') || '').filter(Boolean);
+    return {
+      mission: publicMission.mission,
+      tracked: publicMission.tracked === true,
+      hardpoints,
+      identity: text('.sx-sw-circuit__identity'),
+      flow: text('.sx-sw-circuit'),
+      location: text('.sxb-berth__name') || text('.sf-mission-tracker .sf-mt-obj'),
+    };
+  }, missionFingerprint);
+}
+
+async function observe(actor, name) {
+  receipts.push({ phase: name, observer: await observerReceipt(actor) });
+}
+
+async function observerReceipt(actor) {
+  return actor.evaluate(() => {
+    const state = window.SF && window.SF.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    return {
+      mode: state?.mode || null,
+      onboarding: state?.onboarding ? {
+        currentBeat: state.onboarding.currentBeat,
+        active: state.onboarding.active,
+        finished: state.onboarding.finished,
+      } : null,
+      playerAlive: !!(player && player.alive),
+      visibleObjective: (document.querySelector('.sf-mission-tracker .sf-mt-obj')?.textContent || '').trim(),
+      visibleTarget: (document.querySelector('.sf-target__name')?.textContent || '').trim(),
+      visibleStation: !!document.querySelector('.sx-dock'),
+    };
+  });
+}
+
+async function screenshot(actor, name) {
+  await actor.screenshot({ path: join(EVIDENCE_DIR, name), fullPage: false });
+}
+
+async function waitForText(actor, selector, pattern, timeoutMs, label) {
+  await actor.waitForFunction(({ selector: sel, source, flags }) => {
     const el = document.querySelector(sel);
     if (!el) return false;
     const cs = getComputedStyle(el);
-    const r = el.getBoundingClientRect();
-    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
-  }, selector, { timeout: timeoutMs }).catch((err) => {
-    throw new Error('Timed out waiting for ' + label + ': ' + err.message);
+    const rect = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && rect.width > 1 && rect.height > 1
+      && new RegExp(source, flags).test((el.textContent || '').replace(/\s+/g, ' ').trim());
+  }, { selector, source: pattern.source, flags: pattern.flags }, { timeout: timeoutMs })
+    .catch((error) => { throw new Error(`Timed out waiting for ${label}: ${error.message}`); });
+}
+
+async function visibleTextMatches(actor, selector, pattern) {
+  return pattern.test(await visibleText(actor, selector));
+}
+
+async function visibleText(actor, selector) {
+  return actor.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return '';
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    if (cs.display === 'none' || cs.visibility === 'hidden' || rect.width < 2 || rect.height < 2) return '';
+    return (el.textContent || '').replace(/\s+/g, ' ').trim();
+  }, selector);
+}
+
+async function holdKeys(actor, codes, milliseconds) {
+  for (const code of codes) await actor.keyboard.down(code);
+  try { await actor.waitForTimeout(milliseconds); } finally {
+    for (const code of [...codes].reverse()) await actor.keyboard.up(code);
+  }
+}
+
+async function tapChord(actor, codes) {
+  await holdKeys(actor, codes, 120);
+}
+
+async function holdMouse(actor, button, milliseconds) {
+  await actor.mouse.down({ button });
+  try { await actor.waitForTimeout(milliseconds); } finally { await actor.mouse.up({ button }); }
+}
+
+async function waitForVisible(actor, selector, timeoutMs, label) {
+  await actor.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && rect.width > 20 && rect.height > 10;
+  }, selector, { timeout: timeoutMs }).catch((error) => {
+    throw new Error(`Timed out waiting for ${label}: ${error.message}`);
   });
 }
 
-async function clickButton(page, label) {
-  const button = page.getByRole('button', { name: label, exact: true }).first();
+async function clickButton(actor, label) {
+  const button = actor.getByRole('button', { name: label, exact: true }).first();
   if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
+  const box = await button.boundingBox();
+  assert.ok(box && box.width > 0 && box.height > 0, `${label} has a visible public pointer target`);
+  await actor.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   return true;
 }
 
-// The full-screen boot overlay (z-index 2000, pointer-events:auto) intercepts clicks until
-// precompilePipelines() finishes and hideBootOverlay() adds `.hidden` (→ pointer-events:none). That's
-// sub-second on a real GPU but ~20 s under software rendering (SwiftShader), which would otherwise
-// blow the New Game click's 10 s actionability timeout. Wait for it to clear first.
-async function waitForBootOverlayGone(page, timeoutMs = 90000) {
-  await page.waitForFunction(() => {
-    const o = document.getElementById('boot-overlay');
-    if (!o) return true;
-    const s = getComputedStyle(o);
-    return o.classList.contains('hidden') || s.pointerEvents === 'none' || s.display === 'none' || s.visibility === 'hidden';
+async function waitForBootOverlayGone(actor, timeoutMs = START_TIMEOUT_MS) {
+  await actor.waitForFunction(() => {
+    const overlay = document.getElementById('boot-overlay');
+    if (!overlay) return true;
+    const style = getComputedStyle(overlay);
+    return overlay.classList.contains('hidden') || style.pointerEvents === 'none'
+      || style.display === 'none' || style.visibility === 'hidden';
   }, null, { timeout: timeoutMs });
+}
+
+function assertNoActorShortcuts() {
+  const self = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+  const actorStart = self.indexOf('async function bootToNewGame');
+  const observerStart = self.indexOf('async function publicFingerprint');
+  const actorSource = self.slice(actorStart, observerStart);
+  for (const forbidden of [
+    new RegExp('screenManager\\.'), new RegExp('bus\\.emit\\('),
+    new RegExp('spawn' + 'Entity\\('), new RegExp('tele' + 'port', 'i'),
+  ]) {
+    assert.doesNotMatch(actorSource, forbidden,
+      `First Shift actor must not use hidden shortcut ${forbidden}; use public DOM/input only`);
+  }
 }
 
 async function startFreshServer() {
@@ -362,37 +621,28 @@ function spawnProbeServer(port) {
 
 async function waitForReachable(url, child) {
   for (let i = 0; i < 80; i++) {
-    if (child.exitCode != null) {
-      throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
-    }
+    if (child.exitCode != null) throw new Error(`Dev server exited before readiness\n${child.probeOutput()}`);
     if (await reachable(url)) return;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   child.kill();
-  throw new Error('Dev server did not become reachable at ' + url);
+  throw new Error(`Dev server did not become reachable at ${url}`);
 }
 
 async function findFreePort(start) {
-  for (let port = start; port < start + 80; port++) {
-    if (await isPortFree(port)) return port;
-  }
-  throw new Error('No free local port found for first-15 runtime check');
+  for (let port = start; port < start + 80; port++) if (await isPortFree(port)) return port;
+  throw new Error('No free local port found for First Shift runtime check');
 }
 
 function isPortFree(port) {
   return new Promise((resolve) => {
-    const server = createNetServer();
-    server.once('error', () => resolve(false));
-    server.once('listening', () => server.close(() => resolve(true)));
-    server.listen(port, '127.0.0.1');
+    const candidate = createNetServer();
+    candidate.once('error', () => resolve(false));
+    candidate.once('listening', () => candidate.close(() => resolve(true)));
+    candidate.listen(port, '127.0.0.1');
   });
 }
 
 async function reachable(url) {
-  try {
-    const res = await fetch(url, { method: 'GET' });
-    return !!res.ok;
-  } catch (_) {
-    return false;
-  }
+  try { return (await fetch(url, { method: 'GET' })).ok; } catch (_) { return false; }
 }
