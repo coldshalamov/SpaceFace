@@ -20,6 +20,7 @@ import {
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
+import { attachMirrorjawForemanPresentation } from './visualFactory.js';
 import {
   hasExplicitAuthoredGeologyPresentation,
   hasExplicitAuthoredPayloadPresentation,
@@ -244,7 +245,7 @@ export function installVisualOverrides(factory, options = {}) {
     // The wrapper is synchronous and fail-closed. Live direct mounts carry no renderables; preview
     // modes may still provide a hidden bespoke/procedural substrate for isolated inspection tools.
     try {
-      return wrapShipWithAuthoredParts(entity, visual, {
+      const boundary = wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
         libraryScope: options.authoredLibraryScope,
         bootstrapPlan: options.authoredBootstrapPlan,
@@ -257,6 +258,11 @@ export function installVisualOverrides(factory, options = {}) {
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
         },
       });
+      // Boss readability is a stable boundary decoration, not a procedural fallback. Mount it at
+      // the one synchronous boundary-creation seam so prepared/cached publication and later LOD
+      // swaps cannot bypass or remove it. It stays hidden until the authored body publishes.
+      attachMirrorjawForemanPresentation(boundary, entity);
+      return boundary;
     }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);

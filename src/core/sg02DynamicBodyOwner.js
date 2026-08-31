@@ -12,6 +12,7 @@ import {
 } from './physicsAuthority.js';
 import {
   expandProxyPrimitives,
+  proxyObbHalfExtents,
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
@@ -262,6 +263,18 @@ export class Sg02DynamicBodyOwner {
       this._staticLayerVersion = version;
     }
 
+    // Kinematic fixtures remain fixed Rapier records, so changing their pose must not invalidate
+    // every static record. Resync only those authored fixtures each tick; `_maybeResyncBodyPose`
+    // keeps the exact OBB/body transform and does no solver-dynamic admission.
+    if (!staticChanged) {
+      for (const entity of staticEntities) {
+        if (!entity || entity.alive === false) continue;
+        const spec = resolvePhysicsBodySpec(entity);
+        if (!spec || !spec.kinematic || spec.dynamic) continue;
+        this._syncRecord(entity, spec);
+      }
+    }
+
     let dynamicCount = 0;
     for (const entity of dynamicEntities) {
       if (!entity || entity.alive === false) continue;
@@ -391,6 +404,9 @@ export class Sg02DynamicBodyOwner {
     const owner = this.records.get(input.ownerId);
     const target = this.records.get(input.targetId);
     if (!owner || !target || owner === target) return false;
+    // A moving authored fixture has no solver authority. It cannot be Massline/tethered even
+    // though its fixed collider is present for exact contact response.
+    if (owner.spec.kinematic || target.spec.kinematic) return false;
     const sourceWorld = this._globalPointToFrameLocal(input.sourceWorld, owner.body.translation());
     const targetWorld = this._globalPointToFrameLocal(input.targetWorld, target.body.translation());
     const sourceAnchorLocal = normalizeLocalAnchor(input.sourceAnchorLocal);
@@ -1756,6 +1772,7 @@ function compareIds(a, b) {
 function recordMatchesSpec(rec, spec) {
   if (!rec || !spec) return false;
   return rec.revision === spec.revision &&
+    rec.spec.kinematic === spec.kinematic &&
     rec.spec.dynamic === spec.dynamic &&
     rec.spec.ccd === spec.ccd &&
     rec.spec.radius === spec.radius &&
@@ -1884,10 +1901,11 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
         .setTranslation((ax + bx) * 0.5, 0, (az + bz) * 0.5)
         .setRotation(capsulePlanarQuat(ux, uz));
     } else if (primitive.kind === 'obb') {
+      const halfExtents = proxyObbHalfExtents(entity, manifest, primitive, scale);
       desc = R.ColliderDesc.cuboid(
-        Math.max(0.01, primitive.hx * scale),
-        Math.max(0.01, primitive.hx * scale),
-        Math.max(0.01, primitive.hz * scale),
+        Math.max(0.01, halfExtents.hx),
+        Math.max(0.01, halfExtents.hy),
+        Math.max(0.01, halfExtents.hz),
       )
         .setTranslation(primitive.x * scale, 0, primitive.z * scale)
         .setRotation(quatFromYaw(finite(primitive.angleDeg) * (Math.PI / 180)));

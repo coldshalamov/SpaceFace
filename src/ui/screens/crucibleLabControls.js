@@ -217,6 +217,10 @@ const CSS = `
   font-family: var(--sf-data-face); font-size: 13px;
 }
 .sf-lab-runtime .sf-apron { color: var(--sf-calm); font-size: 12px; line-height: 1.4; }
+.sf-lab-runtime-hint {
+  color: var(--sf-calm); font-size: 12px; line-height: 1.4;
+  word-break: normal; overflow-wrap: normal;
+}
 .sf-lab-runtime .sf-btn--danger { color: var(--sf-foe); }
 @media (forced-colors: active) {
   .sf-lab-runtime select, .sf-lab-invuln.is-you { background: Canvas; color: CanvasText; border-color: CanvasText; }
@@ -292,7 +296,7 @@ export function mountCrucibleLabControls(ctx, hostEl) {
   speedLabel.appendChild(speedText);
 
   const hint = document.createElement('div');
-  hint.className = 'sf-sandbox-lab-digest sf-apron';
+  hint.className = 'sf-sandbox-lab-digest sf-apron sf-lab-runtime-hint';
   hint.setAttribute('role', 'status');
 
   row.appendChild(speedLabel);

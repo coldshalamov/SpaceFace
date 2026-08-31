@@ -41,6 +41,9 @@ export function writePhysicsControl(entity, control = {}) {
 /** Queue a world-space linear impulse. The physics owner applies it on its next tick. */
 export function queuePhysicsImpulse(entity, impulse) {
   if (!entity || typeof entity !== 'object') return false;
+  // Scripted kinematic fixtures own their pose outside the solver. Accepting a queued impulse
+  // would leave a never-consumed command behind and falsely advertise Massline/combat authority.
+  if (isKinematicPhysicsBodyEntity(entity)) return false;
   commandFor(entity).impulses.push(vector3(impulse));
   return true;
 }
@@ -48,6 +51,7 @@ export function queuePhysicsImpulse(entity, impulse) {
 /** Queue a world-space angular impulse. SpaceFace only uses the Y component physically. */
 export function queuePhysicsTorqueImpulse(entity, impulse) {
   if (!entity || typeof entity !== 'object') return false;
+  if (isKinematicPhysicsBodyEntity(entity)) return false;
   commandFor(entity).torqueImpulses.push(vector3(impulse));
   return true;
 }
@@ -110,7 +114,17 @@ export function shouldSyncPhysicsBodyEntity(entity) {
 export function isDynamicPhysicsBodyEntity(entity) {
   if (!entity || typeof entity !== 'object') return false;
   const authored = authoredPhysicsBody(entity);
+  if (authored && authored.kinematic === true) return false;
   return authored && authored.dynamic != null ? !!authored.dynamic : defaultDynamic(entity);
+}
+
+/**
+ * A kinematic body is an authored, fixed Rapier body whose game-owned pose changes over time.
+ * It belongs to the incremental broadphase/presentation paths, never the solver dynamic set.
+ */
+export function isKinematicPhysicsBodyEntity(entity) {
+  const authored = authoredPhysicsBody(entity);
+  return !!(authored && authored.kinematic === true);
 }
 
 /**
@@ -129,6 +143,7 @@ export function ensurePhysicsBodySpec(entity) {
   const inertiaY = positive(authored.inertiaY, positive(modelInertia, 0.5 * mass * radius * radius));
   const isCraft = entity.type === 'ship' || entity.type === 'drone';
   const shape = authored.shape ? String(authored.shape) : (isCraft ? 'capsule' : 'ball');
+  const kinematic = authored.kinematic === true;
   const thrusters = Array.isArray(authored.thrusters)
     ? authored.thrusters.map(normalizeThruster)
     : (isCraft ? DEFAULT_THRUSTERS.map((thruster) => ({ ...thruster, health: 1 })) : []);
@@ -141,7 +156,10 @@ export function ensurePhysicsBodySpec(entity) {
     centerOfMass: vector3(authored.centerOfMass),
     radius,
     shape,
-    dynamic: authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic,
+    // Kinematic is deliberately additive: old records remain unchanged, while a new kinematic
+    // authoring bit always wins over a contradictory dynamic bit.
+    kinematic,
+    dynamic: kinematic ? false : (authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic),
     ccd: authored.ccd == null ? defaultCcd(entity) : !!authored.ccd,
     material: String(authored.material || defaultMaterial(entity)),
     attachmentPoints: normalizeAttachmentPoints(authored.attachmentPoints),
@@ -224,6 +242,7 @@ export function resolvePhysicsBodySpec(entity) {
     centerOfMass: vector3(body.centerOfMass),
     radius: positive(body.radius, 1),
     shape: String(body.shape || (entity.type === 'ship' || entity.type === 'drone' ? 'capsule' : 'ball')),
+    kinematic: body.kinematic === true,
     dynamic: !!body.dynamic,
     ccd: !!body.ccd,
     material: String(body.material || 'default'),

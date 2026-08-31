@@ -63,11 +63,34 @@ function statusIdsOf(state, entity) {
   return Object.keys(bag);
 }
 
-function isSurfaceTarget(target) {
-  if (!target) return false;
-  const material = target.surfaceMaterial
+function wrapAngle(value) {
+  return Math.atan2(Math.sin(value), Math.cos(value));
+}
+
+export function directionalSurfaceMaterial(target, hitPos) {
+  const directional = target && target.data && target.data.directionalSurface;
+  if (!directional || !hitPos || !target.pos) return null;
+  const dx = hitPos.x - target.pos.x;
+  const dz = hitPos.z - target.pos.z;
+  if (!(Math.hypot(dx, dz) > 1e-6)) return null;
+  const localBearing = wrapAngle(Math.atan2(dz, dx) - (Number(target.rot) || 0));
+  const center = Number.isFinite(directional.arcCenter) ? directional.arcCenter : 0;
+  const half = Number.isFinite(directional.arcHalfWidth) ? Math.max(0, directional.arcHalfWidth) : 0;
+  return Math.abs(wrapAngle(localBearing - center)) <= half
+    ? directional.material || null
+    : null;
+}
+
+function contactMaterial(target, payload) {
+  return directionalSurfaceMaterial(target, payload && payload.pos)
+    || target.surfaceMaterial
     || target.surfaceKind
     || (target.data && (target.data.surfaceMaterial || target.data.surfaceKind));
+}
+
+function isSurfaceTarget(target, payload) {
+  if (!target) return false;
+  const material = contactMaterial(target, payload);
   const response = surfaceResponseFor(material);
   if (response === SURFACE_RESPONSE.reflect || response === SURFACE_RESPONSE.absorb) return true;
   return SURFACE_TYPES.has(target.type);
@@ -112,9 +135,7 @@ function receiptForContact(projectile, target, payload, tick) {
     point: payload && payload.pos,
     normal: payload && payload.normal,
     velocity: projectile.vel,
-    material: target.surfaceMaterial
-      || target.surfaceKind
-      || (target.data && (target.data.surfaceMaterial || target.data.surfaceKind)),
+    material: contactMaterial(target, payload),
   }, tick);
 }
 
@@ -135,7 +156,7 @@ export function resolveLiveAttackHit(input = {}) {
     return { ok: false, reason: 'no_live_attack', consume: true, hops };
   }
 
-  if (target && isSurfaceTarget(target)) {
+  if (target && isSurfaceTarget(target, payload)) {
     const receipt = receiptForContact(projectile, target, payload, tick);
     const bounced = resolveRicochet(runtime, spec, receipt, projectile, {
       hostiles: input.hostiles,

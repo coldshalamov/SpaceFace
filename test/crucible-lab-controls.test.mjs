@@ -538,6 +538,15 @@ function mountLab(ctx) {
   return { host, handle, stepBtn: findRowChild(host, 'Step') };
 }
 
+test('runtime help copy overrides the setup digest break-all rule', () => {
+  withFakeDocument(() => {
+    const { ctx } = makeCtx();
+    const { host } = mountLab(ctx);
+    const hint = host.children[1];
+    assert.match(hint.className, /\bsf-lab-runtime-hint\b/);
+  });
+});
+
 test('Lab Step click invokes ctx.simStep exactly once, and a missing seam is a no-op', () => {
   withFakeDocument(() => {
     const { ctx, state } = makeCtx();

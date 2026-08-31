@@ -63,7 +63,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   'collisionConsequences', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'physics', 'combat',
+  // Foundry machinery writes its authoritative shutter pose and Mirrorjaw phase before physics
+  // consumes the room colliders or projectile contacts for this fixed step.
+  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'survivalArena', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',

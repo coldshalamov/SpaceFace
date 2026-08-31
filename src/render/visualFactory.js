@@ -17,6 +17,7 @@
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
@@ -394,6 +395,7 @@ function optimizeStaticBatches(root) {
 
 function isBatchCandidate(obj) {
   if (!obj || !obj.isMesh || obj.isBatchedMesh || obj.isInstancedMesh) return false;
+  if (obj.userData && obj.userData.staticBatch === false) return false;
   if (obj.onBeforeRender && obj.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
   if (obj.children && obj.children.length) return false;
   const g = obj.geometry, m = obj.material;
@@ -1595,6 +1597,284 @@ function buildDreadnoughtEnemy(ctx) {
   }
 }
 
+const MIRRORJAW_VISUAL_PHASES = Object.freeze({
+  reflective_ram: Object.freeze({
+    jawColor: 0xc5d2d8, jawEmissive: 0x172a31, jawEmissiveIntensity: 0.2,
+    jawMetalness: 0.94, jawRoughness: 0.12, jawClearcoat: 0.28,
+    reactorColor: 0x3b1711, reactorEmissive: 0xff3f16, reactorEmissiveIntensity: 0.9,
+  }),
+  absorbent_screen: Object.freeze({
+    jawColor: 0x232b2e, jawEmissive: 0x080b0c, jawEmissiveIntensity: 0.04,
+    jawMetalness: 0.32, jawRoughness: 0.88, jawClearcoat: 0.02,
+    reactorColor: 0x4b1d13, reactorEmissive: 0xff4a16, reactorEmissiveIntensity: 1.45,
+  }),
+  unmoored_reactor: Object.freeze({
+    jawColor: 0x59656a, jawEmissive: 0x121719, jawEmissiveIntensity: 0.08,
+    jawMetalness: 0.58, jawRoughness: 0.56, jawClearcoat: 0.08,
+    reactorColor: 0xc04b1d, reactorEmissive: 0xff3b0b, reactorEmissiveIntensity: 2.9,
+  }),
+});
+
+// A small octagonal-section prism gives each mandible a real tapered silhouette.  The rear root is
+// broad enough to read as a forged load-bearing part; the forward section narrows to a blunt point
+// so the two leaves read as a split jaw instead of two scaled rectangular blocks.  The geometry is
+// authored in the dreadnought's +Z-forward frame and is rotated into gameplay +X by its owner.
+function mirrorjawMandibleGeometry() {
+  return getGeometry('mirrorjaw:mandible-tapered-prism-v2', () => {
+    const sections = [
+      { z: -0.42, hx: 0.14, hy: 0.085, bevel: 0.018 },
+      { z: 0.16, hx: 0.12, hy: 0.076, bevel: 0.016 },
+      { z: 0.52, hx: 0.032, hy: 0.030, bevel: 0.010 },
+    ];
+    const vertices = [];
+    const indices = [];
+    const ringPoints = (section) => {
+      const b = Math.min(section.bevel, section.hx * 0.48, section.hy * 0.48);
+      return [
+        [-section.hx + b, -section.hy], [section.hx - b, -section.hy],
+        [section.hx, -section.hy + b], [section.hx, section.hy - b],
+        [section.hx - b, section.hy], [-section.hx + b, section.hy],
+        [-section.hx, section.hy - b], [-section.hx, -section.hy + b],
+      ];
+    };
+    for (const section of sections) {
+      for (const [x, y] of ringPoints(section)) vertices.push(x, y, section.z);
+    }
+    for (let section = 0; section < sections.length - 1; section++) {
+      const start = section * 8;
+      const next = (section + 1) * 8;
+      for (let i = 0; i < 8; i++) {
+        const a = start + i;
+        const b = start + ((i + 1) % 8);
+        const c = next + ((i + 1) % 8);
+        const d = next + i;
+        indices.push(a, b, c, a, c, d);
+      }
+    }
+    const backCenter = vertices.length / 3;
+    vertices.push(0, 0, sections[0].z);
+    const frontCenter = vertices.length / 3;
+    vertices.push(0, 0, sections[sections.length - 1].z);
+    for (let i = 0; i < 8; i++) {
+      const next = (i + 1) % 8;
+      // Reverse winding on the rear cap so both caps face outwards.
+      indices.push(backCenter, next, i);
+      const front = (sections.length - 1) * 8;
+      indices.push(frontCenter, front + i, front + next);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    geometry.name = 'MirrorjawTaperedMandiblePrism';
+    return geometry;
+  });
+}
+
+function decorateMirrorjawForeman(ctx) {
+  const { g, R, vis } = ctx;
+  const L = vis.length || 2.6;
+  const jawMat = getMaterial('mirrorjaw:face', () => new THREE.MeshPhysicalMaterial({
+    color: 0xc5d2d8,
+    emissive: 0x172a31,
+    emissiveIntensity: 0.2,
+    metalness: 0.94,
+    roughness: 0.12,
+    clearcoat: 0.28,
+    clearcoatRoughness: 0.2,
+    envMap: SHIP_ENV_MAP,
+    envMapIntensity: 1.3,
+  })).clone();
+  jawMat.name = 'SF_MirrorjawReflectiveFace';
+  const pistonMat = getMaterial('mirrorjaw:piston', () => new THREE.MeshStandardMaterial({
+    color: 0x202833,
+    metalness: 0.76,
+    roughness: 0.34,
+  }));
+  const reactorMat = getMaterial('mirrorjaw:reactor', () => new THREE.MeshStandardMaterial({
+    color: 0x3b1711,
+    emissive: 0xff3f16,
+    emissiveIntensity: 0.9,
+    metalness: 0.4,
+    roughness: 0.25,
+  })).clone();
+  reactorMat.name = 'SF_MirrorjawReactor';
+  const reactorCageMat = getMaterial('mirrorjaw:reactor-cage', () => new THREE.MeshStandardMaterial({
+    color: 0x25323a,
+    metalness: 0.86,
+    roughness: 0.34,
+  }));
+
+  for (const side of [-1, 1]) {
+    const sideName = side < 0 ? 'port' : 'starboard';
+    const jaw = new THREE.Group();
+    jaw.name = `mirrorjaw-jaw-${sideName}`;
+    jaw.position.set(side * 0.23, 0.02, L * 0.55);
+    jaw.rotation.y = side * -0.12;
+    jaw.scale.setScalar(R);
+    jaw.userData.mirrorjawRole = 'split-tapered-mandible';
+    const mandible = new THREE.Mesh(mirrorjawMandibleGeometry(), jawMat);
+    mandible.name = `mirrorjaw-mandible-plate-${sideName}`;
+    mandible.userData.mirrorjawRole = 'tapered-mandible-leaf';
+    // Preserve the two leaves as separately inspectable phase-bearing parts. They are only two
+    // meshes and their shared material keeps the instance cost bounded.
+    mandible.userData.staticBatch = false;
+    mandible.castShadow = true;
+    mandible.receiveShadow = true;
+    jaw.add(mandible);
+    g.add(jaw);
+
+    // The side actuator is a visible load path: a barrel, a smaller rod entering the mandible
+    // root, and one collar. All three use cached geometry/materials and remain static in count.
+    const loadPath = new THREE.Group();
+    loadPath.name = `mirrorjaw-side-load-path-${sideName}`;
+    loadPath.rotation.y = side * -0.10;
+    loadPath.scale.setScalar(R);
+    loadPath.userData.mirrorjawRole = 'side-piston-load-path';
+    const piston = new THREE.Mesh(
+      getGeometry('mirrorjaw:piston-barrel', () => new THREE.CylinderGeometry(0.075, 0.095, 0.54, 8)),
+      pistonMat,
+    );
+    piston.name = `mirrorjaw-piston-${sideName}`;
+    piston.rotation.x = Math.PI / 2;
+    piston.position.set(side * 0.49, 0.01, 0.14);
+    piston.userData.staticBatch = false;
+    loadPath.add(piston);
+    const pistonRod = new THREE.Mesh(
+      getGeometry('mirrorjaw:piston-rod', () => new THREE.CylinderGeometry(0.034, 0.044, 0.24, 8)),
+      pistonMat,
+    );
+    pistonRod.name = `mirrorjaw-piston-rod-${sideName}`;
+    pistonRod.rotation.x = Math.PI / 2;
+    pistonRod.position.set(side * 0.39, 0.01, 0.48);
+    pistonRod.userData.staticBatch = false;
+    loadPath.add(pistonRod);
+    const pistonCollar = new THREE.Mesh(
+      getGeometry('mirrorjaw:piston-collar', () => new THREE.TorusGeometry(0.095, 0.018, 6, 12)),
+      pistonMat,
+    );
+    pistonCollar.name = `mirrorjaw-piston-collar-${sideName}`;
+    pistonCollar.position.set(side * 0.39, 0.01, 0.38);
+    pistonCollar.userData.staticBatch = false;
+    loadPath.add(pistonCollar);
+    g.add(loadPath);
+  }
+
+  // The rear assembly is intentionally directional. In this authored +Z frame the ring's default
+  // XY plane is normal to +Z; the owner's +90° yaw turns it into a YZ ring normal to gameplay -X,
+  // so a rear three-quarter view sees a cage instead of a giant top-facing orange disc.
+  const reactorAssembly = new THREE.Group();
+  reactorAssembly.name = 'mirrorjaw-rear-reactor-cage';
+  reactorAssembly.position.set(0, 0.08, -L * 0.64);
+  reactorAssembly.scale.setScalar(R);
+  reactorAssembly.userData.mirrorjawRole = 'rear-facing-reactor-cage';
+  reactorAssembly.userData.mirrorjawFacing = 'rear';
+  const reactor = new THREE.Mesh(
+    getGeometry('mirrorjaw:reactorCage-v2', () => new THREE.TorusGeometry(0.18, 0.028, 6, 16)),
+    reactorCageMat,
+  );
+  reactor.name = 'mirrorjaw-reactor-cage';
+  reactor.userData.staticBatch = false;
+  reactor.userData.mirrorjawFacing = 'rear';
+  reactorAssembly.add(reactor);
+  const reactorCore = new THREE.Mesh(
+    getGeometry('mirrorjaw:reactorCore-v2', () => new THREE.OctahedronGeometry(0.11, 0)),
+    reactorMat,
+  );
+  reactorCore.name = 'mirrorjaw-reactor-core';
+  reactorCore.userData.staticBatch = false;
+  reactorCore.castShadow = true;
+  reactorAssembly.add(reactorCore);
+  const railGeometry = getGeometry('mirrorjaw:reactor-rail', () => new THREE.CylinderGeometry(0.027, 0.038, 0.34, 6));
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(railGeometry, reactorCageMat);
+    rail.name = `mirrorjaw-reactor-rail-${side < 0 ? 'port' : 'starboard'}`;
+    rail.position.x = side * 0.12;
+    rail.userData.staticBatch = false;
+    reactorAssembly.add(rail);
+  }
+  g.add(reactorAssembly);
+  g.userData.mirrorjawForeman = true;
+
+  let visiblePhase = null;
+  return {
+    updatePhase(nextPhase) {
+      const phase = MIRRORJAW_VISUAL_PHASES[nextPhase]
+        ? nextPhase
+        : 'reflective_ram';
+      if (phase === visiblePhase) return phase;
+      const look = MIRRORJAW_VISUAL_PHASES[phase];
+      visiblePhase = phase;
+      jawMat.color.setHex(look.jawColor);
+      jawMat.emissive.setHex(look.jawEmissive);
+      jawMat.emissiveIntensity = look.jawEmissiveIntensity;
+      jawMat.metalness = look.jawMetalness;
+      jawMat.roughness = look.jawRoughness;
+      jawMat.clearcoat = look.jawClearcoat;
+      reactorMat.color.setHex(look.reactorColor);
+      reactorMat.emissive.setHex(look.reactorEmissive);
+      reactorMat.emissiveIntensity = look.reactorEmissiveIntensity;
+      return phase;
+    },
+  };
+}
+
+/**
+ * Attach the Mirrorjaw-specific readable machinery to a live authored ship boundary. Live play
+ * mounts ships through a zero-draw authored admission substrate, so the procedural ship builder
+ * above is not part of that route; boss-specific jaws/reactor must cross the authored swap seam
+ * explicitly or the player only sees an ordinary Colossus body.
+ */
+export function attachMirrorjawForemanPresentation(root, entity) {
+  if (!root || !root.isObject3D || entity?.data?.bossProfile?.id !== 'mirrorjaw_foreman') return null;
+  root.userData = root.userData || {};
+  const existing = root.getObjectByName('mirrorjaw-foreman-authored-overlay-frame');
+  let overlay = existing;
+  if (!overlay) {
+    const def = SHIP_BY_ID.get(entity.data?.defId) || SHIP_BY_ID.get('ship_colossus');
+    const vis = { length: 2.6, halfWidth: 0.9, height: 0.6, ...(def?.visuals?.proportions || {}) };
+    overlay = new THREE.Group();
+    overlay.name = 'mirrorjaw-foreman-authored-overlay-frame';
+    overlay.rotation.y = Math.PI / 2;
+    overlay.userData.mirrorjawForemanOverlay = true;
+    const presentation = decorateMirrorjawForeman({
+      g: overlay,
+      R: entity.radius || 12,
+      vis,
+    });
+    overlay.userData.updateMirrorjawPhase = presentation.updatePhase;
+    root.add(overlay);
+  }
+
+  const updateMirrorjawPhase = overlay.userData?.updateMirrorjawPhase;
+  if (typeof updateMirrorjawPhase !== 'function') return overlay;
+  if (root.userData.mirrorjawRuntimeOverlay === overlay) {
+    root.userData.updateRuntimeState?.(entity);
+    return overlay;
+  }
+
+  const previousRuntimeUpdate = typeof root.userData.updateRuntimeState === 'function'
+    ? root.userData.updateRuntimeState
+    : null;
+  root.userData.updateRuntimeState = (liveEntity, now) => {
+    if (previousRuntimeUpdate) previousRuntimeUpdate(liveEntity, now);
+    const phase = updateMirrorjawPhase(liveEntity?.data?.mirrorjawPhase);
+    root.userData.mirrorjawVisualPhase = phase;
+    const authoredState = String(root.userData.authoredAssetState || '');
+    overlay.visible = !authoredState
+      || authoredState === 'authored'
+      || authoredState === 'authored-prepared'
+      || authoredState === 'procedural-settled'
+      || authoredState === 'same-semantic-fallback';
+  };
+  root.userData.mirrorjawForemanOverlay = overlay;
+  root.userData.mirrorjawRuntimeOverlay = overlay;
+  root.userData.updateRuntimeState(entity);
+  return overlay;
+}
+
 const ENEMY_FAMILY_BUILDERS = {
   drone_swarm: buildDroneSwarm,
   sniper_lance: buildSniperLance,
@@ -1649,7 +1929,21 @@ function buildShipMesh(e, pal) {
   // 1) build the family hull — player families from FAMILY_BUILDERS, enemy silhouettes from
   //    ENEMY_FAMILY_BUILDERS (graphics spec Workstream D: enemies render as their own hostile forms).
   const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
+  const isMirrorjaw = e.data && e.data.bossProfile && e.data.bossProfile.id === 'mirrorjaw_foreman';
+  let mirrorjawVisual = null;
   builder(ctx);
+  if (isMirrorjaw) {
+    mirrorjawVisual = decorateMirrorjawForeman(ctx);
+    // The legacy dreadnought silhouette was authored with +Z as its prow, while flight, weapons,
+    // and directional-surface combat all define local +X as the nose. Rotate only that authored
+    // base/decor assembly into the canonical ship frame; later +X hardpoints and drive mounts stay
+    // in their normal frame. This keeps the visible jaw on the same side that reflects a shot.
+    const localFrame = new THREE.Group();
+    localFrame.name = 'mirrorjaw-foreman-local-frame';
+    for (const child of [...g.children]) localFrame.add(child);
+    localFrame.rotation.y = Math.PI / 2;
+    g.add(localFrame);
+  }
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.
@@ -1786,6 +2080,13 @@ function buildShipMesh(e, pal) {
     };
   }
   outer.userData.kind = 'ship';
+  if (mirrorjawVisual) {
+    outer.userData.updateRuntimeState = (liveEntity) => {
+      const phase = mirrorjawVisual.updatePhase(liveEntity?.data?.mirrorjawPhase);
+      outer.userData.mirrorjawVisualPhase = phase;
+    };
+    outer.userData.updateRuntimeState(e);
+  }
 
   // GR-5: persistent 3D shield bubble. Shared via shipKit so authored compositions use the same
   // geometry/material contract; per-instance material carries its own flash state.
@@ -3454,6 +3755,438 @@ function buildPayload(e) {
   return g;
 }
 
+// Foundry geometry is deliberately built from a small family of authored profiles rather than
+// raw boxes. RoundedBoxGeometry gives each structural role its own edge radius and a real chamfer
+// under grazing light while keeping the geometry cache bounded by the data-driven dimensions.
+function foundryRoundedBox(key, width, height, depth, radius, segments = 1) {
+  const w = Math.max(0.01, width);
+  const h = Math.max(0.01, height);
+  const d = Math.max(0.01, depth);
+  const r = Math.max(0.01, Math.min(radius, w * 0.48, h * 0.48, d * 0.48));
+  return getGeometry(`${key}:${q(w)}:${q(h)}:${q(d)}:${q(r)}:${segments}`, () => (
+    new RoundedBoxGeometry(w, h, d, segments, r)
+  ));
+}
+
+function foundryCylinder(key, radiusTop, radiusBottom, height, radialSegments = 8) {
+  const rt = Math.max(0.01, radiusTop);
+  const rb = Math.max(0.01, radiusBottom);
+  const h = Math.max(0.01, height);
+  return getGeometry(`${key}:${q(rt)}:${q(rb)}:${q(h)}:${radialSegments}`, () => (
+    new THREE.CylinderGeometry(rt, rb, h, radialSegments)
+  ));
+}
+
+function foundryTorus(key, radius, tube, radialSegments = 8, tubularSegments = 16) {
+  const r = Math.max(0.01, radius);
+  const t = Math.max(0.01, Math.min(tube, r * 0.45));
+  return getGeometry(`${key}:${q(r)}:${q(t)}:${radialSegments}:${tubularSegments}`, () => (
+    new THREE.TorusGeometry(r, t, radialSegments, tubularSegments)
+  ));
+}
+
+function buildRicochetFoundrySurface(e) {
+  const spec = e && e.data && e.data.foundrySurface;
+  if (!spec) return null;
+  const length = Math.max(1, spec.halfLength * 2);
+  const width = Math.max(1, spec.halfWidth * 2);
+  const height = Math.max(2, spec.height || 24);
+  const kind = spec.kind || 'plate';
+  const frame = getMaterial('foundry:v2:frame', () => new THREE.MeshStandardMaterial({
+    color: 0x1c2933, metalness: 0.84, roughness: 0.38,
+  }));
+  const frameDark = getMaterial('foundry:v2:frame-dark', () => new THREE.MeshStandardMaterial({
+    color: 0x0b1219, metalness: 0.72, roughness: 0.58,
+  }));
+  const edge = getMaterial('foundry:v2:edge-paint', () => new THREE.MeshStandardMaterial({
+    color: 0xb85a1c, emissive: 0x2d0e03, emissiveIntensity: 0.62,
+    metalness: 0.5, roughness: 0.3,
+  }));
+  const edgeHighlight = getMaterial('foundry:v2:edge-highlight', () => new THREE.MeshStandardMaterial({
+    color: 0xf1a143, emissive: 0x3a1205, emissiveIntensity: 0.7,
+    metalness: 0.62, roughness: 0.24,
+  }));
+  const mirror = getMaterial('foundry:v2:mirror-face', () => new THREE.MeshPhysicalMaterial({
+    color: 0x84b9c7, metalness: 0.9, roughness: 0.11,
+    clearcoat: 0.52, clearcoatRoughness: 0.14,
+    envMap: SHIP_ENV_MAP, envMapIntensity: 1.55,
+  }));
+  const mirrorAlt = getMaterial('foundry:v2:mirror-variation', () => new THREE.MeshPhysicalMaterial({
+    color: 0x4f7b89, metalness: 0.96, roughness: 0.23,
+    clearcoat: 0.32, clearcoatRoughness: 0.22,
+    envMap: SHIP_ENV_MAP, envMapIntensity: 1.2,
+  }));
+  const mirrorEdge = getMaterial('foundry:v2:mirror-edge', () => new THREE.MeshPhysicalMaterial({
+    color: 0xb4d6db, metalness: 0.98, roughness: 0.075,
+    clearcoat: 0.68, clearcoatRoughness: 0.1,
+    envMap: SHIP_ENV_MAP, envMapIntensity: 1.8,
+  }));
+  const seal = getMaterial('foundry:v2:seal', () => new THREE.MeshStandardMaterial({
+    color: 0x151e25, metalness: 0.66, roughness: 0.46,
+  }));
+  const fastener = getMaterial('foundry:v2:fastener', () => new THREE.MeshStandardMaterial({
+    color: 0x768c96, metalness: 0.94, roughness: 0.2,
+  }));
+  const refractory = getMaterial('foundry:v2:refractory', () => new THREE.MeshStandardMaterial({
+    color: 0x2a1b19, metalness: 0.22, roughness: 0.9,
+  }));
+  const refractoryDark = getMaterial('foundry:v2:refractory-dark', () => new THREE.MeshStandardMaterial({
+    color: 0x120e10, metalness: 0.18, roughness: 0.95,
+  }));
+  const hot = getMaterial('foundry:v2:hot', () => new THREE.MeshStandardMaterial({
+    color: 0x7a2410, emissive: 0xff4a16, emissiveIntensity: 2.3,
+    metalness: 0.3, roughness: 0.3,
+  }));
+  const g = new THREE.Group();
+
+  const bodyMaterial = kind === 'furnace' ? refractory : frame;
+  const bodyRadius = kind === 'furnace' ? Math.min(8, width * 0.18) : Math.min(4.5, width * 0.16);
+  const body = new THREE.Mesh(
+    foundryRoundedBox(`foundry:v2:${kind}:collision-shell`, length, height, width, bodyRadius),
+    bodyMaterial,
+  );
+  body.name = `foundry-${kind}-collision-shell`;
+  body.position.y = height * 0.5;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.userData.collisionBody = true;
+  body.userData.staticBatch = false;
+  body.userData.foundryRole = 'collision-shell';
+  g.add(body);
+
+  if (kind === 'plate' || kind === 'loose_plate') {
+    const loose = kind === 'loose_plate';
+    const insetLength = length * (loose ? 0.79 : 0.82);
+    const insetWidth = width * 0.7;
+    const lowerSkirt = new THREE.Mesh(
+      foundryRoundedBox(`foundry:v2:${kind}:lower-skirt`, length * 0.92, Math.max(2.4, height * 0.12), width * 0.88, Math.min(2.2, width * 0.12)),
+      frameDark,
+    );
+    lowerSkirt.name = `foundry-${kind}-lower-skirt`;
+    lowerSkirt.position.y = Math.max(1.4, height * 0.08);
+    lowerSkirt.castShadow = true;
+    lowerSkirt.receiveShadow = true;
+    lowerSkirt.userData.foundryRole = 'base-foot';
+    g.add(lowerSkirt);
+
+    // The dark bed is an actual recess. The reflective face is inset inside a separate seal and
+    // raised only slightly above it, so the camera catches the rim, gap and changing face response.
+    const bed = new THREE.Mesh(
+      foundryRoundedBox(`foundry:v2:${kind}:mirror-bed`, insetLength, 1.65, insetWidth, Math.min(2.2, width * 0.1)),
+      seal,
+    );
+    bed.name = `foundry-${kind}-mirror-recess`;
+    bed.position.y = height + 0.78;
+    bed.receiveShadow = true;
+    bed.userData.foundryRole = 'reflective-recess';
+    g.add(bed);
+
+    // Two independently beveled mirror leaves are separated by a structural center spine. The
+    // slight response variation is deliberate: this is plate steel with resurfaced and older
+    // sections, not one uniformly tinted plastic slab.
+    const leafGap = Math.max(2.2, Math.min(7, length * 0.035));
+    const leafLength = Math.max(3, (insetLength - leafGap) * 0.5);
+    const leafWidth = Math.max(2.5, insetWidth * 0.79);
+    const leafGeo = foundryRoundedBox(
+      `foundry:v2:${kind}:mirror-leaf`, leafLength, 1.15, leafWidth, Math.min(1.3, width * 0.07), 1,
+    );
+    for (const side of [-1, 1]) {
+      const leaf = new THREE.Mesh(leafGeo, side < 0 ? mirror : mirrorAlt);
+      leaf.name = `foundry-${kind}-mirror-leaf-${side < 0 ? 'aft' : 'forward'}`;
+      leaf.position.set(side * (leafLength + leafGap) * 0.5, height + 1.96, 0);
+      leaf.castShadow = true;
+      leaf.receiveShadow = true;
+      leaf.userData.foundryRole = 'reflective-surface';
+      g.add(leaf);
+    }
+    const spine = new THREE.Mesh(
+      foundryRoundedBox(`foundry:v2:${kind}:center-spine`, leafGap * 0.72, 2.3, leafWidth * 0.92, Math.min(0.9, leafGap * 0.26)),
+      frameDark,
+    );
+    spine.name = `foundry-${kind}-center-load-spine`;
+    spine.position.y = height + 1.9;
+    spine.castShadow = true;
+    spine.userData.foundryRole = 'center-load-spine';
+    g.add(spine);
+
+    // Cross supports sit in the panel breaks and visibly carry the leaf loads into the shell.
+    // They are not decorative floating bars: each has a chamfered foot, a raised saddle and a
+    // fastener pair at the upper interface.
+    const supportXs = [-0.27, 0.27].map((t) => t * insetLength);
+    const supportGeo = foundryRoundedBox(
+      `foundry:v2:${kind}:cross-support`, Math.max(3.6, length * 0.065), Math.max(2.4, height * 0.2), leafWidth * 0.88,
+      Math.min(1.1, width * 0.055),
+    );
+    for (const x of supportXs) {
+      const support = new THREE.Mesh(supportGeo, frame);
+      support.name = `foundry-${kind}-cross-support`;
+      support.position.set(x, height + 0.82, 0);
+      support.castShadow = true;
+      support.userData.foundryRole = 'load-support';
+      g.add(support);
+    }
+
+    // A narrow mirror edge cap gives the bank a readable highlight at the supported game-camera
+    // distance without resorting to a glow card or an unlit outline.
+    const capGeo = foundryRoundedBox(
+      `foundry:v2:${kind}:mirror-cap`, Math.max(4, insetLength * 0.86), 0.52, Math.max(1.0, width * 0.055),
+      Math.min(0.45, width * 0.02),
+    );
+    for (const side of [-1, 1]) {
+      const cap = new THREE.Mesh(capGeo, mirrorEdge);
+      cap.name = `foundry-${kind}-mirror-cap`;
+      cap.position.set(0, height + 2.53, side * Math.max(0, leafWidth * 0.48));
+      cap.castShadow = true;
+      cap.userData.foundryRole = 'mirror-edge-cap';
+      g.add(cap);
+    }
+
+    const rimLongGeo = foundryRoundedBox(
+      `foundry:v2:${kind}:rim-long`, insetLength + 3, 1.0, Math.max(1.2, width * 0.065), Math.min(0.55, width * 0.025),
+    );
+    for (const side of [-1, 1]) {
+      const rim = new THREE.Mesh(rimLongGeo, edge);
+      rim.name = `foundry-${kind}-warning-rim`;
+      rim.position.set(0, height + 2.03, side * Math.max(0, insetWidth * 0.49));
+      rim.castShadow = true;
+      rim.userData.foundryRole = 'warning-rim';
+      g.add(rim);
+    }
+
+    const endShoeLength = Math.max(5.2, length * 0.085);
+    const endShoeGeo = foundryRoundedBox(
+      `foundry:v2:${kind}:end-clamp`, endShoeLength, height * 0.72, width * 0.84,
+      Math.min(2.2, width * 0.11),
+    );
+    const hingeGeo = foundryCylinder(
+      `foundry:v2:${kind}:hinge-pin`, Math.max(1.1, width * 0.09), Math.max(1.1, width * 0.09), width * 0.62, 10,
+    );
+    const hingeRingGeo = foundryTorus(
+      `foundry:v2:${kind}:hinge-ring`, Math.max(1.6, width * 0.12), Math.max(0.34, width * 0.035), 8, 14,
+    );
+    for (const side of [-1, 1]) {
+      const x = side * Math.max(0, spec.halfLength - endShoeLength * 0.5);
+      const shoe = new THREE.Mesh(endShoeGeo, frameDark);
+      shoe.name = `foundry-${kind}-end-clamp`;
+      shoe.position.set(x, height * 0.42, 0);
+      shoe.castShadow = true;
+      shoe.userData.foundryRole = 'end-clamp';
+      g.add(shoe);
+
+      const pin = new THREE.Mesh(hingeGeo, fastener);
+      pin.name = `foundry-${kind}-hinge-pin`;
+      pin.rotation.x = Math.PI / 2;
+      pin.position.set(x, height * 0.44, 0);
+      pin.castShadow = true;
+      pin.userData.foundryRole = 'hinge-load-path';
+      g.add(pin);
+
+      const ring = new THREE.Mesh(hingeRingGeo, edgeHighlight);
+      ring.name = `foundry-${kind}-hinge-ring`;
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(x, height * 0.44, 0);
+      ring.castShadow = true;
+      ring.userData.foundryRole = 'hinge-marking';
+      g.add(ring);
+    }
+
+    const boltGeo = foundryCylinder(
+      `foundry:v2:${kind}:bolt`, Math.max(0.55, width * 0.045), Math.max(0.55, width * 0.045), 0.42, 8,
+    );
+    for (const x of [-0.31, 0.31].map((t) => t * insetLength)) {
+      for (const z of [-1, 1]) {
+        const bolt = new THREE.Mesh(boltGeo, fastener);
+        bolt.name = `foundry-${kind}-deck-fastener`;
+        bolt.position.set(x, height + 2.57, z * leafWidth * 0.43);
+        bolt.castShadow = true;
+        bolt.userData.foundryRole = 'deck-fastener';
+        g.add(bolt);
+      }
+    }
+
+    const lampBaseGeo = foundryCylinder(
+      `foundry:v2:${kind}:warning-base`, Math.max(1.2, width * 0.1), Math.max(1.45, width * 0.12), 0.55, 8,
+    );
+    const lampGeo = foundryCylinder(
+      `foundry:v2:${kind}:warning-lens`, Math.max(0.82, width * 0.065), Math.max(0.94, width * 0.075), 0.75, 8,
+    );
+    for (const side of [-1, 1]) {
+      const x = side * spec.halfLength * 0.66;
+      const base = new THREE.Mesh(lampBaseGeo, frameDark);
+      base.name = `foundry-${kind}-warning-lamp-base`;
+      base.position.set(x, height + 2.92, 0);
+      base.castShadow = true;
+      g.add(base);
+      const lamp = new THREE.Mesh(lampGeo, hot);
+      lamp.name = `foundry-${kind}-warning-lamp`;
+      lamp.position.set(x, height + 3.55, 0);
+      lamp.castShadow = true;
+      lamp.userData.foundryRole = 'thermal-warning';
+      g.add(lamp);
+    }
+  } else if (kind === 'wall') {
+    const base = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:wall:base', length * 0.96, Math.max(3, height * 0.12), width * 0.9, Math.min(3, width * 0.12)),
+      frameDark,
+    );
+    base.name = 'foundry-wall-base-foot';
+    base.position.y = Math.max(1.6, height * 0.07);
+    base.castShadow = true;
+    base.userData.foundryRole = 'base-foot';
+    g.add(base);
+
+    const cap = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:wall:cap', length * 0.97, 2.6, width * 0.86, Math.min(1.3, width * 0.08)),
+      frame,
+    );
+    cap.name = 'foundry-wall-crown-cap';
+    cap.position.y = height + 1.1;
+    cap.castShadow = true;
+    cap.userData.foundryRole = 'crown-cap';
+    g.add(cap);
+
+    const pierGeo = foundryRoundedBox(
+      'foundry:v2:wall:pier', Math.max(8, Math.min(18, length * 0.018)), height * 0.82, width * 0.78,
+      Math.min(2.2, width * 0.09),
+    );
+    for (const t of [-0.75, -0.25, 0.25, 0.75]) {
+      const pier = new THREE.Mesh(pierGeo, t === 0.25 ? edgeHighlight : edge);
+      pier.name = 'foundry-wall-load-pier';
+      pier.position.set(t * spec.halfLength, height * 0.53, 0);
+      pier.castShadow = true;
+      pier.userData.foundryRole = 'load-pier';
+      g.add(pier);
+    }
+    const seamGeo = foundryRoundedBox(
+      'foundry:v2:wall:top-seam', Math.max(4, length * 0.17), 1.2, Math.max(1, width * 0.11), Math.min(0.55, width * 0.03),
+    );
+    for (const t of [-0.61, -0.2, 0.2, 0.61]) {
+      const seam = new THREE.Mesh(seamGeo, frameDark);
+      seam.name = 'foundry-wall-crown-seam';
+      seam.position.set(t * spec.halfLength, height + 2.22, 0);
+      seam.userData.foundryRole = 'crown-seam';
+      g.add(seam);
+    }
+  } else if (kind === 'shutter') {
+    const lower = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:shutter:lower-skirt', length * 0.93, Math.max(3.5, height * 0.13), width * 0.88, Math.min(3, width * 0.1)),
+      frameDark,
+    );
+    lower.name = 'foundry-shutter-lower-skirt';
+    lower.position.y = Math.max(2, height * 0.08);
+    lower.castShadow = true;
+    lower.userData.foundryRole = 'base-foot';
+    g.add(lower);
+
+    const slatWidth = Math.max(12, length * 0.08);
+    const slatGeo = foundryRoundedBox(
+      'foundry:v2:shutter:slat', slatWidth, height * 0.78, width * 0.74, Math.min(2.5, width * 0.08),
+    );
+    for (let i = -5; i <= 5; i++) {
+      const slat = new THREE.Mesh(slatGeo, i % 2 === 0 ? mirrorAlt : frameDark);
+      slat.name = 'foundry-shutter-segment';
+      slat.position.set(i * length * 0.089, height * 0.56, 0);
+      slat.rotation.z = i % 2 === 0 ? Math.PI * 0.025 : -Math.PI * 0.018;
+      slat.castShadow = true;
+      slat.receiveShadow = true;
+      slat.userData.foundryRole = 'segmented-screen';
+      g.add(slat);
+    }
+    const shutterRailGeo = foundryRoundedBox(
+      'foundry:v2:shutter:rail', length * 0.91, 1.6, Math.max(1.3, width * 0.07), Math.min(0.7, width * 0.025),
+    );
+    for (const side of [-1, 1]) {
+      const rail = new THREE.Mesh(shutterRailGeo, edge);
+      rail.name = 'foundry-shutter-warning-rail';
+      rail.position.set(0, height + 1.25, side * width * 0.37);
+      rail.castShadow = true;
+      rail.userData.foundryRole = 'warning-rail';
+      g.add(rail);
+    }
+    const actuator = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:shutter:actuator', Math.max(10, length * 0.14), 6.5, width * 0.36, Math.min(1.8, width * 0.08)),
+      frame,
+    );
+    actuator.name = 'foundry-shutter-actuator-housing';
+    actuator.position.set(0, height + 3.1, 0);
+    actuator.castShadow = true;
+    actuator.userData.foundryRole = 'actuator-housing';
+    g.add(actuator);
+    const actuatorPin = new THREE.Mesh(
+      foundryCylinder('foundry:v2:shutter:actuator-pin', Math.max(1.4, width * 0.08), Math.max(1.4, width * 0.08), width * 0.42, 10),
+      fastener,
+    );
+    actuatorPin.name = 'foundry-shutter-actuator-pin';
+    actuatorPin.rotation.x = Math.PI / 2;
+    actuatorPin.position.set(0, height + 3.1, 0);
+    actuatorPin.castShadow = true;
+    g.add(actuatorPin);
+    const lamp = new THREE.Mesh(
+      foundryCylinder('foundry:v2:shutter:warning-lens', Math.max(2.2, width * 0.14), Math.max(2.7, width * 0.16), 1.8, 8),
+      hot,
+    );
+    lamp.name = 'foundry-shutter-warning-lamp';
+    lamp.position.set(0, height + 8, 0);
+    lamp.castShadow = true;
+    lamp.userData.foundryRole = 'thermal-warning';
+    g.add(lamp);
+  } else if (kind === 'furnace') {
+    const base = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:furnace:base', length * 0.94, 6, width * 0.87, Math.min(3, width * 0.1)),
+      refractoryDark,
+    );
+    base.name = 'foundry-furnace-base-foot';
+    base.position.y = 3;
+    base.castShadow = true;
+    base.userData.foundryRole = 'base-foot';
+    g.add(base);
+
+    const chamber = new THREE.Mesh(
+      foundryRoundedBox('foundry:v2:furnace:chamber-recess', length * 0.72, 4.4, width * 0.62, Math.min(2, width * 0.08)),
+      refractoryDark,
+    );
+    chamber.name = 'foundry-furnace-chamber-recess';
+    chamber.position.y = height + 1.8;
+    chamber.receiveShadow = true;
+    chamber.userData.foundryRole = 'refractory-recess';
+    g.add(chamber);
+
+    const slitGeo = foundryRoundedBox(
+      'foundry:v2:furnace:heat-slot', length * 0.2, 2.0, Math.max(5, width * 0.06), Math.min(0.7, width * 0.025),
+    );
+    for (let i = -2; i <= 2; i++) {
+      const slit = new THREE.Mesh(slitGeo, hot);
+      slit.name = 'foundry-furnace-heat-slot';
+      slit.position.set(i * length * 0.18, height + 4.35, 0);
+      slit.castShadow = true;
+      slit.userData.foundryRole = 'heat-slot';
+      g.add(slit);
+    }
+    const stackGeo = foundryCylinder('foundry:v2:furnace:stack', 13, 18, 82, 10);
+    const collarGeo = foundryTorus('foundry:v2:furnace:stack-collar', 16, 2.6, 8, 16);
+    for (const side of [-1, 1]) {
+      const stack = new THREE.Mesh(stackGeo, frameDark);
+      stack.name = 'foundry-furnace-stack';
+      stack.position.set(side * length * 0.34, height + 39, 0);
+      stack.castShadow = true;
+      stack.userData.foundryRole = 'heat-stack';
+      g.add(stack);
+      const collar = new THREE.Mesh(collarGeo, edge);
+      collar.name = 'foundry-furnace-stack-collar';
+      collar.position.set(side * length * 0.34, height + 6, 0);
+      collar.castShadow = true;
+      collar.userData.foundryRole = 'heat-stack-collar';
+      g.add(collar);
+    }
+  }
+
+  g.userData.kind = 'ricochet-foundry-surface';
+  g.userData.foundrySurfaceId = spec.id;
+  g.userData.visualCollisionBounds = { halfLength: spec.halfLength, halfWidth: spec.halfWidth };
+  g.userData.foundryVisualRevision = 'v2-structured-bank';
+  return optimizeStaticBatchesForRoot(g);
+}
+
 // ---------------------------------------------------------------------------------------------
 // Public factory
 // ---------------------------------------------------------------------------------------------
@@ -3481,6 +4214,9 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (e.data && e.data.arenaSurface && e.data.foundrySurface) {
+          return buildRicochetFoundrySurface(e);
+        }
         switch (e.type) {
           case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
           case 'asteroid': return freezeStaticPresentation(buildAsteroid(e));

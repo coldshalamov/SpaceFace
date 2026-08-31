@@ -151,6 +151,48 @@ export const COLLISION_PROXY_MANIFESTS = Object.freeze({
       }),
     }),
   }),
+  // PQ-133.04 — the Foundry visuals use these exact normalized boxes. Keeping one primitive per
+  // entity makes the live sweep normal, Rapier collider, and visible slab share a transform.
+  ricochet_foundry_wall: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'ricochet_foundry_wall',
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'radius',
+    boundsFromFoundrySurface: true,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'obb', id: 'wall', x: 0, z: 0, hx: 1, hz: 1, angleDeg: 0 }),
+    ]),
+  }),
+  ricochet_foundry_plate: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'ricochet_foundry_plate',
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'radius',
+    boundsFromFoundrySurface: true,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'obb', id: 'plate', x: 0, z: 0, hx: 1, hz: 1, angleDeg: 0 }),
+    ]),
+  }),
+  ricochet_foundry_shutter: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'ricochet_foundry_shutter',
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'radius',
+    boundsFromFoundrySurface: true,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'obb', id: 'shutter', x: 0, z: 0, hx: 1, hz: 1, angleDeg: 0 }),
+    ]),
+  }),
+  ricochet_foundry_furnace: Object.freeze({
+    schemaVersion: COLLISION_PROXY_SCHEMA_VERSION,
+    id: 'ricochet_foundry_furnace',
+    flags: COLLISION_PROXY_FLAGS,
+    referenceRadius: 'radius',
+    boundsFromFoundrySurface: true,
+    primitives: Object.freeze([
+      Object.freeze({ kind: 'obb', id: 'furnace', x: 0, z: 0, hx: 1, hz: 1, angleDeg: 0 }),
+    ]),
+  }),
 });
 
 // -----------------------------------------------------------------------------------------------
@@ -178,6 +220,28 @@ export function proxyScaleFor(entity, manifest) {
   const data = entity && entity.data || {};
   const reference = manifest.referenceRadius === 'dockRadius' ? data.dockRadius : null;
   return positive(reference, positive(entity && entity.radius, 1));
+}
+
+/** Exact local half-extents for an OBB proxy. Most manifests use one normalized scalar; Foundry
+ * pieces deliberately vary aspect ratio per entity, so their authored surface record is the one
+ * source of truth for both visible geometry and every Rapier/observer collider. */
+export function proxyObbHalfExtents(entity, manifest, primitive, scale = proxyScaleFor(entity, manifest)) {
+  const surface = manifest && manifest.boundsFromFoundrySurface === true
+    ? entity && entity.data && entity.data.foundrySurface
+    : null;
+  if (surface && Number.isFinite(surface.halfLength) && surface.halfLength > 0
+      && Number.isFinite(surface.halfWidth) && surface.halfWidth > 0) {
+    return {
+      hx: surface.halfLength,
+      hy: Number.isFinite(surface.height) && surface.height > 0 ? surface.height * 0.5 : surface.halfWidth,
+      hz: surface.halfWidth,
+    };
+  }
+  return {
+    hx: positive(primitive && primitive.hx, 0.01) * scale,
+    hy: positive(primitive && primitive.hx, 0.01) * scale,
+    hz: positive(primitive && primitive.hz, 0.01) * scale,
+  };
 }
 
 /** Effective corridor bearing in STATION-LOCAL degrees: entity stamp wins, snapped to the nearest
@@ -259,13 +323,14 @@ export function proxyWorldPrimitives(entity, manifest) {
     // obb
     const x = primitive.x * scale;
     const z = primitive.z * scale;
+    const halfExtents = proxyObbHalfExtents(entity, manifest, primitive, scale);
     return {
       kind: 'obb',
       id: primitive.id || null,
       x: px + c * x - s * z,
       z: pz + s * x + c * z,
-      hx: primitive.hx * scale,
-      hz: primitive.hz * scale,
+      hx: halfExtents.hx,
+      hz: halfExtents.hz,
       rot: rot + finite(primitive.angleDeg) * DEG,
     };
   });

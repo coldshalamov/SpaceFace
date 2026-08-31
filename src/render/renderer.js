@@ -13,7 +13,11 @@ import {
   createSpaceReflectionEnvironment,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
-import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
+import {
+  attachMirrorjawForemanPresentation,
+  createVisualFactory,
+  setEnvMapForShips,
+} from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -470,11 +474,16 @@ function openingEntityRootIntersectsCamera(root, entity, camera, scene) {
   }
 }
 
-function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
-  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
-  if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return;
-  queue.push(entity.id);
+function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue, insertAt = null) {
+  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return false;
+  if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return false;
+  if (Number.isInteger(insertAt) && insertAt >= 0 && insertAt <= queue.length) {
+    queue.splice(insertAt, 0, entity.id);
+  } else {
+    queue.push(entity.id);
+  }
   queuedIds.add(entity.id);
+  return true;
 }
 
 /**
@@ -482,14 +491,33 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
  * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
  * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
  */
-export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null) {
+export function enqueueMissingMeshBuilds(
+  entityList,
+  meshes,
+  queuedIds,
+  queue,
+  shouldQueue = null,
+  options = {},
+) {
+  let priorityInsertAt = Number.isInteger(options.priorityInsertAt)
+    ? Math.max(0, Math.min(queue.length, options.priorityInsertAt))
+    : null;
+  const enqueuePriority = (entity) => {
+    const inserted = enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue, priorityInsertAt);
+    if (inserted && priorityInsertAt != null) priorityInsertAt++;
+  };
   for (const entity of entityList) {
     if (entity && entity.type === 'ship' && (!shouldQueue || shouldQueue(entity))) {
-      enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+      enqueuePriority(entity);
     }
   }
   for (const entity of entityList) {
     if (!entity || entity.type === 'ship') continue;
+    if (shouldQueue && !shouldQueue(entity)) continue;
+    if (entityIsOpeningCompositionRequired(entity)) enqueuePriority(entity);
+  }
+  for (const entity of entityList) {
+    if (!entity || entity.type === 'ship' || entityIsOpeningCompositionRequired(entity)) continue;
     if (shouldQueue && !shouldQueue(entity)) continue;
     enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
   }
@@ -520,6 +548,12 @@ function entityIsExplicitRenderFocus(entity, state) {
     ? state.player.targetId
     : playerEntity && playerEntity.targetId;
   return targetId != null && entity.id === targetId;
+}
+
+function entityIsOpeningCompositionRequired(entity) {
+  const data = entity && entity.data || {};
+  return data.renderOpeningComposition === true
+    || (data.render && data.render.openingComposition === true);
 }
 
 function entityWithinPlayerRadius(entity, state, radius) {
@@ -575,7 +609,13 @@ function entityHasAuthoredResidentRoot(entity) {
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
-  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
+  if (state && state.mode === 'loading') {
+    // Scenario-owned geometry can be a first-picture gameplay surface without being an authored
+    // ship/place asset. Its owner opts in explicitly so the loading reconcile builds the real room
+    // before opening submission; ordinary far world geometry remains streamable.
+    return entityIsOpeningCompositionRequired(entity)
+      || isInitialAuthoredCompositionEntity(entity, state);
+  }
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
@@ -2612,6 +2652,7 @@ export const render = {
       onAuthoredAssetSwap: ({ boundary, root, entity } = {}) => {
         const target = boundary || root;
         if (target) {
+          attachMirrorjawForemanPresentation(target, entity);
           invalidateShadowCasterPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
@@ -5260,6 +5301,7 @@ export const render = {
       this._meshBuildQueue,
       (entity) => !this._sectorBoundaryPreparations?.has(entity.id)
         && isEntityRenderRelevant(entity, state),
+      { priorityInsertAt: this._meshBuildQueueHead },
     );
     const built = this._drainMeshBuildQueue(buildBudget);
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
@@ -5330,21 +5372,27 @@ export const render = {
       if (entity.type === 'ship') shipCandidates.push(entity);
       else otherCandidates.push(entity);
     }
+    let priorityInsertAt = this._meshBuildQueueHead;
     for (let index = 0; index < shipCandidates.length; index++) {
-      enqueueMeshBuildCandidate(
+      const inserted = enqueueMeshBuildCandidate(
         shipCandidates[index],
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
+        priorityInsertAt,
       );
+      if (inserted) priorityInsertAt++;
     }
     for (let index = 0; index < otherCandidates.length; index++) {
-      enqueueMeshBuildCandidate(
-        otherCandidates[index],
+      const candidate = otherCandidates[index];
+      const inserted = enqueueMeshBuildCandidate(
+        candidate,
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
+        entityIsOpeningCompositionRequired(candidate) ? priorityInsertAt : null,
       );
+      if (inserted && entityIsOpeningCompositionRequired(candidate)) priorityInsertAt++;
     }
     stats.queuedShips = shipCandidates.length;
     stats.queuedOther = otherCandidates.length;

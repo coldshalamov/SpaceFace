@@ -564,7 +564,7 @@ export const physics = {
       for (const target of candidates) {
         if (!target.alive || !target.collides || (target.type !== 'asteroid' && target.type !== 'station')) continue;
         if (target === ship || (!canCollide(ship, target) && !canCollide(target, ship))) continue;
-        if (!segmentCircleHitInto(hit, start, end, target.pos, (ship.radius || 0) + (target.radius || 0))) continue;
+        if (!segmentEntityHitInto(hit, start, end, target, ship.radius || 0)) continue;
         if (!bestTarget || hit.t < bestHit.t) {
           bestTarget = target;
           copySegmentHit(bestHit, hit);
@@ -612,7 +612,7 @@ export const physics = {
         if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
         if (proj.ownerId === tgt.id) continue;
         if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
-        if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
+        if (!segmentEntityHitInto(hit, start, end, tgt, proj.radius || 0)) continue;
         if (!bestTarget || hit.t < bestHit.t) {
           bestTarget = tgt;
           copySegmentHit(bestHit, hit);
@@ -629,7 +629,12 @@ export const physics = {
       }
       proj.pos.x = bestHit.x;
       proj.pos.z = bestHit.z;
-      this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
+      this.bus.emit('projectile:hit', projectileHitPayload(
+        proj,
+        bestTarget,
+        { x: proj.pos.x, z: proj.pos.z },
+        { x: bestHit.nx, z: bestHit.nz },
+      ));
       proj.alive = false;
       this._diag.sweptProjectileHits++;
     }
@@ -881,11 +886,11 @@ function worldFrameOriginSeq(state) {
  */
 export function spatialHashLayersFromState(state) {
   const activity = ensureActivityClassified(state);
-  if (activity && Array.isArray(activity.physicsStatics) && Array.isArray(activity.physicsDynamics)) {
+  if (activity && Array.isArray(activity.spatialStatics) && Array.isArray(activity.spatialDynamics)) {
     return {
-      statics: activity.physicsStatics,
-      dynamics: activity.physicsDynamics,
-      staticVersion: activity.physicsStaticVersion || 0,
+      statics: activity.spatialStatics,
+      dynamics: activity.spatialDynamics,
+      staticVersion: activity.spatialStaticVersion || 0,
     };
   }
   const index = state && state.entityIndex;
@@ -1032,7 +1037,7 @@ function shouldStartBroadphasePairSearch(e) {
   return e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'pickup';
 }
 
-export function projectileHitPayload(proj, targetOrId, pos) {
+export function projectileHitPayload(proj, targetOrId, pos, contactNormal = null) {
   const pd = proj.data || {};
   const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
   const targetId = target ? target.id : targetOrId;
@@ -1043,8 +1048,12 @@ export function projectileHitPayload(proj, targetOrId, pos) {
   const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
   const speed = Math.hypot(vx, vz) || 1;
   const approach = { x: vx / speed, z: vz / speed };
-  let nx = target && target.pos ? Number(pos.x) - Number(target.pos.x) : -approach.x;
-  let nz = target && target.pos ? Number(pos.z) - Number(target.pos.z) : -approach.z;
+  let nx = contactNormal && Number.isFinite(contactNormal.x)
+    ? Number(contactNormal.x)
+    : (target && target.pos ? Number(pos.x) - Number(target.pos.x) : -approach.x);
+  let nz = contactNormal && Number.isFinite(contactNormal.z)
+    ? Number(contactNormal.z)
+    : (target && target.pos ? Number(pos.z) - Number(target.pos.z) : -approach.z);
   const normalLength = Math.hypot(nx, nz);
   if (normalLength > 1e-8) {
     nx /= normalLength;
@@ -1409,6 +1418,215 @@ function segmentCircleHitInto(out, start, end, center, radius) {
   out.z = center.z + nz * radius;
   out.nx = nx;
   out.nz = nz;
+  return true;
+}
+
+function segmentEntityHitInto(out, start, end, entity, radiusPad = 0) {
+  const surface = entity && entity.data && entity.data.foundrySurface;
+  if (surface && Number.isFinite(surface.halfLength) && Number.isFinite(surface.halfWidth)) {
+    const pad = Math.max(0, radiusPad);
+    if (pad > 0) {
+      return segmentCircleObbHitInto(
+        out,
+        start,
+        end,
+        entity.pos,
+        Number.isFinite(entity.rot) ? entity.rot : 0,
+        surface.halfLength,
+        surface.halfWidth,
+        pad,
+      );
+    }
+    return segmentObbHitInto(
+      out,
+      start,
+      end,
+      entity.pos,
+      Number.isFinite(entity.rot) ? entity.rot : 0,
+      surface.halfLength,
+      surface.halfWidth,
+    );
+  }
+  return segmentCircleHitInto(out, start, end, entity.pos, Math.max(0, radiusPad) + (entity.radius || 0));
+}
+
+/** Swept point against an oriented XZ box. Exported for the Foundry render/collision contract test. */
+export function segmentObbHitInto(out, start, end, center, rot, halfX, halfZ) {
+  const c = Math.cos(rot || 0);
+  const s = Math.sin(rot || 0);
+  const sxWorld = start.x - center.x;
+  const szWorld = start.z - center.z;
+  const exWorld = end.x - center.x;
+  const ezWorld = end.z - center.z;
+  const sx = c * sxWorld + s * szWorld;
+  const sz = -s * sxWorld + c * szWorld;
+  const ex = c * exWorld + s * ezWorld;
+  const ez = -s * exWorld + c * ezWorld;
+  const dx = ex - sx;
+  const dz = ez - sz;
+  const hx = Math.max(0.0001, halfX);
+  const hz = Math.max(0.0001, halfZ);
+
+  let tEnter = 0;
+  let tExit = 1;
+  let localNx = 0;
+  let localNz = 0;
+
+  const inside = Math.abs(sx) <= hx && Math.abs(sz) <= hz;
+  if (inside) {
+    const px = hx - Math.abs(sx);
+    const pz = hz - Math.abs(sz);
+    if (px < pz) localNx = sx === 0 ? (dx > 0 ? -1 : 1) : Math.sign(sx);
+    else localNz = sz === 0 ? (dz > 0 ? -1 : 1) : Math.sign(sz);
+  }
+
+  if (Math.abs(dx) < 1e-10) {
+    if (sx < -hx || sx > hx) { out.hit = false; return false; }
+  } else {
+    const inv = 1 / dx;
+    let near = (-hx - sx) * inv;
+    let far = (hx - sx) * inv;
+    let nearNormal = -1;
+    if (near > far) { const swap = near; near = far; far = swap; nearNormal = 1; }
+    if (near > tEnter) { tEnter = near; localNx = nearNormal; localNz = 0; }
+    tExit = Math.min(tExit, far);
+    if (tEnter > tExit) { out.hit = false; return false; }
+  }
+
+  if (Math.abs(dz) < 1e-10) {
+    if (sz < -hz || sz > hz) { out.hit = false; return false; }
+  } else {
+    const inv = 1 / dz;
+    let near = (-hz - sz) * inv;
+    let far = (hz - sz) * inv;
+    let nearNormal = -1;
+    if (near > far) { const swap = near; near = far; far = swap; nearNormal = 1; }
+    if (near > tEnter) { tEnter = near; localNx = 0; localNz = nearNormal; }
+    tExit = Math.min(tExit, far);
+    if (tEnter > tExit) { out.hit = false; return false; }
+  }
+
+  if (tExit < 0 || tEnter > 1) { out.hit = false; return false; }
+  const t = inside ? 0 : Math.max(0, tEnter);
+  out.hit = true;
+  out.t = t;
+  out.x = start.x + (end.x - start.x) * t;
+  out.z = start.z + (end.z - start.z) * t;
+  out.nx = c * localNx - s * localNz;
+  out.nz = s * localNx + c * localNz;
+  return true;
+}
+
+/**
+ * Swept circle against an oriented XZ box. Faces are expanded only along their own normal;
+ * corners are tested as circles, avoiding the false square corners produced by enlarging both
+ * OBB axes by the moving body's radius.
+ */
+export function segmentCircleObbHitInto(out, start, end, center, rot, halfX, halfZ, radius) {
+  const r = Math.max(0, radius);
+  if (!(r > 0)) return segmentObbHitInto(out, start, end, center, rot, halfX, halfZ);
+  const c = Math.cos(rot || 0);
+  const s = Math.sin(rot || 0);
+  const startWorldX = start.x - center.x;
+  const startWorldZ = start.z - center.z;
+  const endWorldX = end.x - center.x;
+  const endWorldZ = end.z - center.z;
+  const sx = c * startWorldX + s * startWorldZ;
+  const sz = -s * startWorldX + c * startWorldZ;
+  const ex = c * endWorldX + s * endWorldZ;
+  const ez = -s * endWorldX + c * endWorldZ;
+  const dx = ex - sx;
+  const dz = ez - sz;
+  const hx = Math.max(0.0001, halfX);
+  const hz = Math.max(0.0001, halfZ);
+  const eps = 1e-10;
+
+  const closeX = Math.max(-hx, Math.min(hx, sx));
+  const closeZ = Math.max(-hz, Math.min(hz, sz));
+  const startDx = sx - closeX;
+  const startDz = sz - closeZ;
+  const startDist = Math.hypot(startDx, startDz);
+  if (startDist <= r) {
+    let nx = 0;
+    let nz = 0;
+    if (startDist > eps) {
+      nx = startDx / startDist;
+      nz = startDz / startDist;
+    } else if (hx - Math.abs(sx) < hz - Math.abs(sz)) {
+      nx = sx === 0 ? (dx > 0 ? -1 : 1) : Math.sign(sx);
+    } else {
+      nz = sz === 0 ? (dz > 0 ? -1 : 1) : Math.sign(sz);
+    }
+    out.hit = true;
+    out.t = 0;
+    out.x = start.x;
+    out.z = start.z;
+    out.nx = c * nx - s * nz;
+    out.nz = s * nx + c * nz;
+    return true;
+  }
+
+  let bestT = Infinity;
+  let bestNx = 0;
+  let bestNz = 0;
+  const consider = (t, nx, nz) => {
+    if (t < 0 || t > 1 || t >= bestT) return;
+    bestT = t;
+    bestNx = nx;
+    bestNz = nz;
+  };
+
+  if (Math.abs(dx) > eps) {
+    let t = (-hx - r - sx) / dx;
+    let z = sz + dz * t;
+    if (z >= -hz && z <= hz) consider(t, -1, 0);
+    t = (hx + r - sx) / dx;
+    z = sz + dz * t;
+    if (z >= -hz && z <= hz) consider(t, 1, 0);
+  }
+  if (Math.abs(dz) > eps) {
+    let t = (-hz - r - sz) / dz;
+    let x = sx + dx * t;
+    if (x >= -hx && x <= hx) consider(t, 0, -1);
+    t = (hz + r - sz) / dz;
+    x = sx + dx * t;
+    if (x >= -hx && x <= hx) consider(t, 0, 1);
+  }
+
+  const length2 = dx * dx + dz * dz;
+  if (length2 > eps) {
+    for (let ix = 0; ix < 2; ix++) {
+      const cornerX = ix === 0 ? -hx : hx;
+      for (let iz = 0; iz < 2; iz++) {
+        const cornerZ = iz === 0 ? -hz : hz;
+        const rx = sx - cornerX;
+        const rz = sz - cornerZ;
+        const b = 2 * (rx * dx + rz * dz);
+        const disc = b * b - 4 * length2 * (rx * rx + rz * rz - r * r);
+        if (disc < 0) continue;
+        const root = Math.sqrt(disc);
+        const t0 = (-b - root) / (2 * length2);
+        const t1 = (-b + root) / (2 * length2);
+        const t = t0 >= 0 && t0 <= 1 ? t0 : (t1 >= 0 && t1 <= 1 ? t1 : Infinity);
+        if (!Number.isFinite(t) || t >= bestT) continue;
+        const x = sx + dx * t - cornerX;
+        const z = sz + dz * t - cornerZ;
+        const length = Math.hypot(x, z);
+        if (length > eps) consider(t, x / length, z / length);
+      }
+    }
+  }
+
+  if (!Number.isFinite(bestT)) {
+    out.hit = false;
+    return false;
+  }
+  out.hit = true;
+  out.t = bestT;
+  out.x = start.x + (end.x - start.x) * bestT;
+  out.z = start.z + (end.z - start.z) * bestT;
+  out.nx = c * bestNx - s * bestNz;
+  out.nz = s * bestNx + c * bestNz;
   return true;
 }
 

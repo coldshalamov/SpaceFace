@@ -61,6 +61,7 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { gateBearing } from './waveMaterialization.js';
+import { planWave } from './survivalWavePlanner.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
@@ -78,9 +79,21 @@ import {
   planStormInstall,
 } from './stormLatticeArena.js';
 import { orbitNodePose } from '../combat/orbitNodes.js';
+import {
+  MIRRORJAW_DIRECTIONAL_SURFACE,
+  MIRRORJAW_ENEMY_ID,
+  RICOCHET_FOUNDRY_ARENA_ID,
+  foundryArenaCenterFromEntry,
+  foundryProxyIdFor,
+  foundryShutterOffset,
+  foundrySurfaceMaterialFor,
+  foundryWorldPieces,
+  mirrorjawPhaseFor,
+} from '../data/ricochetFoundry.js';
 
-export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID };
+export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, RICOCHET_FOUNDRY_ARENA_ID, STORM_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
+  RICOCHET_FOUNDRY_ARENA_ID,
   LAGRANGE_ARENA_ID,
   CINDER_ARENA_ID,
   CRYO_ARENA_ID,
@@ -180,7 +193,8 @@ function finalizeInstall(out) {
 }
 
 function isLawArena(arenaId) {
-  return arenaId === LAGRANGE_ARENA_ID
+  return arenaId === RICOCHET_FOUNDRY_ARENA_ID
+    || arenaId === LAGRANGE_ARENA_ID
     || arenaId === CINDER_ARENA_ID
     || arenaId === CRYO_ARENA_ID
     || arenaId === STORM_ARENA_ID;
@@ -389,10 +403,30 @@ function liveSurvivalRun(state) {
   return run;
 }
 
+function liveLabRun(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'lab' || run.phase === 'inactive') return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
 function simTimeOf(state) {
   return Number.isFinite(state && state.simTime)
     ? state.simTime
     : Math.max(0, Number(state && state.tick) || 0) / 60;
+}
+
+// Moving Foundry shutters remain fixed bodies: their authored kinematic bit routes them through
+// incremental broadphase membership and per-tick fixed-body pose sync, never the solver dynamic
+// lane. That preserves exact contacts without rebuilding every static fixture each tick.
+function setFoundryShutterPose(state, entity, x, z) {
+  if (!entity || !entity.pos || !Number.isFinite(x) || !Number.isFinite(z)) return false;
+  if (entity.pos.x === x && entity.pos.z === z) return false;
+  entity.pos.x = x;
+  entity.pos.z = z;
+  return true;
 }
 
 function playerAnchor(state) {
@@ -476,14 +510,21 @@ export const survivalArena = {
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('survivalArena:labRequested', (p) => this._onLabRequested(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', () => this._teardown('wave_cleared')));
-    this._unsubs.push(this.bus.on('run:ended', () => this._teardown('run_ended')));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      this._teardown('run_ended');
+      this._releaseFoundry('run_ended');
+    }));
     // Mines report themselves as they land; this is the only way to know WHICH entities are ours.
     // `mines.releaseAll` would also take the player's own mines, so it is never called from here.
     this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
     // fields._clearAll (sector change / new game / save load) empties the kernel under us. Drop the
     // bookkeeping so teardown never reports releasing something the kernel no longer holds.
-    const forget = () => this._forgetFields();
+    const forget = () => {
+      this._forgetFields();
+      this._releaseFoundry('world_reset');
+    };
     this._unsubs.push(this.bus.on('sector:enter', forget));
     this._unsubs.push(this.bus.on('sector:exit', forget));
     this._unsubs.push(this.bus.on('save:loaded', forget));
@@ -491,12 +532,14 @@ export const survivalArena = {
 
   destroy() {
     this._teardown('destroy');
+    this._releaseFoundry('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
 
   newGame() {
     this._teardown('new_game');
+    this._releaseFoundry('new_game');
   },
 
   diagnostics() {
@@ -508,17 +551,21 @@ export const survivalArena = {
       fieldIds: (this._fieldIds || []).slice(),
       mineIds: (this._mineIds || []).slice(),
       coverEncounterId: this._encounterId,
+      foundrySurfaceIds: (this._surfaceIds || []).slice(),
+      foundryCenter: this._arenaCenter ? { ...this._arenaCenter } : null,
+      bossId: this._bossId,
+      bossPhase: this._bossPhase,
     });
   },
 
   // Law ticks. Helios and Lagrange are event-driven. A missing law id, or no live Survival run,
   // is an immediate no-op — this must not be a global thermal or conductivity term.
   update(_dt, state) {
-    if (
-      this._lawId !== CINDER_ARENA_ID
-      && this._lawId !== CRYO_ARENA_ID
-      && this._lawId !== STORM_ARENA_ID
-    ) return;
+    if (this._lawId === RICOCHET_FOUNDRY_ARENA_ID) {
+      this._tickFoundry(state || this.state);
+      return;
+    }
+    if (this._lawId !== CINDER_ARENA_ID && this._lawId !== CRYO_ARENA_ID && this._lawId !== STORM_ARENA_ID) return;
     const st = state || this.state;
     if (!liveSurvivalRun(st)) return;
     if (this._lawId === CINDER_ARENA_ID) {
@@ -554,13 +601,18 @@ export const survivalArena = {
     if (typeof phase !== 'string' || phase.length === 0) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    const entryAnchor = playerAnchor(state);
+    if (run.arenaId === RICOCHET_FOUNDRY_ARENA_ID) this._ensureFoundry(entryAnchor);
+    const roomAnchor = run.arenaId === RICOCHET_FOUNDRY_ARENA_ID && this._arenaCenter
+      ? this._arenaCenter
+      : entryAnchor;
 
     const install = planArenaInstall({
       arenaPhase: phase,
       arenaId: run.arenaId,
       wave,
       seed,
-      anchor: playerAnchor(state),
+      anchor: roomAnchor,
       laneGate: dominantGate(plan),
     });
 
@@ -592,6 +644,184 @@ export const survivalArena = {
       mines: install.mines.length,
       cover: install.cover,
     });
+  },
+
+  _onLabRequested(payload) {
+    this._teardown('lab_rearm');
+    const state = this.state;
+    const run = liveLabRun(state);
+    if (!run || run.arenaId !== RICOCHET_FOUNDRY_ARENA_ID) return;
+    const wave = Number.isInteger(payload && payload.wave) && payload.wave >= 1 ? payload.wave : 1;
+    const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    this._ensureFoundry(playerAnchor(state));
+    const plan = planWave({ seed, arenaId: run.arenaId, wave });
+    const phase = plan && plan.ok !== false && typeof plan.arenaPhase === 'string' ? plan.arenaPhase : 'idle';
+    this._wave = wave;
+    this._phase = phase;
+    this._note = 'player projectiles can bank; ordinary enemy fire terminates';
+    this._lawId = RICOCHET_FOUNDRY_ARENA_ID;
+    this._installedAt = simTimeOf(state);
+    this._emit('survivalArena:installed', {
+      wave,
+      arenaId: run.arenaId,
+      arenaPhase: phase,
+      note: this._note,
+      fields: 0,
+      mines: 0,
+      cover: false,
+      lab: true,
+    });
+  },
+
+  _ensureFoundry(entryAnchor) {
+    const state = this.state;
+    if (!state || !this.ctx || !this.ctx.helpers || typeof this.ctx.helpers.spawnEntity !== 'function') return;
+    const live = (this._surfaceIds || []).filter((id) => {
+      const entity = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+      return !!(entity && entity.alive !== false);
+    });
+    if (live.length) {
+      this._surfaceIds = live;
+      return;
+    }
+
+    const center = foundryArenaCenterFromEntry(entryAnchor);
+    const ids = [];
+    for (const piece of foundryWorldPieces(center)) {
+      const dynamic = piece.dynamic === true;
+      const kinematic = piece.kind === 'shutter';
+      const mass = dynamic ? 1100 : 1e9;
+      const material = foundrySurfaceMaterialFor(piece.material);
+      const entity = this.ctx.helpers.spawnEntity({
+        type: dynamic ? 'asteroid' : 'station',
+        pos: { x: piece.x, z: piece.z },
+        vel: { x: 0, z: 0 },
+        rot: piece.rot,
+        radius: piece.halfLength,
+        mass,
+        hull: 1e9,
+        hullMax: 1e9,
+        collides: true,
+        ttl: Infinity,
+        flags: { noInterp: !dynamic && !kinematic, invuln: true },
+        surfaceMaterial: material,
+        physicsBody: {
+          schemaVersion: 1,
+          dynamic,
+          kinematic,
+          ccd: dynamic,
+          material,
+          mass,
+          inertiaY: dynamic ? mass * piece.halfLength * piece.halfLength / 3 : 1e9,
+          radius: piece.halfLength,
+        },
+        data: {
+          kind: 'ricochet_foundry_surface',
+          collisionProxy: foundryProxyIdFor(piece.kind),
+          foundrySurface: {
+            id: piece.id,
+            kind: piece.kind,
+            material: piece.material,
+            halfLength: piece.halfLength,
+            halfWidth: piece.halfWidth,
+            height: piece.height,
+            homeX: piece.x,
+            homeZ: piece.z,
+            machinery: piece.machinery === true,
+            dynamic,
+          },
+          arenaId: RICOCHET_FOUNDRY_ARENA_ID,
+          arenaSurface: true,
+          radarHidden: true,
+          masslineTetherable: dynamic,
+          name: piece.id,
+          render: { openingComposition: true },
+        },
+      });
+      if (entity && entity.id != null) ids.push(entity.id);
+    }
+    this._surfaceIds = ids;
+    this._arenaCenter = center;
+    this._emit('survivalArena:foundryReady', {
+      arenaId: RICOCHET_FOUNDRY_ARENA_ID,
+      center: { ...center },
+      surfaceIds: ids.slice(),
+      count: ids.length,
+    });
+  },
+
+  _releaseFoundry(reason) {
+    const ids = this._surfaceIds || [];
+    const state = this.state;
+    let released = 0;
+    if (state && state.entities && typeof state.entities.get === 'function') {
+      for (const id of ids) {
+        const entity = state.entities.get(id);
+        if (!entity || entity.alive === false) continue;
+        entity.alive = false;
+        released++;
+      }
+    }
+    this._surfaceIds = [];
+    this._arenaCenter = null;
+    this._bossId = null;
+    this._bossPhase = null;
+    if (released > 0) this._emit('survivalArena:foundryReleased', { reason, released });
+    return released;
+  },
+
+  _findMirrorjaw(state) {
+    if (this._bossId != null && state && state.entities && typeof state.entities.get === 'function') {
+      const current = state.entities.get(this._bossId);
+      if (current && current.alive !== false) return current;
+    }
+    for (const entity of state && state.entityList || []) {
+      if (!entity || entity.alive === false) continue;
+      if (entity.data && entity.data.lootTableId === MIRRORJAW_ENEMY_ID) {
+        this._bossId = entity.id;
+        return entity;
+      }
+    }
+    this._bossId = null;
+    return null;
+  },
+
+  _tickFoundry(state) {
+    if (!state || (!liveSurvivalRun(state) && !liveLabRun(state))) return;
+    const elapsed = Math.max(0, simTimeOf(state) - (this._installedAt || 0));
+    for (const id of this._surfaceIds || []) {
+      const entity = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+      const surface = entity && entity.data && entity.data.foundrySurface;
+      if (!entity || entity.alive === false || !surface || surface.kind !== 'shutter') continue;
+      setFoundryShutterPose(
+        state,
+        entity,
+        surface.homeX + foundryShutterOffset(surface.id, this._phase, elapsed),
+        surface.homeZ,
+      );
+    }
+
+    const boss = this._findMirrorjaw(state);
+    if (!boss) return;
+    const phase = mirrorjawPhaseFor(boss.hull, boss.hullMax);
+    boss.data = boss.data || {};
+    boss.data.mirrorjawPhase = phase;
+    if (!boss.data.intent) boss.data.intent = {};
+    boss.data.intent.ramPlate = phase !== 'unmoored_reactor';
+    boss.data.directionalSurface = phase === 'unmoored_reactor'
+      ? null
+      : MIRRORJAW_DIRECTIONAL_SURFACE;
+    if (phase !== this._bossPhase) {
+      const previous = this._bossPhase;
+      this._bossPhase = phase;
+      this._emit('survivalArena:bossPhase', {
+        arenaId: RICOCHET_FOUNDRY_ARENA_ID,
+        bossId: boss.id,
+        boss: MIRRORJAW_ENEMY_ID,
+        previous,
+        phase,
+      });
+    }
   },
 
   _fieldsSystem() {

@@ -23,11 +23,10 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  // 135 -> 142 and 101 -> 103: the Crucible (PQ-133) adds seven systems. Six are event-driven
-  // owners that never tick (runSession-adjacent: survivalWave and survivalHud are the only two
-  // that joined the update order), so the two figures move by different amounts on purpose.
+  // 135 -> 142 and 101 -> 104: the Crucible (PQ-133) adds seven systems. Its arena owner now
+  // ticks before physics so moving room geometry and boss surface phases are authoritative.
   assert.equal(PRODUCTION_INIT_ORDER.length, 142);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 103);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 104);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -40,6 +39,8 @@ test('production init + update order lengths match the live browser baseline', (
     < PRODUCTION_UPDATE_ORDER.indexOf('wingMorale'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('environmentalMachinery')
     < PRODUCTION_UPDATE_ORDER.indexOf('fields'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('survivalArena')
+    < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
   const worldIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
   const heistFacilitiesIndex = PRODUCTION_UPDATE_ORDER.indexOf('heistFacilities');
   const regionalEcologyIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');

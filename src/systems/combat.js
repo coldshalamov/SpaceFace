@@ -195,6 +195,12 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
+  if (def.directionalSurface) spec.data.directionalSurface = { ...def.directionalSurface };
+  if (def.bossProfile) spec.data.bossProfile = {
+    ...def.bossProfile,
+    phases: Array.isArray(def.bossProfile.phases) ? [...def.bossProfile.phases] : [],
+  };
+  if (def.ramPlate) spec.data.intent = { ...(spec.data.intent || {}), ramPlate: true };
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
     spec.data.ai.approachTelegraph = def.telegraph.cue;

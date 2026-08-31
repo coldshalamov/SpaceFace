@@ -2,7 +2,11 @@
 // names the Rapier/AI active set. Does not despawn, hide, or reroll identities.
 // Visibility never equals death; pins and physics-reach decide fidelity.
 
-import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import {
+  isDynamicPhysicsBodyEntity,
+  isKinematicPhysicsBodyEntity,
+  shouldSyncPhysicsBodyEntity,
+} from '../core/physicsAuthority.js';
 import {
   TABLE_REFERENCE_SPEED_WU,
   TABLE_SIM_ASPECT,
@@ -166,6 +170,12 @@ function ensureRuntime(state) {
       _staticEntities: [],
       _staticAuthorityVersion: entityIndexPhysicsStaticVersion(state),
       _staticMembershipDirty: false,
+      spatialStatics: [],
+      spatialDynamics: [],
+      spatialStaticVersion: 0,
+      _spatialStaticEntities: [],
+      _spatialStaticAuthorityVersion: entityIndexSpatialStaticVersion(state),
+      _spatialStaticMembershipDirty: false,
       exactIds: [],
       nearIds: [],
       abstractIds: [],
@@ -574,8 +584,12 @@ function classifyWorld(state, runtime) {
 
   const statics = runtime.physicsStatics;
   const dynamics = runtime.physicsDynamics;
+  const spatialStatics = runtime.spatialStatics;
+  const spatialDynamics = runtime.spatialDynamics;
   statics.length = 0;
   dynamics.length = 0;
+  spatialStatics.length = 0;
+  spatialDynamics.length = 0;
   runtime.exactIds.length = 0;
   runtime.nearIds.length = 0;
   runtime.abstractIds.length = 0;
@@ -724,11 +738,16 @@ function classifyWorld(state, runtime) {
 
     if (!entityNeedsPhysics(entity)) continue;
     if (!shouldSyncPhysicsBodyEntity(entity)) continue;
-    if (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') {
+    const dynamic = isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile';
+    if (dynamic) {
       dynamics.push(entity);
     } else {
       statics.push(entity);
     }
+    // A kinematic fixture is still a fixed SG-02 record. Only spatial membership needs to move
+    // incrementally, so it shares the broadphase dynamic lane without joining solver dynamics.
+    if (dynamic || isKinematicPhysicsBodyEntity(entity)) spatialDynamics.push(entity);
+    else spatialStatics.push(entity);
   }
 
   for (const id of runtime.signaturesById.keys()) {
@@ -752,6 +771,21 @@ function classifyWorld(state, runtime) {
     for (let i = 0; i < statics.length; i++) priorStatics[i] = statics[i];
     runtime._staticAuthorityVersion = staticAuthorityVersion;
     runtime._staticMembershipDirty = false;
+  }
+
+  const priorSpatialStatics = runtime._spatialStaticEntities;
+  let spatialStaticMembershipChanged = runtime._spatialStaticMembershipDirty
+    || priorSpatialStatics.length !== spatialStatics.length;
+  for (let i = 0; !spatialStaticMembershipChanged && i < spatialStatics.length; i++) {
+    if (priorSpatialStatics[i] !== spatialStatics[i]) spatialStaticMembershipChanged = true;
+  }
+  const spatialStaticAuthorityVersion = entityIndexSpatialStaticVersion(state);
+  if (spatialStaticMembershipChanged || spatialStaticAuthorityVersion !== runtime._spatialStaticAuthorityVersion) {
+    runtime.spatialStaticVersion++;
+    priorSpatialStatics.length = spatialStatics.length;
+    for (let i = 0; i < spatialStatics.length; i++) priorSpatialStatics[i] = spatialStatics[i];
+    runtime._spatialStaticAuthorityVersion = spatialStaticAuthorityVersion;
+    runtime._spatialStaticMembershipDirty = false;
   }
 
 }
@@ -800,6 +834,13 @@ function entityIndexPhysicsStaticVersion(state) {
     : null;
 }
 
+function entityIndexSpatialStaticVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.spatialStaticVersion)
+    ? index.spatialStaticVersion
+    : null;
+}
+
 /**
  * Force one deterministic static-version bump after an in-place entity rebuild (save/load
  * respawn). A respawn may keep entity ids and counts stable, so exact object membership must be
@@ -813,6 +854,7 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedTick = -1;
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
+  runtime._spatialStaticMembershipDirty = true;
   return true;
 }
 

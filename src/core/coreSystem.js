@@ -1,7 +1,11 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
 import { allocateEntityId, makeEntity } from './entity.js';
-import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
+import {
+  isDynamicPhysicsBodyEntity,
+  isKinematicPhysicsBodyEntity,
+  shouldSyncPhysicsBodyEntity,
+} from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
@@ -397,7 +401,8 @@ function appendEntityIndex(index, e) {
     }
   }
   if (movable) index.movables.push(e);
-  if (e.type !== 'projectile' && e.type !== 'fx'
+  const radarHidden = e.data?.radarHidden === true || e.flags?.radarHidden === true;
+  if (!radarHidden && e.type !== 'projectile' && e.type !== 'fx'
       && e.type !== 'masslineSnare' && e.type !== 'masslineSnareAnchor') {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
@@ -554,6 +559,9 @@ function isMovableEntity(e) {
   // dynamic Rapier bodies; without a fresh previous pose, render alpha repeatedly pulls them back
   // toward their spawn pose and creates the characteristic object-width flicker.
   if (isDynamicPhysicsBodyEntity(e)) return true;
+  // Kinematic fixtures stay fixed in Rapier but their authored pose changes during simulation.
+  // They need prev/current snapshots and the incremental spatial lane just like a dynamic body.
+  if (isKinematicPhysicsBodyEntity(e)) return true;
   switch (e.type) {
     case 'ship':
     case 'drone':

@@ -10,6 +10,7 @@ export const PHYSICS_RUNTIME_SCHEMA_VERSION = 1;
 
 import {
   expandProxyPrimitives,
+  proxyObbHalfExtents,
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
@@ -59,6 +60,7 @@ export async function createRapierCollisionWorld() {
         rec.ccdEnabled = ccdEnabled;
       }
       rec.body.setTranslation({ x: finite(e.pos && e.pos.x), y: 0, z: finite(e.pos && e.pos.z) }, true);
+      rec.body.setRotation({ x: 0, y: Math.sin(finite(e.rot) * 0.5), z: 0, w: Math.cos(finite(e.rot) * 0.5) }, true);
       if (rec.dynamic) {
         rec.body.setLinvel({ x: finite(e.vel && e.vel.x), y: 0, z: finite(e.vel && e.vel.z) }, true);
         rec.body.setAngvel({ x: 0, y: finite(e.angVel), z: 0 }, true);
@@ -113,6 +115,7 @@ export async function createRapierCollisionWorld() {
   function createRecord(e, dynamic, ccdEnabled) {
     const desc = (dynamic ? RAPIER.RigidBodyDesc.dynamic() : RAPIER.RigidBodyDesc.fixed())
       .setTranslation(finite(e.pos && e.pos.x), 0, finite(e.pos && e.pos.z))
+      .setRotation({ x: 0, y: Math.sin(finite(e.rot) * 0.5), z: 0, w: Math.cos(finite(e.rot) * 0.5) })
       .setCcdEnabled(ccdEnabled);
     if (dynamic) {
       desc
@@ -184,10 +187,11 @@ export async function createRapierCollisionWorld() {
           .setRotation({ x: uz * Math.SQRT1_2, y: 0, z: -ux * Math.SQRT1_2, w: Math.SQRT1_2 });
       } else if (primitive.kind === 'obb') {
         const angle = (Number.isFinite(primitive.angleDeg) ? primitive.angleDeg : 0) * (Math.PI / 180);
+        const halfExtents = proxyObbHalfExtents(entity, manifest, primitive, scale);
         desc = RAPIER.ColliderDesc.cuboid(
-          Math.max(0.01, primitive.hx * scale),
-          Math.max(0.01, primitive.hx * scale),
-          Math.max(0.01, primitive.hz * scale),
+          Math.max(0.01, halfExtents.hx),
+          Math.max(0.01, halfExtents.hy),
+          Math.max(0.01, halfExtents.hz),
         )
           .setTranslation(primitive.x * scale, 0, primitive.z * scale)
           .setRotation({ x: 0, y: Math.sin(angle / 2), z: 0, w: Math.cos(angle / 2) });

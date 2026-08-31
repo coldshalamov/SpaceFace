@@ -3161,7 +3161,13 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
   state.openingHandoffHold = true;
   invalidateScheduledUpgradeFrame(state);
 
-  const inFlight = [...state.byBoundary.values()].find((job) => job.lifecycle === 'in-flight');
+  // A repeat New Game can leave a prior-flight GPU admission completing after its boundary has
+  // already been detached. It is not part of the new opening cohort. Waiting for it here can cycle
+  // with the loading-owned pipeline drain that will settle it later, so only join an in-flight job
+  // whose boundary still belongs to the current published scene/entity.
+  const inFlight = [...state.byBoundary.values()].find((job) => (
+    job.lifecycle === 'in-flight' && jobStillNeeded(state, job)
+  ));
   if (inFlight) {
     await inFlight.completion;
     return { prepared: true, source: 'in-flight', key: inFlight.key };
@@ -3174,7 +3180,7 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
     cancelQueuedJob(state, job);
   }
   if (state.jobs.length === 0) {
-    state.running = false;
+    state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
     return { prepared: false, source: 'empty' };
   }
@@ -4431,6 +4437,16 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
+  // A repeat New Game can detach the prior flight's boundary while its GPU preparation is still in
+  // flight. It can no longer affect the opening picture, so abort before waiting on that picture's
+  // publication latch; waiting first creates a cycle (opening waits for this job, this job waits for
+  // opening release) and turns Relaunch into a 90-second render-pipeline failure.
+  if (!boundary.parent) {
+    if (preparedAuthored) {
+      await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
+    }
+    return false;
+  }
   const publicationWait = waitForOpeningGraphPublicationRelease();
   if (publicationWait) await publicationWait;
   if (!boundary.parent) {

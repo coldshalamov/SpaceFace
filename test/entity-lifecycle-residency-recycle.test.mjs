@@ -13,6 +13,24 @@ import { world as worldDefinition } from '../src/systems/world.js';
 
 const CERES = 'sector_ceres_belt';
 
+test('explicitly radar-hidden gameplay structure stays in physics without becoming a contact', () => {
+  const sim = createSimulation({ seed: 46999, systems: [] });
+  const structure = sim.spawn({
+    type: 'station',
+    pos: { x: 40, z: 20 },
+    radius: 20,
+    mass: 1e9,
+    hull: 1e9,
+    hullMax: 1e9,
+    collides: true,
+    data: { radarHidden: true },
+  });
+  const index = sim.state.entityIndex;
+  assert.ok(index.collidables.includes(structure));
+  assert.ok(index.physicsBodies.includes(structure));
+  assert.equal(index.radarContacts.includes(structure), false);
+});
+
 function payloadSpec(sequence, payloadType = CIVILIAN_MANIFEST_PAYLOAD_TYPE) {
   return {
     type: 'payload',

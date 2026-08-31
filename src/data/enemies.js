@@ -183,6 +183,42 @@ export const ENEMY_TYPES = [
       blueprint: true,
     },
   },
+  {
+    id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', shipId: 'ship_colossus',
+    silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
+    aiArchetype: 'miniboss_capital', levelRange: [10, 10],
+    combatDoctrineId: 'capital_broadside',
+    hull: 3300, armor: 1050, armorFlat: 3, shield: 720, shieldRegen: 24,
+    shieldRegenCapable: true, shieldRegenDelay: 7, cap: 1200, capRegen: 34,
+    maxSpeed: 58, accel: 28, turnRate: 0.22, collisionRadius: 54, mass: 1600,
+    weapons: [
+      { id: 'wpn_concussion_cannon_m', count: 2 },
+      { id: 'wpn_autocannon_m', count: 4, turret: true },
+      { id: 'wpn_flak_turret_s', count: 2, turret: true },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 360, leashRadius: 1500 },
+    telegraph: {
+      bark: 'warn',
+      line: 'Mirrorjaw is committing its ram. Bank behind the jaw or clear the lane.',
+      cue: 'broadside_charge',
+    },
+    counterHint: 'Bank into the rear machinery, bait the committed ram, or move a loose plate.',
+    directionalSurface: { material: 'reflective', arcCenter: 0, arcHalfWidth: 0.907571211 },
+    bossProfile: {
+      id: 'mirrorjaw_foreman',
+      roomLaw: 'reflective_front_vulnerable_rear',
+      phases: ['reflective_ram', 'absorbent_screen', 'unmoored_reactor'],
+      ramPlate: true,
+    },
+    ramPlate: true,
+    reinforcements: {
+      packageId: 'mirrorjaw_floor_crew',
+      type: 'wasp_swarmer', count: [2, 3], hullThreshold: 0.5,
+    },
+    behavior: 'committed reflective ram; slow facing; absorbent mid-phase screen; exposed rear reactor',
+    bountyCr: 0, shipClass: 'capital',
+    loot: { creditsRange: [0, 0], drops: [] },
+  },
   // ── Variety roles (append-only; reuse existing AI archetypes / doctrines / silhouettes) ──
   {
     id: 'mine_layer_jackal', name: 'Mine-Layer Jackal', shipId: 'ship_drifter',

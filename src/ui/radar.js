@@ -598,6 +598,7 @@ export function createRadar(ctx) {
 
   function isRadarContact(entity, player) {
     if (!entity || entity === player) return false;
+    if (entity.data?.radarHidden === true || entity.flags?.radarHidden === true) return false;
     return entity.type !== 'projectile' && entity.type !== 'fx';
   }
 

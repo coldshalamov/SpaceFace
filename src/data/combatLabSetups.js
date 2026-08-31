@@ -2,6 +2,8 @@
 // Pure frozen data. No systems imports and no runtime writes after module init.
 // Arena geometry is intentionally sector/position mapping only (authored arenas are later work).
 
+import { MIRRORJAW_ENEMY_ID } from './ricochetFoundry.js';
+
 function freezeDeep(value) {
   if (!value || typeof value !== 'object') return value;
   if (Array.isArray(value)) {
@@ -39,6 +41,33 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
       { slotIndex: 2, defId: 'wpn_momentum_sink_s' },
     ],
   },
+  {
+    id: 'foundry_direct',
+    label: 'Foundry Direct',
+    hullId: 'ship_drifter',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+    ],
+  },
+  {
+    id: 'foundry_bank',
+    label: 'Foundry Bank',
+    hullId: 'ship_drifter',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 7, defId: 'mod_bank_shot' },
+    ],
+  },
+  {
+    id: 'foundry_smart_bank',
+    label: 'Foundry Smart Bank',
+    hullId: 'ship_drifter',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 7, defId: 'mod_bank_shot' },
+      { slotIndex: 8, defId: 'mod_smart_bank' },
+    ],
+  },
 ]);
 
 export const COMBAT_LAB_ENEMY_PACKAGES = freezeDeep([
@@ -62,6 +91,15 @@ export const COMBAT_LAB_ENEMY_PACKAGES = freezeDeep([
     ],
     maxConcurrent: 6,
     spawnDistance: 260,
+  },
+  {
+    id: 'mirrorjaw_foreman',
+    label: 'Mirrorjaw Foreman',
+    entries: [
+      { enemyId: MIRRORJAW_ENEMY_ID, count: 1, level: 10 },
+    ],
+    maxConcurrent: 1,
+    spawnDistance: 420,
   },
   {
     id: 'mixed_screen',

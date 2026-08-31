@@ -1053,6 +1053,13 @@ export function applySandboxSetup(ctx, config) {
     if (sectorId && spawnPos) {
       relocatePlayer(ctx, sectorId, spawnPos, `sandbox:combat-lab:${setup.arenaId}`);
     }
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('survivalArena:labRequested', {
+        arenaId: setup.arenaId,
+        seed: setup.seed,
+        wave: setup.wave,
+      });
+    }
     const enemyPackage = COMBAT_LAB_ENEMY_PACKAGES.find((entry) => (
       entry.id === setup.enemyPackageId
     ));

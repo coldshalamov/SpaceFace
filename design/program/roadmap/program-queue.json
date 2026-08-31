@@ -8626,7 +8626,7 @@
       "priority": 370,
       "title": "Surface receipt + Ricochet Foundry vertical slice (Phase 4)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-133.03"
       ],
@@ -8635,19 +8635,35 @@
       ],
       "paths": [
         "src/core/physicsAuthority.js",
-        "src/systems/arenas/ricochetFoundry.js",
-        "src/data/survivalArenas.js",
+        "src/core/physics.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/world/activityRuntime.js",
+        "src/systems/survivalArena.js",
+        "src/data/ricochetFoundry.js",
+        "src/data/collisionProxyManifests.js",
         "src/data/survivalWaves.js",
-        "src/combat/attackPropagation.js",
-        "src/data/enemies.js"
+        "src/data/enemies.js",
+        "src/data/combatLabSetups.js",
+        "src/combat/attackHit.js",
+        "src/systems/combat.js",
+        "src/render/visualFactory.js",
+        "src/render/visualOverrides.js",
+        "src/render/renderer.js",
+        "scripts/check-crucible-lab-route.mjs",
+        "test/ricochet-foundry.test.mjs"
       ],
       "checks": [
-        "npm run check:sim",
+        "npm run check:baseline",
         "npm run check:combat",
-        "npm run check:playable"
+        "npm run check:playable",
+        "npm run check:crucible:foundry-route",
+        "npm run check:crucible:foundry-route:electron",
+        "npm run check:crucible:foundry-visual-review",
+        "npm run check:render-hotpath",
+        "npm run check:render-path-parity"
       ],
       "receiptRefs": [
-        "partial 2026-08-23 (c1629d1b): the KERNEL half landed - authoritative physics-owned surface-contact receipt, material response, reflection continuation on the same body, and Bank Shot + Smart Bank compiled traits (3 stable digests, deterministic bounce, bounce spends the shared lineage proc budget). STILL OPEN for this leaf: greybox Foundry arena, ten wave recipes, Mirrorjaw Foreman boss, causal VFX/audio, and route + perf acceptance - all of which need art and the GPU lane. State deliberately left `ready` because the leaf is not done."
+        "design/program/roadmap/receipts/PQ-133.04.md"
       ],
       "brief": "Physics surface-contact receipt with point/normal/material/velocity (CRU-025), ricochet continuation through physics with bounded energy and enemy asymmetry (CRU-026), Smart Bank (CRU-027), Foundry greybox geometry/plates/furnace/gates/camera (CRU-028), moving shutters + loose reflective plate (CRU-029), ten Foundry wave recipes (CRU-030), Mirrorjaw Foreman boss (CRU-031), causal VFX/audio hooks, route + performance acceptance."
     },

@@ -12,6 +12,12 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { FIELD_MAX_ACTIVE } from '../src/data/fields.js';
+import {
+  FOUNDRY_SURFACE_LIMIT,
+  MIRRORJAW_DIRECTIONAL_SURFACE,
+  MIRRORJAW_ENEMY_ID,
+  RICOCHET_FOUNDRY_LAYOUT,
+} from '../src/data/ricochetFoundry.js';
 import { MINE_OWNER_CAP, MINE_TYPE, countOwnerMines, mines } from '../src/systems/mines.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
@@ -139,6 +145,11 @@ function planWaveOn(harness, wave, seed = SEED) {
 function liveArenaMines(state) {
   return state.entityList.filter((e) => e && e.alive && e.type === MINE_TYPE
     && (e.ownerId === ARENA_MINE_OWNER || (e.data && e.data.ownerId === ARENA_MINE_OWNER)));
+}
+
+function liveFoundrySurfaces(state) {
+  return state.entityList.filter((entity) => entity && entity.alive !== false
+    && entity.data && entity.data.arenaSurface === true);
 }
 
 /** The whole authored ten-wave ladder, so every one of the eight phases is exercised for real. */
@@ -302,14 +313,14 @@ test('the room reaches the kernel: each live phase registers exactly the fields 
   }
 });
 
-test('the room is anchored on the player and steered by the wave\'s own gate', () => {
+test('the room is anchored from the player entry bay and steered by the wave\'s own gate', () => {
   const h = boot({ anchor: { x: 1000, z: -1000 } });
   installRun(h, { wave: 5, phase: 'wave_intro' });   // furnace_active — centred on the anchor
   planWaveOn(h, 5);
   const record = h.fakeFields.live.get(ARENA_FIELD_SLOT_IDS[0]);
   assert.equal(record.kind, 'repulsor');
   assert.equal(record.center.x, 1000);
-  assert.equal(record.center.z, -1000);
+  assert.equal(record.center.z, -640);
 
   // shutter_lane_close aims across the gate the wave's biggest batch actually uses.
   const plan = realPlan(8);
@@ -532,4 +543,95 @@ test('update is a no-op on a quiet Helios tick — Cinder machinery does not lea
   assert.equal(typeof survivalArena.init, 'function');
   assert.equal(typeof survivalArena.destroy, 'function');
   assert.equal(typeof survivalArena.newGame, 'function');
+});
+
+test('Helios installs one bounded authored Foundry whose visible body and collider share dimensions', () => {
+  const h = boot();
+  installRun(h, { wave: 1, phase: 'wave_intro' });
+  planWaveOn(h, 1);
+  const surfaces = liveFoundrySurfaces(h.state);
+  assert.equal(surfaces.length, FOUNDRY_SURFACE_LIMIT);
+  assert.equal(surfaces.length, RICOCHET_FOUNDRY_LAYOUT.length);
+  assert.equal(new Set(surfaces.map((entity) => entity.data.foundrySurface.id)).size, surfaces.length);
+  for (const entity of surfaces) {
+    const visual = entity.data.foundrySurface;
+    assert.equal(entity.radius, visual.halfLength);
+    assert.ok(visual.halfWidth > 0);
+    assert.ok(entity.data.collisionProxy.startsWith('ricochet_foundry_'));
+    assert.equal(entity.physicsBody.radius, visual.halfLength);
+  }
+  assert.equal(named(h.emitted, 'survivalArena:foundryReady').at(-1).payload.count, FOUNDRY_SURFACE_LIMIT);
+});
+
+test('Combat Lab requests the same Foundry owner instead of a Lab-only geometry path', () => {
+  const h = boot();
+  const run = createRunState({ kind: 'lab', seed: SEED });
+  run.phase = 'loadout';
+  run.arenaId = ARENA;
+  h.state.run = run;
+  h.bus.emit('survivalArena:labRequested', { arenaId: ARENA, seed: SEED, wave: 7 });
+  assert.equal(liveFoundrySurfaces(h.state).length, FOUNDRY_SURFACE_LIMIT);
+  const diagnostics = survivalArena.diagnostics();
+  assert.equal(diagnostics.phase, realPlan(7).arenaPhase);
+  assert.equal(diagnostics.lawId, ARENA);
+  assert.equal(named(h.emitted, 'survivalArena:installed').at(-1).payload.lab, true);
+});
+
+test('Foundry geometry persists between waves, shutters move from simulation time, and run end releases it', () => {
+  const h = boot();
+  h.state.entityIndex = { physicsStaticVersion: 41 };
+  installRun(h, { wave: 3, phase: 'wave_intro' });
+  planWaveOn(h, 3);
+  const initial = liveFoundrySurfaces(h.state);
+  const initialIds = initial.map((entity) => entity.id);
+  const shutter = initial.find((entity) => entity.data.foundrySurface.id === 'shutter_west');
+  assert.ok(shutter);
+  const x0 = shutter.pos.x;
+  const staticVersion0 = h.state.entityIndex.physicsStaticVersion;
+  h.state.simTime = 5;
+  survivalArena.update(1 / 60, h.state);
+  assert.notEqual(shutter.pos.x, x0, 'the warned shutter never translated');
+  assert.equal(shutter.physicsBody.kinematic, true,
+    'a moving shutter declares fixed kinematic body authority');
+  assert.equal(h.state.entityIndex.physicsStaticVersion, staticVersion0,
+    'a moving kinematic shutter must not invalidate every SG-02/static broadphase record');
+
+  h.bus.emit('run:waveCleared', { wave: 3 });
+  assert.deepEqual(liveFoundrySurfaces(h.state).map((entity) => entity.id), initialIds,
+    'wave cleanup destroyed persistent authored geometry');
+
+  installRun(h, { wave: 4, phase: 'wave_intro' });
+  planWaveOn(h, 4);
+  assert.deepEqual(liveFoundrySurfaces(h.state).map((entity) => entity.id), initialIds,
+    'next wave duplicated the Foundry');
+
+  h.bus.emit('run:ended', { outcome: 'victory' });
+  assert.equal(liveFoundrySurfaces(h.state).length, 0);
+});
+
+test('Mirrorjaw exposes three causal phases and loses its reflective jaw when the rear reactor unmoors', () => {
+  const h = boot();
+  installRun(h, { wave: 10, phase: 'wave_intro' });
+  planWaveOn(h, 10);
+  const boss = h.helpers.spawnEntity({
+    type: 'ship', hull: 1000, hullMax: 1000, pos: { x: 0, z: 0 },
+    data: { lootTableId: MIRRORJAW_ENEMY_ID, intent: {} },
+  });
+  survivalArena.update(1 / 60, h.state);
+  assert.equal(boss.data.mirrorjawPhase, 'reflective_ram');
+  assert.equal(boss.data.directionalSurface, MIRRORJAW_DIRECTIONAL_SURFACE);
+  assert.equal(boss.data.intent.ramPlate, true);
+
+  boss.hull = 500;
+  survivalArena.update(1 / 60, h.state);
+  assert.equal(boss.data.mirrorjawPhase, 'absorbent_screen');
+
+  boss.hull = 250;
+  survivalArena.update(1 / 60, h.state);
+  assert.equal(boss.data.mirrorjawPhase, 'unmoored_reactor');
+  assert.equal(boss.data.directionalSurface, null);
+  assert.equal(boss.data.intent.ramPlate, false);
+  assert.deepEqual(named(h.emitted, 'survivalArena:bossPhase').map((entry) => entry.payload.phase), [
+    'reflective_ram', 'absorbent_screen', 'unmoored_reactor',
+  ]);
 });

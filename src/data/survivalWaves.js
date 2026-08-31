@@ -6,6 +6,7 @@
 
 import { COMBAT_LAB_ARENAS } from './combatLabSetups.js';
 import { ENEMY_TYPES } from './enemies.js';
+import { MIRRORJAW_ENEMY_ID, RICOCHET_FOUNDRY_ARENA_ID } from './ricochetFoundry.js';
 
 export const SURVIVAL_WAVE_SCHEMA_VERSION = 1;
 
@@ -306,6 +307,7 @@ function waveRecipe({
 // test/crucible-credit-pickup.js. Their questions were already distinct, so nothing was lost.
 function tenWaveBlock(arenaId, gateA, gateB) {
   const gateC = thirdGate(gateA, gateB);
+  const bossEnemyId = arenaId === RICOCHET_FOUNDRY_ARENA_ID ? MIRRORJAW_ENEMY_ID : 'dreadnought_boss';
   return [
     // Q: Can you turn, track and kill six identical things that all want the same thing?
     // One gate, one archetype, one arrival, a quiet room. Nothing to prioritise — the only
@@ -439,7 +441,7 @@ function tenWaveBlock(arenaId, gateA, gateB) {
       arenaId, wave: 10, shape: 'boss',
       objectiveKind: 'boss', threatBudget: 28,
       packages: [
-        pkg(0, gateA, 'elite', 'dreadnought_boss', 1),
+        pkg(0, gateA, 'elite', bossEnemyId, 1),
         pkg(90, gateB, 'mass', 'wasp_swarmer', 6, 3, 90),
       ],
       arenaPhase: 'boss', blockingRoles: ['elite', 'mass'], cleanupTicks: 240,
