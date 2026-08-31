@@ -1948,7 +1948,7 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ind__console { top:198px; }
 
 /* Contract offers are dispatch tickets attached to the route simulator, not mystery beacons. */
-.sx-ct { grid-template-rows:106px minmax(0,1fr) 82px; }
+.sx-ct { grid-template-rows:106px minmax(0,1fr) auto; }
 .sx-ct__board {
   position:relative; grid-row:1; width:calc(100% - 198px); min-height:106px; margin-left:198px;
   display:flex; align-items:end; gap:7px;

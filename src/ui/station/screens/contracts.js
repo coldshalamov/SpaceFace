@@ -295,6 +295,10 @@ const CSS = `
 .sx-app .sx-ct .sx-ct-row {
   flex: 1 1 236px; width: auto; min-width: 200px; max-width: 340px;
 }
+.sx-app .sx-ct .sx-ct-row .sx-ct-row__title {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  white-space: normal; overflow-wrap: anywhere;
+}
 /* OPEN DEFECT (2026-08-30 polish pipeline): the Active Missions attention card still
    renders clipped inside this band — the card is cut by the .sx-ct grid row budget, not
    by this strip's own overflow, so band-level sizing cannot reach it. Needs the missions
