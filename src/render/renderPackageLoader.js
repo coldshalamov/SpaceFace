@@ -860,16 +860,22 @@ async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
     if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
     return new Uint8Array(await response.arrayBuffer());
   };
-  const matches = async (bytes) => (
-    bytes.byteLength === metadata.render.bytes
-    && (await sha256Hex(bytes)) === metadata.render.sha256
+  // Hash each read ONCE. The first-pass `matches()` helper hashed the bytes to decide whether to
+  // re-read, and the verification below then hashed the very same bytes again — two full SHA-256
+  // passes over every render package on the happy path, and the packages are ~125 MB of GLB per
+  // boot. Both checks are preserved exactly; only the duplicate pass is gone.
+  const digestOf = async (candidate) => (
+    candidate.byteLength === metadata.render.bytes ? sha256Hex(candidate) : null
   );
   let bytes = await read('no-cache');
-  if (!await matches(bytes)) bytes = await read('reload');
+  let digest = await digestOf(bytes);
+  if (digest !== metadata.render.sha256) {
+    bytes = await read('reload');
+    digest = await digestOf(bytes);
+  }
   if (bytes.byteLength !== metadata.render.bytes) {
     throw new Error(`Render package byte length mismatch for ${metadata.assetId}: ${bytes.byteLength} != ${metadata.render.bytes}.`);
   }
-  const digest = await sha256Hex(bytes);
   if (digest !== metadata.render.sha256) {
     throw new Error(`Render package SHA-256 mismatch for ${metadata.assetId}: ${digest} != ${metadata.render.sha256}.`);
   }
