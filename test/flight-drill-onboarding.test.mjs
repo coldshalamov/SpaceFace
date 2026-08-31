@@ -8,7 +8,7 @@ import {
   FLIGHT_DRILL_BURST_SHOTS,
   maxWeaponHeatFraction,
 } from '../src/onboarding/flightDrill.js';
-import { pickFlybyTarget } from '../src/systems/flybyFocus.js';
+import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
 import { onboarding } from '../src/systems/onboarding.js';
 
 test('flight drill teaches one clear lesson at a time in the required order', () => {
@@ -50,6 +50,51 @@ test('training actor is the only non-hostile contact eligible for flyby Focus', 
   const state = { playerId: 1, player: {}, entities: new Map([[1, player], [2, trainer], [3, ordinaryFriendly]]) };
   assert.equal(pickFlybyTarget(state, player, [ordinaryFriendly, trainer])?.id, 2);
   assert.equal(pickFlybyTarget(state, player, [ordinaryFriendly]), null);
+});
+
+test('marker trainer cannot consume Focus before its authored flyby', () => {
+  const bus = createBus();
+  const state = makeState();
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = makeEntity(spec);
+      entity.id = state.nextEntityId++;
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+    removeEntity(id) {
+      const entity = state.entities.get(id);
+      if (entity) entity.alive = false;
+    },
+  };
+  const tutorial = Object.create(onboarding);
+  tutorial.init({ state, bus, helpers, registry: null });
+  state.onboarding = freshOnboarding();
+  state.onboarding.currentBeat = 2;
+  state.simTime = 0;
+
+  const player = state.entities.get(state.playerId);
+  player.vel.x = 100;
+  const trainer = tutorial._spawnTrainer('marker');
+  assert.ok(trainer);
+  trainer.pos.x = 240;
+  trainer.pos.z = 0;
+  trainer.prevPos.copy(trainer.pos);
+
+  const focus = Object.create(flybyFocus);
+  focus.init({ state, bus });
+  focus.update(1 / 60, state);
+  assert.equal(state.player.flybyFocus.active, false,
+    'the marker trainer is ineligible even when a fast player enters its focus envelope');
+
+  state.simTime = 4.1;
+  tutorial._beginTrainerFlyby();
+  focus.update(1 / 60, state);
+  assert.equal(state.player.flybyFocus.active, true);
+  assert.equal(state.player.flybyFocus.targetId, trainer.id,
+    'the marked trainer opens Focus only once its flyby starts');
+  focus.destroy();
 });
 
 test('nonlethal trainer and real event receipts complete the hands-on drill', () => {

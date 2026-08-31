@@ -896,7 +896,9 @@ export const onboarding = {
       spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: heading };
       spec.data.onboarding = true;
       spec.data.onboardingTraining = true;
-      spec.data.trainingFocusEligible = true;
+      // The marker beat uses this same actor, but Focus is a distinct lesson.  A fast player
+      // must not spend the trainer's Focus cooldown before the authored flyby begins.
+      spec.data.trainingFocusEligible = false;
       spec.data.trainingMode = mode;
       spec.shieldRegenRate = 0;
       spec.hull = spec.hullMax = Math.max(100, spec.hullMax || 100);
@@ -943,6 +945,8 @@ export const onboarding = {
     const trainer = this._trainingActor() || this._spawnTrainer('marker');
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
     if (!trainer || !player || !player.pos) return;
+    trainer.data = trainer.data || {};
+    trainer.data.trainingFocusEligible = true;
     const heading = Number.isFinite(player.rot) ? player.rot : 0;
     const rightX = -Math.sin(heading);
     const rightZ = Math.cos(heading);
