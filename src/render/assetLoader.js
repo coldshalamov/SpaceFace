@@ -870,7 +870,7 @@ export function assembleRenderPackageRecord(renderPackage, url, assetLabel = nul
   });
 }
 
-async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
+export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const slot = options.slot || null;
   const optional = options.optional === true;
   const cacheKey = `${url}::${slot || '*'}`;
@@ -893,6 +893,16 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
 
   const record = await task;
   if (!record) return null;
+  if (record.renderPackage?.evicted === true) {
+    // `renderPackageLoader` evicts by content hash, while this outer cache is keyed by source URL.
+    // Every caller that observes the fulfilled stale task must retry; only its exact cache owner may
+    // erase it, so a late observer cannot remove a newer re-admission task.
+    if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
+      return null;
+    }
+    return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+  }
   if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
   const owner = options.residencyOwner || runtime.defaultResidencyOwner;
   if (owner) {

@@ -23,6 +23,75 @@ function runtimeFixture({ tasks = [], decoders = [] } = {}) {
   };
 }
 
+function renderPackageFixture(url, contentHash, { evicted = false } = {}) {
+  const renderPackage = {
+    prepared: { url, report: {} },
+    assetId: 'sf.render.test-eviction',
+    contentHash,
+    residencyKey: `render-package:${contentHash}`,
+    evicted,
+    retain() { return !this.evicted; },
+  };
+  return { renderPackage };
+}
+
+async function testEvictedSourceUrlTaskRetriesForEveryActiveObserver() {
+  assert.equal(typeof assetLoader.loadAuthoredRenderPackagePilot, 'function',
+    'assetLoader must expose the source-url render-package admission seam');
+  if (typeof assetLoader.loadAuthoredRenderPackagePilot !== 'function') return;
+
+  const url = 'assets/ships/release/parts/wholeships/test-eviction.glb';
+  const cacheKey = `${url}::hull`;
+  const pilot = {
+    metadataUrl: 'assets/ships/release/render-packages/test-eviction/render-package.json',
+    expectedContentHash: 'fresh-content-hash',
+  };
+  const stale = renderPackageFixture(url, 'stale-content-hash', { evicted: true });
+  const fresh = renderPackageFixture(url, 'fresh-content-hash');
+  const staleRecord = assetLoader.assembleRenderPackageRecord(stale.renderPackage, url, 'test-eviction');
+  const staleTask = Promise.resolve(staleRecord);
+  let loadCalls = 0;
+  const runtime = runtimeFixture();
+  runtime.assets.set(cacheKey, staleTask);
+  runtime.renderPackages = {
+    async load() {
+      loadCalls += 1;
+      return fresh.renderPackage;
+    },
+  };
+
+  const options = { slot: 'hull', isResidencyOwnerActive: () => true };
+  const [first, second] = await Promise.all([
+    assetLoader.loadAuthoredRenderPackagePilot(runtime, pilot, url, options),
+    assetLoader.loadAuthoredRenderPackagePilot(runtime, pilot, url, options),
+  ]);
+
+  assert.strictEqual(first.renderPackage, fresh.renderPackage);
+  assert.strictEqual(second.renderPackage, fresh.renderPackage);
+  assert.equal(loadCalls, 1, 'two stale observers share one replacement package admission');
+  assert.notStrictEqual(runtime.assets.get(cacheKey), staleTask,
+    'a stale observer never leaves the fulfilled evicted task in the source-url cache');
+
+  const inactiveRuntime = runtimeFixture();
+  inactiveRuntime.assets.set(cacheKey, staleTask);
+  let inactiveLoads = 0;
+  inactiveRuntime.renderPackages = {
+    async load() {
+      inactiveLoads += 1;
+      return fresh.renderPackage;
+    },
+  };
+  const inactive = await assetLoader.loadAuthoredRenderPackagePilot(
+    inactiveRuntime,
+    pilot,
+    url,
+    { slot: 'hull', isResidencyOwnerActive: () => false },
+  );
+  assert.equal(inactive, null, 'a departed boundary invalidates stale work without re-decoding');
+  assert.equal(inactiveLoads, 0);
+  assert.equal(inactiveRuntime.assets.has(cacheKey), false);
+}
+
 async function testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns() {
   assert.equal(typeof assetLoader.admitAuthoredAssetTask, 'function',
     'assetLoader must export the task-admission boundary used by live loads');
@@ -420,6 +489,7 @@ async function testSharedKtx2CreationFailureDoesNotLeakRefs() {
 }
 
 await testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns();
+await testEvictedSourceUrlTaskRetriesForEveryActiveObserver();
 await testImmediateRetirementOwnsAdmittedTaskBeforeFactoryRuns();
 await testRetirementWaitsForOwnedTasks();
 await testCacheInvalidationCannotHideOwnedTask();
