@@ -1,28 +1,29 @@
-# Pre-authoring material and shape audit — Massline Express Liner v1
+# Material and shape audit — Massline Express Liner v1
 
 Planned asset identity: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
 Scope: PQ-049.01 source candidate, chase-camera evidence
-Whole-asset G1/G2/G4 status: **open — cycle 18 source candidate; independent review required; authoring decision is revise**
+Whole-asset G1/G2/G4 status: **open — Cycle 36 source candidate; implementing iteration decision is KEEP / evidence_ready; controller review pending**
+Candidate LOD0: `AAF714ABF24EF5F7B92AE47818C9CEF2C0512065F405AE9A4BFF0E2D43E1AFEB`
 
 ## Visible-zone preflight
 
-`MATERIAL_CONTRACT.json` is the pre-authoring visible-zone register. Every planned candidate-visible zone
-is `billed`; the future source may not inherit donor/default surfaces or use an
-`outside_supported_view` shortcut. The register remains `allSupportedViewZonesClassified: false` until an
-independent reviewer confirms matched-camera coverage of an exact candidate hash.
+`MATERIAL_CONTRACT.json` is the visible-zone register. Every candidate-visible zone is `billed`.
+The register remains `allSupportedViewZonesClassified: false` until an independent reviewer
+confirms matched-camera coverage of the exact Cycle 36 candidate hash.
 
 ## Shape grammar
 
 | Camera-prominent form | Primitive risk | Required manufactured profile and function | Required rooted interface / later visible evidence | Disposition |
 |---|---|---|---|---|
-| Central passenger drum | A generic cylinder would read as a tube. | A 12-sided superellipse loft with six deliberate pressure stations: blunt forward bulkhead, wide parallel passenger span, shoulder, rear transfer, and drive-root cap. | Ceramic shell bridges to dark bulkhead stations, dock jambs, keel brackets, and dorsal spine. | Billed; clay and grazing evidence required. |
-| Operations wedge | A black cuboid or fighter canopy would read as a pasted-on cockpit. | Tapered, six-plane glazed boarding/operations volume with a pressure-shoulder frame and split pane geometry. | Dark rails return into the forward bulkhead; glazing is inset inside frame planes. | Billed. |
+| Central passenger drum | A generic cylinder or uninterrupted deck would read as a tube/slab. | Three visibly stepped octagonal passenger sections with sharp manufactured shoulders and six paired, physically recessed deck-edge gallery wells. Cycle 36 narrows the galleries and extends the axial crown, producing a civic 2.12:1 pressure-vessel envelope whose longitudinal drum dominates the legal abeam views. | Ceramic shell bridges to five full-height hat stations, corridor/gallery frames, dock jambs, keel brackets, dorsal well, and aft load envelope. | Billed; hierarchy improved, independent verdict pending. |
+| Operations wedge | A black cuboid or fighter canopy would read as a pasted-on cockpit. | Blunt, six-plane glazed boarding/operations volume with a pressure-shoulder frame and split pane geometry. | Dark rails return into the forward bulkhead; glazing is inset inside frame planes. | Billed. |
 | Service cassette | A long box would read as a container. | Low folded-shell cassette with tapered end caps, twin removable bays, latches, drain/inspection plates, and no cargo aperture. | Suspended under pressure bulkhead/keel interfaces. | Billed. |
 | Keel | A rectangular bar would read as a floating slab. | Four-station forged beam with a deeper tether station and paired boom-root shoes. | Gusset cheeks visibly bridge to pressure stations; cassette seats under it. | Billed. |
 | Tether collar | A torus would read as a decorative ring. | Split saddle: two forged side cheeks, bridge pad, clamp caps, and diagonal gussets. | Lower non-passenger-facing keel and drum bulkhead roots. | Billed. |
 | Dock/service interfaces | A painted rectangle would be a fake hatch. | Recess floor, ceramic jamb, dark bolt frame, flush conduit cover, and small embedded indicator fixture. | Separate port and starboard bulkhead positions; roots match nearby seams/spine feeds. | Billed. |
-| Dorsal spine | Repeated cubes/fins would be generic greeble. | Three formed hat-section service covers with deep cooling slots and drive-root feed housings. | Stays on the upper pressure stations; ends enter boom roots. | Billed. |
-| Aft drive booms | Smooth tubes and glowing disks would fail. | Tapered octagonal boom housings, cut-back throat rims, inner refractory bells, and a deeply recessed low-power core. | Paired roots tie into keel/dorsal structure with intentionally visible centerline negative space. | Billed. |
+| Dorsal spine | Repeated cubes/fins would be generic greeble. | One hat-section equipment well, two differently sized radiator modules, and one offset repair plate. | Stays on the upper pressure stations; ends enter the aft load ring. | Billed. |
+| Side passenger corridors | Flat wings or cards would fake occupancy. | Hollow equatorial corridor shells grown from the passenger station, with inner wall, formed sill/header, four pane/door bays, mullions, and returns into hat-section collars. | Outer faces carry dock/service contacts; load returns through chine roots and bulkhead collars. | Billed. |
+| Aft drive housings | Stick booms and hanging cans would fail. | A tapered four-station common pressure/load shroud extends around both internal case centerlines and stays unified until two open throat rims. The dry refractory liners, dark cavities, and six rooted stator blades remain visible inside those openings. | The common shroud, hollow pressure bands, keel spine, and paired saddles tie into the 6.40 m load ring; only the two functional throat openings separate. | Billed; Cycle 36 removes the exposed-prong read without capping either bore. Independent review owns the verdict. |
 
 ## Edge and normal policy
 
@@ -56,11 +57,22 @@ render remains required because node names and modifier presence are not visual 
 | LOD1 | 90–220 px, ordinary traffic | Must retain wedge/frame hierarchy, stepped drum, cassette/keel relation, dock recess blocks, dorsal spine, and twin cavities. | May merge latch/bolt and narrow cooling repetition into broader construction planes. |
 | LOD2 | ≤90 px, including `probe_32px` far traffic | Must retain wedge, stepped pressure drum, lower dark keel/cassette line, and two aft drive masses. | May collapse internal throat facets and small docking fixture detail while drive separation remains. |
 
-## Defect posture before authoring
+## Defect posture after Cycle 36
 
-No candidate exists to judge yet. Once authoring begins, the earliest judgeable risks are G1 (the
-drum/wedge/drive silhouette could still read too generic) and G2 (the apparent roots and recesses could
-collapse under grazing light). The future build and evidence route must produce exact-hash clay, neutral,
-grazing, dark-space, material-ID, size-probe, and authored-LOD captures before an independent reviewer
-can decide those gates. No technical build report is treated as a G1/G2/G4 pass, and those gates remain
-pending until a hash-bound whole-asset review is recorded.
+Cycle 36 retains the three stepped pressure sections and six paired gallery wells while reducing the
+passenger half-width from 9.65 m to 8.80 m and extending the axial crown from x=14.35 m to x=-9.45 m.
+The narrower corridor/gallery shells remain occupied and readable in chase, while the crown and pressure
+drum now dominate every legal abeam view. The aft body continues through a four-station common shroud
+from x=-12.50 m to x=-19.72 m around both internal drive centerlines. Its aft end is open and its
+pressure bands are hollow, leaving two functional throat openings with dry liners rather than exposed
+case prongs or a pale closing disk.
+
+Ceramic, anodized frame, smoked glazing, service primer, and forged keel retain separated gameplay
+values. All three GLBs export the exact unsuffixed semantic material names recorded here; the glazing
+transmission factor is 0.30 in LOD0, LOD1, and LOD2. Each GLB contains all 13 socket empties and one
+`COLLISION_HULL`. Bounds are 40.27 x 18.96 x 11.11 m (L/B 2.12); LOD0/1 occupancy is 17.19%, 8.33%,
+and 43.92%, all uncropped. LOD1 default/abeam evidence measures 187.5/90.0 px inside its 90–220 px
+band; LOD2 measures 81.4/38.7 px inside its <=90 px band, with a matched 89.0 px transition pair.
+Implementing review records `KEEP` for controller review: the former exposed prongs, cross/arrow abeam
+hierarchy, opaque-black glazing, record drift, and out-of-band evidence defects are materially corrected.
+Whole-asset G1/G2/G4 remain open until independent review; no technical report is a visual pass.

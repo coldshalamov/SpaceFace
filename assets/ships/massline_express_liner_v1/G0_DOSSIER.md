@@ -55,12 +55,13 @@ separate recessed docking/service interfaces: a dark socket floor, ceramic jamb,
 service plate. They must be interfaces a station arm could touch, not painted rectangles.
 
 Above the drum, the planned dorsal cooling/service spine must make the ship legible from a traffic camera.
-Three broad formed covers must carry recessed cooling slots and feed into the drive roots. At the rear,
-two low, separated drive booms must leave deliberate negative space around the centerline. Each boom must
-be a tapered framed housing with a deep, dry refractory throat; the hot surface and its low cyan core
-must remain recessed behind a real rim. The two throats, keel, service cassette, and docking frames must
-create a civic machine that can be tethered, inspected, and resumed on the same itinerary without ever
-pretending to be a fighter or cargo hauler.
+One equipment well tied to the bulkhead rings, a few large radiator/access modules, and one restrained
+asymmetric repair plate must carry the service read. Passenger glazing belongs in the corridors and
+boarding. At the rear, one common tapered pressure/load envelope must carry both internal drive cases to
+two separated functional throat openings. Each opening must retain a deep, dry refractory liner; the hot
+surface and its low cyan core must remain recessed behind a real rim. The paired throats, common shroud,
+keel, service cassette, and docking frames must create a civic machine that can be tethered, inspected,
+and resumed on the same itinerary without ever pretending to be a fighter or cargo hauler.
 
 When authored, one metre inspection must show primer only around removable cassette latches, heat bloom
 only at the throat liner, and chalky abrasion only at dock frames and tether contact faces. At 120 pixels
@@ -90,8 +91,8 @@ drives,” not Lark, Span, Mule, a freight barge, or a luxury capsule.
 | Low service cassette | Galvanized/primer enclosure with latches, seam, and small drain/inspection face. | Below passenger glazing; shallow depth. |
 | Keel | Dark load beam with multiple thickness stations. | Carries tether brackets and boom roots. |
 | Tether saddle | Forged side cheeks, bridge pad, and gussets into both keel and drum frame. | Lower/non-passenger-facing; no decorative ring. |
-| Dorsal spine | Formed service covers with cooling recesses and rooted feed runs. | Three readable covers, not a fin forest. |
-| Drive booms/throats | Tapered booms, heat shield roots, deep ceramic/refractory throat liners. | Emission is recessed and low. |
+| Dorsal spine | One equipment well, two differently sized radiator modules, one offset repair plate. | Not a row of identical lids. |
+| Common drive shroud/throats | Tapered pressure/load envelope, internal case roots, hollow pressure bands, and two deep ceramic/refractory throat liners. | Only the functional throat openings split; emission is recessed and low. |
 
 ### Material and LOD intent
 
@@ -101,7 +102,7 @@ deterministic UV projection is a planned candidate strategy, not an automatic G3
 retain framed glazing, dock jambs, keel saddle, cassette latches, cooling slots, and throat depth. Planned
 LOD1 must retain the wedge/frame hierarchy, docking recess blocks, keel/tether load path, dorsal spine,
 and twin throat cavities. Planned LOD2 must retain the stepped drum, forward wedge, lower keel/cassette
-line, and two separate aft drive masses through the `probe_32px` far band.
+line, and one common aft mass terminating in two throat openings through the `probe_32px` far band.
 
 ### Explicit exclusions
 
@@ -111,6 +112,26 @@ line, and two separate aft drive masses through the `probe_32px` far band.
 
 ## Gate posture
 
-G0 is written and the source candidate exists. Whole-asset G1/G2/G4 require an independent hash-bound
-review of the chase stills; this authoring pass cannot self-accept them. G3, G5, G6, and G7 stay open
-until later PQ-049 leaves. No P0/P1 may be hidden by a new camera.
+G0 is written and the Cycle 36 source candidate exists. Exact hashes are:
+
+- LOD0 `AAF714ABF24EF5F7B92AE47818C9CEF2C0512065F405AE9A4BFF0E2D43E1AFEB`
+- LOD1 `7FBB3B272962C17D07396CBB90A7594C111CD621431B7955F4AD796A0780158E`
+- LOD2 `B201060C52819F9F0B2A9416A8FE4915E41D19D2263BFE32EF76E221D141CA50`
+- editable Blend `A7AB8524935C312F8550ED70DF99593CBDD3C6D74FA87EF69296B2B9A88FAC36`
+
+Matched exact-source evidence is bound under `cycles/cycle_36/`, with labeled `lod1/` and `lod2/`
+subsets. Cycle 36 retains three stepped pressure sections and six paired deck-edge gallery wells while
+tucking the passenger galleries inside an 18.96 m beam and extending the longitudinal civic crown from
+the operations shoulder into the aft load region. A four-station common pressure/load shroud encloses
+both near-axial drive cases until their open throat rims, so the plant reads as one civic afterbody and
+splits only at the dry bores. The aft diagnostic shows real hollow pressure bands rather than an end cap.
+Blue-grey glazing has 0.30 transmission in all three exported LODs and set-back interior datum plates.
+All recorded semantic contract names are the exact unsuffixed exported glTF material names.
+
+Implementing-agent original-resolution review records `KEEP` for controller review: the former swept
+pincer pair, cross/arrow abeam silhouette, opaque-black glazing, and out-of-band LOD evidence are
+materially corrected. Whole-asset G1/G2/G4 and independent acceptance stay open. G3, G5, G6, and G7
+belong to later PQ-049 leaves. No P0/P1 is hidden by a new camera. Source bounds are
+40.27 x 18.96 x 11.11 m (length-to-beam 2.12). Default occupancy is 17.19%, abeam 8.33%, and close
+43.93%, all uncropped. LOD1 and LOD2 default/abeam evidence is inside the authored 90–220 px and
+<=90 px bands; their matched far transition pair measures 89.0 px.
