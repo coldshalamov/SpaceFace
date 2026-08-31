@@ -10,7 +10,7 @@
 // single stuck surface cannot hide the other forty.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
@@ -36,6 +36,37 @@ const shot = async (page, name) => {
     manifest.failures.push(name);
   }
 };
+
+// --gallery <dir>: (re)build the index.html contact sheet for a captured folder and exit.
+const galleryDirIdx = argv.indexOf('--gallery');
+if (galleryDirIdx >= 0 && argv[galleryDirIdx + 1]) {
+  const { readdirSync } = await import('node:fs');
+  const dir = fileURLToPath(new URL(`../.devshots/${argv[galleryDirIdx + 1]}/`, import.meta.url));
+  writeGallery(dir, readdirSync(dir).filter((f) => f.endsWith('.png')).sort());
+  console.log('gallery written ->', dir);
+  process.exit(0);
+}
+
+function writeGallery(dir, names = null) {
+  const NL = String.fromCharCode(10);
+  const fs = names ? null : readdirSync(dir);
+  const files = fs ? fs.filter((f) => f.endsWith('.png') && !f.startsWith('_')).sort() : names;
+  const cards = files.map((f) =>
+    `<a class="card" href="${f}"><img loading="lazy" src="${f}"><figcaption>${f.replace('.png', '')}</figcaption></a>`).join(NL);
+  writeFileSync(`${dir}index.html`, `<!doctype html><meta charset="utf-8">
+<title>UI atlas</title>
+<style>
+  body{margin:0;background:#0a0c10;color:#dfe3e8;font:14px "IBM Plex Sans",Segoe UI,sans-serif}
+  h1{font-size:16px;padding:14px 18px;border-bottom:1px solid #2c343f}
+  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px;padding:16px}
+  .card{display:block;color:inherit;text-decoration:none;background:#151a21;border:1px solid #2c343f;border-radius:6px;overflow:hidden}
+  .card img{width:100%;display:block}
+  figcaption{padding:7px 10px;color:#9aa4b0;font-family:"IBM Plex Mono",Consolas,monospace;font-size:12px}
+</style>
+<h1>SpaceFace UI atlas — click a frame to open it full size</h1>
+<main>${cards}</main>`);
+  console.log('gallery ->', `${dir}index.html`);
+}
 
 async function findFreePort(start) {
   for (let port = start; port < start + 120; port++) {
@@ -288,6 +319,7 @@ await page.keyboard.press('Escape');
 
 clearInterval(await page.evaluate(() => { clearInterval(window.__sfAtlasHold); return 0; }).catch(() => 0));
 writeFileSync(`${OUT}manifest.json`, JSON.stringify(manifest, null, 2));
+writeGallery(OUT);
 await browser.close();
 child.kill();
 console.log('atlas complete:', Object.keys(manifest.frames).length, 'frames,', manifest.failures.length, 'failures ->', OUT);
