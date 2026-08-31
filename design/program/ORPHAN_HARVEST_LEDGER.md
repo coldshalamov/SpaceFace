@@ -13,6 +13,12 @@ MERGE / CHECKPOINT / DROP / ADAPT.
 
 Dispositions and anti-loop rules live in the playbook, not here.
 
+## Track C — 2026-08-31 active reconciliation
+
+| id | source | class | disposition | player outcome | next |
+|---|---|---|---|---|---|
+| C-root-rover-promotion | current master working tree: combined `place_works_rover` source/release/package, manifests, Works wire | rejected promotion | DROP 2026-08-31 | The generated combined artifact repackages current-master Cycle 78 inputs; it has no distinct accepted art, no hash-bound Rover visual review, and the captured PQ-131.00 images prove `drill_platform`, not Rover. Runtime review found a duplicate-load race, shared material animation, inert bit socket, and invalid manifest claims. | Remove the exact root promotion files. Review `codex/pq13101-rover-cycle79-sparse-20260826` as the separate newer Cycle 80 candidate. |
+
 ## Track A — orphan copies (`C:\sf-agents`)
 
 | id | source | class | disposition | player outcome | next |
