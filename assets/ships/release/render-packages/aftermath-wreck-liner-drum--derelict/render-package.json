@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dec62c3fbc53c1468ba9602c1e75646ddb1edf662f311e86ce455dd8e7a10f34",
+  "contentHash": "94b44b2887acb46afdcc4e097ef853f4aee5fd4240c796d0c2528ba79bfe474b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3808,9 +3808,9 @@
       "uri": "place_aftermath_wreck_liner_drum__derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1595,
+      "sha256": "ae8588fda55e0354c2c282333c978b5f43d5a45cfa5bb3b53922974cca8f0673",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-wreck-liner-drum--derelict&release=place_aftermath_wreck_liner_drum__derelict"
     }
   },
   "render": {
@@ -5504,7 +5504,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_drum__derelict.glb"
   },
-  "runtimeHash": "57eca214ec1c8b98888a740c62df09f2bd34ff1bf547a546cc8c628549beda0f",
+  "runtimeHash": "78beec7ddd8dfe0bc2497557e3ca317b518c85c7380bf8ec8ac1a4068f2120de",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

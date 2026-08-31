@@ -58,7 +58,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cd04585097f8cd5812ebcc329f64ca8a1f28d2171d5858cb8876be2d127d1deb",
+  "contentHash": "15b73fb36ebc1c5c1cc780e8254d3f833295d41a7874c182fc1b1e42402d7b0c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3123,9 +3123,9 @@
       "uri": "place_station_trade_hub.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1144,
+      "sha256": "0a4649c479103a6627a1659716f738f80b19560ac534bb23d034c96837c92d6c",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=helios-trade-hub&release=place_station_trade_hub"
     }
   },
   "render": {
@@ -4629,7 +4629,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
-  "runtimeHash": "7faf69729759c620b564880f01a1cbde36948afc0a64455edf3701b94122fd02",
+  "runtimeHash": "8e4eaa7498930feaffaae88d797491cd8e38e99404c8f11a66e82091a8ccb0aa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

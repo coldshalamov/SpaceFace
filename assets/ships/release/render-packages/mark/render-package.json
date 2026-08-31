@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "14e94e3e0f1b150c047079827dd0e3c57cceefc152c4fb02ca31dd492fd49f1f",
+  "contentHash": "0c39c2d54e4df98ab3e631f0f7ca4243d44f4c15fd0525ae8b031fe9d4d3c43c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2263,9 +2263,9 @@
       "uri": "place_claim_mark.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1311,
+      "sha256": "658031f31d019f1b2dd2c67187d0071f7872f675aeff33e103a7beabd82c417b",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=mark&release=place_claim_mark"
     }
   },
   "render": {
@@ -3210,7 +3210,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_mark.glb"
   },
-  "runtimeHash": "cf195294ef7ebca516befffd70ff3160b48a927d70cfd41679227983b66e32bd",
+  "runtimeHash": "657ea4a6a493ed27b7de2b42bd02a6c80c8a7f550a2dc4465d1da8e68b50ddfe",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

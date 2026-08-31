@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b774788cd76019e699f5195fe5ca74e94d45ab012a4c2bffec3f6781d748f8de",
+  "contentHash": "14abbe3e3b6da8bef2a501e6b40b1af0047521272f06a4c7d0b17cca92a87893",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1852,9 +1852,9 @@
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1507,
+      "sha256": "05e6935b8a5f1da4481765fd3fb921afdaec6435fb4d02a5d3e58e85b8c7786a",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-aft-pressure-tank&release=place_aftermath_aft_pressure_tank"
     }
   },
   "render": {
@@ -2674,7 +2674,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "1a93981025aefc8a60a2e5142ad0675592bf08b09d7540c764d2780013491039",
+  "runtimeHash": "bb29f4c48007b36791dc38b9fccbddeb5c8edd564a5d9153957d831f2e749cc3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7c225f9a224b77c21cfb37408dbe7e78932dc624fcbec8f6df1cb509a1bbb423",
+  "contentHash": "a8f49758b7bce63a0b5d7ab1e46d1718c93e007968922982d156bde1164cf5b1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1242,9 +1242,9 @@
       "uri": "place_cargo_pod_standard_breached.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1524,
+      "sha256": "94dd8ec679884d2e45f3cc11869317cbe883915805521c8e6ea9990be1f27da3",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=cargo-pod-standard-breached&release=place_cargo_pod_standard_breached"
     }
   },
   "render": {
@@ -1770,7 +1770,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard_breached.glb"
   },
-  "runtimeHash": "0fa2519fdad132905a34f51c0ba96bbfec2c160330d6d68b68d1f2fc9b179956",
+  "runtimeHash": "a5cd50ce2b232ce87dd1d2392bebccd4e905a5b8da0b6a27d6ba29fbfea1484a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

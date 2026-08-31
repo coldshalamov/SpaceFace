@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "449655f634fd80dc0f12ac157a7029d2818ddeac9eb77dd6dac78111c97b4af2",
+  "contentHash": "58441ca9f0dd7efa1d6887f4a5ac90d5427990b4cc769b5b324acc8456d1530e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -3125,9 +3125,9 @@
       "uri": "place_works_rover.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1348,
+      "sha256": "960fadff9006ffa1413297a3f7093b436515398783800124d1a31aa23f2fd7c2",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=works-rover&release=place_works_rover"
     }
   },
   "render": {
@@ -4930,7 +4930,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_rover.glb"
   },
-  "runtimeHash": "b216b15ef0bb60a7f373c7a948112f24340fb15a42fbe7ebef6717c7418a0173",
+  "runtimeHash": "314890dcae7351bb4def86097f6a6edcd23f3ff510d522c2f13cd5e450220857",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4a07b93b1af937abe2c59149c3666168b3db7e843656e52f554916aef84ec75a",
+  "contentHash": "b4f876a5688a9c56db22ca0299fad0fd0e43daa211786c24c6f45ac84e41cfcc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1064,9 +1064,9 @@
       "uri": "place_cargo_pod_hazmat.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1403,
+      "sha256": "6865b95cf5f5d66b77ca077dfe8f1369b1019e151781e3506fbd7538701b14df",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=cargo-pod-hazmat&release=place_cargo_pod_hazmat"
     }
   },
   "render": {
@@ -1536,7 +1536,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_hazmat.glb"
   },
-  "runtimeHash": "0fc8b6cf2d56543c4c6cada0e30ff815ab725b681a63da7cb47a8a83ae70b59d",
+  "runtimeHash": "fe9823f14e5d3112f1a06462b7c00e0f79169819afc8e2714624c22bd3844ccf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

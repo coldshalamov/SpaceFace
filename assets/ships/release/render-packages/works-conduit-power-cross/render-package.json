@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ffc6fec2c777cdec86caa2d537244c4170ce25290b9915559e76be978f5dcfa",
+  "contentHash": "ee960e7f5c164f6b7a876fe7fea20b239fba3356590d4af663959d7f9058e5d9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -560,9 +560,9 @@
       "uri": "place_works_conduit_power_cross.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1496,
+      "sha256": "382b49b667bfe64333cda7dbbbde03a9b4fb2d595629e7c739ff3c115e395215",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=works-conduit-power-cross&release=place_works_conduit_power_cross"
     }
   },
   "render": {
@@ -837,7 +837,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb"
   },
-  "runtimeHash": "d32ccd6cd7fe517fef65e977964b6b549ce794c372b071af2244fbf71d4ac586",
+  "runtimeHash": "995f431427a6e229d0231daebc70221fbddd4433aa1ec4a034101f0f320f1003",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

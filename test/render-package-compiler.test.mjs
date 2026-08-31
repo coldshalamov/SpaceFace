@@ -629,6 +629,45 @@ test('compiler records deterministic source, semantic, render, and package conte
   });
 });
 
+test('row-local source provenance changes only the package that owns the changed row', async () => {
+  await withFixture(async ({ root, sourcePath }) => {
+    const ownRow = { key: 'fixture-a', releaseAssetId: 'fixture-a', revision: 1 };
+    const releaseRow = { id: 'fixture-a', releaseSha256: 'a'.repeat(64), releaseBytes: 3 };
+    const unrelatedRow = { key: 'fixture-b', releaseAssetId: 'fixture-b', revision: 1 };
+    const globalIndex = { pilots: [ownRow, unrelatedRow], runtimeManifest: 'renderPackageManifest.js' };
+    const localBinding = (key) => Buffer.from(JSON.stringify({
+      // This deliberately selects one row from a larger index; the unrelated row and index fields
+      // must never enter the package provenance bytes.
+      schema: 'spaceface.renderPackagePilotBinding.v1', pilot: row(key), release: releaseRow,
+    }));
+    const row = (key) => globalIndex.pilots.find((entry) => entry.key === key);
+    const first = await compileRenderPackage({
+      assetId: 'fixture.ship', sourceGlbPath: sourcePath, sourceUri: 'fixture.glb',
+      sourceProvenance: { uri: 'pilots.json#pilot=fixture-a&release=fixture-a', bytes: localBinding('fixture-a') },
+      semanticManifest: semanticManifest(), outputDir: join(root, 'local-a'),
+    });
+    globalIndex.pilots[1].revision = 2;
+    const unrelatedOnly = await compileRenderPackage({
+      assetId: 'fixture.ship', sourceGlbPath: sourcePath, sourceUri: 'fixture.glb',
+      sourceProvenance: { uri: 'pilots.json#pilot=fixture-a&release=fixture-a', bytes: localBinding('fixture-a') },
+      semanticManifest: semanticManifest(), outputDir: join(root, 'local-b'),
+    });
+    globalIndex.pilots[0].revision = 2;
+    const ownChanged = await compileRenderPackage({
+      assetId: 'fixture.ship', sourceGlbPath: sourcePath, sourceUri: 'fixture.glb',
+      sourceProvenance: { uri: 'pilots.json#pilot=fixture-a&release=fixture-a', bytes: localBinding('fixture-a') },
+      semanticManifest: semanticManifest(), outputDir: join(root, 'local-c'),
+    });
+
+    assert.equal(unrelatedRow.revision, 2, 'the global index did receive an unrelated row mutation');
+    assert.equal(first.package.contentHash, unrelatedOnly.package.contentHash,
+      'an unrelated pilot row cannot perturb this package');
+    assert.notEqual(first.package.contentHash, ownChanged.package.contentHash,
+      'a changed owned pilot/release row fails closed through content identity');
+    assert.equal(first.package.provenance.sourceManifest.uri, 'pilots.json#pilot=fixture-a&release=fixture-a');
+  });
+});
+
 test('compiler rejects merge groups crossing dynamic or independently culled boundaries', async () => {
   await withFixture(async ({ root, sourcePath }) => {
     await assert.rejects(

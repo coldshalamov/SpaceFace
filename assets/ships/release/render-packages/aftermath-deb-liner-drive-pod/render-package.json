@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4ad8598d135d5cf14f6a2441b36ef364950be8b28570918c04454ffa9bcc37bd",
+  "contentHash": "a0778157990f56ea5a705479120c471b16b1b5706f53d2412f4989349c096ed6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1664,9 +1664,9 @@
       "uri": "place_aftermath_deb_liner_drive_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1528,
+      "sha256": "8a8e27719d7e444bfe09d23992c305310d99f427967ea38135317c6bbb6167bc",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-deb-liner-drive-pod&release=place_aftermath_deb_liner_drive_pod"
     }
   },
   "render": {
@@ -2384,7 +2384,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb"
   },
-  "runtimeHash": "0abce8378a4a8329edccb43768bea4ddc7b6f9695a7ed1c744c2c654109b03ae",
+  "runtimeHash": "e224979390cafb78fdfc0b1d1ecfaaf2a1729d016621c953dc9e5ff73ca968cd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

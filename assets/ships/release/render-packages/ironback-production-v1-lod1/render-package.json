@@ -513,7 +513,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fab172a5f875e8e2bbc5a85c7ee1450cb21abacff0d4d69b657ab86f43a6db7d",
+  "contentHash": "86dd75f613cb32314479a9afc6b0cfb54f22028c52e166bfa70b3a575451f802",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1504,9 +1504,9 @@
       "uri": "ironback_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1231,
+      "sha256": "ec0957493baf2ae55f08aa0119be1faf4a4f35e232390951e149a4ed9ec11848",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=ironback-production-v1-lod1&release=wholeship_ironback_production_v1_lod1"
     }
   },
   "render": {
@@ -2224,7 +2224,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ironback_production_v1_lod1.glb"
   },
-  "runtimeHash": "b9cfb5559885d954a6f70de1bc4044317f69099afc48673db21ba880a37356a1",
+  "runtimeHash": "e6922cd452d7f830cea4f70d2878675939d0e3e06723b5693442457855b877eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

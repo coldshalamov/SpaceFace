@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5ac1e4853904e8fe51de61c9c996e7e7df195019f41d05cfb01dddea45585582",
+  "contentHash": "835058a3b19327bce178a05b187933c8aca80003cbaa6c0b8a6c2aa70f2e81af",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -13019,9 +13019,9 @@
       "uri": "place_aftermath_wreck_ore_freighter_stern.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1598,
+      "sha256": "669a56b3cd8c0903e0c8e35e7c15613c4eadbca3ceebee7370bebf5b9979ce94",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-wreck-ore-freighter-stern&release=place_aftermath_wreck_ore_freighter_stern"
     }
   },
   "render": {
@@ -18684,7 +18684,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_stern.glb"
   },
-  "runtimeHash": "bfb8493763a8038a0b20ec3a56946534a204ccddc462e825fedd49132d550874",
+  "runtimeHash": "e3040fa86de6ebdbe603b3c7ff91f4e18d435693828257225e70c58d1b40bbb9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

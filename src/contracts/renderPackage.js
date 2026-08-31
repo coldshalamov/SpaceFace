@@ -31,6 +31,8 @@ const PACKAGE_KEYS = new Set([
 const COMPILER_KEYS = new Set(['name', 'version']);
 const RENDER_KEYS = new Set(['uri', 'sha256', 'bytes']);
 const PROVENANCE_KEYS = new Set(['sourceGlb', 'sourceManifest', 'semantics']);
+// `sourceManifest` may name a whole source file for generic compiler callers, or a canonical
+// row-local package binding (`pilots.json#pilot=...`) for production package builds.
 const PROVENANCE_FILE_KEYS = new Set(['uri', 'sha256', 'bytes']);
 const PROVENANCE_SEMANTICS_KEYS = new Set(['sha256']);
 const NODE_KEYS = new Set([

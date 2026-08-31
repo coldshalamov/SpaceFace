@@ -4997,7 +4997,7 @@
       "priority": 395,
       "title": "Localize render-package provenance to one asset",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asset-manifest",
@@ -5017,7 +5017,9 @@
         "npm run check:render-package-pilots",
         "npm run check:render-package-coverage"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-package-provenance-locality-REPORT.md"
+      ],
       "brief": "Stop embedding the whole pilots.json digest in every package. Bind each package to a stable canonical serialization of only its own pilot/release row plus source GLB and semantic hashes; retain pilots.json and the runtime manifest as global indexes. A one-row mutation may change only that package and the generated index. Preserve deterministic full builds and fail-closed stale binding.",
       "blocker": null
     },

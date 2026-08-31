@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c74a63b94810e67e87ca731e856ba920cc4bf002bb333a1cbaca6b6b7d734bb1",
+  "contentHash": "b32537a70f4ef22ef77debbb094e2c4840628c32d9c544dfe6845c4cc0b5f8b9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -861,9 +861,9 @@
       "uri": "place_works_massline_core.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1435,
+      "sha256": "1a82a2952e5a1737b2597aaa1460f8f59f0589a84501e5eb31ce833f7b4724f3",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=works-massline-core&release=place_works_massline_core"
     }
   },
   "render": {
@@ -1270,7 +1270,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_massline_core.glb"
   },
-  "runtimeHash": "460e5e4cf11dce00b4d1b4b354f3c08f0ef2d1c66e6839f4514c3f8ea9b89194",
+  "runtimeHash": "e92d94f3e13ef4ee43c295020d1ad9a8cdc701ef9282dcc68073a148538a2b32",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

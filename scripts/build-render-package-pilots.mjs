@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
@@ -22,6 +22,7 @@ const DEFAULT_MANIFEST = 'assets/ships/render-packages/pilots.json';
 const DEFAULT_FLIGHT_STATIC_MANIFEST = 'assets/ships/render-packages/flight-static-v3.json';
 const PACKAGE_FILES = Object.freeze(['render.glb', 'render-package.json']);
 const REQUIRED_PILOT_KEYS = Object.freeze(['kestrel', 'helios-span', 'debris-chunk']);
+export const RENDER_PACKAGE_LOCAL_PROVENANCE_SCHEMA = 'spaceface.renderPackagePilotBinding.v1';
 let ioPromise = null;
 
 export async function buildRenderPackagePilots(options = {}) {
@@ -29,6 +30,7 @@ export async function buildRenderPackagePilots(options = {}) {
   const onlyKeys = options.onlyKeys ? new Set(options.onlyKeys) : null;
   const repoRoot = resolve(options.repoRoot || REPO_ROOT);
   const manifestPath = resolve(repoRoot, options.manifestPath || DEFAULT_MANIFEST);
+  const manifestUri = renderPackagePilotManifestUri(repoRoot, manifestPath);
   const manifestBytes = await readFile(manifestPath);
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   assertPilotManifest(manifest);
@@ -70,13 +72,14 @@ export async function buildRenderPackagePilots(options = {}) {
       }
 
       const semanticManifest = await derivePilotSemanticManifest(pilot, sourcePath);
+      const sourceProvenance = renderPackagePilotSourceProvenance(pilot, releaseRow, manifestUri);
       const outputDir = check
         ? join(scratch, pilot.key)
         : resolve(repoRoot, pilot.outputDir);
       const result = await compileRenderPackage({
         assetId: pilot.assetId,
         sourceGlbPath: sourcePath,
-        sourceManifestPath: manifestPath,
+        sourceProvenance,
         semanticManifest,
         outputDir,
       });
@@ -90,6 +93,12 @@ export async function buildRenderPackagePilots(options = {}) {
     // increases antivirus/file-indexer lock exposure. Unselected bindings come from their already
     // content-addressed metadata; the selected package was just rebuilt above.
     bindings = await Promise.all(manifest.pilots.map(async (pilot) => {
+      const releaseRow = releaseRows.get(pilot.releaseAssetId);
+      assertReleaseBinding(pilot, releaseRow);
+      const effectivePilot = flightStaticKeys.has(pilot.key)
+        ? { ...pilot, flightStaticV3: true }
+        : pilot;
+      const sourceProvenance = renderPackagePilotSourceProvenance(effectivePilot, releaseRow, manifestUri);
       const metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8'));
       if (metadata.assetId !== pilot.assetId) {
         throw new Error(`${pilot.key}: compiled package assetId ${metadata.assetId} does not match ${pilot.assetId}.`);
@@ -101,6 +110,11 @@ export async function buildRenderPackagePilots(options = {}) {
       if (metadata.provenance?.sourceGlb?.sha256 !== pilot.releaseSha256
         || metadata.provenance?.sourceGlb?.bytes !== pilot.releaseBytes) {
         throw new Error(`${pilot.key}: compiled package source binding is stale.`);
+      }
+      if (metadata.provenance?.sourceManifest?.uri !== sourceProvenance.uri
+        || metadata.provenance?.sourceManifest?.sha256 !== sha256(sourceProvenance.bytes)
+        || metadata.provenance?.sourceManifest?.bytes !== sourceProvenance.bytes.length) {
+        throw new Error(`${pilot.key}: compiled package local pilot/release binding is stale.`);
       }
       const flightStaticV3 = flightStaticKeys.has(pilot.key);
       let expectedRuntimeHash = null;
@@ -233,6 +247,41 @@ export async function derivePilotSemanticManifest(pilot, sourcePath) {
       reference: 'COLLISION_HULL',
     }] : [],
   };
+}
+
+/**
+ * A package owns only its own canonical pilot + release rows. `pilots.json` and the generated
+ * runtime manifest remain global indexes, but neither belongs in every package content identity.
+ */
+export function renderPackagePilotSourceProvenance(pilot, releaseRow, manifestUri = DEFAULT_MANIFEST) {
+  if (!pilot || typeof pilot !== 'object' || !pilot.key) {
+    throw new Error('Render-package local provenance requires a keyed pilot row.');
+  }
+  if (!releaseRow || typeof releaseRow !== 'object' || !releaseRow.id) {
+    throw new Error(`${pilot.key}: local provenance requires its release row.`);
+  }
+  if (releaseRow.id !== pilot.releaseAssetId
+    || releaseRow.release !== pilot.sourceUrl
+    || releaseRow.releaseSha256 !== pilot.releaseSha256
+    || releaseRow.releaseBytes !== pilot.releaseBytes) {
+    throw new Error(`${pilot.key}: local provenance release row does not exactly match its pilot binding.`);
+  }
+  const binding = stableJsonStringify({
+    schema: RENDER_PACKAGE_LOCAL_PROVENANCE_SCHEMA,
+    pilot,
+    release: releaseRow,
+  });
+  return Object.freeze({
+    uri: `${normalizeManifestUri(manifestUri)}#pilot=${encodeURIComponent(pilot.key)}&release=${encodeURIComponent(releaseRow.id)}`,
+    bytes: Buffer.from(binding),
+  });
+}
+
+/** Render a repository-relative, checkout-independent manifest URI for package provenance. */
+export function renderPackagePilotManifestUri(repoRoot, manifestPath) {
+  const root = resolve(repoRoot || REPO_ROOT);
+  const path = resolve(manifestPath || resolve(root, DEFAULT_MANIFEST));
+  return normalizeManifestUri(relative(root, path));
 }
 
 function assertRuntimeAssetIdentity(pilot, documentRoot, scene) {
@@ -512,6 +561,10 @@ function renderRuntimeManifest(bindings) {
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function normalizeManifestUri(value) {
+  return String(value || DEFAULT_MANIFEST).replace(/\\/g, '/').replace(/^\.\//, '');
 }
 
 /**

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c5e5cd15bab54a7cebace29dfac8581c4790c513399cc09be7a1382318432428",
+  "contentHash": "97fb9b623c0764260136ddfe2a048b367f6fb2c3defd37f17a9b8072e74a51aa",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -560,9 +560,9 @@
       "uri": "place_works_conduit_lane_end.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1463,
+      "sha256": "0d228a44788a1cf6a06cfab5e30dcea2790a376ff13c47899ed0b9be88fff52f",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=works-conduit-lane-end&release=place_works_conduit_lane_end"
     }
   },
   "render": {
@@ -837,7 +837,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb"
   },
-  "runtimeHash": "eb48fafb70986fcd66da67af6acbee055bad25c1276e5b8ec5efff6dac9a512e",
+  "runtimeHash": "b38904f0d5ac7c12668aa1b1a079bda8bebdc5204ea9c734e649cc734af5acd2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

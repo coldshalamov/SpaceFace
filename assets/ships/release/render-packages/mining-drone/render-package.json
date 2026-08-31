@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "887db24290b72fcdc396ca9da4e2611ab2526fca72b6246c2181af965b1a579e",
+  "contentHash": "1e85660aedd1aa00527fb47c71ff4cec605b934709b2e5965ba2d527afacf691",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1912,9 +1912,9 @@
       "uri": "place_mining_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1371,
+      "sha256": "99da017ac99e84a04f5e1af8fa04673f850aa2a2e8f0dc99a2c7b862467500a6",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=mining-drone&release=place_mining_drone"
     }
   },
   "render": {
@@ -2738,7 +2738,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "38f050ca9286191a88e374c112893649324d8fc69cca6545d50d619d26bd6ad7",
+  "runtimeHash": "6a6f8b0127cc65526e8e291efd128e70bc5d6174707016270bfa7192a49bba3e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

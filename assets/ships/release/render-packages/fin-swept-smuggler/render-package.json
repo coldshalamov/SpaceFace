@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "88148ad9ec7f87639546142e376142b131f2b076ed3973fbd2fa01ecf22d9746",
+  "contentHash": "02fef3b179a54372266118ce6be2728668c0e2f8c3e3ae7e88b9e65006df3891",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,9 +344,9 @@
       "uri": "fin_swept_smuggler.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1099,
+      "sha256": "449f11f3e74ab48ef727f25d3aedaba3ab512b4f48dda46f22e34855c60ae4b3",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=fin-swept-smuggler&release=fin_swept_smuggler"
     }
   },
   "render": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
   },
-  "runtimeHash": "974f51bf4a16c2875a2a631a41ca497dd699f0f1e62e033d5e011f871c10bab0",
+  "runtimeHash": "cee1ffd4a1d9c1efe095a296589ce54ad18fbf5e604d67abd6ea741e3b0f34e0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

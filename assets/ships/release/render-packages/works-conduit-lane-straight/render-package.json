@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b89ab9cbe1aa41c7fb61b1c8366e00694dd3c59ebaf4b5ac374a928cd4602da9",
+  "contentHash": "493f198c27eab0c2061838f5a8cef4f1e884c2597f2efbcb552eea0c3eb628af",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -560,9 +560,9 @@
       "uri": "place_works_conduit_lane_straight.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1518,
+      "sha256": "4ede9e3f49b8f2cf18769b08b6c044fb1774d2f554a86bdb837c293a9552d01e",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=works-conduit-lane-straight&release=place_works_conduit_lane_straight"
     }
   },
   "render": {
@@ -837,7 +837,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_lane_straight.glb"
   },
-  "runtimeHash": "6e35eb331befefe76aa9042bea2a88d24b55c01d561d3ba6e01a02ab3fb62826",
+  "runtimeHash": "d30067e834b7cfdae512caa401c5a54ace9526a30196ccd55c6950191e77a324",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

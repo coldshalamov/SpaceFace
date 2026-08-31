@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "eeca5ed2b075d799c4b532b661512f1a56b490044843377f8c8b08a9a90a6bc7",
+  "contentHash": "21401c1c1ed3c569306e8cbd811a8f185b776fc8c049e6f06c3ddb2f1faab3b7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -836,9 +836,9 @@
       "uri": "place_aftermath_frag_strut_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1495,
+      "sha256": "263d5f0c56cfad4fa68820c4c8e6c0d961467ef598c90ea3bbdc26b2f5dfbbdb",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-frag-strut-shard&release=place_aftermath_frag_strut_shard"
     }
   },
   "render": {
@@ -1204,7 +1204,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
   },
-  "runtimeHash": "b7aee41bed7455f282f9877ab06c0692e07da0dbf754498ba4ca747f561ca9b9",
+  "runtimeHash": "85dbeb998189632534659c5b97893e7f004efa9a82c592820d6e03358236edf7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

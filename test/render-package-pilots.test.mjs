@@ -6,7 +6,11 @@ import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
 
-import { derivePilotSemanticManifest } from '../scripts/build-render-package-pilots.mjs';
+import {
+  derivePilotSemanticManifest,
+  renderPackagePilotManifestUri,
+  renderPackagePilotSourceProvenance,
+} from '../scripts/build-render-package-pilots.mjs';
 import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 import {
   deriveAuthoredRuntimeTable,
@@ -66,6 +70,45 @@ if (!globalThis.document) {
     },
   };
 }
+
+test('pilot provenance is canonical, local, and release-bound', () => {
+  const pilot = {
+    key: 'fixture-a', releaseAssetId: 'fixture-a', sourceUrl: 'release/a.glb',
+    releaseSha256: 'a'.repeat(64), releaseBytes: 3,
+  };
+  const release = {
+    id: 'fixture-a', release: 'release/a.glb', releaseSha256: 'a'.repeat(64), releaseBytes: 3,
+    sourceSha256: 'c'.repeat(64),
+  };
+  const first = renderPackagePilotSourceProvenance(pilot, release, 'assets/ships/render-packages/pilots.json');
+  const reordered = renderPackagePilotSourceProvenance(
+    {
+      releaseBytes: 3, key: 'fixture-a', releaseAssetId: 'fixture-a',
+      releaseSha256: 'a'.repeat(64), sourceUrl: 'release/a.glb',
+    },
+    { sourceSha256: 'c'.repeat(64), releaseBytes: 3, id: 'fixture-a', releaseSha256: 'a'.repeat(64), release: 'release/a.glb' },
+    './assets/ships/render-packages/pilots.json',
+  );
+  const releaseOnlyChanged = renderPackagePilotSourceProvenance(pilot, { ...release, sourceSha256: 'd'.repeat(64) });
+  assert.equal(first.uri, 'assets/ships/render-packages/pilots.json#pilot=fixture-a&release=fixture-a');
+  assert.deepEqual(first.bytes, reordered.bytes, 'property order and global index order cannot perturb a local binding');
+  assert.notDeepEqual(first.bytes, releaseOnlyChanged.bytes, 'a changed owning release row invalidates this package only');
+  assert.throws(
+    () => renderPackagePilotSourceProvenance(pilot, { ...release, releaseSha256: 'b'.repeat(64) }),
+    /does not exactly match/i,
+    'a pilot/release hash mismatch fails before package compilation',
+  );
+  assert.equal(
+    renderPackagePilotManifestUri('C:/work/SpaceFace', 'C:/work/SpaceFace/custom/pilots.json'),
+    'custom/pilots.json',
+    'absolute custom manifests normalize against the checkout root',
+  );
+  assert.equal(
+    renderPackagePilotManifestUri('C:/work/SpaceFace', 'C:/manifests/pilots.json'),
+    '../../manifests/pilots.json',
+    'external custom manifests remain relative instead of leaking a machine path',
+  );
+});
 
 function deferred() {
   let resolve;

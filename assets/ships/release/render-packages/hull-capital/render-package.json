@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2e54e83acf6b24baf0fffa73593e50278f5f625ea0f21a65c2d4ce4578849df7",
+  "contentHash": "03146cf2b7b7c40a12feb18694eb2dbd51f186118849351b9ac0bf3052ef612f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1152,9 +1152,9 @@
       "uri": "hull_capital.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1319,
+      "sha256": "e4ab73a1e5b457774ea4be5d6d2c336b3334631041c4df76e01e66c0453b89ba",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=hull-capital&release=hull_capital"
     }
   },
   "render": {
@@ -1842,7 +1842,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_capital.glb"
   },
-  "runtimeHash": "8c087f96a3a03f6b1500fb2d36f5b00209273c77478337b897004cd29cb339f2",
+  "runtimeHash": "7af54a33a5a54855700015f74c0ba5d89f2502b546aeac35db7ce37c167503c5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

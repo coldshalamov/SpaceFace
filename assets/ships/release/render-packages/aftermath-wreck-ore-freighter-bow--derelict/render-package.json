@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "efefea1c0be49a2b7e9ad20679cd4134f1888e49d4ceec85585cb6f0bcccbcd4",
+  "contentHash": "bb5349ee02129f546ff74df6c62fd41d85caa8587a7a560e78db04e6505d25fd",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -13421,9 +13421,9 @@
       "uri": "place_aftermath_wreck_ore_freighter_bow__derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 159130,
-      "sha256": "26331e2409ca0003bdef99346c4ff4d454757d73e413d0505ff50212b69d41db",
-      "uri": "pilots.json"
+      "bytes": 1676,
+      "sha256": "5b59daac9c4aa34db4d4e916e7be120dde5df3bbc92074ad85d48e005fd86e23",
+      "uri": "assets/ships/render-packages/pilots.json#pilot=aftermath-wreck-ore-freighter-bow--derelict&release=place_aftermath_wreck_ore_freighter_bow__derelict"
     }
   },
   "render": {
@@ -19283,7 +19283,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__derelict.glb"
   },
-  "runtimeHash": "a14369d0ca2757b664fbd00c0c742d90a7ccde91ab2ec6f15a6c26bdc1fac46a",
+  "runtimeHash": "868ecfbe4cd6b096032838847d6604e89db863d3dcb621c3dce5bcd49b076b87",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

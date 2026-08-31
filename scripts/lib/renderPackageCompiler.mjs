@@ -59,10 +59,16 @@ export async function compileRenderPackage(options = {}) {
     throw new Error('Render package output must not overwrite the authored source GLB.');
   }
 
-  const [sourceBytes, sourceManifestBytes] = await Promise.all([
+  const [sourceBytes, legacySourceManifestBytes] = await Promise.all([
     readFile(sourceGlbPath),
     sourceManifestPath ? readFile(sourceManifestPath) : Promise.resolve(null),
   ]);
+  const sourceManifestProvenance = resolveSourceManifestProvenance(
+    options.sourceProvenance,
+    sourceManifestPath,
+    legacySourceManifestBytes,
+    options.sourceManifestUri,
+  );
   const io = await createIo();
   const document = await io.readBinary(new Uint8Array(sourceBytes));
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
@@ -79,7 +85,6 @@ export async function compileRenderPackage(options = {}) {
   const renderHash = sha256(renderBytes);
   const sourceHash = sha256(sourceBytes);
   const semanticsHash = sha256(Buffer.from(stableJsonStringify(semanticManifest)));
-  const sourceManifestHash = sourceManifestBytes ? sha256(sourceManifestBytes) : null;
   const compiled = compileMetadataRecords(semanticManifest, resolvedNodes);
 
   const metadataWithoutHash = stableJsonValue({
@@ -101,11 +106,10 @@ export async function compileRenderPackage(options = {}) {
         sha256: sourceHash,
         bytes: sourceBytes.length,
       },
-      sourceManifest: sourceManifestBytes ? {
-        uri: normalizeUri(options.sourceManifestUri || basename(sourceManifestPath)),
-        sha256: sourceManifestHash,
-        bytes: sourceManifestBytes.length,
-      } : null,
+      // Package-pilot builds provide a canonical row-local binding here. Generic compiler callers
+      // may retain a file-level source manifest, but the package builder must never fingerprint its
+      // global index as the provenance of every unrelated package.
+      sourceManifest: sourceManifestProvenance,
       semantics: { sha256: semanticsHash },
     },
     ...compiled,
@@ -839,6 +843,31 @@ function sha256(bytes) {
 
 function normalizeUri(value) {
   return String(value).replace(/\\/g, '/');
+}
+
+function resolveSourceManifestProvenance(sourceProvenance, sourceManifestPath, legacyBytes, legacyUri) {
+  if (sourceProvenance != null) {
+    if (!sourceProvenance || typeof sourceProvenance !== 'object') {
+      throw new Error('compileRenderPackage sourceProvenance must be an object.');
+    }
+    const uri = normalizeUri(sourceProvenance.uri || '');
+    const bytes = sourceProvenance.bytes;
+    if (!uri || !bytes || typeof bytes.length !== 'number') {
+      throw new Error('compileRenderPackage sourceProvenance requires uri and bytes.');
+    }
+    const buffer = Buffer.from(bytes);
+    return {
+      uri,
+      sha256: sha256(buffer),
+      bytes: buffer.length,
+    };
+  }
+  if (!legacyBytes) return null;
+  return {
+    uri: normalizeUri(legacyUri || basename(sourceManifestPath)),
+    sha256: sha256(legacyBytes),
+    bytes: legacyBytes.length,
+  };
 }
 
 function resolveRequiredPath(value, name) {
