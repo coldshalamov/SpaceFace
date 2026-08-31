@@ -204,6 +204,29 @@ test('the guard reproduces the unconditional-refresh result on a moving camera p
   assert.equal(guarded.counter.refreshes, 3, 'one refresh per distinct camera pose (3 of 5 are repeats)');
 });
 
+test('raycastToPlane refreshes a moved camera before unprojecting pointer input', () => {
+  const { host, cam, counter } = makeHarness();
+
+  render.worldToScreen.call(host, POINT);
+  assert.equal(counter.refreshes, 1, 'the initial projection builds the old camera matrices');
+
+  // Build the screen-space truth from a separate camera, then copy only its transform onto the
+  // live camera. Its matrixWorld is intentionally still stale, matching a pointer event that lands
+  // after camera follow changed position/quaternion but before the next draw.
+  const truth = cam.clone();
+  truth.position.set(210, 88, -145);
+  truth.lookAt(35, 0, 70);
+  truth.updateMatrixWorld(true);
+  const projected = new THREE.Vector3(POINT.x, POINT.y, POINT.z).project(truth);
+  cam.position.copy(truth.position);
+  cam.quaternion.copy(truth.quaternion);
+
+  const hit = render.raycastToPlane.call(host, { x: projected.x, y: projected.y });
+  assert.equal(counter.refreshes, 2, 'unprojection must refresh the changed live camera');
+  assert.ok(Math.abs(hit.x - POINT.x) < 1e-6, `round-trip x must use the new camera (got ${hit.x})`);
+  assert.ok(Math.abs(hit.z - POINT.z) < 1e-6, `round-trip z must use the new camera (got ${hit.z})`);
+});
+
 test('worldToScreen does not throw without a camera and reports off-screen', () => {
   installWindowShim();
   const host = Object.assign(Object.create(render), {

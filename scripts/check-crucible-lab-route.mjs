@@ -1285,7 +1285,9 @@ async function fireFoundryShotUntilEvidence(page, targetKind, evidenceKind = tar
       lastError = error;
     }
   }
-  throw new Error(`${evidenceKind} shot did not produce a linked player hit after ${actions.length} visible cursor attempts: ${lastError?.message || 'no receipt'}`);
+  const error = new Error(`${evidenceKind} shot did not produce a linked player hit after ${actions.length} visible cursor attempts: ${lastError?.message || 'no receipt'}`);
+  error.actions = actions;
+  throw error;
 }
 
 function assertRunWitness(witness, label, { allowPaused = false } = {}) {
@@ -1572,6 +1574,7 @@ try {
       directActions = await fireFoundryShotUntilEvidence(page, 'hostile', 'direct');
       directReceipt = await endFoundryShotReceipt(page);
     } catch (error) {
+      directActions = Array.isArray(error?.actions) ? error.actions : directActions;
       directReceipt = await endFoundryShotReceipt(page);
       saveEvidence('directObserved', { actions: directActions, receipt: directReceipt });
       throw error;
@@ -1592,6 +1595,7 @@ try {
       bankActions = await fireFoundryShotUntilEvidence(page, 'bank');
       bankReceipt = await endFoundryShotReceipt(page);
     } catch (error) {
+      bankActions = Array.isArray(error?.actions) ? error.actions : bankActions;
       bankReceipt = await endFoundryShotReceipt(page);
       saveEvidence('bankObserved', { actions: bankActions, receipt: bankReceipt });
       throw error;

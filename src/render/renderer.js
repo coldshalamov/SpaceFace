@@ -7081,7 +7081,10 @@ export const render = {
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
   raycastToPlane(ndc) {
-    const cam = this.cam && this.cam.obj;
+    // Pointer events can arrive after the chase camera pose changed but before the next renderer
+    // draw refreshed matrixWorld. Use the same self-validating camera sync as worldToScreen so a
+    // screen point and its unprojected gameplay-plane point cannot disagree for one input event.
+    const cam = this._syncProjectionCamera();
     if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return { x: 0, z: 0 };
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, cam);
