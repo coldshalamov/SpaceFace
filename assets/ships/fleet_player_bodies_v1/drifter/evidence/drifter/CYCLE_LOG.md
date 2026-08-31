@@ -21,5 +21,10 @@
 | 23 | yes | 3Q REVISE / starboard REVISE / rear REVISE | campaign pass 6 of 7. Collar + vanes in both throats. Joints still crate-cuts. Not wired. |
 | 24 | yes | author REVISE | campaign pass 7 of 7. Dorsal cargo well. Saddle plates read as extra boxes. Not wired. |
 | 25 | yes | author REVISE | saddle boxes dropped. Three volumes + roof well + ringed throats. Not wired. |
+| 26 | yes | play KEEP / abeam KEEP / close+rear REVISE | Continuous hull/nacelle rebuild. Play identity accepted; warped refractory, closed transom, and flat/stretched well remained. |
+| 27 | yes | play KEEP / close KEEP / rear REVISE | Open annular throats, rounded recessed transom, formed aft deck, and two-level grated hold. Rear refractory still read as wood grain. |
+| 28 | yes | play KEEP / close KEEP / rear KEEP | Neutral isotropic refractory correction. Exact accepted authored candidate; source complete and ready for live release binding. |
 
-Seven-pass treatment: 7/7 plus cleanup. Clay still unfinished. C20 remains the live candidate. Do not self-accept. Hitch-plus not met.
+Seven-pass treatment: 7/7 plus causal cleanup. Cycle 28 is independently accepted on the
+original-resolution play, close, and rear surfaces. Runtime promotion is recorded separately
+when the release package is rebound; Hitch was untouched.
