@@ -1,0 +1,335 @@
+{
+  "schema": "spaceface.worksDerrickCycleEpoch.v1",
+  "cycle": 4,
+  "epoch": "cycle_004",
+  "disposition": "source_keep",
+  "state": "integration_candidate",
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "pass",
+    "G2": "pass",
+    "G4": "pass",
+    "G6": "open",
+    "G7": "open"
+  },
+  "independentReview": {
+    "reviewer": "/root/derrick_cycle04_review_resume",
+    "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+    "candidateSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "p0": 0,
+    "p1": 0,
+    "p2MaterialIdRepairCommit": "7ca946c7a4a109f410e24e6bdd3595e7bf384eff",
+    "p2MaterialIdEvidenceSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76",
+    "p2MaterialIdChromaticPixels": 7302
+  },
+  "obsoleteCyclesRemoved": [1, 2, 3],
+  "candidate": {
+    "root": "SF_WORKS_DERRICK_V1",
+    "partGlb": "assets/ships/parts/works/place_works_derrick.glb",
+    "sourceGlb": "assets/works/derrick/source/derrick.glb",
+    "blend": "assets/works/derrick/source/derrick.blend",
+    "sha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "partsSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A"
+  },
+  "hooks": {
+    "required": [
+      "drum_spin",
+      "cable_anchor",
+      "lamp_L",
+      "lamp_R"
+    ],
+    "found": [
+      "cable_anchor",
+      "drum_spin",
+      "lamp_L",
+      "lamp_R"
+    ],
+    "missing": [],
+    "drum_spin": [
+      -0.6200000047683716,
+      0.0,
+      1.3799999952316284
+    ],
+    "cable_anchor": [
+      -0.46400001645088196,
+      0.0,
+      1.503999948501587
+    ],
+    "sheave": [
+      0.0,
+      0.0,
+      6.360000133514404
+    ],
+    "lamp_L": [
+      0.05000000074505806,
+      0.4000000059604645,
+      6.300000190734863
+    ],
+    "lamp_R": [
+      0.05000000074505806,
+      -0.4000000059604645,
+      6.300000190734863
+    ]
+  },
+  "lod": {
+    "budgets": {
+      "0": 12000,
+      "1": 3000,
+      "2": 900
+    },
+    "triangles": {
+      "lod0": 7072,
+      "lod1": 1304,
+      "lod2": 896
+    },
+    "draws": 21,
+    "materials": 6,
+    "hulls": 21,
+    "roots": [
+      "LOD0_derrick",
+      "LOD1_derrick",
+      "LOD2_derrick"
+    ],
+    "missingRoots": []
+  },
+  "bboxBlenderZUp": {
+    "min": [
+      -1.08,
+      -0.87,
+      0.0
+    ],
+    "max": [
+      1.08,
+      0.87,
+      6.49
+    ],
+    "size": [
+      2.16,
+      1.74,
+      6.49
+    ]
+  },
+  "camera": {
+    "works_top": {
+      "path": "assets/works/derrick/evidence/cycle_004/works_top.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "works_edge": {
+      "path": "assets/works/derrick/evidence/cycle_004/works_edge.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.7355315089225769,
+        4.137364864349365,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "works_top_clay": {
+      "path": "assets/works/derrick/evidence/cycle_004/works_top_clay.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "works_edge_grazing": {
+      "path": "assets/works/derrick/evidence/cycle_004/works_edge_grazing.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        1.522829532623291,
+        4.068809986114502,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/derrick/evidence/cycle_004/works_site.png",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "normal": {
+      "path": "assets/works/derrick/evidence/cycle_004/normal_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "orm": {
+      "path": "assets/works/derrick/evidence/cycle_004/orm_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "id": {
+      "path": "assets/works/derrick/evidence/cycle_004/material_id.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    },
+    "hook_identity": {
+      "path": "assets/works/derrick/evidence/cycle_004/hook_identity.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.7355315089225769,
+        4.137364864349365,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "focus": [
+        0.0,
+        0.0,
+        3.05
+      ]
+    }
+  },
+  "materialIdEvidence": {
+    "kind": "flat_material_role_isolation",
+    "producer": "tools/blender/build_works_derrick.py:override_channel",
+    "source": "assets/ships/parts/works/place_works_derrick.glb",
+    "sourceSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "atlas": "assets/works/derrick/source/textures/derrick_atlas_lod0_id.png",
+    "atlasSha256": "EE340EB7B04E50489442E97C9D47480E008CD0EFB4BF020967FD2E79A904ABBB",
+    "output": "assets/works/derrick/evidence/cycle_004/material_id.png",
+    "outputSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76"
+  },
+  "notes": [
+    "Cycle 04 source candidate only. Release/runtime G6 and G7 remain open.",
+    "Obsolete Cycle 01/02/03 evidence was removed after the final exact-hash source KEEP.",
+    "Cycle 04 preserves the Cycle 03 art and repairs exported functional pivots plus collision transform/bounds.",
+    "A-planes are open A-leg pairs: one A-bar and splice plates, no rung/X-grid fill.",
+    "Causal cable path: drum tangent -> crown sheave -> drop through the empty well.",
+    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "Independent reviewer /root/derrick_cycle04_review_resume returned KEEP with no P0/P1 against the exact source hash.",
+    "The reviewer-found grayscale material-ID P2 was repaired at rebased commit 7ca946c7 and direct-verified without changing the source GLB.",
+    "works_edge remains the load-bearing still for three-cell height."
+  ]
+}

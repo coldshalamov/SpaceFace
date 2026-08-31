@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_extractor",
+  "root": "SF_WORKS_EXTRACTOR_V1",
+  "packet": "PQ-131.03",
+  "cycle": 6,
+  "currentState": "integration_candidate",
+  "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "forwardAxis": "+X",
+  "upAxisBlender": "+Z",
+  "upAxisGltf": "+Y",
+  "hooks": [
+    "head_face",
+    "belt",
+    "lamp"
+  ],
+  "materials": {
+    "structure": {
+      "rgb": [
+        0.3,
+        0.34,
+        0.37
+      ],
+      "rough": 0.58,
+      "metal": 0.05
+    },
+    "cutting": {
+      "rgb": [
+        0.68,
+        0.72,
+        0.75
+      ],
+      "rough": 0.22,
+      "metal": 0.92
+    },
+    "drive": {
+      "rgb": [
+        0.46,
+        0.23,
+        0.075
+      ],
+      "rough": 0.4,
+      "metal": 0.66
+    },
+    "ceramic": {
+      "rgb": [
+        0.76,
+        0.63,
+        0.38
+      ],
+      "rough": 0.82,
+      "metal": 0.01
+    },
+    "belt": {
+      "rgb": [
+        0.028,
+        0.032,
+        0.035
+      ],
+      "rough": 0.94,
+      "metal": 0.01
+    },
+    "lamp": {
+      "rgb": [
+        0.98,
+        0.76,
+        0.28
+      ],
+      "rough": 0.18,
+      "metal": 0.01
+    },
+    "accent": {
+      "rgb": [
+        0.72,
+        0.33,
+        0.055
+      ],
+      "rough": 0.5,
+      "metal": 0.04
+    }
+  },
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL",
+  "textureSize": 1024,
+  "forbiddenReads": [
+    "safety yellow",
+    "plastic copper",
+    "generic grid",
+    "universal edge wear",
+    "neon",
+    "flat decals",
+    "leather",
+    "billboard",
+    "glowing bar",
+    "crate",
+    "turret",
+    "forklift",
+    "gun",
+    "box-plus-cylinder",
+    "closed grate",
+    "filled trough",
+    "black vent",
+    "closed pit",
+    "vent grille"
+  ],
+  "visibleZoneCoverage": {
+    "authorInventory": "complete",
+    "reviewerConfirmed": true,
+    "register": "assets/works/extractor/evidence/cycle_006/SUPPORTED_VIEW_ZONE_REGISTER.json",
+    "supportedViews": [
+      "works_top",
+      "works_edge",
+      "works_site"
+    ],
+    "zones": [
+      "painted_load_frame",
+      "drive_case_and_service_hatch",
+      "cutting_head_and_bearings",
+      "refractory_feed_jaws",
+      "cutter_hardface_blocks",
+      "inboard_belt",
+      "hooded_work_lamp"
+    ],
+    "unclassifiedVisibleZones": []
+  },
+  "allSupportedViewZonesClassified": true,
+  "gatesOpen": [
+    "G6",
+    "G7"
+  ],
+  "independentSourceReview": {
+    "reviewer": "/root/extractor_cycle06_review",
+    "reviewedCommit": "19acb43172a87a04f553ca99dd87fc64bb762c39",
+    "verdict": "KEEP",
+    "p0": 0,
+    "p1": 0,
+    "scope": "source_candidate_only"
+  }
+}

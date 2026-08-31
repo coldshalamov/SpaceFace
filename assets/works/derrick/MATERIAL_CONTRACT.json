@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_derrick",
+  "root": "SF_WORKS_DERRICK_V1",
+  "packet": "PQ-131.05",
+  "cycle": 4,
+  "currentState": "integration_candidate",
+  "candidateHash": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "forwardAxis": "+X",
+  "upAxisBlender": "+Z",
+  "upAxisGltf": "+Y",
+  "hooks": [
+    "drum_spin",
+    "cable_anchor",
+    "lamp_L",
+    "lamp_R"
+  ],
+  "materials": {
+    "structure": {
+      "rgb": [
+        0.112,
+        0.108,
+        0.1
+      ],
+      "rough": 0.64,
+      "metal": 0.08
+    },
+    "interface": {
+      "rgb": [
+        0.44,
+        0.42,
+        0.38
+      ],
+      "rough": 0.3,
+      "metal": 0.84
+    },
+    "winch": {
+      "rgb": [
+        0.22,
+        0.16,
+        0.11
+      ],
+      "rough": 0.42,
+      "metal": 0.78
+    },
+    "grating": {
+      "rgb": [
+        0.2,
+        0.195,
+        0.18
+      ],
+      "rough": 0.74,
+      "metal": 0.32
+    },
+    "marking": {
+      "rgb": [
+        0.46,
+        0.17,
+        0.045
+      ],
+      "rough": 0.58,
+      "metal": 0.05
+    },
+    "cable": {
+      "rgb": [
+        0.065,
+        0.058,
+        0.048
+      ],
+      "rough": 0.86,
+      "metal": 0.04
+    },
+    "lamp": {
+      "rgb": [
+        0.9,
+        0.8,
+        0.55
+      ],
+      "rough": 0.18,
+      "metal": 0.03
+    }
+  },
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL",
+  "textureSize": 2048,
+  "forbiddenReads": [
+    "safety yellow",
+    "radio tower",
+    "oil pump",
+    "generic truss",
+    "toy crane",
+    "flat arch",
+    "box stack",
+    "glowing bar",
+    "glowing sphere",
+    "chrome",
+    "plastic",
+    "billboard",
+    "halo",
+    "soft card",
+    "generic grid",
+    "X-grid A-frame",
+    "yellow-black shoe tape",
+    "filled rounded square",
+    "pumpjack",
+    "box on stilts",
+    "silhouette padding"
+  ],
+  "allSupportedViewZonesClassified": true,
+  "gatesOpen": [
+    "G6",
+    "G7"
+  ],
+  "independentSourceReview": {
+    "reviewer": "/root/derrick_cycle04_review_resume",
+    "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+    "verdict": "KEEP",
+    "p0": 0,
+    "p1": 0,
+    "scope": "source_candidate_only"
+  }
+}

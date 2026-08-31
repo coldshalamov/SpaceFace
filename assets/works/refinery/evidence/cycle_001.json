@@ -1,0 +1,609 @@
+{
+  "schema": "spaceface.worksRefinery.cycle.v1",
+  "assetId": "place_works_refinery",
+  "cycle": 1,
+  "disposition": "review_pending",
+  "immutable": true,
+  "rootNode": "SF_WORKS_REFINERY_V1",
+  "packet": "PQ-131.04",
+  "reviewersLaunched": false,
+  "targetCellWu": 2.2,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 4900,
+      "budget": 8000,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.7787134647369385,
+          -0.5400000214576721,
+          0.0
+        ],
+        "max": [
+          0.8799999952316284,
+          0.8659055233001709,
+          1.215000033378601
+        ],
+        "size": [
+          1.658713459968567,
+          1.4059054851531982,
+          1.215000033378601
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod0.glb",
+      "bytes": 4136524,
+      "sha256": "86E6C3291638F64EDFBFCAE33C439A18B7861E6D2B6EA9AFF33135DCA01B3C2F",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+      }
+    },
+    {
+      "lod": 1,
+      "triangles": 1304,
+      "budget": 2000,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.7724000215530396,
+          -0.5400000214576721,
+          0.0
+        ],
+        "max": [
+          0.8799999952316284,
+          0.875,
+          1.215000033378601
+        ],
+        "size": [
+          1.652400016784668,
+          1.4149999618530273,
+          1.215000033378601
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod1.glb",
+      "bytes": 3835868,
+      "sha256": "AD37E3C537E28A23C2534BE20498BBF2C860A3EDA369646CBF75770A3116272D",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+      }
+    },
+    {
+      "lod": 2,
+      "triangles": 536,
+      "budget": 600,
+      "draws": 3,
+      "bbox": {
+        "min": [
+          -0.7724000215530396,
+          -0.5400000214576721,
+          0.0
+        ],
+        "max": [
+          0.8799999952316284,
+          0.8515544533729553,
+          1.215000033378601
+        ],
+        "size": [
+          1.652400016784668,
+          1.3915544748306274,
+          1.215000033378601
+        ]
+      },
+      "path": "assets/works/refinery/source/refinery_lod2.glb",
+      "bytes": 1139320,
+      "sha256": "960DFCA3237DE70EA1F6B94A296F84EC43737B2DAC435BC2017EA94F2B90E748",
+      "overlapLoops": 0,
+      "maps": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+      }
+    }
+  ],
+  "hooks": {
+    "furnace_slit": "found",
+    "stack_vent": "found",
+    "lamp": "found"
+  },
+  "hookWorld": {
+    "furnace_slit": [
+      -0.20000000298023224,
+      0.03999999910593033,
+      0.41999998688697815
+    ],
+    "stack_vent": [
+      0.11999999731779099,
+      0.699999988079071,
+      1.1200000047683716
+    ],
+    "lamp": [
+      0.30000001192092896,
+      0.5400000214576721,
+      0.8600000143051147
+    ]
+  },
+  "inspection": {
+    "names": [
+      "COLLISION_HULL",
+      "LOD0_furnace_slit",
+      "LOD1_furnace_slit",
+      "LOD2_furnace_slit",
+      "furnace_slit",
+      "LOD0_lamp_lens",
+      "LOD1_lamp_lens",
+      "LOD2_lamp_lens",
+      "lamp",
+      "LOD0_refinery",
+      "LOD1_refinery",
+      "LOD2_refinery",
+      "stack_vent",
+      "SF_WORKS_REFINERY_V1"
+    ],
+    "hooks": {
+      "furnace_slit": "found",
+      "stack_vent": "found",
+      "lamp": "found"
+    },
+    "root": "SF_WORKS_REFINERY_V1",
+    "lodTriangles": {
+      "0": 4900,
+      "1": 1304,
+      "2": 536
+    },
+    "lodDraws": {
+      "0": 3,
+      "1": 3,
+      "2": 3
+    },
+    "materials": 9,
+    "nodes": 14
+  },
+  "inventory": {
+    "assetId": "place_works_refinery",
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "combined": "assets/works/refinery/source/refinery.glb",
+    "partsSource": "assets/ships/parts/works/place_works_refinery.glb",
+    "lodTriangles": {
+      "lod0": 4900,
+      "lod1": 1304,
+      "lod2": 536
+    },
+    "hooks": [
+      "furnace_slit",
+      "stack_vent",
+      "lamp"
+    ],
+    "meshNames": [
+      "LOD0_furnace_slit",
+      "LOD0_lamp_lens",
+      "LOD0_refinery",
+      "LOD1_furnace_slit",
+      "LOD1_lamp_lens",
+      "LOD1_refinery",
+      "LOD2_furnace_slit",
+      "LOD2_lamp_lens",
+      "LOD2_refinery"
+    ],
+    "bytes": 9208864,
+    "sha256": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+    "disposition": "review_pending",
+    "cycle": 1
+  },
+  "stills": {
+    "works_top.png": "assets/works/refinery/evidence/cycle_001/works_top.png",
+    "works_edge.png": "assets/works/refinery/evidence/cycle_001/works_edge.png",
+    "works_site.png": "assets/works/refinery/evidence/cycle_001/works_site.png",
+    "works_top_clay.png": "assets/works/refinery/evidence/cycle_001/works_top_clay.png",
+    "works_edge_grazing.png": "assets/works/refinery/evidence/cycle_001/works_edge_grazing.png",
+    "normal_isolation.png": "assets/works/refinery/evidence/cycle_001/normal_isolation.png",
+    "orm_isolation.png": "assets/works/refinery/evidence/cycle_001/orm_isolation.png",
+    "id_or_material_id.png": "assets/works/refinery/evidence/cycle_001/id_or_material_id.png",
+    "hook_identity.png": "assets/works/refinery/evidence/cycle_001/hook_identity.png",
+    "state_emission.png": "assets/works/refinery/evidence/cycle_001/state_emission.png"
+  },
+  "pixelFacts": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fovV": 31.0,
+    "cellWu": 2.2,
+    "works_top": {
+      "distance": 35.698246736732656,
+      "pxPerCell": 120.0,
+      "objectPx": {
+        "px": 12815,
+        "bbox": [
+          894,
+          474,
+          1025,
+          605
+        ],
+        "width": 132,
+        "height": 132
+      }
+    },
+    "works_edge": {
+      "objectPx": {
+        "px": 15388,
+        "bbox": [
+          1710,
+          474,
+          1841,
+          605
+        ],
+        "width": 132,
+        "height": 132
+      },
+      "objectOffsetApplied": true
+    },
+    "works_site": {
+      "pxPerCell": 18.999999999999996,
+      "objectPx": {
+        "px": 441,
+        "bbox": [
+          949,
+          529,
+          970,
+          550
+        ],
+        "width": 22,
+        "height": 22
+      }
+    },
+    "crops1to1": {
+      "works_top.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_edge.png": {
+        "crop": [
+          1686,
+          450,
+          1866,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_site.png": {
+        "crop": [
+          925,
+          505,
+          995,
+          575
+        ],
+        "size": [
+          70,
+          70
+        ]
+      },
+      "works_top_clay.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "works_edge_grazing.png": {
+        "crop": [
+          1625,
+          625,
+          1804,
+          804
+        ],
+        "size": [
+          179,
+          179
+        ]
+      },
+      "normal_isolation.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "orm_isolation.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "id_or_material_id.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "hook_identity.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      },
+      "state_emission.png": {
+        "crop": [
+          870,
+          450,
+          1050,
+          630
+        ],
+        "size": [
+          180,
+          180
+        ]
+      }
+    }
+  },
+  "visibleFaces": {
+    "glb": "C:\\sf-agents\\grok-pq13104-refinery-20260827\\assets\\ships\\parts\\works\\place_works_refinery.glb",
+    "fovV": 31.0,
+    "framings": [
+      "works_top",
+      "works_edge x8",
+      "works_site"
+    ],
+    "lodFramings": {
+      "0": [
+        "works_top",
+        "works_edge"
+      ],
+      "1": [
+        "works_site"
+      ],
+      "2": [
+        "works_site"
+      ]
+    },
+    "distances": [
+      35.698246736732656,
+      225.46261096883785
+    ],
+    "edgeDirs": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        -1.0
+      ],
+      [
+        1.0,
+        1.0
+      ],
+      [
+        1.0,
+        -1.0
+      ],
+      [
+        -1.0,
+        1.0
+      ],
+      [
+        -1.0,
+        -1.0
+      ]
+    ],
+    "grid": [
+      80,
+      45
+    ],
+    "deleted": false,
+    "objects": [
+      {
+        "object": "LOD0_furnace_slit",
+        "lod": 0,
+        "faces": 44,
+        "visible": 0,
+        "hidden": 44,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD1_furnace_slit",
+        "lod": 1,
+        "faces": 28,
+        "visible": 0,
+        "hidden": 28,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD2_furnace_slit",
+        "lod": 2,
+        "faces": 28,
+        "visible": 0,
+        "hidden": 28,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD0_lamp_lens",
+        "lod": 0,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD1_lamp_lens",
+        "lod": 1,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD2_lamp_lens",
+        "lod": 2,
+        "faces": 20,
+        "visible": 0,
+        "hidden": 20,
+        "hiddenFrac": 1.0
+      },
+      {
+        "object": "LOD0_refinery",
+        "lod": 0,
+        "faces": 4836,
+        "visible": 63,
+        "hidden": 4773,
+        "hiddenFrac": 0.987
+      },
+      {
+        "object": "LOD1_refinery",
+        "lod": 1,
+        "faces": 1256,
+        "visible": 1,
+        "hidden": 1255,
+        "hiddenFrac": 0.9992
+      },
+      {
+        "object": "LOD2_refinery",
+        "lod": 2,
+        "faces": 488,
+        "visible": 1,
+        "hidden": 487,
+        "hiddenFrac": 0.998
+      }
+    ],
+    "hiddenFaces": 6675,
+    "faces": 6740,
+    "hiddenFrac": 0.9904,
+    "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+  },
+  "visibleFacesExit": 0,
+  "hashes": {
+    "cycle": 1,
+    "disposition": "review_pending",
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "hooks": [
+      "furnace_slit",
+      "stack_vent",
+      "lamp"
+    ],
+    "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
+    "partsSha256": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+    "sourceGlb": "assets/works/refinery/source/refinery.glb",
+    "sourceSha256": "80CF0DE0F97C1D7722DFB4A9B977B1E046D28F180701B32BF3CA52C3D62D9216",
+    "lods": {
+      "lod0": {
+        "path": "assets/works/refinery/source/refinery_lod0.glb",
+        "sha256": "86E6C3291638F64EDFBFCAE33C439A18B7861E6D2B6EA9AFF33135DCA01B3C2F",
+        "triangles": 4900
+      },
+      "lod1": {
+        "path": "assets/works/refinery/source/refinery_lod1.glb",
+        "sha256": "AD37E3C537E28A23C2534BE20498BBF2C860A3EDA369646CBF75770A3116272D",
+        "triangles": 1304
+      },
+      "lod2": {
+        "path": "assets/works/refinery/source/refinery_lod2.glb",
+        "sha256": "960DFCA3237DE70EA1F6B94A296F84EC43737B2DAC435BC2017EA94F2B90E748",
+        "triangles": 536
+      }
+    },
+    "textures": {
+      "lod0": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+      },
+      "lod1": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+      },
+      "lod2": {
+        "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+        "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+        "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+        "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+        "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+        "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+      }
+    },
+    "blend": "assets/works/refinery/source/works_refinery.blend",
+    "builder": "tools/blender/build_works_refinery.py"
+  },
+  "blender": {
+    "version": "5.1.2",
+    "binary": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
+    "export": "ok",
+    "render": "ok"
+  },
+  "budgets": {
+    "triangles": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "texture": 1024
+  },
+  "notes": "Cycle 01 source candidate. Slit emission held low on beauty stills; state_emission.png shows 1.0. Independent review not launched."
+}

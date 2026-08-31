@@ -1,0 +1,383 @@
+{
+  "assetId": "place_works_inclusion_kit",
+  "masterRoot": "SF_WORKS_INCLUSION_KIT_V1",
+  "cycle": 2,
+  "combined": "assets/works/inclusion_kit/source/inclusion_kit.glb",
+  "partsSource": "assets/ships/parts/works/place_works_inclusion_kit.glb",
+  "blend": "assets/works/inclusion_kit/source/inclusion_kit.blend",
+  "atlas": {
+    "basecolor": "assets/works/inclusion_kit/source/textures/inclusion_kit_atlas_basecolor.png",
+    "orm": "assets/works/inclusion_kit/source/textures/inclusion_kit_atlas_orm.png",
+    "normal": "assets/works/inclusion_kit/source/textures/inclusion_kit_atlas_normal.png"
+  },
+  "variants": [
+    {
+      "id": "SF_INCL_SILVER_WIRE_V1",
+      "family": "silver",
+      "form": "wire_dendrite",
+      "tile": 0,
+      "origin": [
+        -5.5,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1512,
+        "lod1": 360,
+        "lod2": 152
+      },
+      "footprintWu": 1.4367573857307434,
+      "drawsLod0": 1,
+      "sha256": "0E4AECE9F599F0164DBC06BE93BF4089E6B07986A74612430F5B29E1CAE8B7E4",
+      "bytes": 1335648
+    },
+    {
+      "id": "SF_INCL_SILVER_SHEET_V1",
+      "family": "silver",
+      "form": "sheet_flake",
+      "tile": 1,
+      "origin": [
+        -3.299999952316284,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1480,
+        "lod1": 448,
+        "lod2": 236
+      },
+      "footprintWu": 1.3546161651611328,
+      "drawsLod0": 1,
+      "sha256": "AE4047256D48AE2250A375E40B6B0517FE4D68F80FAAD45AD92B3E71541BDA2C",
+      "bytes": 1343644
+    },
+    {
+      "id": "SF_INCL_GOLD_LEAF_V1",
+      "family": "gold",
+      "form": "leaf_nest",
+      "tile": 2,
+      "origin": [
+        -1.100000023841858,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1558,
+        "lod1": 526,
+        "lod2": 254
+      },
+      "footprintWu": 1.291953444480896,
+      "drawsLod0": 1,
+      "sha256": "73C85AA40D918AE2501CFC8CC636F93114CE1725A3D77AB1326D8E9E8FDA69B4",
+      "bytes": 1372232
+    },
+    {
+      "id": "SF_INCL_GOLD_RIBBON_V1",
+      "family": "gold",
+      "form": "fracture_ribbon",
+      "tile": 3,
+      "origin": [
+        1.100000023841858,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1258,
+        "lod1": 346,
+        "lod2": 74
+      },
+      "footprintWu": 1.3903558850288391,
+      "drawsLod0": 1,
+      "sha256": "AA234076158580C78B2AB5318521C2A38D8F7C1CA2B49EB1981DA58A711F8A98",
+      "bytes": 1281528
+    },
+    {
+      "id": "SF_INCL_IRON_CHIP_RIDGE_V1",
+      "family": "iron",
+      "form": "chip_ridge",
+      "tile": 4,
+      "origin": [
+        3.299999952316284,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1204,
+        "lod1": 276,
+        "lod2": 108
+      },
+      "footprintWu": 1.4504578709602356,
+      "drawsLod0": 1,
+      "sha256": "18627D9B50AF971004D463478A4EBBB870E06AB47C57D374D60B29779F8F1C94",
+      "bytes": 1277484
+    },
+    {
+      "id": "SF_INCL_IRON_SPECULAR_V1",
+      "family": "iron",
+      "form": "specular_plate",
+      "tile": 5,
+      "origin": [
+        5.5,
+        2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1180,
+        "lod1": 256,
+        "lod2": 92
+      },
+      "footprintWu": 1.3034628033638,
+      "drawsLod0": 1,
+      "sha256": "BF75846104EED9216FC79CEA6A85F7487F11DD60D55E63DC24B54C03809F1FF7",
+      "bytes": 1257420
+    },
+    {
+      "id": "SF_INCL_NICKEL_CUBIC_V1",
+      "family": "nickel",
+      "form": "cubic_mass",
+      "tile": 6,
+      "origin": [
+        -5.5,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1264,
+        "lod1": 304,
+        "lod2": 116
+      },
+      "footprintWu": 0.9202203154563904,
+      "drawsLod0": 1,
+      "sha256": "9B8F29F4B3A51995413BA3CD73AC2171D2AC1C18CFBBD05FDDFA4F1CBC4F7CD3",
+      "bytes": 1278068
+    },
+    {
+      "id": "SF_INCL_NICKEL_DENDRITE_V1",
+      "family": "nickel",
+      "form": "dendrite",
+      "tile": 7,
+      "origin": [
+        -3.299999952316284,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1388,
+        "lod1": 364,
+        "lod2": 116
+      },
+      "footprintWu": 0.9965056777000427,
+      "drawsLod0": 1,
+      "sha256": "FADDD245689B3DCD73432250CF2A401E27BB97496A3460AB09DBBD68A37E0462",
+      "bytes": 1306568
+    },
+    {
+      "id": "SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
+      "family": "exotic",
+      "form": "octahedral_cage",
+      "tile": 8,
+      "origin": [
+        -1.100000023841858,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1512,
+        "lod1": 524,
+        "lod2": 308
+      },
+      "footprintWu": 1.0966225266456604,
+      "drawsLod0": 1,
+      "sha256": "11318CD633789ABB3E507E59242CA3A3DE2D44A3C896EE3E629E4F16F963D6E9",
+      "bytes": 1385924
+    },
+    {
+      "id": "SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
+      "family": "exotic",
+      "form": "prismatic_truss",
+      "tile": 9,
+      "origin": [
+        1.100000023841858,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1408,
+        "lod1": 400,
+        "lod2": 152
+      },
+      "footprintWu": 1.0590651035308838,
+      "drawsLod0": 1,
+      "sha256": "22291011F134883C174AF301118378DC903CFF9E646F34814A11EBAC430D5A64",
+      "bytes": 1308364
+    },
+    {
+      "id": "SF_INCL_EXOTIC_HOPPER_CUBE_V1",
+      "family": "exotic",
+      "form": "hopper_cube",
+      "tile": 10,
+      "origin": [
+        3.299999952316284,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1258,
+        "lod1": 338,
+        "lod2": 170
+      },
+      "footprintWu": 1.06940358877182,
+      "drawsLod0": 1,
+      "sha256": "307C7F0629EFED81BDD7940B1B1A9BF1F9CFA7484CCCFA9BEEA0938D9FC2CAD1",
+      "bytes": 1289580
+    },
+    {
+      "id": "SF_INCL_ICE_SHEEN_PLATE_V1",
+      "family": "ice",
+      "form": "sheen_plate",
+      "tile": 11,
+      "origin": [
+        5.5,
+        0.0,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1216,
+        "lod1": 276,
+        "lod2": 80
+      },
+      "footprintWu": 1.4082268476486206,
+      "drawsLod0": 1,
+      "sha256": "0A5A9AC14DB414321CFCCFEA19A812B07FEB07ABE86410DA4FCD8E7D8FDB0D01",
+      "bytes": 1262244
+    },
+    {
+      "id": "SF_INCL_ICE_FRACTURE_VEIN_V1",
+      "family": "ice",
+      "form": "fracture_vein",
+      "tile": 12,
+      "origin": [
+        -5.5,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1198,
+        "lod1": 286,
+        "lod2": 74
+      },
+      "footprintWu": 1.415973961353302,
+      "drawsLod0": 1,
+      "sha256": "14B84938072DDCD1814FCC7F9E1B590A98E540778A4EBE57DFEBEE98446663DF",
+      "bytes": 1263260
+    },
+    {
+      "id": "SF_INCL_GAS_FISSURE_RADIAL_V1",
+      "family": "gas",
+      "form": "radial_mouth",
+      "tile": 13,
+      "origin": [
+        -3.299999952316284,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1436,
+        "lod1": 418,
+        "lod2": 216
+      },
+      "footprintWu": 1.482608139514923,
+      "drawsLod0": 1,
+      "sha256": "AAEA3A773EB224CD46CFF9FB91C12F7F9F12B3B1F762DDA7E765B03C19486173",
+      "bytes": 1358268
+    },
+    {
+      "id": "SF_INCL_GAS_FISSURE_BRANCH_V1",
+      "family": "gas",
+      "form": "branch_crevice",
+      "tile": 14,
+      "origin": [
+        -1.100000023841858,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1228,
+        "lod1": 312,
+        "lod2": 168
+      },
+      "footprintWu": 1.246360182762146,
+      "drawsLod0": 1,
+      "sha256": "CB749B2CEEB1E16AE6B9220BEF390BC1376F99E8CB94D40B5700C8AF28B4D02A",
+      "bytes": 1304616
+    },
+    {
+      "id": "SF_INCL_GAS_FISSURE_SHEAR_V1",
+      "family": "gas",
+      "form": "shear_offset",
+      "tile": 15,
+      "origin": [
+        1.100000023841858,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1136,
+        "lod1": 240,
+        "lod2": 96
+      },
+      "footprintWu": 1.4874199032783508,
+      "drawsLod0": 1,
+      "sha256": "A415F8E3D555B787E4C4F8726BCF8469AC12E655B6D0040D83C52DC9C95480AB",
+      "bytes": 1261180
+    },
+    {
+      "id": "SF_INCL_VENTED_SCAR_V1",
+      "family": "scar",
+      "form": "vented_split",
+      "tile": 16,
+      "origin": [
+        3.299999952316284,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1204,
+        "lod1": 274,
+        "lod2": 130
+      },
+      "footprintWu": 1.4085217714309692,
+      "drawsLod0": 1,
+      "sha256": "7969903C961CE0A2B42170782ED4727F771F2155305EE77921DC8415C42C0D41",
+      "bytes": 1285116
+    },
+    {
+      "id": "SF_INCL_MK_LOCK_PLATE_V1",
+      "family": "lock",
+      "form": "mk_lock_plate",
+      "tile": 17,
+      "origin": [
+        5.5,
+        -2.200000047683716,
+        0.0
+      ],
+      "lodTriangles": {
+        "lod0": 1588,
+        "lod1": 496,
+        "lod2": 280
+      },
+      "footprintWu": 1.275075376033783,
+      "drawsLod0": 1,
+      "sha256": "45AF9782829420302E5FB2388DFA0426477D98D35E6B9337AB2970E38B492AEC",
+      "bytes": 1360028
+    }
+  ],
+  "lodTriangles": {
+    "lod0": 24028,
+    "lod1": 6444,
+    "lod2": 2822
+  },
+  "bytes": 6693936,
+  "sha256": "E690AEA63108D697A2D53FE8BA6EA5136F4E7A1F725572DF6FB5D73F9101CD83",
+  "placeSha256": "E690AEA63108D697A2D53FE8BA6EA5136F4E7A1F725572DF6FB5D73F9101CD83"
+}

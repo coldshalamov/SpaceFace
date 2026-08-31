@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_cargo_port",
+  "class": "place",
+  "cycle": 4,
+  "candidateHash": "F4B8C87DF96FCE899C540E71F1ED76CFE2422D751DC5B1AB1214F2C0D1189614",
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top_grazing.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Bevelled game mesh, shade_smooth_by_angle 28, weighted normals."
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Horseshoe flange; D+key docking well with wall thickness; C-clamp arms are the apron lip."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top_orm.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Smart-project UV0 per part, remapped into unique atlas tiles."
+    },
+    {
+      "id": "MTX-20",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_grazing.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No distinct higher source exists; the bevelled game mesh cannot close MTX-20."
+    },
+    {
+      "id": "MTX-21",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No selected-to-active cage bake exists in this design-candidate cycle."
+    },
+    {
+      "id": "MTX-22",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_normal.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "The OpenGL atlas normal is procedural response, not a tangent bake from the exact mesh."
+    },
+    {
+      "id": "MTX-23",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_orm.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "ORM.R is an authored cavity approximation, not AO baked from the exact mesh."
+    },
+    {
+      "id": "MTX-24",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_normal.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No exact-mesh curvature bake exists; atlas edge slopes are not a substitute."
+    },
+    {
+      "id": "MTX-25",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_orm.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No exact-mesh concavity bake exists; atlas cavity darkening remains provisional."
+    },
+    {
+      "id": "MTX-30",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Imagegen pixels are absent, but normal/AO/curvature are not yet mesh-derived."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top_matid.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Five billed substances: port oxide, cradle wear, crate paint, pod skin, thruster."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "One 1024 atlas with per-role generators, not a tinted shared sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top_orm.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Roughness and metallic vary by role, but ORM.R cannot close until mesh AO exists."
+    },
+    {
+      "id": "MTX-39",
+      "state": "blocked",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Seam dirt is provisional until driven by the exact-mesh cavity bake."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No rover yellow, no glow hatch, no cool disc, no green lamp panel, no circular badge."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Exported GLB retains exact root, LOD roots, and hook names."
+    },
+    {
+      "id": "MTX-52",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "One C-clamp whose arms are the apron lip; D+key well remains a hole in clay."
+    },
+    {
+      "id": "MTX-53",
+      "state": "not_applicable",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Place candidate is manufactured sections, not photogrammetry."
+    },
+    {
+      "id": "MTX-54",
+      "state": "implemented",
+      "still": "evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cycle 04 revises the Cycle 03 round portal, boxed cradle, and square freight; cycles 01-03 stay frozen."
+    }
+  ]
+}

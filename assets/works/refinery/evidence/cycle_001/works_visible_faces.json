@@ -1,0 +1,142 @@
+{
+  "glb": "C:\\sf-agents\\grok-pq13104-refinery-20260827\\assets\\ships\\parts\\works\\place_works_refinery.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_furnace_slit",
+      "lod": 0,
+      "faces": 44,
+      "visible": 0,
+      "hidden": 44,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_furnace_slit",
+      "lod": 1,
+      "faces": 28,
+      "visible": 0,
+      "hidden": 28,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_furnace_slit",
+      "lod": 2,
+      "faces": 28,
+      "visible": 0,
+      "hidden": 28,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_lamp_lens",
+      "lod": 0,
+      "faces": 20,
+      "visible": 0,
+      "hidden": 20,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_lamp_lens",
+      "lod": 1,
+      "faces": 20,
+      "visible": 0,
+      "hidden": 20,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_lamp_lens",
+      "lod": 2,
+      "faces": 20,
+      "visible": 0,
+      "hidden": 20,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_refinery",
+      "lod": 0,
+      "faces": 4836,
+      "visible": 63,
+      "hidden": 4773,
+      "hiddenFrac": 0.987
+    },
+    {
+      "object": "LOD1_refinery",
+      "lod": 1,
+      "faces": 1256,
+      "visible": 1,
+      "hidden": 1255,
+      "hiddenFrac": 0.9992
+    },
+    {
+      "object": "LOD2_refinery",
+      "lod": 2,
+      "faces": 488,
+      "visible": 1,
+      "hidden": 487,
+      "hiddenFrac": 0.998
+    }
+  ],
+  "hiddenFaces": 6675,
+  "faces": 6740,
+  "hiddenFrac": 0.9904,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+}

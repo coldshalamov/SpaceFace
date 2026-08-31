@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0",
+  "packet": "PQ-131.06",
+  "cycle": 3,
+  "tier": "C",
+  "grouping": "one manufactured family per network (power tray/cable; lane conveyor). Repeated pieces share the family bill.",
+  "componentReferenceDecision": "not_needed",
+  "componentReferenceDecisionWhy": "Construction is taken from cited industrial cable-tray, SWA, roller-conveyor and gland practice plus the locked works mask/section. No generated whole-asset image is used as identity.",
+  "allSupportedViewZonesClassified": false,
+  "supportedViews": ["works_top", "works_edge", "works_site"],
+  "families": {
+    "power": {
+      "oneSentenceRead": "A bolted ladder tray carrying one gold-jacketed armoured cable, lit only at a recessed contact.",
+      "zones": [
+        {
+          "zone": "ladder_tray_and_rungs",
+          "disposition": "billed",
+          "substrate": "hot-dip galvanized formed steel channel, IEC 61537 ladder class",
+          "basecolor": [0.40, 0.41, 0.38],
+          "roughness": [0.48, 0.62],
+          "metallic": [0.72, 0.88],
+          "forbidden": ["plastic toy rail", "emissive outline", "generic plate grid"]
+        },
+        {
+          "zone": "gold_jacket",
+          "disposition": "billed",
+          "substrate": "extruded LSZH polymer jacket over SWA, restrained brass-gold pigment — identification, not a light",
+          "basecolor": [0.50, 0.36, 0.14],
+          "roughness": [0.42, 0.58],
+          "metallic": [0.04, 0.12],
+          "forbidden": ["whole-cable emission", "chrome gold", "cyan"]
+        },
+        {
+          "zone": "steel_wire_armour",
+          "disposition": "billed",
+          "substrate": "helical galvanized steel wires under the jacket, visible at clamps and glands as banding",
+          "basecolor": [0.40, 0.41, 0.38],
+          "roughness": [0.32, 0.48],
+          "metallic": [0.78, 0.92],
+          "forbidden": ["painted rings as the only armour"]
+        },
+        {
+          "zone": "saddle_clamps",
+          "disposition": "billed",
+          "substrate": "pressed steel saddle + two flange bolts into the rungs, rooted on the tray",
+          "basecolor": [0.16, 0.15, 0.14],
+          "roughness": [0.50, 0.68],
+          "metallic": [0.60, 0.80],
+          "forbidden": ["floating decals", "rings that do not touch the tray"]
+        },
+        {
+          "zone": "powered_contact",
+          "disposition": "billed",
+          "substrate": "recessed copper-beryllium slot in a clamp window or gland face; the only legal emissive",
+          "basecolor": [0.72, 0.48, 0.16],
+          "roughness": [0.22, 0.34],
+          "metallic": [0.70, 0.90],
+          "emissive": "atlas alpha, small window only",
+          "forbidden": ["emissive jacket", "halo"]
+        },
+        {
+          "zone": "glands_lid_brackets",
+          "disposition": "billed",
+          "substrate": "nickel-plated brass glands (IEC 62444), folded steel lid, L-brackets to the mount",
+          "basecolor": [0.36, 0.32, 0.24],
+          "roughness": [0.28, 0.50],
+          "metallic": [0.65, 0.90],
+          "forbidden": ["a box with no fasteners"]
+        }
+      ]
+    },
+    "lane": {
+      "oneSentenceRead": "A framed roller conveyor: two C-channel rails, a narrow belt on roller crowns, hollow under the bed, a smoked cover strip, and a real service lid / gearmotor where the fitting needs one.",
+      "zones": [
+        {
+          "zone": "side_rails_and_cross_sleepers",
+          "disposition": "billed",
+          "substrate": "folded painted steel C-section rails with sparse bolted cross-sleepers, dark industrial enamel over zinc",
+          "basecolor": [0.18, 0.16, 0.13],
+          "roughness": [0.52, 0.68],
+          "metallic": [0.18, 0.32],
+          "forbidden": ["cyan paint", "glowing rails"]
+        },
+        {
+          "zone": "rollers",
+          "disposition": "billed",
+          "substrate": "zinc-plated steel tubes on through-axles in rail bosses (CEMA / MDR practice)",
+          "basecolor": [0.42, 0.43, 0.40],
+          "roughness": [0.28, 0.42],
+          "metallic": [0.70, 0.88],
+          "forbidden": ["discs floating in a trough", "emissive tubes"]
+        },
+        {
+          "zone": "belt_or_chain",
+          "disposition": "billed",
+          "substrate": "dark rubber belt with transverse cleats sitting on the roller crowns; this is flow_mesh",
+          "basecolor": [0.10, 0.10, 0.09],
+          "roughness": [0.72, 0.88],
+          "metallic": [0.02, 0.08],
+          "forbidden": ["cyan ribbon", "emissive flow", "billboard chevrons"]
+        },
+        {
+          "zone": "smoked_cover_strip",
+          "disposition": "billed",
+          "substrate": "narrow polycarbonate wear strip over the product path only; rollers and rails stay visible beside it",
+          "basecolor": [0.30, 0.34, 0.36],
+          "roughness": [0.18, 0.30],
+          "metallic": [0.02, 0.06],
+          "forbidden": ["full-width glass lid", "additive transparency sheet", "neon"]
+        },
+        {
+          "zone": "drive_and_brackets",
+          "disposition": "billed",
+          "substrate": "gearmotor stub at junction, L-brackets to the mount, axle keepers",
+          "basecolor": [0.20, 0.19, 0.17],
+          "roughness": [0.40, 0.58],
+          "metallic": [0.55, 0.80],
+          "forbidden": ["unrooted motor brick"]
+        }
+      ]
+    }
+  },
+  "atlas": {
+    "size": 1024,
+    "maps": ["basecolor", "normal", "orm"],
+    "orm": "R=AO mesh-derived, G=Roughness, B=Metallic",
+    "normal": "tangent, OpenGL, mesh-derived plus role microstructure",
+    "emission": "basecolor alpha drives Principled emission strength; only powered contact is non-zero"
+  }
+}

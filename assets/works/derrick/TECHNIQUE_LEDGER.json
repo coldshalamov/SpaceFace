@@ -1,0 +1,184 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "place_works_derrick",
+  "shipId": "place_works_derrick",
+  "candidateHash": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "exportGlb": "assets/ships/parts/works/place_works_derrick.glb",
+  "class": "place_station_module",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "clayStillReadsAsPrimitives": false,
+  "independentReview": "keep",
+  "independentReviewer": "/root/derrick_cycle04_review_resume",
+  "independentReviewScope": "source_candidate_only",
+  "independentReviewCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+  "independentReviewP0": 0,
+  "independentReviewP1": 0,
+  "materialIdRepairCommit": "7ca946c7a4a109f410e24e6bdd3595e7bf384eff",
+  "materialIdEvidenceSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76",
+  "openGates": ["G6", "G7"],
+  "cycle": 4,
+  "disposition": "source_keep",
+  "forbidden": {
+    "factoryLoftPlusBoxes": false,
+    "sharedSheetTint": false,
+    "shadeSmoothWholeObject": false,
+    "internalVoidCalledBay": false,
+    "imagenUsedAsBake": false
+  },
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_edge_grazing.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Angle bevel then weighted normals, shade 28\u00b0.",
+      "bevelWidthM": 0.006,
+      "shadeAngleDeg": 28.0
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Shaft collar is an annulus with wall thickness; the well is empty; drum is offset off the hole."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique non-overlapping UV0 packed per LOD."
+    },
+    {
+      "id": "MTX-20",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "High duplicate with extra 3 mm bevel as bake source."
+    },
+    {
+      "id": "MTX-21",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cage extrusion 0.04 wu on selected-to-active normal bake."
+    },
+    {
+      "id": "MTX-22",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Tangent OpenGL normal from the mesh."
+    },
+    {
+      "id": "MTX-23",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cycles AO baked to unique UV0."
+    },
+    {
+      "id": "MTX-24",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Pointiness curvature baked as emit."
+    },
+    {
+      "id": "MTX-25",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Concave curvature drives cavity dirt."
+    },
+    {
+      "id": "MTX-30",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/normal_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cited kit stills are construction language only; maps are mesh-derived."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Paint dielectric, interfaces metallic, winch heat/oil, grating dry, orange marking, cable rubber, lamp glass."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Authored 2048 albedo from ID \u00d7 AO \u00d7 causal wear, not a tinted sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/orm_isolation.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "ORM: R=AO G=rough B=metal, role-varying."
+    },
+    {
+      "id": "MTX-39",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Dirt in concave AO, oil in winch cavities."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_top_clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No rover yellow, neon, lattice-as-identity, glowing bar, kit donor, or yellow-black shoe tape."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "assets/ships/parts/works/place_works_derrick.glb",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Z-up works scale, Y-up glTF, sockets, LOD names, extras stamped."
+    },
+    {
+      "id": "MTX-52",
+      "state": "implemented",
+      "still": "assets/works/derrick/evidence/cycle_004/works_edge.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Macro: open A-legs over a well, offset winch, crown sheave, not a primitive stack or X-grid."
+    },
+    {
+      "id": "MTX-53",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Manufactured machine, not a rock/sculpt."
+    },
+    {
+      "id": "MTX-54",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "New asset; no prior accepted derrick to revert."
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schema": "spaceface.worksRouteEvidence.v1",
+  "assetId": "place_works_extractor",
+  "cycle": 7,
+  "epoch": "cycle_007_route",
+  "capturedAt": "2026-08-30",
+  "capturedFromParentCommit": "87eb7542",
+  "captureChangesCommittedWithEvidence": true,
+  "sourceCandidate": {
+    "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "independentVerdict": "KEEP",
+    "reviewer": "/root/extractor_cycle06_review",
+    "scope": "source_candidate_only"
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_extractor.glb",
+    "sha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
+    "bytes": 2989196
+  },
+  "renderPackage": {
+    "metadataPath": "assets/ships/release/render-packages/works-extractor/render-package.json",
+    "metadataSha256": "89fb0fef40cabb073e0951c0885948dca61b23f9f21b50d832a62ee7b67fb71d",
+    "renderGlbPath": "assets/ships/release/render-packages/works-extractor/render.glb",
+    "renderGlbSha256": "d5573dd1b099c742f2eb3fc5f7312f2a9da5e80688ff7f713167580037b9a3be",
+    "contentHash": "3b1f56f5da93c6b1895c72a19f58397c1979305a271c32af3c5fcaced1cba224",
+    "runtimeHash": "3da74f0979cb21e8d726231a2b0adf55cfbca1888137db679e7554445068b2cb"
+  },
+  "route": {
+    "entry": "canonical root -> New Game -> flight -> live asteroid -> Asteroid Works",
+    "install": "rover-adjacent asteroidSites.installMachine(sm_extractor)",
+    "machineId": "m1",
+    "fallbackDrawn": false,
+    "requiredHooks": ["head_face", "belt", "lamp"],
+    "missingHooks": [],
+    "workLod": "LOD0",
+    "siteLod": "LOD1",
+    "baseColorSpace": "srgb",
+    "normalColorSpace": "srgb-linear"
+  },
+  "captures": {
+    "browserWork": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/browser_work.png",
+      "sha256": "CD4946BD2BC28411CEFCCF290B609165923AEA6C023B1ADD8FF697BCEC81FBA4",
+      "bytes": 3185761,
+      "resolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "browserSite": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/browser_site.png",
+      "sha256": "B96F3E8D4ADE1162EFA53178E8CE6B9B9168FACFD88783340D5D2307FA9C5AC0",
+      "bytes": 1201705,
+      "resolution": [1920, 1080],
+      "lod": "LOD1"
+    },
+    "electronWork": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/electron_work.png",
+      "sha256": "55CDB5D0A806F3DFF7FE959C069D1077136A668542C3D8F825CDB666107C1C4D",
+      "bytes": 4820260,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "electronSite": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/electron_site.png",
+      "sha256": "BC34CD7375710BC81A0EB90E6F82DFF43747A9547AA3CE3E5E0DDDDAF259E894",
+      "bytes": 1867744,
+      "resolution": [2400, 1350],
+      "requestedContentResolution": [1920, 1080],
+      "lod": "LOD1"
+    }
+  },
+  "gates": {
+    "G1": "pass-independent-source",
+    "G2": "pass-independent-source",
+    "G4": "pass-independent-source",
+    "G6": "pass-release-runtime",
+    "G7": "pass-browser-electron-route"
+  },
+  "routeVerdict": "KEEP",
+  "routeReviewer": "/root",
+  "openP0": 0,
+  "openP1": 0
+}

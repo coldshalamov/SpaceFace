@@ -1,0 +1,50 @@
+{
+  "assetId": "place_works_fabricator",
+  "rootName": "SF_WORKS_FABRICATOR_V1",
+  "combined": "assets/works/fabricator/source/fabricator.glb",
+  "partsSource": "assets/ships/parts/works/place_works_fabricator.glb",
+  "lodTriangles": {
+    "lod0": 8872,
+    "lod1": 808,
+    "lod2": 428
+  },
+  "hooks": [
+    "gantry_head",
+    "lamp"
+  ],
+  "rail": "rail",
+  "travel": {
+    "axis": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "length": 1.4,
+    "progress0": [
+      -0.7,
+      0.0,
+      0.7
+    ],
+    "progress1": [
+      0.7,
+      0.0,
+      0.7
+    ],
+    "authoredProgress": 0,
+    "space": "blender_z_up",
+    "gltfNote": "export_yup: Blender +X stays glTF +X; runtime drives gantry_head local +X * length * progress"
+  },
+  "meshNames": [
+    "LOD0_Gantry",
+    "LOD0_Lamp",
+    "LOD0_fabricator",
+    "LOD1_Gantry",
+    "LOD1_Lamp",
+    "LOD1_fabricator",
+    "LOD2_Gantry",
+    "LOD2_Lamp",
+    "LOD2_fabricator"
+  ],
+  "bytes": 2091504,
+  "sha256": "31E7E0F70CED279B5FFBEFD6A482362688044306BDF4CE68D6A37294E9387B1F"
+}

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_gas_tap",
+  "rootName": "SF_WORKS_GAS_TAP_V1",
+  "packet": "PQ-131.07",
+  "cycle": 2,
+  "currentState": "design_candidate",
+  "candidateHash": "8DA1D98DAFE6EF475FF94C0F47E320C90128756BFB215CE7F362C8C52AF8AA60",
+  "shadeAngleDeg": 28,
+  "normalConvention": "OpenGL",
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "textureSize": 1024,
+  "uv0": "unique smart-project per mesh, remapped into role tiles of a 4x4 atlas",
+  "roles": {
+    "paint": {
+      "substrate": "steel plate",
+      "manufacture": "folded hat-section, return flanges, clamp shells",
+      "finish": "dark alkyd over zinc primer",
+      "metallic": [0.04, 0.14],
+      "roughness": [0.58, 0.78],
+      "forbidden": ["rover yellow", "DCC default", "plastic"]
+    },
+    "steel": {
+      "substrate": "cast/machined carbon steel",
+      "manufacture": "globe body loft, yoke, stem, C-rim wheel",
+      "finish": "worn bare metal; grease at stem; edge polish",
+      "metallic": [0.72, 0.90],
+      "roughness": [0.26, 0.62],
+      "forbidden": ["uniform grey plastic", "torus doughnut wheel"]
+    },
+    "brass": {
+      "substrate": "copper alloy",
+      "manufacture": "unions, bezel, packing/stem nuts",
+      "finish": "restrained gold; not copper pipe",
+      "metallic": [0.70, 0.88],
+      "roughness": [0.32, 0.48],
+      "forbidden": ["plastic copper", "chrome"]
+    },
+    "rubber": {
+      "substrate": "elastomer hose with helical armor",
+      "manufacture": "short supported run, fittings at both ends",
+      "finish": "matte dielectric tube; armor ridges slightly metallic",
+      "metallic": [0.02, 0.28],
+      "roughness": [0.78, 0.92],
+      "forbidden": ["floating bezier", "long occupancy tail"]
+    },
+    "face": {
+      "substrate": "printed paper/metal gauge card",
+      "manufacture": "dry ticks on cream disc",
+      "finish": "dielectric, dusty",
+      "metallic": [0.00, 0.04],
+      "roughness": [0.62, 0.78],
+      "forbidden": ["emissive HUD", "billboard sticker"]
+    },
+    "glass": {
+      "substrate": "instrument glass",
+      "manufacture": "recessed in bezel",
+      "finish": "dark dielectric, low roughness, dust film",
+      "metallic": [0.02, 0.06],
+      "roughness": [0.08, 0.22],
+      "forbidden": ["solid transmissive brick"]
+    },
+    "lamp": {
+      "substrate": "hooded status lamp glass",
+      "manufacture": "recessed in painted hood",
+      "finish": "only legal emissive",
+      "metallic": [0.04, 0.06],
+      "roughness": [0.22, 0.32],
+      "forbidden": ["halo", "emissive wheel", "glowing icon"]
+    }
+  }
+}

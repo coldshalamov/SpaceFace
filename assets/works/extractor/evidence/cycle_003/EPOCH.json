@@ -1,0 +1,380 @@
+{
+  "schema": "spaceface.worksExtractorCycleEpoch.v1",
+  "cycle": 3,
+  "epoch": "cycle_003",
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "G7": "open"
+  },
+  "independentReview": "not_launched",
+  "cycle01Frozen": true,
+  "cycle02Frozen": true,
+  "cycle02SiteKeep": true,
+  "candidate": {
+    "root": "SF_WORKS_EXTRACTOR_V1",
+    "partGlb": "assets/ships/parts/works/place_works_extractor.glb",
+    "sourceGlb": "assets/works/extractor/source/extractor.glb",
+    "blend": "assets/works/extractor/source/extractor.blend",
+    "sha256": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C",
+    "partsSha256": "D3635431D2A68FF811AAB443AEBB5CC1EE233EC2B3F4E455B6841C874823729C"
+  },
+  "hooks": {
+    "required": [
+      "head_face",
+      "belt",
+      "lamp"
+    ],
+    "found": [
+      "belt",
+      "head_face",
+      "lamp"
+    ],
+    "missing": [],
+    "exported_gltf_translations": {
+      "belt": [
+        0.03999999910593033,
+        0.1599999964237213,
+        0
+      ],
+      "head_face": [
+        0.41999998688697815,
+        0.27000001072883606,
+        0
+      ],
+      "lamp": [
+        0.3400000035762787,
+        0.47999998927116394,
+        -0.6800000071525574
+      ]
+    },
+    "invalid_exported_translations": [],
+    "pivot_head_face_blender": [
+      0.41999998688697815,
+      0.0,
+      0.27000001072883606
+    ],
+    "lamp_blender": [
+      0.3400000035762787,
+      0.6800000071525574,
+      0.47999998927116394
+    ],
+    "belt_blender": [
+      0.03999999910593033,
+      0.0,
+      0.1599999964237213
+    ]
+  },
+  "lod": {
+    "budgets": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "triangles": {
+      "lod0": 2776,
+      "lod1": 820,
+      "lod2": 416
+    },
+    "draws": 15,
+    "materials": 6,
+    "hulls": 15,
+    "roots": [
+      "LOD0_extractor",
+      "LOD1_extractor",
+      "LOD2_extractor"
+    ],
+    "missingRoots": []
+  },
+  "bboxBlenderZUp": {
+    "min": [
+      -0.945,
+      -0.7976,
+      0.0
+    ],
+    "max": [
+      0.92,
+      0.7976,
+      0.8
+    ],
+    "size": [
+      1.865,
+      1.5952,
+      0.8
+    ]
+  },
+  "camera": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_top.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_edge.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_top_clay.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge_grazing": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_edge_grazing.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        13.833184353181752,
+        3.204009611214891,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_site.png",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "normal": {
+      "path": "assets/works/extractor/evidence/cycle_003/normal_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "orm": {
+      "path": "assets/works/extractor/evidence/cycle_003/orm_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "id": {
+      "path": "assets/works/extractor/evidence/cycle_003/id_or_material_id.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "hook_identity": {
+      "path": "assets/works/extractor/evidence/cycle_003/hook_identity.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "pixels": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_top.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.02169230769230769,
+      "plus_x_mean": 0.17526863515377045,
+      "plus_x_dark_mean": 0.05821125954389572,
+      "rail_mean": 0.21868890523910522,
+      "belt_inboard_mean": 0.11946319788694382,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.11415499448776245,
+      "pad_mean": 0.19824349880218506,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_site.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 19.0,
+      "machine_bbox_px": [
+        949,
+        529,
+        970,
+        550
+      ],
+      "machine_size_px": [
+        22,
+        22
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.010101010101010102,
+      "plus_x_mean": 0.19640085101127625,
+      "plus_x_dark_mean": 0.06194392591714859,
+      "rail_mean": 0.17042146623134613,
+      "belt_inboard_mean": 0.1620706170797348,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": false,
+      "tan_bite_px": 2,
+      "tan_bite_mean": 0.17864924669265747,
+      "pad_mean": 0.17134399712085724,
+      "tan_bite_target": null
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_003/works_top_clay.png",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "px_per_cell": 120.0,
+      "machine_bbox_px": [
+        895,
+        475,
+        1024,
+        604
+      ],
+      "machine_size_px": [
+        130,
+        130
+      ],
+      "plus_x_dark_span_px": 0,
+      "plus_x_dark_frac": 0.00015384615384615385,
+      "plus_x_mean": 0.2919634282588959,
+      "plus_x_dark_mean": 0.08365412056446075,
+      "rail_mean": 0.21868890523910522,
+      "belt_inboard_mean": 0.37041181325912476,
+      "well_darker_than_rails": true,
+      "bite_px_in_band": null,
+      "tan_bite_px": 10,
+      "tan_bite_mean": 0.11509493738412857,
+      "pad_mean": 0.19824349880218506,
+      "tan_bite_target": [
+        8,
+        10
+      ]
+    }
+  },
+  "inspectCrops": {
+    "works_top": "assets/works/extractor/evidence/cycle_003/inspect/works_top_crop.png",
+    "works_top_clay": "assets/works/extractor/evidence/cycle_003/inspect/works_top_clay_crop.png",
+    "works_site": "assets/works/extractor/evidence/cycle_003/inspect/works_site_crop.png",
+    "works_edge": "assets/works/extractor/evidence/cycle_003/inspect/works_edge_crop.png"
+  },
+  "notes": [
+    "Cycle 03 source candidate only. Not wired, not released, not accepted.",
+    "Cycle 01 evidence/cycle_001 and Cycle 02 evidence/cycle_002 are byte-frozen.",
+    "Cycle 02 works_site at 19 px/cell is a KEEP; this cycle keeps that camera.",
+    "Open +X aperture: no closing floor/wall in the bite; tan pad shows 8-10 px at 120 px/cell.",
+    "Y-axis tool-steel drum on rail-top circular housings; 3-4 chunky refractory jaws; no roof/grate.",
+    "Ribbon belt over roller crowns with side/under void. Air-gapped steel fins. Hooded lamp, not a beacon.",
+    "Paint dielectric; ceramic isolated; restrained heat on the gearbox only.",
+    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "Independent reviewers were not launched. Disposition is review_pending."
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "assetId": "place_works_derrick",
+  "root": "SF_WORKS_DERRICK_V1",
+  "combined": "assets/works/derrick/source/derrick.glb",
+  "partsSource": "assets/ships/parts/works/place_works_derrick.glb",
+  "blend": "assets/works/derrick/source/derrick.blend",
+  "lodTriangles": {
+    "lod0": 7072,
+    "lod1": 1304,
+    "lod2": 896
+  },
+  "hooks": [
+    "drum_spin",
+    "cable_anchor",
+    "lamp_L",
+    "lamp_R"
+  ],
+  "meshNames": [
+    "LOD0_cable",
+    "LOD0_derrick",
+    "LOD0_drum",
+    "LOD0_lamp_L",
+    "LOD0_lamp_L_lens",
+    "LOD0_lamp_R",
+    "LOD0_lamp_R_lens",
+    "LOD1_cable",
+    "LOD1_derrick",
+    "LOD1_drum",
+    "LOD1_lamp_L",
+    "LOD1_lamp_L_lens",
+    "LOD1_lamp_R",
+    "LOD1_lamp_R_lens",
+    "LOD2_cable",
+    "LOD2_derrick",
+    "LOD2_drum",
+    "LOD2_lamp_L",
+    "LOD2_lamp_L_lens",
+    "LOD2_lamp_R",
+    "LOD2_lamp_R_lens"
+  ],
+  "bbox": {
+    "min": [
+      -1.08,
+      -0.87,
+      0.0
+    ],
+    "max": [
+      1.08,
+      0.87,
+      6.49
+    ],
+    "size": [
+      2.16,
+      1.74,
+      6.49
+    ]
+  },
+  "bytes": 15605268,
+  "sha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "partsSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A"
+}

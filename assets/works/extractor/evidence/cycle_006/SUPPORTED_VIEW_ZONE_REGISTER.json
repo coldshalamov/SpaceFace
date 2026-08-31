@@ -1,0 +1,217 @@
+{
+  "schema": "spaceface.visibleZoneRegister.v1",
+  "assetId": "place_works_extractor",
+  "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "cycle": 6,
+  "supportedViews": [
+    "works_top",
+    "works_edge",
+    "works_site"
+  ],
+  "authorInventory": "complete",
+  "reviewerConfirmed": false,
+  "allSupportedViewZonesClassified": false,
+  "reasonBooleanRemainsFalse": "Every author-observed visible zone is billed below, but the material-truth contract reserves the final boolean for independent exact-hash confirmation.",
+  "unclassifiedVisibleZones": [],
+  "zones": [
+    {
+      "id": "painted_load_frame",
+      "objects": [
+        "rail_*",
+        "xmem_*",
+        "foot_*",
+        "gusset_*",
+        "cheek_*",
+        "intake_shoulder_*",
+        "saddle_*"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [
+        "works_top",
+        "works_site"
+      ],
+      "substrate": "rolled and folded carbon-steel section",
+      "manufacture": "cut, brake-formed, welded, and bolted load frame",
+      "finish": "blue-grey alkyd over zinc primer; dielectric",
+      "interfaces": "pad feet, hat crossmembers, bearing saddles, crusher cheeks",
+      "opticalRead": "medium-value matte paint with steel revealed only at causal service edges",
+      "wear": "foot abrasion and localized cheek impacts; no universal edge wear",
+      "forbiddenReads": [
+        "mine-pad brown",
+        "toy plastic",
+        "closed square cage"
+      ]
+    },
+    {
+      "id": "drive_case_and_service_hatch",
+      "objects": [
+        "drive_case",
+        "drive_cover",
+        "drive_service_hatch",
+        "fin_header"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [
+        "works_edge"
+      ],
+      "substrate": "cast and machined steel drive housing",
+      "manufacture": "waisted casting with removable stamped service hatch",
+      "finish": "burnt-oxide machinery enamel with localized heat discoloration",
+      "interfaces": "rear frame crossmember, motor, fin header, belt drive",
+      "opticalRead": "warm mid-value drive mass distinct from cool painted frame",
+      "wear": "service-hatch hand wear and restrained bearing-side heat",
+      "forbiddenReads": [
+        "copper plastic",
+        "safety-yellow whole machine",
+        "unreadable brown lump"
+      ]
+    },
+    {
+      "id": "cutting_head_and_bearings",
+      "objects": [
+        "drum*",
+        "cutter_crown",
+        "bearing_*",
+        "roller_*",
+        "drive_pulley",
+        "idler_pulley",
+        "fin_*"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [
+        "works_top"
+      ],
+      "substrate": "machined tool steel",
+      "manufacture": "turned drum and rollers, replaceable flute bars, machined bearing caps",
+      "finish": "bare honed steel with restrained process polish",
+      "interfaces": "rail-top saddles, axle, gearbox, belt crowns",
+      "opticalRead": "bright cool metallic head crossing the frame",
+      "wear": "directional machining and localized ore contact; no generic noise",
+      "forbiddenReads": [
+        "black pit",
+        "unlit cylinder",
+        "chrome toy"
+      ]
+    },
+    {
+      "id": "refractory_feed_jaws",
+      "objects": [
+        "jaw_*"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [
+        "works_site"
+      ],
+      "substrate": "replaceable alumina refractory",
+      "manufacture": "pressed and fired blocks mechanically retained on the inward faces of painted lateral shoulders",
+      "finish": "dry ochre mineral body, uncoated",
+      "interfaces": "rooted laterally between crusher side shoulders and the cutter crown",
+      "opticalRead": "short inward jaw material framing a dark V intake; no longitudinal pale ends",
+      "wear": "chipped feed faces and dust-darkened roots only",
+      "forbiddenReads": [
+        "parallel forklift tines",
+        "closed grate",
+        "tiny studs",
+        "painted yellow trim"
+      ]
+    },
+    {
+      "id": "cutter_hardface_blocks",
+      "objects": [
+        "cutter_hardface_*"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [
+        "works_site"
+      ],
+      "substrate": "bonded alumina-carbide replaceable hardface blocks",
+      "manufacture": "pressed inserts mechanically retained on the machined cutter crown",
+      "finish": "dry pale refractory contact faces, uncoated and non-emissive",
+      "interfaces": "segmented across the Y-axis crown with visible service gaps",
+      "opticalRead": "bright transverse crusher line attached to the steel drum",
+      "wear": "ore-contact faces polish locally while roots remain dry",
+      "forbiddenReads": [
+        "emissive outline",
+        "floating stripe",
+        "painted highlight"
+      ]
+    },
+    {
+      "id": "inboard_belt",
+      "objects": [
+        "belt_face",
+        "belt_return"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [],
+      "substrate": "fabric-reinforced vulcanized rubber",
+      "manufacture": "endless carcass over crowned replaceable rollers",
+      "finish": "near-black dry rubber; non-metallic",
+      "interfaces": "drive and idler pulleys inside the load frame",
+      "opticalRead": "long dark directional ribbon leading into the bright crusher",
+      "wear": "longitudinal ore polish, not leather grain",
+      "forbiddenReads": [
+        "filled trough",
+        "metal plate",
+        "leather"
+      ]
+    },
+    {
+      "id": "hooded_work_lamp",
+      "objects": [
+        "lamp_bracket",
+        "lamp_socket",
+        "lamp_hood",
+        "lamp_lens"
+      ],
+      "classification": "billed",
+      "supportedViews": [
+        "works_top",
+        "works_edge",
+        "works_site"
+      ],
+      "dominantIn": [],
+      "substrate": "painted steel hood, ceramic socket, amber glass lens",
+      "manufacture": "replaceable recessed industrial task-light assembly",
+      "finish": "frame paint on hood with warm transparent lens",
+      "interfaces": "rooted bracket on the port rail beside the feed head",
+      "opticalRead": "single warm anchor above the mouth, fixture readable without emission",
+      "wear": "dust shadow under hood; clean serviceable lens face",
+      "forbiddenReads": [
+        "beacon",
+        "floating emissive disk",
+        "unrooted pixel"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "packet": "PQ-131.06",
+  "cycle": 3,
+  "tier": "C",
+  "supportedViews": ["works_top", "works_edge", "works_site"],
+  "allSupportedViewZonesClassified": false,
+  "note": "Independent reviewer must confirm coverage before this flips true. Cycle 03 self-register only.",
+  "zones": [
+    {"zone": "power_ladder_tray", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
+    {"zone": "power_gold_jacket", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
+    {"zone": "power_armour_and_clamps", "disposition": "billed", "family": "power", "dominatesSupportedView": false, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "power_contact_slot", "disposition": "billed", "family": "power", "dominatesSupportedView": false, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "power_glands_lid_brackets", "disposition": "billed", "family": "power", "dominatesSupportedView": false, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "lane_rails_and_cross_sleepers", "disposition": "billed", "family": "lane", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
+    {"zone": "lane_rollers", "disposition": "billed", "family": "lane", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "lane_belt_flow_mesh", "disposition": "billed", "family": "lane", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
+    {"zone": "lane_cover_strip", "disposition": "billed", "family": "lane", "dominatesSupportedView": false, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "lane_drive_brackets", "disposition": "billed", "family": "lane", "dominatesSupportedView": false, "supportedViews": ["works_top", "works_edge"]},
+    {"zone": "lane_service_lid", "disposition": "billed", "family": "lane", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge"]}
+  ]
+}

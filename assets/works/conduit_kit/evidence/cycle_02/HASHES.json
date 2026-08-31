@@ -1,0 +1,435 @@
+{
+  "packet": "PQ-131.06",
+  "cycle": 2,
+  "powerFreeze": {
+    "place_works_conduit_power_straight": "CA4D71279F5480D878FAE99AA6A3EF4921A6C47F209D743749444808AA8AB74F",
+    "place_works_conduit_power_corner": "06C41E5A890935A049EDD6E42616123C96A66D7CB4432AC76C48281AC2BB8F11",
+    "place_works_conduit_power_t": "8F15CE7FE47E011CF6D9C6D52FFF4491FB49309ACEAB48473D30101D272348E8",
+    "place_works_conduit_power_cross": "8E3D35DDFDC7E91657E27A14562F767B232B94B1C019B183D71ABA5F7BEA649D",
+    "place_works_conduit_power_end": "BF514FE9D17CCF435D6D3CFCC677B682D584155B1E5DA8C19DA91C9A499D8F6D",
+    "place_works_conduit_power_junction": "7AA12DC794E9427DC3A4D87486AB10FDC773322D2F13FBBEA6C65E0C6C05785D",
+    "power_atlas_basecolor.png": "999171C54FA62C9F4FB92CD08344DF6981889ED923CF5DD3FA62ACEBC1D78F0B",
+    "power_atlas_orm.png": "B90AE799A4933BB910083FD7CC5001693399BDCAE14F0092A821895FD4479F21",
+    "power_atlas_normal.png": "E43519CAE553C7DBA53971C31B95DC9095EE85BF71377B96BA1CCE870BB5FE78"
+  },
+  "stills": [
+    {
+      "name": "kit_sheet_works_top.png",
+      "sha256": "B816F734944745B97448B2EE6524BFD2BDEE8D387C3F6ECD61378C0701063141",
+      "bytes": 1722279
+    },
+    {
+      "name": "kit_sheet_works_site.png",
+      "sha256": "A515FFB173DCC0F073B37ACC1359A664334F2EE774ED199BD24E0A5BFA5C0CFD",
+      "bytes": 1543667
+    },
+    {
+      "name": "lane_straight_works_top.png",
+      "sha256": "8BC42FF60F1C0CDC20922F1175AEECBD50F25E0830BDAB0CEFA18E45F72B9F0C",
+      "bytes": 1637063
+    },
+    {
+      "name": "lane_straight_works_edge.png",
+      "sha256": "762BA342287E1805069E5ECC59D907A05F9742811604E620582FFEA3DF30312D",
+      "bytes": 1595254
+    },
+    {
+      "name": "lane_straight_works_site.png",
+      "sha256": "E85674AEFB6A7CF5C20DA35CA477A94BBBAE15CA688AD9273A01FDF2F96241D1",
+      "bytes": 1539510
+    },
+    {
+      "name": "lane_straight_clay.png",
+      "sha256": "CF52AC0A1A962E3E6D519FC9D1B45A72697403C342B9FC47B436CAC55CF48E9E",
+      "bytes": 1639012
+    },
+    {
+      "name": "lane_straight_material.png",
+      "sha256": "AA4B4EFD5D389E0A0DD9D05BFA27A8ADD4E82E54A474A17E2B0B5B5EF039A498",
+      "bytes": 1636960
+    },
+    {
+      "name": "lane_straight_normal.png",
+      "sha256": "1C6D409AB7AACA91C2A11119329A749C274CB3B3D30499F07159E599327358FB",
+      "bytes": 1637893
+    },
+    {
+      "name": "lane_straight_orm.png",
+      "sha256": "267E851A5E167CB3D63FD61B577244F50FBCA54D94BFC0E31FC99C8A220AF12E",
+      "bytes": 1638178
+    },
+    {
+      "name": "lane_straight_hooks.png",
+      "sha256": "49EE46B7A7F2A09E4C1C9203F39022E32A79FAF1B159F73124DFF469CD0CEDB9",
+      "bytes": 1631566
+    },
+    {
+      "name": "lane_corner_works_top.png",
+      "sha256": "746FC81A6FBF48CD5780B624A01B3B41BE203112E6ED2F9CAB2DE738E384F272",
+      "bytes": 1638835
+    },
+    {
+      "name": "lane_corner_works_edge.png",
+      "sha256": "D475517C7A07EC26011D654E909FDDA707C198F7A57AFA4FAB159DABBF73AA95",
+      "bytes": 1596577
+    },
+    {
+      "name": "lane_corner_works_site.png",
+      "sha256": "701857BAE6F292F06EEA26EB7A8F5D88D8EA2A22B4038B56736F466DBC6104C9",
+      "bytes": 1539351
+    },
+    {
+      "name": "lane_corner_clay.png",
+      "sha256": "25DF3012B24985FA7BEAFCDEE602FFABF0CD277D07A8BFD48C038704C886D7F5",
+      "bytes": 1642457
+    },
+    {
+      "name": "lane_corner_material.png",
+      "sha256": "6337AE3705454BBAD2EA98822C33D43C69E124F044FDA3BA62E64D90B8592D53",
+      "bytes": 1638829
+    },
+    {
+      "name": "lane_corner_normal.png",
+      "sha256": "65D9F772E27B419C5D6582EF28B0907F6418BAF7274724FDF120C07A8E533B78",
+      "bytes": 1642242
+    },
+    {
+      "name": "lane_corner_orm.png",
+      "sha256": "F3AD14A09B09AE91F9049D759DADE2E28588BD8B82C52AA17CAE0837E1000EEE",
+      "bytes": 1643902
+    },
+    {
+      "name": "lane_corner_hooks.png",
+      "sha256": "F28CAEDCD7CE8B5AFAD69368C5D66CBA751CD5E6797E7A2721DB3BF3F3DE3AFC",
+      "bytes": 1633474
+    },
+    {
+      "name": "lane_t_works_top.png",
+      "sha256": "E099F1B11B5BB8A66336CEAE33BBE68CA6B7130BD34825137D36C8767C58671D",
+      "bytes": 1641856
+    },
+    {
+      "name": "lane_t_works_edge.png",
+      "sha256": "6D867D740E4371D7889446A0BEA74102515ACDF1AA61B1BC346AAA58E16F51BD",
+      "bytes": 1600048
+    },
+    {
+      "name": "lane_t_works_site.png",
+      "sha256": "32E1515A0AE18F6FBF71DA973B92DFE5EDD99D0680A61AD078153F5B67D283F8",
+      "bytes": 1539678
+    },
+    {
+      "name": "lane_t_clay.png",
+      "sha256": "CC7FD649CACD0C8A861A94239DA93E9AEF3D87E7F6FD9A86E64C6BC49BBD9EB8",
+      "bytes": 1645510
+    },
+    {
+      "name": "lane_t_material.png",
+      "sha256": "E099F1B11B5BB8A66336CEAE33BBE68CA6B7130BD34825137D36C8767C58671D",
+      "bytes": 1641856
+    },
+    {
+      "name": "lane_t_normal.png",
+      "sha256": "B6A0E52AAC7F57F2E2F3921C75A32B75EA402CE6B21D7B6CB62CD876B4AA0EEF",
+      "bytes": 1643818
+    },
+    {
+      "name": "lane_t_orm.png",
+      "sha256": "70EAD1C2BD47CB5EC47C4B4DFA5824E07981FCDEA22A8A95504F5CE3BEC30C08",
+      "bytes": 1644595
+    },
+    {
+      "name": "lane_t_hooks.png",
+      "sha256": "49E49D73B0BD5950C5848BAAAA787CC1CA2629CB9F360C902D68B6847D52928C",
+      "bytes": 1632888
+    },
+    {
+      "name": "lane_cross_works_top.png",
+      "sha256": "31ADDDF0BAE1516BA9ABD0517DA933DE58B469D3BB43603D5FCB4676C682CD43",
+      "bytes": 1647047
+    },
+    {
+      "name": "lane_cross_works_edge.png",
+      "sha256": "ED65DD608F6B7A9AEC90B985E72478B465E16FA661DE9A94087C33EAC2AA678B",
+      "bytes": 1605200
+    },
+    {
+      "name": "lane_cross_works_site.png",
+      "sha256": "C3F58DA3296A4B0BBAEE569276789B6A5BE9388F5574248EDBC49016EFBBFA1A",
+      "bytes": 1540167
+    },
+    {
+      "name": "lane_cross_clay.png",
+      "sha256": "2F23E7F294C9C5367892E0A607CB251CEA4649D775BCF9DDCBE156801B3CC4B4",
+      "bytes": 1651748
+    },
+    {
+      "name": "lane_cross_material.png",
+      "sha256": "53B8F822C8D3325B17795D7381F8CB8C710DF394E1054D80D7808BBB2D91F25E",
+      "bytes": 1647001
+    },
+    {
+      "name": "lane_cross_normal.png",
+      "sha256": "43C4D378C2DCDBCE32C3A5EB9C1ABAD2FE9804789AB61EA1036C2E14B31224B9",
+      "bytes": 1649570
+    },
+    {
+      "name": "lane_cross_orm.png",
+      "sha256": "284755B2BB851BEECAD0157BFDF05200031D01974E2F72E158D7E339EFB1D50C",
+      "bytes": 1650474
+    },
+    {
+      "name": "lane_cross_hooks.png",
+      "sha256": "F2CD127B9ED378118CDA7D705023EAC8B8124AA1730C365178FDE822B0D7D233",
+      "bytes": 1634859
+    },
+    {
+      "name": "lane_end_works_top.png",
+      "sha256": "04C0ED0E9A8A421651E5C2048FDB059772C6AB1E18A7E41A36975C038C4A28FB",
+      "bytes": 1637310
+    },
+    {
+      "name": "lane_end_works_edge.png",
+      "sha256": "9AC07B1826C9481B1FDD06F48F8CB99661AFAE9F79AD5705205515E7B502E42C",
+      "bytes": 1595066
+    },
+    {
+      "name": "lane_end_works_site.png",
+      "sha256": "B2F3632E3822455DEA27E12C6AF0CDB804F5147F0ECD0C61A2FB3FB9BDD16B29",
+      "bytes": 1539802
+    },
+    {
+      "name": "lane_end_clay.png",
+      "sha256": "2B4F0AF9BC10141684BA7017050E3AFA4DEF2F22A8ED6EC70D9C4E44B84601B3",
+      "bytes": 1639540
+    },
+    {
+      "name": "lane_end_material.png",
+      "sha256": "95B0C6C056A34C82BB5B6F456A913384664CAACAC27E12852671A985C78C6E16",
+      "bytes": 1637306
+    },
+    {
+      "name": "lane_end_normal.png",
+      "sha256": "D6A715D4F3091999F6946FD3547BED25A5B902054DCAADA5D7081837EE4DDB19",
+      "bytes": 1638205
+    },
+    {
+      "name": "lane_end_orm.png",
+      "sha256": "DB7DC0B724757506BAD13D2E6B01AD1D13D14EE05F4E5A7D06B8375AEAB7B327",
+      "bytes": 1638748
+    },
+    {
+      "name": "lane_end_hooks.png",
+      "sha256": "8C4EA8FA44B9952A94175F5D9D75AFB622174513E42960CB8EAF8E49D40C7D07",
+      "bytes": 1631257
+    },
+    {
+      "name": "lane_junction_works_top.png",
+      "sha256": "2228783FCEBC247DC6CFF9D02FC0315B9C2A3E776E6FA1FA409EC6F24E2D6096",
+      "bytes": 1645442
+    },
+    {
+      "name": "lane_junction_works_edge.png",
+      "sha256": "BC1FED413451EC47E07C99A73ADB41460A9409E0660570C4F25C266BB7286931",
+      "bytes": 1604560
+    },
+    {
+      "name": "lane_junction_works_site.png",
+      "sha256": "D01AEDE38183FC69E1CBD36AF2903AB7A58EA5EAC1020E00D9BCE8587E707B8C",
+      "bytes": 1540142
+    },
+    {
+      "name": "lane_junction_clay.png",
+      "sha256": "229F21BED242E2C2DED9CE9CE2C71E995C8FE2DC2E805591871F447F74CA81E8",
+      "bytes": 1650825
+    },
+    {
+      "name": "lane_junction_material.png",
+      "sha256": "2228783FCEBC247DC6CFF9D02FC0315B9C2A3E776E6FA1FA409EC6F24E2D6096",
+      "bytes": 1645442
+    },
+    {
+      "name": "lane_junction_normal.png",
+      "sha256": "6CE527F2ED48E056F4A1441E11E4D0591DEA80356E7A35937321869762094B28",
+      "bytes": 1648329
+    },
+    {
+      "name": "lane_junction_orm.png",
+      "sha256": "21CBCF499788D0BD05BF2ED5AAE6F6ADAE6B0649FA9AAF919D07B09FF19F03B6",
+      "bytes": 1649125
+    },
+    {
+      "name": "lane_junction_hooks.png",
+      "sha256": "93F5DF7BE2A1E5EBA22097C039B3EAE4AB027320DE9166647C3DC5E5F2C2C637",
+      "bytes": 1634891
+    },
+    {
+      "name": "join_lane_straight_corner_works_top.png",
+      "sha256": "F93811C24C2EB1FC7489F7FB0FF3552F0DA1A0F5CADF1C081D0058FA8ADF1035",
+      "bytes": 1639886
+    },
+    {
+      "name": "join_lane_straight_corner_works_edge.png",
+      "sha256": "53138EED1475ED2B3D63D9C5ECED72483CC7CC27E39FD15977F8716D0E2837C3",
+      "bytes": 1597791
+    }
+  ],
+  "pieces": [
+    {
+      "id": "place_works_conduit_power_straight",
+      "sha256": "CA4D71279F5480D878FAE99AA6A3EF4921A6C47F209D743749444808AA8AB74F",
+      "lodTriangles": {
+        "lod0": 792,
+        "lod1": 340,
+        "lod2": 102
+      },
+      "bytes": 364936
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "sha256": "06C41E5A890935A049EDD6E42616123C96A66D7CB4432AC76C48281AC2BB8F11",
+      "lodTriangles": {
+        "lod0": 852,
+        "lod1": 396,
+        "lod2": 222
+      },
+      "bytes": 368412
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "sha256": "8F15CE7FE47E011CF6D9C6D52FFF4491FB49309ACEAB48473D30101D272348E8",
+      "lodTriangles": {
+        "lod0": 1160,
+        "lod1": 396,
+        "lod2": 216
+      },
+      "bytes": 419516
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "sha256": "8E3D35DDFDC7E91657E27A14562F767B232B94B1C019B183D71ABA5F7BEA649D",
+      "lodTriangles": {
+        "lod0": 1500,
+        "lod1": 508,
+        "lod2": 276
+      },
+      "bytes": 464920
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "sha256": "BF514FE9D17CCF435D6D3CFCC677B682D584155B1E5DA8C19DA91C9A499D8F6D",
+      "lodTriangles": {
+        "lod0": 684,
+        "lod1": 368,
+        "lod2": 154
+      },
+      "bytes": 360168
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "sha256": "7AA12DC794E9427DC3A4D87486AB10FDC773322D2F13FBBEA6C65E0C6C05785D",
+      "lodTriangles": {
+        "lod0": 1128,
+        "lod1": 520,
+        "lod2": 288
+      },
+      "bytes": 436528
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "sha256": "9F6A8A5D97490137104E656EE1BB3F20EF4BCC4AE77D05C98C47B2262CE9775F",
+      "lodTriangles": {
+        "lod0": 860,
+        "lod1": 420,
+        "lod2": 72
+      },
+      "bytes": 355140
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "sha256": "428CEBB519BD2A6C16325BBB7F51D8BE2FD27AD9D74B13E5556E033B80E48A9D",
+      "lodTriangles": {
+        "lod0": 1308,
+        "lod1": 676,
+        "lod2": 192
+      },
+      "bytes": 399800
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "sha256": "2210FE4993057DA6CCC63070EA958AC5D63842473B1C0F70D45F9E480E49991C",
+      "lodTriangles": {
+        "lod0": 1508,
+        "lod1": 708,
+        "lod2": 180
+      },
+      "bytes": 448248
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "sha256": "D122ADDE7D68E759B4DA18D007EE0DDD74862D3F12D21B14DBC5171248D3C62E",
+      "lodTriangles": {
+        "lod0": 1300,
+        "lod1": 892,
+        "lod2": 252
+      },
+      "bytes": 459456
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "sha256": "228551A024D8D4289B2731DBD663274E556F592FC52FAE9F29BB705C9536124F",
+      "lodTriangles": {
+        "lod0": 980,
+        "lod1": 512,
+        "lod2": 116
+      },
+      "bytes": 377532
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "sha256": "74D4D86B442115DB1FCEB5A0996C524DBACFF4273DC27FBE795D56CB701FE391",
+      "lodTriangles": {
+        "lod0": 1424,
+        "lod1": 644,
+        "lod2": 276
+      },
+      "bytes": 458084
+    }
+  ],
+  "atlases": {
+    "power": [
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_basecolor.png",
+        "sha256": "999171C54FA62C9F4FB92CD08344DF6981889ED923CF5DD3FA62ACEBC1D78F0B"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_orm.png",
+        "sha256": "B90AE799A4933BB910083FD7CC5001693399BDCAE14F0092A821895FD4479F21"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/power_atlas_normal.png",
+        "sha256": "E43519CAE553C7DBA53971C31B95DC9095EE85BF71377B96BA1CCE870BB5FE78"
+      }
+    ],
+    "lane": [
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_basecolor.png",
+        "sha256": "99DC6A9071349B99E754250A0D415A7F40B55C1C120746F63F176BF9782B1C83"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_orm.png",
+        "sha256": "F70D6076A4081C50ACBA54071419B080D617D263CA13B81370D900CFF9C40017"
+      },
+      {
+        "path": "assets/works/conduit_kit/source/textures/lane_atlas_normal.png",
+        "sha256": "A4A119EC91C504574D2D59AD6F9CDFB4D64262A8BA3C1F12BE4D1E922B76998C"
+      }
+    ]
+  },
+  "master": {
+    "glb": "assets/works/conduit_kit/source/works_conduit_kit.glb",
+    "blend": "assets/works/conduit_kit/source/works_conduit_kit.blend",
+    "sha256": "A855F023D5B303D0590F4FA2EF979A2610B668BFCFE17BC811D613AC5C329E00",
+    "bytes": 2437428
+  }
+}

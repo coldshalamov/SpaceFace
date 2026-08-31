@@ -1,0 +1,107 @@
+{
+  "cycle": 4,
+  "disposition": "accepted",
+  "rootNode": "SF_WORKS_REFINERY_V1",
+  "hooks": [
+    "furnace_slit",
+    "stack_vent",
+    "lamp"
+  ],
+  "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
+  "partsSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "sourceGlb": "assets/works/refinery/source/refinery.glb",
+  "sourceSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "lods": {
+    "lod0": {
+      "path": "assets/works/refinery/source/refinery_lod0.glb",
+      "sha256": "F5D1E2E37351159919F8A9614E1A0384DF06776C5F6A5714FD71E97BD91285A7",
+      "triangles": 7442
+    },
+    "lod1": {
+      "path": "assets/works/refinery/source/refinery_lod1.glb",
+      "sha256": "F87B0C95768002B7D62D06CBB1E64DB026E2679C7DB016B0F1FC1D2B22D66EF6",
+      "triangles": 1840
+    },
+    "lod2": {
+      "path": "assets/works/refinery/source/refinery_lod2.glb",
+      "sha256": "46DABCE9EDFC6504A135F2BD5ABD5F86F2FE849FA8074FAA96A50254C7770B1F",
+      "triangles": 560
+    }
+  },
+  "textures": {
+    "lod0": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+    },
+    "lod1": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+    },
+    "lod2": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+    }
+  },
+  "blend": "assets/works/refinery/source/works_refinery.blend",
+  "blendSha256": "CE90413DEBE3D36A18E40091146011FF6DAF321AC0E40CE881CF37D3B79EB9CD",
+  "builder": "tools/blender/build_works_refinery.py",
+  "builderSha256": "658C165C978248BF3D0D1636F22043997F68D0946ADE7A456FE266E0CD5A2A7A",
+  "lod0Maps": {
+    "basecolor": "1597E7002955ED41A8957A8E6362699F6FC1FD96A2BD4951C5BAA008EB2E9452",
+    "normal": "160FBD102019CA1AE49156C83C0C6A3191C9A869E17F163672A2B1CC7490162D",
+    "orm": "554141CDAEE28EB4B25E214C00E087739BBB91E61880C91260F72C536F364052"
+  },
+  "hookGltfTranslations": {
+    "furnace_slit": [
+      -0.2199999988079071,
+      0.2919999957084656,
+      -0.03999999910593033
+    ],
+    "stack_vent": [
+      0.18000000715255737,
+      1.1200000047683716,
+      -0.800000011920929
+    ],
+    "lamp": [
+      0.3100000023841858,
+      0.7400000095367432,
+      -0.6499999761581421
+    ]
+  },
+  "collisionGltf": {
+    "translation": [
+      0.0,
+      0.6000000238418579,
+      0.0
+    ],
+    "scale": [
+      1.0499999523162842,
+      0.6000000238418579,
+      1.0499999523162842
+    ]
+  },
+  "independentReview": {
+    "verdict": "KEEP",
+    "reviewer": "/root/refinery_exact_visual_review",
+    "scope": "whole_asset_exact_source_candidate",
+    "candidateSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795"
+  },
+  "routeAcceptance": {
+    "verdict": "KEEP",
+    "reviewer": "/root",
+    "scope": "exact_release_browser_electron_route",
+    "evidence": "assets/works/refinery/evidence/cycle_004_route/EPOCH.json"
+  }
+}

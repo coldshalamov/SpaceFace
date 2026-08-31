@@ -1,0 +1,142 @@
+{
+  "glb": "C:\\sf-agents\\grok-pq13102-massline-core-20260827\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_massline_core_lamp",
+      "lod": 0,
+      "faces": 350,
+      "visible": 2,
+      "hidden": 348,
+      "hiddenFrac": 0.9943
+    },
+    {
+      "object": "LOD1_massline_core_lamp",
+      "lod": 1,
+      "faces": 166,
+      "visible": 0,
+      "hidden": 166,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_lamp",
+      "lod": 2,
+      "faces": 40,
+      "visible": 0,
+      "hidden": 40,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_massline_core",
+      "lod": 0,
+      "faces": 5528,
+      "visible": 88,
+      "hidden": 5440,
+      "hiddenFrac": 0.9841
+    },
+    {
+      "object": "LOD1_massline_core",
+      "lod": 1,
+      "faces": 1230,
+      "visible": 0,
+      "hidden": 1230,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core",
+      "lod": 2,
+      "faces": 400,
+      "visible": 0,
+      "hidden": 400,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_massline_core_spin",
+      "lod": 0,
+      "faces": 1290,
+      "visible": 21,
+      "hidden": 1269,
+      "hiddenFrac": 0.9837
+    },
+    {
+      "object": "LOD1_massline_core_spin",
+      "lod": 1,
+      "faces": 260,
+      "visible": 0,
+      "hidden": 260,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_spin",
+      "lod": 2,
+      "faces": 82,
+      "visible": 0,
+      "hidden": 82,
+      "hiddenFrac": 1.0
+    }
+  ],
+  "hiddenFaces": 9235,
+  "faces": 9346,
+  "hiddenFrac": 0.9881,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+}

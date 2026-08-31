@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "1.0",
+  "identity": {
+    "assetId": "place_works_refinery",
+    "familyId": "asteroid_works",
+    "role": "one-cell ore-roast / matte-hold refinery",
+    "tier": "B",
+    "currentState": "design_candidate",
+    "targetState": "accepted",
+    "packet": "PQ-131.04",
+    "cycle": 3,
+    "disposition": "review_pending",
+    "sourcePaths": [
+      "assets/works/refinery/source/works_refinery.blend",
+      "tools/blender/build_works_refinery.py"
+    ],
+    "generatorPaths": ["tools/blender/build_works_refinery.py"],
+    "releasePaths": [],
+    "manifestPaths": [],
+    "runtimeSelectorPaths": [],
+    "activeLocksChecked": true
+  },
+  "candidateIdentity": {
+    "sourceHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "exportHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
+    "releaseHash": null,
+    "blendHash": "D19728AD0950CECE741670E36784A463761CC9F2484CE325D43B226413CD9BE1"
+  },
+  "playerFacingUse": {
+    "normalRoutes": ["asteroid_works"],
+    "supportedViews": [
+      {"name": "works_top", "camera": "spaceface_works_camera.works_top", "projectedSizePx": [132, 132], "importance": "primary"},
+      {"name": "works_edge", "camera": "spaceface_works_camera.works_edge", "projectedSizePx": [132, 132], "importance": "primary"},
+      {"name": "works_site", "camera": "spaceface_works_camera.works_site", "projectedSizePx": [22, 22], "importance": "secondary"}
+    ],
+    "closeInspectionSupported": false,
+    "marketingVisible": false
+  },
+  "scaleAndInterfaces": {
+    "units": "metre",
+    "dimensionsM": {"length": 1.72, "width": 1.55, "height": 1.20},
+    "forwardAxis": "+X",
+    "upAxis": "+Z",
+    "originAndPivot": "cell centre; underside z=0",
+    "sockets": ["furnace_slit", "stack_vent", "lamp"],
+    "rootNode": "SF_WORKS_REFINERY_V1",
+    "lodRoots": ["LOD0_refinery", "LOD1_refinery", "LOD2_refinery"]
+  },
+  "artDirection": {
+    "oneSentenceRead": "A compact furnace-stack-tank process train with a dark recessed charging well, not a beige cube with a glowing line.",
+    "forbiddenReads": [
+      "beige cube with a glowing line",
+      "orange stripe / puncture throat",
+      "rounded lozenge furnace",
+      "chimney stuck on a box",
+      "sci-fi altar",
+      "generic tank farm",
+      "shiny peach-red drum",
+      "rover safety yellow",
+      "neon outline",
+      "halo lamp"
+    ]
+  },
+  "materialTruthPreflight": {
+    "applicability": "required_for_all_changed_camera_visible_3d",
+    "componentReferenceDecision": "not_needed",
+    "allSupportedViewZonesClassified": false,
+    "visibleZoneRegister": [
+      {"zone": "furnace_jacket", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Mild-steel jacket over ceramic-fibre; cool graphite alkyd; chamfered structural returns, flared skirt, deep waist, broad shoulder course, and stepped crown."},
+      {"zone": "furnace_slit_well", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Deep blind charging well: thin dark formed-steel lip, tapered soot-dark dry refractory walls, and smaller ceramic-glass ember floor owned by furnace_slit. Beauty emission 0."},
+      {"zone": "burner_manifold", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Heat-stained bare steel plenum, nozzles, flange, access lid."},
+      {"zone": "flue_stack", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Rect takeoff, rect-to-round, mitered elbow, oxidized stack with hoops, rain cap above the outlet."},
+      {"zone": "process_pipe", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Heat-stained routed pipe with miters, flanges, clamp, tank nozzle."},
+      {"zone": "process_tank", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Matte oxide-red paint on a formed vessel; two saddles/base plates; knuckle ends; manway/lid."},
+      {"zone": "feet", "disposition": "billed", "supportedViews": ["works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Four tapered gusseted feet; visible gap to the pad."},
+      {"zone": "lamp", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "Hood, socket, recessed lens at the flue neck. Beauty emission 0."}
+    ],
+    "fictionDevelopmentAgreement": {
+      "components": [
+        {
+          "component": "furnace_jacket",
+          "fictionRoleAndOrigin": "Insulated roast box for crushed seam-feed. ART EXTRAPOLATION of Helix/MTS claim kit.",
+          "fictionMaterialAndManufacture": "Mild-steel jacket over ceramic-fibre blanket; rolled/welded courses; dark alkyd over zinc phosphate.",
+          "fictionInterfacesAndServiceHistory": "Four gusseted feet on the gallery floor; inset insulation straps with clamp blocks; service door on +X.",
+          "developmentGeometryAndAttachment": "Eight-sided jacket sections form a flared skirt, deep waist, returned shoulder course, narrow crown, proud folded corner returns, and four tapered gusseted feet.",
+          "developmentMaterialAndLodEvidence": "Cool graphite structure role, unique UV0, mesh AO/normal. LOD1/2 preserve the stepped jacket and feet.",
+          "agreementStatus": "authored_cycle_03"
+        },
+        {
+          "component": "furnace_slit",
+          "fictionRoleAndOrigin": "Charging / sight throat. Only emissive furnace surface, runtime 0-1.",
+          "fictionMaterialAndManufacture": "Cast refractory well; formed steel lip; ceramic-glass ember lens at the floor.",
+          "fictionInterfacesAndServiceHistory": "Blind well ~0.50 x 0.20, ~0.48 deep; thin lip overhangs to shadow the floor.",
+          "developmentGeometryAndAttachment": "Stepped jacket opening + aggressively tapered refractory liner + smaller recessed floor lens. Not a through-hole or painted stripe.",
+          "developmentMaterialAndLodEvidence": "refractory soot + slit lens emission 0 beauty / 1 diagnostic. LOD2 jacket taper + ember.",
+          "agreementStatus": "authored_cycle_03"
+        },
+        {
+          "component": "flue_stack",
+          "fictionRoleAndOrigin": "Off-gas path from the roast box. ART EXTRAPOLATION.",
+          "fictionMaterialAndManufacture": "Rectangular steel takeoff, rect-to-round collar, mitered elbow, oxidized stack with hoop courses, rain cap.",
+          "fictionInterfacesAndServiceHistory": "Rooted at the furnace +Y shoulder; stack_vent at the actual outlet under the cap.",
+          "developmentGeometryAndAttachment": "Discrete pieces, not a bent hose. Cap OD smaller than stack so the outlet reads from above.",
+          "developmentMaterialAndLodEvidence": "hotmetal + stack roles. LOD2 keeps elbow, tube, cap, hook.",
+          "agreementStatus": "authored_cycle_03"
+        },
+        {
+          "component": "process_tank_and_pipe",
+          "fictionRoleAndOrigin": "Hot slurry hold and transfer. ART EXTRAPOLATION.",
+          "fictionMaterialAndManufacture": "Rolled vessel, knuckle ends, two saddles on base plates, matte oxide-red; heat-stained process pipe.",
+          "fictionInterfacesAndServiceHistory": "Pipe bridges furnace +X to tank nozzle without filling the gallery.",
+          "developmentGeometryAndAttachment": "Mitered pipe with flanges/clamp; saddles wider than the shell in plan.",
+          "developmentMaterialAndLodEvidence": "tank roughness 0.86 metallic 0.02; pipe metallic 0.80. LOD2 keeps shell, saddles, pipe.",
+          "agreementStatus": "authored_cycle_03"
+        }
+      ]
+    },
+    "shapeGrammarAudit": {
+      "cameraProminentForms": [
+        {
+          "component": "furnace_jacket",
+          "primitiveOrigin": "eight-sided jacket-section loft",
+          "functionAndLoad": "insulated roast box",
+          "manufacturedFinalProfile": "flared skirt, deep waist belt, returned shoulder course, narrow crown, folded corner returns, tapered feet",
+          "attachmentAndInterface": "gallery floor via four feet; flue takeoff; pipe nozzle",
+          "scaleEvidence": "furnace plan ~1.16 x 0.91 wu within a 132 px whole-asset read",
+          "retainedPrimitiveRationale": "straight jacket courses and hard chamfer returns express folded insulated plate rather than a rounded lozenge"
+        },
+        {
+          "component": "stack",
+          "primitiveOrigin": "circle loft / pipe",
+          "functionAndLoad": "exhaust flue",
+          "manufacturedFinalProfile": "rect takeoff, transition, mitered elbow, hoops, rain cap",
+          "attachmentAndInterface": "rooted at furnace shoulder; vent under cap",
+          "scaleEvidence": "Ø ~0.29 wu offset on +Y",
+          "retainedPrimitiveRationale": "a flue is a tube; the takeoff/cap/outlet are the manufacture"
+        }
+      ],
+      "unresolvedBlockoutForms": []
+    }
+  },
+  "materialPlan": {
+    "runtimeModel": "glTF metallic-roughness",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "normalConvention": "OpenGL",
+    "roles": [
+      {"name": "structure", "substrate": "painted mild steel", "metallic": 0.03, "roughness": 0.66},
+      {"name": "refractory", "substrate": "dry soot-dark ceramic", "metallic": 0.0, "roughness": 0.86},
+      {"name": "hotmetal", "substrate": "heat-stained steel", "metallic": 0.84, "roughness": 0.42},
+      {"name": "stack", "substrate": "oxidized steel", "metallic": 0.72, "roughness": 0.68},
+      {"name": "tank", "substrate": "matte oxide-red paint", "metallic": 0.02, "roughness": 0.86},
+      {"name": "pipe", "substrate": "heat-stained steel", "metallic": 0.80, "roughness": 0.40},
+      {"name": "lampmetal", "substrate": "painted steel hood", "metallic": 0.50, "roughness": 0.52},
+      {"name": "slit", "substrate": "ceramic-glass lens", "metallic": 0.0, "roughness": 0.62, "emission": "0 beauty / 1 diagnostic"},
+      {"name": "lamp", "substrate": "warm glass lens", "metallic": 0.02, "roughness": 0.28}
+    ]
+  },
+  "lodAndOptimizationPlan": {
+    "lods": [
+      {"id": "LOD0", "triangles": 7442, "budget": 8000, "visualPurpose": "works_top / works_edge construction"},
+      {"id": "LOD1", "triangles": 1840, "budget": 2000, "visualPurpose": "works_site; keep furnace/slit/stack/tank/pipe/hooks"},
+      {"id": "LOD2", "triangles": 560, "budget": 600, "visualPurpose": "silhouette of the same train"}
+    ]
+  },
+  "acceptance": {
+    "requiredGates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"],
+    "independentReviewRequired": true,
+    "independentReview": "not_launched",
+    "noP0P1": false,
+    "exactReviewedHashRequired": true,
+    "wiring": "source_candidate_unwired"
+  }
+}

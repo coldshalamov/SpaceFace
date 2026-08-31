@@ -1,0 +1,90 @@
+{
+  "cycle": 4,
+  "disposition": "source_keep",
+  "combinedSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "partsSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "cycle001Frozen": true,
+  "lod": {
+    "0": {
+      "sha256": "357171E901EC21E1895482D73BFDD21E4BA2093DE9BDBE2AD216CD0F27C72DF9",
+      "triangles": 7072
+    },
+    "1": {
+      "sha256": "AC68B1835611806EFD85FA116FC4FCA9ACE00E3B96588E9FAD16CCE9DEBC4B1D",
+      "triangles": 1304
+    },
+    "2": {
+      "sha256": "9C4EC839CDFFFFEE96678778562988C6030488302B30D6681337F38EF48B54E0",
+      "triangles": 896
+    }
+  },
+  "textures": {
+    "derrick_atlas_lod0_basecolor.png": "9F4565D303E158B322E2152735BE25BD12491497A5F2978B79D3F9EE661F02ED",
+    "derrick_atlas_lod0_id.png": "EE340EB7B04E50489442E97C9D47480E008CD0EFB4BF020967FD2E79A904ABBB",
+    "derrick_atlas_lod0_normal.png": "1807D6A0E424178B2BA2C1A7B25EC226103759ADC59D0A0EE6BD7EA2DFC79467",
+    "derrick_atlas_lod0_orm.png": "01813A1D167FF45360F7E8D10C902863280F7BF01322DDC2235867FBABB04838",
+    "derrick_atlas_lod1_basecolor.png": "BA68717B1EFC15CC010A0D636AC35E71E163F64B24A1137BAAE781926931E2FA",
+    "derrick_atlas_lod1_id.png": "66154AA45406102E29086089FBC9E17DDAEC4033B11E800E962DF34C3A895A97",
+    "derrick_atlas_lod1_normal.png": "3E70678A3421C76A51B3B97F0B5CDD301B278CB1B840E032F7673AF8E32181CE",
+    "derrick_atlas_lod1_orm.png": "3A71B4FCE920D2D3BA59FAC54111AEB1D9972A0FA9EDBAB163989AB3A9A71DC3",
+    "derrick_atlas_lod2_basecolor.png": "5F89F320395A1BAEA02276F40E9C421BADD80E8F5672D480A2273F1EEB38537B",
+    "derrick_atlas_lod2_id.png": "D40C4600FCC178E92FDB85244C5E6FDAFFE1A8AAEDD34F5E2856BC3E2333D40E",
+    "derrick_atlas_lod2_normal.png": "E3266F0FA8F25D688170E60D08D183119AA0536D319CA131E402D4BB35BC28DB",
+    "derrick_atlas_lod2_orm.png": "5F231D674FB08753F82D36A03C0D5F9A1759011451708780FBD74B9E892358E8"
+  },
+  "stills": {
+    "hook_identity.png": "3099BB4D232E3723CB527CC48875CCB6A9D173295C1055B0AB8D63D3535051A7",
+    "material_id.png": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76",
+    "normal_isolation.png": "9E74E0218A2D4643B01DC03DBB345E2C5FB5843D18CE51E7B1D7E6339FB7CFAF",
+    "orm_isolation.png": "54F379144ADCBB9C9E17DF91C6DF6788455A6F02F19BFDEA3B9D9370A127723F",
+    "works_edge.png": "E5CF105975E5D181E07CCD5A3CF5EAAA2171350B3E1957414B4E6F8E17E0E09C",
+    "works_edge_grazing.png": "1613341721CA3F8D9DCB5358B2DF14672D69C48E6322FB0DFA2470BFAF8FF971",
+    "works_site.png": "6D8E5BF97971F79EB95A19D4BA56FD10A9F01845B77E8EC7772235061B6B14CF",
+    "works_top.png": "CDC5409B9B6BA557903AA5451359BC1A2F789C983FF8816AB7B9D6CB07AD4BD6",
+    "works_top_clay.png": "F8463BAAF25E2891D9ECD8F2929AB26D9F9004858E7610C6DDCA3CA59783F9E4"
+  },
+  "evidenceProducers": {
+    "material_id.png": {
+      "kind": "flat_material_role_isolation",
+      "producer": "tools/blender/build_works_derrick.py:override_channel",
+      "source": "assets/ships/parts/works/place_works_derrick.glb",
+      "sourceSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+      "atlas": "assets/works/derrick/source/textures/derrick_atlas_lod0_id.png",
+      "atlasSha256": "EE340EB7B04E50489442E97C9D47480E008CD0EFB4BF020967FD2E79A904ABBB",
+      "output": "assets/works/derrick/evidence/cycle_004/material_id.png",
+      "outputSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76"
+    }
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_derrick.glb",
+    "sha256": "c17d9512ddae854b3fd73433ba01dd0446e258fca4a13e3d06aaae66d0667793",
+    "bytes": 4417200,
+    "ktx2Textures": 9,
+    "meshoptBufferViews": 84
+  },
+  "renderPackage": {
+    "key": "works-derrick",
+    "metadataPath": "assets/ships/release/render-packages/works-derrick/render-package.json",
+    "metadataSha256": "58feaed23430c22d80b034091b97ffcf6e332e5f5744ccbd549b5a8b99da3eaf",
+    "contentHash": "c99daef819908637e30fa8b3d5e34721fb9e007e7c0f3000a04318a40f06afed",
+    "runtimeHash": "fa290360ee2ecfb00bc83d5e827428e6700a8c4ec1842aa845e68c5575d2b38d",
+    "renderGlbPath": "assets/ships/release/render-packages/works-derrick/render.glb",
+    "renderGlbSha256": "2ace7c2d1fb8469f0bfb880dae6ffc223ad09083a7ed937250251b2a749e6f11",
+    "renderGlbBytes": 4579420
+  },
+  "independentReview": {
+    "reviewer": "/root/derrick_cycle04_review_resume",
+    "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
+    "candidateSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "p0": 0,
+    "p1": 0,
+    "p2Repair": {
+      "rebasedCommit": "7ca946c7a4a109f410e24e6bdd3595e7bf384eff",
+      "materialIdSha256": "DA1FA13BE4B04C9EF85DFAC600126141B492F202706EFBE9F2FD6E9AEBA12F76",
+      "chromaticPixels": 7302
+    },
+    "openGates": ["G6", "G7"]
+  }
+}

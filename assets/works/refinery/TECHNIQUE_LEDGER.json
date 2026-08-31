@@ -1,0 +1,184 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "place_works_refinery",
+  "shipId": "place_works_refinery",
+  "candidateHash": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "exportGlb": "assets/ships/parts/works/place_works_refinery.glb",
+  "class": "place_station_module",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "clayStillReadsAsPrimitives": false,
+  "independentReview": "KEEP",
+  "independentReviewer": "/root/refinery_exact_visual_review",
+  "routeAcceptance": {
+    "verdict": "KEEP",
+    "reviewer": "/root",
+    "scope": "exact_release_browser_electron_route",
+    "evidence": "assets/works/refinery/evidence/cycle_004_route/EPOCH.json",
+    "closedGates": ["G6", "G7"]
+  },
+  "cycle": 4,
+  "disposition": "accepted",
+  "forbidden": {
+    "factoryLoftPlusBoxes": false,
+    "sharedSheetTint": false,
+    "shadeSmoothWholeObject": false,
+    "internalVoidCalledBay": false,
+    "imagenUsedAsBake": false
+  },
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/works_edge_grazing_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "bevelWidthM": 0.012,
+      "shadeAngleDeg": 28,
+      "notes": "LOD0 game mesh carries 2-segment angle bevels and weighted normals; shade_smooth_by_angle 28."
+    },
+    {
+      "id": "MTX-03",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/works_top_clay_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Deep blind charging well: thin dark steel lip, tapered refractory walls, and a smaller recessed ember floor separate at 120 px/cell. Not a through-hole, painted stripe, or picture-frame glow."
+    },
+    {
+      "id": "MTX-16",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/uv0_layout.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique UV0 packed on the bake target; overlap loop count 0."
+    },
+    {
+      "id": "MTX-20",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/normal_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "High duplicate with extra interface bolts (LOD0) baked selected-to-active onto the game mesh."
+    },
+    {
+      "id": "MTX-21",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/normal_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cage is an inflated copy of the low (0.028 wu) used for the tangent bake."
+    },
+    {
+      "id": "MTX-22",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/normal_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cycles tangent OpenGL normal bake; quiet on the crown from works_top, readable on straps/stack."
+    },
+    {
+      "id": "MTX-23",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/orm_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cycles AO bake packed to ORM.R and multiplied into albedo."
+    },
+    {
+      "id": "MTX-24",
+      "state": "implemented",
+      "still": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Pointiness emission bake drives edge wear in the authored albedo/ORM."
+    },
+    {
+      "id": "MTX-25",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/orm_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Short-range AO plus concave pointiness dirt the slit, flue neck, and saddle contacts."
+    },
+    {
+      "id": "MTX-30",
+      "state": "implemented",
+      "still": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Normal/AO/curvature from the mesh via Cycles. Concept JPGs are cited as form language only."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/id_or_material_id_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Paint dielectric, stack/pipe/hotmetal metallic, refractory dry ceramic, slit nonmetal."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Unique 1024 albedo authored from ID+AO+curvature on this UV, not a tinted shared sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/orm_isolation_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "ORM channels vary by role; not a flat G."
+    },
+    {
+      "id": "MTX-39",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/works_top_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Cavity dirt in the slit, flue, and saddle contacts; not a uniform dirt overlay."
+    },
+    {
+      "id": "MTX-46",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/works_top_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No rover yellow, neon, leather, or black-plastic wash. Cool graphite jacket, dry dark refractory, heat-stained flue, oxidized stack, and matte oxide-red tank remain distinct at 120 px/cell."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "assets/ships/parts/works/place_works_refinery.glb",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Modifiers applied, triangulated, Y-up glTF, sockets, collision helper, OpenGL normals, PNG ORM."
+    },
+    {
+      "id": "MTX-52",
+      "state": "implemented",
+      "still": "assets/works/refinery/evidence/cycle_003/works_top_clay_1to1.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Macro from cited industrial stills: stepped chamfered jacket with a deep waist and corner returns, rooted rect/round/miter flue, and saddle tank. Clay is a separated process train, not a rounded box or lozenge."
+    },
+    {
+      "id": "MTX-53",
+      "state": "implemented",
+      "still": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "Hard-surface high (tighter hardware) baked to unique UV0; this is manufactured equipment, not a sculpted rock."
+    },
+    {
+      "id": "MTX-54",
+      "state": "not_applicable",
+      "still": "assets/works/refinery/evidence/cycle_003/works_top.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "New source candidate; no previous accepted works-refinery mesh to revert."
+    }
+  ]
+}

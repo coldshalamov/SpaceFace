@@ -1,0 +1,250 @@
+{
+  "schema": "spaceface.worksExtractorCycleEpoch.v1",
+  "cycle": 1,
+  "epoch": "cycle_001",
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "gates": {
+    "G0": "evidence_ready",
+    "G1": "open",
+    "G2": "open",
+    "G4": "open",
+    "G7": "open"
+  },
+  "independentReview": "not_launched",
+  "candidate": {
+    "root": "SF_WORKS_EXTRACTOR_V1",
+    "partGlb": "assets/ships/parts/works/place_works_extractor.glb",
+    "sourceGlb": "assets/works/extractor/source/extractor.glb",
+    "blend": "assets/works/extractor/source/extractor.blend",
+    "sha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0",
+    "partsSha256": "938948CC0D946703E38C6E082CD2A8F96E3ACB38AA32C2C95683F00B6BB275F0"
+  },
+  "hooks": {
+    "required": [
+      "head_face",
+      "belt",
+      "lamp"
+    ],
+    "found": [
+      "belt",
+      "head_face",
+      "lamp"
+    ],
+    "missing": [],
+    "pivot_head_face_blender": [
+      0.41999998688697815,
+      0.0,
+      0.36000001430511475
+    ],
+    "lamp_blender": [
+      0.3400000035762787,
+      0.6800000071525574,
+      0.5
+    ],
+    "belt_blender": [
+      0.14000000059604645,
+      0.0,
+      0.1599999964237213
+    ]
+  },
+  "lod": {
+    "budgets": {
+      "0": 8000,
+      "1": 2000,
+      "2": 600
+    },
+    "triangles": {
+      "lod0": 3580,
+      "lod1": 1736,
+      "lod2": 564
+    },
+    "draws": 15,
+    "materials": 6,
+    "hulls": 15,
+    "roots": [
+      "LOD0_extractor",
+      "LOD1_extractor",
+      "LOD2_extractor"
+    ],
+    "missingRoots": []
+  },
+  "bboxBlenderZUp": {
+    "min": [
+      -0.94,
+      -0.756,
+      0.0
+    ],
+    "max": [
+      0.975,
+      0.756,
+      0.78
+    ],
+    "size": [
+      1.915,
+      1.512,
+      0.78
+    ]
+  },
+  "camera": {
+    "works_top": {
+      "path": "assets/works/extractor/evidence/cycle_001/works_top.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge": {
+      "path": "assets/works/extractor/evidence/cycle_001/works_edge.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_top_clay": {
+      "path": "assets/works/extractor/evidence/cycle_001/works_top_clay.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_edge_grazing": {
+      "path": "assets/works/extractor/evidence/cycle_001/works_edge_grazing.png",
+      "framing": "works_edge",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        13.833184353181752,
+        3.204009611214891,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "works_site": {
+      "path": "assets/works/extractor/evidence/cycle_001/works_site.png",
+      "framing": "works_site",
+      "distance": 225.46261096883785,
+      "px_per_cell_target": 19.0,
+      "px_per_cell_measured": 18.999999999999996,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "normal": {
+      "path": "assets/works/extractor/evidence/cycle_001/normal_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "orm": {
+      "path": "assets/works/extractor/evidence/cycle_001/orm_isolation.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "id": {
+      "path": "assets/works/extractor/evidence/cycle_001/id_or_material_id.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    },
+    "hook_identity": {
+      "path": "assets/works/extractor/evidence/cycle_001/hook_identity.png",
+      "framing": "works_top",
+      "distance": 35.698246736732656,
+      "px_per_cell_target": 120.0,
+      "px_per_cell_measured": 120.0,
+      "object_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "fov_v_deg": 31.0,
+      "resolution": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "notes": [
+    "Cycle 01 source candidate only. Not wired, not released, not accepted.",
+    "Hidden-face evaluation is per LOD; coincident LODs were never raycast together.",
+    "works_visible_faces dry-run recorded in hidden_faces.json; --delete not applied (80x45 grid undersamples a 120 px object).",
+    "Reviewers were not launched."
+  ]
+}
