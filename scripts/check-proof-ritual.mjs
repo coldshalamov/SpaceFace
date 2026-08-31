@@ -3,12 +3,13 @@
 //
 // Headless proof for the first-15 ritual's backend runtime seams: onboarding
 // must retain ctx.helpers/registry, B1 must spawn the derelict through the
-// canonical helper, and B3 must spawn/flee the tutorial pirate without relying
-// on browser/render boot.
+// canonical helper, and B3 must spawn the nonlethal gunnery trainer without
+// relying on browser/render boot.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createBus } from '../src/core/eventBus.js';
+import { Masks } from '../src/core/entity.js';
 import { onboarding } from '../src/systems/onboarding.js';
 
 let sections = 0;
@@ -95,7 +96,7 @@ function guarded(fn) {
 
 guarded(testHelperSeam);
 guarded(testDerelictBeatSpawn);
-guarded(testPirateBeatSpawnAndMercyFlee);
+guarded(testGunneryTrainerSpawn);
 testRuntimeScope();
 
 console.log(`[check-proof-ritual] PASS - ${sections} sections green`);
@@ -114,34 +115,25 @@ function testDerelictBeatSpawn() {
   assert.ok(wreck, 'B1 should spawn an onboarding derelict through helpers.spawnEntity');
   assert.equal(h.sys._derelictId, wreck.id, 'B1 stores the spawned derelict id');
   assert.equal(wreck.data.parentType, 'ship', 'derelict reads as a ship wreck, not an asteroid/mining node');
-  const beacon = h.state.entities.get('beacon');
-  const dist = Math.hypot(wreck.pos.x - beacon.pos.x, wreck.pos.z - beacon.pos.z);
-  assert.equal(Math.round(dist), 80, 'B1 derelict offset stays at the tether tutorial distance');
+  const player = h.state.entities.get('player');
+  const dist = Math.hypot(wreck.pos.x - player.pos.x, wreck.pos.z - player.pos.z);
+  assert.equal(Math.round(dist), 80,
+    'B1 derelict stays 80 WU from the live player, not from the old opening beacon');
   ok('B1 derelict runtime spawn is helper-backed and deterministic');
 }
 
-function testPirateBeatSpawnAndMercyFlee() {
+function testGunneryTrainerSpawn() {
   const h = makeHarness();
-  h.state.onboarding.currentBeat = 3;
-  const lootDrops = [];
-  h.bus.on('loot:drop', (payload) => lootDrops.push(payload));
-  h.sys._spawnPirate();
-
-  const pirate = h.state.entityList.find((e) => e.id === h.sys._pirateId);
-  assert.ok(pirate, 'B3 should spawn a tutorial pirate through helpers.spawnEntity');
-  assert.equal(pirate.data.ai.spawnContext, 'tutorial_pirate', 'B3 pirate is tagged as tutorial context');
-  assert.equal(pirate.shield, 40, 'B3 pirate uses tutorial shield');
-  assert.equal(pirate.armorHp, 22, 'B3 pirate uses tutorial armor');
-  assert.equal(pirate.data.ai.forceFlee, undefined, 'B3 pirate does not start already fleeing');
-
-  pirate.hull = Math.floor((pirate.hullMax || 1) * 0.29);
-  h.sys._checkPirateFlee();
-  assert.equal(h.state.onboarding.pirateFled, true, 'B3 marks mercy flee instead of requiring a kill');
-  assert.equal(pirate.data.ai.forceFlee, true, 'B3 sets the existing AI flee flag');
-  assert.equal(lootDrops.length, 1, 'B3 flee drops one cargo lesson payload');
-  assert.equal(lootDrops[0].items[0].id, 'cmdty_stolen_goods', 'B3 flee drop teaches the contraband/cargo beat');
-  assert.ok(h.state.onboarding.beatDoneAt.snare != null, 'B3 flee completes the snare beat');
-  ok('B3 pirate runtime spawn and mercy flee are helper-backed');
+  const trainer = h.sys._spawnTrainer('burst');
+  assert.ok(trainer, 'B3 should spawn its gunnery trainer through helpers.spawnEntity');
+  assert.equal(trainer.name, 'SCN Gunnery Buoy', 'B3 names the visible training target');
+  assert.equal(trainer.type, 'drone', 'B3 trainer uses the non-ship collision identity');
+  assert.equal(trainer.flags.invuln, true, 'B3 trainer survives the burst lesson');
+  assert.equal(trainer.data.ai.spawnContext, 'tutorial_training', 'B3 trainer has explicit tutorial provenance');
+  assert.equal(trainer.data.ai.roe, 'hold_fire', 'B3 trainer cannot fire on the player');
+  assert.deepEqual(trainer.data.weapons, [], 'B3 trainer is unarmed');
+  assert.equal(trainer.collisionMask, Masks.PROJECTILE, 'B3 trainer accepts projectile hits only');
+  ok('B3 gunnery trainer is helper-backed, nonlethal, and visible');
 }
 
 function testRuntimeScope() {
@@ -159,7 +151,9 @@ function testRuntimeScope() {
     'proof ritual doc names the shipped proof surface');
   assert.match(proofDoc, /B1.*derelict/i,
     'proof ritual doc names the derelict beat');
-  assert.match(proofDoc, /B3.*pirate/i,
-    'proof ritual doc names the pirate mercy beat');
+  assert.match(proofDoc, /B3.*Gunnery/i,
+    'proof ritual doc names the live nonlethal gunnery beat');
+  assert.doesNotMatch(onboardingSrc, /_spawnPirate|tutorial_pirate/,
+    'the First Shift must not claim the retired armed-pirate tutorial path');
   ok('packet doc and package wiring are present');
 }

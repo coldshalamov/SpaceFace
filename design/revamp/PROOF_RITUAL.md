@@ -13,8 +13,8 @@ and the global `voiceArbiter`/toast floor.
 |---|---|
 | B0 Wake | Player thrusts to the 47-A beacon/anomaly. |
 | B1 Derelict | Onboarding spawns a derelict through `helpers.spawnEntity`; player latches, reels, and cuts the tether. |
-| B2 Seam | Player scans and mines the first seam; AUD-06 supplies the seam/vent signature. |
-| B3 Snare | Onboarding spawns a weak Reach pirate through `helpers.spawnEntity`; the pirate tolls, then flees at low hull and drops stolen goods. |
+| B3 Gunnery | After cutting the derelict tether, onboarding spawns an invulnerable SCN gunnery trainer through `helpers.spawnEntity`; the pilot fires a short burst, lets weapon heat recover, then opens distance. |
+| B2 Seam | After Gunnery disengage, player scans and mines the first seam; AUD-06 supplies the seam/vent signature. |
 | B4 Dock | Player docks at Helios, sells, and sees one job. |
 | B5 Choice | Player picks the work that fits and exits tutorial mode into story tracking. |
 
@@ -23,8 +23,8 @@ and the global `voiceArbiter`/toast floor.
 - Exactly one objective voice owns the floor at a time.
 - At least `SILENCE_S` passes between beat success and the next tutorial line.
 - B1 and B3 runtime content is helper-spawned, not hand-mutated into state.
-- B3 teaches mercy: reducing the tutorial pirate to low hull sets the flee flag,
-  drops a cargo lesson payload, and completes the snare beat without requiring a kill.
+- B3 is nonlethal: its projectile-only trainer cannot ram or fire on the player, survives the
+  burst, and finishes only after real weapon cooling and physical disengagement.
 
 `npm run check:proof-ritual` is the headless backend check for these seams.
 `npm run check:first-15-runtime` remains the browser release-bar probe for T9.
