@@ -1465,6 +1465,21 @@
       "metadataUrl": "assets/ships/release/render-packages/works-massline-core/render-package.json"
     },
     {
+      "key": "works-extractor",
+      "assetId": "sf.render.works-extractor",
+      "runtimeAssetId": "place_works_extractor",
+      "kind": "part",
+      "slot": "place",
+      "releaseAssetId": "place_works_extractor",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_extractor.glb",
+      "releaseSha256": "a65685bc1e917da9512879159ed2e65f2e640a233d4010bdb4099d8d26fa6a02",
+      "releaseBytes": 2016576,
+      "rootNode": "SF_WORKS_EXTRACTOR_V1",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-extractor",
+      "metadataUrl": "assets/ships/release/render-packages/works-extractor/render-package.json"
+    },
+    {
       "key": "conveyor-truss",
       "assetId": "sf.render.conveyor-truss",
       "runtimeAssetId": "place_conveyor_truss",

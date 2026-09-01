@@ -976,7 +976,18 @@ try {
             }
             site.exportBuffer = {};
           }, { siteId: wired.siteId, units });
-          await page.waitForTimeout(400);
+          // The projection/render bridge advances on its own cadence. A fixed 400 ms sleep raced
+          // that cadence at 1920x1080 and sampled 0 -> 0 even though the same 1280x720 cell reached
+          // 0 -> 4. Wait for the live renderer reading that this assertion actually consumes.
+          await page.waitForFunction((expected) => {
+            const h = document.querySelector('.ast-canvas')?.__ast3d;
+            if (!h) return false;
+            const lanes = h.networks().lanes;
+            if (!lanes.length) return false;
+            return expected > 0
+              ? lanes.some((lane) => lane.stored >= expected)
+              : lanes.every((lane) => lane.stored === 0);
+          }, units, { timeout: 2500, polling: 50 });
           return readNet();
         };
         const nEmpty = await setStock(0);

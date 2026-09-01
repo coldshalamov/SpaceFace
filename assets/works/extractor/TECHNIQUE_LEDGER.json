@@ -4,17 +4,44 @@
   "shipId": "place_works_extractor",
   "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
   "exportGlb": "assets/ships/parts/works/place_works_extractor.glb",
+  "currentIntegrationCandidate": {
+    "epoch": "assets/works/extractor/evidence/cycle_008_master/EPOCH.json",
+    "state": "accepted",
+    "authoringSourceSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "selectedRuntimeSourceSha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
+    "releaseSha256": "A65685BC1E917DA9512879159ED2E65F2E640A233D4010BDB4099D8D26FA6A02",
+    "renderGlbSha256": "05BC593A95A14E71AA38B15F56DBEBBE98CBDC0D44DF05284726040A5E3686FB",
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ],
+    "currentVerdict": "KEEP",
+    "keepClaim": true
+  },
   "class": "place",
   "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
   "clayStillReadsAsPrimitives": false,
   "independentReview": "KEEP",
-  "independentReviewer": "/root/extractor_cycle06_review",
+  "independentReviewer": "luna-max + terra-xhigh + opencode-go/kimi-k3-max",
+  "historicalIndependentSourceReview": {
+    "reviewer": "/root/extractor_cycle06_review",
+    "verdict": "KEEP",
+    "scope": "source_candidate_only",
+    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "current": false
+  },
   "routeAcceptance": {
     "verdict": "KEEP",
-    "reviewer": "/root",
-    "scope": "exact_release_browser_electron_route",
+    "reviewer": "controller",
+    "scope": "current_release_runtime_capture",
+    "evidence": "assets/works/extractor/evidence/cycle_008_master/EPOCH.json",
+    "closedGates": ["G1", "G2", "G4", "G6", "G7"],
+    "keepClaim": true
+  },
+  "historicalCycle07RouteAcceptance": {
     "evidence": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
-    "closedGates": ["G6", "G7"]
+    "current": false,
+    "reason": "superseded as the current release/runtime pointer"
   },
   "forbidden": {
     "factoryLoftPlusBoxes": false,

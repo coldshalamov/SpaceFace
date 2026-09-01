@@ -3,9 +3,23 @@
   "assetId": "place_works_extractor",
   "root": "SF_WORKS_EXTRACTOR_V1",
   "packet": "PQ-131.03",
-  "cycle": 6,
-  "currentState": "integration_candidate",
+  "cycle": 8,
+  "currentState": "accepted",
   "candidateHash": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "currentIntegrationEvidence": {
+    "epoch": "assets/works/extractor/evidence/cycle_008_master/EPOCH.json",
+    "state": "accepted",
+    "authoringSourceSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "selectedRuntimeSourceSha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
+    "releaseSha256": "A65685BC1E917DA9512879159ED2E65F2E640A233D4010BDB4099D8D26FA6A02",
+    "renderGlbSha256": "05BC593A95A14E71AA38B15F56DBEBBE98CBDC0D44DF05284726040A5E3686FB",
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ],
+    "currentVerdict": "KEEP",
+    "keepClaim": true
+  },
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -124,16 +138,21 @@
     "unclassifiedVisibleZones": []
   },
   "allSupportedViewZonesClassified": true,
-  "gatesOpen": [
-    "G6",
-    "G7"
-  ],
+  "gatesOpen": [],
   "independentSourceReview": {
     "reviewer": "/root/extractor_cycle06_review",
     "reviewedCommit": "19acb43172a87a04f553ca99dd87fc64bb762c39",
     "verdict": "KEEP",
     "p0": 0,
     "p1": 0,
-    "scope": "source_candidate_only"
+    "scope": "source_candidate_only",
+    "historicalSourceOnly": true
+  },
+  "historicalEvidence": {
+    "cycle_007_route": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
+      "current": false,
+      "reason": "superseded as the current release/runtime pointer"
+    }
   }
 }

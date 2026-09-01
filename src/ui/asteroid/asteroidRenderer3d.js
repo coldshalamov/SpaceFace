@@ -89,6 +89,67 @@ export function settleAuthoredWorksArrival({ loader, group, isLive, install, onI
   }
 }
 
+// The loader restores these authored pivots from the flattened render package before this runs.
+// All mutable state stays on the returned instance: lamps are material shells, and belt textures
+// are sampler clones, never cached blueprint resources.
+export function bindAuthoredExtractor(group) {
+  const hooks = group?.userData?.worksExtractorHooks;
+  if (!hooks?.head_face || !hooks?.belt || !hooks?.lamp) {
+    throw new Error('Extractor hook hierarchy is unavailable');
+  }
+  const lampMaterials = [];
+  hooks.lamp.traverse((node) => {
+    if (!node.isMesh || !/^LOD[01]_lamp_lens$/u.test(node.name || '')) return;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of rows) {
+      if (material && !lampMaterials.includes(material)) lampMaterials.push(material);
+    }
+  });
+  if (!lampMaterials.length) throw new Error('Extractor lamp hook owns no lens status materials');
+
+  const beltMaps = [];
+  hooks.belt.traverse((node) => {
+    if (!node.isMesh) return;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of rows) {
+      if (!material) continue;
+      for (const key of Object.keys(material)) {
+        const texture = material[key];
+        if (!texture?.isTexture || !texture.offset || texture.userData?.worksInstanceOwned !== true) continue;
+        if (!beltMaps.includes(texture)) beltMaps.push(texture);
+      }
+    }
+  });
+  if (!beltMaps.length) throw new Error('Extractor belt hook owns no instance-owned scrollable sampler');
+
+  const pistonBase = hooks.head_face.position.x;
+  group.rotation.x = Math.PI / 2;
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      lamp: lampMaterials[0],
+      lampAnchor: hooks.lamp,
+      piston: hooks.head_face,
+      pistonBase,
+      setLamp(hex, intensity) {
+        for (const material of lampMaterials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+      setBeltPhase(phase, running) {
+        if (!running) return;
+        const offset = ((phase % 1) + 1) % 1;
+        for (const map of beltMaps) map.offset.x = offset;
+      },
+    },
+    pulses: [],
+  };
+}
+
 /**
  * Compare this module's copy of the ring against the sim's own contactProfile on a synthetic
  * field that exercises every contactKind plus an out-of-bounds edge. Pure: no THREE, no DOM,
@@ -526,6 +587,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredRoverGen = 0;
   let authoredCoreGen = 0;
   let authoredCoreGhostGen = 0;
+  let authoredExtractorGen = 0;
+  let authoredExtractorGhostGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
   let worksHostWasVisible = false;
@@ -3311,6 +3374,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     rec.pending = false;
   }
 
+  function installAuthoredExtractor(rec, group) {
+    const authored = bindAuthoredExtractor(group);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.pending = false;
+  }
+
   function loadAuthoredCore(rec) {
     const loader = ensureWorksLoader();
     if (!loader) {
@@ -3349,6 +3421,42 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
+  function loadAuthoredExtractor(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Extractor cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredExtractorGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_extractor').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Extractor load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredExtractor(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Extractor install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Extractor load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
   function buildAuthoredCoreAt(m) {
     const root = new THREE.Group();
     root.name = `worksCore:${m.id}`;
@@ -3363,8 +3471,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec;
   }
 
+  function buildAuthoredExtractorAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksExtractor:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredExtractor(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
     if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
+    if (m.defId === 'sm_extractor') return buildAuthoredExtractorAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -3545,6 +3668,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           const bob = motionReduce || !running ? 0 : Math.abs(Math.sin(timeS * 3.1)) * S * 0.09;
           rec.dyn.piston.position.x = rec.dyn.pistonBase - bob;
         }
+        if (rec.dyn.setBeltPhase) rec.dyn.setBeltPhase(timeS * 0.58, running && !motionReduce);
         if (rec.dyn.furnace) {
           const hot = running;
           rec.dyn.furnace.emissiveIntensity = hot
@@ -4437,11 +4561,55 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return record;
   }
 
+  function beginAuthoredExtractorGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredExtractorGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Extractor ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_extractor').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && ghost === record && record.loadToken === token) {
+          console.error('[asteroidRenderer3d] authored Extractor ghost load returned null');
+        }
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          bindAuthoredExtractor(part);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Extractor ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Extractor ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
     if (!defId) return null;
     if (defId === 'sm_massline_core') return beginAuthoredCoreGhost(defId);
+    if (defId === 'sm_extractor') return beginAuthoredExtractorGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -4498,6 +4666,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const roverX = pxToWorldX(drawPos.x + TILE / 2);
     const roverY = pxToWorldY(drawPos.y + TILE / 2);
     const { halfW, halfH } = viewHalfExtents();
+    // A controller-only authored-part proof must photograph the cell it mounted, not let the
+    // rover leash immediately pull the next frame back to the player. Site register still uses
+    // the whole-body framing below so the same selected release is judged at both play scales.
+    if (worksProofGroup && zoomRegister === 'work') {
+      look.x = worldX(WORKS_PROOF_CELL.col);
+      look.y = worldY(WORKS_PROOF_CELL.row);
+      lookInit = true;
+      lookSnapNext = false;
+      return { x: look.x, y: look.y };
+    }
     if (!lookInit) {
       look.x = roverX;
       look.y = roverY;
@@ -5410,23 +5588,41 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       const loader = ensureWorksLoader();
       if (!loader) return { ok: false, reason: 'no-loader' };
+      const gen = ++worksProofGen;
+      unmountWorksProof();
       const group = await loader.loadWorksPart(id, options);
-      if (worksTearingDown || disposed || glTeardownDone) {
+      if (worksTearingDown || disposed || glTeardownDone || gen !== worksProofGen) {
         if (group) loader.releaseWorksPart(group);
-        return { ok: false, reason: 'tearing-down' };
+        return {
+          ok: false,
+          reason: (worksTearingDown || disposed || glTeardownDone) ? 'tearing-down' : 'stale',
+        };
       }
       if (!group) return { ok: false, reason: 'load-null', stats: loader.stats() };
-      if (!group.parent) scene.add(group);
+      // The controller capture is player-route evidence, not a raw loader preview. Seat the
+      // selected release at the same proof cell the camera frames; otherwise a Y-up GLB remains
+      // edge-on at scene origin while the still photographs the unrelated entry derrick. The
+      // Extractor also runs its production binding so missing dynamic ownership fails closed here.
+      if (id === 'place_works_extractor') bindAuthoredExtractor(group);
+      const transform = seatWorksProofGroup(group);
+      group.userData.worksTransform = transform;
+      group.name = `worksProof_${id}`;
+      scene.add(group);
+      worksProofGroup = group;
+      worksProofWanted = true;
+      worksHostWasVisible = true;
       const hookNames = group.userData.worksHooks || {};
       const hooks = {};
       for (const name of Object.keys(hookNames)) hooks[name] = hookNames[name] ? name : null;
       return {
         ok: true,
         id,
+        cell: { col: WORKS_PROOF_CELL.col, row: WORKS_PROOF_CELL.row },
         stats: loader.stats(),
         hooks,
         colourSpace: inspectWorksColourSpace(group),
         nodeLod: group.userData.worksNodeLod || null,
+        transform,
         lod: inspectWorksLod(group),
       };
     },

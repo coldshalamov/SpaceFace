@@ -5074,6 +5074,30 @@
       }
     },
     {
+      "id": "place_works_extractor",
+      "category": "places",
+      "priority": "P1",
+      "file": "works/place_works_extractor.glb",
+      "tris": 3112,
+      "budgetClass": "landmark",
+      "bytes": 4370236,
+      "textureSize": 1024,
+      "tintable": {},
+      "note": "PQ-131.03 authored Extractor. The selected runtime source contains LOD0/work and LOD1/site only; LOD2 remains source/evidence-only. head_face, belt, and lamp are runtime-owned hooks; independent G1/G2/G4/G7 review remains open.",
+      "hooks": [
+        "head_face",
+        "belt",
+        "lamp"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.945, 0, -0.7976],
+        "max": [0.73, 0.8, 0.7976],
+        "dimensionsM": [1.675, 0.8, 1.5952]
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "category": "places",
       "priority": "P2",

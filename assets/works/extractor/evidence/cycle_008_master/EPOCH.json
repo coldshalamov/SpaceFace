@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.worksExtractorIntegrationEpoch.v1",
+  "assetId": "place_works_extractor",
+  "cycle": 8,
+  "epoch": "cycle_008_master",
+  "capturedAt": "2026-09-01",
+  "state": "accepted",
+  "disposition": "KEEP",
+  "current": true,
+  "authoringSource": {
+    "path": "assets/works/extractor/source/extractor.glb",
+    "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "bytes": 6453308,
+    "immutable": true,
+    "exportedLods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ]
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_extractor.glb",
+    "sha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
+    "bytes": 4370236,
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ]
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_extractor.glb",
+    "sha256": "A65685BC1E917DA9512879159ED2E65F2E640A233D4010BDB4099D8D26FA6A02",
+    "bytes": 2016576,
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 43
+  },
+  "renderPackage": {
+    "key": "works-extractor",
+    "metadataPath": "assets/ships/release/render-packages/works-extractor/render-package.json",
+    "metadataSha256": "13D055CB4059B7D84626BAF1401CAF9C5F934CF99577A776BA56551D8C4E6CD6",
+    "contentHash": "5fc5ec61186829d4cd3c6819619f556bc1c8b6587237a55af640bca5c6928948",
+    "runtimeHash": "211d7f22f8f385552c77dabbab277248c2c45d3d981f27dcf25caae29df2b7dd",
+    "renderGlbPath": "assets/ships/release/render-packages/works-extractor/render.glb",
+    "renderGlbSha256": "05BC593A95A14E71AA38B15F56DBEBBE98CBDC0D44DF05284726040A5E3686FB",
+    "renderGlbBytes": 2101292
+  },
+  "routeCapture": {
+    "command": "node scripts/capture-asteroid-works.mjs --part=place_works_extractor",
+    "captures": {
+      "work": {
+        "path": ".devshots/asteroid-works/works-part-place_works_extractor-work.png",
+        "sha256": "34476C77C6BE3CE6AA038143679A64F93B048109243A891DF4391F3CC066A569",
+        "bytes": 3626985,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "visibleLod": "LOD0",
+        "hiddenLod": "LOD1"
+      },
+      "site": {
+        "path": ".devshots/asteroid-works/works-part-place_works_extractor-site.png",
+        "sha256": "D17DA36591CF93C9A40454F85EEA200A27066E1010A9FC62488DF380458F0D8B",
+        "bytes": 1206176,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "visibleLod": "LOD1"
+      }
+    },
+    "runtimeAssertions": {
+      "assetIdentityResolved": true,
+      "requiredHooks": [
+        "head_face",
+        "belt",
+        "lamp"
+      ],
+      "missingHooks": [],
+      "lodTags": [
+        "lod0",
+        "lod1"
+      ],
+      "untaggedMeshes": 0,
+      "workToSiteSwitchObserved": true,
+      "captureMountSeated": true,
+      "captureMountRotationX": 1.5707963267948966,
+      "captureMountCell": [
+        20,
+        4
+      ]
+    }
+  },
+  "gates": {
+    "G0": "KEEP",
+    "G1": "KEEP",
+    "G2": "KEEP",
+    "G4": "KEEP",
+    "G6": "KEEP",
+    "G7": "KEEP"
+  },
+  "review": {
+    "state": "accepted",
+    "owner": "controller",
+    "required": "three fresh visual reviews and controller acceptance",
+    "currentVerdict": "KEEP",
+    "keepClaim": true,
+    "reviewers": [
+      "reviews/luna-max.md",
+      "reviews/terra-xhigh.md",
+      "reviews/opencode-go-kimi-k3-max.md"
+    ],
+    "runtimeReview": "reviews/runtime-review.md",
+    "controllerAcceptance": "reviews/controller-acceptance.md",
+    "p0": 0,
+    "p1": 0
+  },
+  "historicalEvidence": {
+    "cycle_007_route": {
+      "path": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
+      "current": false,
+      "reason": "superseded as the current pointer because the selected source, release, and render package identities changed"
+    }
+  }
+}

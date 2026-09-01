@@ -1833,7 +1833,48 @@ def combine_lods(lod_reports):
     if combined.exists():
         combined.unlink()
     shutil.move(str(tmp), str(combined))
-    shutil.copy2(combined, parts)
+
+    # Preserve LOD2 in the authoring GLB and evidence only. The default Works
+    # route has exactly two registers: work selects LOD0 and site selects LOD1.
+    # Exporting the evidence-only root into the selected runtime source would
+    # make it resident and create an accidental third fallback.
+    selected_contract = dict(contract)
+    selected_contract["deliverableRole"] = "selected_runtime_multi_lod"
+    selected_contract["lods"] = ["lod0", "lod1"]
+    selected_contract["exportedLods"] = ["lod0", "lod1"]
+    root["spacefaceAsset"] = selected_contract
+    bpy.context.scene["spacefaceAsset"] = selected_contract
+    detached_lod2 = []
+    for obj in [candidate for candidate in bpy.data.objects if candidate.name.startswith("LOD2_")]:
+        parent = obj.parent
+        obj.parent = None
+        obj.select_set(False)
+        detached_lod2.append((obj, parent))
+    parts_tmp = parts.with_suffix(".tmp.glb")
+    bpy.ops.export_scene.gltf(
+        filepath=str(parts_tmp),
+        export_format="GLB",
+        use_selection=True,
+        export_apply=True,
+        export_yup=True,
+        export_extras=True,
+        export_animations=False,
+        export_materials="EXPORT",
+        export_texcoords=True,
+        export_normals=True,
+        export_tangents=True,
+        export_image_format="AUTO",
+    )
+    stamp_glb_contract(parts_tmp, selected_contract)
+    if parts.exists():
+        parts.unlink()
+    parts_tmp.replace(parts)
+    for obj, parent in detached_lod2:
+        if parent is not None:
+            parent_keep(obj, parent)
+        obj.select_set(True)
+    root["spacefaceAsset"] = contract
+    bpy.context.scene["spacefaceAsset"] = contract
     inventory = {
         "assetId": ASSET_ID,
         "root": ROOT_NAME,
@@ -1847,6 +1888,7 @@ def combine_lods(lod_reports):
         "bytes": combined.stat().st_size,
         "sha256": sha256(combined),
         "partsSha256": sha256(parts),
+        "partsExportedLods": selected_contract["exportedLods"],
     }
     write_text_lf(SOURCE_DIR / "extractor_inventory.json", json.dumps(inventory, indent=2) + "\n")
     print(json.dumps({"ok": True, **inventory}, indent=2))

@@ -110,6 +110,10 @@ async function captureAuthoredWorksPart(partId) {
   if (!mounted || !mounted.ok) {
     throw new Error(`loadWorksPart(${partId}) failed: ${JSON.stringify(mounted)}`);
   }
+  if (!mounted.transform || mounted.cell?.col !== 20 || mounted.cell?.row !== 4
+    || Math.abs((mounted.transform.rotation?.[0] || 0) - Math.PI / 2) > 1e-6) {
+    throw new Error(`loadWorksPart(${partId}) returned an unseated capture mount: ${JSON.stringify(mounted)}`);
+  }
   await page.waitForTimeout(400);
   const workName = `works-part-${partId}-work.png`;
   await page.screenshot({ path: join(OUT_DIR, workName), type: 'png' });
@@ -123,6 +127,8 @@ async function captureAuthoredWorksPart(partId) {
 
   console.log(`works-part ${partId} mounted`, JSON.stringify({
     id: mounted.id,
+    cell: mounted.cell,
+    transform: mounted.transform,
     lod: mounted.lod,
     colourSpace: mounted.colourSpace,
     hooks: mounted.hooks,

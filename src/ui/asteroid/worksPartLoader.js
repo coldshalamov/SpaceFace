@@ -13,6 +13,12 @@ import {
   disposeAuthoredAssetRuntime,
 } from '../../render/assetLoader.js';
 
+export const EXTRACTOR_HOOKS = Object.freeze([
+  'head_face',
+  'belt',
+  'lamp',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -40,6 +46,15 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: Object.freeze(['ring_spin', 'lamp']),
     binding: 'massline-core',
+  }),
+  // PQ-131.03. The selected release has exactly the two live Works registers:
+  // LOD0/work and LOD1/site. LOD2 remains in authoring/evidence only.
+  place_works_extractor: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_extractor.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_extractor.glb',
+    slot: 'place',
+    hooks: EXTRACTOR_HOOKS,
+    binding: 'works-extractor',
   }),
 });
 
@@ -144,7 +159,10 @@ function cloneMaterialForInstance(material, primitiveName) {
   if (!material || typeof material.clone !== 'function') return material;
   const clone = material.clone();
   clone.userData = { ...(clone.userData || {}), worksInstanceOwned: true };
-  if (!/track/i.test(primitiveName || '')) return clone;
+  // The extractor's belt scrolls its atlas sampler. Keep that sampler per instance
+  // just as the Rover keeps its track sampler, so no live machine changes a cached
+  // blueprint or another Extractor's belt phase.
+  if (!/(?:track|belt)/i.test(primitiveName || '')) return clone;
   for (const key of Object.keys(clone)) {
     const texture = clone[key];
     if (!texture || texture.isTexture !== true || typeof texture.clone !== 'function') continue;
@@ -198,6 +216,39 @@ export function bindMasslineCoreHookHierarchy(group) {
   group.userData.worksCoreBoundMeshes = bound;
   group.userData.worksCoreHooks = Object.freeze({ ring_spin: ring, lamp });
   return group.userData.worksCoreHooks;
+}
+
+// Render packages flatten the authored scene into primitive world matrices. The Extractor's
+// working head, conveyor, and lamp therefore need their authored pivots reconstructed before
+// the renderer animates them. attachPreservingWorld makes this a world-pose-preserving operation.
+export function bindWorksExtractorHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const head = hooks.head_face;
+  const belt = hooks.belt;
+  const lamp = hooks.lamp;
+  if (!head || !belt || !lamp) {
+    throw new Error('[worksPartLoader] Extractor is missing head_face, belt, or lamp marker');
+  }
+  const bindings = [
+    [head, 'LOD0_head'],
+    [head, 'LOD1_head'],
+    [belt, 'LOD0_belt'],
+    [belt, 'LOD1_belt'],
+    [lamp, 'LOD0_lamp'],
+    [lamp, 'LOD0_lamp_lens'],
+    [lamp, 'LOD1_lamp'],
+    [lamp, 'LOD1_lamp_lens'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Extractor is missing ${name}`);
+    attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksExtractorBoundMeshes = bound;
+  group.userData.worksExtractorHooks = Object.freeze({ head_face: head, belt, lamp });
+  return group.userData.worksExtractorHooks;
 }
 
 function instantiateBlueprint(blueprint, hookNames) {
@@ -367,6 +418,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     const group = instantiateBlueprint(blueprint, hookNames);
     try {
       if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
+      if (entry.binding === 'works-extractor') bindWorksExtractorHookHierarchy(group);
     } catch (error) {
       console.error('[worksPartLoader] authored part binding failed', error);
       disposeInstanceOwnedResources(group);

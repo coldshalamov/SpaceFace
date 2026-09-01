@@ -8130,7 +8130,7 @@
       "priority": 358,
       "title": "Extractor, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -8149,7 +8149,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-03-authored-extractor-REPORT.md"
+      ],
       "brief": "Inventory row .03: a compact drill head on a frame that faces its feed cell, a short conveyor stub, heat-sink fins, a lamp. 1 cell. Hooks: head_face (aims at the contact), lamp, belt (UV scroll). 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural extractor."
     },
     {

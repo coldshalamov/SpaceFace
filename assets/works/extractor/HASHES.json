@@ -1,8 +1,21 @@
 {
-  "cycle": 6,
-  "disposition": "source_keep",
+  "cycle": 8,
+  "disposition": "KEEP",
+  "currentIntegrationEpoch": "assets/works/extractor/evidence/cycle_008_master/EPOCH.json",
+  "authoringSource": {
+    "path": "assets/works/extractor/source/extractor.glb",
+    "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "bytes": 6453308,
+    "immutable": true
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_extractor.glb",
+    "sha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
+    "bytes": 4370236,
+    "exportedLods": ["lod0", "lod1"]
+  },
   "combinedSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
-  "partsSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+  "partsSha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
   "cycle01Frozen": true,
   "cycle02Frozen": true,
   "cycle03Frozen": true,
@@ -172,20 +185,20 @@
   },
   "release": {
     "path": "assets/ships/release/parts/works/place_works_extractor.glb",
-    "sha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
-    "bytes": 2989196,
-    "ktx2Textures": 9,
-    "meshoptBufferViews": 63
+    "sha256": "A65685BC1E917DA9512879159ED2E65F2E640A233D4010BDB4099D8D26FA6A02",
+    "bytes": 2016576,
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 43
   },
   "renderPackage": {
     "key": "works-extractor",
     "metadataPath": "assets/ships/release/render-packages/works-extractor/render-package.json",
-    "metadataSha256": "89fb0fef40cabb073e0951c0885948dca61b23f9f21b50d832a62ee7b67fb71d",
-    "contentHash": "3b1f56f5da93c6b1895c72a19f58397c1979305a271c32af3c5fcaced1cba224",
-    "runtimeHash": "3da74f0979cb21e8d726231a2b0adf55cfbca1888137db679e7554445068b2cb",
+    "metadataSha256": "13D055CB4059B7D84626BAF1401CAF9C5F934CF99577A776BA56551D8C4E6CD6",
+    "contentHash": "5fc5ec61186829d4cd3c6819619f556bc1c8b6587237a55af640bca5c6928948",
+    "runtimeHash": "211d7f22f8f385552c77dabbab277248c2c45d3d981f27dcf25caae29df2b7dd",
     "renderGlbPath": "assets/ships/release/render-packages/works-extractor/render.glb",
-    "renderGlbSha256": "d5573dd1b099c742f2eb3fc5f7312f2a9da5e80688ff7f713167580037b9a3be",
-    "renderGlbBytes": 3084696
+    "renderGlbSha256": "05BC593A95A14E71AA38B15F56DBEBBE98CBDC0D44DF05284726040A5E3686FB",
+    "renderGlbBytes": 2101292
   },
   "independentReview": {
     "reviewer": "/root/extractor_cycle06_review",
@@ -200,18 +213,26 @@
       "hiddenFaceDiagnosticSha256": "E174D8A9481CFD5DA915D6804F76E77C801AF1449366CD2A99EA16DE07F07089",
       "authority": "diagnostic_only_not_culling_proof"
     },
-    "openGates": ["G6", "G7"]
+    "openGates": ["G6", "G7"],
+    "historicalSourceOnly": true
   },
-  "routeAcceptance": {
-    "reviewer": "/root",
-    "verdict": "KEEP",
-    "scope": "exact_release_browser_electron_route",
-    "candidateSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
-    "releaseSha256": "3bef83c35dc4ea5a964005427faca26ccd220aabfa84509b25be1f9a7b36436a",
-    "renderGlbSha256": "d5573dd1b099c742f2eb3fc5f7312f2a9da5e80688ff7f713167580037b9a3be",
+  "currentRouteEvidence": {
+    "epoch": "assets/works/extractor/evidence/cycle_008_master/EPOCH.json",
+    "status": "accepted",
+    "workCaptureSha256": "34476C77C6BE3CE6AA038143679A64F93B048109243A891DF4391F3CC066A569",
+    "siteCaptureSha256": "D17DA36591CF93C9A40454F85EEA200A27066E1010A9FC62488DF380458F0D8B",
+    "G7": "KEEP",
+    "keepClaim": true,
+    "reviewers": [
+      "assets/works/extractor/evidence/cycle_008_master/reviews/luna-max.md",
+      "assets/works/extractor/evidence/cycle_008_master/reviews/terra-xhigh.md",
+      "assets/works/extractor/evidence/cycle_008_master/reviews/opencode-go-kimi-k3-max.md"
+    ],
+    "controllerAcceptance": "assets/works/extractor/evidence/cycle_008_master/reviews/controller-acceptance.md"
+  },
+  "historicalCycle07RouteAcceptance": {
     "evidence": "assets/works/extractor/evidence/cycle_007_route/EPOCH.json",
-    "closedGates": ["G6", "G7"],
-    "p0": 0,
-    "p1": 0
+    "current": false,
+    "reason": "the selected source, release, and render package identities changed"
   }
 }

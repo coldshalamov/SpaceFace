@@ -1,6 +1,6 @@
-# Extractor — material and shape audit (Cycle 06)
+# Extractor — material and shape audit (Cycle 08)
 
-Candidate `3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8` · root `SF_WORKS_EXTRACTOR_V1` · disposition `review_pending`.
+Authoring source `3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8` · selected runtime source `15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8` · root `SF_WORKS_EXTRACTOR_V1` · disposition `KEEP`.
 
 Cycle 05's exact independent review returned REVISE. Its short refractory
 cheeks still terminated as paired pale longitudinal prongs in the legal Works
@@ -86,9 +86,11 @@ and liners; it does not redesign the machine or move its runtime interfaces.
 
 ## Route closure
 
-The exact independently accepted source is integrated, released, packaged, and captured through the
-ordinary installed-machine route in both Browser and source Electron. Cycle 07 evidence is bound in
-`evidence/cycle_007_route/EPOCH.json`: LOD0 at work register, LOD1 at site register, the three
-functional hooks present, correct base-color/normal color spaces, and no procedural double-draw.
-G6 and G7 are `KEEP`; site-scale identity remains intentionally compact and is preserved in the
-original-resolution Browser/Electron stills.
+Cycle 08 binds the immutable reviewed authoring source to the current selected LOD0/LOD1 source,
+KTX2/meshopt release, and render package. The installed and ghost paths are authored-only; the
+functional head, belt, and lens hooks retain instance-owned animation state and the work/site switch
+selects LOD0/LOD1 without LOD2 fallback. The corrected Browser proof capture uses the production
+Extractor binding, seats the selected release on the framed Works cell, and photographs both live
+camera registers. Three fresh original-resolution reviews and controller acceptance are recorded in
+`evidence/cycle_008_master/reviews/`; G1, G2, G4, G6, and G7 are `KEEP` with no P0/P1 defect. Cycle 07
+remains historical because its release and render-package identities are no longer current.

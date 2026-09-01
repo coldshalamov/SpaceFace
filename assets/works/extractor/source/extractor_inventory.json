@@ -3,6 +3,30 @@
   "root": "SF_WORKS_EXTRACTOR_V1",
   "combined": "assets/works/extractor/source/extractor.glb",
   "partsSource": "assets/ships/parts/works/place_works_extractor.glb",
+  "authoringSource": {
+    "path": "assets/works/extractor/source/extractor.glb",
+    "immutable": true,
+    "bytes": 6453308,
+    "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
+    "exportedLods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ]
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_extractor.glb",
+    "bytes": 4370236,
+    "sha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8",
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ]
+  },
+  "exportedLods": [
+    "lod0",
+    "lod1"
+  ],
   "blend": "assets/works/extractor/source/extractor.blend",
   "lodTriangles": {
     "lod0": 3112,
@@ -50,5 +74,5 @@
   },
   "bytes": 6453308,
   "sha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8",
-  "partsSha256": "3E071A9A7A143480AF6A09088F032207153D441D4A0D3E0409BD5EBA21D92BA8"
+  "partsSha256": "15B69A9A999562B00077065244CAC4CE1A7917E5076F920E451B615EB8CED7F8"
 }

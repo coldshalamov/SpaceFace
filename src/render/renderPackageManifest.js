@@ -963,6 +963,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/works/place_works_massline_core.glb"
   },
   {
+    "assetId": "sf.render.works-extractor",
+    "expectedContentHash": "5fc5ec61186829d4cd3c6819619f556bc1c8b6587237a55af640bca5c6928948",
+    "key": "works-extractor",
+    "metadataUrl": "assets/ships/release/render-packages/works-extractor/render-package.json",
+    "runtimeAssetId": "place_works_extractor",
+    "slot": "place",
+    "sourceSha256": "a65685bc1e917da9512879159ed2e65f2e640a233d4010bdb4099d8d26fa6a02",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_extractor.glb"
+  },
+  {
     "assetId": "sf.render.conveyor-truss",
     "expectedContentHash": "b70271b809feddf004456e923d4fa97a324f510d3d41024b19fb68d6cb60f47c",
     "key": "conveyor-truss",

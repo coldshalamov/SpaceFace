@@ -363,22 +363,7 @@ export function makeMachine(kind, S, envMap) {
     }
   }
 
-  if (kind === 'extractor') {
-    // Seam extractor: a boxed gearcase with a reciprocating bore rod and a finned heat sink where
-    // the emissive status bar used to be. The fins are the object; the work is the rod stroke.
-    const body = new THREE.Mesh(new THREE.BoxGeometry(S * 0.78, S * 0.72, S * 0.8), metalMat(dark, envMap));
-    body.position.z = S * 0.54; body.castShadow = true; g.add(body);
-    const gearcase = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.2, S * 0.2, S * 0.16, 10), metalMat(mid, envMap));
-    gearcase.rotation.y = Math.PI / 2; gearcase.position.set(S * 0.3, S * 0.1, S * 0.62); g.add(gearcase);
-    const drill = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.1, S * 0.11, S * 0.72, 10), metalMat(steel, envMap));
-    drill.position.set(-S * 0.42, 0, S * 0.5); drill.rotation.z = Math.PI / 2; drill.castShadow = true; g.add(drill);
-    dyn.piston = drill; dyn.pistonBase = -S * 0.42;
-    for (let i = 0; i < 5; i++) {
-      const fin = new THREE.Mesh(new THREE.BoxGeometry(S * 0.56, S * 0.035, S * 0.13), metalMat(steel, envMap));
-      fin.position.set(0, (i - 2) * S * 0.11, S * 0.98); fin.castShadow = true; g.add(fin);
-    }
-    lampZ = S * 1.02;
-  } else if (kind === 'gas_tap') {
+  if (kind === 'gas_tap') {
     // Gas tap: a pressure vessel in a strap cradle with a real intake turbine. Nothing glows —
     // the danger colour belongs to the gas cell, never to the machine that makes it safe.
     const tank = new THREE.Mesh(new THREE.SphereGeometry(S * 0.32, 20, 14), metalMat(0x9a9c9e, envMap));
