@@ -1,0 +1,420 @@
+{
+  "schema": "spaceface.drifterMtx.cycle.v1",
+  "shipId": "drifter",
+  "cycle": 30,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 111059,
+      "hullTriangles": 63343,
+      "draws": 12,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Deck",
+        "Material_Hull",
+        "Material_Hull_Aft",
+        "Material_Mechanical",
+        "Material_Nacelle",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "panelInsets": 226,
+      "dorsalPanelSeams": 134,
+      "texelDensity": [
+        {
+          "material": "Material_Accent",
+          "areaM2": 4.186,
+          "uvCoverage": 0.7847,
+          "uvUtilisation": 0.7847,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 443.4
+        },
+        {
+          "material": "Material_Armor",
+          "areaM2": 119.454,
+          "uvCoverage": 0.5022,
+          "uvUtilisation": 0.5022,
+          "baseColorSize": 4096,
+          "ormNormalSize": 2048,
+          "texelDensityPxPerM": 265.6
+        },
+        {
+          "material": "Material_Canopy",
+          "areaM2": 12.848,
+          "uvCoverage": 0.5699,
+          "uvUtilisation": 0.5699,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 431.3
+        },
+        {
+          "material": "Material_Ceramic",
+          "areaM2": 11.978,
+          "uvCoverage": 0.4651,
+          "uvUtilisation": 0.4651,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 403.5
+        },
+        {
+          "material": "Material_Deck",
+          "areaM2": 1.592,
+          "uvCoverage": 0.8007,
+          "uvUtilisation": 0.8007,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 363.1
+        },
+        {
+          "material": "Material_Hull",
+          "areaM2": 2.97,
+          "uvCoverage": 0.5769,
+          "uvUtilisation": 0.5769,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 451.3
+        },
+        {
+          "material": "Material_Hull_Aft",
+          "areaM2": 286.206,
+          "uvCoverage": 0.6371,
+          "uvUtilisation": 0.6371,
+          "baseColorSize": 4096,
+          "ormNormalSize": 2048,
+          "texelDensityPxPerM": 193.3
+        },
+        {
+          "material": "Material_Mechanical",
+          "areaM2": 106.337,
+          "uvCoverage": 0.6178,
+          "uvUtilisation": 0.6178,
+          "baseColorSize": 4096,
+          "ormNormalSize": 2048,
+          "texelDensityPxPerM": 312.2
+        },
+        {
+          "material": "Material_Nacelle",
+          "areaM2": 167.917,
+          "uvCoverage": 0.3729,
+          "uvUtilisation": 0.3729,
+          "baseColorSize": 4096,
+          "ormNormalSize": 2048,
+          "texelDensityPxPerM": 193.0
+        },
+        {
+          "material": "Material_Radiator",
+          "areaM2": 13.667,
+          "uvCoverage": 0.6888,
+          "uvUtilisation": 0.6888,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 459.8
+        },
+        {
+          "material": "Material_Thruster",
+          "areaM2": 13.512,
+          "uvCoverage": 0.7406,
+          "uvUtilisation": 0.7406,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 479.5
+        },
+        {
+          "material": "Material_Warning",
+          "areaM2": 9.257,
+          "uvCoverage": 0.5168,
+          "uvUtilisation": 0.5168,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 483.9
+        }
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod0.glb",
+      "bytes": 52490040,
+      "sha256": "CF2DC78202D1D3DC7FD91CDA7D1CCCF77964D7FB071D10B2BA7B1587C97C2EC1"
+    },
+    {
+      "lod": 1,
+      "triangles": 43126,
+      "hullTriangles": 9394,
+      "draws": 12,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Deck",
+        "Material_Hull",
+        "Material_Hull_Aft",
+        "Material_Mechanical",
+        "Material_Nacelle",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "panelInsets": 0,
+      "dorsalPanelSeams": 0,
+      "texelDensity": [
+        {
+          "material": "Material_Accent",
+          "areaM2": 4.186,
+          "uvCoverage": 0.7847,
+          "uvUtilisation": 0.7847,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 221.7
+        },
+        {
+          "material": "Material_Armor",
+          "areaM2": 119.394,
+          "uvCoverage": 0.5656,
+          "uvUtilisation": 0.5656,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 141.0
+        },
+        {
+          "material": "Material_Canopy",
+          "areaM2": 12.848,
+          "uvCoverage": 0.5699,
+          "uvUtilisation": 0.5699,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 215.7
+        },
+        {
+          "material": "Material_Ceramic",
+          "areaM2": 9.562,
+          "uvCoverage": 0.3716,
+          "uvUtilisation": 0.3716,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 201.9
+        },
+        {
+          "material": "Material_Deck",
+          "areaM2": 1.592,
+          "uvCoverage": 0.8007,
+          "uvUtilisation": 0.8007,
+          "baseColorSize": 256,
+          "ormNormalSize": 128,
+          "texelDensityPxPerM": 181.6
+        },
+        {
+          "material": "Material_Hull",
+          "areaM2": 2.97,
+          "uvCoverage": 0.5769,
+          "uvUtilisation": 0.5769,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 225.6
+        },
+        {
+          "material": "Material_Hull_Aft",
+          "areaM2": 284.029,
+          "uvCoverage": 0.4825,
+          "uvUtilisation": 0.4825,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 84.4
+        },
+        {
+          "material": "Material_Mechanical",
+          "areaM2": 100.378,
+          "uvCoverage": 0.7099,
+          "uvUtilisation": 0.7099,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 172.2
+        },
+        {
+          "material": "Material_Nacelle",
+          "areaM2": 155.434,
+          "uvCoverage": 0.6575,
+          "uvUtilisation": 0.6575,
+          "baseColorSize": 2048,
+          "ormNormalSize": 1024,
+          "texelDensityPxPerM": 133.2
+        },
+        {
+          "material": "Material_Radiator",
+          "areaM2": 12.282,
+          "uvCoverage": 0.481,
+          "uvUtilisation": 0.481,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 202.6
+        },
+        {
+          "material": "Material_Thruster",
+          "areaM2": 13.512,
+          "uvCoverage": 0.7406,
+          "uvUtilisation": 0.7406,
+          "baseColorSize": 1024,
+          "ormNormalSize": 512,
+          "texelDensityPxPerM": 239.7
+        },
+        {
+          "material": "Material_Warning",
+          "areaM2": 9.257,
+          "uvCoverage": 0.5168,
+          "uvUtilisation": 0.5168,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 121.0
+        }
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod1.glb",
+      "bytes": 18194192,
+      "sha256": "735CB49ADA9041733D793022D267DD70621A5F16D801BD4E9853092944D7FD2E"
+    },
+    {
+      "lod": 2,
+      "triangles": 27858,
+      "hullTriangles": 5722,
+      "draws": 11,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Deck",
+        "Material_Hull",
+        "Material_Hull_Aft",
+        "Material_Mechanical",
+        "Material_Nacelle",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "panelInsets": 0,
+      "dorsalPanelSeams": 0,
+      "texelDensity": [
+        {
+          "material": "Material_Accent",
+          "areaM2": 4.186,
+          "uvCoverage": 0.7847,
+          "uvUtilisation": 0.7847,
+          "baseColorSize": 256,
+          "ormNormalSize": 128,
+          "texelDensityPxPerM": 110.8
+        },
+        {
+          "material": "Material_Armor",
+          "areaM2": 115.918,
+          "uvCoverage": 0.1306,
+          "uvUtilisation": 0.1306,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 17.2
+        },
+        {
+          "material": "Material_Canopy",
+          "areaM2": 12.848,
+          "uvCoverage": 0.5699,
+          "uvUtilisation": 0.5699,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 107.8
+        },
+        {
+          "material": "Material_Ceramic",
+          "areaM2": 8.245,
+          "uvCoverage": 0.4097,
+          "uvUtilisation": 0.4097,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 114.1
+        },
+        {
+          "material": "Material_Deck",
+          "areaM2": 1.592,
+          "uvCoverage": 0.8007,
+          "uvUtilisation": 0.8007,
+          "baseColorSize": 128,
+          "ormNormalSize": 64,
+          "texelDensityPxPerM": 90.8
+        },
+        {
+          "material": "Material_Hull",
+          "areaM2": 2.97,
+          "uvCoverage": 0.5769,
+          "uvUtilisation": 0.5769,
+          "baseColorSize": 256,
+          "ormNormalSize": 128,
+          "texelDensityPxPerM": 112.8
+        },
+        {
+          "material": "Material_Hull_Aft",
+          "areaM2": 260.278,
+          "uvCoverage": 0.5419,
+          "uvUtilisation": 0.5419,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 23.4
+        },
+        {
+          "material": "Material_Mechanical",
+          "areaM2": 92.328,
+          "uvCoverage": 0.688,
+          "uvUtilisation": 0.688,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 44.2
+        },
+        {
+          "material": "Material_Nacelle",
+          "areaM2": 154.277,
+          "uvCoverage": 0.5959,
+          "uvUtilisation": 0.5959,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 31.8
+        },
+        {
+          "material": "Material_Thruster",
+          "areaM2": 13.407,
+          "uvCoverage": 0.7008,
+          "uvUtilisation": 0.7008,
+          "baseColorSize": 512,
+          "ormNormalSize": 256,
+          "texelDensityPxPerM": 117.1
+        },
+        {
+          "material": "Material_Warning",
+          "areaM2": 9.257,
+          "uvCoverage": 0.5168,
+          "uvUtilisation": 0.5168,
+          "baseColorSize": 256,
+          "ormNormalSize": 128,
+          "texelDensityPxPerM": 60.5
+        }
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod2.glb",
+      "bytes": 6083900,
+      "sha256": "C863BD79D52AABC7539F87DB660065DB8B32AE751EC23347FD7E2D088B8B4BB4"
+    }
+  ],
+  "lodTriangleRatio": {
+    "lod1/lod0": 0.388,
+    "lod2/lod0": 0.251
+  },
+  "boundsMetres": [
+    16.503,
+    7.47,
+    3.035
+  ],
+  "stills": "evidence/drifter/cycles/cycle_30",
+  "frameWidthFraction": {
+    "play_chase@2400x1800": 0.0936,
+    "play_chase_abeam@2400x1800": 0.0423,
+    "play_chase_close@2400x1800": 0.2381,
+    "play_chase@1600x900": 0.0702,
+    "play_chase_abeam@1600x900": 0.0317,
+    "play_chase_close@1600x900": 0.1785
+  }
+}

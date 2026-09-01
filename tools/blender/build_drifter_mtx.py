@@ -1,38 +1,31 @@
 """PQ-050.02 Drifter MTX builder. Hitch untouched. --mtx-cycle N writes cycle stills.
 
-Cycle 29 keeps the accepted cycle-28 geometry language and makes one scoped
-value/volume repair from the cycle-29 assessment (play-size legibility):
+Cycle 30 is a form + zoning cycle scoped to the cycle-29 verdict (REVISE: dark
+sliver at 144 WU persists; form defects untouched):
 
-* P0-1 dark sliver: the three paint zones were value-matched (0.349-0.355)
-  so the whole hull read near-black at 144 WU. The zones are now separated by
-  value AND hue - lighter cabin/deck zone, mid nacelle zone, darker machinery
-  aft - plus a new light deck-plate material and a light-keyed drive house
-  with its own accent band. All zones stay authored generator surfaces
-  (plate seams, wear, orange peel), not flat constants.
-* P0-2 merged tube: the dorsal hold was a shallow 0.92 m pocket, and the
-  machinery shoulder topped out at the deck line so cabin/hold/drive house
-  merged into one tube. The hold is cut 1.30 m deep into the shell with
-  mid-depth ledge framing and floor beams so the cavity shades itself, and a
-  stepped drive house is raised over the transom machinery shoulder with a
-  real top-height break below the cabin roof.
+* non-needle silhouette: the bow is blunted (nose pulled to x=7.80, forward
+  stations filled out) and the hold + drive-house bands are widened so the
+  plan silhouette reads as a blocky three-lobe workboat instead of a
+  tapering lance, inside the existing footprint budget;
+* hold well depth: the cargo well is cut 1.55 m deep (up from 1.30) with the
+  same lined tub, ledges, floor beams and stacked cargo blocking so the
+  cavity shades itself from above;
+* lofted fat-root winglets: WING_SECTIONS re-authored with a thick root
+  (0.55 m section) tapering through five stations to a 0.08 m tip, plus a
+  thicker root fillet, so the winglet reads as a lofted solid, not a card;
+* abeam height steps: the canopy glazing band is raised (roof z ~1.92) and
+  the drive house gets a taller dorsal spine (top z ~1.62), giving the side
+  profile two distinct height steps below the cabin roof;
+* contrast zoning on the dominant hull paint: the cycle-29 lesson was that
+  near-value-matched zones read as one dark sliver. The zones are now pushed
+  apart in value as well as hue - light warm deck plates, lighter forward
+  hull, mid nacelle, near-black machinery aft - with wider plate-tone
+  variation, all authored generator surfaces.
 
-Cycle 26 KEEP identity is frozen: long industrial hull, deep cargo/well read,
-nacelle/aft mass, orange accent hierarchy, play-scale silhouette. Three close
-and rear defects had construction causes, not lighting:
-
-* ceramic collars and throat liners shared a cartesian plate generator and a
-  post-join smart-UV, so hoop islands went polar and read as tan wood;
-* the transom face-delete ran on the forward hull after the UV-budget split,
-  so the capped loft stayed shut and a rectangular box was tacked onto it,
-  while high aft ``box`` morph plus linear ring densify left lower hull and
-  nacelle curvature as raw facets;
-* hull/nacelle plate UVs were one smart-projection over the shoulder, and the
-  cargo well was a dark box tub with no overhang or second depth step.
-
-Cycle 27 repairs those causes: axial hoop UVs and a heat-stressed ceramic
-generator; rounded aft stations, ring softening, a formed recessed transom
-cut on the aft shell; shell-projected deck/flank UVs, AO on the aft paint,
-and a lipped well with a grating over a dark floor.
+Cycle 29 kept the accepted cycle-28 geometry language and split the three
+paint zones by value and hue; the changes did not survive to play size. Cycle
+26 KEEP identity is frozen: long industrial hull, deep cargo/well read,
+nacelle/aft mass, orange accent hierarchy, play-scale silhouette.
 
 Usage::
 
@@ -144,19 +137,23 @@ def reset_scene() -> None:
 
 # x, yc, hw, hh, zc, flat, box, keel. hh is tuned so the crown holds a flat
 # working deck at z = 1.00 from the bow shoulder aft to the machinery.
+# Cycle 30 (non-needle silhouette): the nose is blunted to x=7.80 with
+# filled-out forward stations, and the hold + drive-house bands are widened,
+# so the plan silhouette is a blocky three-lobe workboat inside the cycle-29
+# footprint budget rather than a tapering lance.
 HULL_STATIONS = (
-    (7.95, 0.0, 0.44, 0.56, 0.10, 0.30, 0.30, 0.80),
-    (7.40, 0.0, 0.86, 0.80, 0.13, 0.42, 0.34, 0.68),
-    (6.50, 0.0, 1.26, 0.95, 0.16, 0.56, 0.42, 0.54),
-    (5.40, 0.0, 1.56, 0.97, 0.18, 0.72, 0.50, 0.42),
-    (3.90, 0.0, 1.80, 1.00, 0.18, 0.82, 0.58, 0.34),
-    (2.30, 0.0, 1.96, 1.04, 0.16, 0.88, 0.66, 0.26),
-    (0.60, 0.0, 2.04, 1.07, 0.14, 0.90, 0.72, 0.22),
-    (-1.10, 0.0, 1.96, 1.09, 0.12, 0.88, 0.76, 0.20),
-    (-2.80, 0.0, 1.76, 1.06, 0.12, 0.76, 0.82, 0.16),
-    (-4.60, 0.0, 1.52, 1.02, 0.14, 0.58, 0.86, 0.13),
-    (-6.40, 0.0, 1.30, 1.00, 0.16, 0.42, 0.88, 0.12),
-    (-7.85, 0.0, 1.15, 0.95, 0.16, 0.32, 0.90, 0.12),
+    (7.80, 0.0, 0.60, 0.70, 0.10, 0.30, 0.34, 0.80),
+    (7.30, 0.0, 1.04, 0.92, 0.13, 0.42, 0.40, 0.68),
+    (6.50, 0.0, 1.40, 1.04, 0.16, 0.56, 0.48, 0.54),
+    (5.40, 0.0, 1.66, 1.07, 0.18, 0.72, 0.56, 0.42),
+    (3.90, 0.0, 1.90, 1.09, 0.18, 0.82, 0.62, 0.34),
+    (2.30, 0.0, 2.08, 1.13, 0.16, 0.88, 0.70, 0.26),
+    (0.60, 0.0, 2.16, 1.15, 0.14, 0.90, 0.76, 0.22),
+    (-1.10, 0.0, 2.08, 1.16, 0.12, 0.88, 0.80, 0.20),
+    (-2.80, 0.0, 1.88, 1.13, 0.12, 0.76, 0.86, 0.16),
+    (-4.60, 0.0, 1.64, 1.09, 0.14, 0.58, 0.90, 0.13),
+    (-6.40, 0.0, 1.44, 1.07, 0.16, 0.42, 0.92, 0.12),
+    (-7.85, 0.0, 1.32, 1.02, 0.16, 0.32, 0.94, 0.12),
 )
 
 # The first three stations sit inside the hull: the root is a swept fairing
@@ -368,10 +365,12 @@ def role_surface(role, rgb, size, px_per_m, variant=0):
     height = -seam * 0.65 - soft * 0.05 + (plate - 0.5) * 0.06
 
     if role == "hull":
-        tone = 1.0 + (plate - 0.5) * 0.13
-        r = br * tone * (1.0 - dirt * 0.24) + blotch * 0.012
-        g = bg * tone * (1.0 - dirt * 0.20) + blotch * 0.012
-        b = bb * tone * (1.0 - dirt * 0.16) + blotch * 0.010
+        # Cycle 30: wider plate-to-plate tone spread so the dominant skin
+        # breaks into visible bands at play distance instead of one value.
+        tone = 1.0 + (plate - 0.5) * 0.24
+        r = br * tone * (1.0 - dirt * 0.30) + blotch * 0.012
+        g = bg * tone * (1.0 - dirt * 0.26) + blotch * 0.012
+        b = bb * tone * (1.0 - dirt * 0.22) + blotch * 0.010
         wear = edge * 0.55
         r = r * (1 - wear) + 0.30 * wear
         g = g * (1 - wear) + 0.31 * wear
@@ -515,18 +514,19 @@ def role_maps(role, rgb, size, prefix, px_per_m, lod, variant=0):
 # --------------------------------------------------------------------------
 
 MATERIAL_SPECS = {
-    # Cycle 29 value zones (P0-1). The three paint zones were value-matched
-    # near 0.35 and the ship read as a dark sliver at 144 WU. They are now
-    # separated by value and hue: light warm cabin zone, mid nacelle, darker
-    # blue-grey machinery aft, light deck plates, dark wells stay dark.
-    "Material_Deck":       ((0.590, 0.592, 0.578), 0.00, 0.40, "hull", 0.30, None),
-    "Material_Hull":       ((0.505, 0.545, 0.550), 0.00, 0.42, "hull", 0.34, None),
-    "Material_Hull_Aft":   ((0.328, 0.360, 0.372), 0.00, 0.42, "hull", 0.34, None),
+    # Cycle 30 contrast zoning (Hitch comparison): the ship is also dark
+    # gunmetal, but it reads because of strong value bands. The zones are
+    # pushed apart in VALUE as well as hue: light deck plates, lighter
+    # forward hull, mid nacelle, near-black machinery aft, saturated teal
+    # accent, near-black wells/greeble blocks (Armor/Thruster).
+    "Material_Deck":       ((0.660, 0.656, 0.638), 0.00, 0.40, "hull", 0.30, None),
+    "Material_Hull":       ((0.585, 0.610, 0.612), 0.00, 0.42, "hull", 0.34, None),
+    "Material_Hull_Aft":   ((0.175, 0.195, 0.205), 0.00, 0.42, "hull", 0.34, None),
     "Material_Nacelle":    ((0.428, 0.468, 0.476), 0.00, 0.42, "hull", 0.34, None),
     "Material_Armor":      ((0.105, 0.128, 0.136), 0.55, 0.36, "armor", 0.10, None),
     "Material_Mechanical": ((0.470, 0.478, 0.488), 0.96, 0.24, "mechanical", 0.0, None),
     "Material_Ceramic":    ((0.565, 0.560, 0.535), 0.00, 0.66, "ceramic", 0.0, None),
-    "Material_Accent":     ((0.075, 0.330, 0.352), 0.00, 0.34, "accent", 0.30, None),
+    "Material_Accent":     ((0.045, 0.410, 0.435), 0.00, 0.34, "accent", 0.30, None),
     "Material_Warning":    ((0.780, 0.372, 0.055), 0.00, 0.44, "warning", 0.22, None),
     "Material_Radiator":   ((0.140, 0.112, 0.092), 0.35, 0.56, "radiator", 0.0, None),
     "Material_Canopy":     ((0.055, 0.088, 0.098), 0.00, 0.06, "glass", 0.60, ((0.05, 0.10, 0.12), 0.10)),
@@ -1188,15 +1188,17 @@ def diamond_airfoil(x_le, y, z, chord, thick):
     ]
 
 
-# y, leading-edge x, chord, thickness, z. The root is buried in the nacelle
-# flank and is 9x the tip thickness: a rooted winglet, not a card.
+# y, leading-edge x, chord, thickness, z. Cycle 30 (lofted fat-root winglet):
+# the root section is a thick 0.55 m solid buried in the hull/nacelle flank,
+# tapering through five stations to a real (0.08 m) tip; thickness is never
+# uniform, so the result cannot read as a card or a pinched ribbon.
 WING_SECTIONS = (
-    (1.55, -2.85, 1.74, 0.48, 0.22),
-    (2.10, -3.00, 1.62, 0.40, 0.21),
-    (2.62, -3.22, 1.42, 0.28, 0.18),
-    (3.05, -3.48, 1.20, 0.16, 0.13),
-    (3.40, -3.74, 0.98, 0.09, 0.08),
-    (3.62, -3.96, 0.76, 0.05, 0.04),
+    (1.55, -2.85, 1.74, 0.55, 0.22),
+    (2.05, -3.00, 1.66, 0.46, 0.21),
+    (2.55, -3.20, 1.48, 0.34, 0.18),
+    (3.00, -3.45, 1.26, 0.24, 0.14),
+    (3.38, -3.72, 1.04, 0.15, 0.09),
+    (3.62, -3.96, 0.80, 0.08, 0.05),
 )
 
 
@@ -1210,11 +1212,11 @@ def add_winglet(name, sign, mats, collection, detail, dens):
         for y, le, chord, thick, z in WING_SECTIONS
     ]
     wing = loft_from_rings(name, rings, hull, collection, 0.008, cap=True)
-    # Root fillet: a short flare that melts the root into the nacelle flank.
+    # Root fillet: a thick flare that melts the fat root into the flank.
     fillet = [
-        densify_ring(diamond_airfoil(-2.80, 1.18 * sign, 0.23, 1.82, 0.62), dens),
-        densify_ring(diamond_airfoil(-2.82, 1.40 * sign, 0.225, 1.78, 0.56), dens),
-        densify_ring(diamond_airfoil(-2.84, 1.64 * sign, 0.22, 1.76, 0.51), dens),
+        densify_ring(diamond_airfoil(-2.80, 1.18 * sign, 0.23, 1.82, 0.70), dens),
+        densify_ring(diamond_airfoil(-2.82, 1.40 * sign, 0.225, 1.78, 0.62), dens),
+        densify_ring(diamond_airfoil(-2.84, 1.64 * sign, 0.22, 1.76, 0.55), dens),
     ]
     loft_from_rings(f"{name}_Fillet", fillet, hull, collection, 0.008, cap=True)
     if detail <= 1:
@@ -1563,7 +1565,9 @@ def build_lod(lod, mats, quick=False):
         nacelles.append((sign, side, nac))
 
     # ---- openings the 60 degree chase camera actually sees ---------------
-    cargo = cut_deck_well(body, "CargoWell", -1.95, 1.95, 0.78, DECK_Z, 1.30,
+    # Cycle 30: the well is cut 1.55 m deep so the walls shade themselves;
+    # the tub, ledges, floor beams and gratings below carry the cavity read.
+    cargo = cut_deck_well(body, "CargoWell", -1.95, 1.95, 0.78, DECK_Z, 1.55,
                           mats, collection, rim_material=mech, ribs=5 if detail == 0 else 3)
     # Canopy tub: cut through the forward deck so the greenhouse sits on a hole.
     delete_faces_in_box(body, 4.40, 6.05, -0.52, 0.52, DECK_Z - 0.58, DECK_Z + 0.62, normal=None)
@@ -1599,7 +1603,9 @@ def build_lod(lod, mats, quick=False):
         apply_modifiers(obj)
 
     # ---- greenhouse ------------------------------------------------------
-    add_greenhouse("Canopy", 4.30, 6.15, DECK_Z, 0.76, 0.58, 0.74, mats, collection, detail)
+    # Cycle 30: the glazing band is raised (roof z ~1.92) so the cabin reads
+    # as the tallest of the three abeam steps.
+    add_greenhouse("Canopy", 4.30, 6.15, DECK_Z, 0.76, 0.58, 0.92, mats, collection, detail)
 
     # ---- cargo well furniture -------------------------------------------
     cx, hx, floor_z = cargo
@@ -1608,6 +1614,10 @@ def build_lod(lod, mats, quick=False):
     add_box("CargoCrate_A", (cx - 0.95, -0.28, floor_z + 0.30), (0.50, 0.32, 0.20), armor, collection, 0.006)
     add_box("CargoCrate_B", (cx + 0.45, 0.26, floor_z + 0.26), (0.60, 0.34, 0.16), mech, collection, 0.006)
     add_box("CargoCrate_C", (cx + 1.28, -0.32, floor_z + 0.22), (0.32, 0.26, 0.12), warning, collection, 0.005)
+    # Cycle 30: stacked blocking so the deep well shows cargo volume, not a
+    # flat orange sticker on a floor.
+    add_box("CargoCrate_D", (cx - 0.95, -0.28, floor_z + 0.30 + 0.40), (0.44, 0.28, 0.18), mech, collection, 0.005)
+    add_box("CargoCrate_E", (cx + 0.45, 0.26, floor_z + 0.26 + 0.32), (0.52, 0.30, 0.14), armor, collection, 0.005)
     # A black lower floor plus a raised partial grating makes the well read as
     # two real depth planes. The open forward half still exposes the hold.
     add_box("CargoWell_ShadowFloor", (cx, 0.0, floor_z + 0.045),
@@ -1663,22 +1673,23 @@ def build_lod(lod, mats, quick=False):
             0.050, armor, collection, 0.006,
         )
 
-    # Cycle 29 (P0-2): stepped drive house over the transom machinery
-    # shoulder. Its top (z=1.48) sits clearly below the cabin roof (z=1.74)
-    # and clearly above the working deck (z=1.00), so cabin / hold / drive
-    # house separate by top height instead of merging into one tube.
-    add_box("DriveHouse_Base", (-7.325, 0.0, 1.09), (0.475, 0.80, 0.19),
+    # Cycle 29/30: stepped drive house over the transom machinery shoulder,
+    # with a taller dorsal spine. Deck 1.00 -> drive-house spine top ~1.62 ->
+    # cabin roof ~1.92: the abeam profile shows two distinct height steps.
+    add_box("DriveHouse_Base", (-7.325, 0.0, 1.09), (0.475, 0.86, 0.19),
             hull_aft, collection, 0.014)
-    add_box("DriveHouse_Top", (-7.31, 0.0, 1.38), (0.31, 0.55, 0.10),
+    add_box("DriveHouse_Top", (-7.31, 0.0, 1.45), (0.31, 0.60, 0.22),
             hull_aft, collection, 0.012)
-    add_box("DriveHouse_TopEdge", (-7.31, 0.0, 1.485), (0.33, 0.57, 0.014),
+    add_box("DriveHouse_TopEdge", (-7.31, 0.0, 1.57), (0.33, 0.62, 0.014),
             mech, collection, 0.004)
+    add_box("DriveHouse_Spine", (-7.31, 0.0, 1.615), (0.62, 0.20, 0.055),
+            mech, collection, 0.006)
     for sign in (-1, 1):
         add_box(f"DriveHouse_AccentBand_{'S' if sign > 0 else 'P'}",
-                (-7.325, sign * 0.792, 1.06), (0.46, 0.014, 0.075),
+                (-7.325, sign * 0.822, 1.06), (0.46, 0.014, 0.075),
                 accent, collection, 0.004)
         add_box(f"DriveHouse_Vent_{'S' if sign > 0 else 'P'}",
-                (-7.10, sign * 0.545, 1.38), (0.16, 0.020, 0.075),
+                (-7.10, sign * 0.545, 1.45), (0.16, 0.020, 0.075),
                 mech, collection, 0.004)
 
     # ---- nacelle hardware -------------------------------------------------
@@ -1887,11 +1898,11 @@ def build_lod(lod, mats, quick=False):
 
     bm = bmesh.new()
     for point in [
-        (7.95, 0, 0.05), (0.2, -2.10, 0.55), (0.2, 2.10, 0.55),
+        (7.80, 0, 0.05), (0.2, -2.25, 0.55), (0.2, 2.25, 0.55),
         (-8.10, -2.66, 0.28), (-8.10, 2.66, 0.28),
         (-3.9, -3.95, 0.05), (-3.9, 3.95, 0.05),
         (2.4, -1.5, -1.00), (2.4, 1.5, -1.00),
-        (-5.5, 0, 1.28), (5.4, 0, 1.58),
+        (-5.5, 0, 1.64), (5.4, 0, 1.97),
     ]:
         bm.verts.new(point)
     bm.verts.ensure_lookup_table()

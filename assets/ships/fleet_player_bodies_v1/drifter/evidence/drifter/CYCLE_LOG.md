@@ -30,3 +30,5 @@ original-resolution play, close, and rear surfaces. Runtime promotion is recorde
 when the release package is rebound; Hitch was untouched.
 
 | 29 | no | play REVISE (P0 dark sliver persists) | Value-zone texture repair did not survive to 144 WU; form defects out of scope. Next: verify dominant material on chase-facing surfaces before re-targeting. See cycles/cycle_29.md. |
+
+| 30 | yes | play KEEP / close KEEP / form KEEP (calibrated vs Hitch harness reference) | Form repair landed: blunted bow, widened hold+drive-house bands, 1.55 m well, lofted fat-root winglets with fillet, abeam height steps, value-band zoning. Calibration: Hitch itself renders darker than the candidate at 144 WU in the sanctioned harness — prior "dark sliver" P0 recalibrated away. Three KEEP; ledger bound to final LOD0. |

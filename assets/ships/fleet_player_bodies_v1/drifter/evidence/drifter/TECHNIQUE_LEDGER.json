@@ -1,35 +1,144 @@
 {
-  "schema": "spaceface.advancedModelTechniqueLedger.v1",
-  "assetId": "SF_DRIFTER_PRODUCTION_V1",
-  "shipId": "drifter",
-  "candidateHash": "CB3CB57979DB776FC608AC2C083B4000AEC54A8072E3ADC8861458F2A9AC1C41",
-  "exportGlb": "assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
-  "class": "player_flyable",
-  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
-  "clayStillReadsAsPrimitives": false,
-  "independentReview": "keep",
-  "promoted": false,
-  "reasonNotClosed": "Cycle 28 is independently accepted and source-complete. Live release binding is the remaining promotion step.",
-  "forbidden": {
-    "factoryLoftPlusBoxes": false,
-    "sharedSheetTint": false,
-    "shadeSmoothWholeObject": false,
-    "internalVoidCalledBay": false,
-    "imagenUsedAsBake": false
+ "schema": "spaceface.advancedModelTechniqueLedger.v1",
+ "assetId": "SF_DRIFTER_PRODUCTION_V1",
+ "shipId": "drifter",
+ "candidateHash": "CF2DC78202D1D3DC7FD91CDA7D1CCCF77964D7FB071D10B2BA7B1587C97C2EC1",
+ "exportGlb": "assets/ships/fleet_player_bodies_v1/drifter/source/wholeships/drifter_production_v1_lod0.glb",
+ "class": "player_flyable",
+ "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+ "clayStillReadsAsPrimitives": false,
+ "independentReview": "keep",
+ "promoted": false,
+ "reasonNotClosed": "Cycle 28 is independently accepted and source-complete. Live release binding is the remaining promotion step.",
+ "forbidden": {
+  "factoryLoftPlusBoxes": false,
+  "sharedSheetTint": false,
+  "shadeSmoothWholeObject": false,
+  "internalVoidCalledBay": false,
+  "imagenUsedAsBake": false
+ },
+ "rows": [
+  {
+   "id": "MTX-02",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/clay_play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Continuous pressure hull and rooted nacelle fairings replace the parked three-box stack."
   },
-  "rows": [
-    {"id": "MTX-02", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/clay_play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Continuous pressure hull and rooted nacelle fairings replace the parked three-box stack."},
-    {"id": "MTX-03", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Canopy tub and lipped two-level cargo hold cut through both hull skins."},
-    {"id": "MTX-06", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/clay_play_chase.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Short stabilisers have thick buried roots, flared fillets, and separate flaps."},
-    {"id": "MTX-08", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/drive_rear.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Twin drives use true open annuli, neutral refractory sleeves, dark lined bores, and rooted vanes."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/grazing_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Scale is applied before controlled bevel and weighted normals."},
-    {"id": "MTX-14", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Off-centre repair patch, braces, and deck covers support the industrial fiction."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/uv0_layout_hull_aft.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Separate hull, aft-hull, and nacelle UV budgets maintain physical texel scale."},
-    {"id": "MTX-23", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/orm_isolation.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "LOD0 AO is baked into albedo and ORM/normal isolation is retained."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Eleven authored material roles use independent maps, not shared tint."},
-    {"id": "MTX-46", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/clay_play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Clay reads as one manufactured utility hull with cavities and load paths, not primitive aggregation."},
-    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/drifter_production_v1_lod0.glb", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Three authored LODs retain sockets, collision, packed maps, and export contract."},
-    {"id": "MTX-60", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Repair patch, recessed machinery, grating, crates, rails, and service hardware form one causal hierarchy."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/drifter/cycles/cycle_28/play_chase.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "The long twin-nacelle multirole silhouette is independently accepted and distinct from the Hornet."}
-  ]
+  {
+   "id": "MTX-03",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Canopy tub and lipped two-level cargo hold cut through both hull skins."
+  },
+  {
+   "id": "MTX-06",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/clay_play_chase.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Short stabilisers have thick buried roots, flared fillets, and separate flaps."
+  },
+  {
+   "id": "MTX-08",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/drive_rear.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Twin drives use true open annuli, neutral refractory sleeves, dark lined bores, and rooted vanes."
+  },
+  {
+   "id": "MTX-13",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/grazing_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Scale is applied before controlled bevel and weighted normals."
+  },
+  {
+   "id": "MTX-14",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Off-centre repair patch, braces, and deck covers support the industrial fiction."
+  },
+  {
+   "id": "MTX-16",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/uv0_layout_hull_aft.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Separate hull, aft-hull, and nacelle UV budgets maintain physical texel scale."
+  },
+  {
+   "id": "MTX-23",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/orm_isolation.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "LOD0 AO is baked into albedo and ORM/normal isolation is retained."
+  },
+  {
+   "id": "MTX-32",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Eleven authored material roles use independent maps, not shared tint."
+  },
+  {
+   "id": "MTX-46",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/clay_play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Clay reads as one manufactured utility hull with cavities and load paths, not primitive aggregation."
+  },
+  {
+   "id": "MTX-50",
+   "state": "implemented",
+   "still": "source/wholeships/drifter_production_v1_lod0.glb",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Three authored LODs retain sockets, collision, packed maps, and export contract."
+  },
+  {
+   "id": "MTX-60",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Repair patch, recessed machinery, grating, crates, rails, and service hardware form one causal hierarchy."
+  },
+  {
+   "id": "MTX-65",
+   "state": "implemented",
+   "still": "evidence/drifter/cycles/cycle_28/play_chase.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "The long twin-nacelle multirole silhouette is independently accepted and distinct from the Hornet."
+  },
+  {
+   "id": "MTX-04",
+   "state": "implemented",
+   "still": "assets/ships/fleet_player_bodies_v1/drifter/evidence/drifter/cycles/cycle_30/play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Cycle 30: the walkable hold reads as a deep lined cavity with floor beams and cargo blocking below the deck rim; no cabin furniture fake."
+  },
+  {
+   "id": "MTX-07",
+   "state": "implemented",
+   "still": "assets/ships/fleet_player_bodies_v1/drifter/evidence/drifter/cycles/cycle_30/clay_play_chase_close.png",
+   "clayConfirm": "pass",
+   "forbiddenFakeAbsent": true,
+   "notes": "Cycle 30: glazed canopy band sits over a cut tub with frames; opaque dark dielectric, no solid teal brick."
+  }
+ ],
+ "cycle": 30,
+ "notes": "Cycle 30 closed with three calibrated KEEP reviews vs the Hitch reference rendered through the same sanctioned chase harness (.dev calibration recorded in cycles/cycle_30.md). Hash bound to final cycle-30 LOD0."
 }
