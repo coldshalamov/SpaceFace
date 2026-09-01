@@ -1,7 +1,20 @@
 """PQ-050.02 Drifter MTX builder. Hitch untouched. --mtx-cycle N writes cycle stills.
 
-Cycle 28 is the accepted Cycle 27 geometry plus one causal refractory-map
-correction from rear review. It is not a redesign.
+Cycle 29 keeps the accepted cycle-28 geometry language and makes one scoped
+value/volume repair from the cycle-29 assessment (play-size legibility):
+
+* P0-1 dark sliver: the three paint zones were value-matched (0.349-0.355)
+  so the whole hull read near-black at 144 WU. The zones are now separated by
+  value AND hue - lighter cabin/deck zone, mid nacelle zone, darker machinery
+  aft - plus a new light deck-plate material and a light-keyed drive house
+  with its own accent band. All zones stay authored generator surfaces
+  (plate seams, wear, orange peel), not flat constants.
+* P0-2 merged tube: the dorsal hold was a shallow 0.92 m pocket, and the
+  machinery shoulder topped out at the deck line so cabin/hold/drive house
+  merged into one tube. The hold is cut 1.30 m deep into the shell with
+  mid-depth ledge framing and floor beams so the cavity shades itself, and a
+  stepped drive house is raised over the transom machinery shoulder with a
+  real top-height break below the cabin roof.
 
 Cycle 26 KEEP identity is frozen: long industrial hull, deep cargo/well read,
 nacelle/aft mass, orange accent hierarchy, play-scale silhouette. Three close
@@ -77,7 +90,8 @@ TEXEL_MAX_SIZE = {0: 4096, 1: 2048, 2: 512}
 # ORM and normal ride at half the albedo edge; the albedo carries the
 # measured hero density that MTX-17 is written about.
 SUPPORT_MAP_DIVISOR = 2
-PAINT_VARIANT = {"Material_Hull": 0, "Material_Hull_Aft": 1, "Material_Nacelle": 2}
+PAINT_VARIANT = {"Material_Hull": 0, "Material_Hull_Aft": 1, "Material_Nacelle": 2,
+                 "Material_Deck": 3}
 
 # Where the LOD ladder actually comes from. LOD1 and LOD2 are built lighter,
 # not decimated copies of LOD0.
@@ -501,9 +515,14 @@ def role_maps(role, rgb, size, prefix, px_per_m, lod, variant=0):
 # --------------------------------------------------------------------------
 
 MATERIAL_SPECS = {
-    "Material_Hull":       ((0.355, 0.415, 0.425), 0.00, 0.42, "hull", 0.34, None),
-    "Material_Hull_Aft":   ((0.352, 0.412, 0.422), 0.00, 0.42, "hull", 0.34, None),
-    "Material_Nacelle":    ((0.349, 0.409, 0.419), 0.00, 0.42, "hull", 0.34, None),
+    # Cycle 29 value zones (P0-1). The three paint zones were value-matched
+    # near 0.35 and the ship read as a dark sliver at 144 WU. They are now
+    # separated by value and hue: light warm cabin zone, mid nacelle, darker
+    # blue-grey machinery aft, light deck plates, dark wells stay dark.
+    "Material_Deck":       ((0.590, 0.592, 0.578), 0.00, 0.40, "hull", 0.30, None),
+    "Material_Hull":       ((0.505, 0.545, 0.550), 0.00, 0.42, "hull", 0.34, None),
+    "Material_Hull_Aft":   ((0.328, 0.360, 0.372), 0.00, 0.42, "hull", 0.34, None),
+    "Material_Nacelle":    ((0.428, 0.468, 0.476), 0.00, 0.42, "hull", 0.34, None),
     "Material_Armor":      ((0.105, 0.128, 0.136), 0.55, 0.36, "armor", 0.10, None),
     "Material_Mechanical": ((0.470, 0.478, 0.488), 0.96, 0.24, "mechanical", 0.0, None),
     "Material_Ceramic":    ((0.565, 0.560, 0.535), 0.00, 0.66, "ceramic", 0.0, None),
@@ -938,12 +957,18 @@ def add_curve_hose(name, points, material, collection, radius=0.018):
 def cut_deck_well(hull, tag, x0, x1, half_y, deck_z, depth, mats, collection,
                   rim_material=None, wall=0.055, ribs=4):
     """A real opening: both skins removed, a lined tub hung inside the hull, a
-    rim that shows shell thickness (MTX-03/04/57), ribbed walls."""
+    rim that shows shell thickness (MTX-03/04/57), ribbed walls.
+
+    Cycle 29 (P0-2): the opening itself cuts `depth` into the shell (the old
+    fixed 0.58 m delete left the visible cavity shallow), and a mid-depth
+    ledge plus floor beams give the walls real framing so the cavity shades
+    itself in stepped planes instead of one flat dark plate.
+    """
     armor = mats["Material_Armor"]
     mech = mats["Material_Mechanical"]
     rim_material = rim_material or mech
     removed = delete_faces_in_box(
-        hull, x0, x1, -half_y, half_y, deck_z - 0.58, deck_z + 0.62, normal=None,
+        hull, x0, x1, -half_y, half_y, deck_z - depth - 0.03, deck_z + 0.62, normal=None,
     )
     print(f"{tag}: removed {removed} skin faces")
     cx = (x0 + x1) * 0.5
@@ -964,6 +989,20 @@ def cut_deck_well(hull, tag, x0, x1, half_y, deck_z, depth, mats, collection,
                 (rx, sign * (half_y - wall - 0.030), cz + 0.03),
                 (0.038, 0.030, hz - 0.06), mech, collection, 0.003,
             )
+    # Cycle 29: mid-depth ledge framing on the long walls and three floor
+    # beams, so the deep hold reads as stepped structure, not a painted pit.
+    ledge_z = cz + hz * 0.30
+    for sign in (-1, 1):
+        add_box(f"{tag}_Ledge_{'S' if sign > 0 else 'P'}",
+                (cx, sign * (half_y - wall - 0.075), ledge_z),
+                (hx - wall * 2, 0.13, 0.036), mech, collection, 0.004)
+        add_box(f"{tag}_LedgeBrk_{'S' if sign > 0 else 'P'}",
+                (cx, sign * (half_y - wall - 0.075), ledge_z - (hz * 0.30 - 0.018) * 0.5),
+                (0.055, 0.11, (hz * 0.30 - 0.018) * 0.5), mech, collection, 0.003)
+    for i in range(3):
+        bx = x0 + (x1 - x0) * (i + 0.5) / 3
+        add_box(f"{tag}_FloorBeam_{i}", (bx, 0.0, floor_z + wall + 0.028),
+                (0.050, half_y * 2 - wall * 2, 0.036), mech, collection, 0.003)
     rw = 0.19
     rh = 0.085
     add_box(f"{tag}_RimFore", (x1 + rw * 0.5 - 0.03, 0.0, deck_z + rh * 0.30),
@@ -1524,7 +1563,7 @@ def build_lod(lod, mats, quick=False):
         nacelles.append((sign, side, nac))
 
     # ---- openings the 60 degree chase camera actually sees ---------------
-    cargo = cut_deck_well(body, "CargoWell", -1.95, 1.95, 0.78, DECK_Z, 0.92,
+    cargo = cut_deck_well(body, "CargoWell", -1.95, 1.95, 0.78, DECK_Z, 1.30,
                           mats, collection, rim_material=mech, ribs=5 if detail == 0 else 3)
     # Canopy tub: cut through the forward deck so the greenhouse sits on a hole.
     delete_faces_in_box(body, 4.40, 6.05, -0.52, 0.52, DECK_Z - 0.58, DECK_Z + 0.62, normal=None)
@@ -1623,6 +1662,24 @@ def build_lod(lod, mats, quick=False):
             (-3.20, sign * 0.72, hull_crown(-3.20) + 0.018),
             0.050, armor, collection, 0.006,
         )
+
+    # Cycle 29 (P0-2): stepped drive house over the transom machinery
+    # shoulder. Its top (z=1.48) sits clearly below the cabin roof (z=1.74)
+    # and clearly above the working deck (z=1.00), so cabin / hold / drive
+    # house separate by top height instead of merging into one tube.
+    add_box("DriveHouse_Base", (-7.325, 0.0, 1.09), (0.475, 0.80, 0.19),
+            hull_aft, collection, 0.014)
+    add_box("DriveHouse_Top", (-7.31, 0.0, 1.38), (0.31, 0.55, 0.10),
+            hull_aft, collection, 0.012)
+    add_box("DriveHouse_TopEdge", (-7.31, 0.0, 1.485), (0.33, 0.57, 0.014),
+            mech, collection, 0.004)
+    for sign in (-1, 1):
+        add_box(f"DriveHouse_AccentBand_{'S' if sign > 0 else 'P'}",
+                (-7.325, sign * 0.792, 1.06), (0.46, 0.014, 0.075),
+                accent, collection, 0.004)
+        add_box(f"DriveHouse_Vent_{'S' if sign > 0 else 'P'}",
+                (-7.10, sign * 0.545, 1.38), (0.16, 0.020, 0.075),
+                mech, collection, 0.004)
 
     # ---- nacelle hardware -------------------------------------------------
     for sign, side, _nac in nacelles:
@@ -1747,7 +1804,7 @@ def build_lod(lod, mats, quick=False):
         "Foredeck_Plate",
         (7.05, -0.42, hull_crown(7.05) + 0.010), (6.40, -0.66, hull_crown(6.40) + 0.012),
         (6.40, 0.66, hull_crown(6.40) + 0.012), (7.05, 0.42, hull_crown(7.05) + 0.010),
-        0.055, hull, collection, 0.005,
+        0.055, mats["Material_Deck"], collection, 0.005,
     )
     add_box("Foredeck_Bitt", (6.72, 0.0, hull_crown(6.72) + 0.075), (0.10, 0.30, 0.070), mech, collection, 0.005)
     add_box("MiningHead", (7.42, 0.0, -0.06), (0.30, 0.20, 0.16), mech, collection, 0.006)

@@ -28,3 +28,5 @@
 Seven-pass treatment: 7/7 plus causal cleanup. Cycle 28 is independently accepted on the
 original-resolution play, close, and rear surfaces. Runtime promotion is recorded separately
 when the release package is rebound; Hitch was untouched.
+
+| 29 | no | play REVISE (P0 dark sliver persists) | Value-zone texture repair did not survive to 144 WU; form defects out of scope. Next: verify dominant material on chase-facing surfaces before re-targeting. See cycles/cycle_29.md. |
