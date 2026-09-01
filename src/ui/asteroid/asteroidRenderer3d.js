@@ -70,6 +70,25 @@ export const CONTACT_RING = Object.freeze([
   [-1, 1], [0, 1], [1, 1],
 ]);
 
+// A late authored asset must never mount into a record/ghost that was replaced while the network
+// request was pending. Both installed and placement paths use this one settlement rule so their
+// ownership proof is direct and testable.
+export function settleAuthoredWorksArrival({ loader, group, isLive, install, onInstallError } = {}) {
+  if (!group) return null;
+  if (typeof isLive !== 'function' || isLive() !== true) {
+    loader?.releaseWorksPart?.(group);
+    return null;
+  }
+  try {
+    install(group);
+    return group;
+  } catch (error) {
+    loader?.releaseWorksPart?.(group);
+    onInstallError?.(error);
+    return null;
+  }
+}
+
 /**
  * Compare this module's copy of the ring against the sim's own contactProfile on a synthetic
  * field that exercises every contactKind plus an out-of-bounds edge. Pure: no THREE, no DOM,
@@ -505,6 +524,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let worksProofGroup = null;
   let worksProofGen = 0;
   let authoredRoverGen = 0;
+  let authoredCoreGen = 0;
+  let authoredCoreGhostGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
   let worksHostWasVisible = false;
@@ -3248,7 +3269,102 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- machines
+  function authoredCoreDyn(group) {
+    const hooks = group.userData.worksCoreHooks;
+    if (!hooks?.ring_spin || !hooks?.lamp) throw new Error('Massline Core hook hierarchy is unavailable');
+    const materials = [];
+    hooks.lamp.traverse((node) => {
+      if (!node.isMesh) return;
+      const rows = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of rows) if (material && !materials.includes(material)) materials.push(material);
+    });
+    if (!materials.length) throw new Error('Massline Core lamp hook owns no emissive mesh');
+    const ringBaseY = hooks.ring_spin.rotation.y;
+    return {
+      lamp: materials[0],
+      lampAnchor: hooks.lamp,
+      setLamp(hex, intensity) {
+        for (const material of materials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+      setSpin(angle) {
+        // The source is Y-up; this group is seated into the Works XY plane below. Rotate in
+        // export-local Y so the ring, not the whole machine, preserves existing time semantics.
+        hooks.ring_spin.rotation.y = ringBaseY + angle;
+      },
+    };
+  }
+
+  function installAuthoredCore(rec, group) {
+    const dyn = authoredCoreDyn(group);
+    // Keep source geometry and hook coordinates untouched, then seat the complete Y-up assembly
+    // into the Works cut plane. The record root already owns placement and settle transforms.
+    group.rotation.x = Math.PI / 2;
+    group.position.set(0, 0, 0);
+    group.scale.set(1, 1, 1);
+    rec.group.add(group);
+    rec.authoredGroup = group;
+    rec.dyn = dyn;
+    rec.pending = false;
+  }
+
+  function loadAuthoredCore(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Massline Core cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredCoreGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_massline_core').then((group) => {
+      const current = machines.get(rec.id);
+      const live = !disposed && !worksTearingDown && current === rec && rec.loadToken === token;
+      if (!group) {
+        if (live) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Massline Core load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredCore(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Massline Core install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Massline Core load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
+  function buildAuthoredCoreAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksCore:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredCore(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
+    if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -3260,7 +3376,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     built.group.position.set(worldX(m.col), worldY(m.row), 0);
     siteRoot.add(built.group);
     const rec = {
-      group: built.group, defId: m.defId, dyn: built.dyn || {}, col: m.col, row: m.row,
+      id: m.id, group: built.group, defId: m.defId, dyn: built.dyn || {}, col: m.col, row: m.row,
       geoSig: '', arms: null, pulses: built.pulses || [],
     };
     machines.set(m.id, rec);
@@ -3270,6 +3386,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function removeMachine(id) {
     const rec = machines.get(id);
     if (!rec) return;
+    rec.loadToken = -1;
+    if (rec.authoredGroup) {
+      if (worksLoader) worksLoader.releaseWorksPart(rec.authoredGroup);
+      else if (rec.authoredGroup.parent) rec.authoredGroup.parent.remove(rec.authoredGroup);
+      rec.authoredGroup = null;
+    }
     siteRoot.remove(rec.group);
     disposeGroup(rec.group);
     machines.delete(id);
@@ -3394,9 +3516,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           // pay"). Hungry machines keep .07's dark housing exactly as shipped.
           const coral = !settling && CORAL_FAULTS.has(state);
           const hex = settling ? 0x7cd9a2 : statusColorHex(status);
-          rec.dyn.lamp.color.setHex(hex);
-          rec.dyn.lamp.emissive.setHex(hex);
-          rec.dyn.lamp.emissiveIntensity = settling ? 1.2 : (coral ? 0.62 : (fault ? 0.06 : 0.9));
+          const intensity = settling ? 1.2 : (coral ? 0.62 : (fault ? 0.06 : 0.9));
+          if (rec.dyn.setLamp) rec.dyn.setLamp(hex, intensity);
+          else {
+            rec.dyn.lamp.color.setHex(hex);
+            rec.dyn.lamp.emissive.setHex(hex);
+            rec.dyn.lamp.emissiveIntensity = intensity;
+          }
         }
         if (rec.dyn.lampAnchor) {
           // Law §7: at the site register the same drawing simplifies to "lines, lamps, flows". A
@@ -3408,7 +3534,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const running = state === 'running' || state === 'throttled' || state === 'limited';
         rec.lightRunning = running;
         rec.lightState = state;
-        if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = motionReduce ? 0.8 : timeS * 1.1;
+        const spinAngle = motionReduce ? 0.8 : timeS * 1.1;
+        if (rec.dyn.setSpin) rec.dyn.setSpin(spinAngle);
+        else if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = spinAngle;
         if (rec.dyn.turbine) {
           rec.dyn.turbine.rotation.z = motionReduce
             ? 0.4 : timeS * ((status && status.genMW) ? 5 : 0.5);
@@ -4219,14 +4347,101 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- ghost
+  function tintGhost(ghostRecord, canOk) {
+    if (!ghostRecord?.materials) return;
+    const hex = canOk ? 0x7cd9a2 : 0xff6242;
+    for (const material of ghostRecord.materials) {
+      material.color.setHex(hex);
+      material.emissive.setHex(hex);
+      material.emissiveIntensity = canOk ? 0.18 : 0.08;
+    }
+  }
+
+  function makeGhostMaterialShells(group) {
+    const materials = [];
+    group.traverse((node) => {
+      if (!node.isMesh) return;
+      const wasArray = Array.isArray(node.material);
+      const shells = (wasArray ? node.material : [node.material]).map((material) => {
+        const shell = material.clone();
+        shell.userData = { ...(shell.userData || {}), worksInstanceOwned: true };
+        shell.transparent = true;
+        shell.opacity = 0.45;
+        shell.depthWrite = false;
+        shell._own = true;
+        material.dispose(); // loader's initial per-instance shell is never rendered as the ghost
+        materials.push(shell);
+        return shell;
+      });
+      node.material = wasArray ? shells : shells[0];
+      node.castShadow = false;
+    });
+    return materials;
+  }
+
+  function clearGhost() {
+    if (!ghost) return;
+    const old = ghost;
+    old.loadToken = -1;
+    if (old.authoredGroup) {
+      if (worksLoader) worksLoader.releaseWorksPart(old.authoredGroup);
+      else if (old.authoredGroup.parent) old.authoredGroup.parent.remove(old.authoredGroup);
+      old.authoredGroup = null;
+    }
+    fxRoot.remove(old.group);
+    disposeGroup(old.group);
+    ghost = null;
+  }
+
+  function beginAuthoredCoreGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredCoreGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Massline Core ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_massline_core').then((group) => {
+      const live = !disposed && !worksTearingDown && ghost === record && record.loadToken === token;
+      if (!group) {
+        if (live) console.error('[asteroidRenderer3d] authored Massline Core ghost load returned null');
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          part.rotation.x = Math.PI / 2;
+          part.position.set(0, 0, 0);
+          part.scale.set(1, 1, 1);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Massline Core ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Massline Core ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
-    if (ghost) {
-      fxRoot.remove(ghost.group);
-      disposeGroup(ghost.group);
-      ghost = null;
-    }
+    clearGhost();
     if (!defId) return null;
+    if (defId === 'sm_massline_core') return beginAuthoredCoreGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -5254,6 +5469,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (g) {
         g.group.visible = true;
         g.group.position.set(cx, cy, 0.02);
+        g.canOk = !!ui.canOk;
+        tintGhost(g, g.canOk);
       }
       frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xff6242);   // --aw-mint / --aw-coral
       frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive
@@ -6212,7 +6429,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     gasByCell.clear();
     clearVentedScars();
     for (const id of [...machines.keys()]) removeMachine(id);
-    if (ghost) { fxRoot.remove(ghost.group); disposeGroup(ghost.group); ghost = null; }
+    clearGhost();
     if (umbilical) {
       scene.remove(umbilical.casing, umbilical.core);
       umbilical.casing.geometry.dispose();

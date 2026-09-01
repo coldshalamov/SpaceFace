@@ -5,9 +5,9 @@
   "partsSource": "assets/ships/parts/works/place_works_massline_core.glb",
   "blend": "assets/works/massline_core/blender/massline_core.blend",
   "lodTriangles": {
-    "lod0": 5550,
-    "lod1": 1660,
-    "lod2": 486
+    "lod0": 6724,
+    "lod1": 1280,
+    "lod2": 556
   },
   "hooks": [
     "ring_spin",
@@ -24,13 +24,13 @@
     "LOD2_massline_core_lamp",
     "LOD2_massline_core_spin"
   ],
-  "bytes": 3193144,
-  "sha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
-  "partsSha256": "0F7DC23F35A43AB7E51988A15A9736461B036DE4D373E3268DFEAD495958102D",
+  "bytes": 3181192,
+  "sha256": "759B7BC5B5BE8499B77ACFDCBB9AE67829B5D999C549C417E2E811318E9203DD",
+  "partsSha256": "76284DC09D1C1B4BA33FB094A37B05FA5EDBE1006A8AB67B767BE32C397CE1EF",
   "lodReports": [
     {
       "lod": 0,
-      "triangles": 5550,
+      "triangles": 6724,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD0"
@@ -42,14 +42,14 @@
           0.0
         ],
         "max": [
-          1.068,
           1.04,
-          0.735
+          1.04,
+          0.928
         ],
         "size": [
-          2.108,
           2.08,
-          0.735
+          2.08,
+          0.928
         ]
       },
       "triBudget": 8000,
@@ -62,9 +62,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod0_emissive.png"
       ],
       "lampLoc": [
-        0.18,
-        0.892,
-        0.362
+        -0.54,
+        0.89,
+        0.844
       ],
       "meshNames": [
         "LOD0_massline_core",
@@ -72,12 +72,12 @@
         "LOD0_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod0.glb",
-      "bytes": 2040324,
-      "sha256": "A665B42A874A232E9521B8898FA67AC80658577ACE088A2A282E257C8E87C151"
+      "bytes": 2104720,
+      "sha256": "7BBB94B16F4E34EFDF6B7D1EDC1FD4BFF082D597B6F441BEA5809F94ACFCF3F3"
     },
     {
       "lod": 1,
-      "triangles": 1660,
+      "triangles": 1280,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD1"
@@ -89,14 +89,14 @@
           0.0
         ],
         "max": [
-          1.068,
           1.04,
-          0.735
+          1.042,
+          0.928
         ],
         "size": [
-          2.108,
           2.08,
-          0.735
+          2.082,
+          0.928
         ]
       },
       "triBudget": 2000,
@@ -109,9 +109,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod1_emissive.png"
       ],
       "lampLoc": [
-        0.18,
-        0.892,
-        0.362
+        -0.54,
+        0.89,
+        0.844
       ],
       "meshNames": [
         "LOD1_massline_core",
@@ -119,12 +119,12 @@
         "LOD1_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod1.glb",
-      "bytes": 667704,
-      "sha256": "9C6955896A4CF834F8FB537361AA633E0A33BAD12E0F257B0FDCF39872A7493E"
+      "bytes": 596000,
+      "sha256": "5AA970EF13F97C75904C468BCFAEBAE4A579639527C8FC05070EEAEC2C5D4D20"
     },
     {
       "lod": 2,
-      "triangles": 486,
+      "triangles": 556,
       "draws": 3,
       "materials": [
         "Material_Atlas_LOD2"
@@ -138,12 +138,12 @@
         "max": [
           1.04,
           1.04,
-          0.735
+          0.918
         ],
         "size": [
           2.08,
           2.08,
-          0.735
+          0.918
         ]
       },
       "triBudget": 600,
@@ -156,9 +156,9 @@
         "assets/works/massline_core/source/textures/massline_core_atlas_lod2_emissive.png"
       ],
       "lampLoc": [
-        0.18,
-        0.892,
-        0.362
+        -0.54,
+        0.89,
+        0.844
       ],
       "meshNames": [
         "LOD2_massline_core",
@@ -166,8 +166,8 @@
         "LOD2_massline_core_lamp"
       ],
       "path": "assets/works/massline_core/source/massline_core_lod2.glb",
-      "bytes": 182072,
-      "sha256": "3823FA5615B6E66D4E07EDD49E8197233E6A9A860CDB49361266DD44B26AE97C"
+      "bytes": 203280,
+      "sha256": "34DF32C8C39D3D2DAEEC8D76D0140A82718FDC560EF1F7C417A45DDF9DEE5E1F"
     }
   ]
 }

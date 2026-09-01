@@ -1,14 +1,14 @@
-# Massline Core — material and shape audit (Cycle 05)
+# Massline Core — material and shape audit (Cycle 10)
 
-Identity `SF_WORKS_MASSLINE_CORE_V1`. Packet `PQ-131.02`. State `design_candidate`.
-Whole-asset G1/G2/G4 remain open. Disposition: `review_pending` / `revise`.
+Identity `SF_WORKS_MASSLINE_CORE_V1`. Packet `PQ-131.02`. State `accepted`.
+Whole-asset G1/G2/G4: KEEP. Disposition: `keep`.
 
 ## Shape grammar
 
-Cycle 04's independently reviewed square-flange geometry is frozen for this repair:
-a square wellhead flange with a round bore; continuous U-channel opening +Z;
-folded square angle skirt; corner pads; nested dark race; and one side-mounted
-hooded lamp with a visible cavity. Cycle 05 changes no authored form.
+Cycle 10 carries a wide raised square load frame, four rooted corner cases, a round open bore,
+separated channels, a restrained nested race, a south service hatch, and a north hooded lamp.
+The work race is lower and narrower than Cycle 09. LOD1 reallocates circular band detail into a
+four-sided throat and larger asymmetric cues so the site camera keeps the claimed-rock read.
 
 Clay must read: dark circular hole in a squat square machine, U-channel trench,
 skirt thickness, one hooded fixture. A washer / manhole / gear / tire / nut /
@@ -24,7 +24,7 @@ compass-rose / plus-dot / generic slab is a fail.
 | Hatch cover | primed steel | restrained warm oxide | yellow brick |
 | Lamp lens | recessed dielectric | small warm emissive | beacon, painted tab, emissive ring |
 
-`allSupportedViewZonesClassified`: false (independent reviewer has not confirmed).
+`allSupportedViewZonesClassified`: true (three independent original-resolution KEEP reviews).
 
 ## Portable material wiring
 

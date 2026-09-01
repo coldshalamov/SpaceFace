@@ -1,0 +1,431 @@
+{
+  "schema": "spaceface.worksEvidenceEpoch.v1",
+  "packet": "PQ-131.02",
+  "assetId": "place_works_massline_core",
+  "identity": "SF_WORKS_MASSLINE_CORE_V1",
+  "cycle": 10,
+  "immutable": true,
+  "disposition": "review_pending",
+  "state": "design_candidate",
+  "g1g2g4": "open",
+  "independentReviewLaunched": false,
+  "reviewSource": "controller adjudication of the Cycle 09 G4 revise: site read collapsed to slab/dot and race remained too prominent",
+  "reviewFindingsAddressed": [
+    "LOD0 race is lower and narrower than the retained square load path",
+    "LOD1 replaces dense circular bands with coarse casing/throat geometry around a genuine open void",
+    "LOD1 hatch and hooded lamp are enlarged as asymmetric service cues at play size"
+  ],
+  "sourceGlb": "assets/works/massline_core/source/massline_core.glb",
+  "partsGlb": "assets/ships/parts/works/place_works_massline_core.glb",
+  "sourceSha256": "759B7BC5B5BE8499B77ACFDCBB9AE67829B5D999C549C417E2E811318E9203DD",
+  "partsSha256": "76284DC09D1C1B4BA33FB094A37B05FA5EDBE1006A8AB67B767BE32C397CE1EF",
+  "blend": "assets/works/massline_core/blender/massline_core.blend",
+  "lodTriangles": {
+    "lod0": 6724,
+    "lod1": 1280,
+    "lod2": 556
+  },
+  "hooks": [
+    "ring_spin",
+    "lamp"
+  ],
+  "meshNames": [
+    "LOD0_massline_core",
+    "LOD0_massline_core_lamp",
+    "LOD0_massline_core_spin",
+    "LOD1_massline_core",
+    "LOD1_massline_core_lamp",
+    "LOD1_massline_core_spin",
+    "LOD2_massline_core",
+    "LOD2_massline_core_lamp",
+    "LOD2_massline_core_spin"
+  ],
+  "camera": {
+    "fovVDeg": 31.0,
+    "cellWu": 2.2,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "works_top": {
+      "distance": 35.698246736732656,
+      "location": [
+        0.0,
+        0.0,
+        35.698246736732656
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 120.0
+    },
+    "works_edge": {
+      "distance": 35.698246736732656,
+      "location": [
+        0.0,
+        0.0,
+        35.698246736732656
+      ],
+      "objectOffset": [
+        14.96,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 120.0,
+      "note": "camera matches works_top; object is offset so side walls read"
+    },
+    "works_site": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 1
+    },
+    "works_site_lod2": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 2,
+      "note": "original-resolution exact-source Works-camera LOD2 evidence"
+    }
+  },
+  "occupancy": {
+    "works_top": {
+      "pixels": 14426,
+      "bbox": [
+        902,
+        482,
+        1031,
+        611
+      ],
+      "bboxSizePx": [
+        130,
+        130
+      ],
+      "cellPx": 120.0,
+      "occupancyOfCell": 1.0018,
+      "objectCenterLuma": 0.0126,
+      "wellMeanLuma": 0.0333,
+      "frameMeanLuma": 0.1051,
+      "localPadLuma": 0.0995
+    },
+    "works_edge": {
+      "pixels": 13571,
+      "bbox": [
+        1719,
+        482,
+        1837,
+        611
+      ],
+      "bboxSizePx": [
+        119,
+        130
+      ],
+      "cellPx": 120.0,
+      "occupancyOfCell": 0.9424,
+      "objectCenterLuma": 0.0134,
+      "wellMeanLuma": 0.0284,
+      "frameMeanLuma": 0.0686,
+      "localPadLuma": 0.1066
+    },
+    "works_site": {
+      "pixels": 358,
+      "bbox": [
+        951,
+        531,
+        970,
+        550
+      ],
+      "bboxSizePx": [
+        20,
+        20
+      ],
+      "cellPx": 19.0,
+      "occupancyOfCell": 0.9917,
+      "objectCenterLuma": 0.0182,
+      "wellMeanLuma": 0.124,
+      "frameMeanLuma": 0.019,
+      "localPadLuma": 0.099
+    },
+    "works_site_lod2": {
+      "pixels": 0,
+      "bbox": null,
+      "cellPx": 19.0,
+      "occupancyOfCell": 0.0
+    }
+  },
+  "glbInspect": {
+    "nodeNames": [
+      "COLLISION_HULL",
+      "LOD0_massline_core_lamp",
+      "LOD1_massline_core_lamp",
+      "lamp",
+      "LOD0_massline_core",
+      "LOD1_massline_core",
+      "LOD0_massline_core_spin",
+      "LOD1_massline_core_spin",
+      "ring_spin",
+      "SF_WORKS_MASSLINE_CORE_V1"
+    ],
+    "hooks": [
+      "lamp",
+      "ring_spin"
+    ],
+    "lodNodes": [
+      "LOD0_massline_core_lamp",
+      "LOD1_massline_core_lamp",
+      "LOD0_massline_core",
+      "LOD1_massline_core",
+      "LOD0_massline_core_spin",
+      "LOD1_massline_core_spin"
+    ],
+    "identityPresent": true,
+    "meshCount": 6,
+    "primitiveCount": 6,
+    "materialCount": 2,
+    "materialBindings": [
+      {
+        "material": "Material_Atlas_LOD0",
+        "baseColorTextureIndex": 3,
+        "baseColorImage": "massline_core_atlas_lod0_basecolor",
+        "metallicRoughnessTextureIndex": 2,
+        "metallicRoughnessImage": "massline_core_atlas_lod0_orm",
+        "occlusionTextureIndex": 2,
+        "occlusionImage": "massline_core_atlas_lod0_orm",
+        "emissiveTextureIndex": 0,
+        "emissiveImage": "massline_core_atlas_lod0_emissive",
+        "emissiveFactor": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "material": "Material_Atlas_LOD1",
+        "baseColorTextureIndex": 7,
+        "baseColorImage": "massline_core_atlas_lod1_basecolor",
+        "metallicRoughnessTextureIndex": 6,
+        "metallicRoughnessImage": "massline_core_atlas_lod1_orm",
+        "occlusionTextureIndex": 6,
+        "occlusionImage": "massline_core_atlas_lod1_orm",
+        "emissiveTextureIndex": 4,
+        "emissiveImage": "massline_core_atlas_lod1_emissive",
+        "emissiveFactor": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "sceneExtrasIdentity": "SF_WORKS_MASSLINE_CORE_V1"
+  },
+  "hiddenFaces": {
+    "ran": true,
+    "exit": 0,
+    "json": "assets/works/massline_core/evidence/cycle_010/hidden_faces.json",
+    "summary": {
+      "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+      "fovV": 31.0,
+      "framings": [
+        "works_top",
+        "works_edge x8",
+        "works_site"
+      ],
+      "lodFramings": {
+        "0": [
+          "works_top",
+          "works_edge"
+        ],
+        "1": [
+          "works_site"
+        ],
+        "2": [
+          "works_site"
+        ]
+      },
+      "distances": [
+        35.698246736732656,
+        225.46261096883785
+      ],
+      "edgeDirs": [
+        [
+          1.0,
+          0.0
+        ],
+        [
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          0.0,
+          -1.0
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.0,
+          -1.0
+        ],
+        [
+          -1.0,
+          1.0
+        ],
+        [
+          -1.0,
+          -1.0
+        ]
+      ],
+      "grid": [
+        80,
+        45
+      ],
+      "deleted": false,
+      "objects": [
+        {
+          "object": "LOD0_massline_core_lamp",
+          "lod": 0,
+          "faces": 208,
+          "visible": 5,
+          "hidden": 203,
+          "hiddenFrac": 0.976
+        },
+        {
+          "object": "LOD1_massline_core_lamp",
+          "lod": 1,
+          "faces": 96,
+          "visible": 0,
+          "hidden": 96,
+          "hiddenFrac": 1.0
+        },
+        {
+          "object": "LOD0_massline_core",
+          "lod": 0,
+          "faces": 5718,
+          "visible": 104,
+          "hidden": 5614,
+          "hiddenFrac": 0.9818
+        },
+        {
+          "object": "LOD1_massline_core",
+          "lod": 1,
+          "faces": 1118,
+          "visible": 0,
+          "hidden": 1118,
+          "hiddenFrac": 1.0
+        },
+        {
+          "object": "LOD0_massline_core_spin",
+          "lod": 0,
+          "faces": 798,
+          "visible": 0,
+          "hidden": 798,
+          "hiddenFrac": 1.0
+        },
+        {
+          "object": "LOD1_massline_core_spin",
+          "lod": 1,
+          "faces": 66,
+          "visible": 0,
+          "hidden": 66,
+          "hiddenFrac": 1.0
+        }
+      ],
+      "hiddenFaces": 7895,
+      "faces": 8004,
+      "hiddenFrac": 0.9864,
+      "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+    }
+  },
+  "stills": {
+    "works_top": "assets/works/massline_core/evidence/cycle_010/works_top.png",
+    "works_edge": "assets/works/massline_core/evidence/cycle_010/works_edge.png",
+    "works_site": "assets/works/massline_core/evidence/cycle_010/works_site.png",
+    "works_site_lod2": "assets/works/massline_core/evidence/cycle_010/works_site_lod2.png",
+    "works_top_clay": "assets/works/massline_core/evidence/cycle_010/works_top_clay.png",
+    "works_edge_clay": "assets/works/massline_core/evidence/cycle_010/works_edge_grazing.png",
+    "normal_isolation": "assets/works/massline_core/evidence/cycle_010/normal_isolation.png",
+    "orm_isolation": "assets/works/massline_core/evidence/cycle_010/orm_isolation.png",
+    "emissive_isolation": "assets/works/massline_core/evidence/cycle_010/emissive_isolation.png",
+    "material_id": "assets/works/massline_core/evidence/cycle_010/material_id.png",
+    "hook_identity": "assets/works/massline_core/evidence/cycle_010/hook_identity.png"
+  },
+  "stillSha256": {
+    "works_top": "83A4A6B2C27E29BE7EDFD79D66EA37FC7386DFE25E96F84D2D0879DB35146643",
+    "works_edge": "9A5609FF9D768FC0413E56CB222C079E0FADA4A5ECFE3584FF5AA769D2D097A6",
+    "works_site": "2B2ECD189A72D05A4D1AA7DD9E89F0732C18882720087E5F8A0F0943B4DF5422",
+    "works_site_lod2": "46BF61F874392DF3DD945167186489DB931210CF6BFCD16445E36668D7110B3D",
+    "works_top_clay": "5E9DF4BB59B99EDAF947EA51F46790D6F17544AB8520C65B5CEB1294A5889013",
+    "works_edge_clay": "3A4435D99B1A16AF6BA01B7339D01A8009C7843773CD60C1C5E2FF1DCCEA862D",
+    "normal_isolation": "4C2394F3429794B66EAB6E130AC7AEF869692811A37DE92A8EC44E91BCE6F498",
+    "orm_isolation": "A95C4D6015E0F47827EF060DAB5A8599207CA598707765533D1099FDEC0260BD",
+    "emissive_isolation": "EDBFCDD57BAE24DF171B885C4A921D525830B5D1043F3BB963190B4F904EFE8D",
+    "material_id": "ED1BAB9731C9362280FB6C25900FC4E4D787ACF4A9C66C4A10B8EAAD34418D04",
+    "hook_identity": "54FE5D95BE92E3E829C8E9B779462616F71F53C7FC8ECDD8331803AFF659D590"
+  },
+  "atlasLod0": [
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_basecolor.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_orm.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_normal.png",
+    "assets/works/massline_core/source/textures/massline_core_atlas_lod0_emissive.png"
+  ],
+  "lod2SiteEvidence": {
+    "path": "assets/works/massline_core/evidence/cycle_010/works_site_lod2.png",
+    "sha256": "46BF61F874392DF3DD945167186489DB931210CF6BFCD16445E36668D7110B3D",
+    "sourceSha256": "759B7BC5B5BE8499B77ACFDCBB9AE67829B5D999C549C417E2E811318E9203DD",
+    "lod": 2,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "camera": {
+      "distance": 225.46261096883785,
+      "location": [
+        0.0,
+        0.0,
+        225.46261096883785
+      ],
+      "objectOffset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pxPerCellTarget": 19.0,
+      "lod": 2,
+      "note": "original-resolution exact-source Works-camera LOD2 evidence"
+    },
+    "originalResolutionReviewPending": true
+  },
+  "citedReferences": [
+    "assets/concept/archetypes/concept_station_mining.jpg",
+    "assets/concept/landmarks/concept_landmark_driller.jpg",
+    "assets/works/rover/reference/ref_01_overhead_crawler.png",
+    "assets/works/rover/reference/ref_03_boom_bit.png"
+  ],
+  "contactSheet": "assets/works/massline_core/reference/CONTACT_SHEET.png",
+  "notes": "Cycle 10 preserves the C9 square load path while lowering the nested mechanical race and moving LOD1 detail density into a four-sided throat and stronger asymmetric service read. The selected runtime source remains LOD0/work and LOD1/site. A new independent exact-hash visual verdict remains pending."
+}

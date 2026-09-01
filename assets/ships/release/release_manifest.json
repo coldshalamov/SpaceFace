@@ -1635,6 +1635,25 @@
       }
     },
     {
+      "id": "place_works_massline_core",
+      "kind": "part:places",
+      "source": "assets/ships/parts/works/place_works_massline_core.glb",
+      "release": "assets/ships/release/parts/works/place_works_massline_core.glb",
+      "sourceSha256": "76284dc09d1c1b4ba33fb094a37b05fa5edbe1006a8ab67b767be32c397ce1ef",
+      "releaseSha256": "6555d6e9e5e0528f216913c8317cf3333e8d88f83776d85c9edb3b2c6f633cf8",
+      "sourceBytes": 2957964,
+      "releaseBytes": 1176548,
+      "textures": 8,
+      "ktx2Textures": 8,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 6,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_conveyor_truss.glb",

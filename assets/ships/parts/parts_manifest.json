@@ -5051,6 +5051,29 @@
       }
     },
     {
+      "id": "place_works_massline_core",
+      "category": "places",
+      "priority": "P1",
+      "file": "works/place_works_massline_core.glb",
+      "tris": 6724,
+      "budgetClass": "landmark",
+      "bytes": 2957964,
+      "textureSize": 1024,
+      "tintable": {},
+      "note": "PQ-131.02 authored Massline Core. Combined source contains LOD0/work and LOD1/site roots; LOD2 remains authoring/evidence-only. ring_spin and lamp are runtime-owned hooks; independent G1/G2/G4/G7 review remains open.",
+      "hooks": [
+        "ring_spin",
+        "lamp"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-1.04, 0, -1.04],
+        "max": [1.04, 0.928, 1.04],
+        "dimensionsM": [2.08, 0.928, 2.08]
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "category": "places",
       "priority": "P2",

@@ -1,0 +1,161 @@
+00:00.016  color_management | Using OCIO=C:\Program Files\Blender Foundation\Blender 5.1\5.1\datafiles\colormanagement\config.ocio
+Reloading external rigs...
+Reloading external metarigs...
+06:00:59 | INFO: Data are loaded, start creating Blender stuff
+06:00:59 | INFO: Blender create Mesh node LOD0_massline_core_lamp
+06:00:59 | INFO: Blender create Mesh node LOD1_massline_core_lamp
+06:00:59 | INFO: Blender create Mesh node LOD2_massline_core_lamp
+06:00:59 | INFO: Blender create Mesh node LOD0_massline_core
+06:00:59 | INFO: Blender create Mesh node LOD1_massline_core
+06:00:59 | INFO: Blender create Mesh node LOD2_massline_core
+06:00:59 | INFO: Blender create Mesh node LOD0_massline_core_spin
+06:00:59 | INFO: Blender create Mesh node LOD1_massline_core_spin
+06:00:59 | INFO: Blender create Mesh node LOD2_massline_core_spin
+06:00:59 | INFO: glTF import finished in 0.05s
+{
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\works\\place_works_massline_core.glb",
+  "fovV": 31.0,
+  "framings": [
+    "works_top",
+    "works_edge x8",
+    "works_site"
+  ],
+  "lodFramings": {
+    "0": [
+      "works_top",
+      "works_edge"
+    ],
+    "1": [
+      "works_site"
+    ],
+    "2": [
+      "works_site"
+    ]
+  },
+  "distances": [
+    35.698246736732656,
+    225.46261096883785
+  ],
+  "edgeDirs": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      -1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      -1.0
+    ],
+    [
+      1.0,
+      1.0
+    ],
+    [
+      1.0,
+      -1.0
+    ],
+    [
+      -1.0,
+      1.0
+    ],
+    [
+      -1.0,
+      -1.0
+    ]
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "LOD0_massline_core_lamp",
+      "lod": 0,
+      "faces": 208,
+      "visible": 2,
+      "hidden": 206,
+      "hiddenFrac": 0.9904
+    },
+    {
+      "object": "LOD1_massline_core_lamp",
+      "lod": 1,
+      "faces": 96,
+      "visible": 0,
+      "hidden": 96,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_lamp",
+      "lod": 2,
+      "faces": 52,
+      "visible": 0,
+      "hidden": 52,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_massline_core",
+      "lod": 0,
+      "faces": 4544,
+      "visible": 141,
+      "hidden": 4403,
+      "hiddenFrac": 0.969
+    },
+    {
+      "object": "LOD1_massline_core",
+      "lod": 1,
+      "faces": 1304,
+      "visible": 0,
+      "hidden": 1304,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core",
+      "lod": 2,
+      "faces": 368,
+      "visible": 0,
+      "hidden": 368,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD0_massline_core_spin",
+      "lod": 0,
+      "faces": 798,
+      "visible": 0,
+      "hidden": 798,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD1_massline_core_spin",
+      "lod": 1,
+      "faces": 260,
+      "visible": 0,
+      "hidden": 260,
+      "hiddenFrac": 1.0
+    },
+    {
+      "object": "LOD2_massline_core_spin",
+      "lod": 2,
+      "faces": 66,
+      "visible": 0,
+      "hidden": 66,
+      "hiddenFrac": 1.0
+    }
+  ],
+  "hiddenFaces": 7553,
+  "faces": 7696,
+  "hiddenFrac": 0.9814,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac. Do not use this as a quality close. LODs were evaluated one at a time."
+}
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit
+
+--- stderr ---

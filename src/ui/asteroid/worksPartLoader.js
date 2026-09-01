@@ -4,8 +4,9 @@
 // That lease already binds KTX2Loader via detectSupport, shares the Basis transcoder, and admits
 // render packages. Do not construct a second KTX2Loader, transcoder path, or meshopt decoder here.
 //
-// Fail-closed on unknown ids (programmer error). Fail-open on assets: a load failure resolves to
-// null and the caller keeps its procedural mesh. Never mutate blueprint materials or geometry.
+// Fail-closed on unknown ids (programmer error). An authored Core has no procedural fallback: a
+// load/bind failure resolves to null and the renderer leaves that machine honestly absent. Never
+// mutate blueprint materials or geometry.
 import * as THREE from 'three';
 import {
   createAuthoredAssetLease,
@@ -30,6 +31,15 @@ export const WORKS_PARTS = Object.freeze({
       'hopper_fill_0', 'hopper_fill_1', 'hopper_fill_2', 'hopper_fill_3', 'hopper_fill_4',
       'hopper_lid', 'lamp_socket', 'vent_stack', 'track_L', 'track_R', 'scar_plate',
     ]),
+  }),
+  // PQ-131.02. The combined release GLB contains only work (LOD0) and site (LOD1) meshes;
+  // LOD2 remains in authoring/evidence output and must never become a live fallback.
+  place_works_massline_core: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_massline_core.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_massline_core.glb',
+    slot: 'place',
+    hooks: Object.freeze(['ring_spin', 'lamp']),
+    binding: 'massline-core',
   }),
 });
 
@@ -144,6 +154,50 @@ function cloneMaterialForInstance(material, primitiveName) {
     clone[key] = instanceTexture;
   }
   return clone;
+}
+
+function maxMatrixDelta(a, b) {
+  let delta = 0;
+  for (let i = 0; i < 16; i++) delta = Math.max(delta, Math.abs(a.elements[i] - b.elements[i]));
+  return delta;
+}
+
+function attachPreservingWorld(parent, child) {
+  parent.updateWorldMatrix(true, false);
+  child.updateWorldMatrix(true, false);
+  const before = child.matrixWorld.clone();
+  parent.attach(child);
+  child.updateWorldMatrix(true, false);
+  if (maxMatrixDelta(before, child.matrixWorld) > 1e-6) {
+    throw new Error(`[worksPartLoader] hook reparent moved ${child.name}`);
+  }
+}
+
+// GLTF runtime tables intentionally flatten primitive and marker nodes. The Core's source hierarchy
+// matters: its race meshes rotate under ring_spin and its lamp meshes own their per-instance shell
+// under lamp. Reconstruct only this exported hierarchy after instantiation; do not generalize it to
+// unrelated works assets that have different hook ownership.
+export function bindMasslineCoreHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const ring = hooks.ring_spin;
+  const lamp = hooks.lamp;
+  if (!ring || !lamp) throw new Error('[worksPartLoader] Massline Core is missing ring_spin or lamp marker');
+  const bindings = [
+    [ring, 'LOD0_massline_core_spin'],
+    [ring, 'LOD1_massline_core_spin'],
+    [lamp, 'LOD0_massline_core_lamp'],
+    [lamp, 'LOD1_massline_core_lamp'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Massline Core is missing ${name}`);
+    attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksCoreBoundMeshes = bound;
+  group.userData.worksCoreHooks = Object.freeze({ ring_spin: ring, lamp });
+  return group.userData.worksCoreHooks;
 }
 
 function instantiateBlueprint(blueprint, hookNames) {
@@ -261,6 +315,8 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
 
   function releaseWorksPart(group) {
     if (!group) return;
+    if (group.userData?.worksReleased === true) return;
+    group.userData.worksReleased = true;
     const idx = live.indexOf(group);
     if (idx >= 0) live.splice(idx, 1);
     disposeInstanceOwnedResources(group);
@@ -293,20 +349,35 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       return null;
     }
 
-    if (register !== requestedRegister) {
+    // Rover/Core combined release files carry both live LOD roots.  A register
+    // flip while that one URL is pending must consume the returned blueprint at
+    // the current register, not spend the retry budget reloading identical
+    // bytes and then leave the machine absent on a second flip.  Distinct LOD
+    // URLs still retry so the selected source actually changes.
+    if (register !== requestedRegister && selectUrl(entry, register) !== url) {
       if (attempt >= 1) return null;
       return loadWorksPart(id, options, attempt + 1);
     }
+    const liveRegister = register;
 
     const hookNames = (entry.hooks || []).slice();
     if (blueprint.assetId && hookNames.indexOf(blueprint.assetId) < 0) {
       hookNames.push(blueprint.assetId);
     }
     const group = instantiateBlueprint(blueprint, hookNames);
-    applyLodVisibility(group, requestedRegister);
+    try {
+      if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
+    } catch (error) {
+      console.error('[worksPartLoader] authored part binding failed', error);
+      disposeInstanceOwnedResources(group);
+      releaseClone(group);
+      failed += 1;
+      return null;
+    }
+    applyLodVisibility(group, liveRegister);
     group.userData.worksPartId = id;
     group.userData.worksUrl = url;
-    group.userData.worksRequestedRegister = requestedRegister;
+    group.userData.worksRequestedRegister = liveRegister;
     live.push(group);
     loaded += 1;
     const tags = group.userData.worksLodTags || [];

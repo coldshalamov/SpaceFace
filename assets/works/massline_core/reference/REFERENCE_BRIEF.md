@@ -1,9 +1,9 @@
-# Works Massline Core — reference brief (Cycle 04 square-flange wellhead)
+# Works Massline Core — reference brief (Cycle 04 contract, accepted at Cycle 10)
 
 **Asset:** `massline_core` (PQ-131.02). **Class:** place/prop, works camera only. **Tier:** B
-(signature installed machine). **State:** `design_candidate`. Cycle 4 of ≥5. This page is the
-contract for later cycles. G1/G2/G4 whole-asset remain open. Independent review is
-`review_pending` / `revise`; this cycle does not launch reviewers.
+(signature installed machine). **State:** `accepted`. This page was the Cycle 04 contract for later
+cycles. Cycle 10 satisfies it with three independent original-resolution G1/G2/G4 KEEP reviews and
+no P0/P1 defects.
 
 Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four L-arrow shoes
 with diagonal occupancy gussets, a yellow lamp tab, a chrome-coin inner race, and a
@@ -158,6 +158,6 @@ repair hatch. Clay must read that without textures.
 8. **Manufacture** — U-section, fasteners at interfaces, one asymmetric hatch; no occupancy fins.
 9. **LOD** — LOD1/LOD2 keep hole, square outer, U-trench, lamp, ring hook at 19 px/cell.
 
-Cycle 04 remaining risk: U-trench and square skirt holding at 120 px/cell; site LOD1 reading
-as a claimed square with a hole rather than a plus-dot or a slab. Independent review is
-still `review_pending`. Do not treat this cycle as KEEP.
+Cycle 04's remaining risk was the U-trench/square-skirt read at 120 px/cell and LOD1 at 19 px/cell.
+Cycle 10 closes it: the lower/narrower work race and four-sided site throat earned three independent
+KEEP verdicts against the exact accepted source hash recorded in `evidence/cycle_010/CYCLE.md`.

@@ -8100,7 +8100,7 @@
       "priority": 357,
       "title": "Massline Core, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -8119,7 +8119,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-02-authored-massline-core-REPORT.md"
+      ],
       "brief": "Inventory row .02: a squat machined anchor ring around a dark central well, heavy bolts, one small status lamp - the thing that claims the rock. 1 cell, ~0.5 tall. Hooks: lamp, ring_spin. 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural core in makeMachine."
     },
     {

@@ -1,11 +1,11 @@
-"""PQ-131.02 Works Massline Core — Cycle 05 material/evidence correction.
+"""PQ-131.02 Works Massline Core — Cycle 10 site-read and race-subordination repair.
 
 Cycle 03 clay still collapsed to a nut/icon: eight equal pie wedges, four
 L-arrow shoes with diagonal occupancy gussets, a yellow lamp tab, and a
 chrome-coin inner race. Pitch-break gaps read as a dashed torus, not a
 hat-channel. Site silhouette was a plus-dot map marker.
 
-Cycle 04 established the accepted square-flange wellhead form. Cycle 05 keeps
+Cycle 04 established the square-flange wellhead form. Cycle 05 keeps
 that geometry, identity, hooks, envelope, cameras, open well, and inner race,
 and repairs only the independently reviewed portable-material/evidence defects:
 
@@ -25,7 +25,7 @@ and repairs only the independently reviewed portable-material/evidence defects:
 
 Writes only:
   tools/blender/build_works_massline_core.py
-  assets/works/massline_core/**   (cycle_001, cycle_002, cycle_003 evidence are never rewritten)
+   assets/works/massline_core/**   (cycle_001 through cycle_007 evidence are never rewritten)
   assets/ships/parts/works/place_works_massline_core.glb
 """
 from __future__ import annotations
@@ -61,18 +61,23 @@ SOURCE_DIR = FAMILY / "source"
 TEX_DIR = SOURCE_DIR / "textures"
 BLEND_DIR = FAMILY / "blender"
 REF_DIR = FAMILY / "reference"
-EVIDENCE_DIR = FAMILY / "evidence" / "cycle_005"
+EVIDENCE_DIR = FAMILY / "evidence" / "cycle_010"
 CYCLE_001_DIR = FAMILY / "evidence" / "cycle_001"
 CYCLE_002_DIR = FAMILY / "evidence" / "cycle_002"
 CYCLE_003_DIR = FAMILY / "evidence" / "cycle_003"
 CYCLE_004_DIR = FAMILY / "evidence" / "cycle_004"
+CYCLE_005_DIR = FAMILY / "evidence" / "cycle_005"
+CYCLE_006_DIR = FAMILY / "evidence" / "cycle_006"
+CYCLE_007_DIR = FAMILY / "evidence" / "cycle_007"
+CYCLE_008_DIR = FAMILY / "evidence" / "cycle_008"
+CYCLE_009_DIR = FAMILY / "evidence" / "cycle_009"
 PARTS_GLB = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_massline_core.glb"
 BLEND_PATH = BLEND_DIR / "massline_core.blend"
 
 ASSET_ID = "place_works_massline_core"
 IDENTITY = "SF_WORKS_MASSLINE_CORE_V1"
 PACKET = "PQ-131.02"
-CYCLE = 5
+CYCLE = 10
 HOOK_NAMES = ("ring_spin", "lamp")
 
 CELL = float(CELL_WU)
@@ -87,44 +92,62 @@ _GLTF_NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT3": 9, "MAT4": 
 # Square wellhead flange with round bore. Underside at z=0. Open hole through.
 # Planform (inside → out): tapered dark well, refractory mouth, nested race,
 # U-channel (cavity +Z), square deck filling the corners, folded angle skirt.
-WELL_INNER_R_BOT = 0.30
-WELL_INNER_R_TOP = 0.42
+WELL_INNER_R_BOT = 0.235
+WELL_INNER_R_TOP = 0.285
 WELL_INNER_R = WELL_INNER_R_TOP
-LINER_OUTER_R = 0.52
+LINER_OUTER_R = 0.350
 LINER_Z0 = 0.012
-LINER_Z1 = 0.620
-LIP_Z0, LIP_Z1 = 0.560, 0.735
+LINER_Z1 = 0.580
+LIP_Z0, LIP_Z1 = 0.470, 0.620
 # U-channel: inner flange / trench floor / outer flange. Cavity opens +Z.
 # Outer radius stays inside the square so mid-sides keep a readable deck band.
-U_R_IN = 0.56
-U_R_WEB0 = 0.64
-U_R_WEB1 = 0.76
-U_R_OUT = 0.84
-U_Z_BOT = 0.155
-U_Z_TOP = 0.455
-U_PLATE = 0.030
+U_R_IN = 0.380
+U_R_WEB0 = 0.455
+U_R_WEB1 = 0.565
+U_R_OUT = 0.650
+U_Z_BOT = 0.028
+U_Z_TOP = 0.465
+U_PLATE = 0.060
 # Nested race sits in the inner rebate, below the mouth lip — not a proud coin.
-SPIN_R0, SPIN_R1 = 0.500, 0.555
-SPIN_Z0, SPIN_Z1 = 0.470, 0.535
+# Nested mechanical race: present and functional, but lower and narrower than
+# the square load path so it cannot reclaim the plan-view first read.
+SPIN_R0, SPIN_R1 = 0.305, 0.345
+SPIN_Z0, SPIN_Z1 = 0.300, 0.345
 # Square flange / skirt. Axis-aligned envelope stays inside ±1.10.
 FRAME_HALF = 1.04
 DECK_Z0, DECK_Z1 = 0.125, 0.235
-SKIRT_T = 0.055
-SKIRT_H = 0.155
+SKIRT_T = 0.185
+SKIRT_H = 0.500
 SHOE_W = 0.30
 SHOE_H = 0.145
-# Lamp lives on the +Y frame, hatch on the +X deck. Both stay inside the cell.
-LAMP_POS = (0.18, 0.90, 0.32)
-HATCH_POS = (0.90, -0.22, DECK_Z1 + 0.018)
+# The hooded lamp and service hatch deliberately break the radial read from
+# opposite outer rails.  They are functional assemblies outside the service
+# collar, not small tabs on it.
+LAMP_POS = (-0.540, 0.900, 0.790)
+HATCH_POS = (0.315, -0.895, 0.748)
+
+# Four welded wall sections make the square load path the primary read. The
+# circular collar stays inside this structure as a service trench, not the
+# planform that claims the cell.
+ANCHOR_HALF = 0.965
+ANCHOR_T = 0.300
+ANCHOR_Z0 = DECK_Z1 - 0.006
+ANCHOR_Z1 = 0.720
+# Rooted corner load cases project past the collar and carry the raised rails
+# into the rock.  Their footprint is intentionally substantial in plan view.
+LOAD_CASE_CENTER = 0.745
+LOAD_CASE_HALF = 0.255
+LOAD_CASE_Z0 = 0.205
+LOAD_CASE_Z1 = 0.790
 
 ROLES = ("paint", "wear", "liner", "accent", "lamp")
 ATLAS_TILE = {"paint": 0, "wear": 1, "liner": 2, "accent": 3, "lamp": 4}
 ROLE_RGB = {
-    "paint": (0.102, 0.094, 0.086),
-    "wear": (0.088, 0.092, 0.098),
-    "liner": (0.038, 0.032, 0.028),
-    "accent": (0.255, 0.168, 0.108),
-    "lamp": (0.86, 0.76, 0.52),
+    "paint": (0.255, 0.280, 0.345),
+    "wear": (0.500, 0.545, 0.610),
+    "liner": (0.030, 0.025, 0.022),
+    "accent": (0.600, 0.350, 0.165),
+    "lamp": (0.990, 0.840, 0.460),
 }
 ROLE_FLAT = {
     "paint": (0.18, 0.22, 0.55),
@@ -865,7 +888,9 @@ def tapered_annulus(name, r0_bot, r0_top, r1_bot, r1_top, z0, z1, segs,
 
 
 def build_liner(mats, collection, lod):
-    segs = {0: 28, 1: 16, 2: 8}[lod]
+    # Site LOD makes the well a coarse, legible throat rather than spending
+    # its budget on concentric rounding that collapses to a coin at 19 px.
+    segs = {0: 28, 1: 8, 2: 8}[lod]
     bevel = {0: 0.007, 1: 0.004, 2: 0.0}[lod]
     body = tapered_annulus(
         "LinerBody",
@@ -882,7 +907,7 @@ def build_liner(mats, collection, lod):
         segs, mats["liner"], collection, bevel=bevel, role="liner",
     )
     parts = [body, lip]
-    if lod < 2:
+    if lod == 0:
         parts.append(tapered_annulus(
             "LinerThroat",
             WELL_INNER_R_BOT + 0.008, WELL_INNER_R_TOP - 0.006,
@@ -900,20 +925,137 @@ def build_liner(mats, collection, lod):
     return parts
 
 
-def build_collar(mats, collection, lod):
-    """Continuous U-channel around the well, plus the square deck that turns
-    the circular bore into a claimed square flange. No pie wedges, no L-arrows."""
-    segs = {0: 28, 1: 16, 2: 8}[lod]
-    bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
-    plate = {0: U_PLATE, 1: 0.034, 2: 0.040}[lod]
+def build_anchor_frame(mats, collection, lod):
+    """Wide welded rails that carry the square load path above the collar."""
+    half = {0: ANCHOR_HALF, 1: 0.950, 2: 0.985}[lod]
+    thickness = {0: ANCHOR_T, 1: 0.270, 2: 0.250}[lod]
+    z1 = {0: ANCHOR_Z1, 1: 0.700, 2: 0.680}[lod]
+    zhalf = max(0.015, (z1 - ANCHOR_Z0) * 0.5)
+    zmid = ANCHOR_Z0 + zhalf
+    center = half - thickness * 0.5
+    walls = (
+        ("AnchorWallYPos", (0.0, center, zmid), (half, thickness * 0.5, zhalf)),
+        ("AnchorWallYNeg", (0.0, -center, zmid), (half, thickness * 0.5, zhalf)),
+        ("AnchorWallXPos", (center, 0.0, zmid), (thickness * 0.5, half, zhalf)),
+        ("AnchorWallXNeg", (-center, 0.0, zmid), (thickness * 0.5, half, zhalf)),
+    )
+    return [
+        add_box(name, loc, scale, mats["wear"], collection,
+                bevel=0.004 if lod == 0 else 0.0, role="wear", group="static")
+        for name, loc, scale in walls
+    ]
+
+
+def build_corner_load_cases(mats, collection, lod):
+    """Four welded foundation cases that visibly root the rails into the rock.
+
+    These are not decorative pads: each case rises from the skirt footing,
+    overlaps both adjacent rails, and carries a top cap plus an inner web.  The
+    square projection is therefore legible before the service bore is read.
+    """
+    if lod == 0:
+        half, z0, z1 = LOAD_CASE_HALF, LOAD_CASE_Z0, LOAD_CASE_Z1
+        cap_z, cap_h, web_h = z1 + 0.032, 0.032, 0.072
+        bevel = 0.006
+    elif lod == 1:
+        half, z0, z1 = 0.235, LOAD_CASE_Z0, 0.755
+        cap_z, cap_h, web_h = z1 + 0.028, 0.028, 0.060
+        bevel = 0.0
+    else:
+        half, z0, z1 = 0.225, LOAD_CASE_Z0, 0.650
+        cap_z, cap_h, web_h = z1 + 0.022, 0.022, 0.0
+        bevel = 0.0
+    center = {0: LOAD_CASE_CENTER, 1: 0.735, 2: 0.745}[lod]
+    zhalf = (z1 - z0) * 0.5
+    zmid = z0 + zhalf
     parts = []
-    parts.append(u_channel_arc(
-        "CollarU",
-        U_R_IN, U_R_WEB0, U_R_WEB1, U_R_OUT,
-        U_Z_BOT, U_Z_TOP,
-        0.0, math.tau, segs, plate, mats["paint"], collection,
-        bevel=bevel, role="paint", group="static",
-    ))
+    for i, (sx, sy) in enumerate(((1.0, 1.0), (-1.0, 1.0), (-1.0, -1.0), (1.0, -1.0))):
+        cx, cy = sx * center, sy * center
+        parts.append(add_box(
+            f"CornerLoadCase{i}", (cx, cy, zmid),
+            (half, half, zhalf), mats["paint"], collection,
+            bevel=bevel, role="paint", group="static",
+        ))
+        # LOD0/1 retain a narrower cap and inner web so the case reads as a
+        # formed load housing instead of a generic cube.  LOD2 keeps only the
+        # macro footprint because it is evidence-only and budgeted separately.
+        if lod < 2:
+            parts.append(add_box(
+                f"CornerLoadCap{i}", (cx, cy, cap_z),
+                (half * 0.88, half * 0.72, cap_h), mats["wear"], collection,
+                bevel=bevel * 0.5, role="wear", group="static",
+            ))
+        if web_h:
+            web_center = (cx - sx * half * 0.56, cy - sy * half * 0.56, z0 + web_h)
+            parts.append(add_box(
+                f"CornerLoadWeb{i}", web_center,
+                (half * 0.44, half * 0.44, web_h), mats["wear"], collection,
+                bevel=bevel * 0.5, role="wear", group="static",
+            ))
+            if lod == 0:
+                parts.extend(add_hex_bolt(
+                    f"CornerLoadBolt{i}",
+                    (cx - sx * half * 0.36, cy - sy * half * 0.36, cap_z + cap_h + 0.006),
+                    (0, 0, 1), mats["wear"], collection, lod=lod,
+                    head_r=0.018, head_h=0.009, shank_r=0.009, shank_h=0.018,
+                ))
+    return parts
+
+
+def build_site_square_throat(mats, collection, lod):
+    """LOD1-only four-sided throat around the retained open bore.
+
+    At site scale the authored corner cases already claim the cell.  These
+    low square casing walls make the well read as a recessed industrial mouth
+    instead of a one-pixel concentric dot, while leaving its round inner void
+    genuinely open.  Their triangles replace removed LOD1 ring bands.
+    """
+    if lod != 1:
+        return []
+    half = 0.455
+    thickness = 0.065
+    z0, z1 = 0.190, 0.395
+    zhalf = (z1 - z0) * 0.5
+    zmid = z0 + zhalf
+    center = half - thickness * 0.5
+    walls = (
+        ("SiteThroatNorth", (0.0, center, zmid), (half, thickness * 0.5, zhalf)),
+        ("SiteThroatSouth", (0.0, -center, zmid), (half, thickness * 0.5, zhalf)),
+        ("SiteThroatEast", (center, 0.0, zmid), (thickness * 0.5, half, zhalf)),
+        ("SiteThroatWest", (-center, 0.0, zmid), (thickness * 0.5, half, zhalf)),
+    )
+    return [
+        add_box(name, loc, scale, mats["wear"], collection,
+                bevel=0.0, role="wear", group="static")
+        for name, loc, scale in walls
+    ]
+
+
+def build_collar(mats, collection, lod):
+    """Recessed service collar inside the visibly primary square load frame."""
+    segs = {0: 28, 1: 8, 2: 4}[lod]
+    bevel = {0: 0.006, 1: 0.0, 2: 0.0}[lod]
+    plate = {0: U_PLATE, 1: 0.050, 2: 0.050}[lod]
+    floor_gap = 0.046 if lod < 2 else 0.040
+    floor_z0 = U_Z_BOT + 0.004
+    floor_z1 = floor_z0 + plate
+    parts = [
+        annular_segment(
+            "CollarInnerFlange", U_R_IN, U_R_WEB0, U_Z_BOT, U_Z_TOP,
+            0.0, math.tau, segs, mats["wear"], collection,
+            bevel=bevel, role="wear", group="static",
+        ),
+        annular_segment(
+            "CollarFloor", U_R_WEB0 + floor_gap, U_R_WEB1 - floor_gap,
+            floor_z0, floor_z1, 0.0, math.tau, segs, mats["liner"], collection,
+            bevel=0.0, role="liner", group="static",
+        ),
+        annular_segment(
+            "CollarOuterFlange", U_R_WEB1, U_R_OUT, U_Z_BOT, U_Z_TOP,
+            0.0, math.tau, segs, mats["wear"], collection,
+            bevel=bevel, role="wear", group="static",
+        ),
+    ]
     parts.append(square_round_deck(
         "FlangeDeck",
         FRAME_HALF, U_R_OUT - 0.006,
@@ -921,14 +1063,14 @@ def build_collar(mats, collection, lod):
         bevel=bevel, role="paint",
     ))
     # Four lap straps at the cardinals — joints, not occupancy cuts.
-    if lod <= 1:
+    if lod == 0:
         lap_w = 0.16 if lod == 0 else 0.12
         for i in range(4):
             mid = i * (math.tau / 4.0)
             a0, a1 = mid - lap_w * 0.5, mid + lap_w * 0.5
             parts.append(annular_segment(
                 f"CollarLap{i}",
-                U_R_WEB0 + 0.012, U_R_WEB1 - 0.012,
+                U_R_WEB0 + floor_gap, U_R_WEB1 - floor_gap,
                 U_Z_TOP + 0.004, U_Z_TOP + 0.018,
                 a0, a1, 2 if lod == 0 else 1,
                 mats["paint"], collection,
@@ -946,11 +1088,14 @@ def build_collar(mats, collection, lod):
                 (0, 0, 1), mats["wear"], collection, group="static", lod=lod,
                 head_r=0.016, head_h=0.008, shank_r=0.009, shank_h=0.018,
             ))
+    parts.extend(build_anchor_frame(mats, collection, lod))
+    parts.extend(build_corner_load_cases(mats, collection, lod))
+    parts.extend(build_site_square_throat(mats, collection, lod))
     return parts
 
 
 def build_spin_ring(mats, collection, lod):
-    segs = {0: 24, 1: 16, 2: 8}[lod]
+    segs = {0: 24, 1: 8, 2: 8}[lod]
     bevel = {0: 0.003, 1: 0.0, 2: 0.0}[lod]
     race = annular_segment(
         "SpinRace", SPIN_R0, SPIN_R1, SPIN_Z0, SPIN_Z1,
@@ -958,7 +1103,7 @@ def build_spin_ring(mats, collection, lod):
         bevel=bevel, role="wear", group="spin",
     )
     parts = [race]
-    if lod < 2:
+    if lod == 0:
         parts.append(annular_segment(
             "SpinShoulder", SPIN_R0 - 0.008, SPIN_R0 + 0.010,
             SPIN_Z0 + 0.012, SPIN_Z1 - 0.010,
@@ -1057,36 +1202,39 @@ def build_hatch(mats, collection, lod):
     loc = HATCH_POS
     hatch = add_box(
         "ServiceHatch", loc,
-        (0.155, 0.085, 0.014), mats["accent"], collection,
+        (0.220 if lod == 0 else 0.255, 0.105 if lod == 0 else 0.135, 0.024), mats["accent"], collection,
         bevel=0.003 if lod < 2 else 0.0, role="accent",
     )
     parts = [hatch]
     if lod < 2:
         parts.append(add_box(
-            "HatchStrap", (loc[0], loc[1], loc[2] + 0.012),
-            (0.168, 0.028, 0.007), mats["wear"], collection,
+            "HatchStrap", (loc[0], loc[1], loc[2] + 0.024),
+            (0.235 if lod == 0 else 0.275, 0.032 if lod == 0 else 0.042, 0.010), mats["wear"], collection,
             bevel=0.002, role="wear",
         ))
     if lod == 0:
-        for k, dx in enumerate((-0.08, 0.08)):
+        for k, dx in enumerate((-0.118, 0.118)):
             parts.extend(add_hex_bolt(
                 f"HatchBolt{k}",
-                (loc[0] + dx, loc[1] + 0.032, loc[2] + 0.018),
+                (loc[0] + dx, loc[1] + 0.045, loc[2] + 0.034),
                 (0, 0, 1), mats["wear"], collection,
-                head_r=0.012, head_h=0.006, shank_r=0.006, shank_h=0.012, lod=lod,
+                head_r=0.014, head_h=0.007, shank_r=0.007, shank_h=0.014, lod=lod,
             ))
     return parts
 
 
 def build_lamp(mats, collection, lod):
-    """Side-mounted hooded fixture on the +Y frame. Open cavity faces the well
-    so works_top sees a framed dark mouth, not a yellow tab on the ring."""
+    """Off-axis hooded fixture rooted on the north load rail.
+
+    The hood deliberately projects beyond the circular service collar, so the
+    lamp reads as a service assembly in plan rather than a yellow ring tab.
+    """
     px, py, pz = LAMP_POS
     parts = []
     arm = add_box(
         "LampArm",
-        (px, py - 0.055, DECK_Z1 + 0.028),
-        (0.036 if lod < 2 else 0.044, 0.090, 0.018),
+        (px, py - 0.070, ANCHOR_Z1 - 0.075),
+        (0.070 if lod < 2 else 0.060, 0.125, 0.030),
         mats["paint"], collection,
         bevel=0.003 if lod == 0 else 0.0, role="paint", group="lamp",
     )
@@ -1094,11 +1242,15 @@ def build_lamp(mats, collection, lod):
     if lod < 2:
         parts.append(add_cylinder(
             "LampSocket", (px, py, pz),
-            0.042, 0.036, mats["wear"], collection,
+            0.052, 0.050, mats["wear"], collection,
             vertices=10 if lod == 0 else 8, bevel=0.0, role="wear", group="lamp",
         ))
-    hood_s = (0.110 if lod < 2 else 0.100, 0.078 if lod < 2 else 0.072, 0.048 if lod < 2 else 0.044)
-    hood_z = pz + 0.052
+    hood_s = (
+        0.165 if lod == 0 else 0.185 if lod == 1 else 0.100,
+        0.110 if lod == 0 else 0.130 if lod == 1 else 0.095,
+        0.070 if lod < 2 else 0.060,
+    )
+    hood_z = pz + 0.068
     hood = add_box(
         "LampHood",
         (px, py + 0.012, hood_z),
@@ -1110,16 +1262,16 @@ def build_lamp(mats, collection, lod):
         # sees a framed cavity. A cutter entirely inside the hood is a sealed void.
         cutter = add_box(
             "LampHoodCutter",
-            (px, py + 0.004, hood_z + 0.028),
-            (hood_s[0] - 0.030, hood_s[1] - 0.022, hood_s[2] + 0.010),
+            (px, py + 0.006, hood_z + 0.040),
+            (hood_s[0] - 0.040, hood_s[1] - 0.030, hood_s[2] + 0.014),
             None, collection, bevel=0.0, role="paint", group="lamp",
         )
         boolean_difference(hood, cutter)
     parts.append(hood)
-    lens_loc = Vector((px, py - 0.008, pz + 0.042))
+    lens_loc = Vector((px, py - 0.010, pz + 0.054))
     parts.append(add_cylinder(
         "LampLens", (lens_loc.x, lens_loc.y, lens_loc.z),
-        0.026 if lod < 2 else 0.028, 0.012, mats["lamp"], collection,
+        0.034 if lod < 2 else 0.030, 0.016, mats["lamp"], collection,
         vertices=10 if lod == 0 else 8, bevel=0.0, role="lamp", group="lamp",
     ))
     return parts, lens_loc
@@ -1850,9 +2002,39 @@ def combine_lods(lod_reports, lamp_loc):
     if combined.exists():
         combined.unlink()
     tmp.replace(combined)
+
+    # The complete source GLB retains LOD2 for authoring and evidence. The selected runtime source
+    # is deliberately narrower: Works can select only LOD0/work or LOD1/site, so LOD2 must not
+    # consume package residency or become an accidental third fallback.
+    release_contract = dict(contract)
+    release_contract["lods"] = ["lod0", "lod1"]
+    release_contract["exportedLods"] = ["lod0", "lod1"]
+    root["spacefaceAsset"] = release_contract
+    bpy.context.scene["spacefaceAsset"] = release_contract
+    detached_lod2 = []
+    for obj in [candidate for candidate in bpy.data.objects if candidate.name.startswith("LOD2_")]:
+        parent = obj.parent
+        obj.parent = None
+        obj.select_set(False)
+        detached_lod2.append((obj, parent))
+    parts_tmp = PARTS_GLB.with_suffix(".tmp.glb")
+    bpy.ops.export_scene.gltf(
+        filepath=str(parts_tmp), export_format="GLB", use_selection=True, export_apply=True,
+        export_yup=True, export_extras=True, export_animations=False,
+        export_materials="EXPORT", export_texcoords=True, export_normals=True,
+        export_tangents=True, export_image_format="AUTO",
+    )
+    sanitize_glb_floats(parts_tmp)
+    stamp_glb_contract(parts_tmp, release_contract)
     if PARTS_GLB.exists():
         PARTS_GLB.unlink()
-    PARTS_GLB.write_bytes(combined.read_bytes())
+    parts_tmp.replace(PARTS_GLB)
+    for obj, parent in detached_lod2:
+        if parent is not None:
+            parent_keep(obj, parent)
+        obj.select_set(True)
+    root["spacefaceAsset"] = contract
+    bpy.context.scene["spacefaceAsset"] = contract
 
     BLEND_DIR.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH))
@@ -2460,6 +2642,10 @@ def run_hidden_faces(glb_path: Path, json_out: Path):
     ]
     print("hidden-face:", " ".join(cmd))
     proc = subprocess.run(cmd, capture_output=True, text=True)
+    if json_out.exists():
+        # The nested Windows Blender inherits CRLF; normalize only this generated report so a
+        # valid evidence artifact does not fail the repository's diff whitespace gate.
+        json_out.write_text(json_out.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
     (EVIDENCE_DIR / "hidden_faces_stdout.txt").write_text(
         (proc.stdout or "") + "\n--- stderr ---\n" + (proc.stderr or ""), encoding="utf-8", newline="\n",
     )
@@ -2641,7 +2827,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     row("MTX-53", "not_applicable", "works_top", "pass", True,
         "Manufactured wellhead, not a rock/wreck; no sculpt/photogrammetry bake is required.")
     row("MTX-54", "not_applicable", "works_top", "pass", True,
-        "Cycle 05 preserves Cycle 04 form; Cycle 01–04 evidence bytes are not rewritten.")
+        "Cycle 10 lowers the nested race and reallocates LOD1 circular detail into a square throat/read while excluding LOD2 from the selected runtime source; Cycle 01–09 evidence bytes are not rewritten.")
 
     ledger = {
         "schema": "spaceface.advancedModelTechniqueLedger.v1",
@@ -2678,11 +2864,11 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "state": "design_candidate",
         "g1g2g4": "open",
         "independentReviewLaunched": False,
-        "reviewSource": "controller-provided independent review of Cycle 04 exact candidate",
+        "reviewSource": "controller adjudication of the Cycle 09 G4 revise: site read collapsed to slab/dot and race remained too prominent",
         "reviewFindingsAddressed": [
-            "base-color atlas was incorrectly exported as full-surface emissive",
-            "packed ORM.R was not consumed as glTF occlusionTexture",
-            "LOD2 lacked an original-resolution Works-camera site still",
+            "LOD0 race is lower and narrower than the retained square load path",
+            "LOD1 replaces dense circular bands with coarse casing/throat geometry around a genuine open void",
+            "LOD1 hatch and hooded lamp are enlarged as asymmetric service cues at play size",
         ],
         "sourceGlb": inventory["combined"],
         "partsGlb": inventory["partsSource"],
@@ -2716,8 +2902,9 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
         "citedReferences": [rel(p) for p in CITED_REFS],
         "contactSheet": rel(REF_DIR / "CONTACT_SHEET.png"),
         "notes": (
-            "Cycle 05 preserves Cycle 04 square-flange geometry and repairs portable material "
-            "wiring plus direct LOD2 site evidence. Not wired, not released, not promoted. "
+            "Cycle 10 preserves the C9 square load path while lowering the nested mechanical race and moving LOD1 "
+            "detail density into a four-sided throat and stronger asymmetric service read. The selected runtime source "
+            "remains LOD0/work and LOD1/site. "
             "A new independent exact-hash visual verdict remains pending."
         ),
     }
@@ -2726,7 +2913,7 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
     )
     (EVIDENCE_DIR / "CYCLE.md").write_text(
         "\n".join([
-            "# PQ-131.02 Massline Core — Cycle 05 evidence",
+            "# PQ-131.02 Massline Core — Cycle 10 evidence",
             "",
             f"Disposition: **review_pending** / **revise**. State: `design_candidate`. Identity: `{IDENTITY}`.",
             f"Source SHA-256: `{inventory['sha256']}`",
@@ -2736,10 +2923,11 @@ def write_audits(inventory, contract, stills, camera_facts, occupancy, glb_inspe
             f"Hooks: {', '.join(inventory['hooks'])}",
             "",
             "Stills from the exported GLB at 1920×1080, live works camera (31° FOV, +Z up).",
-            "Independent reviewers were not launched this cycle. Cycle 01–04 evidence is immutable.",
+            "Independent reviewers were not launched this cycle. Cycle 01–09 evidence is immutable.",
             "",
-            "Cycle 04 geometry is unchanged. Cycle 05 exports packed ORM.R as occlusionTexture",
-            "and uses a dedicated black-except-lens emissive atlas instead of the base-color atlas.",
+            "Cycle 10 answers the Cycle 09 G4 revise by lowering/narrowing the nested race and reallocating",
+            "LOD1 ring detail into a coarse four-sided throat, retained open well, and larger asymmetric hatch/lamp.",
+            "The selected runtime source exports only LOD0/work plus LOD1/site; LOD2 remains source/evidence-only.",
             f"LOD2 Works-site still (1920×1080): `{still_rel.get('works_site_lod2')}`",
             f"LOD2 still SHA-256: `{hash_stills.get('works_site_lod2')}`",
             "",
@@ -2825,16 +3013,16 @@ def main(argv=None):
     if "--" in argv:
         argv = argv[argv.index("--") + 1:]
     skip_stills, skip_hidden, stills_only = parse_args(argv)
-    if CYCLE != 5 or EVIDENCE_DIR.name != "cycle_005":
-        raise RuntimeError("Cycle 05 builder must write cycle_005 only")
-    frozen_dirs = (CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR, CYCLE_004_DIR)
+    if CYCLE != 10 or EVIDENCE_DIR.name != "cycle_010":
+        raise RuntimeError("Cycle 10 builder must write cycle_010 only")
+    frozen_dirs = (CYCLE_001_DIR, CYCLE_002_DIR, CYCLE_003_DIR, CYCLE_004_DIR, CYCLE_005_DIR, CYCLE_006_DIR, CYCLE_007_DIR, CYCLE_008_DIR, CYCLE_009_DIR)
     if EVIDENCE_DIR.resolve() in {d.resolve() for d in frozen_dirs}:
-        raise RuntimeError("refusing to write over Cycle 01/02/03/04 evidence")
+        raise RuntimeError("refusing to write over Cycle 01 through Cycle 09 evidence")
     frozen_prev = {}
     for folder in frozen_dirs:
         frozen_prev.update(hash_tree(folder))
     if not frozen_prev:
-        raise RuntimeError("Cycle 01/02/03/04 evidence missing; refuse to build Cycle 05 without it")
+        raise RuntimeError("Cycle 01 through Cycle 09 evidence missing; refuse to build Cycle 10 without it")
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)
@@ -2908,7 +3096,7 @@ def main(argv=None):
     if after_prev != frozen_prev:
         mutated = [k for k in after_prev if after_prev.get(k) != frozen_prev.get(k)]
         missing = [k for k in frozen_prev if k not in after_prev]
-        raise RuntimeError(f"Cycle 01/02/03/04 evidence mutated: {mutated or missing}")
+        raise RuntimeError(f"Cycle 01 through Cycle 09 evidence mutated: {mutated or missing}")
     print(json.dumps({
         "ok": True,
         "cycle": CYCLE,
@@ -2924,6 +3112,11 @@ def main(argv=None):
             "cycle_002": len(hash_tree(CYCLE_002_DIR)),
             "cycle_003": len(hash_tree(CYCLE_003_DIR)),
             "cycle_004": len(hash_tree(CYCLE_004_DIR)),
+            "cycle_005": len(hash_tree(CYCLE_005_DIR)),
+            "cycle_006": len(hash_tree(CYCLE_006_DIR)),
+            "cycle_007": len(hash_tree(CYCLE_007_DIR)),
+            "cycle_008": len(hash_tree(CYCLE_008_DIR)),
+            "cycle_009": len(hash_tree(CYCLE_009_DIR)),
         },
         "camera": {
             "works_top_D": camera_facts.get("works_top", {}).get("distance"),
