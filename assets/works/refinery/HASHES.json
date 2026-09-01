@@ -1,5 +1,5 @@
 {
-  "cycle": 4,
+  "cycle": 5,
   "disposition": "accepted",
   "rootNode": "SF_WORKS_REFINERY_V1",
   "hooks": [
@@ -8,9 +8,22 @@
     "lamp"
   ],
   "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
-  "partsSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "partsSha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+  "partsBytes": 9160644,
+  "siteLodMaterialProfile": "three_mass_process_train_v1",
   "sourceGlb": "assets/works/refinery/source/refinery.glb",
   "sourceSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "releaseGlb": "assets/ships/release/parts/works/place_works_refinery.glb",
+  "releaseSha256": "C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF",
+  "releaseBytes": 3307996,
+  "renderPackage": {
+    "metadata": "assets/ships/release/render-packages/works-refinery/render-package.json",
+    "metadataSha256": "D13342914EF3A28C6F72F3BECEB23CF1F64585D34F21E5F82A33D017E4D25A25",
+    "renderGlb": "assets/ships/release/render-packages/works-refinery/render.glb",
+    "renderGlbSha256": "86A95B94B0CA297E4CEC0ABABB11D497924095DBA4DF6D4AC942136CC873E77E",
+    "contentHash": "6c45c7dbf428b7f67aa53210a4e3c94a75d27a2594dc40a7da5e298553e0e0fd",
+    "runtimeHash": "23bd55f5194823937d5e067c55d28663b8a5a25e41482843b8dff6545bcc0b90"
+  },
   "lods": {
     "lod0": {
       "path": "assets/works/refinery/source/refinery_lod0.glb",
@@ -57,7 +70,7 @@
   "blend": "assets/works/refinery/source/works_refinery.blend",
   "blendSha256": "CE90413DEBE3D36A18E40091146011FF6DAF321AC0E40CE881CF37D3B79EB9CD",
   "builder": "tools/blender/build_works_refinery.py",
-  "builderSha256": "658C165C978248BF3D0D1636F22043997F68D0946ADE7A456FE266E0CD5A2A7A",
+  "builderSha256": "CD4D8475A77BEADFE3FED3545EB43ECB1131DF995FC4090026F6BBAFE6786406",
   "lod0Maps": {
     "basecolor": "1597E7002955ED41A8957A8E6362699F6FC1FD96A2BD4951C5BAA008EB2E9452",
     "normal": "160FBD102019CA1AE49156C83C0C6A3191C9A869E17F163672A2B1CC7490162D",
@@ -94,14 +107,20 @@
   },
   "independentReview": {
     "verdict": "KEEP",
-    "reviewer": "/root/refinery_exact_visual_review",
-    "scope": "whole_asset_exact_source_candidate",
-    "candidateSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795"
+    "reviewers": [
+      "Luna max /root/pq131_extractor_art_research",
+      "Terra xhigh /root/pq131_extractor_runtime_research",
+      "Clinepass Kimi K3 max ses_fa2be25b7ffeC47NdlrMt23p3h"
+    ],
+    "scope": "whole_asset_source_plus_exact_selected_release_at_work_and_site_registers",
+    "sourceSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+    "selectedSha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+    "releaseSha256": "C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF"
   },
   "routeAcceptance": {
     "verdict": "KEEP",
     "reviewer": "/root",
-    "scope": "exact_release_browser_electron_route",
-    "evidence": "assets/works/refinery/evidence/cycle_004_route/EPOCH.json"
+    "scope": "exact_release_browser_capture_plus_shared-route Electron playable",
+    "evidence": "assets/works/refinery/evidence/cycle_005_master/EPOCH.json"
   }
 }

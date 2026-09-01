@@ -150,6 +150,57 @@ export function bindAuthoredExtractor(group) {
   };
 }
 
+// The Refinery has two runtime-owned heat/status surfaces. Everything else — furnace jacket,
+// rooted stack, saddle tank, and their atlas materials — stays exactly as authored and shared.
+export function bindAuthoredRefinery(group) {
+  const hooks = group?.userData?.worksRefineryHooks;
+  if (!hooks?.furnace_slit || !hooks?.stack_vent || !hooks?.lamp) {
+    throw new Error('Refinery hook hierarchy is unavailable');
+  }
+  const collectStatusMaterials = (hook, pattern, label) => {
+    const materials = [];
+    hook.traverse((node) => {
+      if (!node.isMesh || !pattern.test(node.name || '')) return;
+      const rows = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of rows) {
+        if (!material || material.userData?.worksInstanceOwned !== true) {
+          throw new Error(`Refinery ${label} material must be instance-owned`);
+        }
+        if (!materials.includes(material)) materials.push(material);
+      }
+    });
+    if (!materials.length) throw new Error(`Refinery ${label} hook owns no status materials`);
+    return materials;
+  };
+  const furnaceMaterials = collectStatusMaterials(hooks.furnace_slit, /^LOD[01]_furnace_slit$/u, 'furnace slit');
+  const lampMaterials = collectStatusMaterials(hooks.lamp, /^LOD[01]_lamp_lens$/u, 'lamp lens');
+
+  group.rotation.x = Math.PI / 2;
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      furnace: furnaceMaterials[0],
+      furnaceAnchor: hooks.furnace_slit,
+      stackVent: hooks.stack_vent,
+      lamp: lampMaterials[0],
+      lampAnchor: hooks.lamp,
+      setFurnaceIntensity(intensity) {
+        for (const material of furnaceMaterials) material.emissiveIntensity = intensity;
+      },
+      setLamp(hex, intensity) {
+        for (const material of lampMaterials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+    },
+    pulses: [],
+  };
+}
+
 /**
  * Compare this module's copy of the ring against the sim's own contactProfile on a synthetic
  * field that exercises every contactKind plus an out-of-bounds edge. Pure: no THREE, no DOM,
@@ -589,6 +640,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredCoreGhostGen = 0;
   let authoredExtractorGen = 0;
   let authoredExtractorGhostGen = 0;
+  let authoredRefineryGen = 0;
+  let authoredRefineryGhostGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
   let worksHostWasVisible = false;
@@ -3383,6 +3436,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     rec.pending = false;
   }
 
+  function installAuthoredRefinery(rec, group) {
+    const authored = bindAuthoredRefinery(group);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.pending = false;
+  }
+
   function loadAuthoredCore(rec) {
     const loader = ensureWorksLoader();
     if (!loader) {
@@ -3457,6 +3519,42 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
+  function loadAuthoredRefinery(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Refinery cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredRefineryGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_refinery').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Refinery load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredRefinery(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Refinery install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Refinery load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
   function buildAuthoredCoreAt(m) {
     const root = new THREE.Group();
     root.name = `worksCore:${m.id}`;
@@ -3485,9 +3583,24 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec;
   }
 
+  function buildAuthoredRefineryAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksRefinery:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredRefinery(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
     if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
     if (m.defId === 'sm_extractor') return buildAuthoredExtractorAt(m);
+    if (m.defId === 'sm_refinery') return buildAuthoredRefineryAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -3671,8 +3784,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (rec.dyn.setBeltPhase) rec.dyn.setBeltPhase(timeS * 0.58, running && !motionReduce);
         if (rec.dyn.furnace) {
           const hot = running;
-          rec.dyn.furnace.emissiveIntensity = hot
+          const intensity = hot
             ? (motionReduce ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
+          if (rec.dyn.setFurnaceIntensity) rec.dyn.setFurnaceIntensity(intensity);
+          else rec.dyn.furnace.emissiveIntensity = intensity;
         }
         if (rec.dyn.progressBar) {
           const p = status && Number.isFinite(status.progress) ? Math.max(0, Math.min(1, status.progress)) : 0;
@@ -4604,12 +4719,56 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return record;
   }
 
+  function beginAuthoredRefineryGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredRefineryGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Refinery ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_refinery').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && ghost === record && record.loadToken === token) {
+          console.error('[asteroidRenderer3d] authored Refinery ghost load returned null');
+        }
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          bindAuthoredRefinery(part);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Refinery ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Refinery ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
     if (!defId) return null;
     if (defId === 'sm_massline_core') return beginAuthoredCoreGhost(defId);
     if (defId === 'sm_extractor') return beginAuthoredExtractorGhost(defId);
+    if (defId === 'sm_refinery') return beginAuthoredRefineryGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -5602,8 +5761,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // The controller capture is player-route evidence, not a raw loader preview. Seat the
       // selected release at the same proof cell the camera frames; otherwise a Y-up GLB remains
       // edge-on at scene origin while the still photographs the unrelated entry derrick. The
-      // Extractor also runs its production binding so missing dynamic ownership fails closed here.
+      // Dynamic authored machines run their production bindings here so missing hook/material
+      // ownership fails closed in the controller capture route as well as live installation.
       if (id === 'place_works_extractor') bindAuthoredExtractor(group);
+      if (id === 'place_works_refinery') bindAuthoredRefinery(group);
       const transform = seatWorksProofGroup(group);
       group.userData.worksTransform = transform;
       group.name = `worksProof_${id}`;

@@ -5,26 +5,40 @@
     "familyId": "asteroid_works",
     "role": "one-cell ore-roast / matte-hold refinery",
     "tier": "B",
-    "currentState": "design_candidate",
+    "currentState": "released_player_route",
     "targetState": "accepted",
     "packet": "PQ-131.04",
-    "cycle": 3,
-    "disposition": "review_pending",
+    "cycle": 5,
+    "disposition": "accepted",
     "sourcePaths": [
       "assets/works/refinery/source/works_refinery.blend",
       "tools/blender/build_works_refinery.py"
     ],
     "generatorPaths": ["tools/blender/build_works_refinery.py"],
-    "releasePaths": [],
-    "manifestPaths": [],
-    "runtimeSelectorPaths": [],
+    "releasePaths": [
+      "assets/ships/parts/works/place_works_refinery.glb",
+      "assets/ships/release/parts/works/place_works_refinery.glb",
+      "assets/ships/release/render-packages/works-refinery/render.glb"
+    ],
+    "manifestPaths": [
+      "assets/ships/parts/parts_manifest.json",
+      "assets/ships/release/release_manifest.json",
+      "assets/ships/render-packages/pilots.json",
+      "assets/ships/release/render-packages/works-refinery/render-package.json"
+    ],
+    "runtimeSelectorPaths": [
+      "src/render/renderPackageManifest.js",
+      "src/ui/asteroid/worksPartLoader.js",
+      "src/ui/asteroid/asteroidRenderer3d.js"
+    ],
     "activeLocksChecked": true
   },
   "candidateIdentity": {
-    "sourceHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
-    "exportHash": "1D0F648E023AED996A76BE91255C869CBAF1554F3D25DE9EAD701F1BC62022C0",
-    "releaseHash": null,
-    "blendHash": "D19728AD0950CECE741670E36784A463761CC9F2484CE325D43B226413CD9BE1"
+    "sourceHash": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+    "exportHash": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+    "releaseHash": "C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF",
+    "blendHash": "CE90413DEBE3D36A18E40091146011FF6DAF321AC0E40CE881CF37D3B79EB9CD",
+    "renderPackageHash": "D13342914EF3A28C6F72F3BECEB23CF1F64585D34F21E5F82A33D017E4D25A25"
   },
   "playerFacingUse": {
     "normalRoutes": ["asteroid_works"],
@@ -64,7 +78,7 @@
   "materialTruthPreflight": {
     "applicability": "required_for_all_changed_camera_visible_3d",
     "componentReferenceDecision": "not_needed",
-    "allSupportedViewZonesClassified": false,
+    "allSupportedViewZonesClassified": true,
     "visibleZoneRegister": [
       {"zone": "furnace_jacket", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Mild-steel jacket over ceramic-fibre; cool graphite alkyd; chamfered structural returns, flared skirt, deep waist, broad shoulder course, and stepped crown."},
       {"zone": "furnace_slit_well", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "Deep blind charging well: thin dark formed-steel lip, tapered soot-dark dry refractory walls, and smaller ceramic-glass ember floor owned by furnace_slit. Beauty emission 0."},
@@ -165,9 +179,9 @@
   "acceptance": {
     "requiredGates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"],
     "independentReviewRequired": true,
-    "independentReview": "not_launched",
-    "noP0P1": false,
+    "independentReview": "KEEP by Luna max, Terra xhigh, and Clinepass Kimi K3 max on cycle_005 exact hashes",
+    "noP0P1": true,
     "exactReviewedHashRequired": true,
-    "wiring": "source_candidate_unwired"
+    "wiring": "live authored installed, ghost, and proof routes; LOD0 work and LOD1 site; procedural body removed"
   }
 }

@@ -385,28 +385,6 @@ export function makeMachine(kind, S, envMap) {
     }
     dyn.turbine = turbine;
     lampZ = S * 1.16;
-  } else if (kind === 'refinery') {
-    // Furnace housing. The one honest emitter on the fleet: a slit that goes hot while it is
-    // smelting and dead grey when it is starved. The live renderer drives dyn.furnace, and parks a
-    // real point light at dyn.furnaceAnchor so the glow spills onto the rock around it.
-    const body = new THREE.Mesh(new THREE.BoxGeometry(S * 0.8, S * 0.64, S * 0.62), metalMat(mid, envMap));
-    body.position.z = S * 0.44; body.castShadow = true; g.add(body);
-    const skirtBand = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.1, S * 0.66), paintMat(0x6d3f1c, envMap));
-    skirtBand.position.set(0, -S * 0.26, S * 0.44); g.add(skirtBand);
-    const furnaceMat = new THREE.MeshStandardMaterial({
-      color: 0x160c05, emissive: 0xff8a30, emissiveIntensity: 0.2, roughness: 0.85, metalness: 0.1,
-    });
-    const slit = new THREE.Mesh(new THREE.BoxGeometry(S * 0.46, S * 0.1, S * 0.04), furnaceMat);
-    slit.position.set(0, S * 0.04, S * 0.76); g.add(slit);
-    dyn.furnace = furnaceMat;
-    dyn.furnaceAnchor = slit;
-    const hopper = new THREE.Mesh(new THREE.ConeGeometry(S * 0.17, S * 0.26, 4), metalMat(dark, envMap));
-    hopper.rotation.x = -Math.PI / 2; hopper.position.set(-S * 0.24, S * 0.2, S * 0.86); hopper.castShadow = true; g.add(hopper);
-    const stack = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.07, S * 0.095, S * 0.56, 8), metalMat(0x141211, envMap));
-    stack.rotation.x = Math.PI / 2; stack.position.set(S * 0.26, -S * 0.16, S * 0.86); stack.castShadow = true; g.add(stack);
-    const cowl = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.11, S * 0.085, S * 0.07, 8), metalMat(steel, envMap));
-    cowl.rotation.x = Math.PI / 2; cowl.position.set(S * 0.26, -S * 0.16, S * 1.15); g.add(cowl);
-    lampZ = S * 1.02;
   } else if (kind === 'fabricator') {
     // Fabricator: a sealed bay with a small lit viewport (a real window, not a glowing panel) and
     // a physical gantry head that slides along a rail as the job runs.

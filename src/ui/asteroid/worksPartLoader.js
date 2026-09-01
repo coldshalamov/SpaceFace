@@ -19,6 +19,12 @@ export const EXTRACTOR_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+export const REFINERY_HOOKS = Object.freeze([
+  'furnace_slit',
+  'stack_vent',
+  'lamp',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -55,6 +61,15 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: EXTRACTOR_HOOKS,
     binding: 'works-extractor',
+  }),
+  // PQ-131.04. The reviewed full source retains LOD2 for authoring/evidence, while the selected
+  // release has exactly the work (LOD0) and site (LOD1) registers used by Asteroid Works.
+  place_works_refinery: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_refinery.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_refinery.glb',
+    slot: 'place',
+    hooks: REFINERY_HOOKS,
+    binding: 'works-refinery',
   }),
 });
 
@@ -157,6 +172,9 @@ function disposeInstanceOwnedResources(group) {
 
 function cloneMaterialForInstance(material, primitiveName) {
   if (!material || typeof material.clone !== 'function') return material;
+  // Runtime status can only mutate these authored state surfaces. The furnace jacket, stack,
+  // tank, and their atlas-backed materials remain shared blueprint resources across instances.
+  if (/^LOD[01]_refinery$/i.test(primitiveName || '')) return material;
   const clone = material.clone();
   clone.userData = { ...(clone.userData || {}), worksInstanceOwned: true };
   // The extractor's belt scrolls its atlas sampler. Keep that sampler per instance
@@ -249,6 +267,35 @@ export function bindWorksExtractorHookHierarchy(group) {
   group.userData.worksExtractorBoundMeshes = bound;
   group.userData.worksExtractorHooks = Object.freeze({ head_face: head, belt, lamp });
   return group.userData.worksExtractorHooks;
+}
+
+// The release package flattens primitive world matrices. Restore only the Refinery's stateful
+// slit and lens pivots beneath their authored markers; stack_vent intentionally remains an exposed
+// stationary marker for runtime light placement and no static jacket/stack/tank mesh is reparented.
+export function bindWorksRefineryHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const furnace = hooks.furnace_slit;
+  const stack = hooks.stack_vent;
+  const lamp = hooks.lamp;
+  if (!furnace || !stack || !lamp) {
+    throw new Error('[worksPartLoader] Refinery is missing furnace_slit, stack_vent, or lamp marker');
+  }
+  const bindings = [
+    [furnace, 'LOD0_furnace_slit'],
+    [furnace, 'LOD1_furnace_slit'],
+    [lamp, 'LOD0_lamp_lens'],
+    [lamp, 'LOD1_lamp_lens'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Refinery is missing ${name}`);
+    attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksRefineryBoundMeshes = bound;
+  group.userData.worksRefineryHooks = Object.freeze({ furnace_slit: furnace, stack_vent: stack, lamp });
+  return group.userData.worksRefineryHooks;
 }
 
 function instantiateBlueprint(blueprint, hookNames) {
@@ -419,6 +466,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     try {
       if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
       if (entry.binding === 'works-extractor') bindWorksExtractorHookHierarchy(group);
+      if (entry.binding === 'works-refinery') bindWorksRefineryHookHierarchy(group);
     } catch (error) {
       console.error('[worksPartLoader] authored part binding failed', error);
       disposeInstanceOwnedResources(group);

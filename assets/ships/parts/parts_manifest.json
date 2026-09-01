@@ -5098,6 +5098,30 @@
       }
     },
     {
+      "id": "place_works_refinery",
+      "category": "places",
+      "priority": "P1",
+      "file": "works/place_works_refinery.glb",
+      "tris": 7442,
+      "budgetClass": "landmark",
+      "bytes": 9160644,
+      "textureSize": 1024,
+      "tintable": {},
+      "note": "PQ-131.04 authored Refinery. The selected runtime source contains LOD0/work and LOD1/site only; LOD2 remains source/evidence-only. furnace_slit and lamp are runtime-owned status surfaces, while stack_vent is an authored marker; independent G1/G2/G4/G7 review remains open.",
+      "hooks": [
+        "furnace_slit",
+        "stack_vent",
+        "lamp"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.8001, 0, -0.9462],
+        "max": [0.9214, 1.2, 0.6],
+        "dimensionsM": [1.7215, 1.2, 1.5462]
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "category": "places",
       "priority": "P2",

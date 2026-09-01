@@ -828,15 +828,18 @@ try {
         const tapCells = tap ? tap.row - c0.row : -1;
         if (tapCells !== 1) failures.push(`${label}: §11.7 one tap moved the build cursor ${tapCells} cells (exactly 1)`);
 
-        // A hold shorter than MOVE_HOLD_DELAY_S (180ms) must not buy a second cell.
+        // A hold shorter than MOVE_HOLD_DELAY_S (180ms) must not buy a second cell. Keep the
+        // headed sample 80ms clear of the boundary: at the 1920 route, Playwright command delivery
+        // can consume the old 40ms margin even though the controller's deterministic boundary test
+        // remains exact in asteroid-drive-cadence.test.mjs.
         await page.keyboard.down('ArrowDown');
-        await page.waitForTimeout(140);
+        await page.waitForTimeout(100);
         await page.keyboard.up('ArrowDown');
         await page.waitForTimeout(140);
         const shortHold = await readCursor();
         const shortCells = shortHold && tap ? shortHold.row - tap.row : -1;
         if (shortCells !== 1) {
-          failures.push(`${label}: §11.7 a 140ms hold moved the build cursor ${shortCells} cells (exactly 1)`);
+          failures.push(`${label}: §11.7 a 100ms hold moved the build cursor ${shortCells} cells (exactly 1)`);
         }
 
         // A real hold cruises — otherwise the assertion above is satisfied by a cursor that simply
@@ -850,7 +853,7 @@ try {
         if (!(longCells >= 3 && longCells <= 5)) {
           failures.push(`${label}: §11.7 a 760ms hold moved the build cursor ${longCells} cells (expected 3-5 on the 180ms seat + 240ms cruise)`);
         }
-        notes.push(`${label}: build cursor cadence — tap ${tapCells}, 140ms hold ${shortCells}, 760ms hold ${longCells}`);
+        notes.push(`${label}: build cursor cadence — tap ${tapCells}, 100ms hold ${shortCells}, 760ms hold ${longCells}`);
       }
 
       await page.keyboard.press('Escape');

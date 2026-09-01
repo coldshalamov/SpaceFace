@@ -3,6 +3,32 @@
   "rootNode": "SF_WORKS_REFINERY_V1",
   "combined": "assets/works/refinery/source/refinery.glb",
   "partsSource": "assets/ships/parts/works/place_works_refinery.glb",
+  "authoringSource": {
+    "path": "assets/works/refinery/source/refinery.glb",
+    "immutable": true,
+    "bytes": 8295200,
+    "sha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+    "exportedLods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ]
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_refinery.glb",
+    "bytes": 9160644,
+    "sha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ],
+    "siteLodMaterialProfile": "three_mass_process_train_v1"
+  },
+  "exportedLods": [
+    "lod0",
+    "lod1"
+  ],
+  "blend": "assets/works/refinery/source/works_refinery.blend",
   "lodTriangles": {
     "lod0": 7442,
     "lod1": 1840,
@@ -19,13 +45,11 @@
     "LOD0_refinery",
     "LOD1_furnace_slit",
     "LOD1_lamp_lens",
-    "LOD1_refinery",
-    "LOD2_furnace_slit",
-    "LOD2_lamp_lens",
-    "LOD2_refinery"
+    "LOD1_refinery"
   ],
   "bytes": 8295200,
   "sha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
-  "disposition": "review_pending",
-  "cycle": 3
+  "partsSha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+  "disposition": "accepted",
+  "cycle": 5
 }

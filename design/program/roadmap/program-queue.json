@@ -8160,7 +8160,7 @@
       "priority": 359,
       "title": "Refinery, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -8179,7 +8179,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-04-authored-refinery-REPORT.md"
+      ],
       "brief": "Inventory row .04: a furnace block with a slit that glows warm while running, an exhaust stack, a pipe to a small tank. 1 cell. Hooks: furnace_slit (emissive 0-1), stack_vent, lamp. 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural refinery."
     },
     {

@@ -22,6 +22,7 @@ import math
 import shutil
 import struct
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -57,6 +58,8 @@ HOOK_NAMES = ("furnace_slit", "stack_vent", "lamp")
 CYCLE = 3
 TEX = 1024
 SHADE_ANGLE = 28.0
+FROZEN_SOURCE_SHA256 = "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795"
+FROZEN_BLEND_SHA256 = "CE90413DEBE3D36A18E40091146011FF6DAF321AC0E40CE881CF37D3B79EB9CD"
 BEVEL_LOW = {0: 0.010, 1: 0.0, 2: 0.0}
 BEVEL_HIGH = {0: 0.004, 1: 0.0, 2: 0.0}
 TRI_BUDGET = {0: 8000, 1: 2000, 2: 600}
@@ -133,6 +136,27 @@ ROLE_METAL = {
     "structure": 0.03, "refractory": 0.00, "hotmetal": 0.84,
     "stack": 0.72, "tank": 0.02, "pipe": 0.80, "lampmetal": 0.50,
     "slit": 0.00, "lamp": 0.02,
+}
+# The immutable Cycle 03 source keeps its detailed material response. The selected runtime's LOD1
+# is a distinct, authored site representation: a cold readable furnace shell, a matte oxide-red
+# saddle tank, and a restrained rust stack stay legible at the 19 px/cell register without emission,
+# scale inflation, a billboard, or an extra material slot.
+SITE_LOD1_ALBEDO = {
+    "structure": (0.22, 0.29, 0.35),
+    "refractory": (0.13, 0.082, 0.048),
+    "hotmetal": (0.46, 0.19, 0.055),
+    "stack": (0.58, 0.16, 0.035),
+    "tank": (0.68, 0.045, 0.028),
+    "pipe": (0.34, 0.22, 0.09),
+    "lampmetal": (0.19, 0.24, 0.28),
+}
+SITE_LOD1_ROUGHNESS = {
+    "structure": 0.64, "refractory": 0.91, "hotmetal": 0.60,
+    "stack": 0.80, "tank": 0.84, "pipe": 0.56, "lampmetal": 0.58,
+}
+SITE_LOD1_METAL = {
+    "structure": 0.06, "refractory": 0.0, "hotmetal": 0.34,
+    "stack": 0.18, "tank": 0.02, "pipe": 0.42, "lampmetal": 0.38,
 }
 CYCLE01_LOCK = {
     "assets/works/refinery/evidence/cycle_001.json": "C0CD39A52297A391BD13EFF08F5DA0A38A8AAF977587A4E598C57718192BFDA6",
@@ -2035,6 +2059,110 @@ def write_glb(path: Path, gltf: dict, rest: bytes):
     tmp.replace(path)
 
 
+def png_bytes_from_pixels(name: str, pixels: np.ndarray, colorspace: str) -> bytes:
+    """Encode a generated selected-runtime atlas without touching frozen source textures."""
+    image = bpy.data.images.new(name, width=pixels.shape[1], height=pixels.shape[0], alpha=True)
+    image.colorspace_settings.name = colorspace
+    image.pixels.foreach_set(np.ascontiguousarray(pixels, dtype=np.float32).ravel())
+    with tempfile.TemporaryDirectory(prefix="spaceface-refinery-site-") as temp_dir:
+        path = Path(temp_dir) / f"{name}.png"
+        image.filepath_raw = str(path)
+        image.file_format = "PNG"
+        image.save()
+        sanitize_png(path)
+        payload = path.read_bytes()
+    bpy.data.images.remove(image)
+    return payload
+
+
+def selected_runtime_lod1_site_maps():
+    """Derive a site-readable LOD1 atlas from immutable ID/AO inputs.
+
+    The three primary process masses keep their original geometry, footprint, and semantic role;
+    this is strictly a static PBR value/metalness allocation for the selected two-register runtime.
+    """
+    id_path = TEX_DIR / "refinery_lod1_id.png"
+    ao_path = TEX_DIR / "refinery_lod1_ao.png"
+    if not id_path.exists() or not ao_path.exists():
+        raise RuntimeError("Refinery LOD1 source ID/AO atlas is required for selected-runtime site material")
+    id_img = bpy.data.images.load(str(id_path), check_existing=False)
+    ao_img = bpy.data.images.load(str(ao_path), check_existing=False)
+    try:
+        id_img.colorspace_settings.name = "sRGB"
+        ao_img.colorspace_settings.name = "Non-Color"
+        id_idx, keys = classify_id(id_img)
+        ao = np.clip(image_np(ao_img)[..., 0], 0.20, 1.0)
+        h, w = ao.shape
+        albedo = np.zeros((h, w, 4), dtype=np.float32)
+        orm = np.ones((h, w, 4), dtype=np.float32)
+        for index, role in enumerate(keys):
+            if role in {"slit", "lamp"}:
+                continue
+            mask = id_idx == index
+            if not np.any(mask):
+                continue
+            rgb = SITE_LOD1_ALBEDO.get(role, SITE_LOD1_ALBEDO["structure"])
+            # Preserve broad cavity/plane information, but avoid fine baked noise substituting for
+            # a 19 px process-train read.
+            value = 0.82 + 0.18 * ao
+            for channel, base in enumerate(rgb):
+                albedo[..., channel][mask] = np.clip(base * value[mask], 0.0, 1.0)
+            albedo[..., 3][mask] = 1.0
+            orm[..., 0][mask] = ao[mask]
+            orm[..., 1][mask] = SITE_LOD1_ROUGHNESS.get(role, 0.70)
+            orm[..., 2][mask] = SITE_LOD1_METAL.get(role, 0.05)
+        empty = albedo[..., 3] < 0.5
+        if np.any(empty):
+            albedo[empty, :3] = SITE_LOD1_ALBEDO["structure"]
+            albedo[empty, 3] = 1.0
+            orm[empty, 0] = ao[empty]
+            orm[empty, 1] = SITE_LOD1_ROUGHNESS["structure"]
+            orm[empty, 2] = SITE_LOD1_METAL["structure"]
+        return (
+            png_bytes_from_pixels("refinery_lod1_site_basecolor", albedo, "sRGB"),
+            png_bytes_from_pixels("refinery_lod1_site_orm", orm, "Non-Color"),
+        )
+    finally:
+        bpy.data.images.remove(id_img)
+        bpy.data.images.remove(ao_img)
+
+
+def replace_embedded_png(gltf: dict, rest: bytes, image_index: int, name: str, payload: bytes) -> bytes:
+    """Append one PNG to the GLB binary and retarget an existing texture image record."""
+    if len(rest) < 8 or rest[4:8] != b"BIN\x00":
+        raise RuntimeError("selected Refinery runtime source has no binary GLB chunk")
+    binary_len = struct.unpack_from("<I", rest, 0)[0]
+    binary_end = 8 + binary_len
+    if binary_end > len(rest):
+        raise RuntimeError("selected Refinery runtime source binary GLB chunk is truncated")
+    binary = bytearray(rest[8:binary_end])
+    while len(binary) % 4:
+        binary.append(0)
+    offset = len(binary)
+    binary.extend(payload)
+    while len(binary) % 4:
+        binary.append(0)
+    gltf.setdefault("bufferViews", []).append({
+        "buffer": 0,
+        "byteOffset": offset,
+        "byteLength": len(payload),
+    })
+    images = gltf.get("images") or []
+    if image_index < 0 or image_index >= len(images):
+        raise RuntimeError("selected Refinery runtime source image index is invalid")
+    image = dict(images[image_index])
+    image["name"] = name
+    image["mimeType"] = "image/png"
+    image["bufferView"] = len(gltf["bufferViews"]) - 1
+    images[image_index] = image
+    gltf["images"] = images
+    buffers = gltf.get("buffers") or []
+    if not buffers:
+        raise RuntimeError("selected Refinery runtime source has no buffer record")
+    buffers[0]["byteLength"] = len(binary)
+    return struct.pack("<I", len(binary)) + b"BIN\x00" + bytes(binary) + rest[binary_end:]
+
+
 def stamp_glb_contract(path: Path, contract: dict) -> None:
     gltf, rest = read_glb(path)
     extras = dict(gltf.get("asset", {}).get("extras") or {})
@@ -3075,6 +3203,149 @@ def recombine_from_accepted_lods():
     return inspection
 
 
+def export_selected_runtime_source():
+    """Publish the two-register runtime source without mutating accepted authoring bytes.
+
+    The full Cycle 03 GLB is the reviewed authoring source and retains LOD2 for evidence only.
+    Works has two live registers, so this operation removes every LOD2 node from a copy, stamps the
+    selected-runtime contract, and leaves the full GLB, Blend, and historical evidence untouched.
+    """
+    combined = SOURCE_DIR / "refinery.glb"
+    blend = SOURCE_DIR / "works_refinery.blend"
+    parts = PARTS_DIR / COMBINED_NAME
+    if sha256(combined) != FROZEN_SOURCE_SHA256:
+        raise RuntimeError("accepted Refinery source hash drifted; refusing selected-runtime export")
+    if sha256(blend) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("accepted Refinery Blend hash drifted; refusing selected-runtime export")
+
+    gltf, rest = read_glb(combined)
+    source_contract = (gltf.get("asset") or {}).get("extras", {}).get("spacefaceAsset")
+    if not isinstance(source_contract, dict) or source_contract.get("assetId") != ASSET_ID:
+        raise RuntimeError("accepted Refinery source has no matching spaceface asset contract")
+
+    source_nodes = gltf.get("nodes") or []
+    keep_old = [index for index, node in enumerate(source_nodes) if not str(node.get("name") or "").startswith("LOD2_")]
+    if len(keep_old) == len(source_nodes):
+        raise RuntimeError("accepted Refinery source has no LOD2 nodes to remove")
+    remap = {old: new for new, old in enumerate(keep_old)}
+    selected_nodes = []
+    for old in keep_old:
+        node = dict(source_nodes[old])
+        if "children" in node:
+            node["children"] = [remap[child] for child in node["children"] if child in remap]
+        selected_nodes.append(node)
+    gltf["nodes"] = selected_nodes
+
+    # Remove unreferenced LOD2 meshes as well. Accessors, textures, and materials stay compactly
+    # shared with their surviving LODs; only scene-reachable LOD0/1 primitives ship to runtime.
+    used_meshes = sorted({node["mesh"] for node in selected_nodes if "mesh" in node})
+    mesh_remap = {old: new for new, old in enumerate(used_meshes)}
+    gltf["meshes"] = [gltf["meshes"][old] for old in used_meshes]
+    for node in selected_nodes:
+        if "mesh" in node:
+            node["mesh"] = mesh_remap[node["mesh"]]
+    for scene in gltf.get("scenes") or []:
+        if "nodes" in scene:
+            scene["nodes"] = [remap[node] for node in scene["nodes"] if node in remap]
+
+    selected_contract = json.loads(json.dumps(source_contract))
+    selected_contract["deliverableRole"] = "selected_runtime_multi_lod"
+    selected_contract["lods"] = ["lod0", "lod1"]
+    selected_contract["exportedLods"] = ["lod0", "lod1"]
+    selected_contract["wiringStatus"] = "selected_runtime_unwired"
+    selected_contract["siteLodMaterialProfile"] = "three_mass_process_train_v1"
+
+    # LOD1 keeps the authored geometry and all existing material/state slots. Replace only its
+    # static basecolor/ORM atlas images so the furnace, oxidized stack, and red tank do not collapse
+    # into one dark amber reading at the 19 px/cell site register.
+    lod1_node = next((node for node in selected_nodes if node.get("name") == "LOD1_refinery"), None)
+    if not lod1_node or lod1_node.get("mesh") is None:
+        raise RuntimeError("selected Refinery runtime source has no LOD1 refinery body")
+    lod1_mesh = gltf["meshes"][lod1_node["mesh"]]
+    lod1_primitives = lod1_mesh.get("primitives") or []
+    if len(lod1_primitives) != 1 or lod1_primitives[0].get("material") is None:
+        raise RuntimeError("selected Refinery runtime source has no single LOD1 atlas material")
+    lod1_material = gltf["materials"][lod1_primitives[0]["material"]]
+    pbr = lod1_material.get("pbrMetallicRoughness") or {}
+    base_texture = pbr.get("baseColorTexture", {}).get("index")
+    orm_texture = pbr.get("metallicRoughnessTexture", {}).get("index")
+    textures = gltf.get("textures") or []
+    if base_texture is None or orm_texture is None:
+        raise RuntimeError("selected Refinery runtime source LOD1 atlas is incomplete")
+    base_image = textures[base_texture].get("source")
+    orm_image = textures[orm_texture].get("source")
+    if base_image is None or orm_image is None:
+        raise RuntimeError("selected Refinery runtime source LOD1 atlas has no embedded images")
+    site_basecolor, site_orm = selected_runtime_lod1_site_maps()
+    rest = replace_embedded_png(gltf, rest, base_image, "refinery_lod1_site_basecolor", site_basecolor)
+    rest = replace_embedded_png(gltf, rest, orm_image, "refinery_lod1_site_orm", site_orm)
+    PARTS_DIR.mkdir(parents=True, exist_ok=True)
+    temp = parts.with_suffix(".tmp.glb")
+    write_glb(temp, gltf, rest)
+    stamp_glb_contract(temp, selected_contract)
+    temp.replace(parts)
+
+    hook_locs = {
+        "furnace_slit": (FX, FY, WELL_FLOOR + 0.012),
+        "stack_vent": (SX, SY, STACK_TOP),
+        "lamp": LAMP_LOC,
+    }
+    inspection = inspect_glb(parts, hook_locs)
+    selected_names = inspection["names"]
+    if any(str(name or "").startswith("LOD2_") for name in selected_names):
+        raise RuntimeError("selected Refinery runtime source retained evidence-only LOD2")
+    if inspection["lodTriangles"] != {0: 7442, 1: 1840, 2: 0} or not inspection["ok"]:
+        raise RuntimeError("selected Refinery runtime source lost a required hook, collision, or LOD transform")
+    if sha256(combined) != FROZEN_SOURCE_SHA256 or sha256(blend) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("selected-runtime export modified frozen Refinery authoring bytes")
+
+    inventory = {
+        "assetId": ASSET_ID,
+        "rootNode": ROOT_NAME,
+        "combined": str(combined.relative_to(ROOT)).replace("\\", "/"),
+        "partsSource": str(parts.relative_to(ROOT)).replace("\\", "/"),
+        "authoringSource": {
+            "path": str(combined.relative_to(ROOT)).replace("\\", "/"),
+            "immutable": True,
+            "bytes": combined.stat().st_size,
+            "sha256": FROZEN_SOURCE_SHA256,
+            "exportedLods": ["lod0", "lod1", "lod2"],
+        },
+        "selectedRuntimeSource": {
+            "path": str(parts.relative_to(ROOT)).replace("\\", "/"),
+            "bytes": parts.stat().st_size,
+            "sha256": sha256(parts),
+            "exportedLods": ["lod0", "lod1"],
+            "siteLodMaterialProfile": "three_mass_process_train_v1",
+        },
+        "exportedLods": ["lod0", "lod1"],
+        "blend": str(blend.relative_to(ROOT)).replace("\\", "/"),
+        "lodTriangles": source_contract["lodTriangles"],
+        "hooks": list(HOOK_NAMES),
+        "meshNames": sorted(name for name in selected_names if name and name.startswith("LOD")),
+        "bytes": combined.stat().st_size,
+        "sha256": FROZEN_SOURCE_SHA256,
+        "partsSha256": sha256(parts),
+        "disposition": "review_pending",
+        "cycle": CYCLE,
+    }
+    write_text_lf(SOURCE_DIR / "refinery_inventory.json", json.dumps(inventory, indent=2) + "\n")
+    print(json.dumps({
+        "ok": True,
+        "mode": "selected-runtime",
+        "sourceSha256": FROZEN_SOURCE_SHA256,
+        "partsSha256": inventory["partsSha256"],
+        "partsBytes": inventory["selectedRuntimeSource"]["bytes"],
+        "lodTriangles": inspection["lodTriangles"],
+        "hooks": inspection["hookTranslations"],
+        "collision": {
+            "translation": inspection["collisionTranslation"],
+            "scale": inspection["collisionScale"],
+        },
+    }, indent=2))
+    return inventory
+
+
 def main():
     args = argv_after()
     if "--contact-sheet-only" in args:
@@ -3090,6 +3361,9 @@ def main():
         return
     if "--recombine" in args:
         recombine_from_accepted_lods()
+        return
+    if "--export-selected-runtime" in args:
+        export_selected_runtime_source()
         return
     build_all()
 

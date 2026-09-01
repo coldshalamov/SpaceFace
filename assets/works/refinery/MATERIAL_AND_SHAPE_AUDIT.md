@@ -1,15 +1,23 @@
-# Works refinery — Cycle 04 accepted material, shape, and route audit
+# Works refinery — Cycle 05 accepted material, shape, and route audit
 
 **Asset:** `place_works_refinery`. **State:** `released_player_route`. **Disposition:** `KEEP`.
-Independent whole-asset G1/G2/G4: `KEEP` by `/root/refinery_exact_visual_review` on the exact current
-candidate. Controller Browser/Electron G6/G7: `KEEP` in `evidence/cycle_004_route/EPOCH.json`.
+Independent whole-asset and live-register G1/G2/G4: `KEEP` by Luna max, Terra xhigh, and Clinepass
+Kimi K3 max on the exact current hashes. Controller Browser/Electron G6/G7: `KEEP` in
+`evidence/cycle_005_master/EPOCH.json`.
 
-The Cycle 03 form/material evidence remains the current visible mesh. Cycle 04 corrected only hook
-and collision transforms, then proved the exact release as a palette ghost, idle installed machine,
-and real running refinery on the canonical Browser and Electron route.
+The Cycle 03 form/material evidence remains the current full-source mesh. Cycle 05 preserves that
+geometry and LOD0 unchanged, carries the Cycle 04 hook/collision repair, and gives only selected LOD1
+a deterministic non-emissive `three_mass_process_train_v1` atlas so furnace, stack, and tank remain
+separate at the 19 px/cell site register.
 
-Candidate: `assets/ships/parts/works/place_works_refinery.glb`
-SHA256: `55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795`
+Full source: `assets/works/refinery/source/refinery.glb` —
+`55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795`
+
+Selected LOD0/LOD1: `assets/ships/parts/works/place_works_refinery.glb` —
+`A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5`
+
+Release: `assets/ships/release/parts/works/place_works_refinery.glb` —
+`C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF`
 
 Supported views: `works_top` / `works_edge` / `works_site` at 1920×1080, 31° persp, 120 / 120 / 19 px/cell.
 
@@ -87,6 +95,9 @@ Hidden-face dry-run is per LOD (`works_visible_faces.json`). Coarse 80×45 grid 
 - Site 22 px pairing preserves three values and a gallery slit, but construction detail necessarily reduces to silhouette and value.
 - Edge camera is still nearly straight down by law; feet, gussets, and side-course depth remain modest.
 - LOD2 drops the separate lip, burner pack, well liner, wrapped straps, and rect takeoff mesh.
-- The accepted player route uses LOD0 at work register and LOD1 at site register; LOD2 remains a
-  package/residency tier rather than an ordinary on-screen Works view.
-- No G1/G2/G4/G6/G7 gate remains open for this exact hash and route.
+- The accepted player route uses LOD0 at work register and LOD1 at site register; LOD2 remains
+  authoring/evidence-only and is not admitted to the selected release.
+- The initial Cycle 05 site capture was too dark and failed one independent review. The bounded
+  LOD1-only atlas correction closed that defect without changing form, footprint, hooks, LOD0, or
+  emission. The three fresh exact-candidate re-reviews all returned KEEP.
+- No G1/G2/G4/G6/G7 gate remains open for these exact source, selected, release, and route hashes.
