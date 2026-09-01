@@ -1,0 +1,98 @@
+{
+  "schema": "spaceface.worksRouteEvidence.v1",
+  "assetId": "place_works_derrick",
+  "cycle": 5,
+  "epoch": "cycle_005_master",
+  "capturedAt": "2026-09-01",
+  "capturedFromParentCommit": "f62ba29a6c2c0113e103db8a7e5a218b03187b58",
+  "source": {
+    "path": "assets/works/derrick/source/derrick.glb",
+    "sha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "bytes": 15605268,
+    "lods": ["lod0", "lod1", "lod2"]
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_derrick.glb",
+    "sha256": "920F476A02BC1CE887CD64372E0676040039DE4765D347CF234B20FC02CF5B02",
+    "bytes": 15663416,
+    "lods": ["lod0", "lod1"],
+    "siteLodMaterialProfile": "grounded_headframe_value_roles_v1"
+  },
+  "release": {
+    "path": "assets/ships/release/parts/works/place_works_derrick.glb",
+    "sha256": "1FAAFC93EEC6ECC8C506238D3F7883D3B648C43F07DF21A284C4CBA954165813",
+    "bytes": 4062804,
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 57,
+    "contractNodeCount": 14
+  },
+  "renderPackage": {
+    "metadataPath": "assets/ships/release/render-packages/works-derrick/render-package.json",
+    "metadataSha256": "6B09570879A235AABDEF97DD22206724CC3DD52D4536772FD334CB57B5E20F1C",
+    "renderGlbPath": "assets/ships/release/render-packages/works-derrick/render.glb",
+    "renderGlbSha256": "2A2383C4B10DE22F3725271F8F58C1EC4FC18564D86279D9FE32474C0A696091",
+    "contentHash": "11f2eabaa3180b0778bf8f8bc9f4ec9840cd824fec0186f2240ac71594f5f080",
+    "runtimeHash": "e8aafaa31d963341dfaf021f1752f92e40d9f30afd9f6af80ee791df2af444d8"
+  },
+  "captures": {
+    "browserWork": {
+      "path": "assets/works/derrick/evidence/cycle_005_master/browser_work.png",
+      "sha256": "D52FBDACCCAEA26BA5D00E235251197D608ABF0BDC11A75B5F2D8CD23E889780",
+      "bytes": 3590165,
+      "resolution": [1920, 1080],
+      "lod": "LOD0"
+    },
+    "browserSite": {
+      "path": "assets/works/derrick/evidence/cycle_005_master/browser_site.png",
+      "sha256": "DD7DF12781692414C136E48B49618BCA440C2137188A6EA98DC1C102F5247CD5",
+      "bytes": 1189207,
+      "resolution": [1920, 1080],
+      "lod": "LOD1"
+    }
+  },
+  "route": {
+    "entry": "canonical root -> New Game -> flight -> live asteroid -> Asteroid Works",
+    "mountedProofCell": {"col": 20, "row": 4},
+    "transform": {
+      "scale": 1,
+      "rotation": [0, 0, 0],
+      "footprintCellsX": 1,
+      "nativeMinZ": -0.8700011372566223,
+      "worldMinZ": 3.3,
+      "seating": "native-min-z-at-ROCK_FACE"
+    },
+    "permanentRouteUsesEquivalentTransform": true,
+    "fallbackDrawn": false,
+    "ghostFallbackDrawn": false,
+    "requiredHooks": ["drum_spin", "cable_anchor", "lamp_L", "lamp_R"],
+    "missingHooks": [],
+    "workLod": "LOD0",
+    "siteLod": "LOD1",
+    "lod2Admitted": false,
+    "baseColorSpace": "srgb",
+    "normalColorSpace": "srgb-linear"
+  },
+  "independentReviews": [
+    {"reviewer": "Luna max /root/pq131_extractor_art_research", "verdict": "KEEP", "openP0": 0, "openP1": 0},
+    {"reviewer": "Terra xhigh /root/pq131_extractor_runtime_research", "verdict": "KEEP", "openP0": 0, "openP1": 0},
+    {"reviewer": "Clinepass Kimi K3 max ses_fa24fed51ffeSwoZOA7EXPXsxC", "verdict": "KEEP", "openP0": 0, "openP1": 0}
+  ],
+  "verification": {
+    "focusedTests": "36/36",
+    "renderPackageFreshness": "118 production packages fresh",
+    "baseline": "14/14",
+    "asteroidTheater": "pass 1920x1080 and 1280x720",
+    "electronPlayable": "16/16"
+  },
+  "gates": {
+    "G1": "pass-independent-source-and-selected-release",
+    "G2": "pass-independent-source-and-selected-release",
+    "G4": "pass-independent-work-and-site-registers",
+    "G6": "pass-current-release-and-package",
+    "G7": "pass-browser-capture-and-shared-route-electron-playable"
+  },
+  "routeVerdict": "KEEP",
+  "routeReviewer": "/root",
+  "openP0": 0,
+  "openP1": 0
+}

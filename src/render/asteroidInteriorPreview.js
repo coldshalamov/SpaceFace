@@ -1147,57 +1147,6 @@ function makeTrackUnit(S, mats, { L, R, w, lugCount, wheels, wheelZ }) {
   return { group: g, place, spinners };
 }
 
-// The surface winch derrick the tether spools from: two A-legs straddling the entry shaft, a
-// painted crossbeam, a winch drum with machined flanges, and a hooded amber beacon. Group origin
-// sits at the plateau top over the shaft; the cable hangs from dyn.drum. Its paint is a weathered
-// works orange, deliberately NOT the rover's safety yellow — the rover owns that colour alone.
-export function makeDerrick(S, envMap) {
-  const g = new THREE.Group();
-  const pulses = [];
-  const dyn = {};
-  const frame = metalMat(0x22201d, envMap);
-  const steel = metalMat(0x7c8188, envMap);
-  const paint = paintMat(0x9b5c22, envMap, 0.6);
-  for (const sx of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.1, S * 1.5, S * 0.13), frame);
-    leg.position.set(sx * S * 0.5, S * 0.6, 0);
-    leg.rotation.z = -sx * 0.22;
-    leg.castShadow = true;
-    g.add(leg);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(S * 0.28, S * 0.08, S * 0.32), paint);
-    foot.position.set(sx * S * 0.66, -S * 0.08, 0);
-    foot.castShadow = true;
-    g.add(foot);
-    // cross brace
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(S * 1.1, S * 0.055, S * 0.065), frame);
-    brace.position.set(0, S * 0.45, 0);
-    brace.castShadow = true;
-    g.add(brace);
-  }
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(S * 1.35, S * 0.11, S * 0.15), paint);
-  beam.position.y = S * 1.32; beam.castShadow = true; g.add(beam);
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.13, S * 0.13, S * 0.3, 14), metalMat(0x3c4046, envMap));
-  drum.rotation.x = Math.PI / 2; drum.position.set(0, S * 1.14, 0); drum.castShadow = true; g.add(drum);
-  for (const dz of [-0.15, 0.15]) {
-    const flange = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.155, S * 0.155, S * 0.025, 14), steel);
-    flange.rotation.x = Math.PI / 2;
-    flange.position.set(0, S * 1.14, S * dz);
-    flange.castShadow = true;
-    g.add(flange);
-  }
-  dyn.drum = drum;
-  const beaconMat = new THREE.MeshStandardMaterial({
-    color: 0x2a1d08, emissive: 0xffb648, emissiveIntensity: 0.6, roughness: 0.4, metalness: 0.1,
-  });
-  const beaconHood = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.058, S * 0.058, S * 0.024, 8), frame);
-  beaconHood.position.set(S * 0.6, S * 1.465, 0); g.add(beaconHood);
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(S * 0.05, 10, 8), beaconMat);
-  beacon.position.set(S * 0.6, S * 1.42, 0); g.add(beacon);
-  dyn.beacon = beaconMat;
-  g.userData.dyn = dyn;
-  return { group: g, pulses, dyn };
-}
-
 function machineBase(group, x, y, z, envMap) {
   const g = new THREE.Group(); g.position.set(x, y, z); group.add(g);
   return g;

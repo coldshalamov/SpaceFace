@@ -1,8 +1,33 @@
 {
   "assetId": "place_works_derrick",
-  "root": "SF_WORKS_DERRICK_V1",
+  "rootNode": "SF_WORKS_DERRICK_V1",
   "combined": "assets/works/derrick/source/derrick.glb",
   "partsSource": "assets/ships/parts/works/place_works_derrick.glb",
+  "authoringSource": {
+    "path": "assets/works/derrick/source/derrick.glb",
+    "immutable": true,
+    "bytes": 15605268,
+    "sha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+    "exportedLods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ]
+  },
+  "selectedRuntimeSource": {
+    "path": "assets/ships/parts/works/place_works_derrick.glb",
+    "bytes": 15663416,
+    "sha256": "920F476A02BC1CE887CD64372E0676040039DE4765D347CF234B20FC02CF5B02",
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ],
+    "siteLodMaterialProfile": "grounded_headframe_value_roles_v1"
+  },
+  "exportedLods": [
+    "lod0",
+    "lod1"
+  ],
   "blend": "assets/works/derrick/source/derrick.blend",
   "lodTriangles": {
     "lod0": 7072,
@@ -29,14 +54,7 @@
     "LOD1_lamp_L",
     "LOD1_lamp_L_lens",
     "LOD1_lamp_R",
-    "LOD1_lamp_R_lens",
-    "LOD2_cable",
-    "LOD2_derrick",
-    "LOD2_drum",
-    "LOD2_lamp_L",
-    "LOD2_lamp_L_lens",
-    "LOD2_lamp_R",
-    "LOD2_lamp_R_lens"
+    "LOD1_lamp_R_lens"
   ],
   "bbox": {
     "min": [
@@ -57,5 +75,7 @@
   },
   "bytes": 15605268,
   "sha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
-  "partsSha256": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A"
+  "partsSha256": "920F476A02BC1CE887CD64372E0676040039DE4765D347CF234B20FC02CF5B02",
+  "disposition": "accepted",
+  "cycle": 5
 }

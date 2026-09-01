@@ -1,6 +1,6 @@
-# Surface derrick — material and shape audit (Cycle 04)
+# Surface derrick — material and shape audit (Cycle 05)
 
-Candidate `B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A` · root `SF_WORKS_DERRICK_V1` · disposition `review_pending`.
+Full source `B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A` · selected runtime `920F476A02BC1CE887CD64372E0676040039DE4765D347CF234B20FC02CF5B02` · root `SF_WORKS_DERRICK_V1` · disposition `accepted`.
 
 Cycle 01/02/03 art is retained: planted shoes, open I-beam A-frames, crown portal,
 open well, offset winch/cable path, grated deck and ladder, hollow lamp hoods and exposed
@@ -20,8 +20,8 @@ their authored pivots, child meshes are pivot-local, and collision retains autho
 | Platform | Frame + modelled grate bars | Guarded, offset +X, not a roof | works_top / edge |
 | Lamps | Socket + hollow tilted casting + recessed lens | Dark hood/mouth readable at 120 px before warm glass | works_top / edge |
 
-Unresolved blockout risk: grate bars are rectangular stock; a later cycle may add checker-plate
-nosing if reviewers call the deck a comb.
+The rectangular grate bars remain honest stock. No checker-plate decoration was added because the
+accepted work view reads the guarded service platform without it.
 
 ## Material allocation
 
@@ -33,13 +33,17 @@ Maps are mesh-derived AO / tangent normal / pointiness curvature, composited int
 
 ## LOD
 
-LOD0 7072 / 12000. LOD1 1304 / 3000.
-LOD2 896 / 900. Four materially separated shoe corners, open shaft marker, A-planform,
-drum/sheave path, platform, and both lamps survive. Hidden faces evaluated per LOD only.
+LOD0 7072 / 12000. LOD1 1304 / 3000. LOD2 896 / 900 remains source/evidence-only; selected runtime,
+release, and render package ship LOD0 + LOD1. LOD1 uses the deterministic, non-emissive
+`grounded_headframe_value_roles_v1` basecolor/ORM profile. Four materially separated shoe corners,
+open shaft marker, A-planform, drum/sheave path, platform, and both lamps survive.
 
-## Remaining visual risk (honest)
+## Route acceptance
 
-- Site register (~19 px/cell, straight down) still flattens three-cell height; the four exposed
-  anchor plates must remain visually separate around the dark collar hole.
-- I-beam webs may alias at 120 px.
-- Independent G1/G2/G4 review has not run.
+- The first current route capture incorrectly compressed the standing asset to 0.678 scale; the
+  second exposed that `Z.surface` left the authored depth behind the rock face. Current proof and
+  permanent routes both preserve 1x authored scale, one-cell X footprint, base anchoring, and seat
+  native min-z at `ROCK_FACE`.
+- Final work/site captures are hash-bound in `evidence/cycle_005_master/EPOCH.json`.
+- Luna max, Terra xhigh, and Clinepass Kimi K3 max returned KEEP with no open P0/P1. Individual
+  shoes approach the site pixel limit, but the four-corner stance and tall A-frame remain coherent.

@@ -110,8 +110,12 @@ async function captureAuthoredWorksPart(partId) {
   if (!mounted || !mounted.ok) {
     throw new Error(`loadWorksPart(${partId}) failed: ${JSON.stringify(mounted)}`);
   }
+  // Interior machines are authored Y-up and quarter-turned into the Works plane. The permanent
+  // surface Derrick is already authored standing in that plane; its proof must preserve the same
+  // zero-X rotation as production instead of satisfying the old interior-only assertion.
+  const expectedRotationX = partId === 'place_works_derrick' ? 0 : Math.PI / 2;
   if (!mounted.transform || mounted.cell?.col !== 20 || mounted.cell?.row !== 4
-    || Math.abs((mounted.transform.rotation?.[0] || 0) - Math.PI / 2) > 1e-6) {
+    || Math.abs((mounted.transform.rotation?.[0] || 0) - expectedRotationX) > 1e-6) {
     throw new Error(`loadWorksPart(${partId}) returned an unseated capture mount: ${JSON.stringify(mounted)}`);
   }
   await page.waitForTimeout(400);

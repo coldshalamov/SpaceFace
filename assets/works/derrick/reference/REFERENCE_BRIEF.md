@@ -114,7 +114,7 @@ Clay must hold those masses without textures.
 
 | Part | wu |
 |---|---|
-| Envelope X × Y × Z | ≤ 2.18 × 2.18 × 6.45 |
+| Envelope X × Y × Z | ≤ 2.18 × 2.18 × 6.50 |
 | A-frame planes Y | ±0.70 |
 | Foot centres X | ±0.88 |
 | Shoe pad | 0.36 × 0.30 × 0.10, underside z = 0 |

@@ -48,7 +48,7 @@ import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
 import {
-  makeRockMaterials, makeMachine, makeDerrick, metalMat,
+  makeRockMaterials, makeMachine, metalMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
@@ -198,6 +198,97 @@ export function bindAuthoredRefinery(group) {
       },
     },
     pulses: [],
+  };
+}
+
+// The Derrick's standing source already uses the Works plane: unlike interior machinery it must
+// not be reseated through an X-axis rotation. Only the four authored lamp lenses are mutable; the
+// hood, legs, platform, cable, and drum continue to use their shared authored atlas materials.
+export function bindAuthoredDerrick(group) {
+  const hooks = group?.userData?.worksDerrickHooks;
+  if (!hooks?.drum_spin || !hooks?.cable_anchor || !hooks?.lamp_L || !hooks?.lamp_R) {
+    throw new Error('Derrick hook hierarchy is unavailable');
+  }
+  const lampMaterials = [];
+  for (const hook of [hooks.lamp_L, hooks.lamp_R]) {
+    hook.traverse((node) => {
+      if (!node.isMesh || !/^LOD[01]_lamp_[LR]_lens$/u.test(node.name || '')) return;
+      const rows = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of rows) {
+        if (!material || material.userData?.worksInstanceOwned !== true) {
+          throw new Error('Derrick lamp lens material must be instance-owned');
+        }
+        if (!lampMaterials.includes(material)) lampMaterials.push(material);
+      }
+    });
+  }
+  if (!lampMaterials.length) throw new Error('Derrick hooks own no lens status materials');
+  const drumBaseY = hooks.drum_spin.rotation.y;
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      drum: hooks.drum_spin,
+      cableAnchor: hooks.cable_anchor,
+      lampL: hooks.lamp_L,
+      lampR: hooks.lamp_R,
+      setLamp(hex, intensity) {
+        for (const material of lampMaterials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+      setSpin(angle) {
+        hooks.drum_spin.rotation.y = drumBaseY + angle;
+      },
+    },
+    pulses: [],
+  };
+}
+
+// A stopped drum keeps its last physical pose. Advance only from the frame delta while the rover
+// moves, so resuming after an idle interval cannot jump the visible winch to global elapsed time.
+export function advanceDerrickDrumPhase(phase, moving, motionReduce, dt) {
+  const current = Number.isFinite(phase) ? phase : 0;
+  if (!moving || motionReduce || !Number.isFinite(dt) || dt <= 0) return current;
+  return current + dt * 1.1;
+}
+
+// The generic proof camera was established for interior parts that need a Y-up-to-Works seating
+// conversion. The standing surface Derrick is already in that orientation, so its proof route
+// must preserve the authored pose while all existing interior candidates keep their quarter-turn.
+export function worksProofRotationXForPart(id) {
+  return id === 'place_works_derrick' ? 0 : Math.PI / 2;
+}
+
+// Derive the depth lift from actual source bounds. `rootZ` lets the permanent child compensate for
+// its stable Z.surface parent while the proof group, mounted at scene root, passes zero.
+export function derrickDepthLiftForBounds(native, rootZ = 0) {
+  const min = native?.min;
+  if (!Array.isArray(min) || min.length !== 3 || !Number.isFinite(min[2]) || !Number.isFinite(rootZ)) {
+    throw new TypeError('Derrick depth lift requires a finite native min-z and root z');
+  }
+  return ROCK_FACE - rootZ - min[2];
+}
+
+// Keep the standing Derrick's proof pose numerically identical to the permanent surface mount:
+// centre its one-cell X/depth footprint at the proof cell, align its native Y base (not its
+// 6.49-WU height centre), and pull its native rear/min-z face forward to the cut plane.
+export function derrickProofTransformForBounds(native, { cellX, cellY } = {}) {
+  const min = native?.min;
+  const max = native?.max;
+  if (!Array.isArray(min) || !Array.isArray(max) || min.length !== 3 || max.length !== 3) {
+    throw new TypeError('Derrick proof bounds require min/max vectors');
+  }
+  const centerX = (min[0] + max[0]) / 2;
+  const centerZ = (min[2] + max[2]) / 2;
+  return {
+    scale: 1,
+    rotation: [0, 0, 0],
+    position: [cellX - centerX, cellY - min[1], derrickDepthLiftForBounds(native)],
+    footprintCells: 1,
   };
 }
 
@@ -630,9 +721,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let disposed = false;   // guards async surface arrival against a screen that already left
   let worksTearingDown = false;
 
-  // PQ-131.00 — authored-part lease bound to THIS renderer. Created on demand when the
-  // proof is armed; a normal player session never constructs it.
+  // PQ-131.00 — authored-part lease bound to THIS renderer. Created on demand by a proof route
+  // or a permanent authored Works surface; both consume the exact same release/package path.
   let worksLoader = null;
+  // The Rover starts its authored load during renderer construction, before the sizing block below.
+  // Keep this single register declaration ahead of every loader call so that first load is work LOD.
+  let zoomRegister = 'work';   // 'work' | 'site'
   let worksProofGroup = null;
   let worksProofGen = 0;
   let authoredRoverGen = 0;
@@ -642,6 +736,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredExtractorGhostGen = 0;
   let authoredRefineryGen = 0;
   let authoredRefineryGhostGen = 0;
+  let authoredDerrickGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
   let worksHostWasVisible = false;
@@ -777,6 +872,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     unmountWorksProof();
     authoredRoverGen += 1;
     clearAuthoredRoverState();
+    // Invalidate and release the standing surface Derrick while its loader still exists. A late
+    // source arrival is therefore unable to mount after the renderer starts retiring Works assets.
+    clearAuthoredDerrick();
     const loader = worksLoader;
     worksLoader = null;
     const token = { n: ++worksRetireGen, reason };
@@ -868,8 +966,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
     return worksBox;
   }
-  function seatWorksProofGroup(group) {
-    group.rotation.set(Math.PI / 2, 0, 0);
+  function seatWorksProofGroup(group, rotationX = Math.PI / 2) {
+    group.rotation.set(rotationX, 0, 0);
     group.scale.set(1, 1, 1);
     group.position.set(0, 0, 0);
     const nativeBox = measureWorksBox(group, true);
@@ -898,6 +996,25 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       position: [group.position.x, group.position.y, group.position.z],
       footprintCells: WORKS_PROOF_FOOTPRINT_CELLS,
     };
+  }
+  function seatWorksDerrickProofGroup(group) {
+    group.rotation.set(0, 0, 0);
+    group.scale.set(1, 1, 1);
+    group.position.set(0, 0, 0);
+    const nativeBox = measureWorksBox(group, true);
+    nativeBox.getSize(worksSize);
+    const native = {
+      min: nativeBox.min.toArray(),
+      max: nativeBox.max.toArray(),
+      size: worksSize.toArray(),
+    };
+    const transform = derrickProofTransformForBounds(native, {
+      cellX: worldX(WORKS_PROOF_CELL.col),
+      cellY: worldY(WORKS_PROOF_CELL.row),
+    });
+    group.position.fromArray(transform.position);
+    group.updateMatrixWorld(true);
+    return { native, ...transform };
   }
   function captureScenePass() {
     renderer.info.reset();
@@ -2575,6 +2692,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let umbilical = null;      // { casing, core }
   let umbilicalKey = '';
   let umbilicalTimer = 0;
+  const derrickCableStart = new THREE.Vector3();
   const umbCasingMat = metalMat(0x1b1815, envMap);
   umbCasingMat.roughness = 0.58;
   // The tether's power core: a gold conductor inside the jacket, not a neon light-rope.
@@ -2802,7 +2920,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The board is sovereign: the canvas fills the stage box and the ortho box is derived from the
   // live aspect, so cells stay square at every window size. Two registers, only two (law §4):
   // work (WORK_COLS columns across) and site (the whole body), snapped with a 180ms ease.
-  let zoomRegister = 'work';   // 'work' | 'site'
   let zoomKCur = 1;            // 1 = work; <1 zoomed out toward site
   let zoomAnim = null;         // { from, to, t }
 
@@ -3067,11 +3184,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       plateauInst.dispose();
       plateauInst = null;
     }
-    if (derrickBuilt) {
-      scene.remove(derrickBuilt.group);
-      disposeGroup(derrickBuilt.group);
-      derrickBuilt = null;
-    }
+    clearAuthoredDerrick();
     plateauInst = new THREE.InstancedMesh(blockGeos[0], rockMats.matrix, COLS + 2);
     plateauInst.castShadow = true;
     plateauInst.receiveShadow = true;
@@ -3096,17 +3209,92 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
     rockGroup.add(plateauInst);
 
-    derrickBuilt = makeDerrick(S, envMap);
-    // per-session build: tag materials so disposeGroup frees them with the next begin()/dispose()
-    derrickBuilt.group.traverse((o) => {
-      if (o.isMesh) {
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        for (const mt of mats) mt._own = true;
-      }
-    });
     derrickBaseY = worldY(-1) + (S * (0.55 + rnd01(ENTRY_COL, 77, 'ph') * 0.8)) / 2;
-    derrickBuilt.group.position.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
-    scene.add(derrickBuilt.group);
+    const root = new THREE.Group();
+    root.name = 'worksDerrick:surface';
+    root.position.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
+    scene.add(root);
+    const rec = {
+      group: root,
+      dyn: {},
+      authoredGroup: null,
+      loadToken: 0,
+      pending: true,
+      loadFailed: false,
+      drumPhase: 0,
+      pulses: [],
+    };
+    derrickBuilt = rec;
+    loadAuthoredDerrick(rec);
+  }
+
+  function installAuthoredDerrick(rec, group) {
+    const authored = bindAuthoredDerrick(group);
+    // Derrick.glb is already a standing Y-up surface asset. The permanent Asteroid Works route
+    // mounts that authored pose directly rather than applying the interior-machine conversion.
+    // Its root stays at Z.surface for the pending fallback tether; only the installed child lifts
+    // forward by its measured native min-z so the visible rear face meets ROCK_FACE like the proof.
+    const nativeBox = measureWorksBox(authored.group, true);
+    const native = { min: nativeBox.min.toArray(), max: nativeBox.max.toArray() };
+    authored.group.position.z = derrickDepthLiftForBounds(native, rec.group.position.z);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.pending = false;
+    // A prior idle frame can have drawn the fallback start coordinate. Invalidate its signature
+    // once on arrival so syncUmbilical rebuilds from cable_anchor on the next renderer frame.
+    umbilicalKey = '';
+  }
+
+  function loadAuthoredDerrick(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Derrick cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredDerrickGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_derrick').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && derrickBuilt === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Derrick load returned null; leaving surface absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && derrickBuilt === rec && rec.loadToken === token,
+        install: (part) => installAuthoredDerrick(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Derrick install failed; leaving surface absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (derrickBuilt === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Derrick load failed; leaving surface absent', error);
+      }
+      return null;
+    });
+  }
+
+  function clearAuthoredDerrick() {
+    authoredDerrickGen += 1;
+    const rec = derrickBuilt;
+    if (!rec) return;
+    derrickBuilt = null;
+    rec.loadToken = -1;
+    if (rec.authoredGroup) {
+      if (worksLoader) worksLoader.releaseWorksPart(rec.authoredGroup);
+      else if (rec.authoredGroup.parent) rec.authoredGroup.parent.remove(rec.authoredGroup);
+      rec.authoredGroup = null;
+    }
+    if (rec.group.parent) rec.group.parent.remove(rec.group);
   }
 
   // The silhouette skirt (law §4): an irregular fringe of crust blocks around the field rectangle
@@ -4566,9 +4754,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       umbilical.core.geometry.dispose();
       umbilical = null;
     }
-    const drumY = derrickBaseY + S * 1.14;
+    // Until the authored release arrives, keep the old coordinate as an honest temporary tether
+    // origin. Once it has arrived, the line begins at the real exported cable_anchor world pose.
+    if (derrickBuilt?.dyn?.cableAnchor) {
+      derrickBuilt.dyn.cableAnchor.getWorldPosition(derrickCableStart);
+    } else {
+      derrickCableStart.set(worldX(ENTRY_COL), derrickBaseY + S * 1.14, Z.surface);
+    }
     const pts = [
-      new THREE.Vector3(worldX(ENTRY_COL), drumY, Z.surface),
+      derrickCableStart.clone(),
       new THREE.Vector3(worldX(ENTRY_COL), worldY(0) + S * 0.6, Z.rover - 0.15),
     ];
     for (const p of trail) pts.push(new THREE.Vector3(worldX(p.col), worldY(p.row), Z.rover - 0.1));
@@ -5765,7 +5959,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // ownership fails closed in the controller capture route as well as live installation.
       if (id === 'place_works_extractor') bindAuthoredExtractor(group);
       if (id === 'place_works_refinery') bindAuthoredRefinery(group);
-      const transform = seatWorksProofGroup(group);
+      if (id === 'place_works_derrick') bindAuthoredDerrick(group);
+      const transform = id === 'place_works_derrick'
+        ? seatWorksDerrickProofGroup(group)
+        : seatWorksProofGroup(group, worksProofRotationXForPart(id));
       group.userData.worksTransform = transform;
       group.name = `worksProof_${id}`;
       scene.add(group);
@@ -6485,7 +6682,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // surface dressing is per-session (plateau tint/derrick position are field-stable but cheap)
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
-    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
+    clearAuthoredDerrick();
     if (!field) { rover.visible = false; return; }
 
     // ore capacity: survey can only reveal what the field already holds
@@ -6690,6 +6887,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       setAuthoredMaterials(authoredRoverState.materialSets.glass, powered ? 0.42 : 0.14);
     } else if (roverBuilt.dyn.cabGlass) roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
 
+    // The surface head-frame is the real umbilical mechanism: its drum turns only while the rover
+    // actually traverses the tether, and its hooded lenses follow battery state without repainting
+    // the authored hoods or structural atlas.
+    if (derrickBuilt?.dyn?.setLamp) {
+      derrickBuilt.dyn.setLamp(0xffb648, powered ? 0.56 : 0.08);
+    }
+    if (derrickBuilt?.dyn?.setSpin) {
+      derrickBuilt.drumPhase = advanceDerrickDrumPhase(
+        derrickBuilt.drumPhase, moving, motionReduce, dt,
+      );
+      if (moving && !motionReduce) derrickBuilt.dyn.setSpin(derrickBuilt.drumPhase);
+    }
+
     // site: machines + overlays + umbilical
     syncMachines(site, projection, timeS);
     const sig = overlaySignature(site, projection);
@@ -6829,7 +7039,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     cellRock.clear();
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
-    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
+    clearAuthoredDerrick();
     if (backWall) { backWall.geometry.dispose(); backWall.material.dispose(); backWall = null; }
     if (ro) ro.disconnect();
     bloom.dispose();

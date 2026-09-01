@@ -25,6 +25,13 @@ export const REFINERY_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+export const DERRICK_HOOKS = Object.freeze([
+  'drum_spin',
+  'cable_anchor',
+  'lamp_L',
+  'lamp_R',
+]);
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -70,6 +77,16 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: REFINERY_HOOKS,
     binding: 'works-refinery',
+  }),
+  // PQ-131.05. The source remains the reviewed three-LOD authoring artifact; this release carries
+  // only the two live Works registers and restores the real winch/cable/lamp pivots after package
+  // flattening. There is no procedural Derrick fallback.
+  place_works_derrick: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_derrick.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_derrick.glb',
+    slot: 'place',
+    hooks: DERRICK_HOOKS,
+    binding: 'works-derrick',
   }),
 });
 
@@ -170,8 +187,14 @@ function disposeInstanceOwnedResources(group) {
   });
 }
 
-function cloneMaterialForInstance(material, primitiveName) {
+function cloneMaterialForInstance(material, primitiveName, binding) {
   if (!material || typeof material.clone !== 'function') return material;
+  // The Derrick's authored atlas is permanent structural surfacing. Only its two hooded-lamp
+  // lenses carry live status; giving frame, drum, cable, or hood shells per-instance would both
+  // waste residency and invite accidental palette mutation.
+  if (binding === 'works-derrick' && !/^LOD[01]_lamp_[LR]_lens$/u.test(primitiveName || '')) {
+    return material;
+  }
   // Runtime status can only mutate these authored state surfaces. The furnace jacket, stack,
   // tank, and their atlas-backed materials remain shared blueprint resources across instances.
   if (/^LOD[01]_refinery$/i.test(primitiveName || '')) return material;
@@ -298,7 +321,41 @@ export function bindWorksRefineryHookHierarchy(group) {
   return group.userData.worksRefineryHooks;
 }
 
-function instantiateBlueprint(blueprint, hookNames) {
+// The released package stores primitive matrices flat. Reattach only the authored functional
+// Derrick children under their concrete pivots, preserving every visible world pose while making
+// drum spin, umbilical origin, and lens-only status updates meaningful in the permanent route.
+export function bindWorksDerrickHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const drum = hooks.drum_spin;
+  const cable = hooks.cable_anchor;
+  const lampL = hooks.lamp_L;
+  const lampR = hooks.lamp_R;
+  if (!drum || !cable || !lampL || !lampR) {
+    throw new Error('[worksPartLoader] Derrick is missing drum_spin, cable_anchor, lamp_L, or lamp_R marker');
+  }
+  const bindings = [
+    [drum, 'LOD0_drum'], [drum, 'LOD1_drum'],
+    [cable, 'LOD0_cable'], [cable, 'LOD1_cable'],
+    [lampL, 'LOD0_lamp_L'], [lampL, 'LOD0_lamp_L_lens'],
+    [lampL, 'LOD1_lamp_L'], [lampL, 'LOD1_lamp_L_lens'],
+    [lampR, 'LOD0_lamp_R'], [lampR, 'LOD0_lamp_R_lens'],
+    [lampR, 'LOD1_lamp_R'], [lampR, 'LOD1_lamp_R_lens'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Derrick is missing ${name}`);
+    attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksDerrickBoundMeshes = bound;
+  group.userData.worksDerrickHooks = Object.freeze({
+    drum_spin: drum, cable_anchor: cable, lamp_L: lampL, lamp_R: lampR,
+  });
+  return group.userData.worksDerrickHooks;
+}
+
+function instantiateBlueprint(blueprint, hookNames, binding) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
   root.userData.worksClone = true;
@@ -311,7 +368,7 @@ function instantiateBlueprint(blueprint, hookNames) {
   for (const prim of blueprint.primitives) {
     // A blueprint is cache/residency-owned. Clone only the material shell per instance so
     // state-driven lamp/bit/track updates cannot mutate another Rover or the cached source.
-    const material = cloneMaterialForInstance(prim.material, prim.name);
+    const material = cloneMaterialForInstance(prim.material, prim.name, binding);
     const mesh = new THREE.Mesh(prim.geometry, material);
     mesh.name = prim.name;
     prim.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
@@ -462,11 +519,12 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     if (blueprint.assetId && hookNames.indexOf(blueprint.assetId) < 0) {
       hookNames.push(blueprint.assetId);
     }
-    const group = instantiateBlueprint(blueprint, hookNames);
+    const group = instantiateBlueprint(blueprint, hookNames, entry.binding);
     try {
       if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
       if (entry.binding === 'works-extractor') bindWorksExtractorHookHierarchy(group);
       if (entry.binding === 'works-refinery') bindWorksRefineryHookHierarchy(group);
+      if (entry.binding === 'works-derrick') bindWorksDerrickHookHierarchy(group);
     } catch (error) {
       console.error('[worksPartLoader] authored part binding failed', error);
       disposeInstanceOwnedResources(group);

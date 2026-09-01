@@ -3,9 +3,11 @@
   "assetId": "place_works_derrick",
   "root": "SF_WORKS_DERRICK_V1",
   "packet": "PQ-131.05",
-  "cycle": 4,
-  "currentState": "integration_candidate",
+  "cycle": 5,
+  "currentState": "accepted",
   "candidateHash": "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A",
+  "selectedRuntimeHash": "920F476A02BC1CE887CD64372E0676040039DE4765D347CF234B20FC02CF5B02",
+  "releaseHash": "1FAAFC93EEC6ECC8C506238D3F7883D3B648C43F07DF21A284C4CBA954165813",
   "forwardAxis": "+X",
   "upAxisBlender": "+Z",
   "upAxisGltf": "+Y",
@@ -107,10 +109,7 @@
     "silhouette padding"
   ],
   "allSupportedViewZonesClassified": true,
-  "gatesOpen": [
-    "G6",
-    "G7"
-  ],
+  "gatesOpen": [],
   "independentSourceReview": {
     "reviewer": "/root/derrick_cycle04_review_resume",
     "reviewedCommit": "f05f09ca58e11789128021b82610ba304355ee8f",
@@ -118,5 +117,17 @@
     "p0": 0,
     "p1": 0,
     "scope": "source_candidate_only"
+  },
+  "independentRouteReview": {
+    "verdict": "KEEP",
+    "reviewers": [
+      "Luna max /root/pq131_extractor_art_research",
+      "Terra xhigh /root/pq131_extractor_runtime_research",
+      "Clinepass Kimi K3 max ses_fa24fed51ffeSwoZOA7EXPXsxC"
+    ],
+    "scope": "whole_asset_source_plus_exact_selected_release_at_work_and_site_registers",
+    "openP0": 0,
+    "openP1": 0,
+    "evidence": "assets/works/derrick/evidence/cycle_005_master/EPOCH.json"
   }
 }

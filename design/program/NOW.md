@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-01
-baseCommit: ecbe6f887d1185f07cce5636f73ef7ba73166db6
+baseCommit: f62ba29a6c2c0113e103db8a7e5a218b03187b58
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-
 ## Uncommitted work without a confirmed live thread
 
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are

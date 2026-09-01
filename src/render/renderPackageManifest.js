@@ -983,6 +983,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/works/place_works_refinery.glb"
   },
   {
+    "assetId": "sf.render.works-derrick",
+    "expectedContentHash": "11f2eabaa3180b0778bf8f8bc9f4ec9840cd824fec0186f2240ac71594f5f080",
+    "key": "works-derrick",
+    "metadataUrl": "assets/ships/release/render-packages/works-derrick/render-package.json",
+    "runtimeAssetId": "place_works_derrick",
+    "slot": "place",
+    "sourceSha256": "1faafc93eec6ecc8c506238d3f7883d3b648c43f07df21a284c4cba954165813",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_derrick.glb"
+  },
+  {
     "assetId": "sf.render.conveyor-truss",
     "expectedContentHash": "b70271b809feddf004456e923d4fa97a324f510d3d41024b19fb68d6cb60f47c",
     "key": "conveyor-truss",

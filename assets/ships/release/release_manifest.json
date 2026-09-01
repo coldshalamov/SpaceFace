@@ -1692,6 +1692,25 @@
       }
     },
     {
+      "id": "place_works_derrick",
+      "kind": "part:places",
+      "source": "assets/ships/parts/works/place_works_derrick.glb",
+      "release": "assets/ships/release/parts/works/place_works_derrick.glb",
+      "sourceSha256": "920f476a02bc1ce887cd64372e0676040039de4765d347cf234b20fc02cf5b02",
+      "releaseSha256": "1faafc93eec6ecc8c506238d3f7883d3b648c43f07df21a284c4cba954165813",
+      "sourceBytes": 15663416,
+      "releaseBytes": 4062804,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 57,
+      "contractNodeCount": 14,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_conveyor_truss.glb",

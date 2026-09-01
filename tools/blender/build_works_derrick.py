@@ -32,6 +32,7 @@ import math
 import shutil
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 import bpy
@@ -69,6 +70,8 @@ ROOT_NAME = "SF_WORKS_DERRICK_V1"
 HOOK_NAMES = ("drum_spin", "cable_anchor", "lamp_L", "lamp_R")
 LOD_ROOTS = ("LOD0_derrick", "LOD1_derrick", "LOD2_derrick")
 CYCLE = 4
+FROZEN_SOURCE_SHA256 = "B35007A82902BFC57017950E2A7BB4C8221984D3E090229A507BCCEFFB6F492A"
+FROZEN_BLEND_SHA256 = "D60F4D641885D40279ECA56F399B29C00F718FB9AF901EB7CB471A535EE8A192"
 SHADE_ANGLE = 28.0
 TRI_BUDGET = {0: 12000, 1: 3000, 2: 900}
 TEX_SIZE = {0: 2048, 1: 1024, 2: 512}
@@ -138,6 +141,27 @@ ROLES = {
     "marking": {"rgb": (0.46, 0.17, 0.045), "rough": 0.58, "metal": 0.05, "id": (1.00, 0.40, 0.00)},
     "cable": {"rgb": (0.065, 0.058, 0.048), "rough": 0.86, "metal": 0.04, "id": (1.00, 0.00, 1.00)},
     "lamp": {"rgb": (0.90, 0.80, 0.55), "rough": 0.18, "metal": 0.03, "id": (0.00, 1.00, 1.00)},
+}
+
+# PQ-131.05 selected runtime only. The reviewed authoring source keeps its dark, close-range
+# weathering; the site register needs the existing A-frame, shoes, and open collar to separate
+# against asteroid terrain before the small rust marking becomes the silhouette.
+SITE_LOD1_ALBEDO = {
+    "structure": (0.30, 0.34, 0.37),
+    "interface": (0.48, 0.34, 0.17),
+    "winch": (0.27, 0.17, 0.10),
+    "grating": (0.20, 0.23, 0.24),
+    "marking": (0.21, 0.055, 0.015),
+    "cable": (0.055, 0.055, 0.050),
+    "lamp": (0.68, 0.45, 0.16),
+}
+SITE_LOD1_ROUGHNESS = {
+    "structure": 0.66, "interface": 0.52, "winch": 0.56, "grating": 0.80,
+    "marking": 0.76, "cable": 0.90, "lamp": 0.38,
+}
+SITE_LOD1_METAL = {
+    "structure": 0.30, "interface": 0.62, "winch": 0.66, "grating": 0.22,
+    "marking": 0.03, "cable": 0.02, "lamp": 0.05,
 }
 
 
@@ -2437,7 +2461,288 @@ def freeze_cycle_003() -> None:
             shutil.copy2(family_hashes, freeze)
 
 
+def _selected_runtime_inspection(path: Path) -> dict:
+    """Inspect the intentionally two-register runtime copy without source assumptions."""
+    gltf, _rest = _read_glb(path)
+    nodes = gltf.get("nodes") or []
+    names = [str(node.get("name") or "") for node in nodes]
+    by_name = {str(node.get("name") or ""): node for node in nodes}
+    expected_hooks = {
+        "drum_spin": [-0.62, 1.38, 0.0],
+        "cable_anchor": [-0.464, 1.504, 0.0],
+        "lamp_L": [0.05, 6.3, -0.4],
+        "lamp_R": [0.05, 6.3, 0.4],
+    }
+    hook_translations = {}
+    for name, expected in expected_hooks.items():
+        node = by_name.get(name)
+        if node is None:
+            raise RuntimeError(f"selected Derrick runtime source is missing {name}")
+        actual = list(node.get("translation") or [0.0, 0.0, 0.0])
+        if len(actual) != 3 or any(abs(float(actual[i]) - expected[i]) > 1e-4 for i in range(3)):
+            raise RuntimeError(f"selected Derrick runtime source moved {name}: {actual}")
+        hook_translations[name] = actual
+    collision = by_name.get("COLLISION_HULL")
+    if collision is None:
+        raise RuntimeError("selected Derrick runtime source is missing COLLISION_HULL")
+    collision_translation = list(collision.get("translation") or [0.0, 0.0, 0.0])
+    collision_scale = list(collision.get("scale") or [1.0, 1.0, 1.0])
+    if any(abs(float(collision_translation[i]) - [0.0, 3.2, 0.0][i]) > 1e-4 for i in range(3)):
+        raise RuntimeError(f"selected Derrick runtime source moved collision hull: {collision_translation}")
+    if any(abs(float(collision_scale[i]) - [1.08, 3.25, 1.0][i]) > 1e-4 for i in range(3)):
+        raise RuntimeError(f"selected Derrick runtime source rescaled collision hull: {collision_scale}")
+    if any(name.startswith("LOD2_") for name in names):
+        raise RuntimeError("selected Derrick runtime source retained evidence-only LOD2")
+    required_meshes = [
+        f"LOD{lod}_{suffix}"
+        for lod in (0, 1)
+        for suffix in ("derrick", "drum", "cable", "lamp_L", "lamp_L_lens", "lamp_R", "lamp_R_lens")
+    ]
+    missing_meshes = [name for name in required_meshes if name not in names]
+    if missing_meshes:
+        raise RuntimeError(f"selected Derrick runtime source is missing meshes: {missing_meshes}")
+    contract = ((gltf.get("asset") or {}).get("extras") or {}).get("spacefaceAsset") or {}
+    if contract.get("exportedLods") != ["lod0", "lod1"]:
+        raise RuntimeError("selected Derrick runtime contract does not expose LOD0/LOD1")
+    return {
+        "names": names,
+        "hookTranslations": hook_translations,
+        "collisionTranslation": collision_translation,
+        "collisionScale": collision_scale,
+    }
+
+
+def _image_pixels(image) -> np.ndarray:
+    width, height = image.size
+    values = np.zeros(width * height * 4, dtype=np.float32)
+    image.pixels.foreach_get(values)
+    return values.reshape(height, width, 4)
+
+
+def _png_bytes_from_pixels(name: str, pixels: np.ndarray, colorspace: str) -> bytes:
+    """Encode a selected-runtime atlas into a temporary file without touching source textures."""
+    image = bpy.data.images.new(name, width=pixels.shape[1], height=pixels.shape[0], alpha=True)
+    image.colorspace_settings.name = colorspace
+    image.pixels.foreach_set(np.ascontiguousarray(pixels, dtype=np.float32).ravel())
+    with tempfile.TemporaryDirectory(prefix="spaceface-derrick-site-") as temp_dir:
+        path = Path(temp_dir) / f"{name}.png"
+        image.filepath_raw = str(path)
+        image.file_format = "PNG"
+        image.save()
+        sanitize_png(path)
+        payload = path.read_bytes()
+    bpy.data.images.remove(image)
+    return payload
+
+
+def _selected_runtime_lod1_site_maps():
+    """Allocate the existing LOD1 forms into a legible static site-value hierarchy.
+
+    This keeps the authored mesh, UV layout, texture slots, normal map, and lamp emission exactly
+    as exported. It replaces only selected-runtime LOD1 basecolor/ORM pixels, using the immutable
+    role ID atlas so the paired A-frames, shoes, collar, and well remain visible at 19 px/cell.
+    """
+    id_path = TEX_DIR / "derrick_atlas_lod1_id.png"
+    if not id_path.exists():
+        raise RuntimeError("Derrick LOD1 source ID atlas is required for selected-runtime site material")
+    id_image = bpy.data.images.load(str(id_path), check_existing=False)
+    try:
+        id_image.colorspace_settings.name = "sRGB"
+        id_idx, names = classify_id(_image_pixels(id_image))
+        height, width = id_idx.shape
+        albedo = np.zeros((height, width, 4), dtype=np.float32)
+        orm = np.ones((height, width, 4), dtype=np.float32)
+        for index, role in enumerate(names):
+            mask = id_idx == index
+            if not np.any(mask):
+                continue
+            rgb = SITE_LOD1_ALBEDO[role]
+            for channel, base in enumerate(rgb):
+                albedo[..., channel][mask] = base
+            albedo[..., 3][mask] = 1.0
+            orm[..., 0][mask] = 0.82
+            orm[..., 1][mask] = SITE_LOD1_ROUGHNESS[role]
+            orm[..., 2][mask] = SITE_LOD1_METAL[role]
+        empty = albedo[..., 3] < 0.5
+        if np.any(empty):
+            for channel, base in enumerate(SITE_LOD1_ALBEDO["structure"]):
+                albedo[..., channel][empty] = base
+            albedo[..., 3][empty] = 1.0
+            orm[..., 0][empty] = 0.82
+            orm[..., 1][empty] = SITE_LOD1_ROUGHNESS["structure"]
+            orm[..., 2][empty] = SITE_LOD1_METAL["structure"]
+        return (
+            _png_bytes_from_pixels("derrick_lod1_site_basecolor", albedo, "sRGB"),
+            _png_bytes_from_pixels("derrick_lod1_site_orm", orm, "Non-Color"),
+        )
+    finally:
+        bpy.data.images.remove(id_image)
+
+
+def _replace_embedded_png(gltf: dict, rest: bytes, image_index: int, name: str, payload: bytes) -> bytes:
+    """Append one generated map and retarget its existing GLB image entry."""
+    if len(rest) < 8 or rest[4:8] != b"BIN\x00":
+        raise RuntimeError("selected Derrick runtime source has no binary GLB chunk")
+    binary_len = struct.unpack_from("<I", rest, 0)[0]
+    binary_end = 8 + binary_len
+    if binary_end > len(rest):
+        raise RuntimeError("selected Derrick runtime source binary GLB chunk is truncated")
+    binary = bytearray(rest[8:binary_end])
+    while len(binary) % 4:
+        binary.append(0)
+    offset = len(binary)
+    binary.extend(payload)
+    while len(binary) % 4:
+        binary.append(0)
+    gltf.setdefault("bufferViews", []).append({
+        "buffer": 0,
+        "byteOffset": offset,
+        "byteLength": len(payload),
+    })
+    images = gltf.get("images") or []
+    if image_index < 0 or image_index >= len(images):
+        raise RuntimeError("selected Derrick runtime source image index is invalid")
+    image = dict(images[image_index])
+    image["name"] = name
+    image["mimeType"] = "image/png"
+    image["bufferView"] = len(gltf["bufferViews"]) - 1
+    images[image_index] = image
+    gltf["images"] = images
+    buffers = gltf.get("buffers") or []
+    if not buffers:
+        raise RuntimeError("selected Derrick runtime source has no buffer record")
+    buffers[0]["byteLength"] = len(binary)
+    return struct.pack("<I", len(binary)) + b"BIN\x00" + bytes(binary) + rest[binary_end:]
+
+
+def export_selected_runtime_source():
+    """Publish the live LOD0/LOD1 source without changing accepted authoring bytes."""
+    combined = SOURCE_DIR / "derrick.glb"
+    parts = PARTS_DIR / COMBINED_NAME
+    if sha256(combined) != FROZEN_SOURCE_SHA256:
+        raise RuntimeError("accepted Derrick source hash drifted; refusing selected-runtime export")
+    if sha256(BLEND_PATH) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("accepted Derrick Blend hash drifted; refusing selected-runtime export")
+
+    gltf, rest = _read_glb(combined)
+    source_contract = ((gltf.get("asset") or {}).get("extras") or {}).get("spacefaceAsset")
+    if not isinstance(source_contract, dict) or source_contract.get("assetId") != ASSET_ID:
+        raise RuntimeError("accepted Derrick source contract is missing its asset identity")
+    source_nodes = gltf.get("nodes") or []
+    keep_old = [index for index, node in enumerate(source_nodes)
+                if not str(node.get("name") or "").startswith("LOD2_")]
+    if len(keep_old) == len(source_nodes):
+        raise RuntimeError("accepted Derrick source has no evidence-only LOD2 to remove")
+    remap = {old: new for new, old in enumerate(keep_old)}
+    selected_nodes = []
+    for old in keep_old:
+        node = dict(source_nodes[old])
+        if "children" in node:
+            node["children"] = [remap[child] for child in node["children"] if child in remap]
+        selected_nodes.append(node)
+    gltf["nodes"] = selected_nodes
+
+    used_meshes = sorted({node["mesh"] for node in selected_nodes if "mesh" in node})
+    mesh_remap = {old: new for new, old in enumerate(used_meshes)}
+    gltf["meshes"] = [gltf["meshes"][old] for old in used_meshes]
+    for node in selected_nodes:
+        if "mesh" in node:
+            node["mesh"] = mesh_remap[node["mesh"]]
+    for scene in gltf.get("scenes") or []:
+        if "nodes" in scene:
+            scene["nodes"] = [remap[node] for node in scene["nodes"] if node in remap]
+
+    selected_contract = json.loads(json.dumps(source_contract))
+    selected_contract["deliverableRole"] = "selected_runtime_multi_lod"
+    selected_contract["lods"] = ["lod0", "lod1"]
+    selected_contract["exportedLods"] = ["lod0", "lod1"]
+    selected_contract["wiringStatus"] = "selected_runtime_unwired"
+    selected_contract["siteLodMaterialProfile"] = "grounded_headframe_value_roles_v1"
+
+    # Keep every accepted LOD1 form and material slot. The only selected-runtime correction is
+    # the static atlas pixels shared by its authored structural/lamp material pair; this elevates
+    # legs, shoes, collar, and platform above terrain while suppressing the tiny rust mark's pull.
+    lod1_node = next((node for node in selected_nodes if node.get("name") == "LOD1_derrick"), None)
+    if not lod1_node or lod1_node.get("mesh") is None:
+        raise RuntimeError("selected Derrick runtime source has no LOD1 headframe body")
+    lod1_mesh = gltf["meshes"][lod1_node["mesh"]]
+    lod1_primitives = lod1_mesh.get("primitives") or []
+    if len(lod1_primitives) != 1 or lod1_primitives[0].get("material") is None:
+        raise RuntimeError("selected Derrick runtime source has no single LOD1 atlas material")
+    lod1_material = gltf["materials"][lod1_primitives[0]["material"]]
+    pbr = lod1_material.get("pbrMetallicRoughness") or {}
+    base_texture = pbr.get("baseColorTexture", {}).get("index")
+    orm_texture = pbr.get("metallicRoughnessTexture", {}).get("index")
+    textures = gltf.get("textures") or []
+    if base_texture is None or orm_texture is None:
+        raise RuntimeError("selected Derrick runtime source LOD1 atlas is incomplete")
+    base_image = textures[base_texture].get("source")
+    orm_image = textures[orm_texture].get("source")
+    if base_image is None or orm_image is None:
+        raise RuntimeError("selected Derrick runtime source LOD1 atlas has no embedded images")
+    site_basecolor, site_orm = _selected_runtime_lod1_site_maps()
+    rest = _replace_embedded_png(gltf, rest, base_image, "derrick_lod1_site_basecolor", site_basecolor)
+    rest = _replace_embedded_png(gltf, rest, orm_image, "derrick_lod1_site_orm", site_orm)
+    PARTS_DIR.mkdir(parents=True, exist_ok=True)
+    temp = parts.with_suffix(".tmp.glb")
+    _write_glb(temp, gltf, rest)
+    stamp_glb_contract(temp, selected_contract)
+    temp.replace(parts)
+
+    inspection = _selected_runtime_inspection(parts)
+    if sha256(combined) != FROZEN_SOURCE_SHA256 or sha256(BLEND_PATH) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("selected-runtime export modified frozen Derrick authoring bytes")
+    inventory = {
+        "assetId": ASSET_ID,
+        "rootNode": ROOT_NAME,
+        "combined": str(combined.relative_to(ROOT)).replace("\\", "/"),
+        "partsSource": str(parts.relative_to(ROOT)).replace("\\", "/"),
+        "authoringSource": {
+            "path": str(combined.relative_to(ROOT)).replace("\\", "/"),
+            "immutable": True,
+            "bytes": combined.stat().st_size,
+            "sha256": FROZEN_SOURCE_SHA256,
+            "exportedLods": ["lod0", "lod1", "lod2"],
+        },
+        "selectedRuntimeSource": {
+            "path": str(parts.relative_to(ROOT)).replace("\\", "/"),
+            "bytes": parts.stat().st_size,
+            "sha256": sha256(parts),
+            "exportedLods": ["lod0", "lod1"],
+            "siteLodMaterialProfile": "grounded_headframe_value_roles_v1",
+        },
+        "exportedLods": ["lod0", "lod1"],
+        "blend": str(BLEND_PATH.relative_to(ROOT)).replace("\\", "/"),
+        "lodTriangles": source_contract["lodTriangles"],
+        "hooks": list(HOOK_NAMES),
+        "meshNames": sorted(name for name in inspection["names"] if name.startswith("LOD")),
+        "bbox": source_contract.get("bboxBlender"),
+        "bytes": combined.stat().st_size,
+        "sha256": FROZEN_SOURCE_SHA256,
+        "partsSha256": sha256(parts),
+        "disposition": "review_pending",
+        "cycle": CYCLE,
+    }
+    write_text_lf(SOURCE_DIR / "derrick_inventory.json", json.dumps(inventory, indent=2) + "\n")
+    print(json.dumps({
+        "ok": True,
+        "mode": "selected-runtime",
+        "sourceSha256": FROZEN_SOURCE_SHA256,
+        "partsSha256": inventory["partsSha256"],
+        "partsBytes": inventory["selectedRuntimeSource"]["bytes"],
+        "hooks": inspection["hookTranslations"],
+        "collision": {
+            "translation": inspection["collisionTranslation"],
+            "scale": inspection["collisionScale"],
+        },
+    }, indent=2))
+
+
 def main():
+    args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    if "--export-selected-runtime" in args:
+        export_selected_runtime_source()
+        return
     FAMILY.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TEX_DIR.mkdir(parents=True, exist_ok=True)

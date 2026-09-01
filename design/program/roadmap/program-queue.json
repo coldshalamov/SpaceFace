@@ -8190,7 +8190,7 @@
       "priority": 360,
       "title": "Surface derrick / head-frame, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -8209,7 +8209,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-05-authored-derrick-REPORT.md"
+      ],
       "brief": "Inventory row .05: a real head-frame over the shaft - A-frame legs, a drum with the umbilical, hooded work-lights, orange safety markings, a small platform; the place you came in. 1 cell footprint, ~3 cells tall. Hooks: drum_spin, cable_anchor, lamp_L, lamp_R. 12k/3k, 2048^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete makeDerrick."
     },
     {
