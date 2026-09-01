@@ -8070,7 +8070,7 @@
       "priority": 356,
       "title": "Rover: the hero, authored",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-131.00"
       ],
@@ -8089,7 +8089,9 @@
         "npm run check:playable",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-131-01-authored-rover-REPORT.md"
+      ],
       "brief": "Campaign inventory row .01. A heavy tracked mining rig read from straight above: two track units with visible tread, low cab with a lit pane, drill boom on a pivot with a steel bit, open hopper on the back, safety-yellow panels (#ffd23f) with dark chevron plates, dark metal undercarriage, hooded headlamp. 0.85x0.8 cell, ~0.45 tall. Hooks: boom_pivot, bit_tip, hopper_fill_0..4, hopper_lid, lamp_socket, vent_stack, track_L/R, scar_plate. Budget 18k/4k tris, 2048^2 x3. Reference first (real mining machinery), blockout at works scale, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart driving the existing hopper/heat/lamp/vent/lid/scar state, delete makeRover. Proof: works-camera stills beside a flight still; three reviews; revise until KEEP. Illegal: scaling or re-skinning the procedural rig."
     },
     {

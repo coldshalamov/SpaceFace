@@ -131,7 +131,10 @@ export function resolveSelectedPlaceAssets(partManifest, selectedIds) {
     }
     if (part.status === 'blocked') throw new Error(`blocked place asset cannot be released: ${id}`);
     const file = String(part.file || '').replace(/\\/g, '/');
-    if (!/^places\/[a-z0-9_/-]+\.glb$/.test(file) || file.includes('..')) {
+    // Works-scale hero places keep their authored source under `parts/works/` while
+    // ordinary place props remain under `parts/places/`; both use this same release
+    // transaction and validation path.
+    if (!/^(?:places|works)\/[a-z0-9_/-]+\.glb$/.test(file) || file.includes('..')) {
       throw new Error(`invalid place source path for ${id}: ${part.file || '<missing>'}`);
     }
     return {

@@ -5017,6 +5017,40 @@
       }
     },
     {
+      "id": "place_works_rover",
+      "category": "places",
+      "priority": "P1",
+      "file": "works/place_works_rover.glb",
+      "tris": 17438,
+      "budgetClass": "landmark",
+      "bytes": 17216204,
+      "textureSize": 2048,
+      "tintable": {},
+      "note": "PQ-131.01 authored Asteroid Works rover. Combined source contains LOD0/work and LOD1/site roots; LOD2 remains authoring-only. Named state hooks drive the live mining rig; independent G1/G2/G4/G7 review remains open.",
+      "hooks": [
+        "boom_pivot",
+        "bit_tip",
+        "hopper_fill_0",
+        "hopper_fill_1",
+        "hopper_fill_2",
+        "hopper_fill_3",
+        "hopper_fill_4",
+        "hopper_lid",
+        "lamp_socket",
+        "vent_stack",
+        "track_L",
+        "track_R",
+        "scar_plate"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-0.935, 0, -0.88],
+        "max": [0.935, 0.99, 0.88],
+        "dimensionsM": [1.87, 0.99, 1.76]
+      }
+    },
+    {
       "id": "place_conveyor_truss",
       "category": "places",
       "priority": "P2",

@@ -1435,6 +1435,21 @@
       "metadataUrl": "assets/ships/release/render-packages/drill-platform/render-package.json"
     },
     {
+      "key": "works-rover",
+      "assetId": "sf.render.works-rover",
+      "runtimeAssetId": "place_works_rover",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_works_rover",
+      "sourceUrl": "assets/ships/release/parts/works/place_works_rover.glb",
+      "releaseSha256": "7f759a4853517d1622d9293552c596c61cb5987ef74418ddadda85c515b67d4c",
+      "releaseBytes": 2429548,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/works-rover",
+      "metadataUrl": "assets/ships/release/render-packages/works-rover/render-package.json"
+    },
+    {
       "key": "conveyor-truss",
       "assetId": "sf.render.conveyor-truss",
       "runtimeAssetId": "place_conveyor_truss",

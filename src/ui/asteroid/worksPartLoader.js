@@ -19,6 +19,18 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: Object.freeze([]),
   }),
+  // PQ-131.01 authored mine rig. One combined release GLB carries both the detailed
+  // LOD0/work and reduced LOD1/site roots; the register selects the matching tagged meshes.
+  place_works_rover: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_rover.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_rover.glb',
+    slot: 'place',
+    hooks: Object.freeze([
+      'boom_pivot', 'bit_tip',
+      'hopper_fill_0', 'hopper_fill_1', 'hopper_fill_2', 'hopper_fill_3', 'hopper_fill_4',
+      'hopper_lid', 'lamp_socket', 'vent_stack', 'track_L', 'track_R', 'scar_plate',
+    ]),
+  }),
 });
 
 function selectUrl(entry, register) {
@@ -41,12 +53,15 @@ function applyLodVisibility(group, register) {
   group.userData.worksNodeLod = want;
   group.traverse((obj) => {
     if (!obj.isMesh) return;
+    const semanticVisible = obj.userData.worksSemanticVisibility === true
+      ? obj.userData.worksSemanticVisible !== false
+      : true;
     const lod = obj.userData.worksLod;
     if (!lod) {
-      obj.visible = true;
+      obj.visible = semanticVisible;
       return;
     }
-    obj.visible = lod === want;
+    obj.visible = lod === want && semanticVisible;
   });
 }
 
@@ -63,16 +78,21 @@ function collectGroupGpuResources(group, into) {
   if (!group) return;
   const recorded = group.userData && group.userData.worksGpuResources;
   if (Array.isArray(recorded)) {
-    for (let i = 0; i < recorded.length; i++) if (recorded[i]) into.add(recorded[i]);
+    for (let i = 0; i < recorded.length; i++) {
+      const resource = recorded[i];
+      if (resource && resource.userData?.worksInstanceOwned !== true) into.add(resource);
+    }
   }
   group.traverse((obj) => {
-    if (obj.geometry) into.add(obj.geometry);
+    if (obj.geometry && obj.userData?.worksInstanceOwned !== true) into.add(obj.geometry);
     const mats = Array.isArray(obj.material) ? obj.material : (obj.material ? [obj.material] : []);
     for (let i = 0; i < mats.length; i++) {
       const mat = mats[i];
       if (!mat) continue;
-      into.add(mat);
-      collectMaterialTextures(mat, into);
+      if (mat.userData?.worksInstanceOwned !== true) {
+        into.add(mat);
+        collectMaterialTextures(mat, into);
+      }
     }
   });
 }
@@ -88,6 +108,44 @@ function disposeRendererBoundResource(resource) {
   else resource.dispose();
 }
 
+function disposeInstanceOwnedResources(group) {
+  const disposed = new Set();
+  group.traverse((obj) => {
+    const mats = Array.isArray(obj.material) ? obj.material : (obj.material ? [obj.material] : []);
+    for (const material of mats) {
+      if (!material || material.userData?.worksInstanceOwned !== true) continue;
+      for (const key of Object.keys(material)) {
+        const texture = material[key];
+        if (!texture || texture.isTexture !== true || texture.userData?.worksInstanceOwned !== true) continue;
+        if (!disposed.has(texture)) {
+          disposed.add(texture);
+          disposeRendererBoundResource(texture);
+        }
+      }
+      if (!disposed.has(material)) {
+        disposed.add(material);
+        disposeRendererBoundResource(material);
+      }
+    }
+  });
+}
+
+function cloneMaterialForInstance(material, primitiveName) {
+  if (!material || typeof material.clone !== 'function') return material;
+  const clone = material.clone();
+  clone.userData = { ...(clone.userData || {}), worksInstanceOwned: true };
+  if (!/track/i.test(primitiveName || '')) return clone;
+  for (const key of Object.keys(clone)) {
+    const texture = clone[key];
+    if (!texture || texture.isTexture !== true || typeof texture.clone !== 'function') continue;
+    const instanceTexture = texture.clone();
+    instanceTexture.userData = { ...(instanceTexture.userData || {}), worksInstanceOwned: true };
+    instanceTexture.wrapS = THREE.RepeatWrapping;
+    clone[key] = instanceTexture;
+  }
+  return clone;
+}
+
 function instantiateBlueprint(blueprint, hookNames) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
@@ -99,12 +157,19 @@ function instantiateBlueprint(blueprint, hookNames) {
   const gpuResources = new Set();
 
   for (const prim of blueprint.primitives) {
-    const mesh = new THREE.Mesh(prim.geometry, prim.material);
+    // A blueprint is cache/residency-owned. Clone only the material shell per instance so
+    // state-driven lamp/bit/track updates cannot mutate another Rover or the cached source.
+    const material = cloneMaterialForInstance(prim.material, prim.name);
+    const mesh = new THREE.Mesh(prim.geometry, material);
     mesh.name = prim.name;
     prim.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.userData.worksShared = true;
+    if (/(?:^|_)hopper_fill_[0-4]$/u.test(prim.name || '')) {
+      mesh.userData.worksSemanticVisibility = true;
+      mesh.userData.worksSemanticVisible = true;
+    }
     const lod = (prim.tags && prim.tags.lod) || null;
     mesh.userData.worksLod = lod;
     if (!lod) untagged += 1;
@@ -113,8 +178,8 @@ function instantiateBlueprint(blueprint, hookNames) {
       tagsPresent.push(lod);
     }
     if (prim.geometry) gpuResources.add(prim.geometry);
-    if (prim.material) gpuResources.add(prim.material);
-    collectMaterialTextures(prim.material, gpuResources);
+    if (material) gpuResources.add(material);
+    collectMaterialTextures(material, gpuResources);
     root.add(mesh);
   }
   tagsPresent.sort();
@@ -198,6 +263,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     if (!group) return;
     const idx = live.indexOf(group);
     if (idx >= 0) live.splice(idx, 1);
+    disposeInstanceOwnedResources(group);
     releaseClone(group);
     released += 1;
   }

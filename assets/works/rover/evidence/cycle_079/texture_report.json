@@ -1,0 +1,291 @@
+{
+  "atlas": "4x4",
+  "gutterAt2048": 4,
+  "tileMap": {
+    "livery": 0,
+    "chevron": 1,
+    "steel": 2,
+    "track": 3,
+    "glass": 4,
+    "bit": 5,
+    "lamp": 6,
+    "rubble": 7,
+    "scar": 8
+  },
+  "reserved": {
+    "9": {
+      "neutralRole": "livery"
+    },
+    "10": {
+      "neutralRole": "livery"
+    },
+    "11": {
+      "neutralRole": "steel"
+    },
+    "12": {
+      "neutralRole": "steel"
+    },
+    "13": {
+      "neutralRole": "track"
+    },
+    "14": {
+      "neutralRole": "chevron"
+    },
+    "15": {
+      "neutralRole": "rubble"
+    }
+  },
+  "lods": {
+    "lod0": {
+      "resolution": 2048,
+      "maps": {
+        "basecolor": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod0_basecolor.png",
+          "size": 2048,
+          "bytes": 5708050
+        },
+        "orm": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod0_orm.png",
+          "size": 2048,
+          "bytes": 5675876
+        },
+        "normal": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod0_normal.png",
+          "size": 2048,
+          "bytes": 261731
+        }
+      }
+    },
+    "lod1": {
+      "resolution": 1024,
+      "maps": {
+        "basecolor": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod1_basecolor.png",
+          "size": 1024,
+          "bytes": 1448456
+        },
+        "orm": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod1_orm.png",
+          "size": 1024,
+          "bytes": 1430181
+        },
+        "normal": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod1_normal.png",
+          "size": 1024,
+          "bytes": 69538
+        }
+      }
+    },
+    "lod2": {
+      "resolution": 512,
+      "maps": {
+        "basecolor": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod2_basecolor.png",
+          "size": 512,
+          "bytes": 369759
+        },
+        "orm": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod2_orm.png",
+          "size": 512,
+          "bytes": 359285
+        },
+        "normal": {
+          "path": "assets/works/rover/source/textures/rover_atlas_lod2_normal.png",
+          "size": 512,
+          "bytes": 18563
+        }
+      }
+    }
+  },
+  "pngCount": 9,
+  "pngBudget": 9,
+  "pngFiles": [
+    "rover_atlas_lod0_basecolor.png",
+    "rover_atlas_lod0_normal.png",
+    "rover_atlas_lod0_orm.png",
+    "rover_atlas_lod1_basecolor.png",
+    "rover_atlas_lod1_normal.png",
+    "rover_atlas_lod1_orm.png",
+    "rover_atlas_lod2_basecolor.png",
+    "rover_atlas_lod2_normal.png",
+    "rover_atlas_lod2_orm.png"
+  ],
+  "glbBytes": {
+    "lod0": 13935620,
+    "lod1": 3263448,
+    "lod2": 984268
+  },
+  "glbBudget": {
+    "lod0": 14680064,
+    "lod1": 5242880,
+    "lod2": 2097152
+  },
+  "tileMapDetail": {
+    "livery": {
+      "tile": 0,
+      "col": 0,
+      "row": 0,
+      "px": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "chevron": {
+      "tile": 1,
+      "col": 1,
+      "row": 0,
+      "px": [
+        512,
+        0,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "steel": {
+      "tile": 2,
+      "col": 2,
+      "row": 0,
+      "px": [
+        1024,
+        0,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "track": {
+      "tile": 3,
+      "col": 3,
+      "row": 0,
+      "px": [
+        1536,
+        0,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "glass": {
+      "tile": 4,
+      "col": 0,
+      "row": 1,
+      "px": [
+        0,
+        512,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "bit": {
+      "tile": 5,
+      "col": 1,
+      "row": 1,
+      "px": [
+        512,
+        512,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "lamp": {
+      "tile": 6,
+      "col": 2,
+      "row": 1,
+      "px": [
+        1024,
+        512,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "rubble": {
+      "tile": 7,
+      "col": 3,
+      "row": 1,
+      "px": [
+        1536,
+        512,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "scar": {
+      "tile": 8,
+      "col": 0,
+      "row": 2,
+      "px": [
+        0,
+        1024,
+        512,
+        512
+      ],
+      "gutter": 4,
+      "inner": 504
+    },
+    "reserved_9": {
+      "tile": 9,
+      "role_neutral": "livery",
+      "col": 1,
+      "row": 2,
+      "gutter": 4
+    },
+    "reserved_10": {
+      "tile": 10,
+      "role_neutral": "livery",
+      "col": 2,
+      "row": 2,
+      "gutter": 4
+    },
+    "reserved_11": {
+      "tile": 11,
+      "role_neutral": "steel",
+      "col": 3,
+      "row": 2,
+      "gutter": 4
+    },
+    "reserved_12": {
+      "tile": 12,
+      "role_neutral": "steel",
+      "col": 0,
+      "row": 3,
+      "gutter": 4
+    },
+    "reserved_13": {
+      "tile": 13,
+      "role_neutral": "track",
+      "col": 1,
+      "row": 3,
+      "gutter": 4
+    },
+    "reserved_14": {
+      "tile": 14,
+      "role_neutral": "chevron",
+      "col": 2,
+      "row": 3,
+      "gutter": 4
+    },
+    "reserved_15": {
+      "tile": 15,
+      "role_neutral": "rubble",
+      "col": 3,
+      "row": 3,
+      "gutter": 4
+    }
+  }
+}

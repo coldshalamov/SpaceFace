@@ -47,7 +47,7 @@ FAMILY = ROOT / "assets" / "works" / "rover"
 TEX_DIR = FAMILY / "source" / "textures"
 TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
 TEX = TEX_BY_LOD[0]
-CYCLE = 78
+CYCLE = 79
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--mtx-cycle="):
         CYCLE = int(tok.split("=", 1)[1])
@@ -74,7 +74,7 @@ ATLAS_TILE = {
 }
 # #ffd23f safety yellow — reserved tiles copy the live livery so the atlas
 # mean cannot drift off the brief when unused tiles are sampled.
-LIVERY_RGB = (1.0, 210.0 / 255.0, 63.0 / 255.0)
+LIVERY_RGB = (1.0, 0.84, 0.0)
 RESERVED_TILES = {
     9: ("livery", LIVERY_RGB),
     10: ("livery", LIVERY_RGB),
@@ -88,7 +88,9 @@ ROLE_RGB = {
     "livery": LIVERY_RGB,
     "chevron": (0.067, 0.051, 0.027),
     "steel": (0.40, 0.37, 0.33),
-    "track": (0.12, 0.10, 0.08),
+    # The belt remains darker than the steel/livery body, but not so near-black that the
+    # authored track vanishes into the works pad at the fixed works_top exposure.
+    "track": (0.32, 0.28, 0.23),
     "glass": (0.032, 0.038, 0.048),
     "bit": (0.78, 0.70, 0.54),
     "lamp": (0.95, 0.88, 0.68),
@@ -122,13 +124,15 @@ DECK_Z = DECK_Z1
 CAB_ROOF_Z = 0.99
 # Wide hopper, then a waist, then a narrow cab. Well mouth is large; floor is
 # smaller so the walls read as thickness from above.
-WELL_CX, WELL_HX, WELL_HY = -0.48, 0.32, 0.28
+WELL_CX, WELL_HX, WELL_HY = -0.48, 0.37, 0.33
 WELL_FLOOR_Z = 0.02
-WELL_FLOOR_INSET = 0.10
-CAB_CX, CAB_HX, CAB_HY = 0.20, 0.20, 0.22
-PANE_FLOOR_Z = 0.90
-PIVOT = (0.28, -0.32, 0.58)
-BIT_TIP = (0.96, -0.32, 0.54)
+WELL_FLOOR_INSET = 0.14
+# A broad operator cab gives the recessed pane enough real projected area to read at works scale.
+CAB_CX, CAB_HX, CAB_HY = 0.20, 0.23, 0.28
+# The windshield is a recessed service aperture, not a card above the deck.
+PANE_FLOOR_Z = 0.54
+PIVOT = (0.28, -0.38, 0.58)
+BIT_TIP = (0.96, -0.38, 0.54)
 TRACK_YC, TRACK_HALF_W = 0.70, 0.18
 TRACK_R_PLAN = 0.18
 TRACK_H = 0.32
@@ -187,6 +191,7 @@ PLANFORM_FLOORS = {
 }
 
 FLIGHT_STILL = ROOT / ".devshots" / "asteroid-works" / "04-flight-relay-courier.png"
+COMBINED_SOURCE = ROOT / "assets" / "ships" / "parts" / "works" / "place_works_rover.glb"
 
 
 def sha256(path: Path) -> str:
@@ -254,6 +259,51 @@ def sanitize_glb_floats(path: Path, nd=5) -> None:
                 raise
             import time
             time.sleep(0.25 * (attempt + 1))
+
+
+def stamp_asset_contract(path: Path) -> None:
+    """Add the asset-level contract required by the canonical place release builder."""
+    data = bytearray(path.read_bytes())
+    if data[:4] != b"glTF" or len(data) < 20:
+        raise RuntimeError(f"cannot stamp non-GLB source {path}")
+    json_len = struct.unpack_from("<I", data, 12)[0]
+    json_start = 20
+    json_end = json_start + json_len
+    gltf = json.loads(bytes(data[json_start:json_end]).rstrip(b" \x00"))
+    asset = gltf.setdefault("asset", {})
+    contract = {
+        "contractVersion": 1,
+        "assetId": "place_works_rover",
+        "partId": "place_works_rover",
+        "slot": "place",
+        "category": "works",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "PNG-source",
+        "atlas": "4x4",
+    }
+    asset["extras"] = {
+        **(asset.get("extras") or {}),
+        "spacefaceAsset": contract,
+    }
+    for scene in gltf.get("scenes", []):
+        scene["extras"] = {**(scene.get("extras") or {}), "spacefaceAsset": contract}
+    for node in gltf.get("nodes", []):
+        if node.get("name") in {"rover", "LOD1_rover"}:
+            node["extras"] = {**(node.get("extras") or {}), "spacefaceAsset": contract}
+    encoded = json.dumps(gltf, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    encoded += b" " * ((4 - len(encoded) % 4) % 4)
+    tail = bytes(data[json_end:])
+    total = 12 + 8 + len(encoded) + len(tail)
+    out = bytearray(struct.pack("<4sII", b"glTF", 2, total))
+    out.extend(struct.pack("<II", len(encoded), 0x4E4F534A))
+    out.extend(encoded)
+    out.extend(tail)
+    path.write_bytes(out)
 
 
 def sanitize_png(path: Path) -> None:
@@ -779,7 +829,11 @@ def add_empty(name, loc, collection, parent=None, size=0.06):
     obj.location = loc
     if parent:
         obj.parent = parent
+    # Runtime contract marker: assetLoader.collectTags reads the namespaced key rather
+    # than an ad-hoc DCC property. Keep the legacy `socket` breadcrumb for source audits,
+    # but make the marker survive release/package compilation as a real socket.
     obj["socket"] = True
+    obj["spacefaceSocket"] = True
     return obj
 
 
@@ -1074,12 +1128,23 @@ def count_tris(obj):
 def decimate_to_budget(collection, budget):
     meshes = [
         obj for obj in collection.all_objects
-        if obj.type == "MESH" and not obj.name.startswith("hopper_fill_")
+        if obj.type == "MESH"
+        and not obj.name.startswith("hopper_fill_")
+        and obj.name not in {"hopper_lid", "track_L", "track_R", "scar_plate"}
     ]
-    total = sum(count_tris(obj) for obj in meshes)
-    if total <= budget or total == 0:
+    fixed = sum(
+        count_tris(obj) for obj in collection.all_objects
+        if obj.type == "MESH" and obj not in meshes
+    )
+    total = fixed + sum(count_tris(obj) for obj in meshes)
+    mutable = total - fixed
+    if total <= budget or mutable <= 0:
         return total
-    ratio = max(0.08, (budget / float(total)) * 0.96)
+    # Keep authored hook meshes intact (treads, hopper lid, scar plate), and spend the
+    # reduction on merged static surfaces. This makes the LOD0 budget a real bound without
+    # changing silhouette-driving hooks or material assignments.
+    target_mutable = max(0.0, float(budget - fixed))
+    ratio = max(0.08, min(1.0, (target_mutable / float(mutable)) * 0.96))
     for obj in meshes:
         if count_tris(obj) < 24:
             continue
@@ -1292,7 +1357,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (0.14, 0.26, DECK_Z0, DECK_Z1),
         (BODY_FORE_X, 0.20, DECK_Z0, DECK_Z1),
     )
-    hull = center_loft("HullCore", hull_specs, steel, collection, bevel=bevel_body)
+    hull = center_loft("HullCore", hull_specs, livery, collection, bevel=bevel_body)
     boolean_cut_box(hull, "HopperWell", (WELL_CX, 0.0, 0.38), (WELL_HX, WELL_HY, 0.20))
     recalc_mesh(hull)
     hull["sf_body"] = True
@@ -1312,7 +1377,18 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
             (CAB_CX, CAB_HY, DECK_Z1, CAB_ROOF_Z),
             (CAB_CX + CAB_HX, CAB_HY * 0.70, DECK_Z1, CAB_ROOF_Z),
         ),
-        scar_mat, collection, bevel=bevel_body,
+        livery, collection, bevel=bevel_body,
+    )
+    recalc_mesh(cab)
+    # Cut the windshield pocket through the cab cap so the lowered pane is a true opening,
+    # rather than a dark card hidden inside a solid roof when the clay depth pass runs.
+    cab_pane_x0 = CAB_CX - CAB_HX + 0.02
+    cab_pane_x1 = CAB_CX + CAB_HX + 0.004
+    boolean_cut_box(
+        cab,
+        "CabPaneRecess",
+        ((cab_pane_x0 + cab_pane_x1) * 0.5, 0.0, CAB_ROOF_Z - 0.19),
+        ((cab_pane_x1 - cab_pane_x0) * 0.5, 0.28, 0.30),
     )
     recalc_mesh(cab)
 
@@ -1375,7 +1451,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (WELL_CX + WELL_HX - chamfer_in, WELL_HY - 0.02, chamfer_z),
         (WELL_CX + WELL_HX, WELL_HY, DECK_Z1),
         (WELL_CX + WELL_HX, -WELL_HY, DECK_Z1),
-        0.018, rubble, collection, bevel_plate,
+        0.018, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "HopperChamferP",
@@ -1392,6 +1468,24 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (WELL_CX + WELL_HX - 0.02, -WELL_HY + chamfer_in, chamfer_z),
         (WELL_CX - WELL_HX + 0.02, -WELL_HY + chamfer_in, chamfer_z),
         0.018, rubble, collection, bevel_plate,
+    )
+    # Yellow maintenance shoulders follow the hopper sides and meet the cab bridge.
+    # They keep the cavity open while making the vehicle read as one continuous chassis.
+    add_folded_sheet(
+        "HopperShoulderP",
+        (BODY_AFT_X + 0.02, WELL_HY + 0.012, DECK_Z1 + 0.018),
+        (WELL_CX + WELL_HX + 0.02, WELL_HY + 0.012, DECK_Z1 + 0.018),
+        (WELL_CX + WELL_HX + 0.02, BODY_HALF_Y - 0.012, DECK_Z1 + 0.018),
+        (BODY_AFT_X + 0.02, BODY_HALF_Y - 0.012, DECK_Z1 + 0.018),
+        0.018, livery, collection, bevel_plate,
+    )
+    add_folded_sheet(
+        "HopperShoulderS",
+        (BODY_AFT_X + 0.02, -BODY_HALF_Y + 0.012, DECK_Z1 + 0.018),
+        (WELL_CX + WELL_HX + 0.02, -BODY_HALF_Y + 0.012, DECK_Z1 + 0.018),
+        (WELL_CX + WELL_HX + 0.02, -WELL_HY - 0.012, DECK_Z1 + 0.018),
+        (BODY_AFT_X + 0.02, -WELL_HY - 0.012, DECK_Z1 + 0.018),
+        0.018, livery, collection, bevel_plate,
     )
     # C77: HopperLip* deleted. Steel ring read as a framed pane.
     transom_x1 = WELL_CX - WELL_HX
@@ -1453,35 +1547,65 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
     )
     add_folded_sheet(
         "DeckCourseFore",
-        (0.04, -0.24, DECK_Z1 + 0.010),
-        (0.36, -0.18, DECK_Z1 + 0.010),
-        (0.36, 0.18, DECK_Z1 + 0.010),
-        (0.04, 0.24, DECK_Z1 + 0.010),
-        0.014, steel, collection, bevel_plate,
+        (-0.13, -0.38, DECK_Z1 + 0.014),
+        (0.36, -0.30, DECK_Z1 + 0.014),
+        (0.36, 0.30, DECK_Z1 + 0.014),
+        (-0.13, 0.38, DECK_Z1 + 0.014),
+        0.018, livery, collection, bevel_plate,
+    )
+    # A four-piece roof frame leaves a real recessed pane instead of putting glass on top of a
+    # solid roof. The recess stays legible in the clay check as well as the textured view.
+    roof_z = CAB_ROOF_Z + 0.010
+    pane_x0 = CAB_CX - CAB_HX + 0.02
+    pane_x1 = CAB_CX + CAB_HX + 0.004
+    pane_y = 0.24
+    add_folded_sheet(
+        "CabRoofAft",
+        (CAB_CX - CAB_HX, -CAB_HY, roof_z),
+        (pane_x0, -CAB_HY, roof_z),
+        (pane_x0, CAB_HY, roof_z),
+        (CAB_CX - CAB_HX, CAB_HY, roof_z),
+        0.016, livery, collection, bevel_plate,
     )
     add_folded_sheet(
-        "CabRoof",
-        (CAB_CX - CAB_HX, -CAB_HY, CAB_ROOF_Z + 0.010),
-        (CAB_CX + CAB_HX, -CAB_HY, CAB_ROOF_Z + 0.010),
-        (CAB_CX + CAB_HX, CAB_HY, CAB_ROOF_Z + 0.010),
-        (CAB_CX - CAB_HX, CAB_HY, CAB_ROOF_Z + 0.010),
-        0.016, scar_mat, collection, bevel_plate,
+        "CabRoofFore",
+        (pane_x1, -CAB_HY, roof_z),
+        (CAB_CX + CAB_HX, -CAB_HY, roof_z),
+        (CAB_CX + CAB_HX, CAB_HY, roof_z),
+        (pane_x1, CAB_HY, roof_z),
+        0.016, livery, collection, bevel_plate,
+    )
+    add_folded_sheet(
+        "CabRoofSideP",
+        (pane_x0, pane_y, roof_z),
+        (pane_x1, pane_y, roof_z),
+        (pane_x1, CAB_HY, roof_z),
+        (pane_x0, CAB_HY, roof_z),
+        0.016, livery, collection, bevel_plate,
+    )
+    add_folded_sheet(
+        "CabRoofSideS",
+        (pane_x0, -CAB_HY, roof_z),
+        (pane_x1, -CAB_HY, roof_z),
+        (pane_x1, -pane_y, roof_z),
+        (pane_x0, -pane_y, roof_z),
+        0.016, livery, collection, bevel_plate,
     )
     _gx = CAB_CX + CAB_HX + 0.004
     add_folded_sheet(
         "CabGlass",
-        (_gx, -0.12, CAB_ROOF_Z - 0.16),
-        (_gx, 0.12, CAB_ROOF_Z - 0.16),
-        (_gx, 0.12, CAB_ROOF_Z - 0.04),
-        (_gx, -0.12, CAB_ROOF_Z - 0.04),
-        0.008, glass, collection, 0.002 if lod == 0 else 0.0,
+        (_gx, -0.16, CAB_ROOF_Z - 0.18),
+        (_gx, 0.16, CAB_ROOF_Z - 0.18),
+        (_gx, 0.16, CAB_ROOF_Z - 0.02),
+        (_gx, -0.16, CAB_ROOF_Z - 0.02),
+        0.008, steel, collection, 0.002 if lod == 0 else 0.0,
     )
     add_folded_sheet(
         "CabGlassLid",
-        (CAB_CX + CAB_HX - 0.12, -0.16, CAB_ROOF_Z + 0.028),
-        (CAB_CX + CAB_HX + 0.004, -0.16, CAB_ROOF_Z + 0.028),
-        (CAB_CX + CAB_HX + 0.004, 0.16, CAB_ROOF_Z + 0.028),
-        (CAB_CX + CAB_HX - 0.12, 0.16, CAB_ROOF_Z + 0.028),
+        (CAB_CX - CAB_HX, -pane_y, PANE_FLOOR_Z),
+        (CAB_CX + CAB_HX + 0.004, -pane_y, PANE_FLOOR_Z),
+        (CAB_CX + CAB_HX + 0.004, pane_y, PANE_FLOOR_Z),
+        (CAB_CX - CAB_HX, pane_y, PANE_FLOOR_Z),
         0.006, glass, collection, 0.002 if lod == 0 else 0.0,
     )
     add_folded_sheet(
@@ -1500,7 +1624,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX - CAB_HX + 0.07, -CAB_HY + 0.08, z_lip),
         (CAB_CX - CAB_HX + 0.07, CAB_HY - 0.08, z_lip),
         (CAB_CX - CAB_HX - 0.01, CAB_HY + 0.01, z_lip),
-        0.016, scar_mat, collection, bevel_plate,
+        0.016, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "CabFrameFore",
@@ -1508,7 +1632,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX + CAB_HX + 0.01, -CAB_HY - 0.01, z_lip),
         (CAB_CX + CAB_HX + 0.01, CAB_HY + 0.01, z_lip),
         (CAB_CX + CAB_HX - 0.07, CAB_HY - 0.08, z_lip),
-        0.016, steel, collection, bevel_plate,
+        0.016, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "CabFrameP",
@@ -1516,7 +1640,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX + CAB_HX - 0.07, CAB_HY - 0.08, z_lip),
         (CAB_CX + CAB_HX + 0.01, CAB_HY + 0.01, z_lip),
         (CAB_CX - CAB_HX - 0.01, CAB_HY + 0.01, z_lip),
-        0.016, scar_mat, collection, bevel_plate,
+        0.016, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "CabFrameS",
@@ -1524,7 +1648,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX - CAB_HX - 0.01, -CAB_HY - 0.01, z_lip),
         (CAB_CX + CAB_HX + 0.01, -CAB_HY - 0.01, z_lip),
         (CAB_CX + CAB_HX - 0.07, -CAB_HY + 0.08, z_lip),
-        0.016, scar_mat, collection, bevel_plate,
+        0.016, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "CabSideP",
@@ -1549,7 +1673,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX + CAB_HX, CAB_HY, DECK_Z1 + 0.012),
         (CAB_CX + CAB_HX, 0.44, DECK_Z1 + 0.012),
         (CAB_CX - 0.08, 0.44, DECK_Z1 + 0.012),
-        0.018, steel, collection, bevel_plate,
+        0.018, livery, collection, bevel_plate,
     )
     add_folded_sheet(
         "CabCheekS",
@@ -1557,7 +1681,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         (CAB_CX + CAB_HX, -0.44, DECK_Z1 + 0.012),
         (CAB_CX + CAB_HX, -CAB_HY, DECK_Z1 + 0.012),
         (CAB_CX - 0.08, -CAB_HY, DECK_Z1 + 0.012),
-        0.018, steel, collection, bevel_plate,
+        0.018, livery, collection, bevel_plate,
     )
     _bx = CAB_CX + CAB_HX + 0.014
     add_folded_sheet(
@@ -1746,7 +1870,9 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         ram["sf_boom"] = True
         ram2 = add_service_pipe("BoomRamB", (px + 0.04, py + 0.05, pz - 0.04), (tx - 0.28, py + 0.04, pz - 0.01), steel, collection, radius=0.016)
         ram2["sf_boom"] = True
-    add_faceted_bit("Bit", BIT_TIP, scar_mat, steel, collection, lod, 0.002 if lod == 0 else 0.0)
+    # Keep the forged cutter on its own authored role so heat animation cannot tint the
+    # replaceable scar plate that happens to share the boom assembly.
+    add_faceted_bit("Bit", BIT_TIP, bit_mat, steel, collection, lod, 0.002 if lod == 0 else 0.0)
     add_empty("bit_tip", BIT_TIP, collection, boom_pivot, size=0.05)
 
     lid = add_folded_sheet(
@@ -1838,8 +1964,7 @@ def build_lod(lod, mats, atlas_mat, atlas_maps):
         except TypeError:
             pass
 
-    if lod > 0:
-        decimate_to_budget(collection, TRI_BUDGET[lod])
+    decimate_to_budget(collection, TRI_BUDGET[lod])
 
     hooks = assert_hooks(collection)
     bbox = measured_bbox([obj for obj in collection.all_objects if obj.type == "MESH"])
@@ -1934,6 +2059,71 @@ def export_lod(collection, lod):
             time.sleep(0.35 * (attempt + 1))
     sanitize_glb_floats(out)
     return out
+
+
+def export_combined_source(lod0_path: Path, lod1_path: Path) -> Path:
+    """Publish the single authoring GLB consumed by the works runtime.
+
+    The standalone per-LOD files remain useful for Blender inspection and keep LOD2
+    authoring-only.  The runtime source deliberately contains only LOD0 + LOD1.  LOD1
+    hook meshes receive a prefix because the exact unprefixed names are the LOD0 control
+    surface; the runtime adapter resolves the active LOD's prefixed body meshes while
+    the 13 canonical hook names remain present once in the file.
+    """
+    reset_scene()
+    imported = []
+    for lod, path in ((0, lod0_path), (1, lod1_path)):
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=str(path))
+        added = [obj for obj in bpy.data.objects if obj not in before]
+        if not added:
+            raise RuntimeError(f"combined source import produced no objects for lod{lod}")
+        imported.extend(added)
+        roots = [obj for obj in added if obj.parent is None]
+        root = next((obj for obj in roots if obj.name.startswith("rover")), None)
+        if root is None:
+            raise RuntimeError(f"combined source import has no rover root for lod{lod}")
+        root.name = "rover" if lod == 0 else "LOD1_rover"
+        if lod == 1:
+            # Avoid duplicate marker names while keeping every site LOD body discoverable.
+            for obj in added:
+                if obj is root:
+                    continue
+                base_name = obj.name.rsplit(".", 1)[0]
+                if base_name in HOOK_NAMES:
+                    obj.name = f"LOD1_{base_name}"
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in imported:
+        obj.hide_viewport = False
+        obj.hide_render = False
+        obj.hide_set(False)
+        obj.select_set(True)
+        if obj.type == "MESH" and obj.data:
+            obj.data.name = obj.name
+            quantize_mesh(obj)
+    COMBINED_SOURCE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = COMBINED_SOURCE.with_suffix(".tmp.glb")
+    bpy.ops.export_scene.gltf(
+        filepath=str(tmp), export_format="GLB", use_selection=True, export_apply=True,
+        export_yup=True, export_extras=True, export_animations=False,
+        export_materials="EXPORT", export_texcoords=True, export_normals=True,
+        export_tangents=True, export_image_format="AUTO",
+    )
+    for attempt in range(6):
+        try:
+            if COMBINED_SOURCE.exists():
+                COMBINED_SOURCE.unlink()
+            shutil.move(str(tmp), str(COMBINED_SOURCE))
+            break
+        except OSError:
+            if attempt == 5:
+                raise
+            import time
+            time.sleep(0.35 * (attempt + 1))
+    sanitize_glb_floats(COMBINED_SOURCE)
+    stamp_asset_contract(COMBINED_SOURCE)
+    return COMBINED_SOURCE
 
 
 def look_at(obj, target=(0, 0, 0)):
@@ -2652,6 +2842,20 @@ def planform_report(still_dir: Path):
         cab_roof = np.zeros_like(obj_sil)
         cab_box = np.zeros_like(obj_sil)
         if cab_glass.sum() >= 4:
+            # Flat-mask antialiasing can classify a thin aft silhouette edge as glass. Keep the
+            # physically recessed cab aperture component (the forward/central component) for the
+            # relief measurement instead of letting that edge widen the deck comparison region.
+            glass_labels, glass_sizes, glass_cents = connected_components(cab_glass)
+            sil_xs = np.nonzero(obj_sil)[1]
+            sil_x_min = int(sil_xs.min()) if sil_xs.size else 0
+            sil_x_max = int(sil_xs.max()) if sil_xs.size else sil_x_min
+            cab_forward_cut = sil_x_min + (sil_x_max - sil_x_min) * 0.45
+            glass_candidates = [
+                cid for cid, size in glass_sizes.items()
+                if size >= 4 and glass_cents[cid][0] >= cab_forward_cut
+            ]
+            if glass_candidates:
+                cab_glass = glass_labels == max(glass_candidates, key=lambda cid: glass_sizes[cid])
             gy, gx = np.nonzero(cab_glass)
             gy0, gy1 = max(0, int(gy.min()) - 6), min(obj_sil.shape[0], int(gy.max()) + 7)
             gx0, gx1 = max(0, int(gx.min()) - 6), min(obj_sil.shape[1], int(gx.max()) + 7)
@@ -2911,7 +3115,10 @@ def render_stills_from_glb(glb_path: Path, still_dir: Path):
     bpy.ops.import_scene.gltf(filepath=str(glb_path))
     camera, pad = setup_mine_lights()
     for obj in bpy.data.objects:
-        if obj.name.startswith("hopper_fill_"):
+        if obj.name.startswith(("LOD1_", "LOD2_")):
+            obj.hide_render = True
+            obj.hide_set(True)
+        elif obj.name.startswith("hopper_fill_"):
             obj.hide_render = True
             obj.hide_set(True)
     meshes = [
@@ -3015,6 +3222,7 @@ def main():
     print(f"works rover cycle {CYCLE}: atlas 4x4, map ladder {TEX_BY_LOD}")
     reports = []
     lod0_glb = None
+    lod1_glb = None
     atlas_maps_by_lod = {}
     for lod in (0, 1, 2):
         reset_scene()
@@ -3039,7 +3247,14 @@ def main():
         reports.append(report)
         if lod == 0:
             lod0_glb = output
+        elif lod == 1:
+            lod1_glb = output
         print(json.dumps({"lod": lod, "triangles": report["triangles"], "draws": report["draws"], "bytes": nbytes, "sha256": report["sha256"]}, indent=2))
+
+    combined_source = export_combined_source(lod0_glb, lod1_glb)
+    combined_sha = sha256(combined_source)
+    print(json.dumps({"combinedSource": str(combined_source.relative_to(ROOT)).replace("\\", "/"),
+                      "bytes": combined_source.stat().st_size, "sha256": combined_sha}, indent=2))
 
     removed = purge_cycle1_textures()
     print(f"purged cycle-1 textures: {len(removed)}")
@@ -3048,7 +3263,7 @@ def main():
     stills = {}
     planform = {}
     try:
-        stills = render_stills_from_glb(lod0_glb, still_dir)
+        stills = render_stills_from_glb(combined_source, still_dir)
         planform = planform_report(still_dir)
     except Exception as exc:
         blender_status["render"] = f"crash: {exc}"
@@ -3060,6 +3275,7 @@ def main():
     (still_dir / "texture_report.json").write_text(json.dumps(tex, indent=2) + "\n", encoding="utf-8")
 
     hashes = {f"rover_lod{r['lod']}.glb": r["sha256"] for r in reports}
+    hashes["place_works_rover.glb"] = combined_sha
     sidecar = FAMILY / "evidence" / f"cycle_{CYCLE:03d}_hash_sidecar.json"
     determinism = {"note": "first run of this pair; sidecar written"}
     if sidecar.exists():
@@ -3089,6 +3305,12 @@ def main():
         "targetBboxWu": list(TARGET_BBOX),
         "targetBboxCells": [round(v / CELL_WU, 4) for v in TARGET_BBOX],
         "lods": reports,
+        "combinedSource": {
+            "path": str(combined_source.relative_to(ROOT)).replace("\\", "/"),
+            "bytes": combined_source.stat().st_size,
+            "sha256": combined_sha,
+            "lods": ["lod0", "lod1"],
+        },
         "textures": tex,
         "planform": planform,
         "hooks": reports[0]["hooks"] if reports else {},

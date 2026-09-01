@@ -48,7 +48,7 @@ import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
 import {
-  makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat,
+  makeRockMaterials, makeMachine, makeDerrick, metalMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
@@ -504,6 +504,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let worksLoader = null;
   let worksProofGroup = null;
   let worksProofGen = 0;
+  let authoredRoverGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
   let worksHostWasVisible = false;
@@ -637,6 +638,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function retireWorksAssets(reason = 'works-screen-exit') {
     if (worksRetirePromise) return worksRetirePromise;
     unmountWorksProof();
+    authoredRoverGen += 1;
+    clearAuthoredRoverState();
     const loader = worksLoader;
     worksLoader = null;
     const token = { n: ++worksRetireGen, reason };
@@ -2125,11 +2128,258 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     skate.hex = hex;
   }
 
-  // rover — a vehicle, not a dot
-  const roverBuilt = makeRover(S, envMap);
-  const rover = roverBuilt.group;
+  // rover — an authored vehicle, not a procedural dot. The host group is created synchronously so
+  // the playfield can bind lights/VFX before the shared authored lease resolves. The visible model
+  // arrives through the one works loader; a failed load leaves this host hidden and logs loudly.
+  const rover = new THREE.Group();
+  rover.name = 'worksRover';
   rover.visible = false;
+  const roverBody = new THREE.Group();
+  roverBody.name = 'worksRoverBody';
+  rover.add(roverBody);
   scene.add(rover);
+  const roverDyn = {
+    body: roverBody,
+    arm: new THREE.Object3D(),
+    auger: new THREE.Object3D(),
+    augerSlide: new THREE.Object3D(),
+    augerRestX: 0,
+    augerBiteX: 0.14,
+    hopperLid: new THREE.Object3D(),
+    hopperStages: Array.from({ length: 5 }, () => ({ visible: false })),
+    lampAnchor: new THREE.Object3D(),
+    lampMat: null,
+    cabGlass: null,
+    beacon: null,
+    bitMat: null,
+    wheels: [],
+    ventOffset: { x: 0.04, y: 0.12 },
+    setTrackPhase() {},
+    setBodyPose(positionY, lean) {
+      roverBody.position.y = positionY;
+      roverBody.rotation.z = lean;
+    },
+    setAugerSpin(angle) {
+      this.auger.rotation.x = angle;
+    },
+  };
+  roverBody.add(roverDyn.arm, roverDyn.augerSlide, roverDyn.lampAnchor, roverDyn.hopperLid);
+  const roverBuilt = { group: rover, pulses: [], dyn: roverDyn };
+
+  const authoredRoverState = {
+    group: null,
+    loadPromise: null,
+    materialSets: { lamp: [], glass: [], beacon: [], bit: [] },
+    trackNodes: [],
+    stageNodes: [],
+  };
+  const AUTHORED_ROVER_HOOKS = Object.freeze([
+    'boom_pivot', 'bit_tip',
+    'hopper_fill_0', 'hopper_fill_1', 'hopper_fill_2', 'hopper_fill_3', 'hopper_fill_4',
+    'hopper_lid', 'lamp_socket', 'vent_stack', 'track_L', 'track_R', 'scar_plate',
+  ]);
+  let headlight = null;
+  const roverMaterialColor = new THREE.Color();
+  function setAuthoredMaterials(materials, intensity, color = null) {
+    for (const material of materials) {
+      if (!material) continue;
+      if (color) material.emissive.copy(color);
+      material.emissiveIntensity = intensity;
+      material.needsUpdate = true;
+    }
+  }
+  function makeVisibilityProxy(nodes) {
+    return {
+      get visible() { return nodes.some((node) => node.visible); },
+      set visible(value) {
+        const visible = !!value;
+        for (const node of nodes) {
+          if (node.userData.worksSemanticVisibility === true) node.userData.worksSemanticVisible = visible;
+          node.visible = visible;
+        }
+      },
+    };
+  }
+  function authoredNode(root, names) {
+    const wanted = new Set(names);
+    let found = null;
+    root.traverse((node) => {
+      if (!found && wanted.has(node.name)) found = node;
+    });
+    return found;
+  }
+  function authoredNodes(root, names) {
+    const wanted = new Set(names);
+    const found = [];
+    root.traverse((node) => { if (wanted.has(node.name)) found.push(node); });
+    return found;
+  }
+  function clearAuthoredRoverState() {
+    authoredRoverState.group = null;
+    authoredRoverState.materialSets = { lamp: [], glass: [], beacon: [], bit: [] };
+    authoredRoverState.trackNodes = [];
+    authoredRoverState.stageNodes = [];
+    rover.visible = false;
+  }
+  function attachPreservingWorld(parent, child) {
+    if (!child || !parent) return;
+    parent.updateWorldMatrix(true, true);
+    child.updateWorldMatrix(true, false);
+    parent.attach(child);
+  }
+  function installAuthoredRover(group) {
+    if (!group) return false;
+    const missing = AUTHORED_ROVER_HOOKS.filter((name) => !authoredNode(group, [
+      name, `LOD0_${name}`, `LOD1_${name}`,
+    ]));
+    // Validate the complete hook surface before attaching or publishing state. A package with
+    // only meshes can render while silently losing the boom/lamp/hold controls.
+    if (missing.length) {
+      console.error('[asteroidRenderer3d] authored Rover missing hooks', missing);
+      return false;
+    }
+    try {
+    // The GLB is authored Y-up; the mine's cut plane is XY with +Z toward the camera. Keep the
+    // conversion on this instance root so the exported geometry and hook transforms stay intact.
+    group.rotation.x = Math.PI / 2;
+    group.position.set(0, 0, 0);
+    group.scale.set(1, 1, 1);
+    roverBody.add(group);
+
+    const lodNodes = (prefix, name) => authoredNodes(group, [prefix ? `${prefix}_${name}` : name]);
+    const activeAndSite = (name) => [
+      ...lodNodes('LOD0', name),
+      ...lodNodes('LOD1', name),
+      ...authoredNodes(group, [name]),
+    ].filter((node, index, all) => all.indexOf(node) === index);
+    const boomPivot = authoredNode(group, ['boom_pivot']);
+    if (!boomPivot) return false;
+    roverDyn.arm = boomPivot;
+    const bitMeshes = authoredNodes(group, ['LOD0_Merged_Material_Bit_Boom', 'LOD1_Merged_Material_Bit_Boom']);
+    const bitDriver = new THREE.Group();
+    bitDriver.name = 'worksRoverBitDriver';
+    group.add(bitDriver);
+    for (const node of bitMeshes) attachPreservingWorld(bitDriver, node);
+    // The driver stays in the boom pivot's local basis: x is the cutter axis after the GLB's
+    // Y-up -> mine conversion, while the boom itself aims around its local Y axis.
+    attachPreservingWorld(boomPivot, bitDriver);
+    roverDyn.auger = bitDriver;
+    roverDyn.augerSlide = bitDriver;
+    roverDyn.augerRestX = bitDriver.position.x;
+    roverDyn.augerBiteX = 0.14;
+    const bitMaterials = bitMeshes.map((node) => node.material).filter(Boolean);
+    authoredRoverState.materialSets.bit = bitMaterials;
+    roverDyn.bitMat = bitMaterials[0] || null;
+
+    const lids = activeAndSite('hopper_lid');
+    const lidDriver = new THREE.Group();
+    lidDriver.name = 'worksRoverHopperLidDriver';
+    group.add(lidDriver);
+    for (const node of lids) attachPreservingWorld(lidDriver, node);
+    roverDyn.hopperLid = lidDriver;
+    roverDyn.lidOpenX = lidDriver.position.x;
+    roverDyn.lidShutX = lidDriver.position.x - 0.48;
+    const stageNodes = [];
+    for (let i = 0; i < 5; i++) {
+      const nodes = activeAndSite(`hopper_fill_${i}`);
+      stageNodes.push(nodes);
+      roverDyn.hopperStages[i] = makeVisibilityProxy(nodes);
+      for (const node of nodes) {
+        if (node.userData.worksSemanticVisibility === true) node.userData.worksSemanticVisible = false;
+        node.visible = false;
+      }
+    }
+    authoredRoverState.stageNodes = stageNodes;
+
+    const lampNodes = authoredNodes(group, ['LOD0_Merged_Material_Lamp', 'LOD1_Merged_Material_Lamp']);
+    const glassNodes = authoredNodes(group, ['LOD0_Merged_Material_Glass', 'LOD1_Merged_Material_Glass']);
+    authoredRoverState.materialSets.lamp = lampNodes.map((node) => node.material).filter(Boolean);
+    authoredRoverState.materialSets.glass = glassNodes.map((node) => node.material).filter(Boolean);
+    authoredRoverState.materialSets.beacon = authoredRoverState.materialSets.lamp;
+    roverDyn.lampMat = authoredRoverState.materialSets.lamp[0] || null;
+    roverDyn.cabGlass = authoredRoverState.materialSets.glass[0] || null;
+
+    const lampHook = authoredNode(group, ['lamp_socket']);
+    const ventHook = authoredNode(group, ['vent_stack']);
+    const toMine = (node) => new THREE.Vector3(node.position.x, -node.position.z, node.position.y);
+    if (lampHook) roverDyn.lampAnchor.position.copy(toMine(lampHook));
+    if (headlight) headlight.position.copy(roverDyn.lampAnchor.position);
+    if (ventHook) {
+      const p = toMine(ventHook);
+      roverDyn.ventOffset = { x: p.x, y: p.y };
+    }
+    authoredRoverState.trackNodes = [
+      ...authoredNodes(group, ['track_L', 'track_R', 'LOD1_track_L', 'LOD1_track_R']),
+    ];
+    roverDyn.setTrackPhase = (phase) => {
+      // Keep the animation hook live for both LODs. Track materials own their texture shells and
+      // per-instance map clones, so offsetting this UV phase cannot shift another Rover's atlas.
+      for (const node of authoredRoverState.trackNodes) {
+        node.userData.worksTrackPhase = phase;
+        const mats = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+        for (const material of mats) {
+          if (!material) continue;
+          for (const key of Object.keys(material)) {
+            const texture = material[key];
+            if (!texture || texture.isTexture !== true || !texture.userData?.worksInstanceOwned) continue;
+            texture.offset.x = phase;
+          }
+        }
+      }
+    };
+    roverDyn.setBodyPose = (positionY, lean) => {
+      roverBody.position.y = positionY;
+      roverBody.rotation.z = lean;
+    };
+    // The GLB's boom pivot is GLTF-local Y-up. Around local Y the converted pivot swings in the
+    // mine's screen plane, so the existing aim signal keeps its player-facing semantics.
+    roverDyn.setArmAim = (angle) => { boomPivot.rotation.y = angle; };
+    roverDyn.setAugerSpin = (angle) => { bitDriver.rotation.x = angle; };
+    group.updateMatrixWorld(true);
+    authoredRoverState.group = group;
+    rover.visible = !!authoredRoverState.group;
+    // The standing load is single-flight; re-entry may retry a prior failed authored load, but
+    // concurrent begin/render lifecycles never create a second Rover group.
+    void loadAuthoredRover();
+    return true;
+    } catch (error) {
+      if (group.parent) group.parent.remove(group);
+      clearAuthoredRoverState();
+      console.error('[asteroidRenderer3d] authored Rover install failed', error);
+      return false;
+    }
+  }
+  async function loadAuthoredRover() {
+    if (authoredRoverState.group) return authoredRoverState.group;
+    if (authoredRoverState.loadPromise) return authoredRoverState.loadPromise;
+    const loader = ensureWorksLoader();
+    if (!loader) return null;
+    const gen = ++authoredRoverGen;
+    authoredRoverState.loadPromise = loader.loadWorksPart('place_works_rover').then((group) => {
+      if (!group) {
+        console.error('[asteroidRenderer3d] authored Rover load returned null; keeping Rover hidden');
+        return null;
+      }
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) {
+        loader.releaseWorksPart(group);
+        return null;
+      }
+      if (!installAuthoredRover(group)) {
+        console.error('[asteroidRenderer3d] authored Rover hook surface rejected; keeping Rover hidden');
+        loader.releaseWorksPart(group);
+        return null;
+      }
+      return group;
+    }).catch((error) => {
+      console.error('[asteroidRenderer3d] authored Rover load failed; keeping Rover hidden', error);
+      return null;
+    }).finally(() => { authoredRoverState.loadPromise = null; });
+    return authoredRoverState.loadPromise;
+  }
+
+  // Start the single-flight authored load before the next render tick. A normal session never
+  // starts a second request; the loader owns the shared KTX2/transcoder lease.
+  void loadAuthoredRover();
   // ONE headlamp, and it is a real light (law §4): a warm cone out of the lamp housings onto the
   // rock face the rig is working, with a modest shadow map so the boom and the auger throw their
   // own shadow into the cut. PQ-130.03 carried two overlapping spots for the same job; the second
@@ -2137,7 +2387,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The light and its target hang off dyn.body, not the rover group: the lamp anchor's position is
   // BODY-local, so parenting to the rover would mis-aim the cone by the chassis ride height and
   // leave the beam behind whenever the body bobs or leans.
-  const headlight = new THREE.SpotLight(0xffe0b0, 52, S * 8, 0.6, 0.55, 1.6);
+  headlight = new THREE.SpotLight(0xffe0b0, 52, S * 8, 0.6, 0.55, 1.6);
   headlight.position.copy(roverBuilt.dyn.lampAnchor.position);
   headlight.castShadow = true;
   headlight.shadow.mapSize.set(512, 512);
@@ -5692,7 +5942,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     }
     rebuildCrackInstances();
-    rover.visible = true;
+    // The authored Rover owns the visible vehicle. Keep the host hidden until its single-flight
+    // release load installs the named hooks; a missing release asset must not resurrect the old
+    // procedural fallback on the player route.
+    rover.visible = !!authoredRoverState.group;
+    void loadAuthoredRover();
     pulseEntries = [
       ...roverBuilt.pulses,
       ...(derrickBuilt ? derrickBuilt.pulses : []),
@@ -5755,7 +6009,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     rover.rotation.set(0, roverAnim.flipY, 0);
     const aimTarget = faceDir === 'down' ? -Math.PI / 2 : (faceDir === 'up' ? Math.PI / 2 : 0);
     roverAnim.armAim += (aimTarget - roverAnim.armAim) * Math.min(1, 10 * dt);
-    roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
+    if (roverBuilt.dyn.setArmAim) roverBuilt.dyn.setArmAim(roverAnim.armAim);
+    else roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
     // the auger bites: fast attack, slow retract (asymmetric envelope). The slide runs the bit a
     // third of a cell past its rest stop, so a bore visibly drives INTO the target cell.
     const biteTarget = drilling ? 1 : 0;
@@ -5763,15 +6018,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     roverAnim.bite += (biteTarget - roverAnim.bite) * Math.min(1, biteRate * dt);
     roverBuilt.dyn.augerSlide.position.x = roverBuilt.dyn.augerRestX
       + roverBuilt.dyn.augerBiteX * roverAnim.bite;
-    roverBuilt.dyn.auger.rotation.y = drillTheta;
+    if (roverBuilt.dyn.setAugerSpin) roverBuilt.dyn.setAugerSpin(drillTheta);
+    else roverBuilt.dyn.auger.rotation.y = drillTheta;
     // THE BIT HEATS (law §4). Tool steel goes from a dull scorched brown toward a coral glow as
     // the drill temperature climbs. It is the one part of the rig allowed to emit brightly, and
     // its peak (1.5) stays above every lamp on the vehicle so HEAT reads as the hottest thing.
     const temp = Math.max(0, Math.min(100, d.drillTemp || 0));
-    if (roverBuilt.dyn.bitMat) {
+    if (roverBuilt.dyn.bitMat || authoredRoverState.materialSets.bit.length) {
       const heat = temp / 100;
-      roverBuilt.dyn.bitMat.emissive.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
-      roverBuilt.dyn.bitMat.emissiveIntensity = heat * heat * 1.5;
+      roverMaterialColor.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
+      const bitMats = authoredRoverState.materialSets.bit.length
+        ? authoredRoverState.materialSets.bit : [roverBuilt.dyn.bitMat];
+      setAuthoredMaterials(bitMats, heat * heat * 1.5, roverMaterialColor);
     }
     // THE RIG VENTS AS IT COOLS (law §5 "Heat critical … steam vents on stop"). Coming off a hot
     // bore, the coolant stack behind the boom puffs steam for a beat. The puff is spawned at the
@@ -5822,8 +6080,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       roverAnim.bob *= Math.max(0, 1 - 6 * dt);
     }
     roverAnim.lean += (leanTarget - roverAnim.lean) * Math.min(1, 8 * dt);
-    roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
-    roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    if (roverBuilt.dyn.setBodyPose) roverBuilt.dyn.setBodyPose(-S * 0.06 + roverAnim.bob, roverAnim.lean);
+    else {
+      roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
+      roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    }
     for (const w of roverBuilt.dyn.wheels) w.rotation.z = roverAnim.wheelSpin;
     // THE TREAD CRAWLS. The sprocket radius converts the wheel's angle into distance along the
     // loop, so the plates travel exactly as fast as the wheels turn — a spinning wheel inside a
@@ -5835,9 +6096,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     // beacon: idle pulse, brisk blink rolling, strobe under the bit — peak stays under the bit's
     const beaconBusy = drilling ? 9 : (moving ? 5 : 0);
-    roverBuilt.dyn.beacon.emissiveIntensity = motionReduce
+    const beaconIntensity = motionReduce
       ? (drilling || moving ? 0.9 : 0.35)
       : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 1.0 : 0.12) : 0.35);
+    if (authoredRoverState.materialSets.beacon.length) {
+      setAuthoredMaterials(authoredRoverState.materialSets.beacon, beaconIntensity);
+    } else if (roverBuilt.dyn.beacon) roverBuilt.dyn.beacon.emissiveIntensity = beaconIntensity;
     // headlight points where the work is (left/right ride the body flip)
     const ht = faceDir === 'down' ? [0, -S * 3.2] : (faceDir === 'up' ? [0, S * 3.2] : [S * 3.2, 0]);
     headTarget.position.set(ht[0], ht[1], S * 0.3);
@@ -5845,8 +6109,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // off is a sticker, not a light.
     const powered = !d.energyDepleted;
     headlight.intensity = powered ? 52 : 12;
-    roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
-    roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
+    if (authoredRoverState.materialSets.lamp.length) {
+      setAuthoredMaterials(authoredRoverState.materialSets.lamp, powered ? 0.55 : 0.12);
+    } else if (roverBuilt.dyn.lampMat) roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
+    if (authoredRoverState.materialSets.glass.length) {
+      setAuthoredMaterials(authoredRoverState.materialSets.glass, powered ? 0.42 : 0.14);
+    } else if (roverBuilt.dyn.cabGlass) roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
 
     // site: machines + overlays + umbilical
     syncMachines(site, projection, timeS);
@@ -5925,6 +6193,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // ---------------------------------------------------------------- teardown
   function dispose() {
     worksTearingDown = true;
+    authoredRoverGen += 1;
+    clearAuthoredRoverState();
     worksProofGen += 1;
     worksProofWanted = false;
     if (worksHostObs) {

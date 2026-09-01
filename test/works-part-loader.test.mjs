@@ -205,6 +205,34 @@ function makeBlueprint() {
         matrix: identity.clone(),
         tags: { lod: 'lod1' },
       },
+      {
+        name: 'LOD0_track_L',
+        geometry: lod0,
+        material,
+        matrix: identity.clone(),
+        tags: { lod: 'lod0' },
+      },
+      {
+        name: 'LOD1_track_L',
+        geometry: lod1,
+        material,
+        matrix: identity.clone(),
+        tags: { lod: 'lod1' },
+      },
+      {
+        name: 'LOD0_hopper_fill_0',
+        geometry: lod0,
+        material,
+        matrix: identity.clone(),
+        tags: { lod: 'lod0' },
+      },
+      {
+        name: 'LOD1_hopper_fill_0',
+        geometry: lod1,
+        material,
+        matrix: identity.clone(),
+        tags: { lod: 'lod1' },
+      },
     ],
     markers: [
       { name: 'boom_pivot', matrix: identity.clone() },
@@ -239,11 +267,14 @@ function inspectColourSpace(group) {
 
 test('worksPartLoader uses the shared authored lease and never spins its own KTX2 stack', () => {
   const src = readFileSync(new URL('../src/ui/asteroid/worksPartLoader.js', import.meta.url), 'utf8');
+  const rendererSrc = readFileSync(new URL('../src/ui/asteroid/asteroidRenderer3d.js', import.meta.url), 'utf8');
   assert.match(src, /createAuthoredAssetLease/);
   assert.match(src, /disposeAuthoredAssetRuntime/);
   assert.doesNotMatch(src, /new\s+KTX2Loader/);
   assert.doesNotMatch(src, /setTranscoderPath/);
   assert.doesNotMatch(src, /meshopt_decoder/);
+  assert.match(rendererSrc, /texture\.offset\.x\s*=\s*phase/u);
+  assert.doesNotMatch(rendererSrc, /texture\.needsUpdate\s*=\s*true/u);
   assert.equal(
     WORKS_PARTS.drill_platform.lod0,
     'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -309,6 +340,15 @@ test('loadWorksPart returns LOD-aware hooks and dispose restores renderer.info b
   const workVis = meshVisibility(group);
   assert.equal(workVis.LOD0_Body, true, 'LOD0 visible at the work register');
   assert.equal(workVis.LOD1_Body, false, 'LOD1 hidden at the work register');
+  const workTrack = group.getObjectByName('LOD0_track_L');
+  assert.notEqual(workTrack.material.map, blueprint.resources.map, 'track map must be instance-owned');
+  assert.equal(workTrack.material.map.userData.worksInstanceOwned, true);
+  const hopper = group.getObjectByName('LOD0_hopper_fill_0');
+  const siteHopper = group.getObjectByName('LOD1_hopper_fill_0');
+  hopper.visible = false;
+  hopper.userData.worksSemanticVisible = false;
+  siteHopper.visible = false;
+  siteHopper.userData.worksSemanticVisible = false;
 
   const colours = inspectColourSpace(group);
   assert.ok(colours.length >= 1);
@@ -333,6 +373,8 @@ test('loadWorksPart returns LOD-aware hooks and dispose restores renderer.info b
   const siteVis = meshVisibility(group);
   assert.equal(siteVis.LOD0_Body, false, 'LOD0 hidden at the site register');
   assert.equal(siteVis.LOD1_Body, true, 'LOD1 visible at the site register');
+  assert.equal(siteVis.LOD0_hopper_fill_0, false, 'LOD register changes must preserve hidden hopper stage');
+  assert.equal(siteVis.LOD1_hopper_fill_0, false, 'LOD1 register changes must preserve hidden hopper stage');
   renderer.render(scene, camera);
 
   scene.remove(group);
