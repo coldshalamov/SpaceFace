@@ -1554,6 +1554,43 @@ def _clear_scene():
     reset_scene()
 
 
+def strip_lod_nodes(path: Path, prefix: str) -> None:
+    """Remove nodes whose name starts with `prefix` from a GLB's JSON chunk in place."""
+    data = bytearray(path.read_bytes())
+    if data[:4] != b"glTF":
+        raise RuntimeError(f"not a GLB: {path}")
+    json_len = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(bytes(data[20:20 + json_len]).rstrip(b" \x00"))
+    keep = [n for n in gltf.get("nodes", []) if not (n.get("name") or "").startswith(prefix)]
+    if len(keep) == len(gltf.get("nodes", [])):
+        return
+    removed = set(range(len(gltf["nodes"]))) - {id(n) for n in keep}
+
+    def remap(children):
+        return [c for c in children if c not in removed]
+
+    for n in keep:
+        if "children" in n:
+            n["children"] = remap(n["children"])
+    for scene in gltf.get("scenes", []):
+        if "nodes" in scene:
+            scene["nodes"] = remap(scene["nodes"])
+    gltf["nodes"] = keep
+    payload = json.dumps(gltf, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    while len(payload) % 4:
+        payload += b" "
+    total = 12 + 8 + len(payload) + len(data[20 + json_len:])
+    header = bytearray()
+    header += b"glTF"
+    header += struct.pack("<I", 2)
+    header += struct.pack("<I", total)
+    header += struct.pack("<I", len(payload))
+    header += b"JSON"
+    tmp = path.with_suffix(".glb.strip-tmp")
+    tmp.write_bytes(bytes(header) + payload + bytes(data[20 + json_len:]))
+    tmp.replace(path)
+
+
 def _world_loc(obj):
     return obj.matrix_world.translation.copy()
 
@@ -1798,8 +1835,11 @@ def combine_lods():
         "textureAuthorship": "unique UV0 atlas, mesh-derived AO, role-authored albedo/ORM/normal",
         "textureSize": TEX,
         "deliverableRole": "source_candidate",
+        "productionState": "design_candidate",
         "lods": ["lod0", "lod1", "lod2"],
-        "exportedLods": ["lod0", "lod1", "lod2"],
+        # PQ-131.08: the shipped parts GLB carries only the two live Works registers
+        # (LOD0/work, LOD1/site). LOD2 remains in the authoring source and evidence only.
+        "exportedLods": ["lod0", "lod1"],
         "lodTriangles": {
             "lod0": int(lod_tri[0]),
             "lod1": int(lod_tri[1]),
@@ -1862,7 +1902,11 @@ def combine_lods():
     if combined_works.exists():
         combined_works.unlink()
     shutil.move(str(tmp), str(combined_works))
+    # The selected runtime parts copy drops the LOD2 nodes (and their hook children) so the
+    # live game can never fall back to the far authoring register. Deterministic JSON-level
+    # strip; unused meshes/accessors may remain referenced-orphaned in the binary chunk.
     shutil.copy2(combined_works, combined_parts)
+    strip_lod_nodes(combined_parts, "LOD2_")
     inventory = {
         "assetId": ASSET_ID,
         "rootName": ROOT_NAME,

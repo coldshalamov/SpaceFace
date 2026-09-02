@@ -20,6 +20,7 @@
   "textureAuthorship": "unique UV0 atlas, mesh-derived AO, role-authored albedo/ORM/normal",
   "textureSize": 1024,
   "deliverableRole": "source_candidate",
+  "productionState": "design_candidate",
   "lods": [
     "lod0",
     "lod1",
@@ -27,8 +28,7 @@
   ],
   "exportedLods": [
     "lod0",
-    "lod1",
-    "lod2"
+    "lod1"
   ],
   "lodTriangles": {
     "lod0": 8872,

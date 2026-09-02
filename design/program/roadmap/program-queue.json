@@ -8281,7 +8281,7 @@
    "priority": 363,
    "title": "Fabricator, authored",
    "kind": "implementation",
-   "state": "ready",
+   "state": "done",
    "dependsOn": [
     "PQ-131.00"
    ],
@@ -8300,7 +8300,9 @@
     "npm run check:playable",
     "node scripts/check-program-docs.mjs"
    ],
-   "receiptRefs": [],
+   "receiptRefs": [
+    "design/program/roadmap/receipts/PQ-131-08-authored-fabricator-REPORT.md"
+   ],
    "brief": "Inventory row .08: a gantry head travelling a rail over a work bed; head position is progress. 1 cell. Hooks: gantry_head (0-1 along rail), lamp. 10k/2.5k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural fabricator."
   },
   {

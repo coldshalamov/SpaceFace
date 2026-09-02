@@ -365,29 +365,9 @@ export function makeMachine(kind, S, envMap) {
 
   // PQ-131.07: the procedural gas tap body is retired. The live works route loads the authored
   // place_works_gas_tap release asset (see worksPartLoader.js); makeMachine keeps no fallback.
-  if (kind === 'fabricator') {
-    // Fabricator: a sealed bay with a small lit viewport (a real window, not a glowing panel) and
-    // a physical gantry head that slides along a rail as the job runs.
-    const body = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.8, S * 0.74), metalMat(mid, envMap));
-    body.position.z = S * 0.48; body.castShadow = true; g.add(body);
-    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(S * 0.48, S * 0.36, S * 0.05), metalMat(dark, envMap));
-    winFrame.position.set(0, S * 0.06, S * 0.845); g.add(winFrame);
-    const winMat = new THREE.MeshStandardMaterial({
-      color: 0x2a1f12, emissive: 0xffb648, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.1,
-    });
-    const win = new THREE.Mesh(new THREE.BoxGeometry(S * 0.4, S * 0.28, S * 0.03), winMat);
-    win.position.set(0, S * 0.06, S * 0.87); g.add(win);
-    // Progress reads as a gantry head travelling a rail — dyn.progressBar keeps its 0..1 contract,
-    // but it now drives position along the rail instead of the width of a neon bar.
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(S * 0.62, S * 0.05, S * 0.05), metalMat(steel, envMap));
-    rail.position.set(0, -S * 0.3, S * 0.88); g.add(rail);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(S * 0.1, S * 0.11, S * 0.11), metalMat(brass, envMap));
-    head.position.set(-S * 0.31, -S * 0.3, S * 0.92); head.castShadow = true; g.add(head);
-    dyn.progressBar = head;
-    dyn.progressTravel = S * 0.62;
-    dyn.progressBase = -S * 0.31;
-    lampZ = S * 1.0;
-  } else if (kind === 'cargo_port') {
+  // PQ-131.08: the procedural fabricator body is retired the same way. The authored gantry head
+  // keeps the progressBar contract.
+  if (kind === 'cargo_port') {
     // Cargo port: a launch collar with physical guide rails and a berthed pod. The old emissive
     // guide torus is now a machined ring the key light picks out.
     const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.42, S * 0.11, 10, 24), metalMat(mid, envMap));

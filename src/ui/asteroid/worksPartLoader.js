@@ -40,6 +40,13 @@ export const GAS_TAP_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+// PQ-131.08. gantry_head is the progress-driven pivot (authored +X rail, length 1.4 from the
+// export contract); the lamp owns the only mutable lens shell.
+export const FABRICATOR_HOOKS = Object.freeze([
+  'gantry_head',
+  'lamp',
+]);
+
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
 function conduitPart(family, kind) {
@@ -162,6 +169,14 @@ export const WORKS_PARTS = Object.freeze({
     hooks: GAS_TAP_HOOKS,
     binding: 'works-gas-tap',
   }),
+  // PQ-131.08. Same selected-runtime law: LOD0/work and LOD1/site only, no procedural fallback.
+  place_works_fabricator: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_fabricator.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_fabricator.glb',
+    slot: 'place',
+    hooks: FABRICATOR_HOOKS,
+    binding: 'works-fabricator',
+  }),
   ...Object.fromEntries(['power', 'lane'].flatMap((family) => CONDUIT_KINDS.map((kind) => [
     `place_works_conduit_${family}_${kind}`,
     conduitPart(family, kind),
@@ -281,6 +296,12 @@ function cloneMaterialForInstance(material, primitiveName, binding) {
   // carries live status; plate, valve, wheel, gauge, and hose shells stay shared blueprint
   // resources so a live network update cannot drift into static surfacing or palette mutation.
   if (binding === 'works-gas-tap' && !/^LOD[01]_lamp$/u.test(primitiveName || '')) {
+    return material;
+  }
+  // The fabricator's authored atlas is permanent structural surfacing. Only its hooded lamp glass
+  // carries live status (authored names are camel-cased: LOD0_Lamp); frame, bed, rail, and gantry
+  // shells stay shared blueprint resources.
+  if (binding === 'works-fabricator' && !/^LOD[01]_Lamp$/u.test(primitiveName || '')) {
     return material;
   }
   // Runtime status can only mutate these authored state surfaces. The furnace jacket, stack,
@@ -473,6 +494,35 @@ export function bindWorksGasTapHookHierarchy(group) {
   return group.userData.worksGasTapHooks;
 }
 
+// PQ-131.08. The authored file already parents LOD0/LOD1_Gantry under the gantry_head pivot and
+// LOD0/LOD1_Lamp under the lamp pivot; the release pipeline may flatten primitive matrices, so
+// reattach when needed while preserving every visible world pose. The head slides the authored
+// +X rail (contract: base -0.7, travel 1.4) as build progress; only lamp lenses are mutable.
+export function bindWorksFabricatorHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const head = hooks.gantry_head;
+  const lamp = hooks.lamp;
+  if (!head || !lamp) {
+    throw new Error('[worksPartLoader] Fabricator is missing gantry_head or lamp marker');
+  }
+  const bindings = [
+    [head, 'LOD0_Gantry'], [head, 'LOD1_Gantry'],
+    [lamp, 'LOD0_Lamp'], [lamp, 'LOD1_Lamp'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Fabricator is missing ${name}`);
+    if (child.parent !== parent) attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksFabricatorBoundMeshes = bound;
+  group.userData.worksFabricatorHooks = Object.freeze({
+    gantry_head: head, lamp,
+  });
+  return group.userData.worksFabricatorHooks;
+}
+
 function instantiateBlueprint(blueprint, hookNames, binding) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
@@ -616,6 +666,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       if (entry.binding === 'works-refinery') bindWorksRefineryHookHierarchy(group);
       if (entry.binding === 'works-derrick') bindWorksDerrickHookHierarchy(group);
       if (entry.binding === 'works-gas-tap') bindWorksGasTapHookHierarchy(group);
+      if (entry.binding === 'works-fabricator') bindWorksFabricatorHookHierarchy(group);
     } catch (error) {
       console.error('[worksPartLoader] authored part binding failed', error);
       disposeInstanceOwnedResources(group);

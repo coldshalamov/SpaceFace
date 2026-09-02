@@ -1,6 +1,6 @@
 # Fabricator cycle 03 — material and shape audit
 
-Candidate `31E7E0F70CED279B5FFBEFD6A482362688044306BDF4CE68D6A37294E9387B1F` root `SF_WORKS_FABRICATOR_V1`. State: design_candidate. Gates G1/G2/G4 open (`evidence_ready` only). No whole-asset KEEP.
+Candidate `50C6540E7E627D739E822FE5B79348C1F6A6665D6EB5A8E762314783E6277FD8` root `SF_WORKS_FABRICATOR_V1`. State: design_candidate. Gates G1/G2/G4 open (`evidence_ready` only). No whole-asset KEEP.
 
 ## Cycle 03 correction
 Independent review of cycle 02 (`F14445BFF3…`) returned REVISE. Original-resolution

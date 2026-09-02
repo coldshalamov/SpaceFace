@@ -577,6 +577,51 @@ export function gasTapProofTransform({ cellX, cellY, cellSize } = {}) {
   };
 }
 
+// PQ-131.08. The authored fabricator: the gantry head slides the authored +X rail as build
+// progress (the same 0..1 progressBar contract the procedural head used), and only the hooded
+// lamp lenses carry live status. Frame, bed, and rail stay on their shared authored atlas.
+export function bindAuthoredFabricator(group) {
+  const hooks = group?.userData?.worksFabricatorHooks;
+  if (!hooks?.gantry_head || !hooks?.lamp) {
+    throw new Error('Fabricator hook hierarchy is unavailable');
+  }
+  const lampMaterials = [];
+  hooks.lamp.traverse((node) => {
+    if (!node.isMesh || !/^LOD[01]_Lamp$/u.test(node.name || '')) return;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of rows) {
+      if (!material || material.userData?.worksInstanceOwned !== true) {
+        throw new Error('Fabricator lamp material must be instance-owned');
+      }
+      if (!lampMaterials.includes(material)) lampMaterials.push(material);
+    }
+  });
+  if (!lampMaterials.length) throw new Error('Fabricator hooks own no lens status materials');
+  const headBase = hooks.gantry_head.position.x;
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      // The existing machine drive consumes the progressBar contract: position.x =
+      // progressBase + progressTravel * progress. The authored rail is base -0.7, travel 1.4.
+      progressBar: hooks.gantry_head,
+      progressBase: headBase,
+      progressTravel: 1.4,
+      lamp: lampMaterials[0],
+      lampAnchor: hooks.lamp,
+      setLamp(hex, intensity) {
+        for (const material of lampMaterials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+    },
+    pulses: [],
+  };
+}
+
 // The generic proof camera was established for interior parts that need a Y-up-to-Works seating
 // conversion. The standing surface Derrick is already in that orientation, so its proof route
 // must preserve the authored pose while all existing interior candidates keep their quarter-turn.
@@ -1058,7 +1103,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredRefineryGen = 0;
   let authoredRefineryGhostGen = 0;
   let authoredGasTapGen = 0;
+  let authoredFabricatorGen = 0;
   let authoredGasTapGhostGen = 0;
+  let authoredFabricatorGhostGen = 0;
   let authoredDerrickGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
@@ -4226,11 +4273,73 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec;
   }
 
+  function installAuthoredFabricator(rec, group) {
+    const authored = bindAuthoredFabricator(group);
+    authored.group.rotation.z = 0; // authored +X forward; a fabricator has no live contact to face
+    authored.group.position.set(0, 0, 0);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.pending = false;
+  }
+
+  function loadAuthoredFabricator(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Fabricator cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredFabricatorGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_fabricator').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Fabricator load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredFabricator(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Fabricator install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Fabricator load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
+  function buildAuthoredFabricatorAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksFabricator:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredFabricator(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
     if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
     if (m.defId === 'sm_extractor') return buildAuthoredExtractorAt(m);
     if (m.defId === 'sm_refinery') return buildAuthoredRefineryAt(m);
     if (m.defId === 'sm_gas_tap') return buildAuthoredGasTapAt(m);
+    if (m.defId === 'sm_fabricator') return buildAuthoredFabricatorAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -5634,6 +5743,51 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return record;
   }
 
+  function beginAuthoredFabricatorGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredFabricatorGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Fabricator ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_fabricator').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && ghost === record && record.loadToken === token) {
+          console.error('[asteroidRenderer3d] authored Fabricator ghost load returned null');
+        }
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          bindAuthoredFabricator(part);
+          part.rotation.z = 0;
+          part.position.set(0, 0, 0);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Fabricator ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Fabricator ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
@@ -5642,6 +5796,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (defId === 'sm_extractor') return beginAuthoredExtractorGhost(defId);
     if (defId === 'sm_refinery') return beginAuthoredRefineryGhost(defId);
     if (defId === 'sm_gas_tap') return beginAuthoredGasTapGhost(defId);
+    if (defId === 'sm_fabricator') return beginAuthoredFabricatorGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -6653,6 +6808,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (id === 'place_works_refinery') bindAuthoredRefinery(group);
       if (id === 'place_works_derrick') bindAuthoredDerrick(group);
       if (id === 'place_works_gas_tap') bindAuthoredGasTap(group);
+      if (id === 'place_works_fabricator') bindAuthoredFabricator(group);
       const transform = id === 'place_works_derrick'
         ? seatWorksDerrickProofGroup(group)
         : id === 'place_works_gas_tap'
