@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 3,
+  "cycle": 4,
   "tier": "C",
   "grouping": "one manufactured family per network (power tray/cable; lane conveyor). Repeated pieces share the family bill.",
   "componentReferenceDecision": "not_needed",
@@ -75,7 +75,7 @@
         {
           "zone": "side_rails_and_cross_sleepers",
           "disposition": "billed",
-          "substrate": "folded painted steel C-section rails with sparse bolted cross-sleepers, dark industrial enamel over zinc",
+          "substrate": "Cycle 04 1.10 wu folded painted-steel C-section rails with proportioned bolted cross-sleepers, dark industrial enamel over zinc",
           "basecolor": [0.18, 0.16, 0.13],
           "roughness": [0.52, 0.68],
           "metallic": [0.18, 0.32],
@@ -84,7 +84,7 @@
         {
           "zone": "rollers",
           "disposition": "billed",
-          "substrate": "zinc-plated steel tubes on through-axles in rail bosses (CEMA / MDR practice)",
+          "substrate": "wider zinc-plated steel tubes on through-axles in rail bosses (CEMA / MDR practice), lengthened with the 1.10 wu rail separation",
           "basecolor": [0.42, 0.43, 0.40],
           "roughness": [0.28, 0.42],
           "metallic": [0.70, 0.88],
@@ -93,7 +93,7 @@
         {
           "zone": "belt_or_chain",
           "disposition": "billed",
-          "substrate": "dark rubber belt with transverse cleats sitting on the roller crowns; this is flow_mesh",
+          "substrate": "proportionally widened dark rubber belt with transverse cleats sitting on the roller crowns; this is flow_mesh",
           "basecolor": [0.10, 0.10, 0.09],
           "roughness": [0.72, 0.88],
           "metallic": [0.02, 0.08],
@@ -102,7 +102,7 @@
         {
           "zone": "smoked_cover_strip",
           "disposition": "billed",
-          "substrate": "narrow polycarbonate wear strip over the product path only; rollers and rails stay visible beside it",
+          "substrate": "proportionally widened but still interior polycarbonate wear strip over the product path only; rollers and rails stay visible beside it",
           "basecolor": [0.30, 0.34, 0.36],
           "roughness": [0.18, 0.30],
           "metallic": [0.02, 0.06],

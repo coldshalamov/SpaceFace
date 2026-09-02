@@ -32,6 +32,9 @@ export function collectPageIssues(page, options = {}) {
   page.on('response', (response) => {
     const status = response.status();
     if (status >= 400) {
+      // The shared Browser/Electron player save store is an optional route: dev servers
+      // without the store backend 404 it by design (see check-game-playable OPTIONAL_ROUTES).
+      if (status === 404 && response.url().endsWith('/__spaceface_player_store')) return;
       issues.push({ type: 'error', text: `HTTP ${status} ${response.url()}` });
     }
   });

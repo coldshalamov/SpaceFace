@@ -69,7 +69,9 @@ async function captureAuthoredWorksPart(partId) {
     if (ready && typeof ready.then === 'function') await ready.catch(() => {});
   });
   await page.evaluate(() => {
-    window.SF.bus.emit('game:new', { name: 'Works Part Capture', difficulty: 'standard' });
+    // Fixed seed: evidence stills must be reproducible (law §11.10 culture) — a random
+    // field makes assertions like the vein-socket selector flaky run to run.
+    window.SF.bus.emit('game:new', { name: 'Works Part Capture', difficulty: 'standard', seed: 131011 });
   });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120000 });
   await page.waitForTimeout(1500);
@@ -98,6 +100,36 @@ async function captureAuthoredWorksPart(partId) {
   }, null, { timeout: 15000 });
   await page.waitForTimeout(800);
 
+  // Wall-mounted parts (the gas tap) seat against the -Y wall of their cell exactly as the
+  // permanent route mounts them, so the proof cell must be carved open like a production
+  // gallery — a solid proof cell buries the part behind the cut face and the stills show rock.
+  const proofCarved = await page.evaluate(() => {
+    const sf = window.SF;
+    const st = sf.state;
+    const d = st.drill;
+    if (!d || !Array.isArray(d.field)) return { ok: false, reason: 'no drill field' };
+    const EMPTY = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+    const ent = st.entities.get(d.asteroidId);
+    const carve = (c, r) => {
+      if (c < 0 || c > 27 || r < 1 || r > 44) return;
+      if (d.field[c][r].type === 'empty') return;
+      const was = d.field[c][r].type;
+      d.field[c][r] = EMPTY();
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        const idx = r * 28 + c;
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+      }
+      sf.bus.emit('drill:break', { col: c, row: r, type: was, ore: null, wasVein: false, wasGas: false });
+    };
+    // Open a three-cell gallery along X at the proof cell; the row above stays solid so the
+    // wall-mounted part keeps a real rock face to clamp to.
+    for (const [c, r] of [[19, 4], [20, 4], [21, 4]]) carve(c, r);
+    return { ok: true };
+  });
+  if (!proofCarved.ok) throw new Error('proof gallery carve failed: ' + proofCarved.reason);
+  await page.waitForTimeout(400);
+
   const mounted = await page.evaluate(async (id) => {
     const h = document.querySelector('.ast-canvas').__ast3d;
     const result = id === 'drill_platform' && typeof h.mountWorksProof === 'function'
@@ -113,7 +145,11 @@ async function captureAuthoredWorksPart(partId) {
   // Interior machines are authored Y-up and quarter-turned into the Works plane. The permanent
   // surface Derrick is already authored standing in that plane; its proof must preserve the same
   // zero-X rotation as production instead of satisfying the old interior-only assertion.
-  const expectedRotationX = partId === 'place_works_derrick' ? 0 : Math.PI / 2;
+  // The standing Derrick and the wall-mounted gas tap are both authored in the Works plane at 1x;
+  // only interior machinery takes the Y-up quarter-turn. The gas tap keeps zero rotation and its
+  // one-cell footprint on the proof route exactly as the permanent route seats it.
+  const expectedRotationX = ['place_works_derrick', 'place_works_gas_tap'].includes(partId)
+    ? 0 : Math.PI / 2;
   if (!mounted.transform || mounted.cell?.col !== 20 || mounted.cell?.row !== 4
     || Math.abs((mounted.transform.rotation?.[0] || 0) - expectedRotationX) > 1e-6) {
     throw new Error(`loadWorksPart(${partId}) returned an unseated capture mount: ${JSON.stringify(mounted)}`);
@@ -852,8 +888,14 @@ try {
     const inb = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
     const N4 = [[0, 1], [1, 0], [-1, 0], [0, -1]];
     const tierOf = (t) => (t && t.tierReq) || 1;
+    // By the yield section the run has earned its upgrades: drillTierReqForOre puts the
+    // cheapest vein at tierReq 2, so the starter beam_mk1 (tier 1) can never bore one and
+    // this still would be unsatisfiable. Equip the run's beam like a real player would.
     const playerTier = (() => {
       const beam = st.player.miningBeam;
+      if (beam && typeof beam.tierId === 'string' && beam.tierId === 'beam_mk1') {
+        beam.tierId = 'beam_mk3';
+      }
       if (!beam) return 1;
       if (beam.tierId === 'beam_industrial') return 4;
       if (beam.tierId === 'beam_mk3') return 3;
@@ -1051,7 +1093,8 @@ try {
     await shot('11-site-network.png');
     console.log(`11-site-network.png: lens ${before || 'none'} -> ${st.lens.active} · register ${st.net.register}`
       + ` · ${st.net.runs.length} runs (${st.net.islands} dark) · ${st.net.flowDots} flow dots`
-      + ` · crate stage ${st.crates.stage} · armour ${st.net.casings} meshes,`
+      + ` · crate stage ${st.crates.stage} · authored ${st.net.authoredCount}/${st.net.mount?.authoredCount || 0}`
+      + ` (${st.net.mount?.phase || 'none'}), lod0/lod1 ${st.net.visibleLods?.lod0 || 0}/${st.net.visibleLods?.lod1 || 0},`
       + ` lane ${st.net.laneWidthPx}px / cable ${st.net.cableWidthPx}px across`
       + ` · machines [${st.states.join(', ')}]`);
     // The PLAN lens, on the same producing site: mono numerals for what each working machine earns
@@ -1078,7 +1121,17 @@ try {
     if (st.lens.active !== 'network') failures.push(`11-site-network.png: V did not reach the Network lens (${st.lens.active})`);
     if (st.net.register !== 'site') failures.push('11-site-network.png: the camera is not at the site register');
     if (!st.net.runs.length) failures.push('11-site-network.png: the site drew no network runs at all');
-    if (!(st.net.casings > 0)) failures.push('11-site-network.png: the runs shed their armour at site zoom — flat lines on the rock');
+    if (st.net.mount?.phase !== 'authored' || st.net.authoredCount !== st.net.runs.length
+      || st.net.mount?.authoredCount !== st.net.authoredCount) {
+      failures.push(`11-site-network.png: authored conduit mount is incomplete (${JSON.stringify(st.net.mount)})`);
+    }
+    const families = new Set(st.net.runs.map((run) => run.kind));
+    if (!families.has('power') || !families.has('lane')) {
+      failures.push(`11-site-network.png: both authored conduit families are not resident (${[...families].join(',')})`);
+    }
+    if (!(st.net.visibleLods?.lod1 > 0) || (st.net.visibleLods?.lod0 || 0) !== 0) {
+      failures.push(`11-site-network.png: site register did not show only resident LOD1 conduit meshes (${JSON.stringify(st.net.visibleLods)})`);
+    }
     if (!(st.net.laneWidthPx >= 6)) {
       failures.push(`11-site-network.png: the lane is ${st.net.laneWidthPx}px across at the site register — a hairline, not a conveyor`);
     }

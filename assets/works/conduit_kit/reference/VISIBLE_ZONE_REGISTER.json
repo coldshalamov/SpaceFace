@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 3,
+  "cycle": 4,
   "tier": "C",
   "supportedViews": ["works_top", "works_edge", "works_site"],
   "allSupportedViewZonesClassified": false,
-  "note": "Independent reviewer must confirm coverage before this flips true. Cycle 03 self-register only.",
+  "note": "Independent reviewer must confirm coverage before this flips true. Cycle 04 lane-envelope self-register only.",
   "zones": [
     {"zone": "power_ladder_tray", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},
     {"zone": "power_gold_jacket", "disposition": "billed", "family": "power", "dominatesSupportedView": true, "supportedViews": ["works_top", "works_edge", "works_site"]},

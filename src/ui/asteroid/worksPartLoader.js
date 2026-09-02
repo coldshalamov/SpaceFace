@@ -32,6 +32,71 @@ export const DERRICK_HOOKS = Object.freeze([
   'lamp_R',
 ]);
 
+// PQ-131.07. valve_wheel and gauge_needle are transform-only hook children; the lamp owns the
+// only mutable lens shell. No other gas-tap surface is runtime-mutable.
+export const GAS_TAP_HOOKS = Object.freeze([
+  'valve_wheel',
+  'gauge_needle',
+  'lamp',
+]);
+
+const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
+
+function conduitPart(family, kind) {
+  const assetId = `place_works_conduit_${family}_${kind}`;
+  return Object.freeze({
+    lod0: `assets/ships/release/parts/works/${assetId}.glb`,
+    lod1: `assets/ships/release/parts/works/${assetId}.glb`,
+    slot: 'place',
+    hooks: Object.freeze([family === 'power' ? 'powered' : 'flow_mesh']),
+    binding: `works-conduit-${family}`,
+  });
+}
+
+/**
+ * Map the simulation's N/E/S/W connectivity mask onto the exact authored conduit ports.
+ * The source kit is +X-forward: end=E, straight=E/W, corner=N/E, and T=N/E/W.
+ */
+export function resolveWorksConduitPiece(family, mask, { service = false } = {}) {
+  if (family !== 'power' && family !== 'lane') {
+    throw new Error(`[worksPartLoader] unknown conduit family "${family}"`);
+  }
+  if (!Number.isInteger(mask) || mask < 0 || mask > 15) {
+    throw new Error(`[worksPartLoader] conduit mask must be an integer 0..15, got ${mask}`);
+  }
+  if (mask === 0) return null;
+  const arms = (mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1);
+  let kind;
+  let rotation = 0;
+  if (arms === 1) {
+    kind = 'end';
+    rotation = ({ 1: Math.PI / 2, 2: 0, 4: -Math.PI / 2, 8: Math.PI })[mask];
+  } else if (arms === 2) {
+    if (mask === 5 || mask === 10) {
+      kind = 'straight';
+      rotation = mask === 5 ? Math.PI / 2 : 0;
+    } else {
+      kind = 'corner';
+      rotation = ({ 3: 0, 6: -Math.PI / 2, 9: Math.PI / 2, 12: Math.PI })[mask];
+    }
+  } else if (arms === 3) {
+    kind = 't';
+    rotation = ({ 7: -Math.PI / 2, 11: 0, 13: Math.PI / 2, 14: Math.PI })[mask];
+  } else {
+    kind = service ? 'junction' : 'cross';
+  }
+  if (!CONDUIT_KINDS.includes(kind) || !Number.isFinite(rotation)) {
+    throw new Error(`[worksPartLoader] unresolved conduit mask ${mask}`);
+  }
+  return Object.freeze({
+    family,
+    kind,
+    mask,
+    assetId: `place_works_conduit_${family}_${kind}`,
+    rotation,
+  });
+}
+
 export const WORKS_PARTS = Object.freeze({
   drill_platform: Object.freeze({
     lod0: 'assets/ships/release/parts/places/place_drill_platform.glb',
@@ -88,6 +153,19 @@ export const WORKS_PARTS = Object.freeze({
     hooks: DERRICK_HOOKS,
     binding: 'works-derrick',
   }),
+  // PQ-131.07. The selected release carries exactly the work (LOD0) and site (LOD1) registers;
+  // LOD2 remains authoring/evidence-only. There is no procedural gas tap fallback.
+  place_works_gas_tap: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_gas_tap.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_gas_tap.glb',
+    slot: 'place',
+    hooks: GAS_TAP_HOOKS,
+    binding: 'works-gas-tap',
+  }),
+  ...Object.fromEntries(['power', 'lane'].flatMap((family) => CONDUIT_KINDS.map((kind) => [
+    `place_works_conduit_${family}_${kind}`,
+    conduitPart(family, kind),
+  ]))),
 });
 
 function selectUrl(entry, register) {
@@ -189,10 +267,20 @@ function disposeInstanceOwnedResources(group) {
 
 function cloneMaterialForInstance(material, primitiveName, binding) {
   if (!material || typeof material.clone !== 'function') return material;
+  // Conduit atlas materials are immutable template resources. The renderer clones only the named
+  // powered/flow hook shells per connected component; cloning every body here would defeat atlas
+  // sharing and makes it too easy for a live network update to drift into static surfacing.
+  if (/^works-conduit-(power|lane)$/u.test(binding || '')) return material;
   // The Derrick's authored atlas is permanent structural surfacing. Only its two hooded-lamp
   // lenses carry live status; giving frame, drum, cable, or hood shells per-instance would both
   // waste residency and invite accidental palette mutation.
   if (binding === 'works-derrick' && !/^LOD[01]_lamp_[LR]_lens$/u.test(primitiveName || '')) {
+    return material;
+  }
+  // The gas tap's authored atlas is permanent structural surfacing. Only its hooded lamp glass
+  // carries live status; plate, valve, wheel, gauge, and hose shells stay shared blueprint
+  // resources so a live network update cannot drift into static surfacing or palette mutation.
+  if (binding === 'works-gas-tap' && !/^LOD[01]_lamp$/u.test(primitiveName || '')) {
     return material;
   }
   // Runtime status can only mutate these authored state surfaces. The furnace jacket, stack,
@@ -355,6 +443,36 @@ export function bindWorksDerrickHookHierarchy(group) {
   return group.userData.worksDerrickHooks;
 }
 
+// The release package flattens primitive matrices. Reattach the authored wheel, needle, and lamp
+// glass under their pivots, preserving every visible world pose, so wheel spin, needle rotation,
+// and lens-only status updates are meaningful. Plate/valve/hose meshes stay on the root.
+export function bindWorksGasTapHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const wheel = hooks.valve_wheel;
+  const needle = hooks.gauge_needle;
+  const lamp = hooks.lamp;
+  if (!wheel || !needle || !lamp) {
+    throw new Error('[worksPartLoader] Gas tap is missing valve_wheel, gauge_needle, or lamp marker');
+  }
+  const bindings = [
+    [wheel, 'LOD0_valve_wheel'], [wheel, 'LOD1_valve_wheel'],
+    [needle, 'LOD0_gauge_needle'], [needle, 'LOD1_gauge_needle'],
+    [lamp, 'LOD0_lamp'], [lamp, 'LOD1_lamp'],
+  ];
+  const bound = [];
+  for (const [parent, name] of bindings) {
+    const child = group.getObjectByName(name);
+    if (!child) throw new Error(`[worksPartLoader] Gas tap is missing ${name}`);
+    attachPreservingWorld(parent, child);
+    bound.push(name);
+  }
+  group.userData.worksGasTapBoundMeshes = bound;
+  group.userData.worksGasTapHooks = Object.freeze({
+    valve_wheel: wheel, gauge_needle: needle, lamp,
+  });
+  return group.userData.worksGasTapHooks;
+}
+
 function instantiateBlueprint(blueprint, hookNames, binding) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
@@ -444,6 +562,10 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
   let released = 0;
   let lod1Missing = 0;
   const live = [];
+  // A topology transaction owns these short-lived template retains. They are intentionally
+  // separate from `live`: every cell gets a disposable clone, while a generation loads each
+  // selected conduit URL once and shares the immutable atlas-backed blueprint.
+  const conduitTemplates = new Map();
 
   function stats() {
     let untaggedMeshes = 0;
@@ -457,6 +579,9 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       register,
       lod1Missing,
       untaggedMeshes,
+      conduitTemplateCount: conduitTemplates.size,
+      conduitTemplateReferences: [...conduitTemplates.values()]
+        .reduce((total, record) => total + record.refs, 0),
     };
   }
 
@@ -477,6 +602,122 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     disposeInstanceOwnedResources(group);
     releaseClone(group);
     released += 1;
+  }
+
+  function instantiateLoadedBlueprint(blueprint, entry, id, url, requestedRegister) {
+    const hookNames = (entry.hooks || []).slice();
+    if (blueprint.assetId && hookNames.indexOf(blueprint.assetId) < 0) {
+      hookNames.push(blueprint.assetId);
+    }
+    const group = instantiateBlueprint(blueprint, hookNames, entry.binding);
+    try {
+      if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
+      if (entry.binding === 'works-extractor') bindWorksExtractorHookHierarchy(group);
+      if (entry.binding === 'works-refinery') bindWorksRefineryHookHierarchy(group);
+      if (entry.binding === 'works-derrick') bindWorksDerrickHookHierarchy(group);
+      if (entry.binding === 'works-gas-tap') bindWorksGasTapHookHierarchy(group);
+    } catch (error) {
+      console.error('[worksPartLoader] authored part binding failed', error);
+      disposeInstanceOwnedResources(group);
+      releaseClone(group);
+      failed += 1;
+      return null;
+    }
+    applyLodVisibility(group, requestedRegister);
+    group.userData.worksPartId = id;
+    group.userData.worksUrl = url;
+    group.userData.worksRequestedRegister = requestedRegister;
+    live.push(group);
+    loaded += 1;
+    const tags = group.userData.worksLodTags || [];
+    if (!tags.includes('lod1')) lod1Missing += 1;
+    return group;
+  }
+
+  /**
+   * Acquire one resident immutable blueprint per conduit asset URL for a topology generation.
+   * A returned handle creates isolated cell clones; callers must release its clones before calling
+   * `release()`.  This makes a stale generation unable to mutate or retain the next one.
+   */
+  async function acquireWorksConduitTemplates(ids, options = {}) {
+    if (!Array.isArray(ids) || !ids.length) return null;
+    if (new Set(ids).size !== ids.length) {
+      throw new Error('[worksPartLoader] conduit template ids must be unique');
+    }
+    if (closed || !lease.isActive()) return null;
+    const retained = [];
+    const byId = new Map();
+    const releaseRetained = () => {
+      for (let i = retained.length - 1; i >= 0; i--) {
+        const record = retained[i];
+        if (record.refs > 0) record.refs -= 1;
+        if (record.refs === 0 && conduitTemplates.get(record.url) === record) {
+          conduitTemplates.delete(record.url);
+        }
+      }
+      retained.length = 0;
+    };
+    try {
+      for (const id of ids) {
+        const entry = table[id];
+        if (!entry || !/^works-conduit-(power|lane)$/u.test(entry.binding || '')) {
+          throw new Error(`[worksPartLoader] ${id} is not an authored conduit part`);
+        }
+        const url = selectUrl(entry, register);
+        let record = conduitTemplates.get(url);
+        if (!record) {
+          record = {
+            id,
+            entry,
+            url,
+            refs: 0,
+            blueprint: null,
+            promise: null,
+          };
+          record.promise = Promise.resolve(lease.load(url, {
+            slot: entry.slot || 'place',
+            optional: true,
+            ...(options || {}),
+          })).then((blueprint) => {
+            if (!blueprint || !Array.isArray(blueprint.primitives)) {
+              throw new Error(`[worksPartLoader] conduit template ${id} resolved no mesh primitives`);
+            }
+            record.blueprint = blueprint;
+            return blueprint;
+          });
+          conduitTemplates.set(url, record);
+        }
+        record.refs += 1;
+        retained.push(record);
+        const blueprint = await record.promise;
+        if (closed || !lease.isActive()) throw new Error('[worksPartLoader] conduit loader retired');
+        if (!blueprint || !record.blueprint) {
+          throw new Error(`[worksPartLoader] conduit template ${id} is unavailable`);
+        }
+        byId.set(id, record);
+      }
+    } catch (error) {
+      failed += 1;
+      releaseRetained();
+      throw error;
+    }
+
+    let templateReleased = false;
+    return Object.freeze({
+      ids: Object.freeze(ids.slice()),
+      instantiate(id) {
+        if (templateReleased || closed || !lease.isActive()) return null;
+        const record = byId.get(id);
+        if (!record || !record.blueprint) return null;
+        return instantiateLoadedBlueprint(record.blueprint, record.entry, id, record.url, register);
+      },
+      release() {
+        if (templateReleased) return false;
+        templateReleased = true;
+        releaseRetained();
+        return true;
+      },
+    });
   }
 
   async function loadWorksPart(id, options = {}, attempt = 0) {
@@ -513,38 +754,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       if (attempt >= 1) return null;
       return loadWorksPart(id, options, attempt + 1);
     }
-    const liveRegister = register;
-
-    const hookNames = (entry.hooks || []).slice();
-    if (blueprint.assetId && hookNames.indexOf(blueprint.assetId) < 0) {
-      hookNames.push(blueprint.assetId);
-    }
-    const group = instantiateBlueprint(blueprint, hookNames, entry.binding);
-    try {
-      if (entry.binding === 'massline-core') bindMasslineCoreHookHierarchy(group);
-      if (entry.binding === 'works-extractor') bindWorksExtractorHookHierarchy(group);
-      if (entry.binding === 'works-refinery') bindWorksRefineryHookHierarchy(group);
-      if (entry.binding === 'works-derrick') bindWorksDerrickHookHierarchy(group);
-    } catch (error) {
-      console.error('[worksPartLoader] authored part binding failed', error);
-      disposeInstanceOwnedResources(group);
-      releaseClone(group);
-      failed += 1;
-      return null;
-    }
-    applyLodVisibility(group, liveRegister);
-    group.userData.worksPartId = id;
-    group.userData.worksUrl = url;
-    group.userData.worksRequestedRegister = liveRegister;
-    live.push(group);
-    loaded += 1;
-    const tags = group.userData.worksLodTags || [];
-    let hasLod1 = false;
-    for (let i = 0; i < tags.length; i++) {
-      if (tags[i] === 'lod1') { hasLod1 = true; break; }
-    }
-    if (!hasLod1) lod1Missing += 1;
-    return group;
+    return instantiateLoadedBlueprint(blueprint, entry, id, url, register);
   }
 
   function dispose(reason = 'works-screen-exit') {
@@ -553,6 +763,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     const gpu = new Set();
     for (let i = 0; i < live.length; i++) collectGroupGpuResources(live[i], gpu);
     while (live.length) releaseWorksPart(live[live.length - 1]);
+    conduitTemplates.clear();
     lease.release(reason);
     for (const resource of gpu) disposeRendererBoundResource(resource);
     return disposeAuthoredAssetRuntime(renderer);
@@ -560,6 +771,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
 
   return Object.freeze({
     loadWorksPart,
+    acquireWorksConduitTemplates,
     releaseWorksPart,
     setRegister,
     stats,

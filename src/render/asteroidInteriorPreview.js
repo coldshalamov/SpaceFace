@@ -363,29 +363,9 @@ export function makeMachine(kind, S, envMap) {
     }
   }
 
-  if (kind === 'gas_tap') {
-    // Gas tap: a pressure vessel in a strap cradle with a real intake turbine. Nothing glows —
-    // the danger colour belongs to the gas cell, never to the machine that makes it safe.
-    const tank = new THREE.Mesh(new THREE.SphereGeometry(S * 0.32, 20, 14), metalMat(0x9a9c9e, envMap));
-    tank.scale.set(1.06, 1.06, 1.28); tank.position.z = S * 0.52; tank.castShadow = true; g.add(tank);
-    const strap = new THREE.Mesh(new THREE.TorusGeometry(S * 0.35, S * 0.038, 8, 24), metalMat(dark, envMap));
-    strap.position.z = S * 0.52; g.add(strap);
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.13, S * 0.18, S * 0.2, 10), metalMat(mid, envMap));
-    collar.rotation.x = Math.PI / 2; collar.position.z = S * 0.98; collar.castShadow = true; g.add(collar);
-    const turbine = new THREE.Group(); turbine.position.z = S * 1.1; g.add(turbine);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.05, S * 0.05, S * 0.06, 8), metalMat(steel, envMap));
-    hub.rotation.x = Math.PI / 2; turbine.add(hub);
-    for (let i = 0; i < 5; i++) {
-      const a = i * (Math.PI * 2 / 5);
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.055, S * 0.02), metalMat(steel, envMap));
-      blade.rotation.z = a;
-      blade.rotation.x = 0.42;
-      blade.position.set(Math.cos(a) * S * 0.14, Math.sin(a) * S * 0.14, 0);
-      turbine.add(blade);
-    }
-    dyn.turbine = turbine;
-    lampZ = S * 1.16;
-  } else if (kind === 'fabricator') {
+  // PQ-131.07: the procedural gas tap body is retired. The live works route loads the authored
+  // place_works_gas_tap release asset (see worksPartLoader.js); makeMachine keeps no fallback.
+  if (kind === 'fabricator') {
     // Fabricator: a sealed bay with a small lit viewport (a real window, not a glowing panel) and
     // a physical gantry head that slides along a rail as the job runs.
     const body = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.8, S * 0.74), metalMat(mid, envMap));

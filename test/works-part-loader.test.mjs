@@ -13,6 +13,7 @@ import * as THREE from 'three';
 
 import {
   createWorksPartLoader,
+  resolveWorksConduitPiece,
   WORKS_PARTS,
 } from '../src/ui/asteroid/worksPartLoader.js';
 
@@ -283,6 +284,57 @@ test('worksPartLoader uses the shared authored lease and never spins its own KTX
 
 test('createWorksPartLoader requires a renderer', () => {
   assert.throws(() => createWorksPartLoader({}), /renderer is required/);
+});
+
+test('conduit resolver maps all valid N/E/S/W masks to authored topology and rotation', () => {
+  const expected = new Map([
+    [1, ['end', Math.PI / 2]], [2, ['end', 0]], [4, ['end', -Math.PI / 2]], [8, ['end', Math.PI]],
+    [5, ['straight', Math.PI / 2]], [10, ['straight', 0]],
+    [3, ['corner', 0]], [6, ['corner', -Math.PI / 2]], [9, ['corner', Math.PI / 2]], [12, ['corner', Math.PI]],
+    [7, ['t', -Math.PI / 2]], [11, ['t', 0]], [13, ['t', Math.PI / 2]], [14, ['t', Math.PI]],
+    [15, ['cross', 0]],
+  ]);
+  assert.equal(resolveWorksConduitPiece('power', 0), null, 'isolated paint never invents a port');
+  for (const [mask, [kind, rotation]] of expected) {
+    const piece = resolveWorksConduitPiece('lane', mask);
+    assert.equal(piece.kind, kind, `mask ${mask} kind`);
+    assert.equal(piece.rotation, rotation, `mask ${mask} rotation`);
+  }
+  assert.equal(resolveWorksConduitPiece('power', 15, { service: true }).kind, 'junction');
+  assert.throws(() => resolveWorksConduitPiece('water', 1), /unknown conduit family/);
+  assert.throws(() => resolveWorksConduitPiece('power', 16), /integer 0\.\.15/);
+});
+
+test('conduit template handles acquire each selected URL once and register flips reuse resident templates', async () => {
+  const renderer = createMockRenderer();
+  const blueprint = makeBlueprint();
+  let loads = 0;
+  const lease = {
+    isActive: () => true,
+    async load() { loads += 1; return blueprint; },
+    release() { return 0; },
+  };
+  const registry = {
+    conduit_a: Object.freeze({ lod0: 'a.glb', lod1: 'a.glb', slot: 'place', hooks: [], binding: 'works-conduit-power' }),
+    conduit_b: Object.freeze({ lod0: 'b.glb', lod1: 'b.glb', slot: 'place', hooks: [], binding: 'works-conduit-lane' }),
+  };
+  const loader = createWorksPartLoader({ renderer, registry, lease });
+  const templates = await loader.acquireWorksConduitTemplates(['conduit_a', 'conduit_b']);
+  assert.equal(loads, 2, 'one load per unique selected conduit URL');
+  const first = templates.instantiate('conduit_a');
+  const second = templates.instantiate('conduit_a');
+  assert.equal(loads, 2, 'cell clones do not reacquire a template');
+  assert.equal(first.getObjectByName('LOD0_Body').material, second.getObjectByName('LOD0_Body').material,
+    'static atlas material remains shared across conduit clones');
+  loader.setRegister('site');
+  assert.equal(first.userData.worksNodeLod, 'lod1');
+  assert.equal(loads, 2, 'register flips reuse the already resident template');
+  loader.releaseWorksPart(first);
+  loader.releaseWorksPart(second);
+  assert.equal(templates.release(), true);
+  assert.equal(templates.release(), false, 'template release is idempotent');
+  assert.equal(loader.stats().conduitTemplateCount, 0);
+  loader.dispose();
 });
 
 test('loadWorksPart returns LOD-aware hooks and dispose restores renderer.info baseline', async () => {

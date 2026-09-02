@@ -1,13 +1,13 @@
-"""PQ-131.06 Works conduit kit — Cycle 03 construction correction.
+"""PQ-131.06 Works conduit kit — Cycle 04 lane-envelope correction.
 
 Two modular families (power cable, material lane), six topologies each,
 authored at works scale (1 cell = 2.2 wu), unique 1024² atlas per family,
 individual piece GLBs plus a master kit scene.
 
-Cycle 03 repairs the supported-camera P0/P1 failures on candidate 3d2f0395:
-cube junctions, disconnected/overlapping T and cross fittings, unprotected
-gold bars, and a lane that still read as a black ribbon with sub-pixel
-rollers. Both families are rebuilt. Cycle 01/02 evidence stays on disk.
+Cycle 04 reopens only the lane family after its physical 0.76 wu cross section
+failed the fixed 6 px site-route floor. All lane LODs and modular port faces
+share one 1.10 wu envelope; power remains the same authored family. Cycle
+01/02/03 evidence stays on disk.
 
     blender --background --python tools/blender/build_works_conduit_kit.py
     blender --background --python tools/blender/build_works_conduit_kit.py -- --check
@@ -55,7 +55,7 @@ SOURCE = KIT / "source"
 TEX_DIR = SOURCE / "textures"
 EVIDENCE_C01 = KIT / "evidence" / "cycle_01"
 EVIDENCE_C02 = KIT / "evidence" / "cycle_02"
-EVIDENCE = KIT / "evidence" / "cycle_03"
+EVIDENCE = KIT / "evidence" / "cycle_04"
 DIAG = EVIDENCE / "diagnostics"
 PARTS = ROOT / "assets" / "ships" / "parts" / "works"
 REF = KIT / "reference"
@@ -65,8 +65,10 @@ CAMERA_PY = TOOLS / "spaceface_works_camera.py"
 CELL = 2.2
 HALF = 1.1
 ATLAS = 1024
-CYCLE = 3
+CYCLE = 4
 PACKET = "PQ-131.06"
+FROZEN_MASTER_SHA256 = "1CC1A0C72684BB4E660406B3392921473C55D677CF88AAC4CDC00ED050931A53"
+FROZEN_BLEND_SHA256 = "A272D1297A2A5FB0F2A00046C5DDA59FD9E67C08BA20302295282528357C805D"
 SHADE_ANGLE = 28.0
 TRI_LOD0_MAX = 2000
 TRI_LOD0_MIN = 700
@@ -96,25 +98,30 @@ P_FIT = 0.36
 P_JUNC = 0.50
 P_JUNC_STUB = 0.52
 
-# Lane framed roller conveyor. Outer envelope frozen at 0.76 x 0.26.
-# Rails thick enough to read as C-channel; rollers large enough to read as
-# tubes; belt a narrow carcass on the crowns; cover a smoked strip only.
-L_W, L_H, L_T = 0.76, 0.26, 0.085
+# Lane framed roller conveyor. All LODs and every modular face share this
+# physical 1.10 wu envelope. Rails remain formed C-channel, rollers carry the
+# belt on their crowns, and the smoked wear strip leaves both rail shoulders
+# visible. These dimensions are authored source geometry, never a runtime
+# visual scale compensation.
+L_W, L_H, L_T = 1.10, 0.26, 0.085
 L_RAIL_Y = L_W / 2 - L_T / 2
 L_FLANGE = 0.050
 L_FLANGE_T = 0.020
 L_ROLLER_R = 0.070
 L_ROLLER_Z = 0.028 + 0.070
 L_ROLLER_LEN = L_W - 2 * L_T - 0.02
-L_BELT_W = 0.16
+L_BELT_W = 0.232
 L_BELT_T = 0.010
-L_COVER_W = 0.10
+L_COVER_W = 0.145
 L_COVER_Z = L_ROLLER_Z + L_ROLLER_R + 0.024
-L_BEND = 0.48
-L_FIT = 0.14
-L_JUNC = 0.46
-L_JUNC_STUB = 0.50
-L_SLEEPER = 0.36
+# Keep the corner's inner rail clearance used by Cycle 03 while widening the
+# physical frame. The wider branch throat and service enclosure preserve
+# modular open faces rather than pinching T/cross/junction machinery.
+L_BEND = 0.65
+L_FIT = 0.21
+L_JUNC = 0.66
+L_JUNC_STUB = 0.64
+L_SLEEPER = 0.42
 
 KEEP_PNG = {b"IHDR", b"PLTE", b"IDAT", b"IEND", b"sRGB", b"gAMA", b"pHYS"}
 
@@ -190,6 +197,7 @@ def cli_args(argv=None):
         "check": False,
         "skip_evidence": False,
         "skip_build": False,
+        "promote_selected": False,
     }
     for tok in argv:
         if tok in ("--check", "--validate-only"):
@@ -198,6 +206,8 @@ def cli_args(argv=None):
             flags["skip_evidence"] = True
         elif tok == "--skip-build":
             flags["skip_build"] = True
+        elif tok == "--promote-selected":
+            flags["promote_selected"] = True
     return flags
 
 
@@ -427,12 +437,19 @@ def validate_outputs(strict=True):
             if got != want and set(got) != set(want):
                 rec["errors"].append(f"ports {got} != {want}")
             rec["ports"] = ports
-            want_w = 0.48 if family == "power" else 0.76
-            for port in ports:
-                if port.get("ok") and abs(float(port.get("width") or 0) - want_w) > 0.08:
-                    rec["errors"].append(
-                        f"port {port.get('axis')} width {port.get('width')} off {want_w}"
-                    )
+            want_w = 0.48 if family == "power" else 1.10
+            port_tolerance = 0.04 if family == "power" else 0.01
+            ports_by_lod = contract.get("portsByLod") or {}
+            rec["portsByLod"] = ports_by_lod
+            for lod in (0, 1, 2):
+                lod_ports = ports_by_lod.get(f"lod{lod}") or []
+                if [p.get("axis") for p in lod_ports] != want and set(p.get("axis") for p in lod_ports) != set(want):
+                    rec["errors"].append(f"lod{lod} ports do not match {want}")
+                for port in lod_ports:
+                    if not port.get("ok") or abs(float(port.get("width") or 0) - want_w) > port_tolerance:
+                        rec["errors"].append(
+                            f"lod{lod} port {port.get('axis')} width {port.get('width')} off {want_w}"
+                        )
             rec["images"] = len(gltf.get("images") or [])
             if rec["images"] < 3:
                 rec["errors"].append("expected 3 atlas maps packed in GLB")
@@ -1391,8 +1408,11 @@ def build_lane(kind, lod, collection, tag):
         if lod <= 1:
             add_gearmotor(hw_bm, (0.42, -L_RAIL_Y, L_ROLLER_Z), (0.0, 1.0, 0.0), lod)
         if lod == 2:
-            bm_box(frame_bm, (L_RAIL_Y, (L_RAIL_Y + HALF) * 0.5, L_H * 0.5), (L_T * 1.4, HALF - L_RAIL_Y, L_H))
-            bm_box(frame_bm, (-L_RAIL_Y, (L_RAIL_Y + HALF) * 0.5, L_H * 0.5), (L_T * 1.4, HALF - L_RAIL_Y, L_H))
+            # Keep the simplified branch uprights within the same exact port
+            # face as the LOD0/1 C-channel rails; the old widened web leaked
+            # past the 1.10 wu section only at LOD2.
+            bm_box(frame_bm, (L_RAIL_Y, (L_RAIL_Y + HALF) * 0.5, L_H * 0.5), (L_T, HALF - L_RAIL_Y, L_H))
+            bm_box(frame_bm, (-L_RAIL_Y, (L_RAIL_Y + HALF) * 0.5, L_H * 0.5), (L_T, HALF - L_RAIL_Y, L_H))
     if kind == "cross":
         for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
             add_splice_lobe(frame_bm, sx * L_RAIL_Y * 0.55, sy * L_RAIL_Y * 0.55, "X", lod)
@@ -1672,7 +1692,7 @@ def pack_objects(objects, rect, padding_px=3):
         x += pw + pad
 
 
-def assign_belt_uv(obj, path_len):
+def assign_belt_uv(obj, path_len, belt_width):
     if obj is None:
         return
     uv = loop_uv_layer(obj)
@@ -1686,7 +1706,7 @@ def assign_belt_uv(obj, path_len):
             along = (p.x + HALF) if abs(p.x) >= abs(p.y) else (p.y + HALF)
             across = p.y if abs(p.x) >= abs(p.y) else p.x
             u = (along / max(0.2, path_len)) % 1.0
-            v = 0.5 + across / max(0.2, L_BELT_W)
+            v = 0.5 + across / max(0.2, belt_width)
             v = min(1.0, max(0.0, v))
             uv.data[li].uv = (bu0 + u * (bu1 - bu0), bv0 + v * (bv1 - bv0))
 
@@ -1982,7 +2002,7 @@ def reparent(obj, parent):
     obj.matrix_world = mw
 
 
-def piece_contract(family, kind, lod_tri, ports):
+def piece_contract(family, kind, lod_tri, ports, ports_by_lod=None):
     aid = asset_id(family, kind)
     hook = "powered" if family == "power" else "flow_mesh"
     return {
@@ -2015,6 +2035,7 @@ def piece_contract(family, kind, lod_tri, ports):
         },
         "hooks": [hook],
         "ports": ports,
+        "portsByLod": ports_by_lod or {},
         "portConvention": "+X primary, +Y branch, cell half-extent 1.1 wu, +Z away from mount",
         "cellWu": CELL,
         "blenderBasis": "Z-up works scale",
@@ -2050,6 +2071,7 @@ def stamp_glb(path: Path, contract: dict, hook: str) -> None:
         ne["family"] = contract["family"]
         ne["kind"] = contract["kind"]
         ne["ports"] = contract["ports"]
+        ne["portsByLod"] = contract.get("portsByLod") or {}
         root["extras"] = ne
     for node in nodes:
         name = node.get("name") or ""
@@ -2077,6 +2099,124 @@ def stamp_glb(path: Path, contract: dict, hook: str) -> None:
             node["extras"] = ex
             node["name"] = hook
     write_glb(path, gltf, rest)
+
+
+def _selected_contract(source_contract: dict, lod_triangles: dict) -> dict:
+    """Return the two-register runtime contract without touching authoring bytes."""
+    contract = dict(source_contract)
+    contract["deliverableRole"] = "selected_runtime_multi_lod"
+    contract["lods"] = ["lod0", "lod1"]
+    contract["exportedLods"] = ["lod0", "lod1"]
+    contract["lodTriangles"] = lod_triangles
+    contract["wiringStatus"] = "selected_runtime_wired"
+    contract["authoringMasterSha256"] = FROZEN_MASTER_SHA256
+    return contract
+
+
+def _strip_lod2(gltf: dict) -> dict:
+    """Drop only LOD2 scene nodes/meshes while preserving the authored buffers, UVs and materials."""
+    source_nodes = gltf.get("nodes") or []
+    keep_node = [not str(node.get("name") or "").startswith("LOD2_") for node in source_nodes]
+    node_map = {}
+    nodes = []
+    for old_i, node in enumerate(source_nodes):
+        if not keep_node[old_i]:
+            continue
+        node_map[old_i] = len(nodes)
+        nodes.append(dict(node))
+    for old_i, new_i in node_map.items():
+        children = source_nodes[old_i].get("children") or []
+        kept_children = [node_map[child] for child in children if child in node_map]
+        if kept_children:
+            nodes[new_i]["children"] = kept_children
+        else:
+            nodes[new_i].pop("children", None)
+
+    used_meshes = []
+    for node in nodes:
+        mesh_i = node.get("mesh")
+        if mesh_i is not None and mesh_i not in used_meshes:
+            used_meshes.append(mesh_i)
+    mesh_map = {old_i: new_i for new_i, old_i in enumerate(used_meshes)}
+    source_meshes = gltf.get("meshes") or []
+    for node in nodes:
+        if "mesh" in node:
+            node["mesh"] = mesh_map[node["mesh"]]
+    gltf["nodes"] = nodes
+    gltf["meshes"] = [source_meshes[old_i] for old_i in used_meshes]
+
+    for scene in gltf.get("scenes") or []:
+        roots = [node_map[node] for node in (scene.get("nodes") or []) if node in node_map]
+        if roots:
+            scene["nodes"] = roots
+        else:
+            scene.pop("nodes", None)
+    names = [str(node.get("name") or "") for node in nodes]
+    if any(name.startswith("LOD2_") for name in names):
+        raise RuntimeError("selected runtime still contains LOD2 nodes")
+    if not any(name.startswith("LOD0_") for name in names) or not any(name.startswith("LOD1_") for name in names):
+        raise RuntimeError("selected runtime requires LOD0 and LOD1 nodes")
+    return gltf
+
+
+def promote_selected_runtime() -> dict:
+    """Build deterministic runtime-selected parts from frozen authored source individual GLBs.
+
+    This is intentionally a JSON/chunk rewrite, not a Blender export: Blender would churn the
+    immutable master, source hierarchy, or tangents. The source master and blend are checked before
+    and after every promotion, and the selected payload retains the authored material/UV buffers.
+    """
+    master = SOURCE / "works_conduit_kit.glb"
+    blend = SOURCE / "works_conduit_kit.blend"
+    if sha256(master) != FROZEN_MASTER_SHA256:
+        raise RuntimeError("frozen conduit master hash mismatch; refusing selected promotion")
+    if sha256(blend) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("frozen conduit blend hash mismatch; refusing selected promotion")
+    PARTS.mkdir(parents=True, exist_ok=True)
+    promoted = []
+    for family in FAMILIES:
+        for kind in KINDS:
+            aid = asset_id(family, kind)
+            source = SOURCE / f"{aid}.glb"
+            target = PARTS / f"{aid}.glb"
+            gltf, rest = read_glb(source)
+            source_contract = ((gltf.get("asset") or {}).get("extras") or {}).get("spacefaceAsset") or {}
+            if source_contract.get("assetId") != aid:
+                raise RuntimeError(f"unexpected source asset identity for {aid}")
+            gltf = _strip_lod2(gltf)
+            tri = glb_triangle_counts(gltf)
+            lod_tri = {
+                "lod0": sum(count for name, count in tri.items() if name.startswith("LOD0_")),
+                "lod1": sum(count for name, count in tri.items() if name.startswith("LOD1_")),
+            }
+            if not lod_tri["lod0"] or not lod_tri["lod1"]:
+                raise RuntimeError(f"selected runtime has missing live LOD triangles for {aid}")
+            write_glb(target, gltf, rest)
+            stamp_glb(target, _selected_contract(source_contract, lod_tri), "powered" if family == "power" else "flow_mesh")
+            promoted.append({
+                "id": aid,
+                "path": str(target.relative_to(ROOT)).replace("\\", "/"),
+                "sha256": sha256(target),
+                "bytes": target.stat().st_size,
+                "lodTriangles": lod_tri,
+            })
+    if sha256(master) != FROZEN_MASTER_SHA256 or sha256(blend) != FROZEN_BLEND_SHA256:
+        raise RuntimeError("selected promotion changed frozen conduit authoring bytes")
+    inventory_path = KIT / "INVENTORY.json"
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    inventory["authoringMaster"] = {
+        "path": str(master.relative_to(ROOT)).replace("\\", "/"),
+        "sha256": FROZEN_MASTER_SHA256,
+        "bytes": master.stat().st_size,
+        "immutable": True,
+    }
+    inventory["selectedRuntime"] = {
+        "exportedLods": ["lod0", "lod1"],
+        "source": "individual immutable source pieces",
+        "parts": promoted,
+    }
+    dump_json(inventory_path, inventory)
+    return {"promoted": promoted, "masterSha256": FROZEN_MASTER_SHA256, "blendSha256": FROZEN_BLEND_SHA256}
 
 
 def export_hierarchy(root, path: Path, family=None, kind=None):
@@ -2169,16 +2309,25 @@ def assemble_piece(family, kind, lod_objs, hook_objs, collection, atlas_mat, lid
             lid_obj["spacefaceLod"] = f"lod{lod}"
             reparent(lid_obj, lid_empty)
             lod_tri[lod] += tri_count(lid_obj)
-    port_meshes = {}
-    for ob in list(type_root.children) + list(hook.children):
-        if ob.type == "MESH":
-            port_meshes[ob.name] = ob
-    ports = measure_ports(port_meshes, family, kind)
-    contract = piece_contract(family, kind, lod_tri, ports)
+    port_meshes_by_lod = {}
+    for lod in (0, 1, 2):
+        token = f"LOD{lod}_"
+        port_meshes_by_lod[f"lod{lod}"] = {
+            ob.name: ob
+            for ob in list(type_root.children) + list(hook.children)
+            if ob.type == "MESH" and ob.name.startswith(token)
+        }
+    ports_by_lod = {
+        name: measure_ports(meshes, family, kind)
+        for name, meshes in port_meshes_by_lod.items()
+    }
+    ports = ports_by_lod["lod0"]
+    contract = piece_contract(family, kind, lod_tri, ports, ports_by_lod)
     root["spacefaceAsset"] = contract
     type_root["family"] = family
     type_root["kind"] = kind
     type_root["ports"] = ports
+    type_root["portsByLod"] = ports_by_lod
     return root, contract, lod_tri
 
 
@@ -2497,7 +2646,7 @@ def build_all(skip_evidence=False):
         "packet": PACKET,
         "cycle": CYCLE,
         "cellWu": CELL,
-        "note": "Cycle 03 construction correction. Both families rebuilt. Not wired, not released.",
+        "note": "Cycle 04 lane-envelope correction. Lane family is 1.10 wu at every LOD and modular face; power geometry and palette retained. Not accepted.",
         "pieces": [],
         "atlases": {},
         "master": {},
@@ -2540,8 +2689,9 @@ def build_all(skip_evidence=False):
         albedo, orm, nrm, idb = _blank_maps()
         if family == "lane":
             paint_belt_strip(albedo, orm, nrm)
-            for obj in family_hooks[0] + family_hooks[1] + family_hooks[2]:
-                assign_belt_uv(obj, CELL)
+            for lod in (0, 1, 2):
+                for obj in family_hooks[lod]:
+                    assign_belt_uv(obj, CELL, L_BELT_W)
         for lod, rect_v in LOD_BANDS.items():
             rect = (0.0, rect_v[0], 1.0, min(rect_v[1], BELT_TILE[1] - 0.005) if lod == 2 else rect_v[1])
             to_pack = family_static[lod] + family_lids[lod]
@@ -2927,7 +3077,7 @@ def render_evidence(roots, atlas_maps, inventory, id_maps=None):
         "master": inventory["master"],
     }
     dump_json(EVIDENCE / "HASHES.json", hashes)
-    dump_json(EVIDENCE / "CYCLE_03_REPORT.json", {
+    dump_json(EVIDENCE / "CYCLE_04_REPORT.json", {
         "packet": PACKET,
         "cycle": CYCLE,
         "state": "design_candidate",
@@ -2939,8 +3089,8 @@ def render_evidence(roots, atlas_maps, inventory, id_maps=None):
             "G7": "open",
             "technical": "evidence_ready",
         },
-        "note": "Cycle 03 construction correction. Source candidate only. Not wired, not released, not accepted. Independent review of this hash is required; this report is not KEEP.",
-        "rejectedCandidate": "3d2f0395 Cycle 02",
+        "note": "Cycle 04 lane-envelope correction. Source candidate only. Not accepted. Independent review of this hash is required; this report is not KEEP.",
+        "rejectedCandidate": "Cycle 03 lane envelope 0.76 wu at every LOD",
         "repairedFailures": [
             "P0 power junction was a cell-filling cube",
             "P0 lane junction was a cube with four stubs",
@@ -2951,6 +3101,7 @@ def render_evidence(roots, atlas_maps, inventory, id_maps=None):
             "P0 lane rollers/cover/belt still read as a black ribbon at 120 px/cell",
             "P1 end hardware was a blob (power) or motor cube (lane)",
             "P1 site register collapsed both families to colored tracks / gold rails",
+            "P1 lane outer envelope projected below the fixed 6 px site-route floor",
         ],
         "construction": [
             "Galvanized ladder tray with lips that occupy ~5 px at works_top; gold jacket sits in the trough and is interrupted by rooted saddles",
@@ -2959,6 +3110,7 @@ def render_evidence(roots, atlas_maps, inventory, id_maps=None):
             "Lane T: continuous far rail, gapped near rail, branch rails meeting at the opening, thin transfer plate",
             "Lane cross: four arms plus inner fillets and a thin transfer plate",
             "Larger rollers, narrower belt, smoked cover strip over the product path only",
+            "All lane LODs, rails, rollers, belt/cover, branch throats, service enclosure, motors, end frame and brackets reauthored to a shared 1.10 wu modular port envelope",
         ],
         "kitSheet": "kit_sheet_works_top.png + kit_sheet_works_site.png + family_lineup_works_top.png",
         "portMatrix": [
@@ -2984,6 +3136,10 @@ def render_evidence(roots, atlas_maps, inventory, id_maps=None):
 
 def main():
     flags = cli_args()
+    if flags["promote_selected"]:
+        report = promote_selected_runtime()
+        print(json.dumps(report, indent=2))
+        return
     if flags["check"] and flags["skip_build"]:
         report = validate_outputs(strict=True)
         print(json.dumps({"ok": report["ok"], "errors": report["errors"][:20]}, indent=2))

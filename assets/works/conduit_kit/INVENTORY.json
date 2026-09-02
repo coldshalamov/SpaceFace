@@ -1,8 +1,8 @@
 {
   "packet": "PQ-131.06",
-  "cycle": 3,
+  "cycle": 4,
   "cellWu": 2.2,
-  "note": "Cycle 03 construction correction. Both families rebuilt. Not wired, not released.",
+  "note": "Cycle 04 lane-envelope correction. Lane family is 1.10 wu at every LOD and modular face; power geometry and palette retained. Not accepted.",
   "pieces": [
     {
       "id": "place_works_conduit_power_straight",
@@ -67,8 +67,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
-      "sha256": "A939E2FD4A22C63A2D5116B55E237F46A6D06B5CE7C936E4C56B08A07BD1DC85",
-      "bytes": 394432
+      "sha256": "E78AC72DC0DCC2138AA0E3329DAFF8172867A08E2834CF6DEC5FF535A85DECF8",
+      "bytes": 400688
     },
     {
       "id": "place_works_conduit_power_corner",
@@ -133,8 +133,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
-      "sha256": "0FE74535BC5AA6C09B07B6B10A4D1FFE0AB9E885CF459C54AFB9C89BA6BC1542",
-      "bytes": 412320
+      "sha256": "8298F91C64A82D7E56C5CECA4300AAD372EDB277F0FB20DD5AABD270B7C3ADD0",
+      "bytes": 418528
     },
     {
       "id": "place_works_conduit_power_t",
@@ -223,8 +223,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_t.glb",
-      "sha256": "8790991E0B798076E4F2A54C24C18CEDAAD01A6A2ED7A509E9D0860D2330E083",
-      "bytes": 415960
+      "sha256": "3EC18E211F8D7D01E63CEEECF759D0E967D0DD8E7339554645A81F6933ED7161",
+      "bytes": 425216
     },
     {
       "id": "place_works_conduit_power_cross",
@@ -337,8 +337,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
-      "sha256": "E070997992AE8CDAE6FF585319ACA7154365294D918F9032E8C54230C19D5CA9",
-      "bytes": 467708
+      "sha256": "81036FF398B2D50756E5E0865DC86C022F95567A2843E1964778086A502DC148",
+      "bytes": 479976
     },
     {
       "id": "place_works_conduit_power_end",
@@ -379,8 +379,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_end.glb",
-      "sha256": "0D38BE7A45CE36C45019802E3851C45A030146E1FF015CB39FF96ED0EBAC2D62",
-      "bytes": 427792
+      "sha256": "E17731BC06E22CEC5BB05728CE18A30BC80D72F68FBE71608D39BAB2091B7935",
+      "bytes": 431000
     },
     {
       "id": "place_works_conduit_power_junction",
@@ -493,8 +493,8 @@
         "powered"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
-      "sha256": "05EC1E15A05BCB6C25B81340AD92A6E06520066510AF6DB05E74116189408608",
-      "bytes": 522136
+      "sha256": "5246B8BEC54F3A7146CCC80D1F7236DCE0AC24EF08F722ECB7EB2EAF6BB83E55",
+      "bytes": 534408
     },
     {
       "id": "place_works_conduit_lane_straight",
@@ -524,7 +524,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -548,7 +548,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -559,15 +559,15 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
-      "sha256": "751E55D9E4531D877A408BB38F38698B4E7AE5E26B8929036CDAE86315863C7B",
-      "bytes": 333520
+      "sha256": "7972AFC181B1644EF2E1B34264564D19D528A7D2ED9F84E413FBE1B5912112A6",
+      "bytes": 340092
     },
     {
       "id": "place_works_conduit_lane_corner",
       "family": "lane",
       "kind": "corner",
       "lodTriangles": {
-        "lod0": 924,
+        "lod0": 912,
         "lod1": 432,
         "lod2": 192
       },
@@ -590,7 +590,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -614,7 +614,7 @@
             1.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -625,15 +625,15 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
-      "sha256": "654281521ED1735DA34054B23E1DBDF9509A68E59A02E8BAB762FAC9BC99F253",
-      "bytes": 360468
+      "sha256": "094DC5C81E5526CF9EA38ED24D126635A2B2DB74623D39D0FD0E886385772500",
+      "bytes": 365772
     },
     {
       "id": "place_works_conduit_lane_t",
       "family": "lane",
       "kind": "t",
       "lodTriangles": {
-        "lod0": 1210,
+        "lod0": 1198,
         "lod1": 614,
         "lod2": 180
       },
@@ -656,7 +656,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -680,7 +680,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -704,7 +704,7 @@
             1.0,
             0.0
           ],
-          "width": 0.794,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -715,15 +715,15 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
-      "sha256": "3A447ADD078CA58B573037EBCEB3BA24912ED0553B8007050B263DD96E090222",
-      "bytes": 405432
+      "sha256": "7D4D49373ABFFDBAA04F26EBE54FC25C14B5F58A48DA775A230A0A8A2F02A5B3",
+      "bytes": 413776
     },
     {
       "id": "place_works_conduit_lane_cross",
       "family": "lane",
       "kind": "cross",
       "lodTriangles": {
-        "lod0": 1556,
+        "lod0": 1500,
         "lod1": 828,
         "lod2": 252
       },
@@ -746,7 +746,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -770,7 +770,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -794,7 +794,7 @@
             -1.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -818,7 +818,7 @@
             1.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -829,8 +829,8 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
-      "sha256": "7EA5018BC232498D789B408E2BFD814DEEA69FBAD0F3B75D3133AB66D755EB74",
-      "bytes": 449632
+      "sha256": "04AA9EC83604D9E96556ED5A33FA6EAB81B5F2F4D527732AB857438D4F980C4A",
+      "bytes": 456748
     },
     {
       "id": "place_works_conduit_lane_end",
@@ -860,7 +860,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -871,15 +871,15 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
-      "sha256": "BE6A20D98A43A5114034EDF3CCB369BC5F0EE2617587CF5CAAFBE5581091EEB1",
-      "bytes": 358020
+      "sha256": "639B00E5F1277237049166300DB2FA2D26E68A11C9AC18C716141370B63E0982",
+      "bytes": 361492
     },
     {
       "id": "place_works_conduit_lane_junction",
       "family": "lane",
       "kind": "junction",
       "lodTriangles": {
-        "lod0": 1216,
+        "lod0": 1136,
         "lod1": 712,
         "lod2": 276
       },
@@ -902,7 +902,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -926,7 +926,7 @@
             0.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -950,7 +950,7 @@
             -1.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -974,7 +974,7 @@
             1.0,
             0.0
           ],
-          "width": 0.76,
+          "width": 1.1,
           "height": 0.26,
           "zMin": 0.0,
           "zMax": 0.26,
@@ -985,8 +985,8 @@
         "flow_mesh"
       ],
       "path": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
-      "sha256": "376DC71CD185CB93B9001D40F2D0C2F7A9B6848DBF444D4CD8D633B7DF896E5F",
-      "bytes": 441156
+      "sha256": "F15A0F8837338A2396F029F1EFDD68CC50811D98552441D1C32BE07195C8D98B",
+      "bytes": 446416
     }
   ],
   "atlases": {
@@ -1012,19 +1012,19 @@
     "lane": [
       {
         "path": "assets/works/conduit_kit/source/textures/lane_atlas_basecolor.png",
-        "sha256": "0E87FD41F2CCBDF9DF3504F77937B75AA9463463BCA409A31A0BA083CB21AA6D"
+        "sha256": "D0CEBA7D88ECABABC259B42436BC135FCFD393CF222D02EDD96F388DE215E634"
       },
       {
         "path": "assets/works/conduit_kit/source/textures/lane_atlas_orm.png",
-        "sha256": "119155C362D24E8E6972BD6BBA3CBD60818F139C2948CC7B206750BE7EBC083B"
+        "sha256": "DD264C2AD5B6E46CC426575B2F591B9676F02C6081A181EE68F2AC3E9BDFC892"
       },
       {
         "path": "assets/works/conduit_kit/source/textures/lane_atlas_normal.png",
-        "sha256": "FE95C3230E5689037F8D67C5B900D6158F3C76C5FF7771057C2A916C20A66B95"
+        "sha256": "265269F4FE6F545B4A8AEBF5194F50CCB32F686DCF5A08EA0A1622E1647F23A4"
       },
       {
         "path": "assets/works/conduit_kit/source/textures/lane_atlas_id.png",
-        "sha256": "CFFED5713C0B7746FD616F39F8991F63A7702CA24868084F3B842229B9C9C956",
+        "sha256": "C81CCD7B24BFF1D5CA1E61E77FCB6A6BD913B00BE2F0E0F8DEB4150FA134E3FE",
         "role": "material_id_diagnostic"
       }
     ]
@@ -1032,16 +1032,16 @@
   "master": {
     "glb": "assets/works/conduit_kit/source/works_conduit_kit.glb",
     "blend": "assets/works/conduit_kit/source/works_conduit_kit.blend",
-    "sha256": "ECCACB25EEC7C6BDD00DA5E5B87586B07DDD54CEC6FD14A6A09EDAFC8F1F137B",
-    "bytes": 2380004,
-    "blendSha256": "7731C43CD5917285809E18CE87CF44D313FC14D28AB53639F1DE6351FC31DF91"
+    "sha256": "1CC1A0C72684BB4E660406B3392921473C55D677CF88AAC4CDC00ED050931A53",
+    "bytes": 2404604,
+    "blendSha256": "A272D1297A2A5FB0F2A00046C5DDA59FD9E67C08BA20302295282528357C805D"
   },
   "producer": {
     "packet": "PQ-131.06",
-    "cycle": 3,
+    "cycle": 4,
     "builder": {
       "path": "tools/blender/build_works_conduit_kit.py",
-      "sha256": "080F3AAE47A7E4427F7AF35876713F7E4EE929272C68674222368D3C9D86882C"
+      "sha256": "7A7FD16EB618E8FBC72499A1631F933A7ACB4DCD449CD4E78E0F691A678FB286"
     },
     "camera": {
       "path": "tools/blender/spaceface_works_camera.py",
@@ -1052,5 +1052,140 @@
       "exe": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe",
       "sha256": "1E6624AF112B3C936F4B038B025EBD2BF00AE72C4B62881A6787166D71C58FA5"
     }
+  },
+  "authoringMaster": {
+    "path": "assets/works/conduit_kit/source/works_conduit_kit.glb",
+    "sha256": "1CC1A0C72684BB4E660406B3392921473C55D677CF88AAC4CDC00ED050931A53",
+    "bytes": 2404604,
+    "immutable": true
+  },
+  "selectedRuntime": {
+    "exportedLods": [
+      "lod0",
+      "lod1"
+    ],
+    "source": "individual immutable source pieces",
+    "parts": [
+      {
+        "id": "place_works_conduit_power_straight",
+        "path": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
+        "sha256": "33A2566FDB526AC7E50F613086B1567838E11A2036204567FEF6CACC11CF1D8D",
+        "bytes": 400344,
+        "lodTriangles": {
+          "lod0": 788,
+          "lod1": 344
+        }
+      },
+      {
+        "id": "place_works_conduit_power_corner",
+        "path": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
+        "sha256": "B209BE2A739AA22323EB750715A1457865FD018E01BD2763949C83CE757E84E9",
+        "bytes": 418180,
+        "lodTriangles": {
+          "lod0": 912,
+          "lod1": 472
+        }
+      },
+      {
+        "id": "place_works_conduit_power_t",
+        "path": "assets/ships/parts/works/place_works_conduit_power_t.glb",
+        "sha256": "1475FAC9E5E705A68339F0E20B32E5ED26D650403F0ADFD49C9B04F723C84930",
+        "bytes": 424868,
+        "lodTriangles": {
+          "lod0": 872,
+          "lod1": 492
+        }
+      },
+      {
+        "id": "place_works_conduit_power_cross",
+        "path": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
+        "sha256": "3FB2750332AB6F958A39596A9C53FC36576497A93F8C21C4AE4025FFF6B64A69",
+        "bytes": 479628,
+        "lodTriangles": {
+          "lod0": 1276,
+          "lod1": 740
+        }
+      },
+      {
+        "id": "place_works_conduit_power_end",
+        "path": "assets/ships/parts/works/place_works_conduit_power_end.glb",
+        "sha256": "23092DEF1C2EDB604FB9490DAE4D78CC8F7EC7752BF986A55C700BCE7D4DABAF",
+        "bytes": 430652,
+        "lodTriangles": {
+          "lod0": 952,
+          "lod1": 464
+        }
+      },
+      {
+        "id": "place_works_conduit_power_junction",
+        "path": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
+        "sha256": "EB73E66968D3B7C2D22E4F5F506015D265506BF7F28316A763051354945EE47A",
+        "bytes": 534056,
+        "lodTriangles": {
+          "lod0": 1620,
+          "lod1": 724
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_straight",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
+        "sha256": "4C58A6234C41E76FC57D251C28F49BEFCB04FDEC603ECD1770D8832D0313C17C",
+        "bytes": 339740,
+        "lodTriangles": {
+          "lod0": 704,
+          "lod1": 340
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_corner",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
+        "sha256": "1998CD0ADC87E46FCC495CF83000DBA01F19EF2260396A4DE9F97AFB8D32CB35",
+        "bytes": 365420,
+        "lodTriangles": {
+          "lod0": 912,
+          "lod1": 432
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_t",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
+        "sha256": "FA25C702DC57BF6AD57210B4BC640C98176551CFD59B158F4E72594B4CB56F5D",
+        "bytes": 413424,
+        "lodTriangles": {
+          "lod0": 1198,
+          "lod1": 614
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_cross",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
+        "sha256": "27DF453F64DFFC53ED655D76C5FBD7BE79C9AEBC5B84953A1009022FA2D83A39",
+        "bytes": 456396,
+        "lodTriangles": {
+          "lod0": 1500,
+          "lod1": 828
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_end",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
+        "sha256": "A14B80F5053D9FFDA8A206AC2151FCCD79939D4B0D55D0090ECB75E1F488353C",
+        "bytes": 361144,
+        "lodTriangles": {
+          "lod0": 868,
+          "lod1": 412
+        }
+      },
+      {
+        "id": "place_works_conduit_lane_junction",
+        "path": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
+        "sha256": "B221EC951A1D5991093B881E3298032F25113B115843ABFC5F0BA5B273EE5792",
+        "bytes": 445772,
+        "lodTriangles": {
+          "lod0": 1136,
+          "lod1": 712
+        }
+      }
+    ]
   }
 }

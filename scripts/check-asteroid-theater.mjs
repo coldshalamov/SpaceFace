@@ -385,7 +385,10 @@ try {
         out.problems.push('§5 an identical hopper-full refusal replayed inside the 5s window');
       }
       if (rep2.refusalsSuppressed <= suppressedBefore) {
-        out.problems.push('§5 vacuous: the repeat rule was never reached by the second refusal');
+        out.problems.push(`§5 vacuous: the repeat rule was never reached by the second refusal`
+          + ` (suppressed ${suppressedBefore} -> ${rep2.refusalsSuppressed},`
+          + ` refusals ${afterCargo.cargoRefusals} -> ${rep2.cargoRefusals},`
+          + ` rover ${d.avatar.col},${d.avatar.row})`);
       }
       cargoRef.usedVolume = usedWas;
       await wait(220);                       // let the lid slide back open before anything else looks
@@ -1057,21 +1060,40 @@ try {
           notes.push(`${label}: §6.5 Network lens brightens runs ${brightest(offNet)} -> ${brightest(onNet)}`);
         }
 
-        // ---- §7 the site register simplifies: the armour comes off, the runs stay, the seam
-        // outlines go thin so the rover's yellow wins its margin back (PQ-130.05's recorded defect).
+        // ---- §7 authored conduits retain physical width at both resident LOD registers; topology
+        // and component ownership stay present while the renderer flips only tagged visibility.
         const work = await readNet();
         await page.keyboard.press('KeyZ');
         await page.waitForTimeout(700);
         const siteReg = await readNet();
-        notes.push(`${label}: §7 register work(armour ${work.net.casings}, lane ${work.net.laneWidthPx}px,`
-          + ` seam α ${work.lens.seamAlpha}) -> site(armour ${siteReg.net.casings},`
+        notes.push(`${label}: §7 register work(authored ${work.net.authoredCount}/${work.net.mount?.authoredCount || 0},`
+          + ` lod0/lod1 ${work.net.visibleLods?.lod0 || 0}/${work.net.visibleLods?.lod1 || 0}, lane ${work.net.laneWidthPx}px,`
+          + ` seam α ${work.lens.seamAlpha}) -> site(authored ${siteReg.net.authoredCount}/${siteReg.net.mount?.authoredCount || 0},`
+          + ` lod0/lod1 ${siteReg.net.visibleLods?.lod0 || 0}/${siteReg.net.visibleLods?.lod1 || 0},`
           + ` lane ${siteReg.net.laneWidthPx}px, seam α ${siteReg.lens.seamAlpha})`);
         if (siteReg.net.register !== 'site') failures.push(`${label}: §7 Z did not reach the site register`);
-        // OWNER RULING 2026-08-21: a run is a PHYSICAL conduit at both registers. An earlier build
-        // shed the armour at site zoom and the network became flat coloured lines drawn on the rock.
-        if (!(work.net.casings > 0)) failures.push(`${label}: §7 the work-zoom runs wear no armour at all`);
-        if (!(siteReg.net.casings > 0)) {
-          failures.push(`${label}: §7 the site register drew ${siteReg.net.casings} armour meshes — the runs are flat lines there`);
+        const assertAuthoredNetwork = (net, register, visibleLod) => {
+          if (net.mount?.phase !== 'authored' || net.authoredCount !== net.runs.length
+            || net.mount?.authoredCount !== net.authoredCount) {
+            failures.push(`${label}: §7 ${register} authored mount is incomplete (${JSON.stringify(net.mount)})`);
+          }
+          const families = new Set(net.runs.map((run) => run.kind));
+          if (!families.has('power') || !families.has('lane')) {
+            failures.push(`${label}: §7 ${register} lacks authored power/lane topology (${[...families].join(',')})`);
+          }
+          if (!(net.visibleLods?.[visibleLod] > 0)) {
+            failures.push(`${label}: §7 ${register} has no visible resident ${visibleLod} conduit meshes (${JSON.stringify(net.visibleLods)})`);
+          }
+          const other = visibleLod === 'lod0' ? 'lod1' : 'lod0';
+          if ((net.visibleLods?.[other] || 0) !== 0) {
+            failures.push(`${label}: §7 ${register} leaked ${other} conduit meshes (${JSON.stringify(net.visibleLods)})`);
+          }
+        };
+        assertAuthoredNetwork(work.net, 'work', 'lod0');
+        assertAuthoredNetwork(siteReg.net, 'site', 'lod1');
+        // Keep the flat-line prohibition: authored body width must survive at the site register.
+        if (!(work.net.laneWidthPx > siteReg.net.laneWidthPx)) {
+          failures.push(`${label}: §7 register probe width did not update (${work.net.laneWidthPx} -> ${siteReg.net.laneWidthPx})`);
         }
         if (!(siteReg.net.laneWidthPx >= 6)) {
           failures.push(`${label}: §7 the lane run is ${siteReg.net.laneWidthPx}px across at the site register — a hairline, not a conveyor`);

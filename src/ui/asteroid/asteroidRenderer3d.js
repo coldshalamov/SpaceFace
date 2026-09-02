@@ -55,7 +55,10 @@ import {
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
   makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
-import { createWorksPartLoader } from './worksPartLoader.js';
+import {
+  createWorksPartLoader,
+  resolveWorksConduitPiece,
+} from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -69,6 +72,234 @@ export const CONTACT_RING = Object.freeze([
   [-1, 0], [1, 0],
   [-1, 1], [0, 1], [1, 1],
 ]);
+
+// Placement is register-invariant: only visibility and projected-pixel reporting change between
+// work and site. This makes a zoom flip a LOD operation rather than a topology transaction.
+export function worksConduitRegisterSemantics(register, pixelsPerCell) {
+  if (register !== 'work' && register !== 'site') throw new Error(`unknown Works register ${register}`);
+  if (!Number.isFinite(pixelsPerCell) || pixelsPerCell <= 0) {
+    throw new TypeError('conduit register semantics require positive pixels per cell');
+  }
+  // The authored lane is physically 1.10 wu at every LOD. Keep its fractional
+  // representation only for the board metric; expose the world width so probes
+  // cannot confuse a fraction with the physical conduit envelope.
+  const laneWidthWu = 1.10;
+  const powerWidthWu = 0.48;
+  const laneOffset = S * 0.20;
+  const laneWidth = laneWidthWu / S;
+  const powerWidth = powerWidthWu / S;
+  return Object.freeze({
+    register,
+    laneOffset,
+    laneWidthWu,
+    powerWidthWu,
+    laneWidth,
+    powerWidth,
+    pixelsPerCell,
+    laneWidthPx: laneWidth * pixelsPerCell,
+    powerWidthPx: powerWidth * pixelsPerCell,
+  });
+}
+
+// One mutable hook shell belongs to one live family/network component, not to every cell. Static
+// PBR atlas samplers remain blueprint-shared. Only a lane's base-color sampler scrolls, so that is
+// the only texture copied per component; normal/ORM/emissive registration stays exactly authored.
+export function createWorksConduitMaterialScope() {
+  const components = new Map();
+  let disposed = false;
+  const componentKey = (family, key) => `${family}:${key}`;
+  function bind(meshes, family, key) {
+    if (disposed) throw new Error('conduit material scope is disposed');
+    const id = componentKey(family, key);
+    let component = components.get(id);
+    if (!component) {
+      const base = (meshes || [])
+        .flatMap((mesh) => Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+        .find((material) => material && typeof material.clone === 'function');
+      if (!base) return null;
+      const material = base.clone();
+      material.userData = { ...(material.userData || {}), worksConduitComponentOwned: true };
+      let flowSampler = null;
+      if (family === 'lane' && material.map?.isTexture && typeof material.map.clone === 'function') {
+        flowSampler = material.map.clone();
+        flowSampler.userData = { ...(flowSampler.userData || {}), worksConduitComponentOwned: true };
+        material.map = flowSampler;
+      }
+      component = { id, family, key, material, flowSampler, texturePhase: 0 };
+      components.set(id, component);
+    }
+    for (const mesh of meshes || []) {
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(() => component.material)
+        : component.material;
+    }
+    return component;
+  }
+  function dispose() {
+    if (disposed) return false;
+    disposed = true;
+    for (const component of components.values()) {
+      component.flowSampler?.dispose?.();
+      component.material?.dispose?.();
+    }
+    components.clear();
+    return true;
+  }
+  return Object.freeze({ bind, dispose, stats: () => ({ components: components.size }) });
+}
+
+// Kept as a narrow test seam: callers that need component reuse should pass the same scope.
+export function isolateWorksConduitMaterials(meshes, { family, key, scope } = {}) {
+  if (!scope || typeof scope.bind !== 'function') throw new TypeError('conduit material scope is required');
+  return scope.bind(meshes, family, key);
+}
+
+// Atomic authored-conduit transaction.  A generation acquires a deduplicated template set first,
+// prepares every cell off-scene, and only then mounts the complete set. A missing package fails
+// closed: accepted authored art is never silently co-rendered with the removed procedural bodies.
+export function createConduitMountLifecycle({
+  acquireTemplates,
+  prepare,
+  mount,
+  unmount,
+  release,
+  createScope = () => null,
+  releaseScope = () => {},
+  isClosed = () => false,
+} = {}) {
+  for (const [name, fn] of Object.entries({ acquireTemplates, prepare, mount, unmount, release, createScope, releaseScope })) {
+    if (typeof fn !== 'function') throw new TypeError(`[conduitMount] ${name} must be a function`);
+  }
+  let generation = 0;
+  let current = [];
+  let currentTemplates = null;
+  let currentScope = null;
+  let state = Object.freeze({ generation, phase: 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
+  const publish = (next) => {
+    state = Object.freeze({ generation, ...next });
+    return state;
+  };
+  const releaseRecord = (record) => {
+    if (!record || record.released) return false;
+    record.released = true;
+    if (record.mounted) {
+      record.mounted = false;
+      unmount(record);
+    }
+    release(record.source, record);
+    return true;
+  };
+  const retire = () => {
+    for (let i = current.length - 1; i >= 0; i--) releaseRecord(current[i]);
+    current = [];
+    if (currentScope) releaseScope(currentScope);
+    currentScope = null;
+    if (currentTemplates) currentTemplates.release();
+    currentTemplates = null;
+  };
+  const cancelled = (attempt) => attempt !== generation || isClosed();
+  async function rebuild(desiredInput) {
+    const desired = Array.isArray(desiredInput) ? desiredInput.slice() : [];
+    generation += 1;
+    const attempt = generation;
+    publish({
+      phase: desired.length ? 'loading' : 'empty',
+      desiredCount: desired.length,
+      authoredCount: current.length,
+      templateCount: currentTemplates?.ids?.length || 0,
+      failure: null,
+    });
+    if (!desired.length) {
+      retire();
+      publish({ phase: 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
+      return { status: 'empty', state };
+    }
+    let templates = null;
+    let scope = null;
+    const staged = [];
+    const releaseStaged = () => {
+      for (let i = staged.length - 1; i >= 0; i--) releaseRecord(staged[i]);
+      staged.length = 0;
+      if (scope) releaseScope(scope);
+      scope = null;
+      if (templates) templates.release();
+      templates = null;
+    };
+    try {
+      const ids = [...new Set(desired.map((part) => part.assetId))];
+      templates = await acquireTemplates(ids);
+      if (!templates) throw new Error('authored conduit templates are unavailable');
+      scope = createScope(desired);
+      if (cancelled(attempt)) {
+        releaseStaged();
+        return { status: 'cancelled', state };
+      }
+      for (let i = 0; i < desired.length; i++) {
+        const rec = desired[i];
+        const source = templates.instantiate(rec.assetId);
+        if (!source) throw new Error(`authored conduit clone is unavailable for ${rec.assetId}`);
+        if (cancelled(attempt)) {
+          release({ source, desired: rec });
+          releaseStaged();
+          return { status: 'cancelled', state };
+        }
+        let prepared = null;
+        try {
+          prepared = prepare(source, rec, i, scope);
+        } catch (error) {
+          release(source, { source, desired: rec });
+          throw error;
+        }
+        if (!prepared) {
+          release({ source, desired: rec });
+          throw new Error(`authored conduit preparation failed for ${rec.assetId}`);
+        }
+        staged.push({ ...prepared, source, desired: rec, released: false, mounted: false });
+      }
+      if (cancelled(attempt)) {
+        releaseStaged();
+        return { status: 'cancelled', state };
+      }
+      for (const record of staged) {
+        record.mounted = true;
+        mount(record);
+      }
+      if (cancelled(attempt)) {
+        releaseStaged();
+        return { status: 'cancelled', state };
+      }
+      // Mount the complete replacement before retiring the prior generation. JavaScript cannot
+      // present between these calls, so the scene never exposes a blank conduit frame; a failed
+      // mount still leaves the previous batch untouched.
+      retire();
+      current = staged.splice(0);
+      currentTemplates = templates;
+      templates = null;
+      currentScope = scope;
+      scope = null;
+      publish({ phase: 'authored', desiredCount: desired.length, authoredCount: current.length, templateCount: ids.length, failure: null });
+      return { status: 'authored', state };
+    } catch (error) {
+      releaseStaged();
+      if (cancelled(attempt)) return { status: 'cancelled', state };
+      const failure = error?.message || String(error);
+      publish({
+        phase: 'failed',
+        desiredCount: desired.length,
+        authoredCount: current.length,
+        templateCount: currentTemplates?.ids?.length || 0,
+        failure,
+      });
+      return { status: 'failed', state };
+    }
+  }
+  function cancel(reason = 'cancelled') {
+    generation += 1;
+    retire();
+    publish({ phase: reason === 'disposed' ? 'disposed' : 'empty', desiredCount: 0, authoredCount: 0, templateCount: 0, failure: null });
+  }
+  return Object.freeze({ rebuild, cancel, stats: () => state });
+}
 
 // A late authored asset must never mount into a record/ghost that was replaced while the network
 // request was pending. Both installed and placement paths use this one settlement rule so their
@@ -254,6 +485,96 @@ export function advanceDerrickDrumPhase(phase, moving, motionReduce, dt) {
   const current = Number.isFinite(phase) ? phase : 0;
   if (!moving || motionReduce || !Number.isFinite(dt) || dt <= 0) return current;
   return current + dt * 1.1;
+}
+
+// The gas tap's authored atlas is permanent structural surfacing. Only the hooded lamp glass is
+// mutable; the plate, valve, wheel, gauge, and hose keep their shared authored atlas materials.
+export function bindAuthoredGasTap(group) {
+  const hooks = group?.userData?.worksGasTapHooks;
+  if (!hooks?.valve_wheel || !hooks?.gauge_needle || !hooks?.lamp) {
+    throw new Error('Gas tap hook hierarchy is unavailable');
+  }
+  const lampMaterials = [];
+  hooks.lamp.traverse((node) => {
+    if (!node.isMesh || !/^LOD[01]_lamp$/u.test(node.name || '')) return;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of rows) {
+      if (!material || material.userData?.worksInstanceOwned !== true) {
+        throw new Error('Gas tap lamp material must be instance-owned');
+      }
+      if (!lampMaterials.includes(material)) lampMaterials.push(material);
+    }
+  });
+  if (!lampMaterials.length) throw new Error('Gas tap hooks own no lens status materials');
+  const wheelBase = hooks.valve_wheel.rotation.y;
+  const needleBase = hooks.gauge_needle.rotation.y;
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      wheel: hooks.valve_wheel,
+      needle: hooks.gauge_needle,
+      lamp: lampMaterials[0],
+      lampAnchor: hooks.lamp,
+      setLamp(hex, intensity) {
+        for (const material of lampMaterials) {
+          material.color.setHex(hex);
+          material.emissive.setHex(hex);
+          material.emissiveIntensity = intensity;
+        }
+      },
+      setWheelPhase(phase) {
+        hooks.valve_wheel.rotation.y = wheelBase + phase;
+      },
+      setNeedleAngle(angle) {
+        hooks.gauge_needle.rotation.y = needleBase + angle;
+      },
+    },
+    pulses: [],
+  };
+}
+
+// A stopped wheel keeps its last physical pose. Advance only from the frame delta while the tap
+// is actually producing, so resuming after an idle interval cannot jump the wheel to global time.
+export function advanceGasTapWheelPhase(phase, running, motionReduce, dt) {
+  const current = Number.isFinite(phase) ? phase : 0;
+  if (!running || motionReduce || !Number.isFinite(dt) || dt <= 0) return current;
+  return current + dt * 2.4;
+}
+
+// Needle target in radians from the face's 12 o'clock rest pose: pressure follows production.
+export function gasTapNeedleTarget(state, motionReduce) {
+  if (state === 'running') return motionReduce ? -1.05 : -1.2;
+  if (state === 'throttled') return -0.6;
+  if (state === 'limited') return -0.35;
+  return 0;
+}
+
+// The tap is authored clamped to its cell's +X rib (lance piercing the +X pocket). The live gas
+// contact can sit on any in-plane side, so the manifold yaws in the cut plane toward the live
+// contact while keeping authored 1x scale, native base anchoring, and its one-cell footprint.
+export function gasTapContactYawForContacts(contacts) {
+  for (const contact of contacts) {
+    if (!contact || contact.kind !== 'gas') continue;
+    return Math.atan2(contact.dy, contact.dx);
+  }
+  return 0;
+}
+
+// Keep the gas tap's proof pose numerically identical to the permanent machine mount: authored
+// 1x scale, zero rotation (canonical +X rib — a proof cell has no live gas contact), native base
+// anchoring on the cell floor, and its one-cell footprint. Never the generic 2-cell proof scaling.
+export function gasTapProofTransform({ cellX, cellY, cellSize } = {}) {
+  for (const value of [cellX, cellY, cellSize]) {
+    if (!Number.isFinite(value)) throw new TypeError('Gas tap proof transform requires finite cell values');
+  }
+  return {
+    scale: 1,
+    rotation: [0, 0, 0],
+    position: [cellX, cellY - cellSize / 2, 0],
+    footprintCells: 1,
+  };
 }
 
 // The generic proof camera was established for interior parts that need a Y-up-to-Works seating
@@ -736,6 +1057,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredExtractorGhostGen = 0;
   let authoredRefineryGen = 0;
   let authoredRefineryGhostGen = 0;
+  let authoredGasTapGen = 0;
+  let authoredGasTapGhostGen = 0;
   let authoredDerrickGen = 0;
   let worksProofWanted = false;
   let worksProofArmed = false;
@@ -1011,6 +1334,26 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const transform = derrickProofTransformForBounds(native, {
       cellX: worldX(WORKS_PROOF_CELL.col),
       cellY: worldY(WORKS_PROOF_CELL.row),
+    });
+    group.position.fromArray(transform.position);
+    group.updateMatrixWorld(true);
+    return { native, ...transform };
+  }
+  function seatWorksGasTapProofGroup(group) {
+    group.rotation.set(0, 0, 0);
+    group.scale.set(1, 1, 1);
+    group.position.set(0, 0, 0);
+    const nativeBox = measureWorksBox(group, true);
+    nativeBox.getSize(worksSize);
+    const native = {
+      min: nativeBox.min.toArray(),
+      max: nativeBox.max.toArray(),
+      size: worksSize.toArray(),
+    };
+    const transform = gasTapProofTransform({
+      cellX: worldX(WORKS_PROOF_CELL.col),
+      cellY: worldY(WORKS_PROOF_CELL.row),
+      cellSize: S,
     });
     group.position.fromArray(transform.position);
     group.updateMatrixWorld(true);
@@ -1975,11 +2318,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const CABLE_DEAD = new THREE.Color(0x5f574c);   // no generator on this net: bare, desaturated metal
   const LANE_LIVE = new THREE.Color(0x7d97ab);    // a lane with stock in it — pale steel jacket
   const LANE_DEAD = new THREE.Color(0x5b5b5c);    // track bolted to nothing
-  const overlayParts = [];       // { kind, key, mat, mesh } — one per NETWORK, state-driven
-  const overlayCasings = [];     // shared dark armour, state-free
+  const overlayParts = [];       // retained only for the legacy renderer; authored parts live below
+  const overlayCasings = [];     // retained only for legacy cleanup; never co-rendered with art
+  const authoredOverlayParts = []; // { family, key, source, seat, mats, textures } per live cell
+  let conduitMountLifecycle = null;
   const laneFlows = [];          // { key, routes:[{pts,cum,len}], phase }
   const netState = { power: new Map(), lane: new Map() };
   const overlayWidth = { lane: 0, power: 0 };    // cell fractions of the last build, for §7 checks
+  function refreshAuthoredOverlayRegisterMetrics() {
+    const metrics = worksConduitRegisterSemantics(
+      zoomRegister,
+      S * registerPxPerWu(zoomRegister),
+    );
+    overlayWidth.lane = metrics.laneWidth;
+    overlayWidth.power = metrics.powerWidth;
+    overlayWidth.regPxPerCell = metrics.pixelsPerCell;
+    return metrics;
+  }
   const RUNNING_STATES = new Set(['running', 'limited', 'throttled', 'building', 'staged']);
   // A LAMP THAT MEANS "BROKEN", NOT "HUNGRY". Law §5 gave starved/unpowered a DARK housing plus a
   // gold want chip (PQ-130.07) and that stays. These two are different in kind: a machine seated
@@ -2961,9 +3316,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     sc.updateProjectionMatrix();
   }
   function setZoomRegister(reg) {
-    if (worksLoader) worksLoader.setRegister(reg);
     if (zoomRegister === reg && !zoomAnim) return;
     zoomRegister = reg;
+    if (worksLoader) worksLoader.setRegister(reg);
+    refreshAuthoredOverlayRegisterMetrics();
     const to = reg === 'site' ? siteZoomK() : 1;
     if (motionReduce || ZOOM_SNAP_S <= 0) {
       zoomAnim = null;
@@ -3003,6 +3359,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     renderer.setSize(w, h, false);
     bloom.setSize(Math.round(w * dpr), Math.round(h * dpr));
     applyView();
+    // The topology signature deliberately excludes viewport size. Refresh only the resident
+    // projected-width probe after layout changes; no template acquire or conduit rebuild belongs
+    // on this path.
+    refreshAuthoredOverlayRegisterMetrics();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null;
   if (ro) ro.observe(wrapEl);
@@ -3785,10 +4145,92 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec;
   }
 
+  // The gas tap is authored clamped to its cell's +X rib with the lance piercing the +X pocket.
+  // The live gas contact can sit on any in-plane side, so the manifold yaws in the cut plane
+  // toward the first live gas contact while keeping authored 1x scale, native base anchoring
+  // (underside on the cell floor), and its one-cell footprint. No 2-cell proof scaling.
+  function gasTapSeatingYaw(col, row) {
+    if (!field) return 0;
+    for (const [dc, dr] of CONTACT_RING) {
+      const c = col + dc;
+      const r = row + dr;
+      const tile = (c >= 0 && c < COLS && r >= 0 && r < ROWS && field[c]) ? field[c][r] : null;
+      if (tile && contactKind(tile) === 'gas') {
+        return gasTapContactYawForContacts([{ kind: 'gas', dx: dc, dy: -dr }]);
+      }
+    }
+    return 0;
+  }
+
+  function installAuthoredGasTap(rec, group) {
+    const authored = bindAuthoredGasTap(group);
+    authored.group.rotation.z = gasTapSeatingYaw(rec.col, rec.row);
+    authored.group.position.set(0, -S / 2, 0);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.wheelPhase = 0;
+    rec.needleAngle = 0;
+    rec.pending = false;
+  }
+
+  function loadAuthoredGasTap(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Gas tap cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredGasTapGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_gas_tap').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Gas tap load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredGasTap(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Gas tap install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Gas tap load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
+  function buildAuthoredGasTapAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksGasTap:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+      wheelPhase: 0, needleAngle: 0,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredGasTap(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
     if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
     if (m.defId === 'sm_extractor') return buildAuthoredExtractorAt(m);
     if (m.defId === 'sm_refinery') return buildAuthoredRefineryAt(m);
+    if (m.defId === 'sm_gas_tap') return buildAuthoredGasTapAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -3895,7 +4337,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return new THREE.Color(STATUS_COLORS[(status && status.state) || 'idle'] || STATUS_COLORS.idle).getHex();
   }
 
-  function syncMachines(site, projection, timeS) {
+  function syncMachines(site, projection, timeS, dt = 0) {
     const seen = new Set();
     wantChipsUsed = 0;
     if (site) {
@@ -3961,9 +4403,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const spinAngle = motionReduce ? 0.8 : timeS * 1.1;
         if (rec.dyn.setSpin) rec.dyn.setSpin(spinAngle);
         else if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = spinAngle;
-        if (rec.dyn.turbine) {
-          rec.dyn.turbine.rotation.z = motionReduce
-            ? 0.4 : timeS * ((status && status.genMW) ? 5 : 0.5);
+        // The authored gas tap: the manifold yaws to the live gas contact, the handwheel turns
+        // only while the tap produces (frame delta, never a resume jump), and the gauge needle
+        // eases toward the pressure the sim actually reports.
+        if (rec.defId === 'sm_gas_tap' && rec.authoredGroup) {
+          rec.authoredGroup.rotation.z = gasTapSeatingYaw(rec.col, rec.row);
+        }
+        if (rec.dyn.setWheelPhase) {
+          rec.wheelPhase = advanceGasTapWheelPhase(rec.wheelPhase, running, motionReduce, dt);
+          rec.dyn.setWheelPhase(rec.wheelPhase);
+        }
+        if (rec.dyn.setNeedleAngle) {
+          const needleTarget = gasTapNeedleTarget(state, motionReduce);
+          const needleCurrent = Number.isFinite(rec.needleAngle) ? rec.needleAngle : 0;
+          rec.needleAngle = motionReduce || !(dt > 0)
+            ? needleTarget
+            : needleCurrent + (needleTarget - needleCurrent) * Math.min(1, dt * 3);
+          rec.dyn.setNeedleAngle(rec.needleAngle);
         }
         if (rec.dyn.piston) {
           const bob = motionReduce || !running ? 0 : Math.abs(Math.sin(timeS * 3.1)) * S * 0.09;
@@ -4048,7 +4504,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // lane's flow — is a per-frame material read in syncNetworks(); a state change must never cost a
   // geometry rebuild.
   function overlaySignature(site, projection = null) {
-    if (!site) return `none|${zoomRegister}`;
+    if (!site) return 'none';
     let h = 17;
     for (const i of site.overlays.power) h = (h * 31 + i + 1) | 0;
     h = (h * 37 + 7) | 0;
@@ -4066,11 +4522,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       for (const comp of projection.power) ph = (((ph * 31) ^ hash32(comp.cells.length, comp.cells[0] || 0, 11)) | 0);
       for (const comp of projection.lanes) ph = (((ph * 33) ^ hash32(comp.cells.length, comp.cells[0] || 0, 12)) | 0);
     } else ph = 0;
-    // The solved run width depends on the canvas, so a resize is a topology change for this layer.
-    return `${h}|${zoomRegister}|${ph}|${Math.round(registerPxPerWu(zoomRegister))}`;
+    // Both authored LODs reside in one template payload. A register or resize only flips existing
+    // visibility; it must not begin another topology acquisition transaction.
+    return `${h}|${ph}`;
   }
 
-  function disposeOverlayParts() {
+  function disposeLegacyProceduralOverlayParts() {
     for (const part of overlayParts) {
       overlayRoot.remove(part.mesh);
       part.mesh.geometry.dispose();
@@ -4109,8 +4566,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return (canvas.clientHeight || 1) / (2 * (halfW / canvasAspect()));
   }
 
-  function rebuildOverlays(site, projection = null) {
-    disposeOverlayParts();
+  function legacyProceduralOverlayBuild(site, projection = null) {
+    disposeLegacyProceduralOverlayParts();
     if (!site) return;
     const siteReg = zoomRegister === 'site';
     const machineCells = new Set(site.machines.map((m) => tileIndex(m.col, m.row)));
@@ -4279,6 +4736,149 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     rebuildLaneFlows(site, projection, shared, kinds[0].off);
   }
 
+  function conduitDynamicMeshes(group, family) {
+    const hook = family === 'power' ? 'powered' : 'flow_mesh';
+    const meshes = [];
+    group.traverse((node) => {
+      if (node.isMesh && new RegExp(`^LOD[01]_${hook}$`, 'u').test(node.name || '')) meshes.push(node);
+    });
+    return meshes;
+  }
+
+  function resolveAuthoredOverlayPieces(desired) {
+    // One actual four-port cell per family/network earns the quiet service lid. It never alters
+    // connectivity or substitutes for a three-port T.
+    const serviceCellByNetwork = new Map();
+    for (const rec of desired) {
+      if (rec.mask !== 15) continue;
+      const serviceKey = `${rec.family}:${rec.key}`;
+      const prior = serviceCellByNetwork.get(serviceKey);
+      if (prior == null || rec.idx < prior) serviceCellByNetwork.set(serviceKey, rec.idx);
+    }
+    const resolved = [];
+    for (const rec of desired) {
+      const service = rec.mask === 15 && serviceCellByNetwork.get(`${rec.family}:${rec.key}`) === rec.idx;
+      const piece = resolveWorksConduitPiece(rec.family, rec.mask, { service });
+      // A painted isolated tile does not invent an end direction; it stays absent until it has a
+      // real machine or neighbouring run to connect to.
+      if (piece) resolved.push({ ...rec, ...piece });
+    }
+    return resolved;
+  }
+
+  function overlayBuildPlan(site, projection = null) {
+    if (!site) return { desired: [], shared: new Set(), laneOff: 0 };
+    const machineCells = new Set(site.machines.map((m) => tileIndex(m.col, m.row)));
+    const compOf = { lane: new Map(), power: new Map() };
+    if (projection) {
+      for (const comp of projection.power) for (const idx of comp.cells) compOf.power.set(idx, comp.key);
+      for (const comp of projection.lanes) for (const idx of comp.cells) compOf.lane.set(idx, comp.key);
+    }
+    const families = [
+      { name: 'lane', cells: new Set(site.overlays.lane) },
+      { name: 'power', cells: new Set(site.overlays.power) },
+    ];
+    const shared = new Set([...families[0].cells].filter((idx) => families[1].cells.has(idx)));
+    // This is placement only, never an authored scale change. The full source envelopes are
+    // 1.10WU lane and 0.48WU power. A fixed 0.20*S split keeps both authored bodies distinct
+    // within a shared 2.2WU cell at both registers.
+    const { laneOffset: laneOff } = refreshAuthoredOverlayRegisterMetrics();
+    const desired = [];
+    for (const family of families) {
+      const has = (c, r) => {
+        if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
+        const idx = tileIndex(c, r);
+        return family.cells.has(idx) || machineCells.has(idx);
+      };
+      for (const idx of family.cells) {
+        const c = idx % COLS;
+        const r = Math.floor(idx / COLS);
+        desired.push({
+          family: family.name,
+          idx,
+          c,
+          r,
+          key: compOf[family.name].get(idx) || '_',
+          mask: connectivityMask(has, c, r),
+          off: shared.has(idx) ? (family.name === 'lane' ? -laneOff : laneOff) : 0,
+        });
+      }
+    }
+    return { desired: resolveAuthoredOverlayPieces(desired), shared, laneOff };
+  }
+
+  function prepareAuthoredOverlay(source, rec, _index, scope) {
+    const dynamicMeshes = conduitDynamicMeshes(source, rec.family);
+    const component = isolateWorksConduitMaterials(dynamicMeshes, {
+      family: rec.family,
+      key: rec.key,
+      scope,
+    });
+    if (!component) return null;
+    source.position.set(0, 0, 0);
+    source.rotation.set(Math.PI / 2, 0, 0);
+    source.scale.set(1, 1, 1);
+    const seat = new THREE.Group();
+    seat.name = `authored_${rec.assetId}_${rec.idx}`;
+    seat.position.set(worldX(rec.c), worldY(rec.r) + rec.off, Z.overlay);
+    seat.rotation.z = rec.rotation;
+    seat.add(source);
+    return {
+      ...rec,
+      source,
+      seat,
+      component,
+      mats: [component.material],
+      textures: component.flowSampler ? [component.flowSampler] : [],
+    };
+  }
+
+  function ensureConduitMountLifecycle() {
+    if (conduitMountLifecycle) return conduitMountLifecycle;
+    conduitMountLifecycle = createConduitMountLifecycle({
+      async acquireTemplates(ids) {
+        const loader = ensureWorksLoader();
+        return loader ? loader.acquireWorksConduitTemplates(ids) : null;
+      },
+      createScope: () => createWorksConduitMaterialScope(),
+      releaseScope: (scope) => scope?.dispose?.(),
+      prepare: prepareAuthoredOverlay,
+      mount(record) {
+        overlayRoot.add(record.seat);
+        authoredOverlayParts.push(record);
+      },
+      unmount(record) {
+        overlayRoot.remove(record.seat);
+        const index = authoredOverlayParts.indexOf(record);
+        if (index >= 0) authoredOverlayParts.splice(index, 1);
+      },
+      release(source) {
+        const group = source?.source || source;
+        if (worksLoader) worksLoader.releaseWorksPart(group);
+        else if (group?.parent) group.parent.remove(group);
+      },
+      isClosed: () => worksTearingDown || disposed || glTeardownDone,
+    });
+    return conduitMountLifecycle;
+  }
+
+  function disposeOverlayParts(reason = 'cancelled') {
+    if (conduitMountLifecycle) conduitMountLifecycle.cancel(reason);
+    else disposeLegacyProceduralOverlayParts();
+    laneFlows.length = 0;
+    flowDots.count = 0;
+  }
+
+  function rebuildOverlays(site, projection = null) {
+    const plan = overlayBuildPlan(site, projection);
+    laneFlows.length = 0;
+    flowDots.count = 0;
+    rebuildLaneFlows(site, projection, plan.shared, plan.laneOff);
+    void ensureConduitMountLifecycle().rebuild(plan.desired).catch((error) => {
+      console.error('[asteroidRenderer3d] authored conduit transaction failed', error);
+    });
+  }
+
   // ---- lane flow routes (law §7: dots move TOWARD THE PORT) ------------------------------------
   // A route is a leaf-to-sink walk of one lane network, cached as a polyline with cumulative arc
   // length. The sink is the cargo port; with no port on that network the goods are heading for the
@@ -4435,6 +5035,39 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         part.mat.emissiveIntensity = Math.min(0.9, base * lensK);
       }
     }
+    const updatedComponents = new Set();
+    for (const part of authoredOverlayParts) {
+      if (updatedComponents.has(part.component)) continue;
+      updatedComponents.add(part.component);
+      const state = part.family === 'power'
+        ? netState.power.get(part.key)
+        : netState.lane.get(part.key);
+      const live = !!(state && state.live);
+      const color = part.family === 'power'
+        ? (live ? CABLE_LIVE : CABLE_DEAD)
+        : (live ? LANE_LIVE : LANE_DEAD);
+      let intensity = 0.02;
+      let emissiveHex = 0x000000;
+      if (part.family === 'power' && live) {
+        emissiveHex = 0xffb648;
+        intensity = Math.min(0.55, (state.ratio >= 1 ? 0.18 : 0.03 + state.ratio * 0.12) * lensK);
+      } else if (part.family === 'lane' && live) {
+        emissiveHex = 0x5c7480;
+        intensity = Math.min(0.18, ((state.active && !motionReduce) ? 0.07 : 0.035) * lensK);
+      }
+      const material = part.component.material;
+      if (material.color) material.color.copy(color);
+      if (material.emissive) material.emissive.setHex(emissiveHex);
+      if ('emissiveIntensity' in material) material.emissiveIntensity = intensity;
+      // All instance-owned sampler roles move in lockstep. No material/texture needsUpdate is set:
+      // offset is uniform state, not a shader recompilation or a shared-atlas mutation.
+      if (part.family === 'lane' && live && state.active && !motionReduce) {
+        part.component.texturePhase = (part.component.texturePhase + dt * 0.58) % 1;
+        if (part.component.flowSampler?.offset) {
+          part.component.flowSampler.offset.x = part.component.texturePhase;
+        }
+      }
+    }
     syncFlowDots(dt, lensK);
   }
 
@@ -4464,7 +5097,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           if (used >= FLOW_DOT_MAX) break;
           const arc = (flow.phase + i * gap) % route.len;
           const pt = pointOnRoute(route, arc);
-          dummy.position.set(pt[0], pt[1], Z.overlay + 0.115);   // on the tray floor, under the lid
+          dummy.position.set(pt[0], pt[1], Z.overlay + 0.19);   // on the authored belt, under its guard
           dummy.rotation.set(0, 0, 0);
           dummy.scale.setScalar(S * dotScale);
           dummy.updateMatrix();
@@ -4956,6 +5589,51 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return record;
   }
 
+  function beginAuthoredGasTapGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredGasTapGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Gas tap ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_gas_tap').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && ghost === record && record.loadToken === token) {
+          console.error('[asteroidRenderer3d] authored Gas tap ghost load returned null');
+        }
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          bindAuthoredGasTap(part);
+          part.rotation.z = 0;
+          part.position.set(0, -S / 2, 0);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Gas tap ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Gas tap ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
@@ -4963,6 +5641,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (defId === 'sm_massline_core') return beginAuthoredCoreGhost(defId);
     if (defId === 'sm_extractor') return beginAuthoredExtractorGhost(defId);
     if (defId === 'sm_refinery') return beginAuthoredRefineryGhost(defId);
+    if (defId === 'sm_gas_tap') return beginAuthoredGasTapGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -5841,12 +6520,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // dots on the glass, the crate stage, the lens, and the build-mode board feedback. A check can
     // therefore assert that a state CHANGED SOMETHING, not merely that a flag flipped.
     networks() {
-      const runs = overlayParts.map((part) => ({
-        kind: part.kind,
+      const runs = authoredOverlayParts.map((part) => ({
+        kind: part.family,
         key: part.key,
-        hex: `#${part.mat.color.getHexString()}`,
-        emissive: Number(part.mat.emissiveIntensity.toFixed(3)),
-        live: part.kind === 'power'
+        assetId: part.assetId,
+        topology: part.kind,
+        mask: part.mask,
+        hex: `#${part.mats[0]?.color?.getHexString?.() || '000000'}`,
+        emissive: Number((part.mats[0]?.emissiveIntensity || 0).toFixed(3)),
+        live: part.family === 'power'
           ? !!(netState.power.get(part.key) || {}).live
           : !!(netState.lane.get(part.key) || {}).live,
       }));
@@ -5861,6 +6543,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       for (const [key, st] of netState.power) {
         power.push({ key, live: st.live, ratio: st.ratio, gen: st.gen, draw: st.draw });
       }
+      const visibleLods = { lod0: 0, lod1: 0 };
+      for (const part of authoredOverlayParts) {
+        part.source.traverse((node) => {
+          const lod = node.userData?.worksLod;
+          if (node.isMesh && node.visible && (lod === 'lod0' || lod === 'lod1')) visibleLods[lod] += 1;
+        });
+      }
       return {
         runs,
         lanes,
@@ -5868,7 +6557,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         islands: runs.filter((r) => !r.live).length,
         flowDots: flowDots.count,
         flowRoutes: laneFlows.reduce((n, f) => n + f.routes.length, 0),
-        casings: overlayCasings.length,
+        casings: 0,
+        authoredCount: authoredOverlayParts.length,
+        mount: conduitMountLifecycle ? conduitMountLifecycle.stats() : null,
+        visibleLods,
         // The run's drawn CROSS SECTION in screen pixels. §7 asks the same drawing to stay legible
         // at the site register; a run that thinned to a hairline there would be a painted line, so
         // this is the number the check holds a floor against.
@@ -5960,9 +6652,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (id === 'place_works_extractor') bindAuthoredExtractor(group);
       if (id === 'place_works_refinery') bindAuthoredRefinery(group);
       if (id === 'place_works_derrick') bindAuthoredDerrick(group);
+      if (id === 'place_works_gas_tap') bindAuthoredGasTap(group);
       const transform = id === 'place_works_derrick'
         ? seatWorksDerrickProofGroup(group)
-        : seatWorksProofGroup(group, worksProofRotationXForPart(id));
+        : id === 'place_works_gas_tap'
+          ? seatWorksGasTapProofGroup(group)
+          : seatWorksProofGroup(group, worksProofRotationXForPart(id));
       group.userData.worksTransform = transform;
       group.name = `worksProof_${id}`;
       scene.add(group);
@@ -6023,6 +6718,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (g) {
         g.group.visible = true;
         g.group.position.set(cx, cy, 0.02);
+        if (g.defId === 'sm_gas_tap' && g.authoredGroup) {
+          g.authoredGroup.rotation.z = gasTapSeatingYaw(cursor.col, cursor.row);
+        }
         g.canOk = !!ui.canOk;
         tintGhost(g, g.canOk);
       }
@@ -6509,12 +7207,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // "identical refusals within 5s do not replay their full effect" — one gate, every refusal.
   function allowRefusal(idx, reason) {
     const key = `${idx}|${reason}`;
+    // timeSNow is refreshed only inside render(); a bus event arrives BETWEEN frames, so after a
+    // frame stall (headless check harness, backgrounded tab, long GC) the first of two refusals
+    // can be stamped with a frame time seconds stale while the second sees a fresh one — the gate
+    // would then measure the stall, not the gap between the events, and replay the refusal. Stamp
+    // with the same clock rAF's timestamp comes from, read at handler time, so the 5s window is
+    // the true interval between the two refusals.
+    const tNow = (typeof performance !== 'undefined' && performance.now ? performance.now() : timeSNow * 1000) / 1000;
     const last = refusalSeen.get(key);
-    if (last !== undefined && timeSNow - last < REFUSAL_SUPPRESS_S) {
+    if (last !== undefined && tNow - last < REFUSAL_SUPPRESS_S) {
       eventLog.refusalsSuppressed++;
       return false;
     }
-    refusalSeen.set(key, timeSNow);
+    refusalSeen.set(key, tNow);
     return true;
   }
 
@@ -6901,7 +7606,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
 
     // site: machines + overlays + umbilical
-    syncMachines(site, projection, timeS);
+    syncMachines(site, projection, timeS, dt);
     const sig = overlaySignature(site, projection);
     if (sig !== overlaySig) {
       overlaySig = sig;

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "packet": "PQ-131.06",
-  "cycle": 3,
+  "cycle": 4,
   "cellWu": 2.2,
   "halfExtent": 1.1,
   "authoring": {
@@ -53,16 +53,16 @@
       "mountClearanceZ": 0.020
     },
     "lane": {
-      "frameOuterWidth": 0.76,
+      "frameOuterWidth": 1.1,
       "frameHeight": 0.26,
       "railThickness": 0.085,
       "rollerRadius": 0.070,
       "rollerCenterZ": 0.098,
       "beltTopZ": 0.178,
-      "beltWidth": 0.16,
-      "coverWidth": 0.10,
+      "beltWidth": 0.232,
+      "coverWidth": 0.145,
       "mountClearanceZ": 0.018,
-      "note": "Cycle 03: belt width is interior, not a port dimension. Outer envelope frozen. Rails and rollers sized to read at 120 px/cell."
+      "note": "Cycle 04: every LOD and all six modular port faces share the 1.10 wu outer envelope. Belt width remains interior, while rails, rollers, throat clearances, service enclosure and supports are reauthored to that section."
     }
   },
   "floorToWall": {

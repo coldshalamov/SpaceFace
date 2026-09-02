@@ -356,7 +356,9 @@ test('Derrick proof seating remains standing while interior proof seating retain
     'permanent child lift lands the same native min-z exactly at ROCK_FACE');
 
   const renderer = readFileSync(pathOf('src/ui/asteroid/asteroidRenderer3d.js'), 'utf8');
-  assert.match(renderer, /\? seatWorksDerrickProofGroup\(group\)\s*:\s*seatWorksProofGroup\(group, worksProofRotationXForPart\(id\)\)/u,
+  // PQ-131.07 added the gas tap's own production-scale seater to the same dispatch; the Derrick
+  // branch and the interior generic path are unchanged.
+  assert.match(renderer, /\? seatWorksDerrickProofGroup\(group\)[\s\S]{0,220}?seatWorksProofGroup\(group, worksProofRotationXForPart\(id\)\)/u,
     'Derrick takes the production-scale proof seater while interior candidates keep the generic path');
   assert.match(renderer, /authored\.group\.position\.z = derrickDepthLiftForBounds\(native, rec\.group\.position\.z\);/u,
     'permanent install derives its local depth lift from current bounds without moving the root');
