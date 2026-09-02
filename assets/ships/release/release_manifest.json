@@ -2843,6 +2843,25 @@
       }
     },
     {
+      "id": "place_works_cargo_port",
+      "kind": "part:places",
+      "source": "assets/ships/parts/works/place_works_cargo_port.glb",
+      "release": "assets/ships/release/parts/works/place_works_cargo_port.glb",
+      "sourceSha256": "3579817bdb91c4f1165057ce2c5b1b66c3a6dd4ce35620a4cd55256fe34d0028",
+      "releaseSha256": "4e1be6a90ccdede4eb87840dda798ca71005baf9b258001e226204175f2d56b6",
+      "sourceBytes": 3831408,
+      "releaseBytes": 850076,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 103,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
       "id": "place_works_conduit_lane_corner",
       "kind": "part:places",
       "source": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",

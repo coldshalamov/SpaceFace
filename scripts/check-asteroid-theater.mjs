@@ -934,18 +934,46 @@ try {
       if (!wired.ok) {
         failures.push(`${label}: §7 could not wire a test network (${wired.reason}) — every network assertion below would be vacuous`);
       } else {
-        await page.waitForTimeout(700);
+        // Wait for the authored mount to settle instead of a fixed sleep: the conduit packages
+        // decode asynchronously and a heavy package ahead of them (the port's UASTC atlas) can
+        // legitimately push the first mount past a fixed 700 ms without any stall.
         const readNet = () => page.evaluate(() => {
-          const h = document.querySelector('.ast-canvas').__ast3d;
-          return { net: h.networks(), lens: h.lens(), crates: h.crates(), faces: h.faces() };
+          const canvas = document.querySelector('.ast-canvas');
+          const h = canvas && canvas.__ast3d;
+          if (!h) return { broken: `no ast3d hook (canvas=${!!canvas}, mode=${window.SF.state.mode})` };
+          try {
+            const net = h.networks();
+            if (!net || !Array.isArray(net.runs)) return { broken: `bad networks shape: ${typeof net}` };
+            return { net, lens: h.lens(), crates: h.crates(), faces: h.faces() };
+          } catch (error) {
+            return { broken: `hook read failed: ${error.message}` };
+          }
         });
-        const n0 = await readNet();
+        let n0 = await readNet();
+        const mountSettled = (read) => {
+          if (!read || read.broken || !read.net || !Array.isArray(read.net.runs)) return true;
+          return read.net.runs.length >= 2
+            || (read.net.mount && read.net.mount.phase !== 'loading');
+        };
+        for (let waited = 0; !mountSettled(n0) && waited < 15000; waited += 250) {
+          await page.waitForTimeout(250);
+          n0 = await readNet();
+        }
+        // The mount settles the moment the pieces exist; the live/dark material dimming is a
+        // per-frame pass that lands a beat later. Give it a few frames before sampling — the
+        // island invariant below is still asserted in both directions on the settled state.
+        await page.waitForTimeout(500);
+        n0 = await readNet();
+        if (n0.broken) {
+          failures.push(`${label}: §7 the drill canvas lost its renderer hook while waiting for the mount: ${n0.broken}`);
+        }
         notes.push(`${label}: §7 networks — ${n0.net.runs.length} runs `
           + `[${n0.net.runs.map((r) => `${r.kind}:${r.key}:${r.live ? 'live' : 'dark'}@${r.emissive}`).join(', ')}]`
           + ` · ${n0.net.flowDots} dots on ${n0.net.flowRoutes} routes`
           + ` · lanes ${JSON.stringify(n0.net.lanes)}`);
         if (n0.net.runs.length < 2) {
-          failures.push(`${label}: §7 the built spine drew ${n0.net.runs.length} network runs (expected a lane and a cable at least)`);
+          failures.push(`${label}: §7 the built spine drew ${n0.net.runs.length} network runs (expected a lane and a cable at least)`
+            + ` mount=${JSON.stringify(n0.net.mount || null)}`);
         }
         // ---- islands, BOTH directions. A live run and a dark one must differ in colour AND in
         // emissive, or "dim and desaturated" is a claim nothing on the glass is making.

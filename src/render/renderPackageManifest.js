@@ -1113,6 +1113,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
   {
+    "assetId": "sf.render.works-cargo-port",
+    "expectedContentHash": "9e36624e136aada09fbbc2f12607bfc039933e20c784acfaf70bf8b73673fbb6",
+    "key": "works-cargo-port",
+    "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json",
+    "runtimeAssetId": "place_works_cargo_port",
+    "slot": "place",
+    "sourceSha256": "4e1be6a90ccdede4eb87840dda798ca71005baf9b258001e226204175f2d56b6",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_cargo_port.glb"
+  },
+  {
     "assetId": "sf.render.works-conduit-lane-corner",
     "expectedContentHash": "313d5c91f5d33ee8a58c182cc86cfc6f575adaad06f4336cee9285d04be112c8",
     "key": "works-conduit-lane-corner",

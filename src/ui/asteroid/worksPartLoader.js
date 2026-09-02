@@ -47,6 +47,19 @@ export const FABRICATOR_HOOKS = Object.freeze([
   'lamp',
 ]);
 
+// PQ-131.09. crate_0..4 are the five-stage export stack; pod_root+pod_thruster are the berthed
+// courier (thruster is the only mutable emissive surface — it lights during the climb).
+export const CARGO_PORT_HOOKS = Object.freeze([
+  'crate_0',
+  'crate_1',
+  'crate_2',
+  'crate_3',
+  'crate_4',
+  'cradle',
+  'pod_root',
+  'pod_thruster',
+]);
+
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
 function conduitPart(family, kind) {
@@ -177,6 +190,14 @@ export const WORKS_PARTS = Object.freeze({
     hooks: FABRICATOR_HOOKS,
     binding: 'works-fabricator',
   }),
+  // PQ-131.09. Same selected-runtime law: LOD0/work and LOD1/site only, no procedural fallback.
+  place_works_cargo_port: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_cargo_port.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_cargo_port.glb',
+    slot: 'place',
+    hooks: CARGO_PORT_HOOKS,
+    binding: 'works-cargo-port',
+  }),
   ...Object.fromEntries(['power', 'lane'].flatMap((family) => CONDUIT_KINDS.map((kind) => [
     `place_works_conduit_${family}_${kind}`,
     conduitPart(family, kind),
@@ -302,6 +323,11 @@ function cloneMaterialForInstance(material, primitiveName, binding) {
   // carries live status (authored names are camel-cased: LOD0_Lamp); frame, bed, rail, and gantry
   // shells stay shared blueprint resources.
   if (binding === 'works-fabricator' && !/^LOD[01]_Lamp$/u.test(primitiveName || '')) {
+    return material;
+  }
+  // The cargo port's atlas is permanent structural surfacing. Only the courier's thruster bell
+  // lights (during the climb); frame, cradle, crates, and pod hulls stay shared blueprint resources.
+  if (binding === 'works-cargo-port' && !/^LOD[01]_pod_thruster$/u.test(primitiveName || '')) {
     return material;
   }
   // Runtime status can only mutate these authored state surfaces. The furnace jacket, stack,
@@ -523,6 +549,30 @@ export function bindWorksFabricatorHookHierarchy(group) {
   return group.userData.worksFabricatorHooks;
 }
 
+// PQ-131.09. The authored file already parents each LOD pair under its hook pivot; the release
+// pipeline may flatten primitive matrices, so reattach when needed while preserving world pose.
+export function bindWorksCargoPortHookHierarchy(group) {
+  const hooks = group?.userData?.worksHooks || {};
+  const names = ['cradle', 'crate_0', 'crate_1', 'crate_2', 'crate_3', 'crate_4', 'pod_root', 'pod_thruster'];
+  const bound = {};
+  for (const hookName of names) {
+    const pivot = hooks[hookName];
+    if (!pivot) throw new Error(`[worksPartLoader] Cargo port is missing ${hookName} marker`);
+    // The berthed pod's authored meshes are named LOD[01]_pod under the pod_root pivot.
+    const meshBase = hookName === 'pod_root' ? 'pod'
+      : (hookName === 'pod_thruster' ? 'pod_thruster' : hookName);
+    for (const lod of ['LOD0_', 'LOD1_']) {
+      const child = group.getObjectByName(`${lod}${meshBase}`);
+      if (!child) throw new Error(`[worksPartLoader] Cargo port is missing ${lod}${meshBase}`);
+      if (child.parent !== pivot) attachPreservingWorld(pivot, child);
+    }
+    bound[hookName] = pivot;
+  }
+  group.userData.worksCargoPortBoundMeshes = names;
+  group.userData.worksCargoPortHooks = Object.freeze(bound);
+  return group.userData.worksCargoPortHooks;
+}
+
 function instantiateBlueprint(blueprint, hookNames, binding) {
   const root = new THREE.Group();
   root.name = blueprint.assetId || 'worksPart';
@@ -667,6 +717,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       if (entry.binding === 'works-derrick') bindWorksDerrickHookHierarchy(group);
       if (entry.binding === 'works-gas-tap') bindWorksGasTapHookHierarchy(group);
       if (entry.binding === 'works-fabricator') bindWorksFabricatorHookHierarchy(group);
+      if (entry.binding === 'works-cargo-port') bindWorksCargoPortHookHierarchy(group);
     } catch (error) {
       console.error('[worksPartLoader] authored part binding failed', error);
       disposeInstanceOwnedResources(group);

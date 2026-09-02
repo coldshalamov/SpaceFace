@@ -535,6 +535,49 @@ export function bindAuthoredGasTap(group) {
   };
 }
 
+// PQ-131.09. The authored cargo port: crate_0..4 are the five-stage export stack (visible count =
+// stage), pod_root is the berthed courier (visible while a pod is ready, and it UNDOCKS for the
+// climb), and the thruster bell lights only while the courier is under way. Frame/cradle/crates
+// stay on their shared authored atlas; the port has no lamp hook, so the generic lamp drive is a
+// documented no-op here.
+export function bindAuthoredCargoPort(group) {
+  const hooks = group?.userData?.worksCargoPortHooks;
+  if (!hooks?.pod_root || !hooks?.pod_thruster || !hooks?.crate_0) {
+    throw new Error('Cargo port hook hierarchy is unavailable');
+  }
+  const thrusterMaterials = [];
+  hooks.pod_thruster.traverse((node) => {
+    if (!node.isMesh || !/^LOD[01]_pod_thruster$/u.test(node.name || '')) return;
+    const rows = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of rows) {
+      if (!material || material.userData?.worksInstanceOwned !== true) {
+        throw new Error('Cargo port thruster material must be instance-owned');
+      }
+      if (!thrusterMaterials.includes(material)) thrusterMaterials.push(material);
+    }
+  });
+  if (!thrusterMaterials.length) throw new Error('Cargo port hooks own no thruster materials');
+  const crates = [hooks.crate_0, hooks.crate_1, hooks.crate_2, hooks.crate_3, hooks.crate_4];
+  group.position.set(0, 0, 0);
+  group.scale.set(1, 1, 1);
+  return {
+    group,
+    dyn: {
+      pod: hooks.pod_root,
+      crates,
+      setCrateStage(stage) {
+        for (let i = 0; i < crates.length; i++) crates[i].visible = i < stage;
+      },
+      setThruster(intensity) {
+        for (const material of thrusterMaterials) material.emissiveIntensity = intensity;
+      },
+      // The authored port carries no lamp hook; the shared machine drive lights nothing here.
+      setLamp() {},
+    },
+    pulses: [],
+  };
+}
+
 // A stopped wheel keeps its last physical pose. Advance only from the frame delta while the tap
 // is actually producing, so resuming after an idle interval cannot jump the wheel to global time.
 export function advanceGasTapWheelPhase(phase, running, motionReduce, dt) {
@@ -1104,6 +1147,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let authoredRefineryGhostGen = 0;
   let authoredGasTapGen = 0;
   let authoredFabricatorGen = 0;
+  let authoredCargoPortGen = 0;
+  let authoredCargoPortGhostGen = 0;
   let authoredGasTapGhostGen = 0;
   let authoredFabricatorGhostGen = 0;
   let authoredDerrickGen = 0;
@@ -3206,6 +3251,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // site:courierLaunched to the renderer and its owner is out of this leaf's write set.
   const POD_RISE_S = 1.7;
   let podMesh = null;
+  let climbPod = null; // the authored port's berthed courier while it makes its climb
   let podT = -1;                  // <0 = parked
   let lastLaunches = null;        // null until the first frame that sees a site (never 0: a return
                                   // visit to a producing site must not replay its whole history)
@@ -4334,12 +4380,77 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return rec;
   }
 
+  function installAuthoredCargoPort(rec, group) {
+    const authored = bindAuthoredCargoPort(group);
+    authored.group.rotation.z = 0; // authored +X loading face
+    authored.group.position.set(0, 0, 0);
+    rec.group.add(authored.group);
+    rec.authoredGroup = authored.group;
+    rec.dyn = authored.dyn;
+    rec.pulses = authored.pulses;
+    rec.crateStage = 0;
+    rec.pending = false;
+    authored.dyn.setCrateStage(0);
+  }
+
+  function loadAuthoredCargoPort(rec) {
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      rec.loadFailed = true;
+      console.error('[asteroidRenderer3d] authored Cargo port cannot load: works loader unavailable');
+      return;
+    }
+    const token = ++authoredCargoPortGen;
+    rec.loadToken = token;
+    rec.loadPromise = loader.loadWorksPart('place_works_cargo_port').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token) {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Cargo port load returned null; leaving machine absent');
+        }
+        return null;
+      }
+      return settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && machines.get(rec.id) === rec && rec.loadToken === token,
+        install: (part) => installAuthoredCargoPort(rec, part),
+        onInstallError: (error) => {
+          rec.loadFailed = true;
+          console.error('[asteroidRenderer3d] authored Cargo port install failed; leaving machine absent', error);
+        },
+      });
+    }).catch((error) => {
+      if (machines.get(rec.id) === rec && rec.loadToken === token) {
+        rec.loadFailed = true;
+        console.error('[asteroidRenderer3d] authored Cargo port load failed; leaving machine absent', error);
+      }
+      return null;
+    });
+  }
+
+  function buildAuthoredCargoPortAt(m) {
+    const root = new THREE.Group();
+    root.name = `worksCargoPort:${m.id}`;
+    root.position.set(worldX(m.col), worldY(m.row), 0);
+    siteRoot.add(root);
+    const rec = {
+      id: m.id, group: root, defId: m.defId, dyn: {}, col: m.col, row: m.row,
+      geoSig: '', arms: null, pulses: [], pending: true, loadToken: 0, authoredGroup: null,
+      crateStage: 0,
+    };
+    machines.set(m.id, rec);
+    loadAuthoredCargoPort(rec);
+    return rec;
+  }
+
   function buildMachineAt(m) {
     if (m.defId === 'sm_massline_core') return buildAuthoredCoreAt(m);
     if (m.defId === 'sm_extractor') return buildAuthoredExtractorAt(m);
     if (m.defId === 'sm_refinery') return buildAuthoredRefineryAt(m);
     if (m.defId === 'sm_gas_tap') return buildAuthoredGasTapAt(m);
     if (m.defId === 'sm_fabricator') return buildAuthoredFabricatorAt(m);
+    if (m.defId === 'sm_cargo_port') return buildAuthoredCargoPortAt(m);
     const kind = MACHINE_KIND[m.defId] || 'fabricator';
     const built = makeMachine(kind, S, envMap);
     built.group.traverse((o) => {
@@ -4547,7 +4658,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           // The gantry head TRAVELS its rail. Same 0..1 contract, a mechanism instead of a bar.
           rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
-        if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
+        // The berth shows a ready pod; while that pod is mid-climb the climb animation owns it.
+        if (rec.dyn.pod && !(climbPod && climbPod.pod === rec.dyn.pod)) {
+          rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
+        }
         // The want chip: what this machine is waiting for, as a colour or a bolt. `status.limit`
         // is the sim's own answer — `input:<goodId>` when a recipe is starved, `power` when the
         // bus cannot feed it — so the chip names the real shortage, not a guess from the state name.
@@ -5250,6 +5364,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       : (projection ? storeTotal(projection.exportBuffer) : 0);
     const stage = port ? crateStageFor(total) : 0;
     crateStageNow = stage;
+    // The authored port carries its own five-crate stack as hook children; drive it directly and
+    // keep the procedural pile retired for that site.
+    const authoredPort = port
+      ? [...machines.values()].find((r) => r.defId === 'sm_cargo_port' && r.authoredGroup && r.dyn?.setCrateStage)
+      : null;
+    if (authoredPort) {
+      authoredPort.dyn.setCrateStage(stage);
+      crateCell = [port.col, port.row];
+      if (crateMesh) crateMesh.visible = false;
+      return;
+    }
     if (!stage) { crateCell = null; if (crateMesh) crateMesh.visible = false; return; }
     if (!crateGeos[stage]) crateGeos[stage] = makeCrateStackGeo(stage);
     if (!crateMesh) {
@@ -5788,6 +5913,51 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return record;
   }
 
+  function beginAuthoredCargoPortGhost(defId) {
+    const root = new THREE.Group();
+    root.renderOrder = 24;
+    fxRoot.add(root);
+    const record = {
+      defId, group: root, authoredGroup: null, materials: null, loadToken: ++authoredCargoPortGhostGen,
+      canOk: true,
+    };
+    ghost = record;
+    const loader = ensureWorksLoader();
+    if (!loader) {
+      console.error('[asteroidRenderer3d] authored Cargo port ghost cannot load: works loader unavailable');
+      return record;
+    }
+    const token = record.loadToken;
+    void loader.loadWorksPart('place_works_cargo_port').then((group) => {
+      if (!group) {
+        if (!disposed && !worksTearingDown && ghost === record && record.loadToken === token) {
+          console.error('[asteroidRenderer3d] authored Cargo port ghost load returned null');
+        }
+        return;
+      }
+      settleAuthoredWorksArrival({
+        loader,
+        group,
+        isLive: () => !disposed && !worksTearingDown && ghost === record && record.loadToken === token,
+        install: (part) => {
+          bindAuthoredCargoPort(part);
+          part.rotation.z = 0;
+          part.position.set(0, 0, 0);
+          record.materials = makeGhostMaterialShells(part);
+          record.group.add(part);
+          record.authoredGroup = part;
+          tintGhost(record, record.canOk);
+        },
+        onInstallError: (error) => console.error('[asteroidRenderer3d] authored Cargo port ghost install failed', error),
+      });
+    }).catch((error) => {
+      if (ghost === record && record.loadToken === token) {
+        console.error('[asteroidRenderer3d] authored Cargo port ghost load failed', error);
+      }
+    });
+    return record;
+  }
+
   function ensureGhost(defId) {
     if (ghost && ghost.defId === defId) return ghost;
     clearGhost();
@@ -5797,6 +5967,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (defId === 'sm_refinery') return beginAuthoredRefineryGhost(defId);
     if (defId === 'sm_gas_tap') return beginAuthoredGasTapGhost(defId);
     if (defId === 'sm_fabricator') return beginAuthoredFabricatorGhost(defId);
+    if (defId === 'sm_cargo_port') return beginAuthoredCargoPortGhost(defId);
     const built = makeMachine(MACHINE_KIND[defId] || 'fabricator', S, envMap);
     built.group.traverse((o) => {
       if (o.isMesh) {
@@ -6412,11 +6583,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (lastLaunches === null) { lastLaunches = n; return; }
     if (n <= lastLaunches) return;
     lastLaunches = n;
-    if (!podMesh) {
-      podMesh = new THREE.Mesh(podGeo, podMat);
-      podMesh.castShadow = true;
-      podMesh.scale.setScalar(S * 0.9);
-      scene.add(podMesh);
+    // The authored port's berthed courier undocks and makes the climb itself; the transient
+    // capsule stays only as a fallback for a site whose port has not finished loading.
+    const portRec = [...machines.values()].find((r) => r.defId === 'sm_cargo_port'
+      && r.authoredGroup && r.dyn?.pod);
+    if (portRec && !climbPod) {
+      const pod = portRec.dyn.pod;
+      climbPod = {
+        pod,
+        parent: pod.parent,
+        position: pod.position.clone(),
+        quaternion: pod.quaternion.clone(),
+        scale: pod.scale.clone(),
+      };
+      scene.attach(pod);
+      pod.visible = true;
+    } else {
+      if (!podMesh) {
+        podMesh = new THREE.Mesh(podGeo, podMat);
+        podMesh.castShadow = true;
+        podMesh.scale.setScalar(S * 0.9);
+        scene.add(podMesh);
+      }
     }
     podT = 0;
     eventLog.courierLaunches++;
@@ -6727,6 +6915,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     },
     // The port pile: 0 = nothing shipped yet, 1..5 = the stages the export buffer has earned.
     crates() {
+      // The authored port stages its own five-crate hook stack; report that as the live pile.
+      const authoredPort = [...machines.values()].find((r) => r.defId === 'sm_cargo_port'
+        && r.authoredGroup && r.dyn?.crates);
+      if (authoredPort) {
+        const visibleCrates = authoredPort.dyn.crates.filter((c) => c.visible).length;
+        return {
+          stage: crateStageNow,
+          visible: crateStageNow > 0 && visibleCrates > 0,
+          cell: crateCell ? crateCell.slice() : null,
+          onFloor: !!crateCell,
+          authored: true,
+        };
+      }
       return {
         stage: crateStageNow,
         visible: !!(crateMesh && crateMesh.visible),
@@ -6809,6 +7010,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (id === 'place_works_derrick') bindAuthoredDerrick(group);
       if (id === 'place_works_gas_tap') bindAuthoredGasTap(group);
       if (id === 'place_works_fabricator') bindAuthoredFabricator(group);
+      if (id === 'place_works_cargo_port') bindAuthoredCargoPort(group);
       const transform = id === 'place_works_derrick'
         ? seatWorksDerrickProofGroup(group)
         : id === 'place_works_gas_tap'
@@ -7164,7 +7366,27 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // the courier climbing the shaft
     if (podT >= 0) {
       podT += dt / POD_RISE_S;
-      if (podT >= 1) { podT = -1; if (podMesh) podMesh.visible = false; }
+      if (climbPod) {
+        const pod = climbPod.pod;
+        if (podT >= 1) {
+          // Redock: return the berthed courier to its authored cradle pose.
+          climbPod.parent.add(pod);
+          pod.position.copy(climbPod.position);
+          pod.quaternion.copy(climbPod.quaternion);
+          pod.scale.copy(climbPod.scale);
+          pod.visible = false;
+          pod.position.set(0, 0, 0);
+          climbPod = null;
+          podT = -1;
+        } else {
+          const e = podT * podT * (3 - 2 * podT);
+          const y0 = worldY(ROWS - 1);
+          const y1 = derrickBaseY + S * 3.4;
+          pod.position.set(worldX(ENTRY_COL), y0 + (y1 - y0) * e, Z.rover + 0.3);
+          pod.rotation.z = Math.sin(podT * 7) * 0.03;
+          pod.visible = true;
+        }
+      } else if (podT >= 1) { podT = -1; if (podMesh) podMesh.visible = false; }
       else if (podMesh) {
         const e = podT * podT * (3 - 2 * podT);          // ease so it leaves heavy and clears fast
         const y0 = worldY(ROWS - 1);

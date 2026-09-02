@@ -8311,7 +8311,7 @@
    "priority": 364,
    "title": "Cargo port + crates + courier pod, authored",
    "kind": "implementation",
-   "state": "ready",
+   "state": "done",
    "dependsOn": [
     "PQ-131.00"
    ],
@@ -8330,7 +8330,9 @@
     "npm run check:playable",
     "node scripts/check-program-docs.mjs"
    ],
-   "receiptRefs": [],
+   "receiptRefs": [
+    "design/program/roadmap/receipts/PQ-131-09-authored-cargo-port-REPORT.md"
+   ],
    "brief": "Inventory row .09: a loading frame with a launch cradle; a crate stack in five stages (separate meshes) that fills as output accumulates; the courier pod that climbs the shaft. Port 1 cell; pod 0.6 cell. Hooks: crate_0..4, cradle, pod_root, pod_thruster. 10k/2.5k + 2k per crate + 4k pod, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural port, crates and pod."
   },
   {

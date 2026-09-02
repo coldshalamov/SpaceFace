@@ -1702,6 +1702,21 @@
    "metadataUrl": "assets/ships/release/render-packages/worklight-tower/render-package.json"
   },
   {
+   "key": "works-cargo-port",
+   "assetId": "sf.render.works-cargo-port",
+   "runtimeAssetId": "place_works_cargo_port",
+   "kind": "part",
+   "slot": "place",
+   "releaseAssetId": "place_works_cargo_port",
+   "sourceUrl": "assets/ships/release/parts/works/place_works_cargo_port.glb",
+   "releaseSha256": "4e1be6a90ccdede4eb87840dda798ca71005baf9b258001e226204175f2d56b6",
+   "releaseBytes": 850076,
+   "rootNode": "SF_WORKS_CARGO_PORT_V1",
+   "dynamicNameIncludes": [],
+   "outputDir": "assets/ships/release/render-packages/works-cargo-port",
+   "metadataUrl": "assets/ships/release/render-packages/works-cargo-port/render-package.json"
+  },
+  {
    "key": "works-conduit-lane-corner",
    "assetId": "sf.render.works-conduit-lane-corner",
    "runtimeAssetId": "place_works_conduit_lane_corner",

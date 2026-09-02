@@ -367,24 +367,10 @@ export function makeMachine(kind, S, envMap) {
   // place_works_gas_tap release asset (see worksPartLoader.js); makeMachine keeps no fallback.
   // PQ-131.08: the procedural fabricator body is retired the same way. The authored gantry head
   // keeps the progressBar contract.
-  if (kind === 'cargo_port') {
-    // Cargo port: a launch collar with physical guide rails and a berthed pod. The old emissive
-    // guide torus is now a machined ring the key light picks out.
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.42, S * 0.11, 10, 24), metalMat(mid, envMap));
-    collar.position.z = S * 0.34; collar.castShadow = true; g.add(collar);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(S * 0.23, S * 0.045, 8, 20), metalMat(steel, envMap));
-    ring.position.z = S * 0.42; g.add(ring);
-    for (let i = 0; i < 4; i++) {
-      const a = i * Math.PI / 2 + Math.PI / 4;
-      const guide = new THREE.Mesh(new THREE.BoxGeometry(S * 0.05, S * 0.05, S * 0.4), paintMat(0x6d3f1c, envMap));
-      guide.position.set(Math.cos(a) * S * 0.36, Math.sin(a) * S * 0.36, S * 0.42);
-      guide.castShadow = true; g.add(guide);
-    }
-    const pod = new THREE.Mesh(new THREE.CapsuleGeometry(S * 0.14, S * 0.22, 6, 12), metalMat(0x9fb2c4, envMap));
-    pod.rotation.x = Math.PI / 2; pod.position.z = S * 0.66; pod.castShadow = true; pod.visible = false; g.add(pod);
-    dyn.pod = pod;
-    lampZ = S * 0.72;
-  } else if (kind === 'conduit') {
+  // PQ-131.09: the procedural cargo port body, crate stack, and berthed pod are retired. The
+  // live works route loads the authored place_works_cargo_port release asset (see
+  // worksPartLoader.js); the authored courier undocks from pod_root for its climb.
+  if (kind === 'conduit') {
     const plate = new THREE.Mesh(new THREE.BoxGeometry(S * 0.9, S * 0.9, S * 0.1), metalMat(0x141211, envMap));
     plate.position.z = S * 0.05; plate.receiveShadow = true; g.add(plate);
     const run = new THREE.Mesh(new THREE.BoxGeometry(S * 0.86, S * 0.13, S * 0.08), metalMat(brass, envMap));
