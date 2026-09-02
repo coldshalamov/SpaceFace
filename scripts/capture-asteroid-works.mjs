@@ -1017,6 +1017,13 @@ try {
     const seat = await seatRover({ kind: 'locked' });
     if (!seat.ok) console.log(`10c-refusal.png: skipped — ${seat.reason}`);
     else {
+      // Park both the target and the rig's carved socket for the 10f close-up: frameCell eases the
+      // camera toward the look point, so an intact cell would fly it into the rock — the rig's own
+      // empty berth keeps the lens outside the stone with the plate one cell over.
+      await page.evaluate((s) => {
+        window.__inclPlate = { col: s.tc, row: s.tr };
+        window.__inclRig = { col: s.rc, row: s.rr };
+      }, seat);
       await page.waitForTimeout(2400);
       const KEY = { down: 'ArrowDown', up: 'KeyI', left: 'ArrowLeft', right: 'ArrowRight' }[seat.dir];
       await page.keyboard.down(KEY);
@@ -1060,6 +1067,56 @@ try {
       } else {
         console.log(`10c-refusal.png: repeat rule holds — ${again.ev.refusalsSuppressed} suppressed`);
       }
+    }
+  }
+
+  // --- 10f/g/h (PQ-131.10): authored inclusion-kit close-ups at work register. The rig is still
+  //     seated on 10c's locked vein, so the plate's tier line is already faded in — frame it
+  //     before the site-register zoom loses it; then a live gas fissure and a fresh vented scar.
+  {
+    const hook = () => page.evaluate(() => document.querySelector('.ast-canvas').__ast3d);
+    // (f) the MK lock plate: authored claim hardware + live tier line at 120px/cell. The camera
+    // frames the rig's carved berth (an intact cell would take the lens inside the rock).
+    const plateCell = await page.evaluate(() => window.__inclPlate || null);
+    const rigCell = await page.evaluate(() => window.__inclRig || null);
+    if (!plateCell || !rigCell) console.log('10f-lock-plate.png: skipped — no locked vein seat from 10c');
+    else {
+      await page.evaluate((c) => document.querySelector('.ast-canvas').__ast3d.frameCell(c.col, c.row), rigCell);
+      await page.waitForTimeout(900);
+      const stampT = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.fx().mkStamp);
+      await shot('10f-lock-plate.png');
+      console.log(`10f-lock-plate.png: plate ${plateCell.col},${plateCell.row} · stamp ${stampT.toFixed(2)}`);
+      if (!(stampT > 0.5)) failures.push('10f-lock-plate.png: the stamp had faded out before the close-up');
+    }
+    // (g) a live gas pocket: authored fissure blister with its own dark mouth.
+    const gasSeat = await seatRover({ kind: 'gas' });
+    if (!gasSeat.ok) console.log(`10g-gas-fissure.png: skipped — ${gasSeat.reason}`);
+    else {
+      await page.waitForTimeout(1200);
+      await page.evaluate((s) => document.querySelector('.ast-canvas').__ast3d.frameCell(s.rc, s.rr), gasSeat);
+      await page.waitForTimeout(900);
+      await shot('10g-gas-fissure.png');
+      console.log(`10g-gas-fissure.png: pocket ${gasSeat.tc},${gasSeat.tr}`);
+      // (h) blow it: the authored vented scar is the permanent dead split it leaves behind.
+      await page.evaluate((s) => {
+        const sf = window.SF;
+        const d = sf.state.drill;
+        const COLS = d.field.length;
+        const ent = sf.state.entities.get(d.asteroidId);
+        d.field[s.tc][s.tr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+        if (ent && ent.data) {
+          if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+          const idx = s.tr * COLS + s.tc;
+          if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        }
+        sf.bus.emit('drill:break', { col: s.tc, row: s.tr });
+      }, gasSeat);
+      await page.waitForTimeout(1800);   // breach fx settles; the scar is permanent from here
+      await page.evaluate((s) => document.querySelector('.ast-canvas').__ast3d.frameCell(s.rc, s.rr), gasSeat);
+      await page.waitForTimeout(900);
+      const scarCount = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.fx().ventedScars);
+      await shot('10h-vented-scar.png');
+      console.log(`10h-vented-scar.png: blown ${gasSeat.tc},${gasSeat.tr} · scars ${scarCount}`);
     }
   }
 

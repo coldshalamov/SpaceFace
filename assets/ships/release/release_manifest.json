@@ -3739,6 +3739,25 @@
       "ktx2Textures": 20,
       "meshoptBufferViews": 77,
       "contractNodeCount": 23
+    },
+    {
+      "id": "place_works_inclusion_kit",
+      "kind": "part:places",
+      "source": "assets/ships/parts/works/place_works_inclusion_kit.glb",
+      "release": "assets/ships/release/parts/works/place_works_inclusion_kit.glb",
+      "sourceSha256": "c064efaccfcc26aca8571ef4bd04db44edb5c3686c7ed3cba7cdb7c73124a064",
+      "releaseSha256": "fdac623a54c85244ed66344261a145835d856c6183843a36106cd1d4ff12b453",
+      "sourceBytes": 6686356,
+      "releaseBytes": 1502808,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 217,
+      "contractNodeCount": 36,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

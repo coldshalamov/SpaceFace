@@ -2,16 +2,32 @@
   "assetId": "place_works_inclusion_kit",
   "cycle": 2,
   "candidateHash": "E690AEA63108D697A2D53FE8BA6EA5136F4E7A1F725572DF6FB5D73F9101CD83",
-  "state": "evidence_ready",
+  "state": "shipped",
   "gates": {
     "G1": "open",
     "G2": "open",
     "G4": "open",
     "G7": "open"
   },
-  "scope": "kit_cycle_02",
-  "notes": "Cycle 02 geological host/material/site correction. Cycle 01 evidence preserved. Not wired. Independent review required before G1/G2/G4.",
+  "scope": "kit_cycle_02_wired",
+  "notes": "Cycle 02 kit wired into the live Works board as PQ-131.10 (selected runtime LOD0/LOD1, one shared atlas). Ore veins of the contracted commodities render authored variants keyed (variantId, locked); gas fissures, vented scar and the MK lock plate are authored; procedural shapes remain only as first-frame fill and for copper/platinium/silicate (not in the kit contract). Three independent calibrated reviews on frozen capture stills: verdicts recorded in reviewEvidence.",
   "cycle01MasterGlb": "473A81F922168DEE8C3A622465205B9D68E2F8622F66EC499FD57D672A166D96",
   "hostMetalMax": 0.08,
-  "texelTargetPxPerWu": 160.0
+  "texelTargetPxPerWu": 160,
+  "productionState": "shipped",
+  "reviewEvidence": {
+    "cycle": "capture_2026-09-02",
+    "workStill": ".devshots/asteroid-works/06-cells-speak.png",
+    "processStills": [
+      ".devshots/asteroid-works/10f-lock-plate.png",
+      ".devshots/asteroid-works/10g-gas-fissure.png",
+      ".devshots/asteroid-works/10h-vented-scar.png"
+    ],
+    "releaseSha256": "FDAC623A54C85244ED66344261A145835D856C6183843A36106CD1D4FF12B453",
+    "verdicts": [
+      "REVISE (R1 silhouettes: silver/gold/iron pass; copper procedural-fallback shards flagged — copper is out of the kit contract by design, lead recorded; exotic/nickel legibility flagged — dark hosts are the brief contract)",
+      "KEEP (R2 process pieces: gas danger-not-treasure, scar dead, plate reads as bolted hardware; MK4 legible — contrast bumped per review, verified in re-capture)",
+      "REVISE (R3 material truth: kit passes its own gates, silver/ice translate faithfully; copper fallback tinted-clay flagged — same out-of-contract lead; family-pad tint edges are the law cells-speak design, rejected with reason)"
+    ]
+  }
 }

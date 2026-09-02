@@ -60,6 +60,110 @@ export const CARGO_PORT_HOOKS = Object.freeze([
   'pod_thruster',
 ]);
 
+// PQ-131.10 authored inclusion kit. The 18 variant ids are the deterministic contract from the
+// kit's reference brief; the kit family in the id prefix decides the renderer mapping (ore family,
+// gas fissures, vented scar, MK lock plate). No hooks: variants are instancing units, not machines.
+export const INCLUSION_KIT_ID = 'place_works_inclusion_kit';
+
+export const INCLUSION_KIT_VARIANT_IDS = Object.freeze([
+  'SF_INCL_SILVER_WIRE_V1',
+  'SF_INCL_SILVER_SHEET_V1',
+  'SF_INCL_GOLD_LEAF_V1',
+  'SF_INCL_GOLD_RIBBON_V1',
+  'SF_INCL_IRON_CHIP_RIDGE_V1',
+  'SF_INCL_IRON_SPECULAR_V1',
+  'SF_INCL_NICKEL_CUBIC_V1',
+  'SF_INCL_NICKEL_DENDRITE_V1',
+  'SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1',
+  'SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1',
+  'SF_INCL_EXOTIC_HOPPER_CUBE_V1',
+  'SF_INCL_ICE_SHEEN_PLATE_V1',
+  'SF_INCL_ICE_FRACTURE_VEIN_V1',
+  'SF_INCL_GAS_FISSURE_RADIAL_V1',
+  'SF_INCL_GAS_FISSURE_BRANCH_V1',
+  'SF_INCL_GAS_FISSURE_SHEAR_V1',
+  'SF_INCL_VENTED_SCAR_V1',
+  'SF_INCL_MK_LOCK_PLATE_V1',
+]);
+
+export function inclusionKitFamilyFor(variantId) {
+  if (/^SF_INCL_SILVER_/u.test(variantId)) return 'silver';
+  if (/^SF_INCL_GOLD_/u.test(variantId)) return 'gold';
+  if (/^SF_INCL_IRON_/u.test(variantId)) return 'iron';
+  if (/^SF_INCL_NICKEL_/u.test(variantId)) return 'nickel';
+  if (/^SF_INCL_EXOTIC_/u.test(variantId)) return 'exotic';
+  if (/^SF_INCL_ICE_/u.test(variantId)) return 'ice';
+  if (/^SF_INCL_GAS_/u.test(variantId)) return 'gas';
+  if (/^SF_INCL_VENTED_/u.test(variantId)) return 'scar';
+  if (/^SF_INCL_MK_/u.test(variantId)) return 'lock';
+  return null;
+}
+
+// Kit sources are Y-up assemblies (variant normal = +Y, gas mouths sink to -Y). The Works board is
+// an XY plane with +Z out of the cut face. Baking this seat into the extracted clone keeps ALL
+// runtime instance math identical to the procedural path — placement, rotation.z seam spin, and
+// the spawn wake's rotation.set(0, 0, rotZ) recomposition.
+const INCLUSION_KIT_SEAT = new THREE.Matrix4().makeRotationX(Math.PI / 2);
+
+/**
+ * Extract the 18 authored inclusion variants from a loaded kit blueprint.
+ * Fail-closed: every variant must carry both live registers (LOD0/LOD1) and the kit must use one
+ * shared atlas material. Geometry is cloned (blueprints are cache-owned and never mutated), the
+ * board seat is baked in, and the pivot stays the variant origin — the sheet-layout translation
+ * lives on the parent node matrix and is deliberately NOT applied.
+ */
+export function extractWorksInclusionKit(blueprint) {
+  if (!blueprint || !Array.isArray(blueprint.primitives) || !blueprint.primitives.length) {
+    throw new Error('[worksPartLoader] inclusion kit blueprint has no primitives');
+  }
+  let material = null;
+  for (const prim of blueprint.primitives) {
+    if (!material) material = prim.material;
+    else if (material !== prim.material) {
+      throw new Error('[worksPartLoader] inclusion kit must share one atlas material');
+    }
+  }
+  if (!material) throw new Error('[worksPartLoader] inclusion kit blueprint has no material');
+  const byName = new Map(blueprint.primitives.map((prim) => [prim.name, prim]));
+  const variants = new Map();
+  for (const id of INCLUSION_KIT_VARIANT_IDS) {
+    const lods = {};
+    for (const lod of ['lod0', 'lod1']) {
+      const prim = byName.get(`${lod === 'lod0' ? 'LOD0_' : 'LOD1_'}${id}`);
+      if (!prim) throw new Error(`[worksPartLoader] inclusion kit is missing ${lod} of ${id}`);
+      if (prim.geometry.instanceCount !== undefined || prim.geometry.isInstancedBufferGeometry) {
+        throw new Error(`[worksPartLoader] inclusion kit ${id} ${lod} is unexpectedly instanced`);
+      }
+      const geo = prim.geometry.clone();
+      geo.applyMatrix4(INCLUSION_KIT_SEAT);
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      lods[lod] = geo;
+      if (lod === 'lod0') {
+        variants.set(id, {
+          id,
+          family: inclusionKitFamilyFor(id),
+          lod0: geo,
+          lod1: null,
+          // Authored footprint in board XY (wu). The renderer normalizes instance scale by this so
+          // every variant covers its contracted fraction of a 2.2 wu cell regardless of authored size.
+          footprintWu: Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y),
+        });
+      } else {
+        variants.get(id).lod1 = geo;
+      }
+    }
+    if (!variants.get(id).family) {
+      throw new Error(`[worksPartLoader] inclusion kit variant ${id} has no known family`);
+    }
+  }
+  return Object.freeze({
+    variants,
+    material,
+    variantIds: INCLUSION_KIT_VARIANT_IDS,
+  });
+}
+
 const CONDUIT_KINDS = Object.freeze(['straight', 'corner', 't', 'cross', 'end', 'junction']);
 
 function conduitPart(family, kind) {
@@ -197,6 +301,16 @@ export const WORKS_PARTS = Object.freeze({
     slot: 'place',
     hooks: CARGO_PORT_HOOKS,
     binding: 'works-cargo-port',
+  }),
+  // PQ-131.10. The inclusion kit is an instancing library, not a machine: one release GLB holds
+  // all 18 variants × the two live registers; acquireWorksInclusionKit() extracts pivot-centered
+  // geometry clones for the renderer's inclusion buckets. LOD2 stays authoring/evidence-only.
+  [INCLUSION_KIT_ID]: Object.freeze({
+    lod0: 'assets/ships/release/parts/works/place_works_inclusion_kit.glb',
+    lod1: 'assets/ships/release/parts/works/place_works_inclusion_kit.glb',
+    slot: 'place',
+    hooks: Object.freeze([]),
+    binding: 'works-inclusion-kit',
   }),
   ...Object.fromEntries(['power', 'lane'].flatMap((family) => CONDUIT_KINDS.map((kind) => [
     `place_works_conduit_${family}_${kind}`,
@@ -822,6 +936,57 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     });
   }
 
+  /**
+   * Acquire the authored inclusion kit (PQ-131.10) as one resident, refcounted handle. The kit is
+   * a library of instancing units, not per-cell machines: one blueprint load serves every vein,
+   * gas fissure, scar, and lock plate on the board. The handle exposes pivot-centered geometry
+   * clones (lod0/lod1 per variant) plus the shared atlas material; the renderer owns all runtime
+   * material clones. Callers must release() before loader dispose.
+   */
+  async function acquireWorksInclusionKit(options = {}) {
+    if (closed || !lease.isActive()) return null;
+    const entry = table[INCLUSION_KIT_ID];
+    if (!entry) throw new Error('[worksPartLoader] inclusion kit is not registered');
+    const url = selectUrl(entry, 'work');
+    const record = { blueprint: null, refs: 0, released: false };
+    try {
+      record.blueprint = await lease.load(url, {
+        slot: entry.slot || 'place',
+        optional: true,
+        ...(options || {}),
+      });
+    } catch {
+      failed += 1;
+      return null;
+    }
+    if (closed || !lease.isActive()) return null;
+    if (!record.blueprint || !Array.isArray(record.blueprint.primitives)) {
+      failed += 1;
+      return null;
+    }
+    let kit;
+    try {
+      kit = extractWorksInclusionKit(record.blueprint);
+    } catch {
+      failed += 1;
+      return null;
+    }
+    loaded += 1;
+    record.refs += 1;
+    let handleReleased = false;
+    return Object.freeze({
+      kit,
+      url,
+      register: () => register,
+      release() {
+        if (handleReleased) return false;
+        handleReleased = true;
+        record.refs -= 1;
+        return true;
+      },
+    });
+  }
+
   async function loadWorksPart(id, options = {}, attempt = 0) {
     if (closed || !lease.isActive()) return null;
     const entry = table[id];
@@ -874,6 +1039,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
   return Object.freeze({
     loadWorksPart,
     acquireWorksConduitTemplates,
+    acquireWorksInclusionKit,
     releaseWorksPart,
     setRegister,
     stats,

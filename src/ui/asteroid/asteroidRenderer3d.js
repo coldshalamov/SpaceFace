@@ -58,6 +58,7 @@ import {
 import {
   createWorksPartLoader,
   resolveWorksConduitPiece,
+  INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
@@ -862,6 +863,43 @@ const padLocalTop = (v) => BLOCK_LIFTS[v] + Math.max(0, BLOCK_BULGES[v]);
 
 function familyForOre(oreId) { return ORE_FAMILY[oreId] || 'metal'; }
 
+// PQ-131.10 — board ore → authored inclusion kit variants (the kit's commodity contract). Shape is
+// now the third identity channel per COMMODITY inside the metal ladder, not just hue: silverium
+// wears native wires/sheets, goldium ductile leaves/ribbons, iron a chip ridge or specular plates,
+// bronzium greasy nickel cubes. Copper and platinium are NOT in the kit contract and keep the
+// procedural metal vein until their own authoring cycle; silicate is the matrix itself and stays
+// procedural by design.
+const EXOTIC_KIT_VARIANTS = Object.freeze([
+  'SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1',
+  'SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1',
+  'SF_INCL_EXOTIC_HOPPER_CUBE_V1',
+]);
+const ORE_KIT_VARIANTS = Object.freeze({
+  cmdty_ore_silverium: Object.freeze(['SF_INCL_SILVER_WIRE_V1', 'SF_INCL_SILVER_SHEET_V1']),
+  cmdty_ore_goldium: Object.freeze(['SF_INCL_GOLD_LEAF_V1', 'SF_INCL_GOLD_RIBBON_V1']),
+  cmdty_ore_iron: Object.freeze(['SF_INCL_IRON_CHIP_RIDGE_V1', 'SF_INCL_IRON_SPECULAR_V1']),
+  cmdty_ore_bronzium: Object.freeze(['SF_INCL_NICKEL_CUBIC_V1', 'SF_INCL_NICKEL_DENDRITE_V1']),
+  cmdty_gem_diamond: Object.freeze(['SF_INCL_ICE_SHEEN_PLATE_V1', 'SF_INCL_ICE_FRACTURE_VEIN_V1']),
+  cmdty_ore_einsteinium: EXOTIC_KIT_VARIANTS,
+  cmdty_gem_emerald: EXOTIC_KIT_VARIANTS,
+  cmdty_gem_ruby: EXOTIC_KIT_VARIANTS,
+  cmdty_exotic_amazonite: EXOTIC_KIT_VARIANTS,
+});
+export { ORE_KIT_VARIANTS };
+// Authored variants already carry their host seat and are authored to fill ~0.7 cell at scale 1
+// (reference-brief contract). Instance scale therefore normalizes by the measured footprint and
+// targets a fraction of one 2.2 wu cell — no S multiplier on the fit value itself.
+const INCLUSION_KIT_FIT = {
+  silver: [0.66, 0.05],
+  gold: [0.66, 0.05],
+  iron: [0.68, 0.05],
+  nickel: [0.66, 0.05],
+  exotic: [0.60, 0.10],
+  ice: [0.62, 0.08],
+  gas: [0.70, 0.08],
+  scar: [0.74, 0.04],
+};
+
 // The one classifier. Returns null only for a cell that is not there.
 function materialIdFor(tile) {
   if (!tile || tile.type === 'empty') return null;
@@ -1260,8 +1298,177 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (!worksLoader) {
       worksLoader = createWorksPartLoader({ renderer });
       worksLoader.setRegister(zoomRegister);
+      acquireInclusionKit();
     }
     return worksLoader;
+  }
+
+  // ---- PQ-131.10 authored inclusion kit ------------------------------------------------------
+  // The kit is a library of instancing units (one blueprint load serves every vein, gas fissure,
+  // scar, and lock plate). Until it settles, the board renders the procedural inclusion shapes —
+  // the renderer's own "every vein is visible from the first frame" contract beats fail-closed
+  // absence for inclusions, because a bare pad hides information a machine's absence does not.
+  // Arrival is atomic: ore buckets rebuild from the field (their n counters are append-only and
+  // can never be refilled in place), gas/scar meshes swap geometry+material in place.
+  let inclusionKit = null;        // loader handle: { kit: { variants, material }, release() }
+  let inclusionKitMats = null;    // renderer-owned clones: { unlocked, locked, plateFade }
+  let inclusionKitGen = 0;        // late arrivals of a dead renderer never settle
+  function acquireInclusionKit() {
+    const gen = ++inclusionKitGen;
+    worksLoader.acquireWorksInclusionKit().then((handle) => {
+      if (!handle || disposed || glTeardownDone || gen !== inclusionKitGen) {
+        if (handle) handle.release();
+        return;
+      }
+      inclusionKit = handle;
+      const base = handle.kit.material;
+      const unlocked = base.clone();
+      unlocked.userData = { ...(unlocked.userData || {}), worksInstanceOwned: true };
+      // A LOCKED VEIN IS DULL, NOT DARK (law §5 / §3.5) — the same oxidised treatment oreMaterial
+      // applies to procedural veins, through factors so the baked atlas keeps doing the coloring.
+      const locked = base.clone();
+      locked.userData = { ...(locked.userData || {}), worksInstanceOwned: true };
+      locked.color.multiplyScalar(0.62);
+      locked.roughness = Math.min(1, locked.roughness + 0.42);
+      locked.metalness *= 0.5;
+      locked.envMapIntensity *= 0.35;
+      // The lock plate fades in and out at the aim; its material must be owned by the stamp so the
+      // shared inclusion surfacing never inherits the stamp's opacity.
+      const plateFade = base.clone();
+      plateFade.userData = { ...(plateFade.userData || {}), worksInstanceOwned: true };
+      plateFade.transparent = true;
+      plateFade.depthWrite = true;
+      inclusionKitMats = { unlocked, locked, plateFade };
+      kitRegisterApplied = false;
+      for (const variant of handle.kit.variants.values()) {
+        sharedGeos.add(variant.lod0);
+        sharedGeos.add(variant.lod1);
+      }
+      settleAuthoredInclusions();
+    }).catch(() => { /* procedural fill remains; the theater check asserts the kit loudly */ });
+  }
+
+  function kitVariantLod(variantId, lod) {
+    return inclusionKit.kit.variants.get(variantId)?.[lod] || null;
+  }
+
+  // Per-variant bucket capacity: the honest ceiling is every vein of every commodity that maps to
+  // this variant (buckets are keyed by variant, not ore, so identical geometry+material share one
+  // draw call). Instance matrices only — over-allocation costs nothing.
+  function kitVariantCap(variantId) {
+    let cap = 0;
+    for (const [oreId, ids] of Object.entries(ORE_KIT_VARIANTS)) {
+      if (ids.includes(variantId)) cap += oreCaps.get(oreId) || 0;
+    }
+    return Math.max(1, cap);
+  }
+
+  function settleAuthoredInclusions() {
+    for (const [, b] of oreBuckets) oreRoot.remove(b.mesh);
+    oreBuckets.clear();
+    oreCellIndex.clear();
+    oreWakes.length = 0;
+    for (const [idx, g] of gasByCell) swapAuthoredGasCell(idx, g);
+    for (const [, m] of ventedScars) swapAuthoredScar(m);
+    if (mkStamp && mkStamp.userData.procedural) {
+      // The procedural stamp is first-frame fill only — the authored plate takes over at the next
+      // aim instead of two lock plates agreeing to disagree.
+      oreRoot.remove(mkStamp);
+      mkStamp = null;
+      mkStampCell = -1;
+      mkStampT = 0;
+    }
+    if (!field) return;
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const tile = field[c] && field[c][r];
+        if (tile && tile.type === 'vein' && tile.ore) syncOreAt(c, r);
+      }
+    }
+  }
+
+  function swapAuthoredGasCell(idx, g) {
+    const kit = inclusionKit.kit;
+    const fissures = kit.variantIds.filter((id) => kit.variants.get(id).family === 'gas');
+    const id = fissures[hash32(g.c, g.r, 'gfk') % fissures.length];
+    const variant = kit.variants.get(id);
+    const geo = kitVariantLod(id, zoomRegister === 'site' ? 'lod1' : 'lod0');
+    if (!geo) return;
+    if (g.core) { g.group.remove(g.core); g.core = null; }  // the authored mouth IS the dark centre
+    const cm = g.cracks[0];
+    if (!cm) return;
+    cm.geometry = geo;
+    cm.material = inclusionKitMats.unlocked;
+    cm.userData.worksAuthored = true;
+    cm.userData.kitVariantId = id;
+    cm.position.z = padZ(g.c, g.r) + 0.004;
+    cm.rotation.z = rnd01(g.c, g.r, 'gcz') * Math.PI * 2;
+    const fit = INCLUSION_KIT_FIT.gas;
+    cm.scale.setScalar((S * (fit[0] + rnd01(g.c, g.r, 'gfs') * fit[1])) / variant.footprintWu);
+  }
+
+  function swapAuthoredScar(m) {
+    const kit = inclusionKit.kit;
+    const id = kit.variantIds.find((v) => kit.variants.get(v).family === 'scar');
+    const variant = kit.variants.get(id);
+    const geo = kitVariantLod(id, zoomRegister === 'site' ? 'lod1' : 'lod0');
+    if (!geo) return;
+    m.geometry = geo;
+    m.material = inclusionKitMats.unlocked;
+    m.userData.worksAuthored = true;
+    m.userData.kitVariantId = id;
+    // The scar mesh does not carry its cell (it survives the tile being cleared), so the jitter
+    // seeds from the settled world position — stable for the life of this mesh.
+    const fit = INCLUSION_KIT_FIT.scar;
+    const sx = hash32(Math.round(m.position.x * 64), Math.round(m.position.y * 64), 'vss');
+    m.scale.setScalar((S * (fit[0] + (sx % 1000) / 1000 * fit[1])) / variant.footprintWu);
+  }
+
+  function authoredInclusionsSetRegister(reg) {
+    if (!inclusionKit || !inclusionKitMats) return;
+    const lod = reg === 'site' ? 'lod1' : 'lod0';
+    for (const [, b] of oreBuckets) {
+      if (b.kitVariantId) {
+        const geo = kitVariantLod(b.kitVariantId, lod);
+        if (geo) b.mesh.geometry = geo;
+      }
+    }
+    for (const [, g] of gasByCell) {
+      for (const cm of g.cracks) {
+        if (cm.userData?.worksAuthored) {
+          const geo = kitVariantLod(cm.userData.kitVariantId, lod);
+          if (geo) cm.geometry = geo;
+        }
+      }
+    }
+    for (const [, m] of ventedScars) {
+      if (m.userData?.worksAuthored) {
+        const geo = kitVariantLod(m.userData.kitVariantId, lod);
+        if (geo) m.geometry = geo;
+      }
+    }
+  }
+
+  function authoredInclusionsDispose() {
+    inclusionKitGen += 1;   // a still-in-flight acquire must never settle into a dead renderer
+    if (inclusionKit) {
+      for (const variant of inclusionKit.kit.variants.values()) {
+        // The extracted clones are renderer-owned (sharedGeos only protects them from per-build
+        // disposal); the screen leaving is the one place they must actually be released.
+        sharedGeos.delete(variant.lod0);
+        sharedGeos.delete(variant.lod1);
+        variant.lod0.dispose();
+        variant.lod1.dispose();
+      }
+      inclusionKit.release();
+      inclusionKit = null;
+    }
+    if (inclusionKitMats) {
+      inclusionKitMats.unlocked.dispose();
+      inclusionKitMats.locked.dispose();
+      inclusionKitMats.plateFade.dispose();
+      inclusionKitMats = null;
+    }
   }
   function unmountWorksProof({ forget = false } = {}) {
     if (forget) worksProofWanted = false;
@@ -2255,6 +2462,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return geo;
   });
   const seamChipGeo = new THREE.PlaneGeometry(1, 1);   // count chips are MESHES, see makeChip()
+  // Authored MK plate's tier-line label. It spans the plate face (not just the 0.18 engrave box)
+  // so the live MK{req} stays as legible as the procedural stamp's text was — law §5's "readable
+  // at 120 px without a sprite" is about the TIER, and the hardware's own engraving is sub-8px.
+  const mkStampLabelGeo = new THREE.PlaneGeometry(0.44, 0.13);
   const gasCrackGeos = makeRadialCrackGeos();
   const gasCoreGeo = makeGasCoreGeo();
   const ventedScarGeo = makeVentedScarGeo();
@@ -2340,9 +2551,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
   // THE MK LOCK STAMP (law §5, playfield §5.5). The old build hung a THREE.Sprite over every locked
   // vein — a camera-facing billboard carrying an 8px "MK2", which is the exact stand-in playfield
-  // §5.5 names and §5.6 bans. It is now ONE engraved plate: a chamfered lit mesh whose albedo map
-  // paints a bezel and a recessed pane, seated on the cell face and fading in over 600ms while the
-  // rig is aimed at it — which is also what law §5's "Locked material" row actually asks for.
+  // §5.5 names and §5.6 bans. It is ONE engraved plate seated on the cell face, fading in over
+  // 600ms while the rig is aimed at it. Since PQ-131.10 the plate hardware (gasket, anchors, hinge,
+  // latch) is the authored kit's lock variant, and the canvas paints ONLY the tier line — the live
+  // "MK{req}" sits in the plate's engrave band, replacing the LOD0's fixed MK2 strokes, which
+  // cannot carry the real per-vein tier. The full-plate painting below is kept solely for the
+  // procedural stamp that fills the first moments before the kit settles (or on a failed load).
   const stampTextures = new Map();
   const stampMats = new Map();
   function stampTexture(tier) {
@@ -2382,6 +2596,45 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       });
       m.dispose = () => {}; // cache-owned: disposeGroup must not release the shared program
       stampMats.set(tier, m);
+    }
+    return m;
+  }
+  // Text-only tier line for the authored plate's engrave band.
+  const stampTextTextures = new Map();
+  const stampTextMats = new Map();
+  function stampTextTexture(tier) {
+    let t = stampTextTextures.get(tier);
+    if (t) return t;
+    const W = 256, H = 96;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, W, H);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '600 72px "Spline Sans Mono", ui-monospace, Consolas, monospace';
+    // Engraved read at play size: a dark shadow pocket first (the groove), then the bone-light
+    // cut with its chisel highlight — review R2 wanted +10-15% contrast on the tier line.
+    g.fillStyle = 'rgba(20,14,8,0.85)';                        // the groove's shadow pocket
+    g.fillText(`MK${tier}`, W / 2 + 2, H / 2 + 3);
+    g.fillStyle = 'rgba(255,244,222,0.28)';                    // chisel highlight on the lower edge
+    g.fillText(`MK${tier}`, W / 2, H / 2 + 4);
+    g.fillStyle = '#f7eeda';                                   // the cut, bone-light on dark steel
+    g.fillText(`MK${tier}`, W / 2, H / 2);
+    t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    stampTextTextures.set(tier, t);
+    return t;
+  }
+  function stampTextMaterial(tier) {
+    let m = stampTextMats.get(tier);
+    if (!m) {
+      m = new THREE.MeshStandardMaterial({
+        map: stampTextTexture(tier), roughness: 0.5, metalness: 0.4, envMap, envMapIntensity: 0.5,
+        transparent: true, opacity: 0, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      });
+      m.dispose = () => {}; // cache-owned: disposeGroup must not release the shared program
+      stampTextMats.set(tier, m);
     }
     return m;
   }
@@ -3336,8 +3589,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // shared geometry that must survive per-cell group disposal
   const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, cellQuad, partGeo, chunkGeo,
     ...inclusionGeos.metal, ...inclusionGeos.ice, ...inclusionGeos.exotic, ...bandGeos,
-    ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo,
+    ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo, mkStampLabelGeo,
     ...vaporGeos, ...scarGeos, podGeo]);
+  // Authored kit geometries join on kit settlement (acquireInclusionKit) — they are shared across
+  // every vein/gas/scar instance and must never be disposed per build.
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
@@ -3412,6 +3667,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (zoomRegister === reg && !zoomAnim) return;
     zoomRegister = reg;
     if (worksLoader) worksLoader.setRegister(reg);
+    authoredInclusionsSetRegister(reg);
     refreshAuthoredOverlayRegisterMetrics();
     const to = reg === 'site' ? siteZoomK() : 1;
     if (motionReduce || ZOOM_SNAP_S <= 0) {
@@ -3825,19 +4081,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
-  function oreBucketFor(oreId, locked) {
-    const key2 = `${oreId}:${locked ? 1 : 0}`;
+  function oreBucketFor(key2, placement) {
     let b = oreBuckets.get(key2);
     if (b) return b;
-    const cap = Math.max(1, oreCaps.get(oreId) || 1);
-    const geos = inclusionGeos[familyForOre(oreId)] || clusterGeos;
-    const mesh = new THREE.InstancedMesh(geos[(oreId.length + (locked ? 1 : 0)) % geos.length], oreMaterial(oreId, locked), cap);
+    let mesh;
+    if (placement.kitVariantId) {
+      const lod = zoomRegister === 'site' ? 'lod1' : 'lod0';
+      const geo = kitVariantLod(placement.kitVariantId, lod);
+      if (!geo) throw new Error(`[ast3d] authored inclusion variant ${placement.kitVariantId} has no ${lod}`);
+      mesh = new THREE.InstancedMesh(geo, placement.locked ? inclusionKitMats.locked : inclusionKitMats.unlocked, kitVariantCap(placement.kitVariantId));
+    } else {
+      const cap = Math.max(1, oreCaps.get(placement.oreId) || 1);
+      const geos = inclusionGeos[familyForOre(placement.oreId)] || clusterGeos;
+      const geo = geos[(placement.oreId.length + (placement.locked ? 1 : 0)) % geos.length];
+      mesh = new THREE.InstancedMesh(geo, oreMaterial(placement.oreId, placement.locked), cap);
+    }
     mesh.castShadow = true;
     mesh.frustumCulled = false;
     mesh.count = 0;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     oreRoot.add(mesh);
-    b = { key: key2, mesh, cap, n: 0, cells: new Map() };
+    const cap = placement.kitVariantId ? kitVariantCap(placement.kitVariantId) : Math.max(1, oreCaps.get(placement.oreId) || 1);
+    b = { key: key2, mesh, cap, n: 0, cells: new Map(), kitVariantId: placement.kitVariantId || null, oreId: placement.oreId, locked: placement.locked };
     oreBuckets.set(key2, b);
     return b;
   }
@@ -3870,8 +4135,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   };
 
   // EVERY VEIN IS VISIBLE FROM THE FIRST FRAME (law §2.3 — the survey gate is gone). A vein erupts
-  // its family's inclusion; a tier-locked one wears the same shape in a dulled, oxidised finish,
-  // and the engraved MK plate arrives when the rig aims at it (law §5).
+  // its commodity's authored inclusion once the kit has settled; before that (and for commodities
+  // outside the kit contract) it wears the procedural family shape. A tier-locked vein wears the
+  // same shape dulled, and the engraved MK plate arrives when the rig aims at it (law §5).
   function syncOreAt(c, r) {
     const tile = field[c] && field[c][r];
     const idx = tileIndex(c, r);
@@ -3883,21 +4149,34 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     const req = tile.tierReq || drillTierReqForOre(tile.ore);
     const locked = drillSys.getDrillTier() < req;
-    const key2 = `${tile.ore}:${locked ? 1 : 0}`;
+    const kitList = inclusionKit && ORE_KIT_VARIANTS[tile.ore];
+    const kitVariantId = kitList ? kitList[hash32(c, r, 'okv') % kitList.length] : null;
+    const key2 = kitVariantId ? `k:${kitVariantId}:${locked ? 1 : 0}` : `${tile.ore}:${locked ? 1 : 0}`;
     if (existing && existing.bucket.key === key2) return;
     if (existing) killOreInstance(existing);
-    const b = oreBucketFor(tile.ore, locked);
-    if (b.n >= b.cap) return; // cap = vein count of this ore in the field; cannot overflow honestly
+    const b = oreBucketFor(key2, { oreId: tile.ore, locked, kitVariantId });
+    if (b.n >= b.cap) return; // cap = vein count that can map to this bucket; cannot overflow honestly
     const i = b.n++;
     const fam = familyForOre(tile.ore);
     // A metal vein snaps to one of four axis orientations so neighbouring seam cells CHAIN into one
     // continuous branch across the body instead of each cell wearing its own unrelated squiggle.
-    const rotZ = fam === 'metal'
+    // The kit's metal variants carry the same seam-grain contract (+X grain).
+    const kitFamily = kitVariantId ? inclusionKit.kit.variants.get(kitVariantId).family : null;
+    const rotZ = fam === 'metal' || kitFamily === 'silver' || kitFamily === 'gold'
+      || kitFamily === 'iron' || kitFamily === 'nickel'
       ? (hash32(c, r, 'or') % 4) * (Math.PI / 2)
       : rnd01(c, r, 'or') * Math.PI * 2;
-    const fit = INCLUSION_FIT[fam] || INCLUSION_FIT.matrix;
-    const scale = S * (fit[0] + rnd01(c, r, 'os') * fit[1]);
-    const z = padZ(c, r) - 0.09;
+    let scale;
+    if (kitVariantId) {
+      const fit = INCLUSION_KIT_FIT[kitFamily] || INCLUSION_KIT_FIT.iron;
+      scale = (S * (fit[0] + rnd01(c, r, 'os') * fit[1])) / inclusionKit.kit.variants.get(kitVariantId).footprintWu;
+    } else {
+      const fit = INCLUSION_FIT[fam] || INCLUSION_FIT.matrix;
+      scale = S * (fit[0] + rnd01(c, r, 'os') * fit[1]);
+    }
+    // Authored variants seat their own host ON the pad (their cavities sink below the pivot), so
+    // they sit at the face, not sunk 0.09 like the procedural shapes.
+    const z = padZ(c, r) - (kitVariantId ? 0.012 : 0.09);
     dummy.position.set(worldX(c), worldY(r), z);
     dummy.rotation.set(0, 0, rotZ);
     dummy.scale.setScalar(scale);
@@ -3942,13 +4221,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const face = padZ(c, r);
     const group = new THREE.Group();
     group.position.set(worldX(c), worldY(r), 0);
-    // The dark centre — a socket the light cannot reach.
-    const core = new THREE.Mesh(gasCoreGeo, gasCoreMat);
-    core.position.z = face - 0.02;
-    core.rotation.z = rnd01(c, r, 'gk') * Math.PI * 2;
-    core.scale.setScalar(S);
-    group.add(core);
-    // Radial hairline fissures, seated on the pad so the raking key finds their flanks.
+    // The dark centre — a socket the light cannot reach. Once the authored kit has settled, its
+    // gas variants bake their own dark mouth (a real cavity, dark because unlit), so the
+    // procedural socket disc would double-fill the same shadow and is skipped.
+    let core = null;
+    if (!inclusionKit) {
+      core = new THREE.Mesh(gasCoreGeo, gasCoreMat);
+      core.position.z = face - 0.02;
+      core.rotation.z = rnd01(c, r, 'gk') * Math.PI * 2;
+      core.scale.setScalar(S);
+      group.add(core);
+    }
+    // Hairline fissures / authored fissure blister, seated on the pad so the raking key finds
+    // their flanks.
     const cracks = [];
     const cm = new THREE.Mesh(gasCrackGeos[hash32(c, r, 'gcr') % gasCrackGeos.length], gasCrackMat);
     cm.position.z = face - 0.012;
@@ -3965,7 +4250,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     vapor.scale.set(baseScale, baseScale, baseScale * 0.55);
     group.add(vapor);
     gasRoot.add(group);
-    gasByCell.set(idx, { group, vapor, cracks, phase: rnd01(c, r, 'gp') * Math.PI * 2, baseScale, hot: false });
+    const rec = { group, vapor, cracks, phase: rnd01(c, r, 'gp') * Math.PI * 2, baseScale, hot: false, c, r, core };
+    if (inclusionKit) swapAuthoredGasCell(idx, rec);
+    gasByCell.set(idx, rec);
   }
 
   // A blown pocket leaves a permanent scar (law §3.5 "vented pocket", D2 permanence). The sim clears
@@ -3980,6 +4267,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     m.scale.setScalar(S);
     m.receiveShadow = true;
     gasRoot.add(m);
+    if (inclusionKit) swapAuthoredScar(m);
     ventedScars.set(idx, m);
   }
 
@@ -6267,12 +6555,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // faceted crystal cluster into per-frame speckle — the moire the law names — so the ore drops its
   // specular and reads as one swatch of its own hue, which is all the body scale can carry anyway.
   let oreRegisterSig = '';
+  let kitRegisterApplied = true;   // reset when the kit settles so its clones join the treatment
   function syncOreRegister() {
     const siteReg = zoomRegister !== 'work' || zoomKCur <= 0.82;
     const sig = `${siteReg ? 's' : 'w'}|${oreMats.size}`;
-    if (sig === oreRegisterSig) return;
+    if (sig === oreRegisterSig && !kitRegisterApplied) return;
     oreRegisterSig = sig;
-    for (const m of oreMats.values()) {
+    kitRegisterApplied = true;
+    const apply = (m) => {
+      if (!m) return;
       if (m._awRough === undefined) {
         m._awRough = m.roughness;
         m._awMetal = m.metalness;
@@ -6282,6 +6573,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       m.roughness = siteReg ? Math.min(1, m._awRough + 0.3) : m._awRough;
       m.metalness = siteReg ? m._awMetal * 0.4 : m._awMetal;
       m.envMapIntensity = siteReg ? m._awEnv * 0.25 : m._awEnv;
+    };
+    for (const m of oreMats.values()) apply(m);
+    // The authored kit's shared inclusions get the same site treatment as the procedural ones —
+    // both clones arrive after the first sync, hence the kitRegisterApplied re-run latch.
+    if (inclusionKitMats) {
+      apply(inclusionKitMats.unlocked);
+      apply(inclusionKitMats.locked);
     }
   }
 
@@ -6705,7 +7003,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---- the MK lock plate (law §5 "Locked material"): one engraved stamp, on the aimed cell, in
-  // over 600ms and out fast. Dull ore says "there is value here"; the stamp says "not with this bit".
+  // over 600ms and out fast. Dull ore says "there is value here"; the stamp says "not with this
+  // bit". Post-PQ-131.10 the stamp is the authored kit's lock plate (gasket, four anchors, hinge,
+  // latch — the whole claim hardware), with the live MK{req} line on its engrave band. The
+  // procedural chamfered plate is only the first-moments fill before the kit settles.
+  function buildAuthoredMkStamp() {
+    const variant = inclusionKit.kit.variants.get('SF_INCL_MK_LOCK_PLATE_V1');
+    const group = new THREE.Group();
+    group.userData.procedural = false;
+    const plate = new THREE.Mesh(variant.lod1, inclusionKitMats.plateFade);
+    plate.castShadow = true;
+    plate.userData.worksShared = true;
+    group.add(plate);
+    const label = new THREE.Mesh(mkStampLabelGeo, stampTextMaterial(1));
+    label.position.set(0, 0, 0.080);
+    label.userData.worksShared = true;
+    group.add(label);
+    // Normalize the authored plate (~1.28 wu long) to the procedural stamp's footprint so the
+    // aim presentation does not change size when the kit lands.
+    const stampSpan = S * 1.15;
+    group.scale.setScalar(stampSpan / variant.footprintWu);
+    return group;
+  }
   function syncMkStamp(d, dt) {
     const aim = aimCell(d);
     const tile = aim && field[aim.col] ? field[aim.col][aim.row] : null;
@@ -6717,20 +7036,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       mkStampCell = idx;
       if (idx >= 0) {
         if (!mkStamp) {
-          mkStamp = new THREE.Mesh(mkStampGeo, stampMaterial(req));
+          mkStamp = inclusionKit ? buildAuthoredMkStamp() : new THREE.Mesh(mkStampGeo, stampMaterial(req));
+          if (mkStamp.isMesh) mkStamp.userData.procedural = true;
           mkStamp.castShadow = true;
           mkStamp.renderOrder = 22;
           oreRoot.add(mkStamp);
         }
-        mkStamp.material = stampMaterial(req);
+        if (mkStamp.isMesh) mkStamp.material = stampMaterial(req);
+        else {
+          // authored group: retarget the engrave-band tier line
+          const label = mkStamp.children[1];
+          label.material = stampTextMaterial(req);
+        }
         mkStamp.position.set(worldX(aim.col), worldY(aim.row) - S * 0.27, padZ(aim.col, aim.row));
-        mkStamp.scale.setScalar(S * 1.15);
+        if (mkStamp.isMesh) mkStamp.scale.setScalar(S * 1.15);
       }
     }
     if (!mkStamp) return;
     const target = idx >= 0 ? 1 : 0;
     mkStampT = Math.max(0, Math.min(1, mkStampT + (target ? dt / 0.6 : -dt / 0.2)));
-    mkStamp.material.opacity = mkStampT;
+    if (mkStamp.isMesh) mkStamp.material.opacity = mkStampT;
+    else {
+      inclusionKitMats.plateFade.opacity = mkStampT;
+      mkStamp.children[1].material.opacity = mkStampT;
+    }
     mkStamp.visible = mkStampT > 0.015;
   }
 
@@ -7193,7 +7522,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function setGasHot(rec, hot) {
     rec.hot = hot;
-    for (const cm of rec.cracks) cm.material = hot ? gasCrackHotMat : gasCrackMat;
+    // Authored kit fissures carry permanent baked surfacing (the mouth is dark because unlit);
+    // the procedural hot paint would replace the authored atlas, so only the vapor breath swaps.
+    for (const cm of rec.cracks) {
+      if (cm.userData?.worksAuthored) continue;
+      cm.material = hot ? gasCrackHotMat : gasCrackMat;
+    }
   }
 
   // ---------------------------------------------------------------- particles + floaters
@@ -7754,6 +8088,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     lookInit = false;
     zoomRegister = 'work';
     if (worksLoader) worksLoader.setRegister('work');
+    authoredInclusionsSetRegister('work');
     zoomKCur = 1;
     zoomAnim = null;
     applyView();
@@ -8073,6 +8408,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function finishDispose() {
     if (glTeardownDone) return;
     glTeardownDone = true;
+    authoredInclusionsDispose();
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();
     for (const [, g] of gasByCell) gasRoot.remove(g.group);

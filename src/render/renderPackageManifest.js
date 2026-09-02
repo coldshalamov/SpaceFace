@@ -1331,6 +1331,16 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
     "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb"
+  },
+  {
+    "assetId": "sf.render.works-inclusion-kit",
+    "expectedContentHash": "960455973033c3eea34d6875dfb46827712579b6bcdae06436968fbdf44bbc39",
+    "key": "works-inclusion-kit",
+    "metadataUrl": "assets/ships/release/render-packages/works-inclusion-kit/render-package.json",
+    "runtimeAssetId": "place_works_inclusion_kit",
+    "slot": "place",
+    "sourceSha256": "fdac623a54c85244ed66344261a145835d856c6183843a36106cd1d4ff12b453",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_inclusion_kit.glb"
   }
 ];
 
