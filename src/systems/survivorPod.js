@@ -238,8 +238,14 @@ export function countLiveCausalSurvivorPods(state) {
   return n;
 }
 
-function disposeEntity(state, bus, entity, reason) {
-  if (!entity) return;
+function disposeEntity(state, bus, entity, reason, helpers = null) {
+  if (!entity) return false;
+  if (helpers && typeof helpers.removeEntity === 'function') {
+    return helpers.removeEntity(entity.id, { immediate: true, reason }) === true;
+  }
+  if (hasCanonicalEntityLifecycle(state)) {
+    throw new Error('survivor pod disposal requires canonical helpers.removeEntity');
+  }
   entity.alive = false;
   if (state.entities && typeof state.entities.delete === 'function') {
     state.entities.delete(entity.id);
@@ -251,10 +257,20 @@ function disposeEntity(state, bus, entity, reason) {
   if (bus && typeof bus.emit === 'function') {
     bus.emit('entity:destroyed', { id: entity.id, type: entity.type, reason });
   }
+  return true;
 }
 
-export function enforceCausalSurvivorPodCap(state, bus, max = MAX_CAUSAL_SURVIVOR_PODS) {
+export function enforceCausalSurvivorPodCap(
+  state,
+  bus,
+  max = MAX_CAUSAL_SURVIVOR_PODS,
+  helpers = null,
+) {
   if (!state || !Number.isFinite(max) || max < 0) return 0;
+  if (hasCanonicalEntityLifecycle(state)
+    && (!helpers || typeof helpers.removeEntity !== 'function')) {
+    throw new Error('survivor pod cap requires canonical helpers.removeEntity');
+  }
   const found = [];
   const list = state.entityList;
   if (Array.isArray(list)) {
@@ -271,10 +287,13 @@ export function enforceCausalSurvivorPodCap(state, bus, max = MAX_CAUSAL_SURVIVO
   const drop = found.length - max;
   let removed = 0;
   for (let i = 0; i < drop; i++) {
-    disposeEntity(state, bus, found[i], 'survivor_pod_cap');
-    removed += 1;
+    if (disposeEntity(state, bus, found[i], 'survivor_pod_cap', helpers)) removed += 1;
   }
   return removed;
+}
+
+function hasCanonicalEntityLifecycle(state) {
+  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true);
 }
 
 function isFenceStation(station) {
@@ -351,6 +370,7 @@ export const survivorPod = {
   init(ctx) {
     this._state = ctx && ctx.state;
     this._bus = ctx && ctx.bus;
+    this.helpers = ctx && ctx.helpers;
     ensureState(this._state);
     this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
     this._onSectorEnter = (p) => this._promoteSector(p && p.sectorId);
@@ -476,7 +496,7 @@ export const survivorPod = {
 
     const own = ensureState(state);
     own.causal.byEntityId[entity.id] = rec;
-    enforceCausalSurvivorPodCap(state, this._bus, MAX_CAUSAL_SURVIVOR_PODS);
+    enforceCausalSurvivorPodCap(state, this._bus, MAX_CAUSAL_SURVIVOR_PODS, this.helpers);
     // Cap may have disposed this entity if we were over; drop stale record.
     if (entity.alive === false) {
       delete own.causal.byEntityId[entity.id];
@@ -652,7 +672,7 @@ export const survivorPod = {
       this._bus.emit('survivorPod:resolved', { ...receipt });
     }
 
-    disposeEntity(state, this._bus, entity, `survivor_pod_${outcome}`);
+    disposeEntity(state, this._bus, entity, `survivor_pod_${outcome}`, this.helpers);
     return true;
   },
 
@@ -893,6 +913,7 @@ export const survivorPod = {
     this._onNewGame = null;
     this._onKilled = null;
     this._onLatched = null;
+    this.helpers = null;
   },
 };
 
