@@ -155,6 +155,7 @@ import {
   markDynamicBufferItems,
   registerDynamicBufferOwner,
   replaceDynamicBufferAttribute,
+  unregisterDynamicBufferOwner,
 } from './dynamicBufferRanges.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
@@ -761,6 +762,7 @@ export const vfx = {
   name: 'vfx',
 
   init(ctx) {
+    this._destroyed = false;
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -1058,9 +1060,15 @@ export const vfx = {
   },
 
   destroy() {
-    this._restorePerfVfxRoots();
+    if (this._destroyed === true) return false;
+    this._destroyed = true;
+
+    invokeVfxCall(this._restorePerfVfxRoots, this, 'performance VFX restore');
     for (const unsubscribe of this._subs || []) {
-      if (typeof unsubscribe === 'function') unsubscribe();
+      if (typeof unsubscribe !== 'function') continue;
+      try { unsubscribe(); } catch (error) {
+        console.error('[vfx] unsubscribe failed', error);
+      }
     }
     this._subs = [];
 
@@ -1076,15 +1084,179 @@ export const vfx = {
       if (render.vfxReprojectFrame === this._vfxReprojectFramePort) delete render.vfxReprojectFrame;
     }
 
-    if (this._weaponPresenter && typeof this._weaponPresenter.dispose === 'function') {
-      this._weaponPresenter.dispose();
+    // Dynamic upload owners must be detached while the renderer's scene/coordinator still exists;
+    // the renderer is a registry teardown owner and follows this dependent.
+    releaseVfxDynamicBufferOwner(this._particleDynamicBufferOwner);
+    releaseVfxDynamicBufferOwner(this._trailStreakPool && this._trailStreakPool.dynamicBufferOwner);
+    for (const bucket of spriteBucketValues(this._spriteBatches)) {
+      releaseVfxDynamicBufferOwner(bucket && bucket.dynamicBufferOwner);
     }
+    releaseVfxDynamicBufferOwner(this._seamMarkers && this._seamMarkers.dynamicBufferOwner);
+    const fieldOwners = this._fieldGeom && this._fieldGeom.dynamicBufferOwners;
+    for (const owner of Object.values(fieldOwners || {})) releaseVfxDynamicBufferOwner(owner);
+
+    // Child presenters own their internal pools/materials. They are retired before their parent
+    // references are cleared, and every call is isolated so one optional presentation feature
+    // cannot prevent the remaining VFX roots from being detached.
+    invokeVfxDisposer(this._weaponPresenter, 'weapon presenter');
     this._weaponPresenter = null;
-    if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
+    invokeVfxDisposer(this._combatBeams, 'combat beams');
     this._combatBeams = null;
-    this._unbindArcadeContextLoss();
-    if (this._arcadeStructural?.dispose) this._arcadeStructural.dispose();
+    invokeVfxCall(this._unbindArcadeContextLoss, this, 'arcade context loss unbind');
+    invokeVfxDisposer(this._arcadeStructural, 'arcade structural FX');
     this._arcadeStructural = null;
+
+    invokeVfxCall(this._disposeEnergy, this, 'energy resources');
+
+    const disposeState = createVfxDisposeState();
+    disposeVfxRoot(this._points, disposeState);
+    disposeVfxRoot(this._trailStreakPool && this._trailStreakPool.mesh, disposeState);
+    for (const bucket of spriteBucketValues(this._spriteBatches)) {
+      disposeVfxRoot(bucket && bucket.mesh, disposeState);
+    }
+    for (const slot of this._lights || []) disposeVfxRoot(slot && slot.obj, disposeState);
+    disposeVfxRoot(this._miningBeam && this._miningBeam.mesh, disposeState);
+    disposeVfxRoot(this._miningBeam && this._miningBeam.glow, disposeState);
+    for (const key of ['mesh', 'glow', 'band', 'anchor', 'anchorCore', 'targetHalo']) {
+      disposeVfxRoot(this._tetherCable && this._tetherCable[key], disposeState);
+    }
+    disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
+    disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
+    disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
+
+    const fieldGeometry = this._fieldGeom;
+    if (fieldGeometry) {
+      for (const key of [
+        'vaneMesh', 'pipMesh', 'knotMesh', 'domeMesh', 'ribMesh', 'bermMesh',
+        'chevronMesh', 'bankMesh',
+      ]) disposeVfxRoot(fieldGeometry[key], disposeState);
+      for (const root of fieldGeometry.coreVols || []) disposeVfxRoot(root, disposeState);
+    }
+
+    const planetSkim = this._planetSkim;
+    for (const slot of planetSkim && planetSkim.slots || []) {
+      disposeVfxRoot(slot && slot.thin, disposeState);
+      disposeVfxRoot(slot && slot.plasma, disposeState);
+    }
+    for (const trail of this._ribbonTrails && this._ribbonTrails.values() || []) {
+      invokeVfxDisposer(trail, 'ribbon trail');
+    }
+
+    // Release CPU-side pools and back-references as well as scene/GPU roots. The destroyed guard
+    // makes late render/update callbacks harmless even though the object retains its methods.
+    this._explosions?.clear?.();
+    this._ribbonTrails?.clear?.();
+    this._beamDamageCueNext?.clear?.();
+    this._collisionContactTicks?.clear?.();
+    this._collisionMediumTicks?.clear?.();
+    this._fieldActiveIds?.clear?.();
+    this._hexRgbCache?.clear?.();
+    this._rcsScaleCache?.clear?.();
+    this._tumbleVfxCd?.clear?.();
+    this._trailCandidates = null;
+    this._ribbonCandidates = null;
+    this._projectileCandidates = null;
+    this._ts = null;
+    this._spr = null;
+    this._doctrineTells = null;
+    this._stationSideEventSlots = null;
+    this._npcJobSignatureSlots = null;
+    this._productionOwnedIds = null;
+    this._productionRcsFirings = null;
+    this._productionPlumeSockets = null;
+    this._productionPlumeSocketView = null;
+    this._rcsOrigins = null;
+    this._rcsAxes = null;
+    this._retroSockets = null;
+    this._retroSocketView = null;
+    this._momentumSinkPlanScratch = null;
+    this._momentumSinkInputScratch = null;
+    this._activeParticles = null;
+    this._activeParticlePos = null;
+    this._pPackedParticleSlots = null;
+    this._freeParticles = null;
+    this._activeTrailStreaks = null;
+    this._activeTrailStreakPos = null;
+    this._freeTrailStreaks = null;
+    this._trailStreakColor = null;
+    this._activeSprites = null;
+    this._activeSpritePos = null;
+    this._smokeSpriteOrder = null;
+    this._freeSprites = null;
+    this._momentumSinkCandidates = null;
+    this._momentumSinkCandidateStatuses = null;
+    this._momentumSinkCandidatePriorities = null;
+    this._ribbonTrails = null;
+    this._beamDamageCueNext = null;
+    this._collisionContactTicks = null;
+    this._collisionMediumTicks = null;
+    this._fieldActiveIds = null;
+    this._hexRgbCache = null;
+    this._rcsScaleCache = null;
+    this._tumbleVfxCd = null;
+    this._points = null;
+    this._pGeo = null;
+    this._particleMat = null;
+    this._particleDynamicBufferOwner = null;
+    this._pPos = null;
+    this._pCol = null;
+    this._pSize = null;
+    this._pAlpha = null;
+    this._pTrailAxis = null;
+    this._pTrailStretch = null;
+    this._px = null;
+    this._py = null;
+    this._pz = null;
+    this._vx = null;
+    this._vy = null;
+    this._vz = null;
+    this._age = null;
+    this._life = null;
+    this._drag = null;
+    this._size0 = null;
+    this._size1 = null;
+    this._cr0 = null;
+    this._cg0 = null;
+    this._cb0 = null;
+    this._cr1 = null;
+    this._cg1 = null;
+    this._cb1 = null;
+    this._particleTrailAxis = null;
+    this._particleTrailStretch = null;
+    this._particleAdmissionPriority = null;
+    this._particleAdmissionSerial = null;
+    this._alive = null;
+    this._glowTex = null;
+    this._ringTex = null;
+    this._trailStreakPool = null;
+    this._spriteBatches = null;
+    this._seamMarkers = null;
+    this._fieldGeom = null;
+    this._fieldGeomInitialized = false;
+    this._planetSkim = null;
+    this._miningBeam = null;
+    this._tetherCable = null;
+    this._arcPreview = null;
+    this._masslineReleaseArc = null;
+    this._lights = [];
+    this._freeLights = null;
+    this._energy = null;
+    this._explosions = null;
+    this._ceresJobActionVfx = null;
+    this._lawHeatTelegraph = null;
+    this._frameMembrane = null;
+    this._weaponPresenterContext = null;
+    this._explosionEmitter = null;
+    this._vfxReprojectFramePort = null;
+    this._collectVfxGpuResidencyRoots = null;
+    this._prepareOpeningVfxFrame = null;
+    this._perfVfxIsolationRestore = null;
+    this._perfVfxIsolationPort = null;
+    this._scene = null;
+    this.state = null;
+    this.bus = null;
+    this.helpers = null;
+    return true;
   },
 
   _vfxOwnerRoots() {
@@ -9270,6 +9442,7 @@ export const vfx = {
   },
 
   update(frameDt) {
+    if (this._destroyed === true) return;
     // Refresh the Tier-1 sink once per frame: spawn paths then pay a single null check.
     const tier1Perf = this.state && this.state.perfRuntime;
     const tier1Counter = tier1Perf && tier1Perf.tier1;
@@ -12561,6 +12734,97 @@ function disposeEnergyVolumeMaterials(group) {
       if (entry && typeof entry.dispose === 'function') entry.dispose();
     }
   });
+}
+
+function spriteBucketValues(buckets) {
+  if (!buckets) return [];
+  return [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion];
+}
+
+function releaseVfxDynamicBufferOwner(owner) {
+  if (!owner) return false;
+  try {
+    return unregisterDynamicBufferOwner(owner);
+  } catch (error) {
+    // A renderer may be in the middle of a publication epoch when host shutdown arrives. The
+    // renderer's own coordinator remains the fallback owner of that callback; VFX still clears
+    // its references below, and one failed release cannot strand the rest of the presentation.
+    console.error('[vfx] dynamic buffer owner release failed', error);
+    return false;
+  }
+}
+
+function invokeVfxDisposer(owner, label) {
+  if (!owner || typeof owner.dispose !== 'function') return false;
+  try {
+    owner.dispose();
+    return true;
+  } catch (error) {
+    console.error('[vfx] ' + label + ' disposal failed', error);
+    return false;
+  }
+}
+
+function invokeVfxCall(fn, receiver, label) {
+  if (typeof fn !== 'function') return false;
+  try {
+    fn.call(receiver);
+    return true;
+  } catch (error) {
+    console.error('[vfx] ' + label + ' failed', error);
+    return false;
+  }
+}
+
+function createVfxDisposeState() {
+  return {
+    roots: new Set(),
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set(),
+  };
+}
+
+function disposeVfxRoot(root, state) {
+  if (!root || state.roots.has(root)) return false;
+  state.roots.add(root);
+  const disposeNode = (object) => {
+    if (!object) return;
+    const geometry = object.geometry;
+    if (geometry && !state.geometries.has(geometry)) {
+      state.geometries.add(geometry);
+      invokeVfxDisposer(geometry, 'geometry');
+    }
+    const material = object.material;
+    const materials = Array.isArray(material) ? material : [material];
+    for (const entry of materials) {
+      if (!entry || state.materials.has(entry)) continue;
+      state.materials.add(entry);
+      for (const uniform of Object.values(entry.uniforms || {})) {
+        const value = uniform && uniform.value;
+        if (value && value.isTexture === true && !state.textures.has(value)) {
+          state.textures.add(value);
+          invokeVfxDisposer(value, 'texture');
+        }
+      }
+      invokeVfxDisposer(entry, 'material');
+    }
+  };
+  try {
+    if (typeof root.traverse === 'function') root.traverse(disposeNode);
+    else disposeNode(root);
+  } catch (error) {
+    // Keep teardown best-effort even for a malformed/stale Object3D tree. The root is still
+    // detached below, and registry-level isolation continues with the next system.
+    console.error('[vfx] root resource walk failed', error);
+  }
+  try {
+    if (typeof root.removeFromParent === 'function') root.removeFromParent();
+    else if (root.parent && typeof root.parent.remove === 'function') root.parent.remove(root);
+  } catch (error) {
+    console.error('[vfx] root detach failed', error);
+  }
+  return true;
 }
 
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }

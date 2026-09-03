@@ -167,6 +167,82 @@ import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
 import { shouldSkipSystemOnCatchup } from './catchupPolicy.js';
 
 /**
+ * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
+ * scene/GPU references before the owner that provides the resource (for example VFX before the
+ * renderer/context). The registry keeps this separate from init/update order so a future owner
+ * can add a dependency without relying on an incidental manifest-array position.
+ */
+export const TEARDOWN_DEPENDENCIES = Object.freeze([
+  Object.freeze(['vfx', 'render']),
+]);
+
+function uniqueSystemsInOrder(systems) {
+  const seen = new Set();
+  const unique = [];
+  for (const system of systems || []) {
+    if (!system || seen.has(system)) continue;
+    seen.add(system);
+    unique.push(system);
+  }
+  return unique;
+}
+
+/**
+ * Stable dependency ordering for shutdown. Every dependency edge is dependent → owner, so a
+ * depth-first walk visits all dependents before their owner while preserving the existing registry
+ * order for unrelated systems. Cycles are ignored at the back-edge; the declared contract remains
+ * deterministic and a malformed future edge cannot make shutdown recurse forever.
+ */
+export function orderSystemsForTeardown(systems, dependencies = TEARDOWN_DEPENDENCIES) {
+  const unique = uniqueSystemsInOrder(systems);
+  const byName = new Map();
+  for (const system of unique) {
+    if (typeof system.name === 'string' && system.name && !byName.has(system.name)) {
+      byName.set(system.name, system);
+    }
+  }
+
+  const dependentsByOwner = new Map();
+  for (const edge of dependencies || []) {
+    if (!Array.isArray(edge) || edge.length < 2) continue;
+    const dependent = byName.get(edge[0]);
+    const owner = byName.get(edge[1]);
+    if (!dependent || !owner || dependent === owner) continue;
+    const dependents = dependentsByOwner.get(owner) || [];
+    if (!dependents.includes(dependent)) dependents.push(dependent);
+    dependentsByOwner.set(owner, dependents);
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  const ordered = [];
+  const visit = (system) => {
+    if (visited.has(system) || visiting.has(system)) return;
+    visiting.add(system);
+    for (const dependent of dependentsByOwner.get(system) || []) visit(dependent);
+    visiting.delete(system);
+    visited.add(system);
+    ordered.push(system);
+  };
+  for (const system of unique) visit(system);
+  return ordered;
+}
+
+/** Run every unique system destroy hook in the declared dependency order. */
+export function destroySystems(systems, dependencies = TEARDOWN_DEPENDENCIES) {
+  for (const system of orderSystemsForTeardown(systems, dependencies)) {
+    if (!system || typeof system.destroy !== 'function') continue;
+    try {
+      system.destroy();
+    } catch (error) {
+      // One broken subsystem must not strand every later owner. The shutdown caller has no useful
+      // recovery path here; retain the deterministic attempt order and continue.
+      console.error('[registry] destroy ' + (system.name || 'unnamed system'), error);
+    }
+  }
+}
+
+/**
  * Build the browser/registry system lookup table. Presentation platform systems live here;
  * the authoritative init/update *order* comes from the runtime manifest (Phase 2).
  *
@@ -566,12 +642,14 @@ export function createRegistry(ctx) {
     get(name) { return byName.get(name); },
     init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },
     destroy() {
-      const seen = new Set();
-      for (const s of [...UPDATE_ORDER, ...SYSTEMS]) {
-        if (!s || seen.has(s) || !s.destroy) continue;
-        seen.add(s);
-        s.destroy();
-      }
+      // Teardown is a dependency graph, not the inverse of init/update order. Keep the manifest
+      // order as the stable baseline, then move every declared dependent ahead of its owner (VFX
+      // must release scene/GPU roots before renderer retires the context). Mark each object before
+      // invoking it so duplicate aliases and a throwing destroy cannot cause a second call.
+      destroySystems(
+        [...UPDATE_ORDER, ...SYSTEMS],
+        TEARDOWN_DEPENDENCIES,
+      );
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;
