@@ -164,15 +164,17 @@ function selectedDamagedSubsystemId(descriptor, selectedComponentId) {
 // Payload Entity Factory (Ruling 2 & 6)
 // Physical entity class 'payload' with stamped ownership & contents metadata.
 // -----------------------------------------------------------------------------
-export function spawnPayloadEntity(state, spec = {}) {
-  const nextId = allocateEntityId(state);
+export function spawnPayloadEntity(state, spec = {}, helpers = null) {
+  if (hasCanonicalEntityLifecycle(state)
+    && (!helpers || typeof helpers.spawnEntity !== 'function')) {
+    throw new Error('industrial payload spawn requires canonical helpers.spawnEntity');
+  }
   const radius = Math.max(3, Math.min(25, Number(spec.radius) || 8)); // host-relative radius
   const mass = Math.max(20, Number(spec.mass) || radius * 12);
   const ownerId = spec.ownerId != null ? spec.ownerId : (state.playerId || null);
   const factionId = spec.factionId || 'player';
 
-  const payloadEntity = makeEntity({
-    id: nextId,
+  const payloadSpec = {
     type: 'payload',
     alive: true,
     collides: true,
@@ -192,7 +194,17 @@ export function spawnPayloadEntity(state, spec = {}) {
       worldRecordId: spec.worldRecordId || null,
       transientSector: spec.transientSector !== false, // despawns on sector transition if transient
     },
-  });
+  };
+
+  // Live systems pass the core helper explicitly so spawn admission, indexing, presentation, and
+  // the entity:spawned event remain one canonical lifecycle transaction. Minimal compatibility
+  // harnesses without a runtime context retain the historical map/list-only fallback below.
+  if (helpers && typeof helpers.spawnEntity === 'function') {
+    return helpers.spawnEntity(payloadSpec);
+  }
+
+  const nextId = allocateEntityId(state);
+  const payloadEntity = makeEntity({ id: nextId, ...payloadSpec });
 
   if (state.entities && typeof state.entities.set === 'function') {
     state.entities.set(payloadEntity.id, payloadEntity);
@@ -209,16 +221,33 @@ export function spawnPayloadEntity(state, spec = {}) {
 // Despawns un-anchored transient payloads on sector transition while preserving
 // anchored/saved payloads.
 // -----------------------------------------------------------------------------
-export function handlePayloadSectorTransition(state) {
+export function handlePayloadSectorTransition(state, helpers = null) {
   if (!state || !state.entities || !state.entities.values) return 0;
+  if (hasCanonicalEntityLifecycle(state)
+    && (!helpers || typeof helpers.removeEntity !== 'function')) {
+    throw new Error('industrial payload cleanup requires canonical helpers.removeEntity');
+  }
   let removed = 0;
+  const removeEntity = helpers && typeof helpers.removeEntity === 'function'
+    ? helpers.removeEntity
+    : null;
   for (const entity of Array.from(state.entities.values())) {
     if (entity.type === 'payload' && entity.data) {
       // Anchored or worldRecord payloads survive sector transition
       if (entity.data.anchored || entity.data.worldRecordId != null) continue;
       // Active tethered payload survives sector transition if tethered by player
       if (state.player && state.player.tether && state.player.tether.targetId === entity.id) continue;
-      
+
+      if (removeEntity) {
+        if (removeEntity(entity.id, {
+          immediate: true,
+          reason: 'payload_sector_transition',
+        })) removed++;
+        continue;
+      }
+
+      // Minimal compatibility harnesses without a runtime context retain the historical
+      // map/list-only cleanup; the live path above always uses core's canonical removal helper.
       entity.alive = false;
       if (typeof state.entities.delete === 'function') state.entities.delete(entity.id);
       if (Array.isArray(state.entityList)) {
@@ -229,6 +258,10 @@ export function handlePayloadSectorTransition(state) {
     }
   }
   return removed;
+}
+
+function hasCanonicalEntityLifecycle(state) {
+  return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true);
 }
 
 // Presentation cue IDs mapping per verb (Ruling 7)

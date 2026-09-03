@@ -455,7 +455,7 @@ export const survivorPod = {
       payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
       worldRecordId: null,
       transientSector: false,
-    });
+    }, this.helpers);
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
     const rec = {
       entityId: entity.id,

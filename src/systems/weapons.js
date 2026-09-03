@@ -200,7 +200,7 @@ export const weapons = {
 
     ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
     ctx.bus.on('projectile:hit', (payload) => this._onAttackHit(payload));
-    ctx.bus.on('sector:enter', () => handlePayloadSectorTransition(this.state));
+    ctx.bus.on('sector:enter', () => handlePayloadSectorTransition(this.state, this.helpers));
   },
 
   update(dt, state) {

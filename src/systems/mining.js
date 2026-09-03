@@ -381,7 +381,7 @@ export const mining = {
         factionId: player.factionId || 'player',
         salvagePool: pool,
         payloadType: action ? action.id : 'cut_panel'
-      });
+      }, this.helpers);
       this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
     }
   },

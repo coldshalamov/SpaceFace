@@ -247,7 +247,7 @@ export const lootShards = {
       payloadType: CIVILIAN_MANIFEST_PAYLOAD_TYPE,
       worldRecordId: null,
       transientSector: false,
-    });
+    }, this.helpers);
     entity.data.sourceVictimId = victim.id;
     entity.data.manifestId = typeof manifest.manifestId === 'string' ? manifest.manifestId : null;
     // Save/Continue: payloads are not world-record candidates; persist via entity flags.
