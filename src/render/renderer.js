@@ -2444,9 +2444,177 @@ export const POST_PROCESS_ROUTE = Object.freeze({
   NATIVE: 'straight',
 });
 
+/**
+ * Own the browser/event-bus work installed by one renderer generation.
+ *
+ * The render system is registered alongside simulation systems and the registry can tear it down
+ * without replacing the singleton object. Keeping the exact wrapped listener identities and timer
+ * handles here makes `destroy()` idempotent, preserves listeners owned by other systems, and gives
+ * late callbacks a generation gate. The binding layer is deliberately Three.js-agnostic so its
+ * ownership contract can be tested without creating a WebGL context.
+ */
+export function createRendererLifecycleBindings({
+  bus = null,
+  setTimeout: scheduleTimeout = globalThis.setTimeout,
+  clearTimeout: cancelTimeout = globalThis.clearTimeout,
+} = {}) {
+  if (typeof scheduleTimeout !== 'function' || typeof cancelTimeout !== 'function') {
+    throw new TypeError('renderer lifecycle bindings require timer functions');
+  }
+
+  let active = true;
+  const cleanups = [];
+  const timers = new Set();
+  const destroyCallbacks = new Set();
+
+  function guard(callback) {
+    if (typeof callback !== 'function') throw new TypeError('renderer lifecycle callback must be a function');
+    return function guardedRendererLifecycleCallback(...args) {
+      if (!active) return undefined;
+      return callback.apply(this, args);
+    };
+  }
+
+  function listen(target, type, callback, options) {
+    if (!active || !target || typeof target.addEventListener !== 'function') return () => false;
+    const guarded = guard(callback);
+    target.addEventListener(type, guarded, options);
+    let removed = false;
+    const remove = () => {
+      if (removed) return false;
+      removed = true;
+      target.removeEventListener?.(type, guarded, options);
+      return true;
+    };
+    cleanups.push(remove);
+    return remove;
+  }
+
+  function listenResize(target, callback) {
+    if (!active || !target || typeof target.addEventListener !== 'function') return () => false;
+    const guarded = guard(callback);
+    target.addEventListener('resize', guarded);
+    let removed = false;
+    const remove = () => {
+      if (removed) return false;
+      removed = true;
+      if (typeof target.removeEventListener === 'function') {
+        target.removeEventListener('resize', guarded);
+      }
+      return true;
+    };
+    cleanups.push(remove);
+    return remove;
+  }
+
+  function onBus(event, callback) {
+    if (!active || !bus || typeof bus.on !== 'function') return () => false;
+    const guarded = guard(callback);
+    const returnedUnsubscribe = bus.on(event, guarded);
+    let removed = false;
+    const remove = () => {
+      if (removed) return false;
+      removed = true;
+      if (typeof returnedUnsubscribe === 'function') returnedUnsubscribe();
+      else bus.off?.(event, guarded);
+      return true;
+    };
+    cleanups.push(remove);
+    return remove;
+  }
+
+  function setTrackedTimeout(callback, delay) {
+    if (!active) return null;
+    let handle = null;
+    const guarded = () => {
+      timers.delete(handle);
+      if (!active) return;
+      callback();
+    };
+    handle = scheduleTimeout(guarded, delay);
+    timers.add(handle);
+    return handle;
+  }
+
+  function clearTrackedTimeout(handle) {
+    if (handle == null || !timers.has(handle)) return false;
+    timers.delete(handle);
+    cancelTimeout(handle);
+    return true;
+  }
+
+  function onDestroy(callback) {
+    if (typeof callback !== 'function') throw new TypeError('renderer lifecycle destroy callback must be a function');
+    if (!active) {
+      callback();
+      return () => false;
+    }
+    destroyCallbacks.add(callback);
+    return () => destroyCallbacks.delete(callback);
+  }
+
+  function wait(delay) {
+    return new Promise((resolve) => {
+      let settled = false;
+      let handle = null;
+      let unregister = () => false;
+      const settle = (completed) => {
+        if (settled) return;
+        settled = true;
+        unregister();
+        resolve(completed);
+      };
+      handle = setTrackedTimeout(() => settle(true), delay);
+      unregister = onDestroy(() => {
+        if (handle != null) clearTrackedTimeout(handle);
+        settle(false);
+      });
+      if (handle == null && !active) settle(false);
+    });
+  }
+
+  function destroy() {
+    if (!active) return false;
+    active = false;
+    for (const handle of timers) cancelTimeout(handle);
+    timers.clear();
+    for (let i = cleanups.length - 1; i >= 0; i--) cleanups[i]();
+    cleanups.length = 0;
+    for (const callback of destroyCallbacks) callback();
+    destroyCallbacks.clear();
+    return true;
+  }
+
+  return {
+    get active() { return active; },
+    isActive() { return active; },
+    guard,
+    listen,
+    listenResize,
+    onBus,
+    setTimeout: setTrackedTimeout,
+    clearTimeout: clearTrackedTimeout,
+    onDestroy,
+    wait,
+    destroy,
+  };
+}
+
+/** Publish first-present readiness only for the still-current, live renderer generation. */
+export function publishFirstPresentGpuReady(owner, lifecycle) {
+  if (!owner || owner._rendererLifecycle !== lifecycle || !lifecycle?.isActive()) return false;
+  owner._firstPresentGpuReady = true;
+  return true;
+}
+
 export const render = {
   name: 'render',
   init(ctx) {
+    if (this._rendererLifecycle) this.destroy();
+    const lifecycle = createRendererLifecycleBindings({ bus: ctx.bus });
+    this._rendererLifecycle = lifecycle;
+    const onBus = (event, callback) => lifecycle.onBus(event, callback);
+    const scheduleTimeout = (callback, delay) => lifecycle.setTimeout(callback, delay);
     this.state = ctx.state;
     this.bus = ctx.bus;
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
@@ -2614,7 +2782,7 @@ export const render = {
         if (this._openingEnvFrozen === true) return;
         this._bakeEnv();
       };
-      setTimeout(bakeEnv, 120); // let the starfield's async background decode first
+      scheduleTimeout(bakeEnv, 120); // let the starfield's async background decode first
     } catch (_) { /* PMREM unavailable */ }
 
     // WebGL context-loss recovery. The browser fires webglcontextlost when the GPU driver resets
@@ -2636,7 +2804,7 @@ export const render = {
     };
     state.render.contextRecovery = this._contextRecovery;
     if (canvas) {
-      canvas.addEventListener('webglcontextlost', (ev) => {
+      lifecycle.listen(canvas, 'webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
         this._contextRestoreReceipt?.cancel?.();
@@ -2687,14 +2855,15 @@ export const render = {
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
         bus.emit('toast', { text: 'Graphics context lost — recovering…', kind: 'warn', ttl: 4 });
       }, false);
-      canvas.addEventListener('webglcontextrestored', () => {
+      lifecycle.listen(canvas, 'webglcontextrestored', () => {
         // Three.js owns an earlier listener that replaces its context-bound caches. Keep the
         // application paused until the complete restore-listener stack has returned, then rebuild
         // application-owned resources against the settled renderer context.
-        this._contextRestoreReceipt = deferWebGlContextRestore(() => {
+        this._contextRestoreReceipt = deferWebGlContextRestore(lifecycle.guard(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
           this._contextRecovery.retryCount = 0;
           this._contextRecovery.forceNewContext = () => {
+            if (!lifecycle.isActive()) return;
             try {
               const gl = this.renderer && typeof this.renderer.getContext === 'function'
                 ? this.renderer.getContext()
@@ -2707,8 +2876,8 @@ export const render = {
                 const restore = () => {
                   try { if (typeof ext.restoreContext === 'function') ext.restoreContext(); } catch { /* next event */ }
                 };
-                if (typeof setTimeout === 'function') setTimeout(restore, 50);
-                else restore();
+                if (lifecycle.isActive()) scheduleTimeout(restore, 50);
+                else return;
                 return;
               }
             } catch { /* fall through to a scheduled retry */ }
@@ -2716,25 +2885,33 @@ export const render = {
           };
           this._contextRecovery.scheduleRetry = () => {
             const retry = () => {
+              if (!lifecycle.isActive()) return;
               if (this.renderer && typeof this.renderer.getContext === 'function') {
                 try {
                   const gl = this.renderer.getContext();
                   if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
                 } catch { /* retry against the current context anyway */ }
               }
-              this._contextRestoreReceipt = deferWebGlContextRestore(() => {
+              this._contextRestoreReceipt = deferWebGlContextRestore(lifecycle.guard(() => {
                 void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
-                  .then((restored) => {
+                  .then(lifecycle.guard((restored) => {
                     if (!restored.ok) return;
                     this._publishAssetResidencyDiagnostics();
                     bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-                  });
-              });
+                  }));
+              }));
             };
-            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(retry);
-            else setTimeout(retry, 16);
+            if (!lifecycle.isActive()) return;
+            if (typeof requestAnimationFrame === 'function') {
+              requestAnimationFrame(() => {
+                if (lifecycle.isActive()) retry();
+              });
+            } else scheduleTimeout(retry, 16);
           };
           this._rebuildRestoredGpuResources = async () => {
+            if (!lifecycle.isActive()) {
+              throw new Error('renderer lifecycle destroyed during context restore');
+            }
             dynamicBuffers.handleContextRestored();
             // Re-apply renderer config that the new context defaults lose.
             this.renderer.setClearColor(0x060912, 1);
@@ -2790,7 +2967,7 @@ export const render = {
             return await restoredPipelines;
           };
           void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
-            .then((restored) => {
+            .then(lifecycle.guard((restored) => {
               if (!restored.ok) {
                 if (typeof console !== 'undefined') {
                   console.error('[render] context-restore rebuild failed', restored.error);
@@ -2799,8 +2976,8 @@ export const render = {
               }
               this._publishAssetResidencyDiagnostics();
               bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-            });
-        });
+            }));
+        }));
       }, false);
     }
 
@@ -2975,7 +3152,8 @@ export const render = {
     this._firstPresentGpuReady = false;
     this._firstPresentGpuAdmission = (async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 140));
+        const delayCompleted = await lifecycle.wait(140);
+        if (!delayCompleted || !lifecycle.isActive()) return;
         if (typeof this._bakeEnv === 'function') this._bakeEnv();
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
         compileShadowDepthPipelines({
@@ -3005,7 +3183,7 @@ export const render = {
       } catch (error) {
         console.warn('[render] first-present GPU admission failed', error);
       } finally {
-        this._firstPresentGpuReady = true;
+        publishFirstPresentGpuReady(this, lifecycle);
       }
     })();
     this._postOptionsSig = null;
@@ -3314,7 +3492,7 @@ export const render = {
       // hardware contexts remain full-resolution and never enter this branch.
       state.render.dynResScale = dynFloor;
       this._applySize();
-      setTimeout(() => {
+      scheduleTimeout(() => {
         try {
           bus.emit('toast', {
             text: 'Graphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.',
@@ -3993,9 +4171,9 @@ export const render = {
       resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
     );
 
-    bus.on('entity:spawned', () => { this._meshReconcileDirty = true; });
-    bus.on('world:residency', () => { this._meshReconcileDirty = true; });
-    bus.on('entity:destroyed', ({ id }) => {
+    onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
+    onBus('world:residency', () => { this._meshReconcileDirty = true; });
+    onBus('entity:destroyed', ({ id }) => {
       this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       const m = this._meshes.get(id);
@@ -4010,7 +4188,7 @@ export const render = {
     // engines and tier reflect the current ship. Without this the mesh is frozen at spawn and a
     // shipyard hull switch or fitted weapon never shows. Mirrors the spawn path: dispose old,
     // build new, re-seat from the entity's live transform.
-    bus.on('ship:appearanceChanged', ({ id }) => {
+    onBus('ship:appearanceChanged', ({ id }) => {
       if (this._sectorBoundaryPreparations?.has(id)) {
         this._sectorBoundaryPreparations.abortEntity(id, 'ship-appearance-changed-during-sector-prewarm');
         this._meshReconcileDirty = true;
@@ -4018,7 +4196,7 @@ export const render = {
       }
       render.rebuildShipMesh(id);
     });
-    bus.on('ship:livingHullChanged', ({ id, livingHull } = {}) => {
+    onBus('ship:livingHullChanged', ({ id, livingHull } = {}) => {
       if (id !== state.playerId || !this._livingHullPresentation) return;
       const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
       const mesh = this._meshes && this._meshes.get ? this._meshes.get(id) : null;
@@ -4035,7 +4213,7 @@ export const render = {
     // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
     // and passes through unchanged. Attenuating here rather than at each emitter means the twelve
     // sites nobody has audited are covered too.
-    bus.on('camera:shake', (payload) => {
+    onBus('camera:shake', (payload) => {
       const amount = (payload && payload.amount) || 0.3;
       const at = payload && payload.position;
       if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) { cam.addTrauma(amount); return; }
@@ -4044,23 +4222,23 @@ export const render = {
       const scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
       if (scaled > 0.001) cam.addTrauma(scaled);
     });
-    bus.on('camera:kill', () => cam.killCam && cam.killCam());
+    onBus('camera:kill', () => cam.killCam && cam.killCam());
     // FR-5: ease the frame back to center after a boost-release or a tether slingshot exit/overload
     // (cruise-drop settle stays owned by spec2/02 §1). Boost distance is state-smoothed in camera.js;
     // do not schedule a separate release pulse here, or Shift tapping becomes an in/out camera cut.
-    bus.on('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); });
-    bus.on('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
-    bus.on('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
-    bus.on('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
-    bus.on('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
-    bus.on('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
-    bus.on('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
-    bus.on('player:respawn', () => cam.snapToPlayer && cam.snapToPlayer());
+    onBus('ship:boostStop', () => { if (cam.easeRecenter) cam.easeRecenter(0.4); });
+    onBus('tether:released', () => cam.easeRecenter && cam.easeRecenter(0.4));
+    onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
+    onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
+    onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
+    onBus('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
+    onBus('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
+    onBus('player:respawn', () => cam.snapToPlayer && cam.snapToPlayer());
     // Live-apply video settings changes. Without this, dragging Bloom strength / FOV / particle
     // quality in the settings screen did nothing (only the initial value was used) — a "slider that
     // doesn't work" sore thumb. We forward the values to the systems that own them.
     if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
-    this._videoSettingsOff = bus.on('settings:changed', (p) => {
+    this._videoSettingsOff = onBus('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       this._authoredPreparationEpoch++;
       this._sectorBoundaryPreparations?.abortAll('video-settings-changed-during-sector-prewarm');
@@ -4092,7 +4270,7 @@ export const render = {
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
-    bus.on('save:restoring', () => {
+    onBus('save:restoring', () => {
       // The save system emits this synchronously before it destroys the current entity graph.
       // Keep the current sector's decoded authored resources resident across that short gap; the
       // registry hands this temporary hold back only after rebuilt live boundaries cover every
@@ -4459,15 +4637,15 @@ export const render = {
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
       includePrefetch: true,
     });
-    bus.on('jump:chargeStart', ({ targetSectorId } = {}) => {
+    onBus('jump:chargeStart', ({ targetSectorId } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
     });
-    bus.on('jump:chargeAbort', () => {
+    onBus('jump:chargeAbort', () => {
       const incoming = this._incomingSectorPrewarm;
       if (incoming) releaseSectorPrewarm(incoming, 'jump-charge-aborted');
       this._incomingSectorPrewarm = null;
     });
-    bus.on('entity:spawned', ({ entity } = {}) => {
+    onBus('entity:spawned', ({ entity } = {}) => {
       if (!entity) return;
       const spawnedSectorId = entitySectorId(entity);
       const pending = this._authoredSectorPrewarmPending?.active === true
@@ -4484,7 +4662,7 @@ export const render = {
       }));
       stageSectorPrewarmBoundaries(pending, [entity]);
     });
-    bus.on('jump:arrive', ({ sectorId } = {}) => {
+    onBus('jump:arrive', ({ sectorId } = {}) => {
       const pending = this._authoredSectorPrewarmPending;
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!pending || pending.active !== true || pending.sectorId !== exactSectorId) return;
@@ -4492,7 +4670,7 @@ export const render = {
         refreshSectorPrewarmPopulation(pending);
       }
     });
-    bus.on('sector:exit', ({ sectorId } = {}) => {
+    onBus('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) {
         applySectorExitResidency(this._assetResidency, sectorId);
       }
@@ -4528,7 +4706,7 @@ export const render = {
         return null;
       });
     };
-    bus.on('sector:enter', ({ sectorId, sector, continuous } = {}) => {
+    onBus('sector:enter', ({ sectorId, sector, continuous } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       if (continuous !== true) {
         this._sectorHandoffStreamHoldS = 0;
@@ -4720,7 +4898,7 @@ export const render = {
       });
       state.render.pipelinePrecompileReady = preparation;
     });
-    bus.on('mode:changed', ({ mode } = {}) => {
+    onBus('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {
         this._openingEnvFrozen = false;
         releaseOpeningGraphPublication(this);
@@ -4756,7 +4934,7 @@ export const render = {
       this._deferNoncriticalMeshStreaming = true;
       state.render.deferNoncriticalMeshStreaming = true;
     });
-    bus.on('jump:arrive', ({ sectorId } = {}) => {
+    onBus('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
       // Same contract as the sector:enter path above: the authored profile is required, not optional.
       const arrivalVisualProfile = resolveSectorVisualProfile(sector);
@@ -4764,13 +4942,23 @@ export const render = {
       this.setSectorPostProfile(arrivalVisualProfile && arrivalVisualProfile.post);
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, arrivalVisualProfile);
     });
-    bus.on('save:loaded', () => { this._meshReconcileDirty = true; });
+    onBus('save:loaded', () => { this._meshReconcileDirty = true; });
 
-    if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
     this._resizeHandler = () => this.onResize();
-    window.addEventListener('resize', this._resizeHandler);
+    lifecycle.listenResize(window, this._resizeHandler);
     // Apply persisted video/post settings once bloom exists (createBloom defaults otherwise win).
     this._syncPostOptions();
+  },
+
+  destroy() {
+    this._contextRestoreReceipt?.cancel?.();
+    this._contextRestoreReceipt = null;
+    const lifecycle = this._rendererLifecycle;
+    if (!lifecycle) return false;
+    const destroyed = lifecycle.destroy();
+    this._resizeHandler = null;
+    this._videoSettingsOff = null;
+    return destroyed;
   },
 
   _normalizePostVideo(vd = {}) {
@@ -6562,9 +6750,14 @@ export const render = {
         && !Number.isFinite(this.state.render.firstPlayableFrameAt)
         && !this._firstPlayablePaintScheduled) {
       this._firstPlayablePaintScheduled = true;
-      afterBrowserPaint(() => {
-        applyFirstPlayablePaintRelease(this);
-      });
+      const lifecycle = this._rendererLifecycle;
+      const release = lifecycle
+        ? lifecycle.guard(() => applyFirstPlayablePaintRelease(this))
+        : () => applyFirstPlayablePaintRelease(this);
+      const schedule = lifecycle
+        ? (callback) => lifecycle.setTimeout(callback, 0)
+        : null;
+      afterBrowserPaint(release, schedule);
     }
     return true;
   },
@@ -7193,13 +7386,16 @@ export function releaseOpeningGraphPublication(owner) {
   return true;
 }
 
-function afterBrowserPaint(callback) {
+function afterBrowserPaint(callback, schedule = null) {
+  const scheduleLater = typeof schedule === 'function'
+    ? schedule
+    : (next) => setTimeout(next, 0);
   if (typeof requestAnimationFrame !== 'function') {
-    setTimeout(callback, 0);
+    scheduleLater(callback);
     return;
   }
   requestAnimationFrame(() => {
-    setTimeout(() => requestAnimationFrame(callback), 0);
+    scheduleLater(() => requestAnimationFrame(callback));
   });
 }
 

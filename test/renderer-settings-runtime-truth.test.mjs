@@ -122,9 +122,9 @@ function extractFunctionBody(source, name) {
 }
 
 function extractSettingsChangedHandler(source) {
-  const marker = /bus\.on\(\s*['"]settings:changed['"]\s*,\s*\(?\s*p\s*\)?\s*=>\s*\{/;
+  const marker = /(?:bus\.on|onBus)\(\s*['"]settings:changed['"]\s*,\s*\(?\s*p\s*\)?\s*=>\s*\{/;
   const m = marker.exec(source);
-  assert.ok(m, "bus.on('settings:changed', ...) handler must exist");
+  assert.ok(m, 'one settings:changed subscription handler must exist');
   const brace = source.indexOf('{', m.index + m[0].length - 1);
   let depth = 0;
   for (let i = brace; i < source.length; i++) {
@@ -346,16 +346,22 @@ test('static: settings:changed re-applies size for renderScale / pixelRatioCap /
 test('static: settings:changed shadows path must rebind key light + ensure shadow config', () => {
   const handler = extractSettingsChangedHandler(rendererSource);
 
-  // Present today: flag flip only.
   assert.match(
     handler,
     /_shadowSettingOn\s*=\s*vd\.shadows\s*!==\s*false/,
     'shadows setting must update _shadowSettingOn',
   );
-  assert.match(
-    handler,
-    /_shadowReceiversDirty\s*=\s*true/,
-    'shadows setting must dirty receiver scan',
+  const directDirtyWrite = /_shadowReceiversDirty\s*=\s*true/.test(handler);
+  const dirtyHelperCall = /this\._markShadowReceiversDirty\s*\(\s*\)/.test(handler);
+  const dirtyHelper = dirtyHelperCall
+    ? extractFunctionBody(rendererSource, '_markShadowReceiversDirty')
+    : '';
+  const helperWritesBothDirtyFlags = dirtyHelperCall
+    && /this\._shadowReceiversDirty\s*=\s*true/.test(dirtyHelper)
+    && /this\._shadowMapDirty\s*=\s*true/.test(dirtyHelper);
+  assert.ok(
+    directDirtyWrite || helperWritesBothDirtyFlags,
+    'shadows setting must dirty receiver scanning and shadow-map work',
   );
 
   // Required seam: live-apply must not leave _keyLight permanently boot-gated.
@@ -488,11 +494,11 @@ test('runtime model (live): shadows true@boot can toggle off/on without rebind',
 // ── 5. No duplicate listener / resource creation ────────────────────────────
 
 test('static: settings:changed and resize listeners must be single-subscribe safe', () => {
-  const settingsSubs = countOccurrences(rendererSource, /bus\.on\(\s*['"]settings:changed['"]/);
+  const settingsSubs = countOccurrences(rendererSource, /(?:bus\.on|onBus)\(\s*['"]settings:changed['"]/);
   assert.equal(
     settingsSubs,
     1,
-    `exactly one bus.on('settings:changed') registration site expected (found ${settingsSubs})`,
+    `exactly one settings:changed subscription site expected (found ${settingsSubs})`,
   );
 
   const resizeSubs = countOccurrences(rendererSource, /addEventListener\(\s*['"]resize['"]/);
@@ -513,7 +519,7 @@ test('static: settings:changed and resize listeners must be single-subscribe saf
   assert.ok(
     hasIdempotentGuard,
     [
-      'REQUIRED RENDERER SEAM (listener discipline): init registers bus.on(settings:changed)',
+      'REQUIRED RENDERER SEAM (listener discipline): init registers one settings:changed subscription',
       'and window resize with no off/guard. A second init would duplicate listeners and',
       'double-apply size/shadows. Bind once (named handler + bus.off/removeEventListener)',
       'or early-return when video runtime is already wired.',
