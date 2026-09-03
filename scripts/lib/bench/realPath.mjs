@@ -21,6 +21,11 @@
 // no ambient randomness.
 
 import { SIM_DT } from '../../../src/core/sim.js';
+import {
+  applyFeatureConfigToMaps,
+  restoreFeatureMaps,
+  snapshotFeatureMaps,
+} from '../../../src/data/featureFlags.js';
 import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthoritativeRuntime.js';
 import { actions } from '../../../src/systems/actions.js';
 import { aiPorts } from '../../../src/systems/aiPorts.js';
@@ -89,6 +94,9 @@ export function realPathProof(runtime) {
     sg02Bodies: Number.isFinite(diag.sg02Bodies) ? diag.sg02Bodies : 0,
     sg02DynamicBodies: Number.isFinite(diag.sg02DynamicBodies) ? diag.sg02DynamicBodies : 0,
     rapierContacts: Number.isFinite(diag.rapierContacts) ? diag.rapierContacts : 0,
+    // False means SG-02 was built with contact capture off: the run still has real contact
+    // physics, but emits no `physics:impact` receipts and `collisionConsequences` sees nothing.
+    contactCaptureEnabled: !!(physicsSys && physicsSys._sg02 && physicsSys._sg02.captureContactImpacts),
     physicsBackend: String(gameplay.physicsBackend || 'none'),
     flightBackend: String(gameplay.flightBackend || 'none'),
     aiBackend: String(gameplay.aiBackend || 'none'),
@@ -216,7 +224,28 @@ export async function bootRealPath({ seed, systems, hulls = [], profileId = 'pro
   if (!physicsSys || typeof physicsSys.prepareBackend !== 'function') {
     throw new Error('bootRealPath: physics.prepareBackend missing — this is not the real path');
   }
-  const ready = await physicsSys.prepareBackend(state, { reset: true });
+
+  // `createAuthoritativeRuntime` uses restore-on-step isolation: the profile's feature config is
+  // applied to the process-global flag MAPS only for the duration of init and each step, and
+  // restored afterwards. `prepareBackend` is a lab/bench entry point that runs OUTSIDE that window,
+  // and it is where SG-02 is constructed:
+  //
+  //   createSg02DynamicBodyOwner({ captureContactImpacts: combatFlag('weaponImpulseConsequences'), … })
+  //
+  // Read outside the window, that flag returns the process default (false), so the owner is built
+  // with contact capture permanently OFF — the run then produces real contact physics but ZERO
+  // `physics:impact` receipts, and `collisionConsequences` never sees a single contact. Measured
+  // on 2026-09-03: 25 ticks of real contact response on the player hull, 0 receipts. Apply the
+  // runtime's own feature config across the prepare call so the bench boots the same combat
+  // configuration the game runs, then restore the maps exactly as the runtime does.
+  const previousFlags = snapshotFeatureMaps();
+  applyFeatureConfigToMaps(runtime.config.features);
+  let ready = false;
+  try {
+    ready = await physicsSys.prepareBackend(state, { reset: true });
+  } finally {
+    restoreFeatureMaps(previousFlags);
+  }
   if (ready !== true) throw new Error('bootRealPath: SG-02 dynamic authority failed to become ready');
 
   return host;

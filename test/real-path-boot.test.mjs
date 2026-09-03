@@ -41,6 +41,15 @@ test('bootRealPath stands up the live rapier-dynamic authority, and proof() says
     assert.equal(stepped.backend, 'rapier-dynamic', 'physics must report the rapier-dynamic backend after a real step');
     assert.equal(stepped.sg02Ready, true, 'SG-02 dynamic authority must be ready — a stand-in would report false');
     assert.ok(stepped.sg02DynamicBodies >= 1, `the player hull must own a dynamic body (got ${stepped.sg02DynamicBodies})`);
+    // Regression: prepareBackend runs outside the runtime's restore-on-step feature-map window, so
+    // SG-02 used to be constructed with combatFlag('weaponImpulseConsequences') reading the process
+    // default (false). The bench then produced real contact physics and ZERO physics:impact
+    // receipts, and collisionConsequences never saw a contact.
+    assert.equal(
+      stepped.contactCaptureEnabled,
+      true,
+      'SG-02 must capture contact impacts, or the bench measures contact physics with the consequence path silently switched off',
+    );
   } finally {
     host.dispose();
   }
