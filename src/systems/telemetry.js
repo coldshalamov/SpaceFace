@@ -2,7 +2,7 @@
 // events on the bus and maintains (1) a bounded ring buffer of recent meaningful events and (2)
 // per-SESSION aggregates: trade volume by side/commodity, credits earned/spent (via the SOLE money
 // channel `credits:changed`), kills, deaths-by-cause, ore mined by type, missions by type+outcome,
-// onboarding-funnel milestone timestamps, and a death/lifespan log. Aggregates are persisted to
+// onboarding-funnel milestone timestamps, verbs used, and a death/lifespan log. Aggregates are persisted to
 // localStorage under a versioned, append-only-per-session key with a hard cap on stored sessions
 // (oldest rotated out). All storage access is wrapped in try/catch so private-mode / quota / SSR
 // (no window) all degrade to in-memory only.
@@ -14,9 +14,17 @@
 //     mission rewards all already flow through it, so we never also add `tradeCompleted.total` etc.
 //     into the money buckets (that would double-count). Trade *volume* is a separate aggregate.
 //   - kills are filtered to `killerId === playerId` (most `entity:killed` are NPC-vs-NPC).
+//   - first-hour onboarding funnel (CANONICAL_BUILD_MAP.md §15.4 / PQ-167): first flight, first swing,
+//     first shove, first dock, first heat, plus difficulty-ramp and career progression milestones.
 //
 // Entry point: createTelemetry(bus, state). No-op-safe singleton (a second call disposes the prior
-// instance). Mirrors to window.__SF_TELEMETRY__ for dev. Not wired here — the lead wires it later.
+// instance). Mirrors to window.__SF_TELEMETRY__ for dev.
+
+import {
+  buildSessionReportData,
+  renderSessionReportMarkdown,
+  exportSessionReportJson,
+} from '../observability/sessionReport.js';
 
 const STORAGE_KEY = 'sf_telemetry_v1';
 const SCHEMA_VERSION = 1;
@@ -72,11 +80,19 @@ function emptyAggregates() {
     missions: { accepted: 0, completed: 0, failed: 0, expired: 0, byType: {} },
     progression: { techResearched: 0, factionTierUps: 0, techNodes: [], tierUps: [] },
     navigation: { docks: 0, jumps: 0, sectorsVisited: [] },
+    verbs: {
+      thrust: 0, brake: 0, boost: 0, latch: 0, reel: 0,
+      release: 0, throw: 0, shove: 0, well: 0, stroke: 0,
+      fire: 0, dock: 0, mine: 0, trade: 0, jump: 0,
+    },
 
     // First-occurrence timestamps (monotonic ms since session start). -1 = not yet reached. We use
     // -1 (not 0) so that a step reached on the exact rebase tick — offset 0ms — still reads as reached.
     funnel: {
-      firstDockAt: -1, firstTradeAt: -1, firstMineAt: -1, firstKillAt: -1,
+      // Core first-hour onboarding funnel (CANONICAL_BUILD_MAP.md §15.4 / PQ-167)
+      firstFlightAt: -1, firstSwingAt: -1, firstShoveAt: -1, firstDockAt: -1, firstHeatAt: -1,
+      // Gameplay milestones
+      firstTradeAt: -1, firstMineAt: -1, firstKillAt: -1,
       firstMissionAcceptAt: -1, firstMissionCompleteAt: -1, firstJumpAt: -1, firstTierUpAt: -1,
       // First-hour difficulty-ramp milestones (spec2/03 §4): first time reaching 1000cr cumulative
       // earnings, and first module acquired (equipped or bought). Additive — no existing key changed.
@@ -119,7 +135,9 @@ export function createTelemetry(bus, state) {
   }
 
   function markFunnel(key) {
-    if (session.funnel[key] < 0) session.funnel[key] = now() - session.startedSimMark;
+    if (session.funnel && session.funnel[key] < 0) {
+      session.funnel[key] = Math.max(0, now() - session.startedSimMark);
+    }
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -151,7 +169,7 @@ export function createTelemetry(bus, state) {
   function persist() {
     if (!store || disposed) return;
     session.endedAt = Date.now();
-    session.durationMs = now() - session.startedSimMark;
+    session.durationMs = Math.max(0, now() - session.startedSimMark);
     try {
       const sessions = readAllSessions().filter((s) => s && s.sessionId !== session.sessionId);
       sessions.push(serializeSession());
@@ -166,12 +184,14 @@ export function createTelemetry(bus, state) {
   // Strip transient monotonic marks from the persisted copy (keep storage stable + small).
   function serializeSession() {
     const s = session;
+    const dur = Math.max(0, now() - s.startedSimMark);
+    const end = dur > 0 ? Date.now() : s.endedAt;
     return {
       schema: SCHEMA_VERSION, sessionId: s.sessionId,
-      startedAt: s.startedAt, endedAt: s.endedAt, durationMs: s.durationMs,
+      startedAt: s.startedAt, endedAt: s.endedAt || end, durationMs: s.durationMs || dur,
       trades: s.trades, credits: s.credits, kills: s.kills, deaths: s.deaths,
       ore: s.ore, missions: s.missions, progression: s.progression,
-      navigation: s.navigation, funnel: s.funnel, deathLog: s.deathLog,
+      navigation: s.navigation, verbs: s.verbs || {}, funnel: s.funnel, deathLog: s.deathLog,
     };
   }
 
@@ -221,6 +241,171 @@ export function createTelemetry(bus, state) {
   sub('save:loaded', rebaseToPlayStart);
   sub('player:respawn', () => { lastSpawnMark = now(); });
 
+  // FLIGHT & PROPULSION VERBS (PQ-167)
+  let lastThrustActive = false;
+  let lastBrakeActive = false;
+  let lastBoostActive = false;
+
+  sub('ship:thrust', (p) => {
+    p = p || {};
+    if (state && state.playerId != null && p.shipId != null && p.shipId !== state.playerId) return;
+    markFunnel('firstFlightAt');
+    const thrustActive = (p.throttle > 0.05 || Math.abs(p.strafe || 0) > 0.05);
+    const brakeActive = (p.reverse > 0.05);
+    const boostActive = !!p.boost;
+
+    let changed = false;
+    if (thrustActive && !lastThrustActive) {
+      bump(session.verbs, 'thrust');
+      changed = true;
+    }
+    if (brakeActive && !lastBrakeActive) {
+      bump(session.verbs, 'brake');
+      changed = true;
+    }
+    if (boostActive && !lastBoostActive) {
+      bump(session.verbs, 'boost');
+      changed = true;
+    }
+
+    lastThrustActive = thrustActive;
+    lastBrakeActive = brakeActive;
+    lastBoostActive = boostActive;
+
+    if (changed) scheduleSave();
+  });
+  sub('ship:boostStart', (p) => {
+    p = p || {};
+    if (state && state.playerId != null && p.shipId != null && p.shipId !== state.playerId) return;
+    markFunnel('firstFlightAt');
+    bump(session.verbs, 'boost');
+    lastBoostActive = true;
+    scheduleSave();
+  });
+  sub('ship:dash', (p) => {
+    p = p || {};
+    if (state && state.playerId != null && p.shipId != null && p.shipId !== state.playerId) return;
+    markFunnel('firstFlightAt');
+    bump(session.verbs, 'stroke');
+    scheduleSave();
+  });
+  sub('flight:modeChanged', () => {
+    markFunnel('firstFlightAt');
+  });
+
+  // TETHER & SWING VERBS (PQ-167)
+  sub('tether:latched', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'latch');
+    scheduleSave();
+  });
+  sub('tether:attached', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'latch');
+    scheduleSave();
+  });
+  sub('tether:reel', () => {
+    bump(session.verbs, 'reel');
+    scheduleSave();
+  });
+  sub('tether:released', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'release');
+    scheduleSave();
+  });
+  sub('tether:releaseRated', () => {
+    // Only mark funnel milestone; verb bump is owned by tether:released/broke/cut to avoid double-counting
+    markFunnel('firstSwingAt');
+  });
+  sub('tether:cut', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'release');
+    scheduleSave();
+  });
+  sub('tether:broke', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'release');
+    scheduleSave();
+  });
+  sub('massline:selfSling', () => {
+    markFunnel('firstSwingAt');
+    bump(session.verbs, 'throw');
+    scheduleSave();
+  });
+
+  // SHOVE & IMPULSE VERBS (PQ-167)
+  sub('combat:shove', () => {
+    markFunnel('firstShoveAt');
+    bump(session.verbs, 'shove');
+    scheduleSave();
+  });
+  sub('tether:whipImpact', () => {
+    markFunnel('firstShoveAt');
+    bump(session.verbs, 'shove');
+    scheduleSave();
+  });
+  sub('fields:deployed', (p) => {
+    p = p || {};
+    if (state && state.playerId != null && p.sourceId != null && p.sourceId !== state.playerId) return;
+    if (p.kind === 'repulsor') {
+      markFunnel('firstShoveAt');
+      bump(session.verbs, 'shove');
+      scheduleSave();
+    } else if (p.kind === 'well') {
+      bump(session.verbs, 'well');
+      scheduleSave();
+    }
+  });
+  sub('field:repulsor', () => {
+    markFunnel('firstShoveAt');
+    bump(session.verbs, 'shove');
+    scheduleSave();
+  });
+  sub('field:well', () => {
+    bump(session.verbs, 'well');
+    scheduleSave();
+  });
+  sub('weapons:mineDetonated', () => {
+    markFunnel('firstShoveAt');
+    bump(session.verbs, 'shove');
+    scheduleSave();
+  });
+
+  // HEAT & LAW ESCALATION (PQ-167)
+  sub('heat:changed', (p) => {
+    if (!p) return;
+    const val = Number.isFinite(p.value) ? p.value : 0;
+    const lvl = p.level;
+    if (val > 0 || (lvl && lvl !== 'clean' && lvl !== 'low')) {
+      markFunnel('firstHeatAt');
+      scheduleSave();
+    }
+  });
+
+  // GENERIC PLAYER VERB ACTIVATION (PQ-167 / PQ-173)
+  sub('verb:used', (p) => {
+    if (!p) return;
+    const verb = p.verb || p.name;
+    if (verb) {
+      bump(session.verbs, verb);
+      if (verb === 'thrust' || verb === 'boost' || verb === 'brake') markFunnel('firstFlightAt');
+      if (verb === 'latch' || verb === 'release' || verb === 'swing' || verb === 'throw') markFunnel('firstSwingAt');
+      if (verb === 'shove') markFunnel('firstShoveAt');
+      scheduleSave();
+    }
+  });
+  sub('player:verb', (p) => {
+    if (!p) return;
+    const verb = p.verb || p.name;
+    if (verb) {
+      bump(session.verbs, verb);
+      if (verb === 'thrust' || verb === 'boost' || verb === 'brake') markFunnel('firstFlightAt');
+      if (verb === 'latch' || verb === 'release' || verb === 'swing' || verb === 'throw') markFunnel('firstSwingAt');
+      if (verb === 'shove') markFunnel('firstShoveAt');
+      scheduleSave();
+    }
+  });
+
   // ECONOMY — trade volume (NOT money). economy.js:504
   sub('economy:tradeCompleted', (p) => {
     if (!p) return;
@@ -231,6 +416,7 @@ export function createTelemetry(bus, state) {
     c[side] += 1;
     c.qty += Math.abs(p.qty || 0);
     markFunnel('firstTradeAt');
+    bump(session.verbs, 'trade');
     pushRing('economy:tradeCompleted', { side, commodityId: p.commodityId, qty: p.qty, total: p.total });
     scheduleSave();
   });
@@ -266,6 +452,19 @@ export function createTelemetry(bus, state) {
     scheduleSave();
   });
 
+  // COMBAT FIRE & SHOVE WEAPONS (weapons.js:659)
+  sub('combat:fire', (p) => {
+    p = p || {};
+    if (state && state.playerId != null && p.ownerId != null && p.ownerId !== state.playerId) return;
+    bump(session.verbs, 'fire');
+    const wId = String(p.weaponId || '');
+    if (wId.includes('concussion') || wId.includes('vector_mine') || wId.includes('lance') || p.shove) {
+      markFunnel('firstShoveAt');
+      bump(session.verbs, 'shove');
+    }
+    scheduleSave();
+  });
+
   // PLAYER DEATH — deaths-by-cause + death/lifespan log. combat.js:194
   sub('player:death', (p) => {
     p = p || {};
@@ -294,6 +493,7 @@ export function createTelemetry(bus, state) {
     session.ore.unitsTotal += qty;
     bump(session.ore.byType, p.commodityId, qty);
     markFunnel('firstMineAt');   // correct funnel anchor — NOT economy:tradeCompleted
+    bump(session.verbs, 'mine');
     pushRing('mining:yield', { commodityId: p.commodityId, qty });
     scheduleSave();
   });
@@ -361,6 +561,7 @@ export function createTelemetry(bus, state) {
     p = p || {};
     session.navigation.docks += 1;
     markFunnel('firstDockAt');
+    bump(session.verbs, 'dock');
     pushRing('dock:docked', { stationId: p.stationId });
     scheduleSave();
   });
@@ -369,6 +570,7 @@ export function createTelemetry(bus, state) {
     session.navigation.jumps += 1;
     pushUnique(session.navigation.sectorsVisited, p.sectorId);
     markFunnel('firstJumpAt');
+    bump(session.verbs, 'jump');
     pushRing('jump:arrive', { sectorId: p.sectorId, interdicted: p.interdicted, ambushCount: p.ambushCount });
     scheduleSave();
   });
@@ -409,6 +611,7 @@ export function createTelemetry(bus, state) {
       missions: { accepted: 0, completed: 0, failed: 0, expired: 0 },
       progression: { techResearched: 0, factionTierUps: 0 },
       navigation: { docks: 0, jumps: 0 },
+      verbs: {},
       totalPlaytimeMs: 0,
     };
     for (const s of all) {
@@ -435,6 +638,9 @@ export function createTelemetry(bus, state) {
         career.navigation.docks += s.navigation.docks || 0;
         career.navigation.jumps += s.navigation.jumps || 0;
       }
+      if (s.verbs) {
+        for (const v in s.verbs) bump(career.verbs, v, s.verbs[v]);
+      }
       career.totalPlaytimeMs += s.durationMs || 0;
     }
     return career;
@@ -444,7 +650,11 @@ export function createTelemetry(bus, state) {
   function getFunnel() {
     const f = session.funnel;
     const steps = [
+      ['firstFlight', f.firstFlightAt],
+      ['firstSwing', f.firstSwingAt],
+      ['firstShove', f.firstShoveAt],
       ['firstDock', f.firstDockAt],
+      ['firstHeat', f.firstHeatAt],
       ['firstTrade', f.firstTradeAt],
       ['firstMine', f.firstMineAt],
       ['firstKill', f.firstKillAt],
@@ -479,6 +689,39 @@ export function createTelemetry(bus, state) {
     return ring.slice(ring.length - n);
   }
 
+  // Explicitly record a player verb activation (PQ-167 / PQ-173).
+  function recordVerb(verb, amount = 1) {
+    if (!verb) return;
+    bump(session.verbs, verb, amount);
+    if (verb === 'thrust' || verb === 'boost' || verb === 'brake') markFunnel('firstFlightAt');
+    if (verb === 'latch' || verb === 'release' || verb === 'swing' || verb === 'throw') markFunnel('firstSwingAt');
+    if (verb === 'shove') markFunnel('firstShoveAt');
+    scheduleSave();
+  }
+
+  function findSession(sessionId) {
+    if (!sessionId || sessionId === session.sessionId) return serializeSession();
+    const stored = readAllSessions();
+    return stored.find((s) => s && s.sessionId === sessionId) || null;
+  }
+
+  // Session report generator (PQ-167 Leaf .00). Returns Markdown and JSON reports for any session.
+  function getSessionReport(sessionId) {
+    const s = findSession(sessionId);
+    if (!s) return null;
+    return {
+      data: buildSessionReportData(s),
+      markdown: renderSessionReportMarkdown(s),
+      json: exportSessionReportJson(s),
+    };
+  }
+
+  function exportSessionReport(sessionId) {
+    const s = findSession(sessionId);
+    if (!s) return null;
+    return exportSessionReportJson(s);
+  }
+
   // Reset: clear the LIVE session aggregates + ring (does NOT wipe persisted history; pass true to also
   // clear localStorage). A fresh session id is minted so the next persist() appends cleanly.
   function reset(clearStored) {
@@ -486,6 +729,9 @@ export function createTelemetry(bus, state) {
     ring.length = 0;
     ringSeq = 0;
     lastSpawnMark = now();
+    lastThrustActive = false;
+    lastBrakeActive = false;
+    lastBoostActive = false;
     if (clearStored && store) {
       try { store.removeItem(STORAGE_KEY); } catch (_err) { /* ignore */ }
     }
@@ -516,6 +762,8 @@ export function createTelemetry(bus, state) {
     name: 'telemetry',
     getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
     getRecentEvents, reset, dispose,
+    recordVerb, getSessionReport, exportSessionReport,
+    getAllSessions: () => readAllSessions().filter((s) => s && s.sessionId !== session.sessionId).concat([serializeSession()]),
     // live handles for dev inspection
     get sessionId() { return session.sessionId; },
   };

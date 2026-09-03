@@ -17,6 +17,7 @@
     "jules:validate": "node scripts/jules-dispatch.mjs --validate",
     "check:jules-task-bank": "node scripts/jules-dispatch.mjs --validate && node --test test/jules-task-bank.test.mjs",
     "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json && node scripts/check-src-reachability.mjs",
+    "check:playtest:gates": "node scripts/check-playtest-gates.mjs",
     "check:alpha:evidence": "node scripts/check-alpha-evidence.mjs",
     "check:alpha:evidence:contract": "node scripts/check-alpha-evidence.mjs --self-test",
     "check:time-effects": "node test/time-effects.test.mjs",
