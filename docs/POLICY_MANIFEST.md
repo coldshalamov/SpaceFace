@@ -63,8 +63,11 @@ A packet may choose an art direction or technique for one outcome. That local de
 
 | Surface | Class | Purpose | Limitation |
 |---|---|---|---|
-| root `CLAUDE.md` | `ACTIVE_AUTOMATIC` | owner working agreement: finish the job, never stop halfway | not a design bible |
+| root `CLAUDE.md` | `ACTIVE_AUTOMATIC` | brand alias that imports root `AGENTS.md` so every agent brand shares one front door | adds no law of its own |
 | root/nested `AGENTS.md` | `ACTIVE_AUTOMATIC` | concise routing, hazards, ownership, verification | no volatile status or design recipes |
+| `docs/ORIENTATION.md` | `ACTIVE_MANUAL` | repo map, reading ladder, planner route | routing only; no status |
+| `docs/AGENT_OPERATIONS.md` | `ACTIVE_MANUAL` | full working agreement behind the `AGENTS.md` summary | behavior, not design |
+| `docs/AGENT_LESSONS.md` | `ACTIVE_MANUAL` | owner preferences and verified workspace facts | each line must stay verifiable or be corrected |
 | `ARCHITECTURE.md` | `ACTIVE_MANUAL` | engine/data contracts | not a visual-style guide; reconcile descriptive details with code |
 | `design/GDD_2_0.md` | `ACTIVE_MANUAL` | product pillars | technique follows evidence |
 | `design/program/` | mixed | global status, active packets, receipts | each file obeys its lifetime marker |

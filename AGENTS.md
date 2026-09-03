@@ -1,54 +1,52 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace agent orientation
 
-**Never stop halfway.** The owner does not read code and cannot complete leftover agent work. If you
-stop mid-job, it stays broken forever. Finish the named outcome of the job you were given, then stop.
-Do not start the next job. A “revise” candidate, open gate, ledger, or jargon report is not
-completion when the brief said that picture must not ship. The full working agreement is
-[`CLAUDE.md`](./CLAUDE.md).
+SpaceFace is a Three.js browser/Electron top-down space game — fly, mine, trade, fight, upgrade, and
+build passive income in a living 2.5D universe. Technically: a flat `GameState`, an event bus, and a
+registry of systems on a 60 Hz fixed-timestep sim decoupled from rendering. New to the repo? Read
+[`docs/ORIENTATION.md`](./docs/ORIENTATION.md) — the whole repo on one page.
 
-**Program / "what next" / multi-plan work:** start at root
-[`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). It is the single program map and check-off
-workflow; it does not replace original plans.
+**Never stop halfway.** The owner does not read code and cannot complete leftover agent work. Finish
+the named outcome of the job you were given, then stop — the full working agreement is
+[`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).
 
 ## 1. Start by task
 
 | Task | Start here |
 |---|---|
-| Program map, "next N", check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
+| Program map, "what next" / multi-plan work, check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
 | Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
-| The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first. Do not cut quality |
+| The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first; do not cut quality |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
-| Choose work across several plans / "do the next N" | `CANONICAL_BUILD_MAP.md` → `design/program/roadmap/program-queue.json` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Any player-facing graphics or visual asset | **`docs/visual-assets/README.md` first**, then `assets/AGENTS.md` or the owning runtime/UI route it names |
-| Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier C/D may group a repeated manufactured family, but no changed visible zone may inherit a DCC default |
-| Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` -> exact ship/root maps in `src/render/partsLibrary.js`; do not infer identity from a screenshot or legacy filename |
+| Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md` |
+| Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` → ship/root maps in `src/render/partsLibrary.js`; never infer from a screenshot or legacy filename |
 | Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`** (also linked from `CANONICAL_BUILD_MAP.md` §1) |
-| Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`design/program/ORPHAN_HARVEST_PLAYBOOK.md`](./design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./design/program/ORPHAN_HARVEST_LEDGER.md) |
-| Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md). Overnight or “non-INFERENCE work in the map” keeps going through every remaining ship. |
-| Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
+| Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`ORPHAN_HARVEST_PLAYBOOK.md`](./design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./design/program/ORPHAN_HARVEST_LEDGER.md) |
+| Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md) |
+| Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
-| Asteroid Works / mining minigame unreadable or undrivable | **`CANONICAL_BUILD_MAP.md`** door → [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` (`--id PQ-130`). Board is the game. Not Waves 1–4, not hitch. |
+| Asteroid Works / mining minigame unreadable or undrivable | **`CANONICAL_BUILD_MAP.md`** door → [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` (`--id PQ-130`) |
 | Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
 | Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |
 | Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 | Search/archaeology | `docs/SEARCH_CONTEXT.md` |
-| Leftover `sf-*` / agent worktree cleanup, residual integrate-or-drop triage | **`design/program/WORKTREE_RECOVERY.md`**. Use exact current ownership and tracked dispositions; do not delete a named ref or local clone until its port/adaptation and cleanup gate are durable. |
+| Leftover `sf-*` / agent worktree cleanup, integrate-or-drop triage | **`design/program/WORKTREE_RECOVERY.md`** — exact current ownership only; never delete a ref or clone until its cleanup gate is durable |
 
 Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary code task.
 
 ## 2. Architecture in one paragraph
 
-SpaceFace is a Three.js browser/Electron space game. A flat `GameState`, event bus, and registry of
-systems run in a 60 Hz fixed-timestep simulation decoupled from rendering. Sim code stays independent
-of Three.js, uses the XZ plane, and uses `state.rng`/`state.simTime` rather than ambient randomness or
-wall time. Browser and Electron launch the same game route. See `ARCHITECTURE.md` for the contract.
+A flat `GameState`, event bus, and registry of systems run in a 60 Hz fixed-timestep simulation
+decoupled from rendering. Sim code stays independent of Three.js, uses the XZ plane, and uses
+`state.rng`/`state.simTime` rather than ambient randomness or wall time. Browser and Electron launch
+the same game route. See `ARCHITECTURE.md` for the contract.
 
 ## 3. Preserve the shared working tree
 
@@ -64,32 +62,27 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 - Preserve unrelated edits. Do not roll back a file merely because its diff is large.
 - Add new files to Git intent immediately with `git add -N <file>`.
 - Remain on the current branch unless the user explicitly requests branch/worktree management.
-- Push only the owned branch by explicit name; never use `git push --all`, `--mirror`, or publish
+- Push only the owned branch by explicit name; never `git push --all`, `--mirror`, or publish
   unrelated refs.
-- Commit finished pieces as you go: when a logical slice is complete, reviewed, and
-  verified, stage only its owned files and make a focused atomic commit, then push the
-  current branch by explicit name. Do not wait for blanket user authorization; do not
-  batch unrelated work or unrelated files into the commit.
+- Commit finished pieces as you go: stage only your owned files, make a focused atomic commit, push
+  the current branch by explicit name. Do not wait for blanket authorization or batch unrelated work.
 
 ## 4. Authority and current work
 
 When sources disagree: user direction → `ARCHITECTURE.md` (technical) → `design/VISION.md`
-(the owner's fantasy and UVP — wins on product emphasis) → `design/GDD_2_0.md` →
-`design/program/` → the activated plan/spec → supporting references.
+(the owner's fantasy and UVP — wins on product emphasis) → `design/GDD_2_0.md` → `design/program/` →
+the activated plan/spec → supporting references. `docs/POLICY_MANIFEST.md` says which files may
+direct an agent; read it before treating prompts, archives, transcripts, or campaign material as
+policy.
 
 Live code, current checks, and player-route evidence determine whether descriptive claims are true.
-Read `docs/POLICY_MANIFEST.md` before treating prompts, archives, transcripts, tool memories, or
-campaign material as policy.
 
-For a user-authorized multi-plan or long-running campaign, packet disposition and campaign
-completion are different. A blocked unit is recorded and skipped while other safe work continues;
-an empty `program-dispatch --ready` result is not completion. The integrator may refresh a stale
-packet, implement an authorized missing in-repo seam, or admit the next existing plan item whose real
-dependencies are satisfied. Missing local code, manifests, checks, or packet files are work—not
-external blockers—when they are within the campaign's authority. Finish only the user's declared
-milestone, or when every remaining route has a concrete external dependency or exact live-path
-collision. Status, receipt, harness, and validation-only work do not count as production outcomes
-unless the user asked for those artifacts.
+For a user-authorized multi-plan campaign: record and skip a blocked unit while other safe work
+continues; an empty ready queue is not completion; missing local code, manifests, checks, or packet
+files are work, not external blockers. Status, receipt, harness, and validation-only work do not
+count as production outcomes unless the user asked for those artifacts. Finish only the user's
+declared milestone, or when every remaining route has a concrete external dependency or exact
+live-path collision.
 
 ## 5. Live runtime selection
 
@@ -119,26 +112,23 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   report, or hidden flag is not completion.
 - **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories. Honor a
   currently active lock/authoring signal, but historical lane documents are not permanent ownership.
-- **Visual craft:** all player-facing graphics work starts at `docs/visual-assets/README.md` and
-  obeys `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Player-facing VFX and world
-  dressing also obey `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`. A camera-facing soft square or
-  disc (soft-particle billboard, point sprite, radial-gradient glow card) is not an accepted stand-in
-  for a designed object. Distant background stars are the only exception, and only while they stay
-  tiny, bright, and at sky depth. If the player can fly past it, it is not a star.
-  Any Blender/GLB form or surfacing work must complete the proportional fiction/material preflight in
-  `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier A/B uses component-level records and
-  Tier C/D may group a repeated manufactured family. Do not wait for a reviewer to name the
-  plastic/clay/primitive failure after authoring, and never treat a DCC default as a material choice.
-  A technical receipt may mark `evidence_ready`; it cannot close G1, G2, or G4. A component-scoped
-  pass never implies a whole-asset pass. Whole-asset G1/G2/G4 claims require a hash-bound visual
-  review that covers dominant inherited/retained zones, records original-resolution matched views and
-  `keep|revise|revert|blocked`, and preserves frozen asset identity when generated references are
-  used as quality targets. Missing review keeps the gate open.
+- **Visual craft:** player-facing graphics start at `docs/visual-assets/README.md` and obey
+  `VISUAL_ASSET_PRODUCTION_STANDARD.md`; VFX and world dressing also obey `VFX_TECHNIQUE_STANDARD.md`
+  (both under `docs/visual-assets/`). A camera-facing soft square/disc (soft-particle billboard,
+  point sprite, radial-gradient glow card) is never a stand-in for a designed object — distant
+  background stars are the only exception, and only while tiny, bright, and at sky depth; if the
+  player can fly past it, it is not a star. Blender/GLB work must complete the proportional
+  fiction/material preflight in `.grok/skills/spaceface-blender-material-truth/SKILL.md`; a DCC
+  default is never a material choice. Tier A/B uses component-level records; do not wait for a
+  reviewer to name the plastic/clay/primitive failure after authoring. Gates G1/G2/G4 need a
+  hash-bound visual review — a technical receipt cannot close them, a component-scoped pass never
+  implies a whole-asset pass, and missing review keeps the gate open.
 - **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
   pacing. Do not pass gates by removing authored visuals or lowering default quality.
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
   contrast. Accessibility does not require a universal visual style.
-- **Dependencies/media:** allowed when they materially improve quality and their bundle/performance, determinism/save, and maintenance effects are understood.
+- **Dependencies/media:** allowed when they materially improve quality and their bundle/performance,
+  determinism/save, and maintenance effects are understood.
 
 ## 7. Common-bug routing
 
@@ -159,29 +149,25 @@ escalate only when it justifies the cost; don't loop on verification rituals.
 |---|---|
 | Fast gate, before and after an edit | `npm run check:baseline` (~15s) |
 | What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
-| Broad sweep | `npm run check:all` (not `check` — that's a fail-fast chain that hides failures) |
+| Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
 | Middle tier | `npm run check:all:smoke` |
 
 - `check:baseline` is the everyday tool. `--list` shows what it covers; `--only=a,b` runs a subset.
 - Prefer `check:all` over `check`: `check` is a fail-fast `&&` chain, so a green tail is not coverage
   if it aborted early.
-- Don't re-record `test/*.expected.json` goldens just to pass — and don't loop on a failing hash
-  without understanding it. See [`docs/COMMON_BUGS.md`](./docs/COMMON_BUGS.md) §8 for the sim/hash
-  procedure (`scripts/sim-golden-diff.mjs` answers whether a hash change is motion or bookkeeping).
-- Historical check-tooling traps (deleted lifecycle hooks, fail-fast under-reporting, golden churn)
-  are recorded in [`docs/COMMON_BUGS.md`](./docs/COMMON_BUGS.md), not here — look them up when
-  relevant rather than carrying them every turn.
+- Don't re-record `test/*.expected.json` goldens just to pass, and don't loop on a failing hash
+  without understanding it — `docs/COMMON_BUGS.md` §8 owns the sim/hash procedure; historical
+  check-tooling traps live there too.
 - Visual, accessibility, and performance claims need current player-facing evidence, but decide
   proportionately in the moment how much. Don't run headed acceptance as a ritual.
 - Before freeze or performance work, run the runtime witness. A moving sim clock is not a live 3D
   picture. Do not tune code until that report names the stuck latch or the top frame-time bucket.
-- Never rerun the same command against the same candidate/harness/environment after the same failure
-  fingerprint without a relevant change. That is a validation loop: retain the evidence, reduce it
-  to an owner-level regression or switch to another safe production unit. A long build or soak is
-  fine when named once; repeated unchanged attempts are not progress.
+- Never rerun the same command against the same candidate after the same failure fingerprint without
+  a relevant change — retain the evidence, reduce it to an owner-level regression, or switch to
+  another safe production unit. A long build or soak named once is fine; repeated unchanged attempts
+  are not progress.
 
-For the full validation ladder and broker-managed route evidence, see
-[`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
+Full validation ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
 
 ## 10. Scoped instruction map
 
@@ -194,36 +180,11 @@ Nested `AGENTS.md` files exist only at meaningful ownership/risk boundaries:
 Use the nearest applicable file and follow links for depth. Do not copy its content into another
 instruction layer.
 
-## Learned User Preferences
+## 11. Depth docs (read by need, not by default)
 
-- Does not read or judge agent-created code; wants plain-language triage, verified options, and a clear safe set—not code dumps, check names, or requests to weigh technical risk.
-- Skeptical of agent-labeled “bugs”; verify against live code and git history before changing behavior, and prefer obvious/safe honesty fixes first—misattributed fixes have made things worse.
-- When handed a large agent review, wants what is safe to do now; leaves safe-vs-risky judgment to the agent once that bar is clear.
-- Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
-- Treat hitching as structural: reject quality cuts, triangle-count trims, and ~2% easy-road opts as the performance plan; major refactors are discussable. Prefer cheap Node count gates over repeated headed browser soaks.
-- When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
-- Never stop halfway through a job. The owner cannot finish leftover technical work; a half-done
-  commit with “revise / gates open / source candidate” leaves the game broken forever. “Do this one
-  job and stop” means finish that job, then do not start another — not ship a half-built version.
-- For graphics and VFX, do not hype work as A-list; place each technique honestly against modern
-  games (name it, when it was current, what it would take to go further). Do not treat the existing
-  implementation primitive as the design and silently fatten or tweak it—ground the effect in how
-  the real thing behaves, present the real option space before implementing, then implement that
-  technique rather than a cheap stand-in (solid cones, spark sprays, billboard smoke, blurry
-  squares, transparency ramps, CSS glows, or a still image stretched and bolted to the ship) that
-  only technically satisfies the brief. Never satisfy a player-facing visual brief with a
-  camera-facing soft square or disc except distant background stars. If the player can fly past it,
-  it is not a star.
-- When the player reports a freeze or other play-blocking bug, find the actual cause on the real
-  play path and verify that freeze is gone before claiming it fixed; do not paper it over with
-  catch-and-continue or scatter unrelated nearby changes.
-- Browser and Electron are shells of the same game; they must share player saves and must not drift
-  as separate copies.
-
-## Learned Workspace Facts
-
-- Root `review/README.md` is the durable residue of the 2026-08 thermonuclear review; long `review/` ledgers were deleted on purpose so they cannot mislead—treat “leads” as hints, not mandates (full text remains in git history).
-- When code and docs disagree, check `git log` which side moved before changing either; agents often update code and leave prose behind, and “fixing to the doc” has regressed real fixes.
-- Many `.test.mjs` files are unwired from `check:*`; do not blindly glob-enable them into CI—audit and wire high-value clusters only.
-- Tractor module `magnetRange` is still unwired in mining (UI no longer advertises inert numbers); drill-fade still mutates ship physics from UI—both are verified deferred work, not free cleanups.
-- Playable-flight `buildComposedShip` is gated off the combat thread; mid-fight authored upgrades settle to the visible procedural ship unless a prewarmed/prepared boundary exists. Do not reintroduce sync composition on the playable path.
+| File | What it holds |
+|---|---|
+| [`docs/ORIENTATION.md`](./docs/ORIENTATION.md) | The whole repo on one page: game summary, directory map, reading ladder, planner route |
+| [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md) | The working agreement in full: finish-the-job rules, concurrent agents, `NOW.md` locks, worktree/junction safety, `check:playable`, reporting |
+| [`docs/AGENT_LESSONS.md`](./docs/AGENT_LESSONS.md) | Owner preferences and verified workspace facts — read before behavior changes, bug claims, or graphics/VFX work |
+| [`docs/POLICY_MANIFEST.md`](./docs/POLICY_MANIFEST.md) | Which files may direct an agent, document lifetimes, rule-admission test |

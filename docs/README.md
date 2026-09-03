@@ -7,6 +7,9 @@ This is the navigation front door for engineering and world-content documentatio
 
 | Need | Read |
 |---|---|
+| Orient in the repo / "what is this game / how does it work" | [`ORIENTATION.md`](./ORIENTATION.md) — repo map, reading ladder, planner route |
+| Full working agreement (finish rules, `NOW.md` locks, `check:playable`, reporting) | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
+| Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
 | Enter implementation | [`../CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
 | Live leases and blockers | [`../design/program/NOW.md`](../design/program/NOW.md) |

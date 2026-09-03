@@ -7,6 +7,8 @@
 
 - Engineering navigation and troubleshooting: `MODULE_MAP.md`, `COMMON_BUGS.md`,
   `VALIDATION_WORKFLOW.md`.
+- Agent orientation and behavior: `ORIENTATION.md` (repo map / reading ladder), `AGENT_OPERATIONS.md`
+  (working agreement in full), `AGENT_LESSONS.md` (owner preferences, verified facts).
 - Agent policy and context routing: `POLICY_MANIFEST.md`, `SEARCH_CONTEXT.md`.
 - Generated code projections: `EVENT_ROUTING.md`, `SYSTEM_REGISTRY.md`.
 - Narrow technical contracts and acceptance records: `Spec/`.
