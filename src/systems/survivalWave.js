@@ -18,6 +18,7 @@ import {
   SWARM_BOSS_ENEMY_ID,
   pickSwarmArchetype,
   swarmGateFor,
+  swarmPressureAt,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
@@ -318,8 +319,17 @@ export const survivalWave = {
     // The only stop is a quota already met with no boss owed — the wave ends on this same tick, so
     // spawning into it would just be litter.
     if (this._resolved >= this._quota && !(this._requireBoss && this._bossIds.size > 0)) return;
-    const target = this._concurrent;
-    const alive = this._cohort.size;
+    // THE WAVE BUILDS. A flat target for a whole wave makes its first second and its last feel the
+    // same; the room now opens at a fraction of its ceiling and closes in as the quota burns down,
+    // so every wave has a shape. The ceiling itself never moves mid-wave — only how much of it is
+    // being used right now.
+    const progress = this._quota > 0 ? this._resolved / this._quota : 1;
+    const target = Math.min(this._concurrent, swarmPressureAt(this._wave, progress));
+    // COUNT THE BODIES ALREADY ON THEIR WAY. The opening burst is staged over a few ticks so it
+    // arrives as groups on different bearings rather than one block; without this the stream sees a
+    // thin room, tops it up, and then the rest of the burst lands on top — every wave opened over
+    // its own pressure. Pending is what the schedule still owes, not a guess.
+    const alive = this._cohort.size + this._pendingBodies();
     if (alive >= target) return;
 
     // Adaptive: a small hole gets the ordinary batch, a big one gets a surge. See
@@ -370,6 +380,17 @@ export const survivalWave = {
         reinforcement: true,
       });
     }
+  },
+
+  /** Bodies the schedule still owes but has not dispatched yet. */
+  _pendingBodies() {
+    if (!this._pending || this._pending.length === 0) return 0;
+    let total = 0;
+    for (const item of this._pending) {
+      const count = item && item.entry && Number.isInteger(item.entry.count) ? item.entry.count : 0;
+      if (count > 0) total += count;
+    }
+    return total;
   },
 
   _checkCleared(run) {

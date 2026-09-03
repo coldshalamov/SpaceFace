@@ -109,7 +109,20 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     id: 'helios_core',
     label: 'Helios Core',
     sectorId: 'sector_helios_prime',
-    spawnPos: { x: 400, z: 0 },
+    // THE ARENA IS SOMEWHERE ELSE NOW (PQ-135).
+    //
+    // (400, 0) is the tutorial spawn: 230 units from a wreck and a beacon, 970 from Helios Station,
+    // on the authored POI corridor, inside the starter asteroid seam, and in the middle of the
+    // sector's ambient freight lane. A live screenshot of wave one had a ringed planet filling a
+    // quarter of the screen, a station, eighteen ambient ships in the contact list and POI
+    // discovery toasts firing over the fight. The Crucible was being played in somebody's front
+    // garden.
+    //
+    // This corner is empty by measurement: 3,000+ units from every station, gate and authored
+    // asteroid field, and still well inside the sector's 3,500 world radius. The arena's own
+    // geometry (swarmArena.js) is then the only thing in it, which is the point — the room the
+    // player fights in should be the room this mode built.
+    spawnPos: { x: -1900, z: -2200 },
   },
   {
     id: 'ceres_belt',

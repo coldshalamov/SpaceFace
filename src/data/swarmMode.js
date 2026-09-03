@@ -52,12 +52,49 @@ export const SWARM_REFIT_EVERY = 10;
 export const SWARM_BOSS_EVERY = 10;
 
 /**
- * Concurrency ceiling. The shared cap is 24 (spawnBudget DEFAULT_MAX) and ambient traffic holds a
- * few slots, so the swarm asks for at most 20 and never calls setMax. Fill the cap before raising
- * it: 20 concurrent is already 3.3x the arc's wave-1 density.
+ * HOW MANY HULLS ARE ON YOU.
+ *
+ * The first pass filled the shared cap without raising it — 8 rising to 20, against
+ * spawnBudget's DEFAULT_MAX of 24 with ambient freight holding three or four of those slots. That
+ * was the right order to do it in (fill the cap before raising it), and 20 was already three times
+ * the authored arc's wave one. It still is not a SWARM.
+ *
+ * Two things changed to make room. Ambient freight no longer spawns inside a run at all, and the
+ * arena declares its own capacity through the shipped `setMax` seam — which exists for exactly this
+ * and is bounded by spawnBudget's own HARD_MAX of 40, a ceiling this never asks to move.
+ *
+ * So: ten on you at wave one, thirty deep in. The ceiling stays under the hard cap on purpose, so
+ * a stray mission spawn or a wreck can never be squeezed out by the wave.
  */
-export const SWARM_CONCURRENT_MIN = 8;
-export const SWARM_CONCURRENT_MAX = 20;
+export const SWARM_CONCURRENT_MIN = 10;
+export const SWARM_CONCURRENT_MAX = 30;
+
+/** What the arena raises the shared live-ship cap to for the length of a run. HARD_MAX is 40. */
+export const SWARM_SPAWN_CAP = 38;
+
+/**
+ * A WAVE BUILDS.
+ *
+ * Holding a flat count for a whole wave makes every wave feel the same from its first second to
+ * its last. A wave now OPENS at this fraction of its ceiling and reaches full strength by the time
+ * the quota is about two thirds spent, so each one has a shape: room to breathe, then closing in.
+ */
+export const SWARM_OPENING_PRESSURE = 0.62;
+export const SWARM_FULL_PRESSURE_AT = 0.66;
+
+/**
+ * The live concurrency target partway through a wave. Pure, so the crescendo is one readable line
+ * rather than something hidden in the spawner.
+ *
+ * `progress` is killed/quota, 0..1.
+ */
+export function swarmPressureAt(wave, progress) {
+  const ceiling = swarmConcurrent(wave);
+  const t = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+  const ramp = SWARM_FULL_PRESSURE_AT > 0 ? Math.min(1, t / SWARM_FULL_PRESSURE_AT) : 1;
+  const floor = Math.max(SWARM_CONCURRENT_MIN, Math.round(ceiling * SWARM_OPENING_PRESSURE));
+  return Math.max(floor, Math.round(floor + (ceiling - floor) * ramp));
+}
 
 /**
  * Ticks between reinforcement top-ups while the room is under strength (60 ticks = 1 second), and
@@ -171,9 +208,11 @@ export function isSwarmRefitWave(wave) {
  */
 export function swarmConcurrent(wave) {
   const w = swarmWaveOf(wave);
-  const ramped = SWARM_CONCURRENT_MIN + Math.floor((w - 1) * 1.1);
+  const ramped = SWARM_CONCURRENT_MIN + Math.floor((w - 1) * 1.35);
   const target = Math.min(SWARM_CONCURRENT_MAX, ramped);
-  if (isSwarmBossWave(w)) return Math.max(SWARM_CONCURRENT_MIN, Math.min(target, 12));
+  // A boss wave holds fewer bodies so the capital hull is legible instead of buried — but not so
+  // few that the escort stops mattering.
+  if (isSwarmBossWave(w)) return Math.max(SWARM_CONCURRENT_MIN, Math.min(target, 18));
   return target;
 }
 
@@ -189,16 +228,27 @@ export function swarmConcurrent(wave) {
  * makes the wave nothing but its opening burst: the stream's self-taper engages immediately and
  * the room drains instead of holding. Two-to-one is the floor, and `swarmCurveIsSane` asserts it.
  */
-export const SWARM_QUOTA_CAP = 40;
+export const SWARM_QUOTA_CAP = 48;
+
+/**
+ * How far the quota must clear a full room. The old rule was "quota >= 2x concurrent", which was
+ * the right IDEA — a wave must be more than its opening burst — expressed as a ratio that could
+ * not survive the room getting bigger. At thirty concurrent a two-to-one quota would be sixty
+ * kills and a three-minute wave.
+ *
+ * The thing that actually matters is an ABSOLUTE margin: you must put down a full room's worth
+ * and then some, so the stream always gets to do its work and the wave always has a middle.
+ */
+export const SWARM_QUOTA_MARGIN = 8;
 
 export function swarmQuota(wave) {
   const w = swarmWaveOf(wave);
-  // A boss wave is shorter on chaff, because the boss is the work — but never so short that it
-  // falls under the two-to-one floor and turns into "kill the opening burst".
+  const floor = swarmConcurrent(w) + SWARM_QUOTA_MARGIN;
+  // A boss wave is shorter on chaff, because the boss is the work.
   if (isSwarmBossWave(w)) {
-    return Math.min(SWARM_QUOTA_CAP, Math.max(swarmConcurrent(w) * 2, 14 + Math.floor(w / 2)));
+    return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + Math.floor(w / 2)));
   }
-  return Math.min(SWARM_QUOTA_CAP, 16 + w * 2);
+  return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + w * 2));
 }
 
 /** Enemy level. Same curve the arc uses, so a swarm hostile is never a different animal. */
@@ -295,10 +345,10 @@ export function swarmRewards(wave) {
 export function swarmOpeningPackages(wave, rng) {
   const w = swarmWaveOf(wave);
   const roll = typeof rng === 'function' ? rng : () => 0.5;
-  const concurrent = swarmConcurrent(w);
-  // A swarm wave OPENS at full strength. Ramping into pressure is what makes a wave read as a
-  // scheduled encounter; arriving at it is what makes it read as a swarm.
-  const opening = concurrent;
+  // The wave opens at its OPENING pressure, not its ceiling — see swarmPressureAt. Arriving at
+  // pressure is what makes a wave read as a swarm rather than a scheduled encounter; arriving at
+  // the ceiling leaves the wave nowhere to build to.
+  const opening = swarmPressureAt(w, 0);
   const packages = [];
 
   if (isSwarmBossWave(w)) {
@@ -314,7 +364,8 @@ export function swarmOpeningPackages(wave, rng) {
   }
 
   // Two or three arrival groups from different bearings: a swarm wave is surrounded from tick 0.
-  const groups = w <= 2 ? 2 : 3;
+  // More bearings as the wave count climbs: at ten on you it is two doors, at thirty it is four.
+  const groups = w <= 2 ? 2 : (w < 8 ? 3 : 4);
   const bossBodies = isSwarmBossWave(w) ? 1 : 0;
   let left = Math.max(2, opening - bossBodies);
   for (let g = 0; g < groups && left > 0; g++) {
@@ -360,6 +411,8 @@ export function swarmPlanBlock(wave) {
     wave: w,
     quota: swarmQuota(w),
     concurrent: swarmConcurrent(w),
+    openingPressure: swarmPressureAt(w, 0),
+    spawnCap: SWARM_SPAWN_CAP,
     level: swarmLevel(w),
     boss: isSwarmBossWave(w),
     // A boss wave is not clearable by killing chaff around a live Dreadnought. The quota AND the
@@ -379,8 +432,11 @@ export function swarmPlanBlock(wave) {
 /** Guard so nothing can quietly ask for more bodies than the shared cap allows. */
 export function swarmConcurrencyIsLegal(concurrent) {
   const n = Number(concurrent);
+  // The arena raises the live-ship cap to SWARM_SPAWN_CAP for the length of a run, so the ceiling
+  // to check against is that, not spawnBudget's untouched default. HARD_MAX is still the wall and
+  // nothing here ever asks to move it.
   return Number.isInteger(n) && n > 0
-    && n <= SPAWN_BUDGET_DEFAULT_MAX
+    && n <= SWARM_SPAWN_CAP
     && n <= SPAWN_BUDGET_HARD_MAX;
 }
 
@@ -392,6 +448,13 @@ export function swarmCurveIsSane(wave) {
   const w = swarmWaveOf(wave);
   const concurrent = swarmConcurrent(w);
   const quota = swarmQuota(w);
+  const opening = swarmPressureAt(w, 0);
   return swarmConcurrencyIsLegal(concurrent)
-    && quota >= concurrent * 2;
+    // You must put down a full room and then some — otherwise the wave is its opening burst.
+    && quota >= concurrent + SWARM_QUOTA_MARGIN
+    // And the opening burst must never be the whole wave.
+    && quota > opening
+    // The crescendo must never ask for more than the wave's own ceiling.
+    && opening <= concurrent
+    && swarmPressureAt(w, 1) <= concurrent;
 }

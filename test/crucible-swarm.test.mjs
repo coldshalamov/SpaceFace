@@ -20,6 +20,7 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import {
   SWARM_CONCURRENT_MAX,
+  SWARM_CONCURRENT_MIN,
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
@@ -39,6 +40,8 @@ import {
 import { isSwarmRuleset, swarmWaveEndsInMenu } from '../src/systems/survivalSwarm.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SPAWN_BUDGET_DEFAULT_MAX } from '../src/data/survivalActs.js';
+import { SWARM_SPAWN_CAP, swarmPressureAt } from '../src/data/swarmMode.js';
+import { swarmArena } from '../src/systems/swarmArena.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -104,11 +107,18 @@ function tick(h, n = 1) {
   }
 }
 
+/**
+ * The wave's own live bodies. Filtered on the COHORT MARK, not on "everything that is not the
+ * player" — swarmArena puts a dozen asteroids in the entity list, and counting those as hostiles
+ * made a kill loop shoot the scenery and a pressure sample read the walls.
+ */
 function liveHostiles(h) {
   const out = [];
   for (const entity of h.state.entities.values()) {
     if (entity.id === h.player.id) continue;
     if (entity.alive === false) continue;
+    if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+    if (!(entity.data && entity.data.runCohort === SURVIVAL_COHORT_TAG)) continue;
     out.push(entity);
   }
   return out;
@@ -186,7 +196,7 @@ test('a swarm wave has no last wave and no blocking role that could stall it', (
 });
 
 test('pressure and quota rise, and the roster opens one archetype at a time', () => {
-  assert.equal(swarmConcurrent(1), 8);
+  assert.equal(swarmConcurrent(1), SWARM_CONCURRENT_MIN);
   let previousRoster = 0;
   for (let wave = 1; wave <= 40; wave++) {
     const roster = swarmRosterFor(wave).length;
@@ -204,8 +214,11 @@ test('pressure and quota rise, and the roster opens one archetype at a time', ()
   }
   assert.ok(swarmQuota(12) > swarmQuota(1), 'the quota does climb early');
   assert.equal(swarmQuota(60), SWARM_QUOTA_CAP, 'and flattens at the cap rather than growing forever');
-  // Wave 1 is already denser than the whole authored wave 1 of the arc (six bodies).
+  // Wave 1 already holds more hulls than the authored arc's wave 1 has bodies in total (six), and
+  // the ceiling is a real swarm rather than a squad.
   assert.ok(swarmConcurrent(1) > 6);
+  assert.equal(swarmConcurrent(999), SWARM_CONCURRENT_MAX);
+  assert.ok(SWARM_CONCURRENT_MAX >= 30, 'thirty hulls on you is the deep-run promise');
 });
 
 test('a newly unlocked archetype actually shows up on the wave that unlocked it', () => {
@@ -435,6 +448,84 @@ test('a swarm run does not stop for a draft on a fight wave — it rolls straigh
   assert.ok(transitions.includes('draft'), 'the phase machine still used the legal edge');
 });
 
+test('the room raises its own capacity for the run and gives it back afterwards', () => {
+  const h = boot();
+  const before = h.budget.max();
+  assert.equal(before, SPAWN_BUDGET_DEFAULT_MAX, 'the campaign default is untouched to start');
+  swarmArena.init(h.ctx);
+  beginSwarm(h);
+  assert.equal(h.budget.max(), SWARM_SPAWN_CAP, 'a live run holds a swarm-sized room');
+  assert.ok(SWARM_SPAWN_CAP <= 40, 'and never asks spawnBudget to move its own hard wall');
+  h.bus.emit('run:ended', { outcome: 'defeat' });
+  assert.equal(h.budget.max(), before, 'the campaign gets its own number back');
+  swarmArena.destroy();
+});
+
+test('a wave BUILDS: the room opens below its ceiling and closes in as the quota burns down', () => {
+  for (const wave of [5, 8, 15, 25]) {
+    const open = swarmPressureAt(wave, 0);
+    const mid = swarmPressureAt(wave, 0.33);
+    const full = swarmPressureAt(wave, 1);
+    const ceiling = swarmConcurrent(wave);
+    assert.ok(open < ceiling, `wave ${wave} opens below its ceiling (${open} of ${ceiling})`);
+    assert.ok(mid > open, `wave ${wave} is thicker by a third through`);
+    assert.equal(full, ceiling, `wave ${wave} reaches full strength`);
+    // Monotone: pressure never drops mid-wave.
+    let previous = 0;
+    for (let t = 0; t <= 1.001; t += 0.05) {
+      const p = swarmPressureAt(wave, t);
+      assert.ok(p >= previous, `wave ${wave} pressure never falls (at ${t.toFixed(2)})`);
+      previous = p;
+    }
+  }
+  // Garbage progress reads as the opening, never as a spike.
+  assert.equal(swarmPressureAt(10, NaN), swarmPressureAt(10, 0));
+  assert.equal(swarmPressureAt(10, -5), swarmPressureAt(10, 0));
+  assert.equal(swarmPressureAt(10, 99), swarmPressureAt(10, 1));
+});
+
+test('the live stream honours the crescendo, and never breaches the raised cap', () => {
+  // Driven on a FRESH run at a deep wave rather than by walking there. Walking works, but wave N
+  // inherits wave N-1's survivors — which is the whole no-lull rule — so the room can already be at
+  // its ceiling on the first tick and the ramp is invisible. Starting the wave cold is the only way
+  // to watch the room actually build.
+  const h = boot();
+  swarmArena.init(h.ctx);
+  beginSwarm(h);
+  // Clear wave 1 off the board first. A swarm wave INHERITS the last one's survivors by design, so
+  // without this the wave-8 plan opens on top of wave 1's ten and starts at its ceiling.
+  while (killOne(h)) { /* empty the room */ }
+  tick(h, 2);
+  const plan = forceWave(h, 8);
+  const ceiling = plan.swarm.concurrent;
+  const opening = swarmPressureAt(8, 0);
+  assert.ok(opening < ceiling, 'wave 8 has real headroom to build into');
+
+  tick(h, 40);
+  const atStart = liveHostiles(h).length;
+  assert.ok(atStart <= opening, `the room opened at its opening pressure (${atStart} of ${opening})`);
+
+  let peak = atStart;
+  let late = 0;
+  for (let i = 0; i < 8000 && !this_cleared(h); i++) {
+    if (i % 9 === 0) killOne(h);
+    tick(h, 1);
+    const alive = liveHostiles(h).length;
+    peak = Math.max(peak, alive);
+    if (h.state.run.resolvedThreat / Math.max(1, h.state.run.threatBudget) > 0.75) {
+      late = Math.max(late, alive);
+    }
+  }
+  assert.ok(late > atStart, `the room was thicker late than it opened (${atStart} -> ${late})`);
+  assert.ok(peak <= ceiling, `peak ${peak} respected the wave ceiling ${ceiling}`);
+  assert.ok(h.budget.current() <= h.budget.max(), 'and the raised cap was never breached');
+  swarmArena.destroy();
+});
+
+function this_cleared(h) {
+  return named(h.emitted, 'run:waveCleared').length > 0;
+}
+
 // ---------------------------------------------------------------------------
 // the boss wave
 // ---------------------------------------------------------------------------
@@ -460,8 +551,10 @@ test('a boss wave fields a Dreadnought and says it owes one', () => {
     plan.packages.some((p) => p.enemyId === 'dreadnought_boss'),
     'the boss is in the opening burst, not something the stream might roll',
   );
-  // The chaff around it is thinner so the capital hull is legible instead of buried.
-  assert.ok(plan.swarm.concurrent <= 12);
+  // The chaff around it is thinner than an ordinary wave of the same depth, so the capital hull is
+  // legible instead of buried — but not so thin that the escort stops mattering.
+  assert.ok(plan.swarm.concurrent < swarmConcurrent(11));
+  assert.ok(plan.swarm.concurrent >= 10);
 });
 
 test('meeting the quota does NOT clear a boss wave while the Dreadnought is alive', () => {

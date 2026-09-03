@@ -20,6 +20,7 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
+import { isRunSealed } from '../core/runSeal.js';
 import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
@@ -888,6 +889,11 @@ function pickRole(roleWeights, rng) {
 
 /** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. */
 function ambientCountForSector(sector, state = null) {
+  // NO AMBIENT FREIGHT IN A CRUCIBLE RUN (PQ-135). Helios carries eighteen haulers a minute, and a
+  // live arena walk had nineteen of them on the board: they filled the contact list with things the
+  // player must not shoot, held spawn slots the wave needed, and turned a match into rush hour.
+  // The run is a sealed box; the only ships in it should be the ones it put there.
+  if (isRunSealed(state)) return 0;
   const tpm = sector && sector.trafficPerMin;
   let count;
   if (typeof tpm === 'number') {

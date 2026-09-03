@@ -36,6 +36,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { SWARM_SPAWN_CAP } from '../data/swarmMode.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
@@ -159,6 +160,7 @@ export const swarmArena = {
     this._unsubs = [];
     this._ids = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._priorCap = null;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
   },
@@ -170,6 +172,7 @@ export const swarmArena = {
 
   newGame() {
     this._ids = [];
+    this._restoreCapacity();
   },
 
   /** No per-tick work: the field only changes when a wave is planned. */
@@ -191,7 +194,38 @@ export const swarmArena = {
     const run = liveSwarmRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this._raiseCapacity();
     this._topUp(run, wave);
+  },
+
+  /**
+   * THE ROOM'S CAPACITY.
+   *
+   * How many hulls the arena holds is a property of the arena, so this owner sets it — through the
+   * shipped `setMax` seam, which exists for exactly this and clamps itself to spawnBudget's own
+   * HARD_MAX. Nothing here moves that wall.
+   *
+   * The default cap of 24 is sized for a sector carrying ambient freight, patrols and mission
+   * spawns alongside a fight. A Crucible run has none of those — freight is sealed out — so the
+   * same budget can hold a genuine swarm instead of a squad. The previous ceiling is remembered
+   * and restored when the run ends, so the campaign gets its own number back untouched.
+   */
+  _raiseCapacity() {
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (!budget || typeof budget.setMax !== 'function' || typeof budget.max !== 'function') return;
+    const current = budget.max();
+    if (current >= SWARM_SPAWN_CAP) return;
+    if (this._priorCap == null) this._priorCap = current;
+    budget.setMax(SWARM_SPAWN_CAP);
+    this._emit('swarmArena:capacity', { max: budget.max(), restoreTo: this._priorCap });
+  },
+
+  _restoreCapacity() {
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const prior = this._priorCap;
+    this._priorCap = null;
+    if (prior == null || !budget || typeof budget.setMax !== 'function') return;
+    budget.setMax(prior);
   },
 
   _topUp(run, wave) {
@@ -284,6 +318,7 @@ export const swarmArena = {
 
   /** Hand the field back to the engine's ordinary despawn sweep. Never deletes entities directly. */
   _release(reason) {
+    this._restoreCapacity();
     const state = this.state;
     const ids = this._ids || [];
     this._ids = [];
