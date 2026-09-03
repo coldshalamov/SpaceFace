@@ -130,7 +130,10 @@ export const wingmen = {
     for (const fs of fleet) {
       if (fs._liveId && state.entities) {
         const e = state.entities.get(fs._liveId);
-        if (e) { e.alive = false; this.bus.emit('entity:destroyed', { id: e.id }); }
+        // Core lifetimeSweep owns entity removal, index/allocator bookkeeping, presentation, and
+        // the queued entity:destroyed receipt. Wingmen only mark the body dead and clear ledger
+        // membership here so the canonical sweep publishes exactly one lifecycle notification.
+        if (e) e.alive = false;
       }
       fs._liveId = null;
     }
