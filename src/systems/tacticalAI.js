@@ -63,6 +63,8 @@ export function createTacticalAISystem({
   let lastDecisionTick = -Infinity;
   let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
+  const lastDecisionEntityRefs = new Map();
+  const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
 
   function ensureStack(state) {
@@ -120,7 +122,48 @@ export function createTacticalAISystem({
     lastDecisionTick = -Infinity;
     lastOwnershipRefreshTick = -Infinity;
     lastManeuverRequests = [];
+    lastDecisionEntityRefs.clear();
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
+  }
+
+  function detachLifecycleListeners() {
+    for (const unsubscribe of lifecycleUnsubscribes.splice(0)) {
+      try { unsubscribe(); } catch (_) { /* teardown is best effort */ }
+    }
+  }
+
+  function listenLifecycle(bus, event, handler) {
+    if (!bus || typeof bus.on !== 'function') return;
+    const unsubscribe = bus.on(event, handler);
+    if (typeof unsubscribe === 'function') lifecycleUnsubscribes.push(unsubscribe);
+    else if (typeof bus.off === 'function') lifecycleUnsubscribes.push(() => bus.off(event, handler));
+  }
+
+  function invalidateEntity(entityId) {
+    if (entityId == null) return;
+    if (stack && typeof stack.forgetEntity === 'function') stack.forgetEntity(entityId);
+    lastManeuverRequests = lastManeuverRequests.filter((request) => request && request.entityId !== entityId);
+  }
+
+  function lifecycleEntityId(payload) {
+    return payload && typeof payload === 'object'
+      ? (payload.id ?? payload.entityId)
+      : payload;
+  }
+
+  function invalidateLifecycleEntity(payload) {
+    invalidateEntity(lifecycleEntityId(payload));
+  }
+
+  function invalidateDestroyedLifecycleEntity(payload) {
+    const entityId = lifecycleEntityId(payload);
+    if (entityId == null) return;
+    const state = ctxRef && ctxRef.state;
+    const live = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(entityId)
+      : null;
+    if (live && live.alive !== false) return;
+    invalidateEntity(entityId);
   }
 
   function replayLastManeuvers(liveStack, tick, state) {
@@ -143,15 +186,25 @@ export function createTacticalAISystem({
     name: 'tacticalAI',
 
     init(ctx) {
+      detachLifecycleListeners();
+      resetRuntime();
       ctxRef = ctx;
       const helpers = ctx.helpers || (ctx.helpers = {});
       helpers.inspectAI = (request = {}) => handleInspection({ method: 'ai.inspect', params: request });
       helpers.traceAI = (request = {}) => handleInspection({ method: 'ai.trace', params: request });
       helpers.inspectAIContract = () => handleInspection({ method: 'ai.contract' });
       if (ctx.bus && typeof ctx.bus.on === 'function') {
-        ctx.bus.on('game:started', resetRuntime);
-        ctx.bus.on('save:loaded', resetRuntime);
+        listenLifecycle(ctx.bus, 'game:started', resetRuntime);
+        listenLifecycle(ctx.bus, 'save:loaded', resetRuntime);
+        listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
+        listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
       }
+    },
+
+    destroy() {
+      detachLifecycleListeners();
+      resetRuntime();
+      ctxRef = null;
     },
 
     update(_dt, state) {
@@ -168,7 +221,7 @@ export function createTacticalAISystem({
         if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         driveChoreographyMembers(liveStack, state, tick, null);
         driveCohortMembers(liveStack, state, tick);
-        revalidateCachedAIFiringIntents(liveStack, state);
+        revalidateCachedAIFiringIntents(liveStack, state, lastDecisionEntityRefs);
         applySquadTokenFireGate(liveStack, state);
         return;
       }
@@ -176,6 +229,7 @@ export function createTacticalAISystem({
         ? authoredEncounter(tick, state, ctxRef)
         : (authoredEncounter || {});
       const result = liveStack.update(tick, authored);
+      lastDecisionEntityRefs.clear();
       if (tick - lastOwnershipRefreshTick >= OWNERSHIP_REFRESH_TICKS) {
         refreshFirstSessionAttackerOwnership(state, result.decisions || []);
         lastOwnershipRefreshTick = tick;
@@ -185,6 +239,11 @@ export function createTacticalAISystem({
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
       for (const decision of result.decisions || []) {
+        const entity = state && state.entities && decision && decision.entityId != null
+          && typeof state.entities.get === 'function'
+          ? state.entities.get(decision.entityId)
+          : null;
+        if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
         const doctrine = decision && decision.combatDoctrine;
         if (doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
@@ -238,7 +297,7 @@ export function createTacticalAISystem({
  * Re-apply only the final firing adapter on skipped decision ticks so live target, hostility, ROE,
  * engagement, and friendly-fire state can revoke a cached fire request before weapons consumes it.
  */
-export function revalidateCachedAIFiringIntents(liveStack, state) {
+export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = null) {
   const decisions = liveStack && liveStack.lastResult && liveStack.lastResult.decisions;
   if (!Array.isArray(decisions)) return 0;
   for (const decision of decisions) {
@@ -246,6 +305,8 @@ export function revalidateCachedAIFiringIntents(liveStack, state) {
     const entity = state && state.entities && id != null && typeof state.entities.get === 'function'
       ? state.entities.get(id)
       : null;
+    const expectedEntity = entityRefs && typeof entityRefs.get === 'function' ? entityRefs.get(id) : null;
+    if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
     applyAIFiringIntent(decision, state);
   }
