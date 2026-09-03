@@ -383,6 +383,10 @@ const CERES_TENDER_SERVICE_STANDOFF_WU = 56;
 const CERES_TENDER_SERVICE_CLEARANCE_WU = 12;
 const CERES_TENDER_SERVICE_HOLD_S = 3;
 const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
+// The calved fresh face out-pays the strike's default seam bonus (fieldDepletion default 8u):
+// the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
+// richer one. Surfaced by every existing bonusU readout — no new presentation.
+const CERES_CALVED_SEAM_BONUS_U = 12;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -6579,6 +6583,9 @@ export const traffic = {
       sourceEventId: live.eventId,
       sourceCycle: cycle,
       attempt: isCalving ? 1 : 0,
+      // The catalog's fresh faces are "visibly brighter ore": the calved window out-pays the
+      // strike's default bonus, and every readout/provenance consumer already renders bonusU.
+      bonusU: isCalving ? CERES_CALVED_SEAM_BONUS_U : undefined,
       opportunityId: isCalving
         ? `rich-seam:f_ceres_1:${CERES_RICH_SEAM_OBJECT_SLOT_ID}:${cycle}:calved`
         : undefined,

@@ -829,7 +829,7 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.ok(rearmed.state === 'open', 'completion retries the refused fresh-face open');
   assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
   assert.equal(rearmed.attempt, 1);
-  assert.equal(rearmed.bonusU, 8);
+  assert.equal(rearmed.bonusU, 12, 'the calved fresh face out-pays the strike window (brighter ore)');
   void miner;
 });
 
