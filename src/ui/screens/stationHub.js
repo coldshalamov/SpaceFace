@@ -24,6 +24,7 @@ import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { isUnsellableCargo } from '../../systems/cargo.js';
 import { escapeHtml } from '../comms.js';
+import { buildDockArrival } from '../dockArrival.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
 import { missionStandingRequirement } from '../missionPreflight.js';
@@ -1157,6 +1158,13 @@ export const stationHub = {
         'title="Open the station briefing: purpose, standing, and local advisories.">Briefing</button>' +
       '<button class="st-undock">⏏ UNDOCK</button>';
     screen.appendChild(topbar);
+    // ── Arrival strip: where you are and what to do next, one glance on dock. ──
+    // Sourced from the pure dock-arrival presenter (local news, berth traffic, paperwork advisories);
+    // it renders nothing when the station has nothing to say.
+    this._arrivalEl = document.createElement('div');
+    this._arrivalEl.className = 'st-arrival';
+    this._arrivalEl.hidden = true;
+    screen.appendChild(this._arrivalEl);
     // Vitals mounts: bars are sf-data-bar primitives updated in place (no reflow), the credits
     // readout is a Readout Morph that rolls only when the value actually changes.
     this._vitalEls = {
@@ -2570,6 +2578,7 @@ export const stationHub = {
   },
 
   _refreshTopbar() {
+    this._refreshArrival();
     const stn = this._stationDef();
     const nameEl = this._topbar.querySelector('.st-station-name');
     const facEl = this._topbar.querySelector('.st-station-fac');
@@ -2585,6 +2594,35 @@ export const stationHub = {
       nameEl.textContent = 'Station';
       facEl.textContent = '';
     }
+  },
+
+  /** Dock-arrival strip: local news, berth traffic, and paperwork advisories in one glance.
+   *  Pure presenter output — no mutations; hidden entirely when the station has nothing to say. */
+  _refreshArrival() {
+    const strip = this._arrivalEl;
+    if (!strip) return;
+    const stn = this._stationDef();
+    let view = null;
+    try {
+      view = buildDockArrival(this._ctx.state, {
+        id: this._stationId,
+        name: stn && stn.name,
+        services: stn && stn.services,
+      });
+    } catch (e) { console.error('[station] arrival strip', e); }
+    const lines = view ? [view.news, view.traffic, view.paperwork].filter(Boolean) : [];
+    if (!lines.length) {
+      strip.hidden = true;
+      strip.replaceChildren();
+      return;
+    }
+    strip.replaceChildren(...lines.map((line) => {
+      const el = document.createElement('div');
+      el.className = 'st-arrival-line mono';
+      el.textContent = line;
+      return el;
+    }));
+    strip.hidden = false;
   },
 
   _signalAcquire(element, finalText, opts = {}) {
@@ -3053,6 +3091,11 @@ const STATION_CSS = `
 /* ── 0 · Motion vocabulary (every animation is a state change, nothing runs at rest) ─────────── */
 @keyframes sf-signal-acquire { 0% { opacity: 0; filter: blur(4px); } 100% { opacity: 1; filter: blur(0); } }
 .acquiring { animation: sf-signal-acquire .4s var(--ease) forwards; }
+
+/* ── Arrival strip: dock-moment local intel. Ink on vacuum — plain lines, no card. ───────────── */
+.st-arrival { padding: 2px 18px 6px; border-bottom: 1px solid color-mix(in srgb, var(--ink-dim, #8a93a6) 18%, transparent); }
+.st-arrival-line { font-size: 12px; color: var(--ink-dim, #8a93a6); letter-spacing: .02em; padding: 1px 0; }
+.st-arrival-line:first-child { color: var(--ink, #d7dde8); }
 @keyframes st-name-sweep { from { width: 0; opacity: 1; } to { width: 100%; opacity: .55; } }
 @keyframes channel-wipe { 0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); } }
 .switching { animation: channel-wipe .13s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
