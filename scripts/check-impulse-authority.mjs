@@ -185,14 +185,20 @@ function assertCollisionConsequenceContract() {
   };
   const terrain = resolveCollisionConsequence({ ...common, other: { id: 3, type: 'asteroid' } });
   const craft = resolveCollisionConsequence({ ...common, other: { id: 4, type: 'ship' } });
-  // 2026-08-21 deliberate gameplay change: environment surfaces never steal the helm, even with
-  // fresh weapon provenance — a post-shot rock graze must read as a scrape, not a concussion.
-  // The bounded damage/debris payoff stays; helm loss requires hard craft-on-craft contact.
-  assert.equal(terrain.control, 'none',
-    'terrain contact must not stagger or tumble, even when the victim was just shot');
-  assert.equal(terrain.staggerTicks, 0);
+  // 2026-09-03 (design/VISION.md "slam them into asteroids"; design/FEEL_CONTRACT.md A5): a HARD
+  // terrain slam — 800 momentum on a 20-mass hull is deltaV 40 — takes the helm regardless of
+  // provenance; the rock does the work. A scrape below the tumble threshold stays helm-neutral,
+  // tag or no tag, so a post-shot rock graze still reads as a scrape, not a concussion.
+  assert.equal(terrain.control, 'tumble',
+    'a hard terrain slam must tumble the victim, whoever caused it');
+  assert.ok(terrain.staggerTicks > 0);
   assert.ok(terrain.impactDamage > 0 && terrain.debrisCount > 0,
     'high-momentum terrain contact must produce bounded damage/debris payoff');
+  const scrape = resolveCollisionConsequence({ ...common, exchangedMomentum: 300, other: { id: 5, type: 'asteroid' } });
+  assert.equal(scrape.control, 'none',
+    'a terrain scrape must not stagger or tumble, even when the victim was just shot');
+  assert.equal(scrape.staggerTicks, 0);
+  assert.ok(scrape.impactDamage > 0, 'a scrape keeps its terrain damage payoff');
   assert.ok(['stagger', 'tumble'].includes(craft.control),
     'combat-attributed craft contact still takes the helm at the Δv floors');
   assert.ok(craft.impactDamage > 0,

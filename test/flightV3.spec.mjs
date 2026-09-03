@@ -297,16 +297,31 @@ function simulate({ profile, b, input, ticks, runtime }) {
   assert.ok(driftSpeed > profile.combatSpeed * 1.5, 'drift throttle must stay ungoverned (trick mode)');
 }
 
-// 12c. Overspeed with throttle held converges gently — slingshot speed is spent, not confiscated.
+// 12c. Earned-speed rule (design/VISION.md): above the cap, held throttle COASTS. The governor
+// bounds what thrust can produce and never spends speed the pilot earned; only the pilot brake does.
+// Below the cap the hands-off settle (the nimble regime) is untouched.
 {
   const profile = PROPULSION_PROFILES.drive_reaction_s;
   const b = body({ vel: { x: 400, z: 0 } });
   simulate({ profile, b, input: { throttle: 1, assistMode: 'assisted' }, ticks: 60 }); // 1 s
-  assert.ok(b.vel.x < 400, 'overspeed under held throttle should decay toward the cap');
-  assert.ok(b.vel.x > 380, 'but gently — capped at overspeedBrakeFraction of reverse authority');
+  assert.ok(Math.abs(b.vel.x - 400) < 1e-6,
+    `held throttle above the cap must neither add nor spend speed (got ${b.vel.x.toFixed(3)})`);
+  const handsOff = body({ vel: { x: 400, z: 0 } });
+  simulate({ profile, b: handsOff, input: { throttle: 0, assistMode: 'assisted' }, ticks: 60 });
+  assert.ok(Math.abs(handsOff.vel.x - 400) < 1e-6,
+    `hands-off above the cap coasts — the neutral counter-thrust has blended out (got ${handsOff.vel.x.toFixed(3)})`);
+  const braked = body({ vel: { x: 400, z: 0 } });
+  simulate({ profile, b: braked, input: { throttle: 0, brake: true, assistMode: 'assisted' }, ticks: 60 });
+  assert.ok(braked.vel.x < 390,
+    `the pilot brake still spends earned speed with real reverse authority (got ${braked.vel.x.toFixed(1)})`);
+  const nimble = body({ vel: { x: 120, z: 0 } });
+  simulate({ profile, b: nimble, input: { throttle: 0, assistMode: 'assisted' }, ticks: 60 });
+  assert.ok(nimble.vel.x < 110,
+    `below the cap the hands-off settle is untouched (got ${nimble.vel.x.toFixed(1)})`);
 }
 
-// 12d. A tagged physics-earned exit decays more slowly, but the tag cannot raise thrust's cap.
+// 12d. The physics-earned tag is telemetry: it cannot raise thrust's cap, and it is no longer
+// needed to keep speed — the governor never spends overspeed for anyone.
 {
   const profile = PROPULSION_PROFILES.drive_reaction_s;
   const ordinary = body({ vel: { x: 400, z: 0 } });
@@ -328,8 +343,8 @@ function simulate({ profile, b, input, ticks, runtime }) {
   advance(ordinary, ordinaryStep);
   advance(earned, earnedStep);
   assert.equal(earnedStep.telemetry.governor.physicsEarned, true, 'governor should identify the tagged exit');
-  assert.ok(earned.vel.x > ordinary.vel.x, 'physics-earned overspeed should decay more slowly than ordinary overspeed');
-  assert.ok(earned.vel.x < 400, 'the exemption should still spend speed rather than freezing it');
+  assert.ok(Math.abs(earned.vel.x - 400) < 1e-6 && Math.abs(ordinary.vel.x - 400) < 1e-6,
+    'overspeed is never spent by the governor, tagged or not');
 
   const fromRest = body();
   simulate({
@@ -353,8 +368,8 @@ function simulate({ profile, b, input, ticks, runtime }) {
   });
   assert.equal(loadedStep.telemetry.governor.engaged, true,
     'an obsolete tether tag must not create a second propulsion policy');
-  assert.ok(loadedStep.force.x < 0,
-    'the same overspeed input must produce the same assisted-flight response whether tethered or not');
+  assert.ok(Math.abs(loadedStep.force.x) < 1e-9,
+    'the same overspeed input coasts whether tethered or not — no second propulsion policy, no brake');
 
   const ordinaryOblique = body({ vel: { x: 260, z: 300 } });
   const earnedOblique = body({ vel: { x: 260, z: 300 } });
@@ -376,11 +391,14 @@ function simulate({ profile, b, input, ticks, runtime }) {
     },
     ticks: 60,
   });
-  assert.ok(Math.abs(earnedOblique.vel.z) > Math.abs(ordinaryOblique.vel.z),
-    'an oblique sling should retain more of its physics-earned lateral component');
-  assert.ok(Math.hypot(earnedOblique.vel.x, earnedOblique.vel.z)
-    > Math.hypot(ordinaryOblique.vel.x, ordinaryOblique.vel.z),
-  'the earned-momentum grace must preserve scalar speed, not only nose-aligned velocity');
+  // Above the cap the lateral kill has blended out for everyone: an oblique exit keeps its
+  // lateral component and its scalar speed with or without the tag.
+  const obliqueSpeed = Math.hypot(260, 300);
+  assert.ok(Math.abs(Math.abs(ordinaryOblique.vel.z) - 300) < 1e-6,
+    'an oblique overspeed exit keeps its lateral component without any tag');
+  assert.ok(Math.abs(Math.hypot(earnedOblique.vel.x, earnedOblique.vel.z) - obliqueSpeed) < 1e-6
+    && Math.abs(Math.hypot(ordinaryOblique.vel.x, ordinaryOblique.vel.z) - obliqueSpeed) < 1e-6,
+  'scalar speed above the cap is preserved, tagged or not');
 }
 
 // 12e. Cloaked coasting eases neutral assist, never deliberate braking; adapter signals are live.

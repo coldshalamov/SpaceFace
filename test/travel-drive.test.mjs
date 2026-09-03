@@ -5,7 +5,12 @@
 //      determinism contract, not a nicety: `stepPropulsion` runs inside both `check:sim:compare`
 //      (legacy `flight`) and `check:sim:v3:compare` (`flightV3`), so any unconditional change —
 //      including merely ADDING a result key — moves a frozen golden hash.
-//   2. RC-4: held boost above the cap must never command reverse thrust.
+//   2. RC-4: held boost above the cap must never command reverse thrust. Since 2026-09-03 the
+//      coast floor is unconditional (design/VISION.md earned-speed rule; design/FEEL_CONTRACT.md
+//      A1): NO held throttle above the cap commands reverse thrust, boosted or not, flag or no flag.
+//      The frozen fixture below was re-frozen for exactly the eight above-cap cases on that date
+//      (reaction/{boost,unboosted,boost-just,earned-momentum}-above-cap, large-hull-above-cap,
+//      small-hull-boost, torch/{boost,unboosted}-above-cap); every other case is byte-identical.
 //   3. Engaged ramps the cap monotonically toward the per-family ceiling and never past it.
 //   4. Disengaging spends earned momentum through the existing decay path instead of confiscating it.
 //   5. The ceiling is drive identity: a TORCH out-travels a REACTION.
@@ -117,24 +122,24 @@ test('RC-4: boost above the cap commands forward >= 0 with the flag on', () => {
   });
 });
 
-test('RC-4: the flag genuinely gates — off reproduces the old negative command', () => {
-  // If this test ever passes with the flag ON as well, the gate has been bypassed and the golden
-  // is at risk. The magic number is not arbitrary: reverseAccel 26 x overspeedBrakeFraction 0.24.
+test('the coast floor is unconditional: with the flag off, held boost above the cap still coasts', () => {
+  // 2026-09-03 earned-speed rule (design/VISION.md): the governor never brakes above the cap, so
+  // RC-4's flag no longer selects behaviour. The old negative command (-6.24 = reverseAccel 26 x
+  // overspeedBrakeFraction 0.24) must not come back under either flag state.
   withFlags({ boostNeverBrakes: false }, () => {
     const result = step('drive_reaction_m', { throttle: 1, boost: true }, { vel: { x: 420, z: 0 } });
-    assert.equal(result.telemetry.manualLocal.forward, -6.24, 'pre-fix behaviour should be intact with the flag off');
+    assert.equal(result.telemetry.manualLocal.forward, 0, 'no reverse thrust above the cap, flag off');
   });
 });
 
-test('the UNBOOSTED overspeed brake survives the fix', () => {
-  // Deliberate governor behaviour, explicitly out of scope for RC-4. Removing it would turn the
-  // assisted regime into drift.
+test('the UNBOOSTED overspeed also coasts — the governor bounds thrust, never spends earned speed', () => {
+  // Below the cap the assisted regime is unchanged (test/flightV3.spec.mjs §12 still settles at
+  // combatSpeed); above it, the ship keeps what it earned until the pilot brakes.
   withFlags({ boostNeverBrakes: true }, () => {
     const result = step('drive_reaction_m', { throttle: 1 }, { vel: { x: 420, z: 0 } });
-    assert.ok(
-      result.telemetry.manualLocal.forward < 0,
-      'unboosted overspeed must still converge on the cap using reverse authority'
-    );
+    assert.equal(result.telemetry.manualLocal.forward, 0,
+      'unboosted overspeed must coast, not converge on the cap with reverse authority');
+    assert.equal(result.telemetry.governor.engaged, true, 'the governor is still the one holding thrust at zero');
   });
 });
 

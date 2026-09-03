@@ -348,7 +348,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": -124.80000000000001,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -363,7 +363,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.0009359999999999999,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -373,8 +373,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.0009359999999999999,
-        "heat": 0.0022464000000000004,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [
@@ -388,12 +388,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -6.24,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -124.80000000000001,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -407,7 +407,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -6.24,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -440,7 +440,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": -124.80000000000001,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -455,7 +455,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.0009359999999999999,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -465,8 +465,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.0009359999999999999,
-        "heat": 0.001248,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [],
@@ -475,12 +475,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -6.24,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -124.80000000000001,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -494,7 +494,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -6.24,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -527,7 +527,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": -124.80000000000001,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -542,7 +542,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.0009359999999999999,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -552,8 +552,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.0009359999999999999,
-        "heat": 0.0022464000000000004,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [
@@ -567,12 +567,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -6.24,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -124.80000000000001,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -586,7 +586,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -6.24,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -619,7 +619,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": -24.52732201258737,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -634,7 +634,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.00018395491509440526,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -644,8 +644,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.00018395491509440526,
-        "heat": 0.0002452732201258737,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [],
@@ -654,12 +654,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -1.2263661006293685,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -24.52732201258737,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -673,7 +673,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -1.2263661006293685,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -1046,7 +1046,7 @@
       "driveId": "drive_reaction_l",
       "family": "reaction",
       "force": {
-        "x": -216,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -1061,7 +1061,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.00031999999999999997,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -1071,8 +1071,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.00031999999999999997,
-        "heat": 0.00068,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [
@@ -1086,12 +1086,12 @@
         "driveId": "drive_reaction_l",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -2.4,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -216,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -1105,7 +1105,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -2.4,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -1138,7 +1138,7 @@
       "driveId": "drive_reaction_s",
       "family": "reaction",
       "force": {
-        "x": -100.80000000000001,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -1153,7 +1153,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.0014,
+        "energySpent": 0,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -1163,8 +1163,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.0014,
-        "heat": 0.003724,
+        "energy": 0,
+        "heat": 0,
         "fuel": 0
       },
       "events": [
@@ -1178,12 +1178,12 @@
         "driveId": "drive_reaction_s",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -8.4,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -100.80000000000001,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -1197,7 +1197,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": -8.4,
+          "forward": 0,
           "lateral": 0
         },
         "assistLocal": {
@@ -1308,7 +1308,7 @@
       "driveId": "drive_torch_l",
       "family": "torch",
       "force": {
-        "x": -60,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -1324,7 +1324,7 @@
         "family": "torch",
         "heat": 0,
         "energySpent": 0.013333333333333327,
-        "fuelSpent": 0.04933333333333337,
+        "fuelSpent": 0.013333333333333327,
         "boosting": true,
         "chargeS": 0,
         "pulseCooldownS": 0,
@@ -1334,8 +1334,8 @@
       },
       "resourceDelta": {
         "energy": -0.0003333333333333333,
-        "heat": 0.00175,
-        "fuel": -0.0012333333333333332
+        "heat": 0,
+        "fuel": -0.0003333333333333333
       },
       "events": [],
       "telemetry": {
@@ -1343,12 +1343,12 @@
         "driveId": "drive_torch_l",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -3,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -60,
+          "x": 0,
           "y": 0,
           "z": 0
         },
@@ -1386,7 +1386,7 @@
       "driveId": "drive_torch_l",
       "family": "torch",
       "force": {
-        "x": -60,
+        "x": 0,
         "y": 0,
         "z": 0
       },
@@ -1402,7 +1402,7 @@
         "family": "torch",
         "heat": 0,
         "energySpent": 0.013333333333333327,
-        "fuelSpent": 0.04933333333333337,
+        "fuelSpent": 0.013333333333333327,
         "boosting": false,
         "chargeS": 0,
         "pulseCooldownS": 0,
@@ -1412,8 +1412,8 @@
       },
       "resourceDelta": {
         "energy": -0.0003333333333333333,
-        "heat": 0.00175,
-        "fuel": -0.0012333333333333332
+        "heat": 0,
+        "fuel": -0.0003333333333333333
       },
       "events": [],
       "telemetry": {
@@ -1421,12 +1421,12 @@
         "driveId": "drive_torch_l",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -3,
+          "x": 0,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -60,
+          "x": 0,
           "y": 0,
           "z": 0
         },

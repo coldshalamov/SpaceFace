@@ -68,7 +68,7 @@
     "audio:cue": 5
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "8e645aa0528db43b617542b9145a5f173a6097e34c486faa51d3d11dc6143e1b",
+    "authoritativeHash": "70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -132,6 +132,13 @@
     "Legacy envelope stays bit-identical: compatibility flight was deliberately given no feel envelopes.",
     "Prior authoritativeHash was b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70.",
     "2026-08-30 deliberate re-record: SG-02 contact pose kicks are removed by restoring craft yaw to its no-contact prediction; authored yaw torque remains active.",
-    "sim-golden-diff v3: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 17, damage 17, presentation cues 22."
+    "sim-golden-diff v3: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 17, damage 17, presentation cues 22.",
+    "2026-09-03 deliberate re-record for the earned-speed rule (design/VISION.md Part II; FEEL_CONTRACT.md A1/A2; PQ-137.00): the assisted governor floors at coast above the cap instead of reverse thrust; hands-off assist blends to zero across 15 WU/s above it.",
+    "sim-golden-diff --flight-system v3 against reference 5fd202d5 (reproduces the prior hash exactly): VERDICT MOTION_CHANGED, 4 entity motion fields, ALL on entity[0] (the player).",
+    "Player after 720 ticks: pos 611.2/743.8 -> 726.1/812.5, vel 11.18/12.92 -> 15.05/15.06. No NPC motion field moved: the tape never shoves an NPC past its cap and never slams terrain at deltaV >= 18.",
+    "Cause: the tape boosts once at tick 120 (ship:boostStart/boostStop stay 1/1). After release the player is above the unboosted cap with forward held; the prior governor spent that speed at 0.24 of reverse authority, the new one keeps it.",
+    "Secondary leaves: three propulsion resource/runtime fields, input aimWorld x/z (camera follows the hull), entity[2] shield 10 -> 6.83 under the SAME 17 hits, one fewer causally active Rapier body at tick 720 (physics.bodies 9 -> 8, ids shifted).",
+    "Every phase0ObservedTraceCount is UNCHANGED (22 types checked: fire 17, hits 17, damage 17). Legacy envelope test/47a.telemetry.expected.json stays bit-identical: compatibility flight has no governor.",
+    "Prior authoritativeHash was 8e645aa0528db43b617542b9145a5f173a6097e34c486faa51d3d11dc6143e1b."
   ]
 }

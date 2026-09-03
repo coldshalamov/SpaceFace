@@ -109,14 +109,15 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
   assert.equal(light.provenance.tag, 'railgun_penetrator');
   assert.equal(light.provenance.actorId, 1);
   assert.ok(light.deltaV > heavy.deltaV, 'the same momentum staggers a light hull more');
-  // 2026-08-21 deliberate gameplay change: environment surfaces never steal the helm, even when
-  // the victim carries a fresh weapon-impulse record. A post-shot rock/station graze must not
-  // stagger or tumble — the concussive payoff belongs to direct weapon hits and craft contact.
-  assert.equal(light.control, 'none',
-    'a structure slam must not stagger, even with fresh weapon provenance on the victim');
+  // 2026-09-03 (design/VISION.md "slam them into asteroids"): a HARD terrain/structure slam —
+  // deltaV at or above tumbleDeltaV — takes the helm regardless of provenance; the rock does the
+  // work. 1,200 momentum on a 20-mass hull is deltaV 60, a slam. The same momentum on a 120-mass
+  // hull is deltaV 10, below the threshold: helm-neutral.
+  assert.equal(light.control, 'tumble',
+    'a hard structure slam tumbles a light hull');
   assert.equal(heavy.control, 'none',
-    'heavy-hull structure slams are helm-neutral under the same rule');
-  assert.equal(light.staggerTicks, 0);
+    'the same momentum is a shrug for a heavy hull');
+  assert.ok(light.staggerTicks > 0);
   const craftLight = kernel.resolveCollisionConsequence({
     ...common,
     target: { id: 12, type: 'ship', mass: 20, radius: 6 },
@@ -146,20 +147,34 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
   assert.ok(heavy.impactDamage <= limits.maxDamage,
     'heavy impact stays within the medium-class universal damage ceiling');
   assert.ok(light.debrisCount > 0 && light.debrisCount <= limits.maxDebris);
+  // A scrape: 300 momentum on a 20-mass hull is deltaV 15 — above the damage threshold, below the
+  // tumble threshold. It scuffs the hull and keeps the helm, tag or no tag.
   const scrape = kernel.resolveCollisionConsequence({
     ...common,
+    exchangedMomentum: 300,
     provenance: undefined,
     other: { id: 91, type: 'asteroid', mass: 1_000_000, radius: 40 },
     target: { id: 7, type: 'ship', mass: 20, radius: 6 },
   });
   assert.equal(scrape.control, 'none',
-    'ordinary environment bumps must not tumble or stagger the helm');
+    'ordinary environment scrapes must not tumble or stagger the helm');
   assert.equal(scrape.staggerTicks, 0);
-  assert.ok(scrape.impactDamage > 0, 'a hard slam can still damage without turning the ship');
-  // The regression this rule exists for: an NPC shot moments ago carries a weapon tag, and the
-  // next asteroid graze must read as a scrape, not as a combat concussion.
+  assert.ok(scrape.impactDamage > 0, 'a scrape can still damage without turning the ship');
+  // A hard slam with NO provenance at all: the asteroid takes the helm by itself.
+  const hardSlam = kernel.resolveCollisionConsequence({
+    ...common,
+    provenance: undefined,
+    other: { id: 93, type: 'asteroid', mass: 1_000_000, radius: 40 },
+    target: { id: 9, type: 'ship', mass: 20, radius: 6 },
+  });
+  assert.equal(hardSlam.control, 'tumble', 'a hard asteroid slam tumbles the ship without any weapon tag');
+  assert.ok(hardSlam.staggerTicks > 0 && hardSlam.impactDamage > 0);
+  // The regression the scrape rule exists for: an NPC shot moments ago carries a weapon tag, and
+  // the next asteroid graze (100 momentum on an 8-mass drone: deltaV 12.5) must read as a scrape,
+  // not as a combat concussion.
   const contaminatedScrape = kernel.resolveCollisionConsequence({
     ...common,
+    exchangedMomentum: 100,
     other: { id: 92, type: 'asteroid', mass: 1_000_000, radius: 40 },
     target: { id: 8, type: 'drone', mass: 8, radius: 4 },
   });
@@ -465,7 +480,7 @@ test('custom and SG-02 contacts agree on fair pre-contact initiators and fail cl
   }
 });
 
-test('collision consequence runtime keeps weapon-attributed terrain slams helm-neutral', async (t) => {
+test('collision consequence runtime keeps weapon-attributed terrain SCRAPES helm-neutral', async (t) => {
   const previousFlags = {
     weaponImpulseConsequences: COMBAT_FLAGS.weaponImpulseConsequences,
     whipDamage: COMBAT_FLAGS.whipDamage,
@@ -526,17 +541,19 @@ test('collision consequence runtime keeps weapon-attributed terrain slams helm-n
       consequenceKernelVersion: 1,
       backend: 'rapier-dynamic',
     };
-    bus.emit('physics:impact', impact);
-    bus.emit('physics:impact', impact);
+    // 2026-09-03: a HARD terrain slam now tumbles regardless of provenance (design/VISION.md
+    // "slam them into asteroids"; kernel-level coverage above). The regression this runtime test
+    // guards is narrower and still true: a freshly shot hull that merely SCRAPES terrain keeps
+    // its helm. 240 momentum on a 20-mass hull is deltaV 12 — damaging, below the tumble line.
+    const scrape = { ...impact, dp: 240, impulse: 240 };
+    bus.emit('physics:impact', scrape);
+    bus.emit('physics:impact', scrape);
 
     assert.equal(receipts.length, 1, 'one contact episode yields one consequence receipt');
     assert.equal(receipts[0].targetId, target.id);
     assert.equal(receipts[0].surface, 'terrain');
-    // 2026-08-21 deliberate gameplay change: a terrain slam never steals the helm, even two
-    // seconds after a railgun hit. Damage attribution and the terrain payoff stay; stagger,
-    // tumble status, and the AI-intent blackout do not.
     assert.equal(receipts[0].control, 'none',
-      'terrain must not stagger or tumble a freshly shot hull');
+      'a terrain scrape must not stagger or tumble a freshly shot hull');
     assert.equal(receipts[0].staggerTicks, 0);
     assert.equal(receipts[0].provenance.actorId, attacker.id);
     assert.equal(receipts[0].provenance.tag, 'railgun_penetrator');
@@ -546,7 +563,7 @@ test('collision consequence runtime keeps weapon-attributed terrain slams helm-n
     assert.equal(routed[0].packet.source.kind, 'collision_terrain');
     assert.ok(routed[0].packet.channels.kinetic > 0);
     assert.equal(scheduled.length, 0,
-      'no tumbling status is scheduled for an environment surface');
+      'no tumbling status is scheduled for a terrain scrape');
     assert.equal(debris.length, 1, 'terrain damage publishes its deterministic debris receipt');
     assert.equal(debris[0].count, receipts[0].debrisCount);
 
@@ -554,7 +571,7 @@ test('collision consequence runtime keeps weapon-attributed terrain slams helm-n
     system.update(1 / 60, state);
     const command = consumePhysicsCommand(target);
     assert.ok(!command || command.control.mode !== 'collision_tumble',
-      'the runtime writes no collision_tumble control for terrain contact');
+      'the runtime writes no collision_tumble control for a terrain scrape');
     assert.equal(target.data.intent.fire, true,
       'the AI keeps its helm through an environment bump');
     assert.equal(target.data.intent.moveX, 1);

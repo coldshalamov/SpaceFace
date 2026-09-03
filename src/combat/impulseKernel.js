@@ -12,11 +12,13 @@ const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
 export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
 
 // Ordinary flight bumps (player/NPC vs rock, two ships clipping) must not steal the helm.
-// Helm loss additionally requires a CRAFT surface: a rock/station/debris slam never staggers or
-// tumbles, even when the victim carries a fresh weapon-impulse record — that stale tag must not
-// convert every post-shot asteroid graze into a stagger. The concussive payoff stays where it is
-// authored: direct weapon torque (damage.js), concussion/RCS control windows (weapons.js), and
-// hard craft-on-craft contact below.
+// Craft contact takes the helm only with a fresh combat-attributed impulse record on the victim;
+// the tags below are the ordinary-flight provenances that never count. Terrain and structure are
+// provenance-blind in BOTH directions: a hard slam (deltaV at or above tumbleDeltaV) tumbles the
+// ship no matter who or what caused it — the rock does the work (design/VISION.md: "slam them into
+// asteroids", "discover an asteroid at several hundred meters per second") — and a scrape below
+// that threshold stays helm-neutral even when the victim carries a fresh weapon tag, so a post-shot
+// graze never reads as a concussion. Debris contact never takes the helm.
 const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direct_contact']));
 
 export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
@@ -139,7 +141,7 @@ export function resolveCollisionConsequence(input = {}) {
   let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
-  if (!collisionAllowsHelmLoss(surface, provenance)) control = 'none';
+  if (!collisionAllowsHelmLoss(surface, provenance, deltaV)) control = 'none';
   const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
   const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
   const staggerTicks = control === 'none'
@@ -196,10 +198,15 @@ function isConsequenceTarget(entity) {
   return entity.type === 'ship' || entity.type === 'drone';
 }
 
-function collisionAllowsHelmLoss(surface, provenance) {
-  if (surface !== 'craft') return false;
-  const tag = provenance && provenance.tag;
-  return !!tag && !HELM_NEUTRAL_COLLISION_TAGS.has(tag);
+function collisionAllowsHelmLoss(surface, provenance, deltaV) {
+  if (surface === 'craft') {
+    const tag = provenance && provenance.tag;
+    return !!tag && !HELM_NEUTRAL_COLLISION_TAGS.has(tag);
+  }
+  if (surface === 'terrain' || surface === 'structure') {
+    return nonNegative(deltaV) >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV;
+  }
+  return false;
 }
 
 function collisionSurface(entity) {

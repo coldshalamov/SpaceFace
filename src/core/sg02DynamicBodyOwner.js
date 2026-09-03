@@ -1081,15 +1081,44 @@ export class Sg02DynamicBodyOwner {
     return out;
   }
 
+  // The command's maxSpeed bounds what the body's OWN drive may produce. It never truncates
+  // momentum the body was GIVEN — a shove, a rope throw, a well fling, a contact (design/VISION.md:
+  // "light ships are ammunition"; "he becomes a projectile"). Before this, an NPC at cruise that took
+  // a concussion hit had the whole hit deleted here one tick later. Split this tick's velocity into
+  // the part the body had before its continuous control thrust integrated and the part that thrust
+  // added; only the thrust-added part is subject to the cap. Impulses mutate linvel before the
+  // step, so they land in the "before" part by construction (same split _captureExpectedKinematics
+  // relies on).
   _clampSpeed(rec, kinematics = null) {
     if (!Number.isFinite(rec.maxSpeed)) return;
     const vx = kinematics ? kinematics.vx : finite(rec.body.linvel().x);
     const vz = kinematics ? kinematics.vz : finite(rec.body.linvel().z);
     const speed = Math.hypot(vx, vz);
     if (speed <= rec.maxSpeed || speed <= 1e-12) return;
-    const scale = rec.maxSpeed / speed;
-    const nextVx = vx * scale;
-    const nextVz = vz * scale;
+    const mass = effectiveMass(rec);
+    const dt = this.fixedDt;
+    const cx = Number.isFinite(mass) && mass > 0 ? rec.controlForce.x / mass * dt : 0;
+    const cz = Number.isFinite(mass) && mass > 0 ? rec.controlForce.z / mass * dt : 0;
+    const bx = vx - cx;
+    const bz = vz - cz;
+    const base = Math.hypot(bx, bz);
+    let nextVx;
+    let nextVz;
+    if (base >= rec.maxSpeed && base > 1e-12) {
+      // Already past the cap on given momentum: thrust may steer or brake, but may not add speed
+      // along the velocity it already has.
+      const ux = bx / base;
+      const uz = bz / base;
+      const along = cx * ux + cz * uz;
+      if (!(along > 0)) return;
+      nextVx = vx - along * ux;
+      nextVz = vz - along * uz;
+    } else {
+      // Thrust carried the body over its cap this tick: it may reach the cap, not exceed it.
+      const scale = rec.maxSpeed / speed;
+      nextVx = vx * scale;
+      nextVz = vz * scale;
+    }
     rec.body.setLinvel({ x: nextVx, y: 0, z: nextVz }, true);
     if (kinematics) {
       kinematics.vx = nextVx;

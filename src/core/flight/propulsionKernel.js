@@ -73,6 +73,16 @@ const TRAVEL_RAMP_TAPER_FLOOR = 0.12;
 /** Exponential decay constant for a disengaged travel cap — mirrors the tether-exit sling decay. */
 const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
 
+/**
+ * Earned-speed rule (design/VISION.md: "thrusters have a cap, physics-earned speed does not get
+ * eaten by the brakes"). Above the governed cap the assisted regime's hands-off counter-thrust,
+ * lateral kill and commanded-axis damper blend to ZERO across this window, so speed the pilot
+ * earned by a sling, a shove, a well fling or a bounce is kept until the pilot spends it with the
+ * brake. A blend rather than a cliff, so crossing the cap never snaps the feel. Below the cap the
+ * nimble regime (crisp hands-off settle) is untouched.
+ */
+export const OVERCAP_ASSIST_BLEND_WU_S = 15;
+
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
 
@@ -293,15 +303,14 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   const cap = Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
   const err = cap - localVelocity.forward;
   const responseS = positive(settings.governorResponseS, 0.9);
-  const overspeedBrake = limits.reverse * clamp(finite(settings.overspeedBrakeFraction, 0.25), 0, 1);
-  // RC-4. Above the cap with boost held, the shipped governor commanded *real reverse thrust*:
-  // on `drive_reaction_m` at 400 WU/s against a cap of 302.25 it drove manualLocal.forward to
-  // -6.24 m/s² — precisely `-reverseAccel 26 × overspeedBrakeFraction 0.24`, i.e. identical to
-  // the unboosted brake — while boost energy drained. Held boost therefore made the ship slower.
-  // Boost must read as "holding what I have", never as a hidden anchor, so above the cap its
-  // floor rises to coast. The UNBOOSTED overspeed brake is deliberate governor behaviour and is
-  // untouched; this only ever relaxes a command that was pulling backwards.
-  const brakeFloor = travelFlag('boostNeverBrakes') && input.boost && err < 0 ? 0 : -overspeedBrake;
+  // The governor bounds what THRUST may produce. It never spends speed the pilot earned: above
+  // the cap the forward command floors at coast (0), never at reverse thrust. History: the shipped
+  // governor braked at overspeedBrakeFraction of reverse authority whenever the throttle was held
+  // above the cap, so pressing FORWARD after a slingshot slowed the ship down — the exact
+  // confiscation design/VISION.md forbids. RC-4 (`boostNeverBrakes`) had lifted the floor to
+  // coast while boosting only; the rule is now unconditional. Spending speed above the cap is the
+  // pilot brake's job (reactionAssistAcceleration keeps full brake authority).
+  const brakeFloor = 0;
   const governed = clamp(err / responseS, brakeFloor, manualLocal.forward);
   const engaged = governed < manualLocal.forward - EPS;
   manualLocal.forward = governed;
@@ -635,6 +644,13 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const earnedAssistScale = input.physicsEarnedMomentum && !input.brake && !forceBrake
     ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
     : 1;
+  // Above the governed cap the assist lets go (OVERCAP_ASSIST_BLEND_WU_S). The pilot brake is
+  // exempt: braking is always the pilot spending speed on purpose.
+  const capSpeed = positive(profile.combatSpeed, 0)
+    * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
+  const overCapScale = (forceBrake || input.brake || !(capSpeed > 0))
+    ? 1
+    : 1 - smoothstep(capSpeed, capSpeed + OVERCAP_ASSIST_BLEND_WU_S, length2(body.vel));
   let forward = 0;
   let lateral = 0;
   let reason = 'none';
@@ -653,7 +669,7 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
         ? Math.min(positive(settings.neutralBrakeFraction, 0.4), 0.18)
         : positive(settings.neutralBrakeFraction, 0.4);
     if (input.brake || forceBrake) fraction = 1;
-    else fraction *= Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale);
+    else fraction *= Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale) * overCapScale;
 
     forward = -localVelocity.forward / horizon * fraction;
     lateral = -localVelocity.lateral / horizon * fraction;
@@ -661,12 +677,12 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   } else if (mode !== 'newtonian') {
     const lateralFraction = (mode === 'drift'
       ? positive(settings.lateralKillFraction, 0.3) * 0.35
-      : positive(settings.lateralKillFraction, 0.3)) * earnedAssistScale;
+      : positive(settings.lateralKillFraction, 0.3)) * earnedAssistScale * overCapScale;
     lateral = -localVelocity.lateral / Math.max(0.25, positive(settings.stopHorizonS, 2.8)) * lateralFraction;
 
     // A tiny commanded-axis damper suppresses numerical chatter while preserving
     // the core maneuver: rotate the nose while momentum keeps carrying the ship.
-    const axisDamping = positive(settings.commandedAxisDamping, 0.06) * earnedAssistScale;
+    const axisDamping = positive(settings.commandedAxisDamping, 0.06) * earnedAssistScale * overCapScale;
     if (Math.abs(input.throttle) <= deadInput) forward = -localVelocity.forward * axisDamping;
     reason = 'slip-assist';
   }
@@ -1033,6 +1049,11 @@ function approach(current, target, maxDelta) {
 
 function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
 function clamp(value, lo, hi) { return Math.max(lo, Math.min(hi, value)); }
+function smoothstep(edge0, edge1, x) {
+  if (!(edge1 > edge0)) return x >= edge1 ? 1 : 0;
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function finiteOrInfinity(value) { return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY; }
