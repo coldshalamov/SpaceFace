@@ -39,9 +39,14 @@ export const SWARM_SCHEMA_VERSION = 1;
 /** No authored ceiling. Matches SURVIVAL_ENDLESS_WAVE_MAX so the phase machine has one cap idiom. */
 export const SWARM_WAVE_MAX = 999;
 
-/** Every fifth wave opens the upgrade draft. Every twentieth also opens the full refit bench. */
+/**
+ * Every fifth wave opens the upgrade draft. Every tenth ALSO opens the refit bench after it —
+ * both, not one instead of the other, because a swarm run that skipped its wave-10 card to get a
+ * bench would be paying for the bench with the upgrade it came for. The bench is also the only
+ * surface a ten-wave extraction window is ever open on.
+ */
 export const SWARM_DRAFT_EVERY = 5;
-export const SWARM_REFIT_EVERY = 20;
+export const SWARM_REFIT_EVERY = 10;
 
 /** Every tenth wave is a boss wave: a Dreadnought on top of a (reduced) swarm. */
 export const SWARM_BOSS_EVERY = 10;

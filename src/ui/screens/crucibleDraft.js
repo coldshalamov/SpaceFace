@@ -24,6 +24,7 @@
 // Both ids are in PAUSING_SCREENS: §12.2 adopts a FULL pause during a draft.
 
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
+import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 
 const STYLE_ID = 'sf-crucible-draft-style';
 
@@ -429,6 +430,25 @@ export const crucibleRefitScreen = {
       ctx.bus.emit('run:refitCloseRequested', {});
     });
     foot.appendChild(done);
+
+    // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
+    // from a bus event — "No UI", says its own header — so no player has ever been offered it.
+    // An endless run needs it more than the arc ever did: without a voluntary end, the ONLY way a
+    // swarm run finishes is dying, and a good run's reward for being good is a worse ending. This
+    // is the one surface that is open at a ten-wave boundary, which is exactly the window
+    // extraction is legal in, so the offer belongs here and nowhere else.
+    if (canExtract(ctx && ctx.state && ctx.state.run)) {
+      const out = document.createElement('button');
+      out.className = 'sf-btn';
+      out.type = 'button';
+      out.textContent = 'Extract — end the run here';
+      out.title = 'Bank this run and stop, instead of flying on until something kills you.';
+      out.addEventListener('click', () => {
+        requestSurvivalExtraction(ctx.bus);
+      });
+      foot.appendChild(out);
+    }
+
     const hint = document.createElement('span');
     hint.className = 'sf-cru-hint';
     hint.textContent = 'Enter or Esc launch';

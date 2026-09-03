@@ -385,6 +385,37 @@ test('four waves in five open no menu at all', () => {
   const menus = Array.from({ length: 40 }, (_, i) => swarmWaveEndsInMenu(i + 1))
     .filter(Boolean).length;
   assert.equal(menus, 8, 'eight upgrade stops in forty waves, not forty');
+  // Every refit wave is also a draft wave, so the bench never costs the player a card.
+  for (let wave = 1; wave <= 60; wave++) {
+    if (wave % SWARM_REFIT_EVERY === 0) {
+      assert.equal(wave % SWARM_DRAFT_EVERY, 0, `wave ${wave} takes its card before the bench`);
+    }
+  }
+});
+
+test('a swarm refit wave gives BOTH the card and the bench, in that order', () => {
+  const h = boot();
+  beginSwarm(h);
+  // Walk to the wave-10 stop, taking the wave-5 card on the way.
+  const seen = [];
+  h.bus.on('run:transitioned', (p) => {
+    if (p && (p.phase === 'draft' || p.phase === 'refit')) seen.push(`w${h.state.run.wave}:${p.phase}`);
+  });
+  // Resolve whatever surface opens so the run keeps moving.
+  h.bus.on('run:transitioned', (p) => {
+    if (!p) return;
+    if (p.phase === 'draft') h.bus.emit('run:draftResolved', {});
+    if (p.phase === 'refit') h.bus.emit('run:refitClosed', {});
+  });
+  for (let i = 0; i < 60000 && h.state.run.wave < 11; i++) {
+    if (i % 4 === 0 && h.state.run.phase === 'active') killOne(h);
+    tick(h, 1);
+  }
+  assert.ok(h.state.run.wave >= 11, `the run reached wave ${h.state.run.wave}`);
+  assert.ok(seen.includes('w5:draft'), `wave 5 opened a draft (saw ${seen.join(', ')})`);
+  const tenth = seen.indexOf('w10:draft');
+  assert.ok(tenth >= 0, `wave 10 opened its draft (saw ${seen.join(', ')})`);
+  assert.equal(seen[tenth + 1], 'w10:refit', 'and the bench came straight after the card');
 });
 
 test('a swarm run does not stop for a draft on a fight wave — it rolls straight into the next', () => {

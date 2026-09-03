@@ -310,6 +310,14 @@ export const survivalRun = {
   },
 
   _requestCleanupExit(run) {
+    // A swarm run takes its CARD FIRST on a wave that is both. `draft -> refit` is a legal edge,
+    // so a wave-10 stop is draft then bench rather than a bench instead of the draft the player
+    // came for. The arc keeps its own shape: there, wave 10 has always been a bench and nothing
+    // else, and the two rulesets are not obliged to agree.
+    if (isSwarmRuleset(run && run.ruleset) && isSwarmDraftWave(run && run.wave)) {
+      this._requestTransition('cleanup', 'draft', REASON_DRAFT_OPEN);
+      return;
+    }
     if (this._isRefitWave(run)) {
       this._requestTransition('cleanup', 'refit', REASON_REFIT_OPEN);
       return;
@@ -323,11 +331,14 @@ export const survivalRun = {
 
   _draftNext(run) {
     if (this._isLastWave(run)) return 'victory';
+    // The bench comes after the card on a swarm refit wave — see _requestCleanupExit.
+    if (isSwarmRuleset(run && run.ruleset) && this._isRefitWave(run)) return 'refit';
     return 'wave_intro';
   },
 
   _draftReason(run) {
     if (this._isLastWave(run)) return REASON_ACT_COMPLETE;
+    if (isSwarmRuleset(run && run.ruleset) && this._isRefitWave(run)) return REASON_REFIT_OPEN;
     return REASON_PICK_DONE;
   },
 
