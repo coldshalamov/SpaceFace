@@ -31,6 +31,9 @@ test('it hides campaign furniture and nothing that is about the fight', () => {
   for (const sel of CRUCIBLE_HIDDEN_PANELS) {
     assert.ok(/^[.#]sf-/.test(sel), `${sel} is an owned root class or id`);
   }
+  // The campaign credit chip has to go: the run prints its OWN wallet, and two different numbers
+  // labelled CR on one screen — one of them unspendable — is worse than either alone.
+  assert.ok(CRUCIBLE_HIDDEN_PANELS.includes('.sf-stat[data-chip="credits"]'));
   const hidden = new Set(CRUCIBLE_HIDDEN_PANELS);
   // The four the live screenshot actually caught, each named so a future edit has to argue with it.
   assert.ok(hidden.has('#sf-onboarding'), 'the tutorial was running over the top of wave one');
