@@ -21,6 +21,7 @@ import {
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
 } from '../../data/swarmMode.js';
+import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
@@ -526,11 +527,20 @@ function resultsOwner(ctx) {
 }
 
 /** Rows for the results grid. Exported so a check can assert them without a DOM. */
+export function reachedRow(result) {
+  const wave = (result && (result.deepestWave || result.wave)) || 0;
+  // A swarm run has no last wave, so it has no denominator. The arc has thirty — it never had ten,
+  // and printing "of 10" told every player of a thirty-wave run that they were two thirds done
+  // when they died on wave 7.
+  if (result && result.ruleset === SWARM_RULESET) return `Wave ${wave}`;
+  return `Wave ${wave} of ${SURVIVAL_RUN_WAVE_COUNT}`;
+}
+
 export function resultRows(result) {
   if (!result) return [];
   return [
     ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')],
-    ['Reached', `Wave ${result.deepestWave || result.wave || 0} of 10`],
+    ['Reached', reachedRow(result)],
     ['Kills', String(result.kills || 0)],
     ['Score', String(result.score || 0)],
     ['Salvage', `${result.credits || 0} cr`],

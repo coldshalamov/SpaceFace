@@ -8,6 +8,7 @@
 
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
@@ -231,7 +232,9 @@ export const survivalResults = {
     result.trialId = challenge.trialId;
     result.mutators = challenge.mutators.slice();
     result.extracted = outcome === 'extracted';
-    result.mode = challenge.ruleset === 'endless' || challenge.ruleset === 'boss_circuit'
+    result.mode = challenge.ruleset === 'endless'
+      || challenge.ruleset === 'boss_circuit'
+      || challenge.ruleset === SWARM_RULESET
       ? challenge.ruleset
       : 'arc';
     result.unlocksEarned = [];

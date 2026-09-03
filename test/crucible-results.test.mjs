@@ -207,12 +207,18 @@ test('the results grid states outcome, depth, kills, score, salvage, level and s
   });
   const map = new Map(rows);
   assert.equal(map.get('Outcome'), 'Lost');
-  assert.equal(map.get('Reached'), 'Wave 6 of 10');
+  assert.equal(map.get('Reached'), 'Wave 6 of 30');
   assert.equal(map.get('Kills'), '31');
   assert.equal(map.get('Salvage'), '88 cr');
   assert.equal(map.get('Seed'), '4242');
   assert.equal(new Map(resultRows({ outcome: 'victory', deepestWave: 10 })).get('Outcome'), 'Survived');
   assert.deepEqual(resultRows(null), []);
+  // A swarm run has no last wave, so it gets no denominator. The arc has thirty — the plate used
+  // to print "of 10" for both, telling a player who died on wave 7 of thirty they were nearly done.
+  assert.equal(
+    new Map(resultRows({ outcome: 'defeat', ruleset: 'swarm', deepestWave: 17 })).get('Reached'),
+    'Wave 17',
+  );
 });
 
 test('the Crucible launch config is an ordinary New Game config carrying a validated setup', () => {
@@ -587,7 +593,7 @@ test('a wave-6 death plate explains every link of the kill', () => {
 
   // The ledger and the build both survive.
   assert.ok(text.includes('Run ledger'));
-  assert.ok(text.includes('Wave 6 of 10'));
+  assert.ok(text.includes('Wave 6 of 30'));
   assert.ok(text.includes('What you built'));
   assert.ok(text.includes('3 drafts changed what your guns do:'));
   assert.ok(text.includes('Volume') && text.includes('Pierce') && text.includes('Screen'));
@@ -619,7 +625,7 @@ test('a victory plate leads with the build and carries no kill chain', () => {
   assert.ok(text.includes('The last hit took 41 damage off you.'));
   assert.ok(text.includes('Railgun M'));
   assert.ok(text.includes('1 draft changed what your guns do:'));
-  assert.ok(text.includes('Wave 10 of 10'));
+  assert.ok(text.includes('Wave 10 of 30'));
   assert.equal(/undefined|NaN/.test(text), false, text);
 });
 
