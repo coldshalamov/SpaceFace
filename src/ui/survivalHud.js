@@ -177,7 +177,11 @@ export const survivalHud = {
       // In a swarm wave the number that MOVES is the kill count, and the number that ENDS the wave
       // is the quota. "How many are left in the room" is not a finishable figure here — the room
       // refills — so printing it would look like a bar that never advances.
-      const quota = Math.max(1, census.total);
+      // The denominator is the QUOTA as published, not `census.total`. That figure is
+      // max(planned, spawned), and a swarm wave can admit more bodies than its quota once
+      // survivors carry in from the last one — which would quietly inflate the target the player
+      // is reading while they are working toward it.
+      const quota = Math.max(1, Number.isInteger(run.threatBudget) ? run.threatBudget : census.total);
       const killed = Math.min(census.resolved, quota);
       this._setText(dom.threatWord, 'KILLS');
       this._setText(dom.threatFig, `${killed} / ${quota}`);

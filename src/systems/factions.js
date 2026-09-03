@@ -7,6 +7,7 @@
 //
 // Also owns state.conflicts[pairKey] (dynamic inter-faction war) and writes
 // state.world.sectors[id].owner on war resolution (§0.6). Pure-data deps only (no 'three').
+import { isRunSealed } from '../core/runSeal.js';
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
@@ -247,6 +248,12 @@ export const factions = {
   applyRep(factionId, delta, reason) {
     const state = this.state || _state;
     if (!state || !META_BY_ID[factionId] || !delta) return 0;
+    // THE RUN SEAL (PQ-135). A Crucible run promises on its own door that nothing you earn there
+    // follows you home, and this is the sole writer of player standing — so this is the one place
+    // that promise can be kept for every path at once (kills, contraband, claims, encounters).
+    // Without it, five waves of Crucible moved eight factions' standing, one of them by twenty-five
+    // points, for fights that happened in a sealed arena the campaign never sees.
+    if (isRunSealed(state)) return 0;
     const rec = ensureFaction(state, factionId);
     const soft = applyDiminish(rec.rep, delta);
     if (soft === 0) return 0;

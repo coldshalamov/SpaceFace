@@ -20,6 +20,8 @@
 //
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
+import { isRunSealed } from '../core/runSeal.js';
+
 const HEAT_MAX = 1;
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
 // Combat emits `victimClass: t.data.shipClass || t.type`. Civilian traffic commonly has no
@@ -302,6 +304,11 @@ export const heat = {
   _raise(delta, reason) {
     const player = this.state.player;
     if (!player) return;
+    // THE RUN SEAL (PQ-135). Heat is campaign state: it raises WANTED, and WANTED sends law hunters
+    // after the player. A Crucible run was accruing it — which both broke the run's own
+    // "nothing follows you home" promise AND pointed bounty hunters at an arena, where they would
+    // arrive as uninvited bodies competing with the wave for spawn slots.
+    if (isRunSealed(this.state)) return;
     const before = player.heat || 0;
     const after = clamp01(before + delta);
     player.heat = after;
@@ -374,6 +381,9 @@ export const heat = {
   _setHeat(value, reason) {
     const player = this.state.player;
     if (!player) return;
+    // Sealed the same way as _raise. Note this also blocks the DECAY path, which is correct: a run
+    // must leave campaign heat exactly as it found it, in both directions.
+    if (isRunSealed(this.state)) return;
     const before = player.heat || 0;
     player.heat = clamp01(value);
     if (player.heat > 0) this._refreshZone(false);
