@@ -67,6 +67,12 @@ export const CRUCIBLE_HIDDEN_PANELS = Object.freeze([
   '.sf-mission-tracker',
   '.sf-nav-readout',
   '.sf-obj',
+  // The CAMPAIGN credit chip. The run has its own wallet and prints it in the Crucible readout, so
+  // leaving this on put two different numbers labelled CR on screen at once — one of which the
+  // player cannot spend and cannot change.
+  '.sf-stat[data-chip="credits"]',
+  // Cargo capacity. There is nothing to carry in a match.
+  '.sf-stat[data-chip="cargo"]',
 ]);
 
 function styleText() {
