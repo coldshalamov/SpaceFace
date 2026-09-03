@@ -7049,7 +7049,7 @@ export const traffic = {
       this.bus.emit('news:publish', {
         text: aftermathRan
           ? 'Ceres refinery writes off another seam casualty at the cathedral wreck.'
-          : 'Ceres refinery logs another clean seam shift; the seam rock calved and held.',
+          : 'Ceres refinery logs another clean seam shift.',
         kind: 'ceres_seam_story',
         sourceRef: 'traffic:ceres-causal-chain',
         channelId: 'news',
