@@ -5,7 +5,7 @@
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { ASTEROIDS } from '../data/mining.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { maxFittedModuleMod } from '../core/fittedModules.js';
+import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -932,6 +932,9 @@ export const scanner = {
   _scanSignals(state, sectorId, origin, now, candidates, profile = scannerProfileForState(state)) {
     const own = ensureSignalState(state);
     const raw = collectSignalCandidates(state, sectorId, origin, candidates, profile);
+    // A fitted Triangulation Suite tightens the bearing solver: the default three-pulse anomaly fix
+    // closes in two. Authored per-candidate configs always win — the suite only relaxes the default.
+    const pingReduction = sumFittedModuleMod(state, 'anomalyPingReduction');
     const rows = [];
     for (const candidate of raw) {
       const resonanceSignal = candidate.resonanceScanResponse === true
@@ -944,11 +947,11 @@ export const scanner = {
           ? candidate.triangulation
           : {};
         const previousTriangulation = own.triangulations[candidate.sourceId] || null;
-        const result = recordAnomalyBearing(previousTriangulation, origin, candidate.pos, {
-          ...config,
-          sectorId,
-          poiId: candidate.sourceId,
-        }, now);
+        const options = { ...config, sectorId, poiId: candidate.sourceId };
+        if (config.requiredPings == null && pingReduction > 0) {
+          options.requiredPings = Math.max(2, ANOMALY_TRIANGULATION_REQUIRED - pingReduction);
+        }
+        const result = recordAnomalyBearing(previousTriangulation, origin, candidate.pos, options, now);
         own.triangulations[candidate.sourceId] = result.record;
         this.bus.emit('anomaly:bearing', {
           sectorId,

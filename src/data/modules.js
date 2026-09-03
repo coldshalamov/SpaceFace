@@ -92,6 +92,11 @@ export const MODULES = [
     energyDraw: 1, mods: { marketIntel: true },
   },
   {
+    id: 'mod_triangulation_suite_s', name: 'Triangulation Suite S', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 26000, requiresTech: 'tech_long_range_survey',
+    energyDraw: 2, mods: { anomalyPingReduction: 1 },
+    behavior: 'onboard bearing solver closes an anomaly fix in two scan pulses instead of three',
+  },
+  {
     id: 'mod_shield_hardener_m', name: 'Shield Hardener M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 20000, requiresTech: 'tech_deflector_theory',
     energyDraw: 5, mods: { damageReductionPct: 0.12 },
   },
