@@ -12136,12 +12136,13 @@ function _makeProjectileTrailSelfCheckHarness(projectiles, video = {}) {
   return system;
 }
 
-function _selfCheckProjectile(id, weaponId, extraData = {}) {
+function _selfCheckProjectile(id, weaponId, extraData = {}, position = null) {
+  const spawn = position || { x: 100 + id * 20, z: 50 };
   return {
     id,
     type: 'projectile',
     alive: true,
-    pos: { x: 100 + id * 20, z: 50 },
+    pos: { x: spawn.x, z: spawn.z },
     vel: { x: 280, z: 40 },
     rot: 0,
     radius: 1.2,
@@ -12157,8 +12158,8 @@ export function runProjectileTrailEmissionSelfCheck() {
     _selfCheckProjectile(10, 'wpn_autocannon_m', { damageType: 'kinetic' }),
     _selfCheckProjectile(11, 'wpn_missile_rack_m', { kind: 'missile', damageType: 'explosive' }),
     _selfCheckProjectile(12, 'wpn_plasma_cannon_m', { damageType: 'thermal' }),
-    _selfCheckProjectile(13, 'wpn_railgun_m', { damageType: 'kinetic' }),
-    _selfCheckProjectile(14, 'wpn_pulse_laser_m', { damageType: 'energy' }),
+    _selfCheckProjectile(13, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: 280, z: 50 }),
+    _selfCheckProjectile(14, 'wpn_pulse_laser_m', { damageType: 'energy' }, { x: 320, z: 50 }),
   ];
   const system = _makeProjectileTrailSelfCheckHarness(projectiles);
   system._markProjectileCacheDirty();
@@ -12187,6 +12188,20 @@ export function runProjectileTrailEmissionSelfCheck() {
   }
   if (!ribbons || !ribbons.has(11)) fail('missile exhaust must be a ribbon wake on the mesh body');
   if (bolts.byEntity && bolts.byEntity.has(11)) fail('missile must keep its mesh body rather than an energy card');
+
+  const offTableId = 15;
+  const offTableX = tableVfxDrawWuFromState({}) + 24;
+  const offTableSystem = _makeProjectileTrailSelfCheckHarness([
+    _selfCheckProjectile(offTableId, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: offTableX, z: 0 }),
+  ]);
+  offTableSystem._markProjectileCacheDirty();
+  for (let f = 0; f < 3; f++) offTableSystem.update(1 / 60);
+  const offTableRibbons = offTableSystem._weaponPresenter
+    && offTableSystem._weaponPresenter.ribbons
+    && offTableSystem._weaponPresenter.ribbons.byEntity;
+  if (offTableRibbons && offTableRibbons.has(offTableId)) {
+    fail('off-table ribbon wake must be culled by the live tabletop envelope');
+  }
 
   const railSystem = _makeProjectileTrailSelfCheckHarness([
     _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }),
