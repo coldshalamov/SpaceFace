@@ -8,12 +8,19 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
 import {
   CRUCIBLE_ARENA_ID,
+  CRUCIBLE_DEFAULT_RULESET,
   crucibleSetupFor,
+  lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import {
+  SWARM_DRAFT_EVERY,
+  SWARM_REFIT_EVERY,
+  SWARM_RULESET,
+} from '../../data/swarmMode.js';
 import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
@@ -40,6 +47,18 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mono); letter-spacing:.06em;
     font-size:13px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-size:12px; color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-modes { display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
+  .sf-menu.sf-crucible-door .sf-crd-mode { display:flex; flex-direction:column; gap:5px; text-align:left;
+    border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
+    padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
+  .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"] { border-color:var(--accent-3);
+    background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
+  .sf-menu.sf-crucible-door .sf-crd-mode .n { font-family:var(--mono); letter-spacing:.06em;
+    font-size:13px; text-transform:uppercase; }
+  .sf-menu.sf-crucible-door .sf-crd-mode .d { font-size:12px; color:var(--ink-dim); line-height:1.45; }
+  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mono); font-size:11px;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-seed { display:flex; gap:10px; align-items:center;
     justify-content:center; font-family:var(--mono); font-size:12px; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-seed input { width:130px; background:rgba(0,0,0,.3);
@@ -331,10 +350,36 @@ function renderRecordBand(profile) {
   return band;
 }
 
+/**
+ * The two rulesets behind one door. Swarm is first and is the default: it is the fast game — the
+ * room never empties, the wave rolls on a kill count, and only every fifth wave stops for an
+ * upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
+ */
+const CRUCIBLE_MODE_CARDS = Object.freeze([
+  {
+    ruleset: SWARM_RULESET,
+    label: 'Swarm',
+    verb: 'Hold the line',
+    blurb: 'Endless. The room refills as fast as you empty it.',
+    sub: `Endless waves, no lulls, no last wave. Hostiles keep coming until you go down — every `
+      + `${SWARM_DRAFT_EVERY} waves you take a new weapon, every ${SWARM_REFIT_EVERY} you rebuild `
+      + `the hull. Nothing you earn here follows you home.`,
+  },
+  {
+    ruleset: 'scored',
+    label: 'Gauntlet',
+    verb: 'Enter the Gauntlet',
+    blurb: 'Thirty authored waves in three acts. One question per wave.',
+    sub: 'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
+      + 'Nothing you earn here follows you home.',
+  },
+]);
+
 export const crucibleScreen = {
   id: 'crucible',
 
   mount(rootEl, ctx) {
+    let enterButton = null;
     injectStyle();
     rootEl.innerHTML = '';
     rootEl.classList.add('panel', 'sf-menu', 'sf-crucible-door');
@@ -348,17 +393,46 @@ export const crucibleScreen = {
       const match = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.hullId === previous.hullId);
       if (match) starterId = match.id;
     }
+    let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
 
     const h = el('h1', null, 'Crucible');
     h.id = 'sf-crucible-title';
     rootEl.appendChild(h);
-    rootEl.appendChild(el(
-      'div',
-      'sf-crd-sub',
-      'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
-      + 'Nothing you earn here follows you home.',
-    ));
+    const sub = el('div', 'sf-crd-sub', '');
+    rootEl.appendChild(sub);
 
+    // THE MODE COMES FIRST, because it is the biggest difference between two runs — bigger than
+    // the hull and much bigger than the seed. Swarm leads: it is what the Crucible is.
+    rootEl.appendChild(el('div', 'sf-crd-label', 'Mode'));
+    const modes = el('div', 'sf-crd-modes');
+    const modeButtons = [];
+    for (const entry of CRUCIBLE_MODE_CARDS) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'sf-crd-mode';
+      card.dataset.ruleset = entry.ruleset;
+      card.setAttribute('aria-pressed', String(entry.ruleset === ruleset));
+      card.appendChild(el('div', 'n', entry.label));
+      card.appendChild(el('div', 'd', entry.blurb));
+      card.addEventListener('click', () => {
+        ruleset = entry.ruleset;
+        for (const other of modeButtons) {
+          other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
+        }
+        syncMode();
+      });
+      modeButtons.push(card);
+      modes.appendChild(card);
+    }
+    rootEl.appendChild(modes);
+
+    function syncMode() {
+      const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
+      sub.textContent = entry.sub;
+      if (enterButton) enterButton.textContent = entry.verb;
+    }
+
+    rootEl.appendChild(el('div', 'sf-crd-label', 'Hull'));
     const hulls = el('div', 'sf-crd-hulls');
     const buttons = [];
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
@@ -401,20 +475,23 @@ export const crucibleScreen = {
     const enter = document.createElement('button');
     enter.type = 'button';
     enter.className = 'sf-btn sf-btn--primary';
-    enter.textContent = 'Enter the Crucible';
+    enter.textContent = 'Hold the line';
+    enterButton = enter;
     enter.addEventListener('click', () => {
       const setup = crucibleSetupFor({
         starterId,
         seed: normalizeSeed(seedInput.value),
         arenaId: CRUCIBLE_ARENA_ID,
+        ruleset,
       });
       if (!setup.ok || !setup.value) {
         ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
         return;
       }
-      requestCrucibleRun(ctx.bus, setup.value);
+      requestCrucibleRun(ctx.bus, setup.value, ruleset);
     });
     foot.appendChild(enter);
+    syncMode();
 
     const back = document.createElement('button');
     back.type = 'button';
@@ -868,7 +945,8 @@ export const crucibleResultsScreen = {
       }
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
-      requestCrucibleRun(ctx.bus, setup);
+      // Replay the run as it BEGAN, ruleset included — a swarm death must not restart as a gauntlet.
+      requestCrucibleRun(ctx.bus, setup, lastCrucibleRuleset());
     });
     foot.appendChild(again);
 

@@ -9,6 +9,13 @@ import { SURVIVAL_ARC_LENGTH, actIndexForWave, difficultyForWave } from '../data
 import { SURVIVAL_ENDLESS_WAVE_MAX } from '../data/survivalWaves.js';
 import { isBossCircuitRuleset, SURVIVAL_BOSS_CIRCUIT_LENGTH } from './survivalCircuit.js';
 import { isEndlessRuleset } from './survivalEndless.js';
+import {
+  SWARM_REFIT_EVERY,
+  SWARM_WAVE_MAX,
+  isSwarmDraftWave,
+  isSwarmRefitWave,
+  isSwarmRuleset,
+} from './survivalSwarm.js';
 import { isExtractionWindow } from './survivalExtraction.js';
 import { planWave } from './survivalWavePlanner.js';
 import {
@@ -185,9 +192,13 @@ export const survivalRun = {
     this._phaseTicks = 0;
     this._clearReceiptLatches();
 
+    // FOUR WAVES OUT OF FIVE, THE SWARM DOES NOT STOP. `cleanup` may only lead to draft, refit or
+    // victory, so a swarm run still passes THROUGH `draft` between waves -- it just resolves it on
+    // arrival and never opens the surface. The player fights, the wave rolls, nothing is clicked.
     if (phase === 'draft' && (
       compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
       || isBossCircuitRuleset(run.ruleset)
+      || (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave))
     )) {
       this._draftResolved = true;
     }
@@ -245,14 +256,17 @@ export const survivalRun = {
     const nextWave = run.wave < 1 ? 1 : run.wave + 1;
     const endless = isEndlessRuleset(run.ruleset);
     const circuit = isBossCircuitRuleset(run.ruleset);
-    const waveCap = circuit
-      ? SURVIVAL_BOSS_CIRCUIT_LENGTH
-      : (endless ? SURVIVAL_ENDLESS_WAVE_MAX : SURVIVAL_RUN_WAVE_COUNT);
+    const swarm = isSwarmRuleset(run.ruleset);
+    const waveCap = swarm
+      ? SWARM_WAVE_MAX
+      : (circuit
+        ? SURVIVAL_BOSS_CIRCUIT_LENGTH
+        : (endless ? SURVIVAL_ENDLESS_WAVE_MAX : SURVIVAL_RUN_WAVE_COUNT));
     if (nextWave > waveCap) {
       this._waveIntroHandled = true;
       return;
     }
-    const act = circuit ? 0 : actIndexForWave(nextWave);
+    const act = (circuit || swarm) ? 0 : actIndexForWave(nextWave);
     const plan = planWave({
       seed: run.seed,
       arenaId: run.arenaId,
@@ -261,7 +275,7 @@ export const survivalRun = {
       difficulty: endless ? 3 : difficultyForWave(nextWave),
       mutators: normalizeMutators(run.arenaMutators),
       buildSummary: null,
-      mode: endless ? 'endless' : (circuit ? 'boss_circuit' : undefined),
+      mode: swarm ? 'swarm' : (endless ? 'endless' : (circuit ? 'boss_circuit' : undefined)),
       ruleset: run.ruleset,
     });
     if (isPlanError(plan)) {
@@ -329,6 +343,8 @@ export const survivalRun = {
 
   _isLastWave(run) {
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
+    // A swarm run has no victory screen to reach. It ends when you die, and only then.
+    if (isSwarmRuleset(run && run.ruleset)) return wave >= SWARM_WAVE_MAX;
     if (isEndlessRuleset(run && run.ruleset)) return wave >= SURVIVAL_ENDLESS_WAVE_MAX;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave >= SURVIVAL_BOSS_CIRCUIT_LENGTH;
     return wave >= SURVIVAL_RUN_WAVE_COUNT;
@@ -336,6 +352,7 @@ export const survivalRun = {
 
   _isRefitWave(run) {
     const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
+    if (isSwarmRuleset(run && run.ruleset)) return wave > 0 && wave % SWARM_REFIT_EVERY === 0;
     if (isBossCircuitRuleset(run && run.ruleset)) return wave > 0;
     return wave > 0 && wave % SURVIVAL_REFIT_EVERY === 0;
   },

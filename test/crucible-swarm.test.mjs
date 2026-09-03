@@ -1,0 +1,386 @@
+// PQ-135 — the swarm ruleset: constant pressure, a kill quota, and no menu four waves in five.
+//
+// These tests drive the REAL phase machine and the REAL wave owner through the REAL spawn budget.
+// Nothing here stubs the streaming loop; the reinforcement behaviour under test is the behaviour
+// the game runs.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
+import { runSession } from '../src/systems/runSession.js';
+import {
+  SURVIVAL_ARENA_INTRO_TICKS,
+  SURVIVAL_WAVE_INTRO_TICKS,
+  survivalRun,
+} from '../src/systems/survivalRun.js';
+import { survivalWave } from '../src/systems/survivalWave.js';
+import { planWave } from '../src/systems/survivalWavePlanner.js';
+import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
+import {
+  SWARM_CONCURRENT_MAX,
+  SWARM_DRAFT_EVERY,
+  SWARM_REFIT_EVERY,
+  SWARM_RULESET,
+  SWARM_WAVE_MAX,
+  isSwarmBossWave,
+  pickSwarmArchetype,
+  swarmArenaPhase,
+  SWARM_QUOTA_CAP,
+  swarmConcurrent,
+  swarmCurveIsSane,
+  swarmGateFor,
+  swarmOpeningCount,
+  swarmOpeningPackages,
+  swarmQuota,
+  swarmRosterFor,
+} from '../src/data/swarmMode.js';
+import { isSwarmRuleset, swarmWaveEndsInMenu } from '../src/systems/survivalSwarm.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { SPAWN_BUDGET_DEFAULT_MAX } from '../src/data/survivalActs.js';
+import { mulberry32 } from '../src/core/rng.js';
+
+const DT = 1 / 60;
+const ARENA = 'helios_core';
+const SEED = 4242;
+const ENEMY_IDS = new Set(ENEMY_TYPES.map((e) => e.id));
+
+function boot(seed = SEED) {
+  const state = createGameState(seed);
+  const raw = createBus();
+  const emitted = [];
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit(event, payload) {
+      emitted.push({ event, payload });
+      raw.emit(event, payload);
+    },
+  };
+  const budget = makeBudgetApi(state);
+  const spawned = [];
+  const helpers = {
+    spawnBudget: budget,
+    spawnEntity(spec) {
+      const id = state.nextEntityId++;
+      const entity = {
+        ...spec,
+        id,
+        alive: true,
+        pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+      };
+      state.entities.set(id, entity);
+      state.entityList.push(entity);
+      spawned.push(entity);
+      return entity;
+    },
+  };
+  const player = { id: state.nextEntityId++, alive: true, pos: { x: 0, z: 0 }, type: 'ship' };
+  state.entities.set(player.id, player);
+  state.entityList.push(player);
+  state.playerId = player.id;
+  raw.on('entity:destroyed', (p) => budget.releaseEntity(p && p.id));
+
+  const ctx = { state, bus, helpers };
+  runSession.init(ctx);
+  survivalWave.init(ctx);
+  survivalRun.init(ctx);
+  return { state, bus, emitted, helpers, budget, spawned, ctx, player };
+}
+
+function tick(h, n = 1) {
+  for (let i = 0; i < n; i++) {
+    survivalWave.update(DT);
+    survivalRun.update(DT);
+  }
+}
+
+function liveHostiles(h) {
+  const out = [];
+  for (const entity of h.state.entities.values()) {
+    if (entity.id === h.player.id) continue;
+    if (entity.alive === false) continue;
+    out.push(entity);
+  }
+  return out;
+}
+
+/** Kill one live hostile the way the core sweep does: mark dead, drop it, then receipt. */
+function killOne(h) {
+  const live = liveHostiles(h);
+  if (live.length === 0) return false;
+  const victim = live[0];
+  victim.alive = false;
+  h.state.entities.delete(victim.id);
+  h.bus.emit('entity:destroyed', { id: victim.id });
+  return true;
+}
+
+function beginSwarm(h) {
+  h.bus.emit('run:beginRequested', {
+    kind: 'survival', ruleset: SWARM_RULESET, seed: SEED, arenaId: ARENA,
+  });
+  h.bus.emit('run:loadoutReady', {});
+  tick(h, 1);
+  tick(h, SURVIVAL_ARENA_INTRO_TICKS);
+  tick(h, SURVIVAL_WAVE_INTRO_TICKS);
+  return h.state.run;
+}
+
+function named(emitted, event) {
+  return emitted.filter((e) => e.event === event);
+}
+
+// ---------------------------------------------------------------------------
+// the curve
+// ---------------------------------------------------------------------------
+
+test('every swarm wave names a live enemy, a legal gate and a room that is never idle', () => {
+  for (let wave = 1; wave <= 120; wave++) {
+    const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
+    assert.ok(!plan.error, `wave ${wave} plans`);
+    assert.equal(plan.mode, SWARM_RULESET);
+    assert.notEqual(plan.arenaPhase, 'idle', `wave ${wave} room is doing something`);
+    assert.equal(plan.arenaPhase, swarmArenaPhase(wave));
+    assert.ok(plan.schedule.length > 0, `wave ${wave} has an opening burst`);
+    for (const entry of plan.schedule) {
+      assert.ok(ENEMY_IDS.has(entry.enemyId), `${entry.enemyId} is a live archetype`);
+      assert.ok(entry.count > 0);
+    }
+    // The opening burst can never exceed the shared cap on its own.
+    assert.ok(
+      swarmOpeningCount(plan.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
+      `wave ${wave} opening burst fits the cap`,
+    );
+    assert.ok(plan.swarm.concurrent <= SWARM_CONCURRENT_MAX);
+    assert.ok(plan.swarm.quota > 0);
+  }
+});
+
+test('a swarm plan is deterministic and pure JSON, like every other plan', () => {
+  const a = planWave({ seed: SEED, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
+  const b = planWave({ seed: SEED, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
+  assert.deepEqual(a, b);
+  assert.deepEqual(JSON.parse(JSON.stringify(a)), a);
+  const other = planWave({ seed: SEED + 1, arenaId: ARENA, wave: 13, ruleset: SWARM_RULESET });
+  assert.notDeepEqual(other.schedule, a.schedule);
+});
+
+test('a swarm wave has no last wave and no blocking role that could stall it', () => {
+  const deep = planWave({ seed: SEED, arenaId: ARENA, wave: SWARM_WAVE_MAX, ruleset: SWARM_RULESET });
+  assert.ok(!deep.error, 'the 999th wave still plans — the arc would have refused past 30');
+  for (const wave of [1, 7, 40, 400]) {
+    const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
+    assert.equal(plan.completionRules.requiredPackagesMaterialized, false);
+    assert.deepEqual(plan.completionRules.blockingRoles, []);
+  }
+});
+
+test('pressure and quota rise, and the roster opens one archetype at a time', () => {
+  assert.equal(swarmConcurrent(1), 8);
+  let previousRoster = 0;
+  for (let wave = 1; wave <= 40; wave++) {
+    const roster = swarmRosterFor(wave).length;
+    assert.ok(roster >= previousRoster, 'the roster never shrinks');
+    assert.ok(roster - previousRoster <= 1, 'at most one new silhouette per wave');
+    previousRoster = roster;
+    if (wave > 1 && !isSwarmBossWave(wave) && !isSwarmBossWave(wave - 1)) {
+      // The quota RISES until it caps, then holds — wave length is a constant, not a curve, or a
+      // late wave would take ten minutes. Concurrency is what keeps climbing.
+      assert.ok(swarmQuota(wave) >= swarmQuota(wave - 1), `wave ${wave} never asks for less`);
+      assert.ok(swarmConcurrent(wave) >= swarmConcurrent(wave - 1));
+    }
+    // The invariant that actually matters: a wave must be more than its opening burst.
+    assert.ok(swarmCurveIsSane(wave), `wave ${wave} keeps quota at 2x concurrency or better`);
+  }
+  assert.ok(swarmQuota(12) > swarmQuota(1), 'the quota does climb early');
+  assert.equal(swarmQuota(60), SWARM_QUOTA_CAP, 'and flattens at the cap rather than growing forever');
+  // Wave 1 is already denser than the whole authored wave 1 of the arc (six bodies).
+  assert.ok(swarmConcurrent(1) > 6);
+});
+
+test('a newly unlocked archetype actually shows up on the wave that unlocked it', () => {
+  // Weighted-pick bias, not a promise from a comment: roll the stream and count.
+  for (const wave of [2, 4, 6, 8, 10, 12]) {
+    const roster = swarmRosterFor(wave);
+    const newest = roster[roster.length - 1];
+    const rng = mulberry32(wave * 7919 + 1);
+    let hits = 0;
+    for (let i = 0; i < 400; i++) {
+      if (pickSwarmArchetype(wave, rng()).enemyId === newest.enemyId) hits++;
+    }
+    assert.ok(hits > 20, `wave ${wave} actually fields ${newest.enemyId} (${hits}/400)`);
+  }
+});
+
+test('arrivals walk the gate ring instead of pouring out of one door', () => {
+  for (const wave of [1, 5, 11, 23]) {
+    const gates = new Set();
+    for (let i = 0; i < 8; i++) gates.add(swarmGateFor(wave, i));
+    assert.ok(gates.size >= 4, `wave ${wave} uses ${gates.size} bearings`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// the live loop
+// ---------------------------------------------------------------------------
+
+test('a swarm run reaches active with the room already under pressure', () => {
+  const h = boot();
+  const run = beginSwarm(h);
+  assert.equal(run.phase, 'active');
+  assert.equal(run.wave, 1);
+  assert.ok(isSwarmRuleset(run.ruleset), 'the run is playing the swarm ruleset');
+
+  // The whole opening burst is on the board inside 24 ticks — a swarm wave opens AT pressure.
+  tick(h, 30);
+  const opening = swarmOpeningCount(swarmOpeningPackages(1, () => 0.5));
+  assert.ok(
+    h.spawned.length >= opening,
+    `the opening burst landed (${h.spawned.length} of ${opening})`,
+  );
+  assert.equal(liveHostiles(h).length, swarmConcurrent(1), 'the room opened at full strength');
+  for (const entity of h.spawned) {
+    assert.equal(entity.data.runCohort, SURVIVAL_COHORT_TAG);
+    assert.equal(entity.data.runWave, 1);
+  }
+});
+
+test('killing a hostile refills the room — the wave never empties while it is live', () => {
+  const h = boot();
+  beginSwarm(h);
+  const target = swarmConcurrent(1);
+
+  // Kill two and let the stream work. It must top back up rather than leaving the room thinner.
+  killOne(h);
+  killOne(h);
+  const thinned = liveHostiles(h).length;
+  tick(h, 90);
+  const refilled = liveHostiles(h).length;
+  assert.ok(refilled > thinned, `the room refilled (${thinned} -> ${refilled})`);
+  assert.ok(refilled <= target, 'and never above the wave concurrency target');
+});
+
+test('the stream holds the room near strength across a whole wave, and never breaches the cap', () => {
+  const h = boot();
+  beginSwarm(h);
+  const target = swarmConcurrent(1);
+  let ticksUnderPressure = 0;
+  let sampled = 0;
+  let peak = 0;
+
+  // 900 ticks with a kill every 12 ticks — a plausible clear rate for wave 1.
+  for (let i = 0; i < 900; i++) {
+    if (i % 12 === 0) killOne(h);
+    tick(h, 1);
+    if (h.state.run.phase !== 'active') break;
+    sampled++;
+    const alive = liveHostiles(h).length;
+    peak = Math.max(peak, alive);
+    if (alive >= Math.min(4, target)) ticksUnderPressure++;
+  }
+  assert.ok(sampled > 0, 'the wave stayed live long enough to sample');
+  const uptime = ticksUnderPressure / sampled;
+  assert.ok(uptime > 0.9, `threat uptime ${(uptime * 100).toFixed(1)}% is near-continuous`);
+  assert.ok(peak <= SPAWN_BUDGET_DEFAULT_MAX, `peak ${peak} respected the shared cap`);
+  assert.ok(h.budget.current() <= h.budget.max(), 'the budget was never oversubscribed');
+});
+
+test('a wave clears on KILLS, with survivors still flying', () => {
+  const h = boot();
+  beginSwarm(h);
+  const quota = swarmQuota(1);
+
+  let killed = 0;
+  for (let i = 0; i < 4000 && h.state.run.phase === 'active'; i++) {
+    if (i % 6 === 0 && killOne(h)) killed++;
+    tick(h, 1);
+  }
+  const cleared = named(h.emitted, 'run:waveCleared');
+  assert.equal(cleared.length, 1, 'the wave reported itself cleared');
+  assert.equal(cleared[0].payload.quota, quota);
+  assert.ok(cleared[0].payload.killed >= quota, 'the quota was met');
+  assert.ok(killed >= quota);
+  // THE POINT: the room was not empty when the wave ended.
+  assert.ok(cleared[0].payload.survivors > 0, 'survivors carried, so there is no lull to cover');
+  assert.ok(liveHostiles(h).length > 0);
+});
+
+test('wave 2 opens under the pressure wave 1 left behind, and no budget slot leaks', () => {
+  const h = boot();
+  beginSwarm(h);
+  // Clear wave 1's quota, but stop shooting the moment it is met — the question here is what the
+  // NEXT wave inherits, not how fast a player can empty a room between waves.
+  for (let i = 0; i < 6000 && h.state.run.wave === 1 && h.state.run.phase === 'active'; i++) {
+    if (i % 6 === 0) killOne(h);
+    tick(h, 1);
+  }
+  const survivors = liveHostiles(h).length;
+  assert.ok(survivors > 0, 'wave 1 ended with hostiles still on the player');
+
+  // Roll through cleanup and the auto-resolved draft into wave 2 without firing a shot.
+  for (let i = 0; i < 600 && !(h.state.run.wave === 2 && h.state.run.phase === 'active'); i++) {
+    tick(h, 1);
+  }
+  assert.equal(h.state.run.wave, 2);
+  assert.equal(h.state.run.phase, 'active');
+  assert.ok(
+    liveHostiles(h).length >= survivors,
+    'wave 2 opened with wave 1 survivors still flying, then topped up',
+  );
+  // Budget bookkeeping must still match the live board exactly — no slot leaked across the seam.
+  assert.equal(h.budget.current(), liveHostiles(h).length);
+  assert.ok(h.budget.current() <= h.budget.max());
+});
+
+test('the room is never empty across a wave boundary', () => {
+  const h = boot();
+  beginSwarm(h);
+  let emptyTicks = 0;
+  let sampled = 0;
+  for (let i = 0; i < 5000 && h.state.run.wave < 3; i++) {
+    if (i % 7 === 0 && h.state.run.phase === 'active') killOne(h);
+    tick(h, 1);
+    sampled++;
+    if (liveHostiles(h).length === 0) emptyTicks++;
+  }
+  assert.ok(h.state.run.wave >= 3, 'the run walked two full wave boundaries');
+  assert.equal(emptyTicks, 0, `the room was empty on ${emptyTicks} of ${sampled} ticks`);
+});
+
+test('four waves in five open no menu at all', () => {
+  for (let wave = 1; wave <= 40; wave++) {
+    const expected = wave % SWARM_DRAFT_EVERY === 0 || wave % SWARM_REFIT_EVERY === 0;
+    assert.equal(swarmWaveEndsInMenu(wave), expected, `wave ${wave} menu expectation`);
+  }
+  const menus = Array.from({ length: 40 }, (_, i) => swarmWaveEndsInMenu(i + 1))
+    .filter(Boolean).length;
+  assert.equal(menus, 8, 'eight upgrade stops in forty waves, not forty');
+});
+
+test('a swarm run does not stop for a draft on a fight wave — it rolls straight into the next', () => {
+  const h = boot();
+  beginSwarm(h);
+  // Walk to wave 2 and record whether any draft surface was ever offered.
+  for (let i = 0; i < 6000 && h.state.run.wave < 2; i++) {
+    if (i % 6 === 0) killOne(h);
+    tick(h, 1);
+  }
+  assert.equal(h.state.run.wave, 2);
+  const offers = named(h.emitted, 'run:draftOffered');
+  assert.equal(offers.length, 0, 'no draft was offered between wave 1 and wave 2');
+  // The run still passed THROUGH draft — that is the only legal edge out of cleanup — but it
+  // resolved on arrival.
+  const transitions = named(h.emitted, 'run:transitioned').map((e) => e.payload.phase);
+  assert.ok(transitions.includes('draft'), 'the phase machine still used the legal edge');
+});
+
+test('survivalWave is still a strict no-op for the arc: the pinned waves are untouched', () => {
+  const arc = planWave({ seed: 47, arenaId: ARENA, wave: 1 });
+  assert.equal(arc.packages[0].enemyId, 'wasp_swarmer');
+  assert.equal(arc.packages[0].count, 6);
+  assert.equal(arc.arenaPhase, 'idle');
+  assert.equal(arc.swarm, undefined, 'an arc plan carries no swarm block');
+});

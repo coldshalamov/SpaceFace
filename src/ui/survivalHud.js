@@ -14,6 +14,7 @@
 // every figure carries its own word. No animation at all, so reduced-motion needs no variant.
 
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { runXpForLevel } from '../core/runState.js';
 
 const STYLE_ID = 'sf-crun-css';
@@ -154,11 +155,16 @@ export const survivalHud = {
     this._show(dom);
 
     const census = threatCensus(run);
+    const swarm = isSwarmRuleset(run.ruleset);
     // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
     const fighting = run.phase === 'active' || run.phase === 'wave_intro';
     const phase = (fighting && this._objective) ? this._objective : phaseWord(run.phase);
     this._setText(dom.label, `CRUCIBLE · ${arenaLabel(run.arenaId)}`);
-    this._setText(dom.waveN, `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
+    // A swarm run has no denominator: there is no last wave to count toward, and printing one
+    // would be a lie about when it ends.
+    this._setText(dom.waveN, swarm
+      ? `WAVE ${Math.max(1, run.wave || 1)}`
+      : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
     this._setClass(dom.phase, 'sf-crun__phase' + (fighting && this._objective ? ' sf-crun__phase--hot' : ''));
@@ -167,10 +173,24 @@ export const survivalHud = {
     // colour-blind reader lose nothing.
     const showThreat = run.phase === 'active' || run.phase === 'cleanup';
     dom.threat.hidden = !showThreat;
-    if (showThreat) {
+    if (showThreat && swarm) {
+      // In a swarm wave the number that MOVES is the kill count, and the number that ENDS the wave
+      // is the quota. "How many are left in the room" is not a finishable figure here — the room
+      // refills — so printing it would look like a bar that never advances.
+      const quota = Math.max(1, census.total);
+      const killed = Math.min(census.resolved, quota);
+      this._setText(dom.threatWord, 'KILLS');
+      this._setText(dom.threatFig, `${killed} / ${quota}`);
+      this._setStyle(dom.threatFill, 'width', `${Math.round((killed / quota) * 100)}%`);
+      dom.threat.setAttribute('aria-label', 'Wave kill quota');
+      dom.threat.setAttribute('aria-valuenow', String(killed));
+      dom.threat.setAttribute('aria-valuemax', String(quota));
+    } else if (showThreat) {
+      this._setText(dom.threatWord, 'THREAT');
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
       this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
+      dom.threat.setAttribute('aria-label', 'Hostiles remaining');
       dom.threat.setAttribute('aria-valuenow', String(census.remaining));
       dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
     }
@@ -311,7 +331,8 @@ export const survivalHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, label, waveN, phase, threat, threatFill, threatFig, score, credits, level, xpFill, earn,
+      root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
+      score, credits, level, xpFill, earn,
     };
     return this._dom;
   },

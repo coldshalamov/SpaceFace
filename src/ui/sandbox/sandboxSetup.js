@@ -33,6 +33,7 @@ import { buildSlotList, makeShipEntitySpec } from '../../systems/ships.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
+import { SWARM_RULESET } from '../../data/swarmMode.js';
 import {
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_ENEMY_PACKAGES,
@@ -150,10 +151,22 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
         out.sectorId = arena.sectorId;
         out.spawnPos = { x: arena.spawnPos.x, z: arena.spawnPos.z };
       }
+      // Which SURVIVAL RULESET the run plays under. It rides beside the setup rather than inside
+      // it because spaceface.combatLabSetup.v1 is a closed schema shared with the Lab, and the Lab
+      // has no rulesets. Unknown values are dropped, so a bad string can never reach runSession.
+      if (SURVIVAL_LAUNCH_RULESETS.has(overrides.survivalRuleset)) {
+        out.survivalRuleset = overrides.survivalRuleset;
+      }
     }
   }
   return out;
 }
+
+/**
+ * The survival rulesets a LAUNCH may name. `endless` and `boss_circuit` are continuations reached
+ * from inside a live run, not doors, so they are deliberately not on this list.
+ */
+const SURVIVAL_LAUNCH_RULESETS = new Set(['scored', SWARM_RULESET]);
 
 /** Display names + config for each quick-setup card on the Sandbox screen. */
 export const SCENARIO_PRESETS = Object.freeze([
@@ -1091,7 +1104,7 @@ export function applySandboxSetup(ctx, config) {
       if (ctx.bus && typeof ctx.bus.emit === 'function') {
         ctx.bus.emit('run:beginRequested', {
           kind: 'survival',
-          ruleset: 'scored',
+          ruleset: SURVIVAL_LAUNCH_RULESETS.has(cfg.survivalRuleset) ? cfg.survivalRuleset : 'scored',
           seed: setup.seed,
           arenaId: setup.arenaId,
         });

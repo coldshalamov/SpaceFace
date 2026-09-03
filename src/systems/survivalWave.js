@@ -12,7 +12,9 @@
 //
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
+import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { SWARM_BOSS_ENEMY_ID, pickSwarmArchetype, swarmGateFor } from '../data/swarmMode.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
@@ -21,6 +23,33 @@ import {
 } from './waveMaterialization.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
+
+/**
+ * SWARM REINFORCEMENT (PQ-135).
+ *
+ * The arc's wave is a SCHEDULE: every body is named up front, and the wave ends when all of them
+ * are dead. That produces the dead air a swarm game cannot have — the last twenty seconds of every
+ * wave are spent hunting one straggler in an otherwise empty room.
+ *
+ * A swarm wave is a STREAM instead. It holds the room at `concurrent` bodies and ends on a KILL
+ * QUOTA, so:
+ *   * the room never empties while the wave is live — a kill is replaced within a few ticks;
+ *   * survivors are never chased. When the quota is met the wave ends with hostiles still on you,
+ *     and they roll into the next wave as its opening pressure. There is no lull to cover.
+ *   * it self-tapers. The spawn target is `min(concurrent, quota - killed)`, so the last few kills
+ *     of a wave do not summon a fresh dozen that the next wave would then have to inherit.
+ *
+ * Everything still goes through materializeWaveBatch — the same spawnBudget authority and the same
+ * makeEnemySpawnSpec builder the arc uses. There is no swarm-only spawn path and no raised cap.
+ */
+function swarmStreamSeed(seed, wave, index) {
+  const label = `swarm-reinforce-v1|w${wave}|n${index}`;
+  let h = (seed >>> 0) ^ 0x85ebca6b;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  return (h >>> 0) || 1;
+}
 
 function liveSurvivalRun(state) {
   if (!state) return null;
@@ -73,6 +102,7 @@ export const survivalWave = {
 
     this._cursor += 1;
     this._dispatchDue();
+    this._reinforceSwarm(run);
     this._checkCleared(run);
   },
 
@@ -84,18 +114,49 @@ export const survivalWave = {
     const plan = payload && payload.plan;
     if (!plan || plan.ok === false || !Array.isArray(plan.schedule)) return;
     const wave = Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    const swarm = plan.swarm && typeof plan.swarm === 'object' ? plan.swarm : null;
+    // A swarm wave INHERITS the survivors of the last one. They were never chased down, they still
+    // hold their budget slots, and their deaths still count — so the new wave opens under the
+    // pressure the old one left behind instead of in a room that was briefly empty.
+    const carried = swarm && this._swarm ? this._cohort : null;
+    const carriedBosses = swarm && this._swarm ? this._bossIds : null;
     this._resetWave();
+    if (carried && carried.size > 0) this._cohort = carried;
+    // A boss that survived its own wave is still a boss. Carrying the ids keeps a later wave from
+    // treating it as ordinary chaff if it is somehow still alive.
+    if (carriedBosses && carriedBosses.size > 0) this._bossIds = carriedBosses;
     this._wave = wave;
     this._plan = plan;
+    this._swarm = swarm;
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
-    // Publish the wave's planned body count so a readout can say how many are still out there.
-    this._plannedBodies = plan.schedule.reduce(
-      (sum, entry) => sum + (Number.isInteger(entry.count) ? entry.count : 0),
-      0,
-    );
+    if (swarm) {
+      // The readout's denominator is the KILL QUOTA, not a body count — that is the number the
+      // player is actually working toward, and the only one that can be finished.
+      this._quota = Number.isInteger(swarm.quota) && swarm.quota > 0 ? swarm.quota : 10;
+      this._concurrent = Number.isInteger(swarm.concurrent) && swarm.concurrent > 0
+        ? swarm.concurrent
+        : 8;
+      this._reinforceGap = Number.isInteger(swarm.reinforceGapTicks) && swarm.reinforceGapTicks > 0
+        ? swarm.reinforceGapTicks
+        : 24;
+      this._reinforceBatch = Number.isInteger(swarm.reinforceBatch) && swarm.reinforceBatch > 0
+        ? swarm.reinforceBatch
+        : 3;
+      this._spawnDistance = Number.isFinite(swarm.spawnDistance) && swarm.spawnDistance > 0
+        ? swarm.spawnDistance
+        : SURVIVAL_SPAWN_DISTANCE;
+      this._requireBoss = swarm.requireBoss === true;
+      this._plannedBodies = this._quota;
+    } else {
+      // Publish the wave's planned body count so a readout can say how many are still out there.
+      this._plannedBodies = plan.schedule.reduce(
+        (sum, entry) => sum + (Number.isInteger(entry.count) ? entry.count : 0),
+        0,
+      );
+    }
     this._publishThreat();
   },
 
@@ -111,6 +172,10 @@ export const survivalWave = {
     // Dispatch tick-0 batches on the same tick the wave goes active so the fight starts
     // immediately instead of one frame late.
     this._cursor = 0;
+    // The opening burst counts as this wave's first reinforcement, so the stream waits one full
+    // gap before topping up rather than doubling the arrival on tick 0.
+    this._lastReinforceTick = 0;
+    this._reinforceIndex = 0;
     this._dispatchDue();
     this._checkCleared(run);
   },
@@ -139,6 +204,7 @@ export const survivalWave = {
       : null;
     if (live && live.alive && live.data && live.data.runCohort === 'survival') return;
     this._cohort.delete(id);
+    this._bossIds.delete(id);
     this._resolved += 1;
     this._publishThreat();
   },
@@ -173,13 +239,21 @@ export const survivalWave = {
         this._pending[write++] = item;
         continue;
       }
+      // A swarm wave's opening burst is bounded by the SAME concurrency target the stream uses.
+      // Without this, a wave inheriting a full room from the last one would stack its own burst on
+      // top and hand the whole overflow to the spawn cap to sort out.
+      let count = entry.count;
+      if (this._swarm) {
+        count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
+        if (count <= 0) continue;
+      }
       const receipt = materializeWaveBatch(this.ctx, {
         ownerId,
         enemyId: entry.enemyId,
         level,
-        count: entry.count,
+        count,
         gateGroup: entry.gateGroup,
-        distance: SURVIVAL_SPAWN_DISTANCE,
+        distance: this._spawnDistance,
         seed,
         wave: this._wave,
         packageIndex: Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0,
@@ -188,10 +262,19 @@ export const survivalWave = {
       });
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
-      for (const id of receipt.spawnedIds) this._cohort.set(id, entry.role);
+      for (const id of receipt.spawnedIds) {
+        this._cohort.set(id, entry.role);
+        // The boss is the wave's WORK, not one more body in the count. Remember which hulls it is
+        // so a kill quota met on chaff cannot end a boss wave with the Dreadnought still flying.
+        if (entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
+      }
       // A batch the cap refused lowers the wave's real body count, so the readout never asks the
-      // player to kill bodies that were never admitted.
-      this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
+      // player to kill bodies that were never admitted. A SWARM wave's denominator is its kill
+      // quota, not a body count, so a refused batch must never shrink it — the stream will simply
+      // bring those bodies later.
+      if (!this._swarm) {
+        this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
+      }
       this._publishThreat();
       this._emit('run:waveMaterialized', {
         wave: this._wave,
@@ -208,9 +291,105 @@ export const survivalWave = {
     this._pending.length = write;
   },
 
+  /**
+   * Hold the room at strength. Runs only for a swarm wave; a no-op everywhere else, including on
+   * ticks where the room is already full — the common case, and the cheap one.
+   */
+  _reinforceSwarm(run) {
+    if (!this._swarm || this._cleared || !this._active) return;
+    if (this._cursor < 0) return;
+    if (this._cursor - this._lastReinforceTick < this._reinforceGap) return;
+
+    // NO TAPER. An earlier version shrank the spawn target toward the end of a wave so the next
+    // wave would not inherit a crowd — and that produced exactly the dead air this whole ruleset
+    // exists to delete: the last third of every wave played out in a thinning room, and the wave
+    // ended with nothing on screen.
+    //
+    // Holding the room at full strength right through the last kill is the point. Inheriting that
+    // crowd is not a cost, it IS the no-lull rule: wave N+1 opens with wave N's survivors already
+    // on the player. Growth is bounded by `concurrent` (and, behind that, by the shared spawn cap),
+    // so there is nothing here to run away.
+    //
+    // The only stop is a quota already met with no boss owed — the wave ends on this same tick, so
+    // spawning into it would just be litter.
+    if (this._resolved >= this._quota && !(this._requireBoss && this._bossIds.size > 0)) return;
+    const target = this._concurrent;
+    const alive = this._cohort.size;
+    if (alive >= target) return;
+
+    const want = Math.min(this._reinforceBatch, target - alive);
+    if (want <= 0) return;
+
+    this._lastReinforceTick = this._cursor;
+    const index = this._reinforceIndex++;
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    const rng = mulberry32(swarmStreamSeed(seed, this._wave, index));
+    const archetype = pickSwarmArchetype(this._wave, rng());
+    const gateGroup = swarmGateFor(this._wave, index + 4);
+    const ownerId = waveOwnerId(this._wave);
+    if (!this._owners.includes(ownerId)) this._owners.push(ownerId);
+
+    const receipt = materializeWaveBatch(this.ctx, {
+      ownerId,
+      enemyId: archetype.enemyId,
+      level: levelForWave(this._wave),
+      count: want,
+      gateGroup,
+      distance: this._spawnDistance,
+      seed,
+      wave: this._wave,
+      // Reinforcements live above the opening burst's package indices so their placement stream
+      // can never collide with a scheduled batch's.
+      packageIndex: 64,
+      batchIndex: index,
+      role: archetype.role,
+    });
+    this._requestedTotal += receipt.requested;
+    this._admittedTotal += receipt.admitted;
+    for (const id of receipt.spawnedIds) this._cohort.set(id, archetype.role);
+    if (receipt.admitted > 0) {
+      this._publishThreat();
+      this._emit('run:waveMaterialized', {
+        wave: this._wave,
+        role: archetype.role,
+        enemyId: archetype.enemyId,
+        gateGroup,
+        atTick: this._cursor,
+        requested: receipt.requested,
+        admitted: receipt.admitted,
+        rejected: receipt.rejected,
+        tick: this._cursor,
+        reinforcement: true,
+      });
+    }
+  },
+
   _checkCleared(run) {
     if (this._cleared) return;
     if (!this._active) return;
+    // A swarm wave clears on KILLS. Survivors are left flying — they become the next wave's
+    // opening pressure. Nothing here waits for an empty room, so the wave can never stall on a
+    // straggler and there is no lull between waves to cover with a menu.
+    if (this._swarm) {
+      if (this._resolved < this._quota) return;
+      // A boss wave owes BOTH: the quota and the Dreadnought. Until the boss is down the wave
+      // keeps running, and the stream keeps its escort coming.
+      if (this._requireBoss && this._bossIds.size > 0) return;
+      this._cleared = true;
+      this._active = false;
+      this._emit(WAVE_CLEARED_SEAM, {
+        wave: this._wave,
+        requested: this._requestedTotal,
+        admitted: this._admittedTotal,
+        killed: this._resolved,
+        quota: this._quota,
+        survivors: this._cohort.size,
+        starved: this._requestedTotal > 0 && this._admittedTotal === 0,
+        tick: this._cursor,
+        runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+      });
+      return;
+    }
     if (this._pending && this._pending.length > 0) return;
     for (const role of this._cohort.values()) {
       if (this._blockingRoles.size === 0 || this._blockingRoles.has(role)) return;
@@ -244,6 +423,16 @@ export const survivalWave = {
     this._requestedTotal = 0;
     this._plannedBodies = 0;
     this._resolved = 0;
+    this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
+    this._swarm = null;
+    this._quota = 0;
+    this._concurrent = 0;
+    this._reinforceGap = 24;
+    this._reinforceBatch = 3;
+    this._reinforceIndex = 0;
+    this._lastReinforceTick = -9999;
+    this._bossIds = new Set();
+    this._requireBoss = false;
   },
 
   _teardown() {

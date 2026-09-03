@@ -11,16 +11,33 @@
 import { validateCombatLabSetup } from '../contracts/combatLabSetupSchema.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../data/combatLabSetups.js';
 import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxSetup.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 /** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
+
+/**
+ * WHAT THE CRUCIBLE BUTTON PLAYS.
+ *
+ * Swarm is the default and the headline: constant pressure, a kill quota, no menu four waves out
+ * of five, and no last wave. The authored thirty-wave arc is still here under `scored` — it is a
+ * different, slower ruleset and it is not what "Crucible" means from the main menu.
+ */
+export const CRUCIBLE_DEFAULT_RULESET = SWARM_RULESET;
+export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored']);
+
+export function normalizeCrucibleRuleset(ruleset) {
+  return CRUCIBLE_RULESETS.includes(ruleset) ? ruleset : CRUCIBLE_DEFAULT_RULESET;
+}
 export const CRUCIBLE_SEED_MIN = 1;
 export const CRUCIBLE_SEED_MAX = 0xffffffff;
 
 let lastSetup = null;
 
 /** Build (and validate) a Crucible setup from a starter package id and a seed. */
-export function crucibleSetupFor({ starterId, seed, arenaId = CRUCIBLE_ARENA_ID } = {}) {
+export function crucibleSetupFor({
+  starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET,
+} = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES[0];
   const result = validateCombatLabSetup({
@@ -34,6 +51,11 @@ export function crucibleSetupFor({ starterId, seed, arenaId = CRUCIBLE_ARENA_ID 
     seed: normalizeSeed(seed),
     wave: 1,
   });
+  // The ruleset is not part of the closed setup schema, so it travels alongside the validated
+  // value where the launch config can pick it up.
+  if (result && result.ok && result.value) {
+    result.ruleset = normalizeCrucibleRuleset(ruleset);
+  }
   return result;
 }
 
@@ -46,19 +68,27 @@ export function normalizeSeed(seed) {
   return i;
 }
 
-/** The ordinary launch config, with the Crucible setup riding along. */
-export function crucibleLaunchConfig(setup) {
-  return buildSandboxLaunchConfig({}, { survivalSetup: setup });
+/** The ordinary launch config, with the Crucible setup and its ruleset riding along. */
+export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
+  return buildSandboxLaunchConfig({}, {
+    survivalSetup: setup,
+    survivalRuleset: normalizeCrucibleRuleset(ruleset),
+  });
 }
 
 /**
  * Launch a run. Remembers the setup so the results screen can replay this exact seed, then goes
  * through the real New Game request.
  */
-export function requestCrucibleRun(bus, setup) {
+export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
   if (!setup) return false;
-  lastSetup = { ...setup, loadout: (setup.loadout || []).map((entry) => ({ ...entry })) };
-  requestSandboxGame(bus, crucibleLaunchConfig(setup));
+  const resolved = normalizeCrucibleRuleset(ruleset);
+  lastSetup = {
+    ...setup,
+    ruleset: resolved,
+    loadout: (setup.loadout || []).map((entry) => ({ ...entry })),
+  };
+  requestSandboxGame(bus, crucibleLaunchConfig(setup, resolved));
   return true;
 }
 
@@ -66,6 +96,11 @@ export function requestCrucibleRun(bus, setup) {
 export function lastCrucibleSetup() {
   if (!lastSetup) return null;
   return { ...lastSetup, loadout: lastSetup.loadout.map((entry) => ({ ...entry })) };
+}
+
+/** The ruleset the live (or most recent) run launched under. */
+export function lastCrucibleRuleset() {
+  return lastSetup ? normalizeCrucibleRuleset(lastSetup.ruleset) : CRUCIBLE_DEFAULT_RULESET;
 }
 
 /** Test/lifecycle seam: forget the remembered setup. */

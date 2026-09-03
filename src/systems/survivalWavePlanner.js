@@ -22,6 +22,19 @@ import {
   peakConcurrentDemand,
   validateWaveRecipe,
 } from '../data/survivalWaves.js';
+import {
+  SWARM_CLEANUP_TICKS,
+  SWARM_RULESET,
+  isSwarmDraftWave,
+  isSwarmRefitWave,
+  swarmArenaPhase,
+  swarmLevel,
+  swarmOpeningCount,
+  swarmOpeningPackages,
+  swarmPlanBlock,
+  swarmRewards,
+  swarmWaveOf,
+} from '../data/swarmMode.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
 // Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
@@ -264,9 +277,54 @@ export function resolvePlanMode(input) {
   if (!isPlainObject(input)) return 'arc';
   const ruleset = typeof input.ruleset === 'string' ? input.ruleset : '';
   const mode = typeof input.mode === 'string' ? input.mode : '';
+  if (mode === SWARM_RULESET || ruleset === SWARM_RULESET) return SWARM_RULESET;
   if (mode === 'endless' || ruleset === 'endless') return 'endless';
   if (mode === 'boss_circuit' || ruleset === 'boss_circuit') return 'boss_circuit';
   return 'arc';
+}
+
+/**
+ * A swarm wave is GENERATED, not looked up: there is no authored recipe and no last wave.
+ * It still returns the ordinary plan shape — `schedule`, `completionRules`, `arenaPhase`,
+ * `rewards` — so every existing consumer (survivalWave, survivalArena, survivalAnnounce, the
+ * results screen) keeps working without a swarm-shaped branch of its own. The one addition is
+ * `plan.swarm`, the block that describes the reinforcement stream.
+ *
+ * Completion here is a KILL QUOTA, not "every scheduled package materialized and every blocking
+ * role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty on purpose:
+ * a swarm wave must never be able to stall on one straggler flying home.
+ */
+function planSwarmWave({ seed, wave, rng }) {
+  const w = swarmWaveOf(wave);
+  const packages = swarmOpeningPackages(w, rng);
+  const schedule = expandSchedule(packages);
+  const opening = swarmOpeningCount(packages);
+  const swarm = swarmPlanBlock(w);
+  if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
+    return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
+  }
+  if (swarm.concurrent > SPAWN_BUDGET_HARD_MAX) {
+    return invalid([issue('swarm.concurrent', `swarm concurrency ${swarm.concurrent} exceeds 40`)]);
+  }
+  return {
+    id: `swarm:w${w}:${seed.toString(16)}`,
+    mode: SWARM_RULESET,
+    objective: { kind: swarm.boss ? 'boss' : 'resolve_hostiles' },
+    packages,
+    schedule,
+    arenaPhase: swarmArenaPhase(w),
+    rewards: swarmRewards(w),
+    draftExpectation: isSwarmRefitWave(w)
+      ? { kind: 'refit', choices: null }
+      : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
+    completionRules: {
+      requiredPackagesMaterialized: false,
+      blockingRoles: [],
+      cleanupTicks: SWARM_CLEANUP_TICKS,
+    },
+    swarm,
+    level: swarmLevel(w),
+  };
 }
 
 function lookupRecipe(arenaId, wave, mode) {
@@ -375,6 +433,17 @@ function planWaveInner(input) {
   if (issues.length > 0) return invalid(issues);
 
   const mode = resolvePlanMode(input);
+
+  // Swarm waves are generated from the wave number alone, so they short-circuit the recipe
+  // lookup entirely — there is no authored ceiling to fall off at wave 31.
+  if (mode === SWARM_RULESET) {
+    return planSwarmWave({
+      seed,
+      wave,
+      rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
+    });
+  }
+
   const act = Number.isInteger(input.act)
     ? input.act
     : (mode === 'boss_circuit' ? 0 : actIndexForWave(wave));

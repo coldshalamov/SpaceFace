@@ -27,6 +27,7 @@ import { validateRunState } from '../core/runState.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import { SURVIVAL_DRAFT_CHOICES, offerDraft, rerollPrice } from '../data/survivalDraft.js';
+import { isSwarmDraftWave, isSwarmRefitWave, isSwarmRuleset } from './survivalSwarm.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits } from './ships.js';
 
@@ -147,6 +148,17 @@ export const survivalDraft = {
   _openDraft() {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    // A swarm run passes THROUGH `draft` between every wave, because cleanup has no legal edge
+    // straight back to wave_intro. On the four waves in five that are not upgrade waves, that
+    // pass-through must be invisible: resolve it here rather than opening a surface for one frame.
+    // Without this the player would see a menu flash on every single wave boundary.
+    if (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave)) {
+      this._offers = null;
+      this._wave = run.wave;
+      this._resolved = false;
+      this._finish({ picked: null, applied: false, reason: 'swarm_continuous' });
+      return;
+    }
     const loadout = this._activeLoadout();
     // Snapshot every input this draft was drawn from, INCLUDING count. A paid re-roll replays the
     // same inputs with a higher round number; re-deriving them live would let a peek disagree with
