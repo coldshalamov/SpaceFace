@@ -774,6 +774,13 @@ const CAUSAL_MEANS = Object.freeze({
   stacking: 'FIELD APPROACH · GIVE WAY',
 });
 
+// Phase-scoped means override: one cue can mean different things inside different events. The
+// calving borrows breaking_the_pattern's distress-alternate lamp, but the distressed party is the
+// rock, not the healthy miner's drive — the shared row would put a false read on the STATUS channel.
+const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
+  'ev_rock_calving:calve': 'SEAM FAILING · STAND CLEAR OF THE FACE',
+});
+
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
   const salvorSource = salvorSourceTruth(state, target);
@@ -814,7 +821,9 @@ function workerStatusText(target, state = null) {
   const phaseLabel = phase
     ? (CAUSAL_PHASE_LABEL[phase] || String(phase).replace(/_/g, ' ').toUpperCase())
     : null;
-  const means = cue ? CAUSAL_MEANS[cue] : null;
+  const means = (data.ceresCausalEventId && phase
+    && CAUSAL_PHASE_MEANS_OVERRIDE[`${data.ceresCausalEventId}:${phase}`])
+    || (cue ? CAUSAL_MEANS[cue] : null);
   if (phaseLabel && means) return `STATUS · ${phaseLabel} · ${means}`;
   if (means) return `STATUS · ${means}`;
   if (phaseLabel) return `STATUS · ${phaseLabel}`;
