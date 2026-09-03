@@ -10,6 +10,7 @@ import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
+import { crucibleFocus } from '../ui/crucibleFocus.js';             // hides campaign chrome in a run (DOM-guarded)
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
 import { physics } from './physics.js';
@@ -179,6 +180,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
     ['survivalHud', survivalHud],
+    ['crucibleFocus', crucibleFocus],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
     ['survivalAnnounce', survivalAnnounce],
