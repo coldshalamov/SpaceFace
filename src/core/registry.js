@@ -243,6 +243,88 @@ export function destroySystems(systems, dependencies = TEARDOWN_DEPENDENCIES) {
 }
 
 /**
+ * Own the registry's one-way init/destroy lifecycle. A browser registry is built around module
+ * singletons, so retrying a partial init or reinitializing after teardown would otherwise stack
+ * every event subscription those singletons install. Init failure tears down every system whose
+ * init was entered (including the throwing system), then permanently rejects retries.
+ *
+ * `getDestroyCandidates` is evaluated only when teardown starts. The normal registry supplies the
+ * manifest update order plus init order; a partial init supplies only the systems it reached.
+ *
+ * @param {{systems?: object[], context?: object, getDestroyCandidates?: function, dependencies?: Array}} options
+ */
+export function createSystemLifecycle({
+  systems = [],
+  context = null,
+  getDestroyCandidates = null,
+  dependencies = TEARDOWN_DEPENDENCIES,
+} = {}) {
+  const initSystems = Array.isArray(systems) ? systems : [];
+  const destroyCandidates = typeof getDestroyCandidates === 'function'
+    ? getDestroyCandidates
+    : () => initSystems;
+  let phase = 'new';
+  let initError = null;
+  let teardownStarted = false;
+
+  function lifecycleError(action) {
+    const error = new Error(`[registry] cannot ${action}: lifecycle is ${phase}`);
+    error.code = 'REGISTRY_LIFECYCLE_CLOSED';
+    error.lifecycleState = phase;
+    if (initError) error.cause = initError;
+    return error;
+  }
+
+  function teardown(candidates, finalPhase) {
+    if (teardownStarted) return;
+    teardownStarted = true;
+    phase = 'destroying';
+    try {
+      destroySystems(candidates, dependencies);
+    } finally {
+      phase = finalPhase;
+    }
+  }
+
+  function init() {
+    // A second call while active (or a reentrant call from an init hook) is a no-op. There is no
+    // second subscription pass and the original successful init keeps ownership of the runtime.
+    if (phase === 'active' || phase === 'initializing') return;
+    if (phase !== 'new') throw lifecycleError('initialize');
+
+    phase = 'initializing';
+    const attempted = [];
+    try {
+      for (const system of initSystems) {
+        if (!system || typeof system.init !== 'function') continue;
+        // Record before invoking init: a hook can install listeners and then throw, so its destroy
+        // hook is part of the partial-init rollback boundary too.
+        attempted.push(system);
+        system.init(context);
+      }
+      phase = 'active';
+    } catch (error) {
+      initError = error;
+      // Cleanup errors are isolated by destroySystems; preserve and rethrow the original init
+      // failure. `teardownStarted` makes a later destroy() unable to invoke any hook twice.
+      teardown(attempted, 'failed');
+      throw error;
+    }
+  }
+
+  function destroy() {
+    if (phase === 'destroyed' || phase === 'failed' || phase === 'destroying') return;
+    if (phase === 'initializing') throw lifecycleError('destroy');
+    // Preserve the historical ability to destroy a registry whose callers manually initialized
+    // selected systems without invoking registry.init(). A fresh registry has no lifecycle-owned
+    // init list, so this is the only safe compatibility path for that legacy usage.
+    teardown(destroyCandidates(), 'destroyed');
+  }
+
+  return { init, destroy };
+}
+
+/**
  * Build the browser/registry system lookup table. Presentation platform systems live here;
  * the authoritative init/update *order* comes from the runtime manifest (Phase 2).
  *
@@ -632,6 +714,13 @@ export function createRegistry(ctx) {
   byName.set('aiSlot', aiSlot);
   byName.set('flightSlot', flightSlot);
 
+  const lifecycle = createSystemLifecycle({
+    systems: SYSTEMS,
+    context: ctx,
+    getDestroyCandidates: () => [...UPDATE_ORDER, ...SYSTEMS],
+    dependencies: TEARDOWN_DEPENDENCIES,
+  });
+
   return {
     systems: SYSTEMS,
     /** Sim step order (same object refs as SYSTEMS slots). Exposed for contract tests. */
@@ -640,17 +729,8 @@ export function createRegistry(ctx) {
     runtimeManifest: resolved,
     ctx,
     get(name) { return byName.get(name); },
-    init() { for (const s of SYSTEMS) { if (s.init) s.init(ctx); } },
-    destroy() {
-      // Teardown is a dependency graph, not the inverse of init/update order. Keep the manifest
-      // order as the stable baseline, then move every declared dependent ahead of its owner (VFX
-      // must release scene/GPU roots before renderer retires the context). Mark each object before
-      // invoking it so duplicate aliases and a throwing destroy cannot cause a second call.
-      destroySystems(
-        [...UPDATE_ORDER, ...SYSTEMS],
-        TEARDOWN_DEPENDENCIES,
-      );
-    },
+    init: lifecycle.init,
+    destroy: lifecycle.destroy,
     step(dt, tickBoundary = null) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
