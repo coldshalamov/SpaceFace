@@ -3093,9 +3093,9 @@ const STATION_CSS = `
 .acquiring { animation: sf-signal-acquire .4s var(--ease) forwards; }
 
 /* ── Arrival strip: dock-moment local intel. Ink on vacuum — plain lines, no card. ───────────── */
-.st-arrival { padding: 2px 18px 6px; border-bottom: 1px solid color-mix(in srgb, var(--ink-dim, #8a93a6) 18%, transparent); }
-.st-arrival-line { font-size: 12px; color: var(--ink-dim, #8a93a6); letter-spacing: .02em; padding: 1px 0; }
-.st-arrival-line:first-child { color: var(--ink, #d7dde8); }
+.st-arrival { padding: 2px 18px 6px; border-bottom: 1px solid color-mix(in srgb, var(--ink-dim) 18%, transparent); }
+.st-arrival-line { font-size: 12px; color: var(--ink-dim); letter-spacing: .02em; padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-arrival-line:first-child { color: var(--ink); }
 @keyframes st-name-sweep { from { width: 0; opacity: 1; } to { width: 100%; opacity: .55; } }
 @keyframes channel-wipe { 0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); } }
 .switching { animation: channel-wipe .13s cubic-bezier(0.1, 0.9, 0.2, 1) forwards; }
@@ -3135,16 +3135,17 @@ const STATION_CSS = `
 .st-hub.st-hub--os {
   width: 100vw; height: 100vh; max-width: none; max-height: none;
   border: 0; border-radius: 0; box-shadow: none;
-  display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  display: grid; grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   overflow: hidden; pointer-events: auto;
 }
 /* Decks are PINNED to their rows so hiding one (e.g. the dismissed handoff) can never
    re-flow the body into an auto row and strand the footer mid-screen. */
 .st-hub.st-hub--os > .st-topdeck { grid-row: 1; }
-.st-hub.st-hub--os > .st-berth { grid-row: 2; }
-.st-hub.st-hub--os > .st-handoff { grid-row: 3; }
-.st-hub.st-hub--os > .st-body { grid-row: 4; }
-.st-hub.st-hub--os > .st-footer { grid-row: 5; }
+.st-hub.st-hub--os > .st-arrival { grid-row: 2; }
+.st-hub.st-hub--os > .st-berth { grid-row: 3; }
+.st-hub.st-hub--os > .st-handoff { grid-row: 4; }
+.st-hub.st-hub--os > .st-body { grid-row: 5; }
+.st-hub.st-hub--os > .st-footer { grid-row: 6; }
 .st-hub.st-hub--os {
   background:
     radial-gradient(120% 90% at 85% -20%, var(--st-accent-soft), transparent 55%),
