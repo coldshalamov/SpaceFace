@@ -52,9 +52,15 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
     // The Drifter's weapon capacity is 16 and two M guns cost 18, so the rear mount takes the S
     // marker rather than a second heavy — which is also the better rig: the thing you want pointing
     // backwards in a swarm is a tag on whatever is chasing you, not a slower gun.
+    // IT NEEDS THE ENGINE. Derived, the bare Drifter tops out at 134 — and the Corsair Raider that
+    // joins the roster at wave 10 does 147. On the hull built for the rope you could not break away
+    // from the fastest thing in the game: no disengage, no repositioning, no reaching a repair cell
+    // that dropped across the room. A Fusion Drive puts it at 196, comfortably clear of the whole
+    // roster, and still inside the hull's own outfit budget.
     loadout: [
       { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
       { slotIndex: 1, defId: 'wpn_gravity_marker_s' },
+      { slotIndex: 3, defId: 'mod_engine_fusion_m' },
       { slotIndex: 7, defId: 'mod_elastic_whip_m' },
     ],
   },
