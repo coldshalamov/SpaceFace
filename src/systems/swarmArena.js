@@ -49,7 +49,15 @@ export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
  * still reads as open space rather than a cave.
  */
 export const SWARM_DEBRIS_TARGET = 14;
-/** A hard ceiling, so a long run drifting across the sector can never accumulate a rock garden. */
+/**
+ * A ceiling on the field AROUND THE FIGHT, so a long run drifting across the sector can never
+ * accumulate a rock garden.
+ *
+ * It counts in-fight rocks only. Ones the fight has left behind are already released and on a
+ * twenty-second clock, so counting them here would starve the new field of exactly the rocks it is
+ * being built to replace. The live total can therefore sit briefly above this during a drift, and
+ * that is bounded by the release clock rather than by luck.
+ */
 export const SWARM_DEBRIS_MAX = 20;
 
 export const SWARM_DEBRIS_INNER = 130;
@@ -57,8 +65,20 @@ export const SWARM_DEBRIS_OUTER = 480;
 export const SWARM_DEBRIS_SIZE_MIN = 16;
 export const SWARM_DEBRIS_SIZE_MAX = 44;
 
-/** Rocks further than this from the player stop counting and are released. */
+/** Rocks further than this from the player are released to the engine's ordinary despawn sweep. */
 export const SWARM_DEBRIS_KEEP_RADIUS = 900;
+
+/**
+ * The radius the FIELD IS COUNTED IN, which is deliberately much tighter than the radius rocks are
+ * kept in.
+ *
+ * These used to be the same number, and a live walk found the consequence: by wave five the fight
+ * had drifted and there were eleven monoliths within 500 units instead of fourteen — the missing
+ * ones were sitting 600-900 away, still "kept", still counted, and completely useless. Counting in
+ * the band the fight actually happens in means the field stays dense where the player is, while
+ * the wider keep radius stops rocks being churned every time they fall a little behind.
+ */
+export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
 /** Minimum gap between two rock SURFACES, so the field never fuses into a wall. */
 export const SWARM_DEBRIS_SEPARATION = 46;
 /** Nothing spawns closer than this to the player, whatever the roll says. */
@@ -234,6 +254,7 @@ export const swarmArena = {
     if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
     const anchor = playerAnchor(state);
     const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
+    const fightSq = SWARM_DEBRIS_FIGHT_RADIUS * SWARM_DEBRIS_FIGHT_RADIUS;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
 
     // Census: every solid the field must not grow into, and how many of OUR rocks are still in
@@ -247,15 +268,23 @@ export const swarmArena = {
       if (!SOLID_TYPES.has(entity.type)) continue;
       const dx = entity.pos.x - anchor.x;
       const dz = entity.pos.z - anchor.z;
-      const inReach = dx * dx + dz * dz <= keepSq;
+      const distSq = dx * dx + dz * dz;
+      const inReach = distSq <= keepSq;
+      const inFight = distSq <= fightSq;
       const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
       if (inReach) {
         nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
-        if (ours) mine++;
+        // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
+        if (ours && inFight) mine++;
       }
       if (ours) {
         surviving.push(entity.id);
-        if (!inReach && entity.data) {
+        if (!entity.data) continue;
+        if (inFight) {
+          // Back in the fight after a wobble: cancel the release rather than letting a rock the
+          // player has returned to vanish under them.
+          entity.data.despawnAt = now + SWARM_DEBRIS_TTL_S;
+        } else {
           entity.data.despawnAt = Math.min(
             Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
             now + SWARM_DEBRIS_RELEASE_S,

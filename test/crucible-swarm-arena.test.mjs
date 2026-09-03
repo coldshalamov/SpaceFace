@@ -8,6 +8,7 @@ import { mulberry32 } from '../src/core/rng.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import {
+  SWARM_DEBRIS_FIGHT_RADIUS,
   SWARM_DEBRIS_INNER,
   SWARM_DEBRIS_KEEP_RADIUS,
   SWARM_DEBRIS_MAX,
@@ -151,6 +152,47 @@ test('the field follows the fight: drifting far re-anchors it around the player'
       assert.ok(rock.alive !== false, 'and was not deleted by hand');
     }
   }
+});
+
+test('the field stays dense where the FIGHT is, not merely within reach', () => {
+  // These radii used to be one number, and a live walk found eleven monoliths within 500 units by
+  // wave five instead of fourteen — the missing three were 600-900 away, still counted, and no use
+  // to anybody. Drift a short distance and the field must fill back in around the player.
+  const h = boot();
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  assert.equal(rocks(h).length, SWARM_DEBRIS_TARGET);
+
+  // Move less than the keep radius, so nothing is released, but far enough that the old field is
+  // no longer around the fight.
+  h.player.pos.x += SWARM_DEBRIS_FIGHT_RADIUS + 120;
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+
+  const near = rocks(h).filter(
+    (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_FIGHT_RADIUS,
+  );
+  assert.equal(near.length, SWARM_DEBRIS_TARGET, 'a full field around where the fight now is');
+  assert.ok(near.length <= SWARM_DEBRIS_MAX, 'and inside the ceiling, which counts the fight');
+  // The ones left behind are on the release clock, not counted, and not deleted by hand.
+  const behind = rocks(h).filter(
+    (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) > SWARM_DEBRIS_FIGHT_RADIUS,
+  );
+  for (const rock of behind) assert.ok(Number.isFinite(rock.data.despawnAt));
+});
+
+test('wobbling back to a rock cancels its release — it does not vanish under you', () => {
+  const h = boot();
+  h.state.simTime = 100;
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  const rock = rocks(h)[0];
+  // Drift out, so the whole field is scheduled to go.
+  h.player.pos.x += SWARM_DEBRIS_FIGHT_RADIUS + 200;
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  const releasedAt = rock.data.despawnAt;
+  assert.ok(releasedAt < h.state.simTime + 60, 'it was put on the short release clock');
+  // Come back.
+  h.player.pos.x -= SWARM_DEBRIS_FIGHT_RADIUS + 200;
+  h.bus.emit('run:wavePlanned', { wave: 3, plan: planFor(3) });
+  assert.ok(rock.data.despawnAt > releasedAt, 'and the release was cancelled when the fight returned');
 });
 
 test('the Gauntlet is untouched — no debris, exactly as it shipped', () => {
