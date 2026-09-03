@@ -3,6 +3,7 @@
 // P2: public runChromiumLabScenario(canonical) is zero-DI; injectable options are internal-only.
 
 import { spawn } from 'node:child_process';
+import { get as httpGet } from 'node:http';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -17,6 +18,8 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const HOST_PAGE = '/src/testing/lab/chromiumHostPage.html';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+const DOCUMENT_READY_TIMEOUT_MS = 90_000;
+const HOST_READY_TIMEOUT_MS = 90_000;
 
 /**
  * PUBLIC certifying Chromium path — accepts ONLY a compiled canonical.
@@ -100,6 +103,13 @@ export async function runChromiumLabScenarioInternal(canonical, options = {}) {
  * @returns {Promise<object>}
  */
 async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
+  const scenarioDigest = options.scenarioDigest || null;
+  let inputDigest = options.inputDigest || null;
+  if (!inputDigest && canonical && typeof canonical === 'object'
+    && canonical.inputTape && typeof canonical.inputTape === 'object') {
+    try { inputDigest = hashInputTape(canonical.inputTape); } catch (_) { /* identity unavailable */ }
+  }
+
   // Reject before launching a browser when the host cannot mirror the Node bundle.
   if (options.skipSupportCheck !== true) {
     const support = assertChromiumParitySupported(canonical);
@@ -109,6 +119,8 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
         status: support.status,
         error: support.reason,
         chromiumSupport: support,
+        scenarioDigest,
+        inputDigest,
         browserLaunches: 0,
         durationMs: 0,
       };
@@ -122,6 +134,11 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
   let timedOut = false;
   let timer = null;
   let launchCount = 0;
+  const pageDiagnostics = {
+    pageErrors: [],
+    consoleErrors: [],
+    requestFailures: [],
+  };
 
   const cleanup = async () => {
     if (timer) {
@@ -164,19 +181,37 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
         viewport: { width: 800, height: 600 },
         deviceScaleFactor: 1,
       });
+      page.on('pageerror', (error) => pushDiagnostic(
+        pageDiagnostics.pageErrors,
+        error && error.stack ? error.stack : (error && error.message ? error.message : String(error)),
+      ));
+      page.on('console', (message) => {
+        if (message.type() === 'error') pushDiagnostic(pageDiagnostics.consoleErrors, message.text());
+      });
+      page.on('requestfailed', (request) => pushDiagnostic(
+        pageDiagnostics.requestFailures,
+        `${request.url()} (${request.failure()?.errorText || 'unknown failure'})`,
+      ));
 
       const url = new URL(HOST_PAGE, server.baseUrl).href;
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: Math.min(30_000, timeoutMs) });
+      await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: Math.min(DOCUMENT_READY_TIMEOUT_MS, timeoutMs),
+      });
       await page.waitForFunction(
-        () => !!(window.__SF_BROWSER_LAB__ && window.__SF_BROWSER_LAB__.ready
-          && (window.__SF_BROWSER_LAB__.runBrowserLabScenarioInternal
-            || window.__SF_BROWSER_LAB__.runBrowserLabScenario)),
+        () => {
+          const host = window.__SF_BROWSER_LAB__;
+          if (host && host.status === 'error') {
+            throw new Error(`browser host module failed: ${host.error || 'unknown error'}`);
+          }
+          return !!(host && host.ready
+            && (host.runBrowserLabScenarioInternal || host.runBrowserLabScenario));
+        },
         null,
-        { timeout: Math.min(30_000, timeoutMs) },
+        { timeout: Math.min(HOST_READY_TIMEOUT_MS, timeoutMs) },
       );
 
-      const scenarioDigest = options.scenarioDigest || null;
-      const inputDigest = options.inputDigest || hashInputTape(canonical.inputTape);
+      inputDigest = inputDigest || hashInputTape(canonical.inputTape);
       const checkpointEvery = options.checkpointEvery;
       const checkpointTicks = options.checkpointTicks;
 
@@ -228,6 +263,8 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
           ok: false,
           status: 'infra',
           error: 'chromium scenario returned no result',
+          scenarioDigest,
+          inputDigest,
           browserLaunches: launchCount,
           durationMs: Date.now() - startedAt,
         };
@@ -245,6 +282,8 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
           error: result.error || 'chromium scenario failed',
           stack: result.stack,
           oracle: result.oracle || null,
+          scenarioDigest: result.scenarioDigest ?? scenarioDigest,
+          inputDigest: result.inputDigest ?? inputDigest,
           browserLaunches: launchCount,
           durationMs: Date.now() - startedAt,
         };
@@ -296,12 +335,26 @@ async function runChromiumLabScenarioInternalBody(canonical, options = {}) {
       ok: false,
       status: timedOut || err?.code === 'timeout' ? 'timeout' : 'infra_error',
       exitClass: 3,
-      error: err && err.message ? err.message : String(err),
+      error: `${err && err.message ? err.message : String(err)}${formatPageDiagnostics(pageDiagnostics)}`,
+      scenarioDigest,
+      inputDigest,
       browserLaunches: launchCount,
       durationMs: Date.now() - startedAt,
       timedOut,
     };
   }
+}
+
+function pushDiagnostic(list, value) {
+  if (list.length < 12) list.push(String(value).slice(0, 2_000));
+}
+
+function formatPageDiagnostics(diagnostics) {
+  const parts = [];
+  if (diagnostics.pageErrors.length > 0) parts.push(`pageerror=${JSON.stringify(diagnostics.pageErrors)}`);
+  if (diagnostics.consoleErrors.length > 0) parts.push(`console=${JSON.stringify(diagnostics.consoleErrors)}`);
+  if (diagnostics.requestFailures.length > 0) parts.push(`requestfailed=${JSON.stringify(diagnostics.requestFailures)}`);
+  return parts.length > 0 ? `; browser diagnostics: ${parts.join('; ')}` : '';
 }
 
 /**
@@ -354,13 +407,34 @@ async function startFreshServer(root) {
       throw new Error(`lab server exited early (${child.exitCode}): ${stderr.slice(-1000)}`);
     }
     try {
-      const response = await fetch(baseUrl);
-      if (response.ok) return { child, baseUrl, port };
+      if (await probeServer(baseUrl)) return { child, baseUrl, port };
     } catch (_) { /* retry */ }
     await new Promise((r) => setTimeout(r, 100));
   }
   try { await killProcessTree(child.pid); } catch (_) { /* ignore */ }
   throw new Error(`lab server failed to start: ${stderr.slice(-1000)}`);
+}
+
+function probeServer(baseUrl) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
+    const request = httpGet(baseUrl, { timeout: 1_000 }, (response) => {
+      const ok = response.statusCode >= 200 && response.statusCode < 400;
+      response.resume();
+      response.once('end', () => finish(ok));
+      response.once('error', () => finish(false));
+    });
+    request.once('timeout', () => {
+      request.destroy();
+      finish(false);
+    });
+    request.once('error', () => finish(false));
+  });
 }
 
 function freePort() {

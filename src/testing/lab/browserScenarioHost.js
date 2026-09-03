@@ -12,11 +12,9 @@ import { physics } from '../../core/physics.js';
 import { buildEntitySpawnSpec } from './entityProfiles.js';
 import { createInputTapeDriver, hashInputTape } from './inputTape.js';
 import { buildDeterministicSurface } from './deterministicSurface.js';
-import { evaluateOracles } from './oracleEngine.js';
+import { evaluateOracleKernel } from './oracleKernel.js';
 import { assertAssertionsConsumed } from './assertionConsumption.js';
 import { validateCanonicalScenario } from '../../contracts/simScenarioSchema.js';
-// Side-effect: register flight + massline metrics used by evaluateOracles.
-import '../metrics/masslineMetrics.js';
 
 /** Focused flight systems only — no scripts/ node:crypto imports. */
 export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
@@ -255,8 +253,17 @@ export async function runBrowserLabScenarioInternal(canonical, options = {}) {
  * @returns {Promise<object>}
  */
 async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
+  const scenarioDigest = options.scenarioDigest || null;
+  let inputDigest = options.inputDigest || null;
+
   if (!canonical || typeof canonical !== 'object') {
-    return { ok: false, status: 'invalid-config', error: 'canonical required' };
+    return {
+      ok: false,
+      status: 'invalid-config',
+      error: 'canonical required',
+      scenarioDigest,
+      inputDigest,
+    };
   }
 
   // M4: same schema validation surface as Node — no certification without validateCanonicalScenario.
@@ -267,8 +274,12 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
       status: 'invalid-config',
       error: 'canonical scenario failed schema validation',
       validation: canonicalValidation,
+      scenarioDigest,
+      inputDigest,
     };
   }
+
+  inputDigest = inputDigest || hashInputTape(canonical.inputTape);
 
   const support = assertChromiumParitySupported(canonical);
   if (!support.ok) {
@@ -277,6 +288,8 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
       status: support.status,
       error: support.reason,
       chromiumSupport: support,
+      scenarioDigest,
+      inputDigest,
     };
   }
 
@@ -291,8 +304,6 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
   // Always include final tick.
   if (ticks > 0) checkpointTicks.add(ticks - 1);
 
-  const scenarioDigest = options.scenarioDigest || null;
-  const inputDigest = options.inputDigest || hashInputTape(canonical.inputTape);
   // P2 public path always uses fixed focused systems; internal may inject for tests.
   const systems = options.systems || [...BROWSER_FOCUSED_FLIGHT_SYSTEMS];
 
@@ -343,6 +354,8 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
           ok: false,
           status: 'infra',
           error: 'SG-02 dynamic authority failed to become ready in Chromium',
+          scenarioDigest,
+          inputDigest,
         };
       }
     }
@@ -354,6 +367,8 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
         ok: false,
         status: 'invalid-config',
         error: 'canonical.inputTape is required — runner does not fall back to raw fields',
+        scenarioDigest,
+        inputDigest,
       };
     }
     const inputDriver = createInputTapeDriver(canonical.inputTape, {
@@ -474,6 +489,8 @@ async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
       status: 'infra',
       error: err && err.message ? err.message : String(err),
       stack: err && err.stack ? String(err.stack).slice(0, 2000) : undefined,
+      scenarioDigest,
+      inputDigest,
       focusedSystems: true,
     };
   }
@@ -517,6 +534,60 @@ function round6Preserve(n) {
   return Math.round(num * 1e6) / 1e6;
 }
 
+function evaluateOracles({
+  trace = [],
+  metrics = [],
+  assertions = [],
+  ctx = {},
+  equivalence = {},
+  skipMultiRunEquivalence = false,
+  scenarioDigest = null,
+} = {}) {
+  const pure = evaluateOracleKernel({ trace, metrics, assertions, ctx });
+  const equivalenceResults = evaluateBrowserEquivalence(
+    assertions.filter((a) => a && (a.kind === 'equivalence' || a.equivalence)),
+    equivalence,
+    { skipMultiRunEquivalence, scenarioDigest },
+  );
+  const results = [...pure.results, ...equivalenceResults];
+  const failed = results.filter((r) => r.ok === false && !r.skipped);
+  let firstBadTick = pure.firstBadTick;
+  for (const failure of failed) {
+    if (Number.isInteger(failure.firstBadTick)
+      && (firstBadTick == null || failure.firstBadTick < firstBadTick)) {
+      firstBadTick = failure.firstBadTick;
+    }
+  }
+  return { ...pure, ok: failed.length === 0, results, failed, firstBadTick };
+}
+
+// Chromium cannot validate a Node-side WeakMap seal across realms. It therefore only emits
+// explicit deferred/skipped/injected results; the fixed Node parent remains the authority.
+function evaluateBrowserEquivalence(assertions, equivalence, { skipMultiRunEquivalence = false } = {}) {
+  return assertions.map((assertion) => {
+    const name = assertion.equivalence || assertion.expected || assertion.signal || 'run-eq-repeat';
+    const pre = equivalence[name];
+    if (pre === true || pre === false || (pre && typeof pre === 'object')) {
+      return {
+        family: 'equivalence', id: name, ok: false, incomplete: true, injected: true,
+        expected: true, actual: pre, signedDelta: 1, firstBadTick: null,
+        reason: 'equivalence proof must be sealed by a fixed parent executor',
+      };
+    }
+    if (skipMultiRunEquivalence) {
+      return {
+        family: 'equivalence', id: name, ok: false, skipped: true, multiRunArm: true,
+        expected: true, actual: 'evaluated-by-parent', signedDelta: 0, firstBadTick: null,
+        reason: 'multi-run equivalence deferred to parent compare/repeat command',
+      };
+    }
+    return {
+      family: 'equivalence', id: name, ok: false, deferred: true, incomplete: true,
+      expected: true, actual: 'deferred', signedDelta: 1, firstBadTick: null,
+      reason: 'equivalence-deferred-not-computed — use lab repeat/compare (fixed parent executors)',
+    };
+  });
+}
 // Expose for the host page. Public zero-DI entry + internal for parent/host drivers.
 if (typeof window !== 'undefined') {
   window.__SF_BROWSER_LAB__ = {

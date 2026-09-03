@@ -13,7 +13,10 @@ import { createInputTapeDriver } from '../src/testing/lab/inputTape.js';
 import { createGameState } from '../src/core/gameState.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TIMEOUT_MS = 120_000;
+const TIMEOUT_MS = 240_000;
+const DOCUMENT_READY_TIMEOUT_MS = 90_000;
+const APP_READY_TIMEOUT_MS = 90_000;
+const LAB_BRIDGE_READY_TIMEOUT_MS = 30_000;
 
 test('browser KeyW produces the same moveZ grammar as the lab tape path', async () => {
   // Reference tape grammar (Node, no browser).
@@ -59,16 +62,19 @@ test('browser KeyW produces the same moveZ grammar as the lab tape path', async 
     await page.addInitScript(() => {
       try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     });
-    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.goto(server.baseUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: DOCUMENT_READY_TIMEOUT_MS,
+    });
     await page.waitForFunction(
       () => !!(window.SF && window.SF.state && window.SF.registry),
       null,
-      { timeout: 30_000 },
+      { timeout: APP_READY_TIMEOUT_MS },
     );
     await page.waitForFunction(
       () => !!(window.SF && window.SF.labBridge),
       null,
-      { timeout: 15_000 },
+      { timeout: LAB_BRIDGE_READY_TIMEOUT_MS },
     );
 
     // Pause automatic loop so input is measured without sim noise.

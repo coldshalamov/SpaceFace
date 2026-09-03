@@ -186,6 +186,10 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
   const chromiumHostFailed = isChromiumHostFailure(chromiumResult);
   if (chromiumHostFailed) {
     const isUnsupported = chromiumResult.status === 'unsupported';
+    const sameCompiledArtifact = nodeResult.scenarioDigest === scenarioDigest
+      && chromiumResult.scenarioDigest === scenarioDigest
+      && nodeResult.inputDigest === inputDigest
+      && chromiumResult.inputDigest === inputDigest;
     return {
       schema: 'spaceface.labDifferentialReplay.v1',
       ok: false,
@@ -194,10 +198,19 @@ export async function runDifferentialReplay(scenarioDoc, options = {}) {
       runId,
       scenarioDigest,
       inputDigest,
+      sameCompiledArtifact,
+      sameArtifact: {
+        scenarioDigest,
+        inputDigest,
+        nodeScenarioDigest: nodeResult.scenarioDigest ?? null,
+        chromiumScenarioDigest: chromiumResult.scenarioDigest ?? null,
+        match: sameCompiledArtifact,
+      },
       error: chromiumResult.error || 'chromium host failure',
       browserLaunches: chromiumResult.browserLaunches | 0,
       node: { series: nodeSeries, finalHash: nodeSeries.at(-1)?.hash || null },
       chromium: slimChromium(chromiumResult),
+      exactWithin: { crossRuntime: false, sameCoverage: false },
     };
   }
 
@@ -516,6 +529,7 @@ function slimNode(r) {
     status: r.status,
     error: r.error,
     scenarioDigest: r.scenarioDigest,
+    inputDigest: r.inputDigest,
     oracle: r.oracle
       ? { ok: r.oracle.ok, firstBadTick: r.oracle.firstBadTick, failed: r.oracle.failed }
       : null,
@@ -527,6 +541,8 @@ function slimChromium(r) {
     ok: r.ok,
     status: r.status,
     error: r.error,
+    scenarioDigest: r.scenarioDigest,
+    inputDigest: r.inputDigest,
     browserLaunches: r.browserLaunches,
     oracle: r.oracle
       ? { ok: r.oracle.ok, firstBadTick: r.oracle.firstBadTick, failed: r.oracle.failed }

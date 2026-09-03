@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import { compileSimScenario } from '../src/contracts/simScenarioSchema.js';
 import { runDifferentialReplay, runChromiumDeterminismCheck } from '../src/testing/lab/differentialReplay.js';
+import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
+import { evaluateOracleKernel } from '../src/testing/lab/oracleKernel.js';
 import { compareCheckpoints } from '../src/testing/lab/checkpointCompare.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -79,6 +81,40 @@ test('repeated Chromium run is deterministic within declared coverage', async ()
   assert.equal(det.ok, true, JSON.stringify(det.firstBad || det.error || det));
   assert.equal(det.deterministic, true);
   assert.ok(det.finalHash);
+});
+
+test('Node and Chromium oracle paths share the browser-safe pure kernel', () => {
+  const browserHostSource = readFileSync(
+    join(ROOT, '../src/testing/lab/browserScenarioHost.js'),
+    'utf8',
+  );
+  const nodeOracleSource = readFileSync(
+    join(ROOT, '../src/testing/lab/oracleEngine.js'),
+    'utf8',
+  );
+  const kernelSource = readFileSync(
+    join(ROOT, '../src/testing/lab/oracleKernel.js'),
+    'utf8',
+  );
+  assert.match(browserHostSource, /from ['"]\.\/oracleKernel\.js['"]/);
+  assert.match(nodeOracleSource, /from ['"]\.\/oracleKernel\.js['"]/);
+  assert.doesNotMatch(kernelSource, /from ['"]\.\/equivalenceAuthority\.js['"]|from ['"]node:crypto['"]/);
+
+  const trace = [
+    { tick: 0, hull: 10, cap: 8, credits: 4, playerAlive: true, cmdRejected: false },
+    { tick: 1, hull: 10, cap: 8, credits: 4, playerAlive: true, cmdRejected: false },
+  ];
+  const kernel = evaluateOracleKernel({
+    trace,
+    assertions: [{ kind: 'never', signal: 'cmdRejected' }],
+  });
+  const node = evaluateOracles({
+    trace,
+    assertions: [{ kind: 'never', signal: 'cmdRejected' }],
+    skipMultiRunEquivalence: true,
+  });
+  assert.deepEqual(node.results, kernel.results);
+  assert.equal(node.ok, kernel.ok);
 });
 
 test('compareCheckpoints unit: hash-only series', () => {
