@@ -795,6 +795,39 @@ test('rich-seam strike opens one material opportunity and exact miner work loads
   assert.equal(miner.data.cargoManifest.totalQty, 16, 'duplicate work cannot mint a second rich lot');
 });
 
+test('calving coda re-arms the rich-seam window as the fresh-face aftermath', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepTo(traffic, state, 24); // strike seeded → primary window open
+  const strikeWindow = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(strikeWindow.state, 'open');
+  assert.equal(strikeWindow.sourceEventId, 'ev_rich_seam_strike');
+
+  // A calving that reached its calve phase cannot preempt the live strike window...
+  const preempt = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: true });
+  assert.equal(preempt.opportunityId, strikeWindow.opportunityId);
+  // ...and an interrupted calving (calve phase never reached) opens nothing at all.
+  assert.equal(traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: false }), null);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).opportunityId, strikeWindow.opportunityId);
+
+  // Work the strike window through the extraction owner; the calved fresh face then re-arms it.
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
+  assert.equal(work.applied, true);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
+  const rearmed = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: true });
+  assert.ok(rearmed, 'the seeded calving re-arms the resolved seam window');
+  assert.equal(rearmed.state, 'open');
+  assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
+  assert.equal(rearmed.attempt, 1);
+  assert.equal(rearmed.bonusU, 8);
+  const readout = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(readout.state, 'open');
+  assert.equal(readout.opportunityId, rearmed.opportunityId);
+  void miner;
+});
+
 test('explicit HELP reserves the seam for the NPC owner and changes the resolved lot', () => {
   const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
   const depletion = { ...fieldDepletionBase };

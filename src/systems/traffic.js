@@ -6562,13 +6562,25 @@ export const traffic = {
   },
 
   _openCeresRichSeamOpportunity(live) {
-    if (!live || live.eventId !== 'ev_rich_seam_strike') return null;
+    if (!live) return null;
+    // The strike opens the seam's primary window; a calving that actually reached its calve phase
+    // re-arms the window as the catalog's fresh-face aftermath ("fresh faces are visibly brighter
+    // ore") once the prior window has resolved. An interrupted calving never visibly happened, so
+    // it opens nothing — exactly the seeded/not-seeded distinction the chain ledger already keeps.
+    const isStrike = live.eventId === 'ev_rich_seam_strike';
+    const isCalving = live.eventId === 'ev_rock_calving' && live.seeded === true;
+    if (!isStrike && !isCalving) return null;
+    const cycle = this._ceresCausal && this._ceresCausal.cycle || 0;
     const rec = openRichSeamOpportunity(this.state, {
       fieldId: 'f_ceres_1',
       activityObjectSlotId: CERES_RICH_SEAM_OBJECT_SLOT_ID,
       sectorId: CERES_ACTIVITY_SECTOR_ID,
       sourceEventId: live.eventId,
-      sourceCycle: this._ceresCausal && this._ceresCausal.cycle || 0,
+      sourceCycle: cycle,
+      attempt: isCalving ? 1 : 0,
+      opportunityId: isCalving
+        ? `rich-seam:f_ceres_1:${CERES_RICH_SEAM_OBJECT_SLOT_ID}:${cycle}:calved`
+        : undefined,
       simTime: this.state && this.state.simTime,
     });
     if (rec && this.bus && typeof this.bus.emit === 'function') this.bus.emit('field:richSeamOpened', rec);

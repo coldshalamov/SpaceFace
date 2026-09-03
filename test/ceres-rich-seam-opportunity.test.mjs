@@ -441,3 +441,61 @@ test('station Hold escapes crafted rich-lot provenance before innerHTML', () => 
   assert.match(html, /&quot; onmouseover=/);
   assert.doesNotMatch(html, /<img\b|<script\b|onmouseover="<script/);
 });
+
+test('calving aftermath re-arms a resolved window in the same cycle; live windows still win', () => {
+  const state = opportunityState();
+  const strike = openOpportunity(state);
+  assert.equal(strike.state, 'open');
+  assert.equal(strike.attempt, 0);
+
+  const calveArgs = {
+    fieldId: FIELD_ID,
+    activityObjectSlotId: SLOT_ID,
+    sectorId: 'sector_ceres_belt',
+    sourceEventId: 'ev_rock_calving',
+    sourceCycle: 3,
+    attempt: 1,
+    opportunityId: `rich-seam:${FIELD_ID}:${SLOT_ID}:3:calved`,
+    simTime: state.simTime,
+  };
+  // The calving's fresh face cannot replace the strike's still-open window.
+  const refused = openRichSeamOpportunity(state, calveArgs);
+  assert.equal(refused.opportunityId, strike.opportunityId);
+  assert.equal(refused.sourceEventId, 'ev_rich_seam_strike');
+
+  // Work the strike window; the calving then re-arms the seam as the fresh-face aftermath.
+  const worked = claimRichSeamOpportunity(state, {
+    fieldId: FIELD_ID,
+    activityObjectSlotId: SLOT_ID,
+    claimId: 'claim:calving-rearm',
+    claimedByKind: 'player',
+    resolution: 'work',
+    simTime: state.simTime,
+  });
+  assert.equal(worked.state, 'worked');
+  const rearmed = openRichSeamOpportunity(state, calveArgs);
+  assert.ok(rearmed);
+  assert.equal(rearmed.state, 'open');
+  assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
+  assert.equal(rearmed.attempt, 1);
+
+  // A repeat same-attempt open stays idempotent while the re-armed window is live.
+  const again = openRichSeamOpportunity(state, calveArgs);
+  assert.equal(again.opportunityId, rearmed.opportunityId);
+
+  // Once the re-armed window expires, the NEXT cycle's primary strike supersedes the calved record.
+  expireRichSeamOpportunities(state, state.simTime + 181);
+  const nextStrike = openRichSeamOpportunity({ ...state, simTime: state.simTime + 182 }, {
+    fieldId: FIELD_ID,
+    activityObjectSlotId: SLOT_ID,
+    sectorId: 'sector_ceres_belt',
+    sourceEventId: 'ev_rich_seam_strike',
+    sourceCycle: 4,
+    simTime: state.simTime + 182,
+  });
+  assert.ok(nextStrike);
+  assert.equal(nextStrike.state, 'open');
+  assert.equal(nextStrike.sourceEventId, 'ev_rich_seam_strike');
+  assert.equal(nextStrike.attempt, 0);
+  assert.equal(nextStrike.sourceCycle, 4);
+});

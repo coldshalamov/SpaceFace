@@ -99,6 +99,9 @@ function normalizeRichSeamOpportunity(input, key = null) {
     sectorId: fieldIdOf(rec.sectorId),
     sourceEventId: fieldIdOf(rec.sourceEventId),
     sourceCycle: Math.max(0, Math.floor(finiteNonNegative(rec.sourceCycle))),
+    // Rank of the open that produced this record within its cycle (0 = the primary authored open,
+    // 1 = a same-cycle re-arm such as the rock calving's fresh face). Absent in pre-reopen saves.
+    attempt: Math.max(0, Math.floor(finiteNonNegative(rec.attempt, 0))),
     state,
     openedAtT,
     expiresAtT,
@@ -138,13 +141,21 @@ export function openRichSeamOpportunity(state, payload = {}) {
   const own = ensureFieldDepletionState(state);
   const now = finiteNonNegative(payload.simTime, finiteNonNegative(state && state.simTime));
   const sourceCycle = Math.max(0, Math.floor(finiteNonNegative(payload.sourceCycle)));
+  const attempt = Math.max(0, Math.floor(finiteNonNegative(payload.attempt, 0)));
   const opportunityId = typeof payload.opportunityId === 'string' && payload.opportunityId
     ? payload.opportunityId
     : `rich-seam:${key}:${sourceCycle}`;
   const existing = normalizeRichSeamOpportunity(own.opportunities[key], key);
-  if (existing && (existing.state === 'open'
-    || existing.opportunityId === opportunityId
-    || sourceCycle <= existing.sourceCycle)) return { ...existing };
+  if (existing) {
+    // A live window always wins. A terminal (worked/missed) record may be superseded by a NEW
+    // cycle (sourceCycle advancing) — the authored per-cycle strike — or by a strictly higher
+    // same-cycle attempt, which is how the rock calving re-arms the seam's fresh face after the
+    // strike window has resolved. Absent attempts behave exactly as before this field existed.
+    if (existing.state === 'open') return { ...existing };
+    if (attempt <= (existing.attempt || 0) && sourceCycle <= existing.sourceCycle) {
+      return { ...existing };
+    }
+  }
   const durationS = Math.max(1, finiteNonNegative(payload.durationS, RICH_SEAM_OPPORTUNITY_WINDOW_S));
   const rec = normalizeRichSeamOpportunity({
     opportunityId,
@@ -153,6 +164,7 @@ export function openRichSeamOpportunity(state, payload = {}) {
     sectorId: payload.sectorId || sectorIdOf(state, payload),
     sourceEventId: payload.sourceEventId || 'ev_rich_seam_strike',
     sourceCycle,
+    attempt,
     state: 'open',
     openedAtT: now,
     expiresAtT: now + durationS,
