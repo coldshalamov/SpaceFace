@@ -7039,6 +7039,20 @@ export const traffic = {
       && chain.active.length === 0
       && chain.completed.length >= CERES_CAUSAL_CHAIN.length) {
       // Full cycle resolved with no player input. Gap, then re-arm from the seam strike again.
+      // The pocket's story reaches the station news feed: which cycle resolved decides the line
+      // (aftermath branch opened = loss story; clean service = clean shift). aftermath_open is the
+      // honest discriminator — the cutter is in `completed` on both paths (skipped on success).
+      const aftermathRan = chain.seeds.aftermath_open === true;
+      this.bus.emit('news:publish', {
+        text: aftermathRan
+          ? 'Salvors strip the Ceres cathedral wreck as the refinery writes off another seam casualty.'
+          : 'Ceres refinery logs another clean seam shift; the seam rock calved and held.',
+        kind: 'ceres_seam_story',
+        sourceRef: 'traffic:ceres-causal-chain',
+        channelId: 'news',
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        cycle: (chain.cycle | 0) + 1,
+      });
       chain.cycle = (chain.cycle | 0) + 1;
       chain.nextIndex = 0;
       chain.completed = [];

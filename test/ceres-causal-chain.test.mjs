@@ -407,8 +407,11 @@ test('full chain reaches a believable terminal outcome after authored miner work
     asteroid,
     tender,
     combatKernel,
+    bus,
   } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
   assert.ok(combatKernel, 'the tender link uses the live combat-kernel registry seam');
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
   stepTo(traffic, state, 0);
   stepTo(traffic, state, 24);
   assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
@@ -498,6 +501,14 @@ test('full chain reaches a believable terminal outcome after authored miner work
       `missing calving ${kind} receipt ${phase}/${cue}`,
     );
   }
+
+  // The resolved cycle tells its story on the station news feed — the clean-shift line on the
+  // success path, published once through the authored news:publish channel.
+  const cleanStories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.equal(cleanStories.length, 1, 'one seam story per resolved cycle');
+  assert.match(cleanStories[0].text, /clean seam shift/);
+  assert.equal(cleanStories[0].channelId, 'news');
+  assert.equal(cleanStories[0].sectorId, CERES_ACTIVITY_SECTOR_ID);
 });
 
 test('real miner work opens the hauler-call link while rich seam may still be active', () => {
@@ -1035,7 +1046,9 @@ test('actor death falls back and plants interrupt seeds (divergent from complete
 });
 
 test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () => {
-  const { traffic, state, receipts, asteroid } = bootCausalHarness({ simTime: 0 });
+  const { traffic, state, receipts, asteroid, bus } = bootCausalHarness({ simTime: 0 });
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
   materializeRichLoad(traffic, state, asteroid);
   const entered = runUntil(
     traffic,
@@ -1074,6 +1087,10 @@ test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () =>
     { start: state.simTime, maxS: 900, stepS: 3 },
   );
   assert.ok(doneAt != null, 'cycle must complete after mid-scan interrupt');
+  // The aftermath cycle tells the loss story, not the clean-shift line.
+  const stories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.equal(stories.length, 1, 'one seam story per resolved cycle');
+  assert.match(stories[0].text, /writes off another seam casualty/);
 });
 
 test('D1: every chain entry authors interruptSeeds distinct from complete seeds where story diverges', () => {
