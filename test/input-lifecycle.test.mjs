@@ -4,6 +4,145 @@ import test from 'node:test';
 import { input, shouldNeutralizeFlightInput } from '../src/systems/input.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
 
+class FakeEventTarget {
+  constructor() {
+    this.listeners = new Map();
+  }
+
+  addEventListener(type, listener) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type).add(listener);
+  }
+
+  removeEventListener(type, listener) {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  dispatch(type, event = {}) {
+    const payload = event;
+    payload.type = type;
+    if (typeof payload.preventDefault !== 'function') {
+      payload.preventDefault = () => { payload.defaultPrevented = true; };
+    }
+    for (const listener of [...(this.listeners.get(type) || [])]) listener(payload);
+  }
+
+  listenerCount(type) {
+    return this.listeners.get(type)?.size || 0;
+  }
+}
+
+function installFakeInputDom() {
+  const previous = {};
+  for (const name of ['window', 'document', 'innerWidth', 'innerHeight', 'addEventListener', 'removeEventListener']) {
+    previous[name] = {
+      present: Object.prototype.hasOwnProperty.call(globalThis, name),
+      value: globalThis[name],
+    };
+  }
+
+  const windowTarget = new FakeEventTarget();
+  windowTarget.innerWidth = 1280;
+  windowTarget.innerHeight = 800;
+  const canvasTarget = new FakeEventTarget();
+  globalThis.window = windowTarget;
+  globalThis.document = {
+    getElementById(id) { return id === 'gl-canvas' ? canvasTarget : null; },
+  };
+  globalThis.innerWidth = 1280;
+  globalThis.innerHeight = 800;
+  globalThis.addEventListener = windowTarget.addEventListener.bind(windowTarget);
+  globalThis.removeEventListener = windowTarget.removeEventListener.bind(windowTarget);
+
+  return {
+    windowTarget,
+    canvasTarget,
+    restore() {
+      for (const [name, entry] of Object.entries(previous)) {
+        if (entry.present) globalThis[name] = entry.value;
+        else delete globalThis[name];
+      }
+    },
+  };
+}
+
+function makeDomInputState() {
+  return {
+    mode: 'flight',
+    playerId: 1,
+    entities: new Map(),
+    input: {
+      blocked: false,
+      pointerScreen: { x: 0, y: 0, active: false },
+      actions: {},
+    },
+    settings: {
+      gameplay: { controlScheme: 'pilot' },
+      controls: {
+        bindings: {},
+        gamepad: { enabled: false },
+        touch: { enabled: false },
+      },
+    },
+  };
+}
+
+test('DOM input init is idempotent and destroy removes only owned listeners', () => {
+  const dom = installFakeInputDom();
+  const host = Object.create(input);
+  const state = makeDomInputState();
+  const ctx = { state, bus: { emit() {} }, helpers: {} };
+  const foreignKeydown = () => {};
+  dom.windowTarget.addEventListener('keydown', foreignKeydown);
+
+  try {
+    host.init(ctx);
+    host.init(ctx);
+
+    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+      assert.equal(dom.windowTarget.listenerCount(type), type === 'keydown' ? 2 : 1, type);
+    }
+    assert.equal(dom.canvasTarget.listenerCount('mousedown'), 1);
+    assert.equal(dom.canvasTarget.listenerCount('contextmenu'), 1);
+
+    dom.windowTarget.dispatch('keydown', { code: 'KeyW', target: null });
+    dom.canvasTarget.dispatch('mousedown', { button: 0, target: dom.canvasTarget, clientX: 640, clientY: 400 });
+    assert.equal(host._keys.KeyW, true);
+    assert.equal(host._m0, true);
+    assert.equal(host._screen.active, true);
+    assert.equal(state.input.pointerScreen.active, true);
+
+    const contextMenu = { target: dom.canvasTarget, defaultPrevented: false };
+    dom.canvasTarget.dispatch('contextmenu', contextMenu);
+    assert.equal(contextMenu.defaultPrevented, true);
+
+    dom.windowTarget.dispatch('blur');
+    assert.equal(host._keys.KeyW, false);
+    assert.equal(host._m0, false);
+    assert.equal(host._screen.active, false);
+    assert.equal(state.input.pointerScreen.active, false);
+
+    host.destroy();
+    assert.equal(host._domAdapterAttached, false);
+    for (const type of ['resize', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+      assert.equal(dom.windowTarget.listenerCount(type), 0, type);
+    }
+    assert.equal(dom.windowTarget.listenerCount('keydown'), 1, 'foreign keydown listener survives');
+    assert.equal(dom.canvasTarget.listenerCount('mousedown'), 0);
+    assert.equal(dom.canvasTarget.listenerCount('contextmenu'), 0);
+
+    host.init(ctx);
+    for (const type of ['resize', 'keydown', 'keyup', 'blur', 'mousemove', 'pointermove', 'mouseup']) {
+      assert.equal(dom.windowTarget.listenerCount(type), type === 'keydown' ? 2 : 1, type);
+    }
+    assert.equal(dom.canvasTarget.listenerCount('mousedown'), 1);
+    assert.equal(dom.canvasTarget.listenerCount('contextmenu'), 1);
+    host.destroy();
+  } finally {
+    dom.restore();
+  }
+});
+
 test('flight input fence neutralizes controls while a drill approach owns the handoff', () => {
   const state = { mode: 'flight', ui: { screenStack: [] }, input: { blocked: false } };
   assert.equal(shouldNeutralizeFlightInput(state, false), false);

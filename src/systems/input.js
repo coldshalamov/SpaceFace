@@ -673,9 +673,16 @@ function simClockMs(state) {
 export const input = {
   name: 'input',
   init(ctx) {
+    if (this._initialized || this._domAdapterAttached
+      || (Array.isArray(this._domBindings) && this._domBindings.length > 0)) {
+      this.destroy();
+    }
+    this._initialized = true;
+    this._inputContext = ctx;
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._domBindings = [];
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
     const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
@@ -706,7 +713,7 @@ export const input = {
 
     // H3: DOM adapter is browser-only. Deterministic grammar/key state initializes without window.
     // Node hosts (lab production-manifest path) keep pure reducer state; tape driver writes keys.
-    if (typeof window === 'undefined' || typeof addEventListener !== 'function') {
+    if (typeof window === 'undefined' || !window || typeof window.addEventListener !== 'function') {
       this._domAdapterAttached = false;
       return;
     }
@@ -719,10 +726,18 @@ export const input = {
    * @param {Record<string, boolean>} keys
    */
   _attachDomInputAdapter(keys) {
-    // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
-    addEventListener('resize', () => this.touch.autoDetect());
+    const windowTarget = typeof window !== 'undefined' ? window : null;
+    const bindings = (this._domBindings = []);
+    const listen = (target, type, listener, options) => {
+      if (!target || typeof target.addEventListener !== 'function') return;
+      target.addEventListener(type, listener, options);
+      bindings.push({ target, type, listener, options });
+    };
 
-    addEventListener('keydown', (e) => {
+    // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
+    listen(windowTarget, 'resize', () => this.touch.autoDetect());
+
+    listen(windowTarget, 'keydown', (e) => {
       const code = eventCode(e);
       if (!code) return;
       const blocked = modalInputActive()
@@ -737,7 +752,7 @@ export const input = {
       // F4: mark activity; tick stamp applied in update() from state.tick.
       this._kbmActivityPending = true;
     });
-    addEventListener('keyup', (e) => {
+    listen(windowTarget, 'keyup', (e) => {
       const code = eventCode(e);
       if (code) {
         applyFlightKeyTransition(keys, transitionFlightKeyState(this.state, keys, {
@@ -746,8 +761,8 @@ export const input = {
         }));
       }
     });
-    addEventListener('blur', () => this.releaseHeldControls('window-blur'));
-    const pointerSurface = this._canvas || window;
+    listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
+    const pointerSurface = this._canvas || windowTarget;
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       const geometry = centeredPointer();
@@ -779,9 +794,9 @@ export const input = {
     };
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
     // otherwise leave the software cursor at its fallback center until a later unhandled move.
-    addEventListener('mousemove', handlePointerMove, { capture: true });
-    addEventListener('pointermove', handlePointerMove, { capture: true });
-    pointerSurface.addEventListener('mousedown', (e) => {
+    listen(windowTarget, 'mousemove', handlePointerMove, { capture: true });
+    listen(windowTarget, 'pointermove', handlePointerMove, { capture: true });
+    listen(pointerSurface, 'mousedown', (e) => {
       handlePointerMove(e);
       if (this._canvas && e.target !== this._canvas) {
         this._m0 = false; this._m1 = false; this._m2 = false;
@@ -796,8 +811,42 @@ export const input = {
       if (e.button === 2) this._m2 = true;
       this._kbmActivityPending = true;
     });
-    addEventListener('mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
-    pointerSurface.addEventListener('contextmenu', (e) => e.preventDefault());
+    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) this._m2 = false; });
+    listen(pointerSurface, 'contextmenu', (e) => e.preventDefault());
+  },
+
+  destroy() {
+    const bindings = this._domBindings;
+    if (Array.isArray(bindings)) {
+      for (const { target, type, listener, options } of bindings) {
+        try {
+          target.removeEventListener(type, listener, options);
+        } catch (_) {
+          // A host may remove its DOM surface before registry teardown; remaining bindings still
+          // need to be forgotten so a later init cannot retain stale callbacks.
+        }
+      }
+      bindings.length = 0;
+    }
+
+    this.releaseHeldControls('destroy');
+    const touch = this.touch;
+    if (touch && typeof touch.setEnabled === 'function') {
+      try { touch.setEnabled(false); } catch (_) {}
+    }
+
+    const context = this._inputContext;
+    if (context && context.gamepad === this.gamepad) context.gamepad = null;
+    if (context && context.touch === this.touch) context.touch = null;
+    this._domAdapterAttached = false;
+    this._initialized = false;
+    this._inputContext = null;
+    this.state = null;
+    this.bus = null;
+    this.helpers = null;
+    this.gamepad = null;
+    this.touch = null;
+    this._canvas = null;
   },
 
   // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.
