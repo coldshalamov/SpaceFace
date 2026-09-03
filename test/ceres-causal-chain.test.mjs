@@ -1351,3 +1351,43 @@ test('visible cue stamps land on bound actors for the ordinary camera path', () 
   assert.equal(miner.data.ceresCausalPhase, 'cutting');
   assert.equal(miner.data.ceresCausalCue, 'blind_cone');
 });
+
+test('the cutter count spill drops real grabbable pickups at the wreck, once per link', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this spill-only test.
+  let spawnSeq = 9000;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const cutterDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cutter_strips_wreck');
+  const live = { eventId: cutterDef.id, phase: 'stack', actorSlotIds: [cutterDef.actorSlots[0]] };
+  const spillPickups = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresSpillSource === 'ev_cutter_strips_wreck');
+  assert.equal(spillPickups().length, 0, 'no spill before the stack phase');
+
+  traffic._applyCeresCausalPhaseEffects(cutterDef, live, 'stack');
+  const spilled = spillPickups();
+  assert.equal(spilled.length, 3, 'the stack spills the cutting count');
+  const salvor = state.entityList.find((entity) => entity.data
+    && entity.data.activityActorSlotId === 'ceres_cathedral_salvor');
+  assert.ok(salvor, 'the salvor cast is live in the harness');
+  for (const pickup of spilled) {
+    assert.equal(pickup.data.commodityId, 'cmdty_scrap_metal');
+    assert.equal(pickup.data.amount, 2);
+    assert.ok(pickup.data.despawnAt > state.simTime, 'the spill despawns on a timer');
+    const drift = Math.hypot(pickup.pos.x - salvor.pos.x, pickup.pos.z - salvor.pos.z);
+    assert.ok(drift < 30, `spill lands at the wreck (drift ${drift.toFixed(1)}wu)`);
+  }
+
+  traffic._applyCeresCausalPhaseEffects(cutterDef, live, 'stack');
+  assert.equal(spillPickups().length, 3, 'the stack spills once per link, not per tick');
+});

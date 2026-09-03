@@ -383,6 +383,10 @@ const CERES_TENDER_SERVICE_STANDOFF_WU = 56;
 const CERES_TENDER_SERVICE_CLEARANCE_WU = 12;
 const CERES_TENDER_SERVICE_HOLD_S = 3;
 const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
+// The salvor's stack phase spills its cutting count as real ore pickups (see _spillCeresCutterCount).
+const CERES_CUTTER_SPILL_PICKUPS = 3;
+const CERES_CUTTER_SPILL_QTY = 2;
+const CERES_CUTTER_SPILL_TTL_S = 180;
 // The calved fresh face out-pays the strike's default seam bonus (fieldDepletion default 8u):
 // the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
 // richer one. The target panel names it FRESH SEAM and the Hold's lot row shows the bonus size.
@@ -6781,6 +6785,38 @@ export const traffic = {
     return true;
   },
 
+  /**
+   * The salvor's stack phase spills its cutting count as real ore pickups at the wreck — the
+   * stripping aftermath the player can dive into and grab. Deterministic spread (hash32, no
+   * shared-rng consumption), TTL-bounded, once per link (the cutter stacks once per cycle).
+   */
+  _spillCeresCutterCount(live) {
+    if (!live || live.countSpilled) return;
+    const bound = this._ceresCausalActorBySlot(CERES_CATHEDRAL_SALVOR_SLOT_ID);
+    if (!bound || !bound.entity || !bound.entity.pos) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    for (let index = 0; index < CERES_CUTTER_SPILL_PICKUPS; index++) {
+      const angle = (hash32(live.eventId, index, 'stack-spill') % 6284) / 1000;
+      const radius = 10 + (hash32(live.eventId, index, 'stack-radius') % 9);
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: {
+          x: bound.entity.pos.x + Math.cos(angle) * radius,
+          z: bound.entity.pos.z + Math.sin(angle) * radius,
+        },
+        vel: { x: Math.cos(angle) * 6, z: Math.sin(angle) * 6 },
+        radius: 2.4, mass: 0.4, collides: true,
+        data: {
+          kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: CERES_CUTTER_SPILL_QTY,
+          despawnAt: now + CERES_CUTTER_SPILL_TTL_S,
+          ceresSpillSource: 'ev_cutter_strips_wreck',
+        },
+      });
+    }
+    live.countSpilled = true;
+  },
+
   _restoreCeresCausalJobs(live) {
     if (!live || !Array.isArray(live.redirectedSlots) || !live.redirectedSlots.length) return;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
@@ -6809,8 +6845,13 @@ export const traffic = {
 
   _applyCeresCausalPhaseEffects(def, live, phaseName) {
     if (!def || !live) return;
-    // Choreography-only: no cargo minting, no economy writes. Job redirects + cue stamps are the
-    // visible seam until Phase 3 presentation consumes the stamps.
+    // Choreography-only for every link except one authored exception: the salvor's stack phase is
+    // the wreck-stripping aftermath made physical (catalog: "scattered pickups persist briefly").
+    // The spill rides the standard pickup pipeline — the collecting player owns the cargo write,
+    // exactly like the disabled-hauler spill — so traffic mints no cargo onto any hull.
+    if (def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {
+      this._spillCeresCutterCount(live);
+    }
     this._applyCeresCausalJobHints(def, live, phaseName);
     void phaseName;
   },
