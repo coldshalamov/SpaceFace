@@ -53,6 +53,9 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   fixing the feel"** → §13C, [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md), then
   `node scripts/program-dispatch.mjs --id PQ-137`. Answer with a bar from the contract and the
   number that moved — not more enemies, ships, stations, or camera shake.
+- **Finish the game / what is next for release / the professional bar / plan the finish** → §15,
+  the three release milestones and their gates, then `node scripts/program-dispatch.mjs --id PQ-146`
+  (or any ID in §15.2). Feel before content; surface before invent; collide before add.
 - **3D objects look like toys next to real ships** (tube+ring beacons, cargo pods, 47-A
   spindle, uneven quality) → [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
   and the operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt). Same
@@ -2178,3 +2181,848 @@ Rules: usage renews every five hours — a lane that dies on quota is retried a 
 abandoned. Implementers and reviewers are always different models. Every lane partitions writes by
 **file**; two agents never hold the same file. Every leaf commits immediately after review, scoped to
 its exact paths. `npm run check:playable` is run before any "done".
+
+## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-172`, plus eight reactivated packets) — ADMITTED 2026-09-03
+
+**Source:** the owner's direction of 2026-09-03 (*"plan out the finish of this game … creative,
+fun, fast-paced, nuanced, and performant"*), [`design/VISION.md`](./design/VISION.md) Parts I and II,
+[`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md), a same-day read-only audit of audio, meta,
+progression, story, and surfaces, and two outside brainstorms graded in §15.9. This section is the
+**finish line**: it sequences every existing program into three release milestones with measurable
+gates, reactivates the eight deferred packets that already own parts of the finish, and adds only the
+plans that no existing source owns. It does not restate §8, §11, §12, §13, §13A–§13C, the depth
+program, SPEC3, or the Alpha rows; it points at them.
+
+### 15.0 What "finished" means
+
+A stranger buys it, plays twenty-five hours, and tells someone a story that starts with "so then".
+Everything below is in service of that sentence. The three properties the owner named — the world is
+**alive enough to surprise**, **solid enough to understand**, **permissive enough to abuse** — are the
+three columns of the release gate table in §15.1, and every packet in §15.2 names which column it
+moves.
+
+**The pattern-matched verdict.** Measured against the games this one is compared to (Hades, Deep Rock
+Galactic, Everspace 2, Rebel Galaxy Outlaw, Sea of Thieves, Just Cause, Rocket League, Noita, Spelunky,
+Starsector, Endless Sky, Star Control 2, Highfleet, Hardspace: Shipbreaker, Subnautica), this build has
+**more simulation than most of them and less *answer* than any of them**: ~160 sim systems, a wired
+job loop, an economy with price pressure, factions with wars and named aces, law with witnesses, a
+deterministic replayable sim, five endings with post-ending chains — and impacts that make no sound by
+weight, a world that does not flinch at violence, a first hour that never teaches boost, the path
+autopilot or the fields and never points at its own playground, a starter gun that cannot shove, and an
+ending gated at four percent of the money curve behind an empire-stake paywall. The finish is therefore mostly **surfacing, connecting, and tuning what exists**, plus a short
+list of genuinely missing things (audio content, the first ten minutes as a power fantasy, a campaign spine
+re-cut around the toys, replay/clips, the wanted loop as a game, six sectors with a way of life). §11.11's through-line
+— *"this is a surfacing problem, not a content problem"* — holds for the whole game, not only the UI.
+
+### 15.1 The release gates (the finish line, in numbers)
+
+Three milestones. A milestone is reached when every gate in its row is green on the default route on
+a clean checkout, at the shipping camera, with the evidence class named. Gates reuse the existing
+instruments (`FEEL_CONTRACT.md` §B bars, `docs/agentic-development/QUALITY_SCORECARD.md` floors,
+`design/spec2/08_RELEASE_READINESS.md`, the Motion Lab, the runtime witness, `check:all`).
+
+| Milestone | Alive enough to surprise | Solid enough to understand | Permissive enough to abuse | Evidence |
+|---|---|---|---|---|
+| **ALPHA — "The Toy Works"** | The 60-second proof (`PQ-141`, bar B12) occurs in ≥ 9 of 11 beats across 5 seeds and in one headed capture. The three world-reaction listeners (`PQ-138.00–.02`) fire on the route. | First ten minutes: a new player performs one swing-release, one shove, one grab-and-run without reading a wall (`PQ-163`); playtest completion ≥ 80 % unaided. Every bar B1–B8, B11 measured on the route (`PQ-137.10`). | B2/B3 nimble regime, B4 shove magnitudes, B6 terrain lethality, B9 impacts answer, B11 hitstun law: **met**. Stunt grammar detects ≥ 12 named tricks (`PQ-146`). | Motion Lab numbers, deterministic scenarios, captures, owner verdict on B12 |
+| **BETA — "The World Works"** | Six sectors each recognisable from 30 s of unlabeled activity (`PQ-153`); the storyteller sustains the rhythm work→tension→violence→aftermath→quiet over a 90-minute unaided session (`PQ-149`); named aces hunt the player with counter-loadouts (`PQ-150`); the wanted loop has four tiers with a physical escape at each (`PQ-151`). | Campaign spine with an ending and NG+ (`PQ-032` + `PQ-152`): 20–25 h authored, 10 set pieces built from verbs; economy curve: first upgrade ≤ 15 min, a new verb every hour for ten hours (`PQ-155`); three starters = three verbs (`PQ-156`); the station redesigned and the Chart finished (`PQ-162`, `PQ-168`); save/continue trust: 0 dead-ends over 200 save/load cycles. | Massline heads and field toys fielded as unlockable toys with Range drills (`PQ-029/030/031/026/147`); machinery and hazards participate (`PQ-027/028`); cargo is physics (`PQ-148`); wrecks are terrain (`PQ-154`); Crucible daily seed + ghosts (`PQ-169`). | 90-minute held-out routes (`PQ-025` pattern), blind reviews, economy sim printout, capture reel |
+| **RELEASE — "It Ships"** | Audio direction complete: impact ladder by mass × speed, adaptive score, radio, mix hierarchy (`PQ-158`). Camera as art direction + photo mode (`PQ-159`); replay + clip export (`PQ-160`). | Accessibility checklist green (`PQ-165`); pseudo-loc +40 % with zero clipped strings and five launch languages (`PQ-166`); controller parity in every screen, Deck verified (`PQ-164`); telemetry funnels + weekly playtest loop (`PQ-167`). | `PQ-033` release matrix: 60 fps median / ≤ 1 hitch per minute above 50 ms at min-spec, boot ≤ 10 s on the target GPU, heap growth < 30 MB over a 30-min soak, 2-hour crash-free soak on Browser and Electron; Steam build, cloud saves, achievements; store assets cut from the deterministic replay. | `check:all` green, soak logs, min-spec captures, store page assets, owner sign-off |
+
+Post-launch is a fourth row, not a gate: mods and data-driven content (`PQ-172`), Crucible seasons,
+territory wars (`PQ-170` second half).
+
+### 15.2 The order
+
+```text
+ALPHA   PQ-137 guts ─┬─> PQ-139 impacts answer ──┐
+                     ├─> PQ-138 world reacts ─────┼─> PQ-141 60-SECOND PROOF (gate)
+                     ├─> PQ-140 roster ───────────┘
+                     ├─> PQ-146 stunt grammar ──> PQ-160 replay/clips (Release)
+                     └─> PQ-163 first ten minutes (needs 137.03–.05)
+BETA    PQ-138 ──> PQ-149 storyteller ──> PQ-150 people who remember ──> PQ-151 wanted loop
+        PQ-137 ──> PQ-029/030/031/026 heads & coupling ──> PQ-147 field toys ──> PQ-027/028 machinery & infrastructure
+        PQ-138 ──> PQ-148 cargo is physics ──> PQ-154 wrecks as terrain
+        PQ-143 ──> PQ-153 six sectors ──> PQ-032 + PQ-152 campaign & set pieces ──> PQ-170 endgame pulls
+        PQ-142 ──> PQ-155 the curve ──> PQ-156 three starters
+        PQ-133 ──> PQ-169 Crucible as replay surface
+        §11 ───> PQ-162 the station redesign · PQ-168 the Chart finished · PQ-161 readable at zoom
+        always:    PQ-171 content grammar (anti-repetition budget), PQ-144 density/perf guard
+RELEASE PQ-158 audio ─┐
+        PQ-159 camera ├─> PQ-033 release matrix ──> PQ-167 Steam/telemetry/playtest ──> ship
+        PQ-164/165/166┘
+POST    PQ-172 mods; Crucible seasons; PQ-170 territory wars
+```
+
+Two rules of order. **Feel before content**: nothing in BETA starts a sector, a set piece, or a toy
+until `PQ-137.03–.05` are met, because content built on a ship that cannot turn is content that will
+be rebuilt. **Surface before invent**: every BETA packet first lists what already computes the thing
+it needs (the audit tables in each packet) and connects it before writing a new system.
+
+### 15.3 The packets (twenty-six new, eight reactivated)
+
+Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves; the queue rows carry the dependencies of §15.2, so `--ready` cannot hand out BETA content before the guts are met.
+
+| Packet | Pillar | One line | Wave |
+|---|---|---|---|
+| **`PQ-146`** Stunt grammar and the trick economy — [`active/PQ-146.md`](./design/program/roadmap/active/PQ-146.md) | A · The toys | Named tricks detected from physics receipts, a combo meter, style titles, and the moment detector that feeds clips and slow-mo. | ALPHA |
+| **`PQ-029`** Practical Massline heads as toys: tractor, elastic whip, frame coupler — [`active/PQ-029.md`](./design/program/roadmap/active/PQ-029.md) | A · The toys | Reactivated. The three practical heads already in the data become unlockable toys with a Range drill, a sentence, and NPC use. | BETA |
+| **`PQ-030`** Advanced Massline combat heads: monofilament sweep, transverse snare — [`active/PQ-030.md`](./design/program/roadmap/active/PQ-030.md) | A · The toys | Reactivated. The two combat heads become late-game toys with counterplay and a specialist enemy that carries them. | BETA |
+| **`PQ-031`** Twin Bridle: the bolas and tether-two — [`active/PQ-031.md`](./design/program/roadmap/active/PQ-031.md) | A · The toys | Reactivated. Object-to-object tether as the signature abuse: tie two enemies together and watch physics finish the fight. | BETA |
+| **`PQ-026`** Mass-coupling tactics: inertial shunt, gravity mark, momentum sink — [`active/PQ-026.md`](./design/program/roadmap/active/PQ-026.md) | A · The toys | Reactivated. The three mass tools in the data become readable tactics with the momentum-bungee joust as the showcase. | BETA |
+| **`PQ-147`** The field toy chest and the Power Bar filled — [`active/PQ-147.md`](./design/program/roadmap/active/PQ-147.md) | A · The toys | All five number-key powers become real, physical, legible toys with NPC counterplay; the Power Bar is the progression display. | BETA |
+| **`PQ-027`** Environment as weapon: machinery and timed hazards that participate — [`active/PQ-027.md`](./design/program/roadmap/active/PQ-027.md) | A · The toys | Reactivated. Crushers, furnaces, conveyors, mass drivers, debris currents, storms and timed access become physical actors the player can feed enemies into. | BETA |
+| **`PQ-028`** Manufactured travel and physics infrastructure you can ride — [`active/PQ-028.md`](./design/program/roadmap/active/PQ-028.md) | A · The toys | Reactivated. One sling ring or mass driver per region that launches ships (and thrown enemies) — the anchor-ski and catapult toys. | BETA |
+| **`PQ-148`** Cargo is physics: pods with mass, volatility and a story — [`active/PQ-148.md`](./design/program/roadmap/active/PQ-148.md) | A · The toys | Spilled cargo is real mass on the field: shield, projectile, prize; volatile cargo detonates, corrodes or drags; smuggling is a physics problem. | BETA |
+| **`PQ-149`** The storyteller: a session-rhythm director over the directors that exist — [`active/PQ-149.md`](./design/program/roadmap/active/PQ-149.md) | B · The world and its people | One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. | BETA |
+| **`PQ-150`** People who remember: aces, rivals, the mechanic, the radio — [`active/PQ-150.md`](./design/program/roadmap/active/PQ-150.md) | B · The world and its people | Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. | BETA |
+| **`PQ-151`** Crime is a game: the WANTED loop with a physical escape at every tier — [`active/PQ-151.md`](./design/program/roadmap/active/PQ-151.md) | B · The world and its people | Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. | BETA |
+| **`PQ-032`** Campaign spine with an ending the player built toward — [`active/PQ-032.md`](./design/program/roadmap/active/PQ-032.md) | B · The world and its people | Reactivated. The eight-beat spine becomes a 20–25 hour arc: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. | BETA |
+| **`PQ-152`** Set pieces built from verbs: ten missions whose headline is physical — [`active/PQ-152.md`](./design/program/roadmap/active/PQ-152.md) | B · The world and its people | Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. | BETA |
+| **`PQ-153`** Six sectors with a way of life (the authored core, then the frontier as texture) — [`active/PQ-153.md`](./design/program/roadmap/active/PQ-153.md) | B · The world and its people | Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy; the fourteen frontier sectors stay texture. | BETA |
+| **`PQ-154`** Wrecks as terrain and the death economy — [`active/PQ-154.md`](./design/program/roadmap/active/PQ-154.md) | B · The world and its people | Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. | BETA |
+| **`PQ-155`** Money means toys: the economy tuned as a verb curve — [`active/PQ-155.md`](./design/program/roadmap/active/PQ-155.md) | C · Economy, progression, identity | First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. | BETA |
+| **`PQ-156`** Three starters, three verbs, and a save-file identity — [`active/PQ-156.md`](./design/program/roadmap/active/PQ-156.md) | C · Economy, progression, identity | Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. | BETA |
+| **`PQ-161`** Readable at max zoom: silhouettes, telegraphs, force colours — [`active/PQ-161.md`](./design/program/roadmap/active/PQ-161.md) | D · Presentation | Role-readable hulls and liveries, danger telegraphs you die to on purpose, a colourblind-safe force palette, and a teaching-only trajectory overlay. | BETA |
+| **`PQ-162`** The station as a place: the redesign the flatten was waiting for — [`active/PQ-162.md`](./design/program/roadmap/active/PQ-162.md) | D · Presentation | Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. | BETA |
+| **`PQ-168`** The Chart finished: traffic layer, hierarchy, one answer per question — [`active/PQ-168.md`](./design/program/roadmap/active/PQ-168.md) | D · Presentation | The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. | BETA |
+| **`PQ-158`** Audio direction: the game that sounds heavy — [`active/PQ-158.md`](./design/program/roadmap/active/PQ-158.md) | D · Presentation | Authored samples replace the oscillator stack, an impact ladder by mass and speed, the Massline as an instrument, composed adaptive themes, voice for the 271-line script, a reverb bus, and a weight-first mix. | RELEASE |
+| **`PQ-159`** Camera as art direction, and a photo mode — [`active/PQ-159.md`](./design/program/roadmap/active/PQ-159.md) | D · Presentation | Speed opens the frame, impacts kick by delta-V, two-body moments auto-frame as tension diagrams, signature kills get a beat, and a photo mode sells the game. | RELEASE |
+| **`PQ-160`** Replay, clips and sharing — [`active/PQ-160.md`](./design/program/roadmap/active/PQ-160.md) | D · Presentation | The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. | RELEASE |
+| **`PQ-163`** The first ten minutes: the power fantasy, honest — [`active/PQ-163.md`](./design/program/roadmap/active/PQ-163.md) | E · First hour, UX, platform | A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. | ALPHA |
+| **`PQ-167`** Telemetry funnels and the weekly playtest loop — [`active/PQ-167.md`](./design/program/roadmap/active/PQ-167.md) | E · First hour, UX, platform | Designer-readable funnels from the telemetry that already exists, a weekly owner playtest with captured sessions, and the numbers that gate ALPHA and BETA. | ALPHA |
+| **`PQ-164`** Input truth: controller, Deck, trackpad, haptics — [`active/PQ-164.md`](./design/program/roadmap/active/PQ-164.md) | E · First hour, UX, platform | Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. | RELEASE |
+| **`PQ-165`** Accessibility and options depth — [`active/PQ-165.md`](./design/program/roadmap/active/PQ-165.md) | E · First hour, UX, platform | Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. | RELEASE |
+| **`PQ-166`** Localization at launch: five languages and the growth test — [`active/PQ-166.md`](./design/program/roadmap/active/PQ-166.md) | E · First hour, UX, platform | The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. | RELEASE |
+| **`PQ-033`** Final platform, save, performance, accessibility, legal and store closeout — [`active/PQ-033.md`](./design/program/roadmap/active/PQ-033.md) | E · First hour, UX, platform | Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. | RELEASE |
+| **`PQ-169`** Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home — [`active/PQ-169.md`](./design/program/roadmap/active/PQ-169.md) | F · Modes and replayability | A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring, and drafts that feed the hangar with possibility, never stats. | BETA |
+| **`PQ-171`** Content grammar and the anti-repetition budget — [`active/PQ-171.md`](./design/program/roadmap/active/PQ-171.md) | F · Modes and replayability | A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. | BETA |
+| **`PQ-170`** Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth — [`active/PQ-170.md`](./design/program/roadmap/active/PQ-170.md) | F · Modes and replayability | After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. | POST |
+| **`PQ-172`** Mods and data-driven content — [`active/PQ-172.md`](./design/program/roadmap/active/PQ-172.md) | F · Modes and replayability | Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. | POST |
+
+### 15.4 The plans, in detail
+
+Each block is the packet file in brief: the gap it closes (pattern-matched against the reference games), what the audit found already exists, the write surfaces, and the leaves with their done-when bars. The packet files under `design/program/roadmap/active/` carry the same text plus entry conditions, non-goals and checks.
+
+#### Pillar A · The toys
+
+**`PQ-146` — Stunt grammar and the trick economy** · *ALPHA* · after `PQ-137`
+
+The game names what the player just did. A rope release already grades itself razor/clean/good/messy; the same receipt stream can recognise a bolas, a wrecking-ball kill, a clothesline, a collateral chain, a near-miss, a tow-kill and a rock discovery. A combo meter scores them in the Crucible, the ledger and titles record them in adventure, and a moment detector fires the slow-mo and the clip. This is the missing DEMAND for physics play: nothing in the build today asks the player to compose a chain.
+
+- **Gap:** Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. **Reference:** Tony Hawk's Pro Skater, Rocket League, Bulletstorm skillshots, Just Cause.
+- **Exists:** `tether:releaseRated` (razor/clean/good/messy) in `src/systems/tetherGameplay.js`; `combat:collisionConsequence` receipts with exchangedMomentum/deltaV; `massline:throw`, `tether:whipImpact`, `combat:collisionDebris`; `src/systems/titles.js`, `shipLedger.js` (240 entries), `survivalRecords.js`, `bulletTime.js`; `src/combat/impulseKernel.js` provenance history per entity.
+- **Routes through:** GDX-A04 combat causality; §12 Crucible scoring.
+- **Writes:** `src/combat/`, `src/systems/titles.js`, `src/systems/shipLedger.js`, `src/systems/survivalRun.js`, `src/systems/survivalResults.js`, `src/systems/bulletTime.js`, `src/render/feel.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Trick taxonomy and detectors.** One pure module turns the receipt stream into named tricks with a cause chain (who threw, what hit, what it hit next): bolas, wrecking ball, clothesline, collateral ×N, near-miss, tow-kill, rock discovery, well golf, dead man's mass, razor release. | ≥ 12 tricks detected deterministically in scenarios; false-positive rate < 5 % on ordinary flight tapes. |
+| `.01` | **Combo meter and scoring in the Crucible.** Chain window, multiplier by trick rarity and mass ratio, banked on quiet; scoring feeds survivalRecords and the results screen. | A physics run outscores a gun run of equal kills by ≥ 2×; the free Pulse cannot top the board. |
+| `.02` | **Titles and ledger entries in adventure.** Tricks write ledger lines and earn titles NPCs use in barks; the rap sheet cites them. | A witnessed bolas kill produces a ledger line and a bark within one session; save round-trips. |
+| `.03` (after PQ-139.00) | **The moment detector.** A rated 'holy shit' event (rarity × momentum × collateral) exposed on the bus for slow-mo (bulletTime), camera, audio stingers and the clip recorder. | Fires on ≥ 3 distinct moments in the 60-second proof scenario and never on ordinary traffic. |
+
+- **Not:** No score popups in adventure flight (the HUD attention pass stands); no trick that requires a new input.
+
+**`PQ-029` — Practical Massline heads as toys: tractor, elastic whip, frame coupler** · *BETA* · after `PQ-137`
+
+Each head answers 'what can I do now?' in one sentence the fitting screen shows: the tractor picks things up and throws them; the elastic whip stores energy and snaps; the frame coupler locks two frames so a tow feels rigid. Each has a Range drill, a counterplay, and at least one NPC occupation that uses it in the world (a tug couples, a scavenger tractors).
+
+- **Gap:** Seven heads exist as ordinary purchasable modules with no arc; a player can finish the campaign using the rope as a tractor beam only. **Reference:** Just Cause tether upgrades, Bionic Commando, Hardspace: Shipbreaker tools.
+- **Exists:** `src/data/modules.js:115-141` seven heads; runtime flags `masslineHeadTractor`, `masslineHeadElasticWhip`, `masslineHeadFrameCoupler` (ON in production); `src/core/sg02DynamicBodyOwner.js` spring modes incl. `frame_coupler`; `src/ui/screens/range.js` three drills.
+- **Routes through:** SPEC3-17 tether & momentum verbs; GDX-A02.
+- **Writes:** `src/data/modules.js`, `src/systems/tetherGameplay.js`, `src/core/sg02DynamicBodyOwner.js`, `src/ui/screens/range.js`, `src/systems/npcJobsRuntime.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Tractor head as a throw toy.** Pick up, spin, throw with the release rating; works on cargo, debris, drones, light hulls. | A Range drill teaches it in ≤ 60 s; throw speed ≥ 1.2× cruise on a light payload. |
+| `.01` | **Elastic whip as stored energy.** Stretch stores energy, release snaps the payload or the player; readable strain glow; break by load. | A whip snap moves a light hostile ≥ 40 % of its cruise; the drill exists. |
+| `.02` | **Frame coupler as the tow you can trust.** Rigid tow for the long haul; the coupled pair reads as one body in the physics and the camera. | A 200-mass tow holds through a 180° turn at 60 % cruise without oscillation. |
+| `.03` | **NPCs use the heads.** Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. | Each head is seen in ordinary traffic within 10 minutes at the reference site. |
+
+- **Not:** No new head models until PQ-050 fielding rules are met; no head that needs a second input scheme.
+
+**`PQ-030` — Advanced Massline combat heads: monofilament sweep, transverse snare** · *BETA* · after `PQ-137`, `PQ-140`
+
+The sweep cuts lines and clips light hulls in a swing arc; the snare catches a ship crossing the line and yanks it. Both are late unlocks, both have a specialist NPC (the tether-cutter of PQ-140) so the player meets the counter before owning the verb.
+
+- **Gap:** Combat heads exist in data with no arc, no enemy use, no drill. **Reference:** Just Cause 3 tether combat, Worms ninja rope.
+- **Exists:** `modules.js` monofilament_sweep, transverse_snare; flags ON; `src/systems/masslineThreats.js`, `masslineSnares.js` seams.
+- **Routes through:** SPEC3-17; PQ-140.02 specialists.
+- **Writes:** `src/data/modules.js`, `src/systems/tetherGameplay.js`, `src/systems/masslineThreats.js`, `src/systems/masslineSnares.js`, `src/ui/screens/range.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Monofilament sweep.** Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. | Cuts an NPC tether in one pass; scenario + capture. |
+| `.01` | **Transverse snare.** A line across a lane catches the first crosser and yanks it into the anchor; the clothesline toy. | A pursuer at full burn is caught and tumbled (B11) in the scenario. |
+| `.02` | **The counter arrives first.** The tether-cutter specialist uses the sweep against the player two hours before the head unlocks. | Blind reviewer names the specialist's threat from silhouette and behaviour. |
+
+- **Not:** No head that trivialises heavies; heavies are terrain.
+
+**`PQ-031` — Twin Bridle: the bolas and tether-two** · *BETA* · after `PQ-137`
+
+Fire a bridle that couples two bodies. Two light pirates orbit each other and lawn-dart into a rock; two haulers jackknife; a pirate hitched to a passing freighter loses its engines. The pair shares helm loss and inertia (PQ-137.09). This is toy T1 and T4 of §15.5.
+
+- **Gap:** Twin Bridle exists behind a flag with setup time and no gameplay arc; the most-requested verb in the vision ('tether them together so they yank each other') is unreachable in practice. **Reference:** Just Cause 2 tether, Bolo physics.
+- **Exists:** `TWIN_BRIDLE_HEAD_ID`, `TWIN_BRIDLE_SETUP_S = 10` in `src/systems/tetherGameplay.js`; `attachments.listControlledBy`; `masslineHeadTwinBridle` flag ON.
+- **Routes through:** SPEC3-17; PQ-137.09 chains.
+- **Writes:** `src/systems/tetherGameplay.js`, `src/core/sg02DynamicBodyOwner.js`, `src/systems/tumbleStates.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Bolas throw in one input.** Setup time drops to a throw: latch A, latch B, the bridle exists; setup ≤ 2 s at combat range. | Two lights bridled within 3 s of the first latch in a scenario; the pair tumbles (B11). |
+| `.01` | **Coupled-pair physics.** Shared inertia, shared helm loss, bounded line load, break by load rating; the pair reads as one system in the camera. | Pair orbits and impacts terrain in ≥ 4 of 5 seeds. |
+| `.02` | **NPC counterplay.** Aces cut bridles; heavies ignore them; the specialist carries a line-cutter. | Scenario shows one cut and one ignore. |
+
+- **Not:** No bridling of stations or planets as a cheese; large bodies stay anchors only.
+
+**`PQ-026` — Mass-coupling tactics: inertial shunt, gravity mark, momentum sink** · *BETA* · after `PQ-137`
+
+The gravity marker makes a target heavier to fields; the momentum sink stores and returns momentum (plant it on a rock, burn away, release, slingshot back through the pursuer); the inertial shunt trades your momentum for theirs on contact. Each is a decision, each is legible, each has an NPC user.
+
+- **Gap:** `wpn_gravity_marker_s` and `wpn_momentum_sink_s` exist in weapons data with status effects and no play arc. **Reference:** Highfleet burner tricks, Rocket League demo timing.
+- **Exists:** `src/data/weapons.js` gravity_marker_s / momentum_sink_s; `src/render/momentumSinkVfx.js`; statuses in `src/data/combatDefs.js`.
+- **Routes through:** SPEC3-17; GDX-A03.
+- **Writes:** `src/data/weapons.js`, `src/data/combatDefs.js`, `src/systems/weapons.js`, `src/render/momentumSinkVfx.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Momentum sink as the bungee.** Plant, tension, release: the player exits at ≥ 2× cruise (earned speed kept, B1). | Scenario measures exit speed ≥ 2× cruise; capture. |
+| `.01` | **Gravity mark as a field multiplier.** A marked target is pulled 3× harder by wells and sinks; marked heavies bend toward wells they would ignore. | Well golf on a marked medium works in the scenario. |
+| `.02` | **Inertial shunt.** On contact, swap momentum with the target (bounded by mass ratio); the ram that stops you and launches them. | A shunt ram on a light hostile sends it ≥ 1 screen; the player stops within 20 WU. |
+
+- **Not:** No stat-only status effects; every effect must be visible as motion.
+
+**`PQ-147` — The field toy chest and the Power Bar filled** · *BETA* · after `PQ-137`, `PQ-139`
+
+Well (pull), Repulsor (shove), Clearing Cone, Skim Collector and Mass Seed are the five powers already bound to keys 4–8; two have zero UI references. Each becomes a field that visibly bends motion, has a counter (fly out, cut, mark), and is used by at least one enemy role. Well golf, gravity bowling and cluster-and-detonate are the showcases.
+
+- **Gap:** The Power Bar (§11.4) is half-built at the input layer; the powers themselves are uneven and unteachable. **Reference:** Noita wand synergies, Spelunky item interactions, Magicka.
+- **Exists:** `src/data/fields.js` Well/Repulsor/Cone (`deployRange 520`); `src/systems/fields.js`, `src/core/fields/fieldKernel.js`; `src/systems/input.js` VERB_BINDINGS Digit4–8; `src/ui/powerRail.js`.
+- **Routes through:** §11.4 Power Bar; GDX-A03; PQ-139.05 well distortion.
+- **Writes:** `src/data/fields.js`, `src/systems/fields.js`, `src/core/fields/`, `src/ui/powerRail.js`, `src/ui/screens/range.js`, `src/ai/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Five powers, five sentences, five drills.** Each power gets its fitting-screen sentence, a Range drill, and a legible field volume (cone/ring/sheet, never a sphere). | All five appear on the rail with real state; drills exist; VFX grammar test covers them. |
+| `.01` | **Fields participate in physics for everyone.** NPCs, cargo, debris and wrecks obey fields; NPCs deploy them (an anchor specialist wells, a scavenger cones). | A well bends ≥ 5 bodies in the scenario; one NPC role deploys a field in ordinary traffic. |
+| `.02` | **Counterplay.** Fly out, cut the emitter, mark it, or out-mass it; the player is never trapped without a verb. | Each field has one deterministic escape in a scenario. |
+| `.03` (after PQ-137.09) | **Cluster and detonate.** A well plus a primed light (PQ-137.09) produces the chain; the moment detector rates it. | ≥ 3 secondary consequences from one action in 4 of 5 seeds. |
+
+- **Not:** No passive auras; no field that clears the screen without a player decision (§12.3).
+
+**`PQ-027` — Environment as weapon: machinery and timed hazards that participate** · *BETA* · after `PQ-137`, `PQ-147`
+
+Industrial machinery finishes what the player started: the ore-crusher trap, the station-door jam, the debris reef that pinballs mines, the furnace that melts a shield, the storm that bends shots. Machinery is on a schedule (the ordinary-life rhythm), so timing is part of the trick.
+
+- **Gap:** `environmentalMachinery.js` exists as a system with dressing; nothing in it takes a hull. **Reference:** Just Cause chaos objects, Hardspace: Shipbreaker hazards, Outer Wilds mechanisms.
+- **Exists:** `src/systems/environmentalMachinery.js`, `src/data/environmentalMachinery.js`; `src/data/everydaySpaceKitDressing.js`; `src/systems/terrainAnchors.js`; `src/data/hazardLanguage.js`.
+- **Routes through:** GDX-A06 encounter geometry; SPEC3-31 anomalies; PQ-136 fielded props.
+- **Writes:** `src/systems/environmentalMachinery.js`, `src/data/environmentalMachinery.js`, `src/data/hazardLanguage.js`, `src/systems/terrainAnchors.js`, `src/systems/world.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three machines that kill.** Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). | A shoved light dies in each; a capture per machine. |
+| `.01` | **Debris currents and reefs.** Authored flows that carry loose mass; mines and pods ride them; the reef pinball. | Mine pinball cascades in a scenario. |
+| `.02` | **Weather that shapes fights.** One storm and one radiation belt per affected sector: shots bend, sensors shrink, fields amplify; ordinary traffic avoids them. | Blind reviewer names the hazard from motion alone. |
+| `.03` | **Timed access.** Gates, locks and doors on schedules; the station-door jam. | A jammed aperture holds reinforcements for ≥ 20 s in the scenario. |
+
+- **Not:** No hazard that is only a damage volume; every hazard moves mass.
+
+**`PQ-028` — Manufactured travel and physics infrastructure you can ride** · *BETA* · after `PQ-137`, `PQ-145`
+
+A manufactured acceleration structure the world uses for freight and the player uses for stunts: ride it for free speed (earned, kept), throw an enemy into its breech, or hitch a convoy through it. It does not replace Atlas travel; it is a local toy with a schedule.
+
+- **Gap:** Travel between sectors is Atlas; nothing in a sector launches mass. **Reference:** Kerbal launch structures, Sonic loops, Just Cause 3 wingsuit rings.
+- **Exists:** `src/systems/travelLanes.js`, `cruise.js`, `orbitNodeRuntime.js`; `mod_throughline_sling` in base modules (`src/ui/screens/base.js`).
+- **Routes through:** SPEC3-16 travel grammar; PQ-145 authorship (player-built sling).
+- **Writes:** `src/systems/travelLanes.js`, `src/systems/orbitNodeRuntime.js`, `src/ui/screens/base.js`, `src/systems/claims.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **One authored sling ring.** A ring on the reference site's route that accelerates aligned bodies; NPC haulers use it on schedule. | Player exit speed ≥ 2× cruise and kept (B1); haulers ride it in ordinary traffic. |
+| `.01` | **Throw something into it.** Bodies entering off-axis are flung; a thrown enemy becomes a long-range projectile. | Scenario: a thrown light exits the ring at ≥ 3× cruise and slams terrain (B6). |
+| `.02` | **The player-built sling.** `mod_throughline_sling` becomes this structure at a claim, creating NPC traffic (PQ-145). | A built sling is used by ≥ 1 NPC route within one session. |
+
+- **Not:** No rebuild of sector-to-sector travel.
+
+**`PQ-148` — Cargo is physics: pods with mass, volatility and a story** · *BETA* · after `PQ-137`, `PQ-138`
+
+A cargo pod is a body: it shields, it can be shoved as a shotgun shell, it is a prize NPCs race for. Volatile classes (explosive, corrosive, superdense) change what a throw does. Contraband hides in blind spots and is smuggled by momentum through customs cones. The freighter that breaks up spills pods that keep its velocity.
+
+- **Gap:** Cargo spills exist as TTL pickups that NPCs ignore; mass on the field is inventory. **Reference:** Deep Rock Galactic canisters, Noita liquids, Hardspace hazards.
+- **Exists:** `src/systems/cargo.js`, `fragileCargo.js`, `jettisonImpulse.js`, `lootShards.js` (payload pods), `src/data/commodities.js`, `commodityMoralTags.js`; `freight:cargoSpilled` producer.
+- **Routes through:** PQ-138.01 spilled cargo noticed; GDX-A14 hauling; SPEC3-12 black markets.
+- **Writes:** `src/systems/cargo.js`, `src/systems/fragileCargo.js`, `src/systems/jettisonImpulse.js`, `src/systems/lootShards.js`, `src/data/commodities.js`, `src/systems/lawSecurity.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Pods are bodies.** Every spilled/jettisoned pod is a dynamic body with mass by contents, inherits velocity, collides, can be tethered and shoved. | Ore shotgun: a shoved pod moves a light hostile ≥ 30 % cruise; pods persist across save. |
+| `.01` | **Volatile classes.** Explosive (radial impulse on slam), corrosive (hull tick on contact), superdense (pull on fields, cannot be thrown far). | Three scenarios, three distinct outcomes, readable by silhouette/lamp. |
+| `.02` | **Smuggling physics.** Customs scan cones; contraband hidden in a hauler's blind spot or drop-kicked at cruise through a cone into an outlaw catch net. | A drop-kick through a cone succeeds in the scenario; a scanned pod raises heat (PQ-151). |
+| `.03` | **Cargo with a name.** Pods carry origin/destination/owner; a spilled pod's owner reacts (restitution, bounty, thanks). | Ledger and bark cite the owner after a spill. |
+
+- **Not:** No inventory Tetris; cargo mass is felt in flight (already true) and seen on the field.
+
+#### Pillar B · The world and its people
+
+**`PQ-149` — The storyteller: a session-rhythm director over the directors that exist** · *BETA* · after `PQ-138`
+
+The game breathes. Ordinary life is guaranteed between incidents, tension is telegraphed, violence has aftermath and quiet, and escalations ('the patrol you fled now has your name') are seeded by a budget, not by chance. The player never sits in a dead sector and never drowns in noise. A story-so-far ledger reads it back.
+
+- **Gap:** Three directors exist (encounter, campaign pressure decks, station side events) with no owner of rhythm; ambient tier exists but nothing guarantees quiet or seeds escalation. **Reference:** RimWorld storytellers, Left 4 Dead director, Sea of Thieves world events.
+- **Exists:** `src/systems/encounterDirector.js` (ambient tier, MAX_AMBIENT_PER_DAY), Campaign Director 2.0 (two-deck pressure, phases, receipts), `stationSideEventDirector.js`, `src/ai/director.js`, `barkDirector.js`, microevent library (58), `shipLedger.js`.
+- **Routes through:** SPEC3-21/29 directors; GDX-S04 consequence loop; PQ-138.
+- **Writes:** `src/systems/encounterDirector.js`, `src/ai/director.js`, `src/systems/stationSideEventDirector.js`, `src/systems/shipLedger.js`, `src/systems/telemetry.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The rhythm model.** A phase machine (work, travel, curiosity, opportunity, tension, violence, aftermath, quiet) with dwell budgets and telegraphs, read by the existing directors as a gate. | A 90-minute unaided session shows every phase and no phase > 12 min; telemetry prints the timeline. |
+| `.01` | **Escalation seeds.** Consequence tokens from PQ-138 (witness, spill, flee) become future beats: a bounty, an ace, a shortage, a rumor; each with a delay and a place. | ≥ 3 escalations traceable to player acts per session; each cites its cause in the ledger. |
+| `.02` | **Guaranteed ordinary life.** Quiet phases spawn routine work (inspections, transfers, repair, waiting, a slow tug) at the camera. | 5-minute quiet capture shows ≥ 4 routine behaviours; activity telemetry confirms. |
+| `.03` | **Story so far.** The ledger renders the session as 'I was doing X, then Y, so I Z' with the causes. | Blind reader retells the session correctly from the ledger alone. |
+
+- **Not:** No scripted spawns at the player; no hard-counter director (§12.3).
+
+**`PQ-150` — People who remember: aces, rivals, the mechanic, the radio** · *BETA* · after `PQ-138`, `PQ-149`
+
+The universe is audible and it knows you. Twelve named aces escalate their kit against your habits (line-cutters after your third fling-kill), rivals hold grudges across sectors, haulers whine and pirates negotiate on comms, and a mechanic at your berth reads the hull's history back to you. The 271-line bark corpus is the script; this packet gives it delivery and memory.
+
+- **Gap:** Aces and memory exist; nothing escalates against the player's style, no character lives anywhere, and barks are text after a squelch. **Reference:** Shadow of Mordor (lite), Hades Olympians, Rebel Galaxy Outlaw radio, Mount & Blade lords.
+- **Exists:** `src/data/namedAces.js` (12), `aceMemory.js`, `moralMemory.js`, `pirateRumor.js`, `barkDirector.js` + `src/data/barks.js` (271 lines, 8 factions × 8 situations), `bandRadio.js`, depth program V1 fifteen NPCs, `shipLedger.js`, `livingHull.js`.
+- **Routes through:** Depth V1/V2, ADD-1 The Band, ADD-2 Ledger, ADD-3 Living Hull; SPEC3-22 named enemies.
+- **Writes:** `src/data/namedAces.js`, `src/systems/aceMemory.js`, `src/systems/barkDirector.js`, `src/data/barks.js`, `src/systems/bandRadio.js`, `src/ui/station/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Aces escalate against your style.** Ace memory reads the stunt grammar: fling-kills bring line-cutters and sinks, gun-kills bring armour, rock-kills bring rock-avoiders; they taunt the specific act. | Third same-style kill changes the ace's next loadout deterministically; bark names the act. |
+| `.01` | **The mechanic.** A named voice at the home berth who reads scars, repairs, and rap sheet back as one line each; the ship becomes 'my fucking ship' through them. | Every scar class has a line; the berth screen shows the mechanic with the hull. |
+| `.02` | **Radio that reacts.** The Band and comms chatter keyed to world events and player acts: haulers whine, pirates negotiate, patrols threaten, stations report. | ≥ 8 distinct reactive chatter classes audible in a session; captions on. |
+| `.03` | **Fifteen people, placed.** The depth program's named NPCs live at places, with a sentence and a reaction set. | All fifteen reachable on the route with ≥ 1 reaction each. |
+
+- **Not:** No dialogue trees; a bark is one line and a consequence.
+
+**`PQ-151` — Crime is a game: the WANTED loop with a physical escape at every tier** · *BETA* · after `PQ-138`, `PQ-149`
+
+Being wanted is a game with verbs, not a number. Tier one is a fine and a scan cone to slip; tier two posts a bounty and hunters with your name; tier three brings tether-net checkpoints and patrol wedges you must break physically; tier four impounds and the recovery is a heist. Corrupt ports launder cargo and heat for a price; insurance and restitution make 'oh fuck, I did that' recoverable.
+
+- **Gap:** Heat is a decaying scalar; incidents chase always; custody/surrender/recovery systems (54 KB) are rich but unadvertised; no tiers, no nets, no laundering. **Reference:** Elite Dangerous crime, GTA wanted stars, Watch Dogs escapes.
+- **Exists:** `src/systems/lawSecurity.js`, `heat.js`, `custodyConsequences.js`, `surrenderRecovery.js`, `recoveryEncounter.js`, `pirateDisguise.js`, `bountyHunters.js` data, `dockDeny.js`, `contraband:scanned`.
+- **Routes through:** GDX-A07 collateral and law; PQ-138.00 witness choice; SPEC3-12.
+- **Writes:** `src/systems/lawSecurity.js`, `src/systems/heat.js`, `src/systems/custodyConsequences.js`, `src/systems/surrenderRecovery.js`, `src/systems/pirateDisguise.js`, `src/data/bountyHunters.js`, `src/ui/galaxyMap.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Four tiers with a verb each.** Fine/scan, bounty/hunters, nets/wedges, impound/heist; heat shown on the chart; each tier's escape is physical. | Scenario per tier with a deterministic escape; blind reviewer names the tier from the world. |
+| `.01` | **Patrol nets and checkpoints.** Tether-net roadblocks and scan cones on lanes; break them by mass, speed, or a thrown decoy. | Three break methods verified in scenarios. |
+| `.02` | **Corrupt ports and laundering.** Outlaw stations launder cargo and heat for a cut; reputation pays the cut down. | A laundered pod clears a scan; the ledger records the cut. |
+| `.03` | **Insurance, restitution, impound recovery.** Collateral has a bill; paying, working it off, or stealing the ship back are all play. | Each path completes in a scenario; save round-trips mid-path. |
+
+- **Not:** No instant-teleport police; every responder flies from somewhere.
+
+**`PQ-032` — Campaign spine with an ending the player built toward** · *BETA* · after `PQ-137`, `PQ-143`, `PQ-152`
+
+The 47-A opener is the best twelve minutes in the game; the next three beats are inventory errands and the ending fires at ~4 % of the money curve behind an empire-stake paywall. This packet re-cuts the spine: each beat is a set piece built from verbs (PQ-152), the ending gate sits at the point where the player has heavy-class verbs, the empire stake accepts a combat stake, and NG+ carries the ship's history. Five endings and five post-ending chains already exist and stay.
+
+- **Gap:** Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. **Reference:** Freelancer campaign gating, Hades run narrative, Outer Wilds discovery.
+- **Exists:** 8 beats `src/data/missions.js:1001-1016`; `src/story/campaign47a/`; 5 endings `src/story/endings/endingDefs.js`; `postEndingReplayChains.js`; `newGamePlus.js`; eligibility gates `eligibility.js:152-168`.
+- **Routes through:** WB-B0-B7, WB-WORLD-AFTER, RV-STORY, SPEC3-32; depth P2 story-beat embodiment; retired plan superseded by this packet: design/program/roadmap/retired/PQ-032.md.
+- **Writes:** `src/data/missions.js`, `src/story/`, `src/core/newGamePlus.js`, `src/data/postEndingReplayChains.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Beats 1–3 become set pieces.** honest_work → the wrecking-ball contract; first_blood → pod rescue under fire; bigger_boat → the long tow. | Each beat is a PQ-152 set piece with a physical headline verb. |
+| `.01` | **The gate moves and widens.** Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake. | A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry. |
+| `.02` | **The climax is a toy.** Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). | Owner plays each ending's climax; verdict recorded. |
+| `.03` | **NG+ carries a legacy.** Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. | Save migration test; the mechanic names the carried history. |
+
+- **Not:** No new endings; no dialogue trees.
+
+**`PQ-152` — Set pieces built from verbs: ten missions whose headline is physical** · *BETA* · after `PQ-137`, `PQ-138`
+
+Ten authored set pieces and three new procedural mission types whose headline verb is physical: the wrecking-ball demolition, pod rescue under fire, the long tow, convoy defence with real cargo, the station-door jam, the prison-break (impound recovery), the ace duel, the capital boss with sub-systems, the reef clearance, the heist that goes loud. Each is a puzzle made of momentum with two solutions.
+
+- **Gap:** Ten procedural verbs, eight are fly-there; physical play lives only in optional clauses (`no_slack` applies to bulk_haul only). **Reference:** Hitman set pieces, Just Cause missions, Star Control 2 melee bosses.
+- **Exists:** `missions.js` OFFER_MIX and 5 SET_PIECE_MISSIONS; `missionConditions.js` 13 terms; `heistMission.js`, `landmarkMissions.js`, `setPieceMissionOffers.js`; depth SP1; SPEC3-22 bosses.
+- **Routes through:** Depth SP1, P4 set-piece types; SPEC3-22; GDX-A19.
+- **Writes:** `src/data/missions.js`, `src/data/missionConditions.js`, `src/systems/missions.js`, `src/systems/heistFacilities.js`, `src/data/encounters/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three physical procedural types.** tow_recovery, demolition, rescue_under_fire join the OFFER_MIX with station-type weights. | Each appears on boards on the route; each completes in a scenario by two methods. |
+| `.01` | **Ten authored set pieces.** Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. | Ten playable on the route; owner verdict per piece. |
+| `.02` | **The capital boss.** A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. | Killable by physics alone in a scenario; the tumble law applies to its sub-systems. |
+| `.03` | **Clauses that twist.** Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). | ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04). |
+
+- **Not:** No mission that is 'fly there and hold fire'.
+
+**`PQ-153` — Six sectors with a way of life (the authored core, then the frontier as texture)** · *BETA* · after `PQ-137`, `PQ-143`
+
+A player recognises each of six sectors from thirty seconds of unlabeled activity: Helios (the tutorial harbour), Ceres (the working belt), Tethys, plus three chosen from the ten by what they can physically offer — an ice-shear field, a debris reef, a foundry. Each has hazard geometry that changes fights, a landmark you screenshot, and one toy that is best there. The frontier fourteen carry stations and rumours, not story.
+
+- **Gap:** 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. **Reference:** Subnautica biomes, Hollow Knight areas, Starsector systems.
+- **Exists:** `src/data/sectors.js` (10 core), `src/data/frontierRegions/` (14), `authoredPlaces.js`, `regionalEcology.js`, world-identity `SECTOR_STYLE_INDEX.md`, depth landmarks H1a–H1h, W1/W2 planet states, `PLACE_REGISTRATION.md`.
+- **Routes through:** PQ-143 identity tables; WI-SECTOR-FAMILIES; SPEC3-30; depth H1/W1/W2; PQ-136 props.
+- **Writes:** `src/data/sectors.js`, `src/data/frontierRegions/`, `src/data/authoredPlaces.js`, `src/systems/regionalEcology.js`, `design/world-identity/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Choose the six.** A table: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy; owner approves. | Table committed; owner verdict recorded. |
+| `.01` | **Hazard geometry per sector.** Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). | Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6. |
+| `.02` | **Landmarks fielded.** The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. | Six landmarks reachable; still review passes. |
+| `.03` | **The frontier as texture.** Fourteen frontier sectors get rumours, one texture one-off each, and no story promise; the stale 'not wired' comment corrected. | Atlas integrity green; each frontier sector has one memorable object. |
+
+- **Not:** No new sectors; no palette-swap identity.
+
+**`PQ-154` — Wrecks as terrain and the death economy** · *BETA* · after `PQ-138`
+
+A wreck is a place: cover, anchor, loot, and an ecology (scavengers, a squatter, a trap). Extreme impacts fracture hulls along a few authored seams, so the aftermath of a wrecking-ball hit is pieces, not a swap. Your own death leaves your wreck and pod in the world; the surrender/custody systems already make it a story.
+
+- **Gap:** Wrecks spawn flat and static; fracture is a swap; unique wrecks exist as one-shots. **Reference:** Everspace 2 wreck fields, Hardspace: Shipbreaker, Hades death economy.
+- **Exists:** `aftermathWrecks.js` (persistent markers), `uniqueWrecks.js` (12 reservations), `salvage.js`, `survivorPod.js`, `surrenderRecovery.js`, wreck pack (44 models, PQ-136.00 fielded), `PQ-138.03` drift/tumble.
+- **Routes through:** PQ-138.03; depth R1/R2 unique wrecks; GDX-A08/A13.
+- **Writes:** `src/systems/aftermathWrecks.js`, `src/systems/uniqueWrecks.js`, `src/systems/salvage.js`, `src/systems/survivorPod.js`, `src/render/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Authored fracture seams.** Three to five seams per hull class; a slam above a threshold splits along one; pieces inherit motion and mass. | A wrecking-ball hit on a medium produces ≥ 2 pieces in the scenario; frame budget unchanged. |
+| `.01` | **Wreck ecology.** Persistent wrecks attract scavengers (PQ-138.01), squatters, and traps; the field is an encounter place. | A wreck field older than one day has ≥ 2 inhabitants on the route. |
+| `.02` | **Your own wreck.** Death leaves your hull and pod; recovery, surrender and custody paths reach them; NG+ can find them. | Save round-trip of the player wreck; one encounter references it. |
+
+- **Not:** No general destruction solver; seams are authored.
+
+#### Pillar C · Economy, progression, identity
+
+**`PQ-155` — Money means toys: the economy tuned as a verb curve** · *BETA* · after `PQ-137`, `PQ-142`
+
+The curve is designed, not accreted: start-to-first-upgrade ≤ 15 min; hour by hour a new physical verb (tow class, head, field, slam survival); the Massline's ceiling is not behind a 2.5 M capital-hull tech; sinks (repairs, fines, insurance, restitution) and faucets (salvage, contracts, industry, stunts) balance; a headless ten-hour simulation prints the curve and the check gates it.
+
+- **Gap:** Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. **Reference:** Subnautica pacing, Endless Sky, Slay the Spire unlock cadence.
+- **Exists:** `src/data/tech.js` (32 nodes), `ships.js` (13 hulls), `modules.js` (72), `economy.js`, `economyCycles.js`, `killRewards.js`, `careerContracts.js`, telemetry aggregates.
+- **Routes through:** S2-05 long ladder; SPEC3-F1; GDX-A15/A17; PQ-142 verbs.
+- **Writes:** `src/data/tech.js`, `src/data/modules.js`, `src/data/ships.js`, `src/data/killRewards.js`, `src/systems/economy.js`, `scripts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The verb ladder.** A table of hour → verb → cost → gate; every tech node either unlocks a verb or is folded. | Table committed; ≤ 12 stat-only nodes remain, each justified. |
+| `.01` | **The ten-hour simulation.** Headless economy sim with three player archetypes prints net worth, verbs unlocked and sinks per hour; a check asserts the ladder. | `check:economy:curve` green for all three archetypes. |
+| `.02` | **Sinks that tell stories.** Repairs, fines, insurance, restitution, impound: each a receipt with a cause. | Each sink appears in a session ledger with its cause. |
+| `.03` | **Stunts pay.** Trick receipts pay in reputation and salvage rights, never in raw credits (no grind-by-stunt). | A physics run earns ≥ the reputation of a gun run; credits equal. |
+
+- **Not:** No premium currency; no loot rarity.
+
+**`PQ-156` — Three starters, three verbs, and a save-file identity** · *BETA* · after `PQ-137`, `PQ-142`
+
+New Game offers three starters that are verbs: the brawler (ram plate, shove gun), the skater (light, fast, the best swinger), the tug (heavy line, tow class, slow). Each has a distinct first ten minutes. The load screen is a portrait of the save: hull with scars, titles, rap sheet, the ace who hates you.
+
+- **Gap:** One starter; the load screen is a list. **Reference:** Slay the Spire characters, Mount & Blade save cards.
+- **Exists:** `src/data/newGameDefaults.js`, `ships.js` (Hitch/Wasp/Pelican), `src/ui/screens/newGame.js`, `saveLoad.js`, `livingHull.js`, `titles.js`.
+- **Routes through:** PQ-142; GDX-A16.
+- **Writes:** `src/data/newGameDefaults.js`, `src/data/ships.js`, `src/ui/screens/newGame.js`, `src/ui/screens/saveLoad.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three starters.** Hitch (skater), a tug variant of Pelican, a brawler variant of Wasp; each with a kit and a sentence. | Three New Game routes complete the first ten minutes with distinct verbs; telemetry shows distinct funnels. |
+| `.01` | **The save portrait.** Load screen renders hull + scars + titles + rap sheet + grudge. | Capture; save round-trip. |
+
+- **Not:** No classes with locked abilities; any hull can buy any verb later.
+
+#### Pillar D · Presentation
+
+**`PQ-161` — Readable at max zoom: silhouettes, telegraphs, force colours** · *BETA* · after `PQ-137`, `PQ-140`
+
+At the shipping camera and at max zoom-out, a miner looks like it mines, a customs ship looks official, a heavy communicates mass; danger is telegraphed (heat shimmer on guns, engine pitch on pursuers, a taut line glows); force colours (rope, wells, impulses) are distinct for every colour-vision type; a trajectory/force overlay exists only in the Range and the draw-to-fly preview.
+
+- **Gap:** Silhouette identity routes through asset programs; telegraphs and force palette have no owner. **Reference:** Overwatch silhouettes, Hades telegraphs, Everspace 2 exhaust readability.
+- **Exists:** PQ-050 fleet remaster, depth L1 livery, `src/data/palettes.js`, `factionPaletteClaims.js`, `SEMANTIC_PALETTE`, `threatHalo.js`, `intentGlyphs.js`.
+- **Routes through:** PQ-050, depth L1/K1, GDX-A24, PQ-140.02 specialists.
+- **Writes:** `src/data/palettes.js`, `src/data/factionPaletteClaims.js`, `src/ui/threatHalo.js`, `src/render/`, `src/ui/screens/range.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Role silhouettes.** Nine occupational roles with distinct silhouette rules checked at the shipping camera; livery per faction. | Blind reviewer names 8 of 9 roles from stills. |
+| `.01` | **Telegraphs.** Every lethal thing announces itself 0.5–1 s ahead in motion, light or sound. | Death-cause telemetry shows ≥ 90 % of deaths preceded by a telegraph. |
+| `.02` | **Force palette.** Rope, wells, repulsors, impulses, shields: five hues distinct under deuteranopia/protanopia/tritanopia; brightness order preserved. | Contrast check green under all three simulations. |
+| `.03` | **Teaching overlay.** Trajectory and force ribbons in the Range and the stroke preview only. | Never rendered in ordinary flight (test). |
+
+- **Not:** No floating labels as identity.
+
+**`PQ-162` — The station as a place: the redesign the flatten was waiting for** · *BETA* · after `PQ-137`
+
+The docked station is the second most used surface and the only one an owner-commissioned review called cheap screen by screen. Phase 6 flattened the stylesheet and borrowed tokens; the CREST/STAGE/APRON/DRAWER skeleton and the data-state and entity-link contracts have zero adoption across all seven screens. This packet is the redesign: one grammar, one hierarchy, the bar with a transcript, the industry tiers legible, orange doing one job, and docking that feels like arriving at a place with people (the mechanic of PQ-150 lives here).
+
+- **Gap:** Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). **Reference:** Hades hub, Hardspace: Shipbreaker hab, Starsector colony screens.
+- **Exists:** src/ui/station/ (7 screens via stationApp.js), styles/station-workbench.css (34 --sf-* refs, 12 px floor), design/frontend/INSTRUMENT_GRAMMAR.md, design/frontend/reviews/STATION-TASTE-KIMI-2026-08-23.md, src/ui/entityResolver.js, screenMemory.js, whyReveal.js (17 adopters).
+- **Routes through:** §11 Phase 6/7; RV-COMMAND-DECK (extract one interaction only); S2-06.
+- **Writes:** `src/ui/station/`, `styles/station-workbench.css`, `src/ui/screens/stationHub.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Skeleton and data states adopted.** All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). | check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. |
+| `.01` | **Hierarchy and colour discipline.** One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. | A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. |
+| `.02` | **Arriving somewhere.** Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. | Blind reviewer names the station from the docked view; capture. |
+
+- **Not:** No new station types; no redesign of the flight HUD.
+
+**`PQ-168` — The Chart finished: traffic layer, hierarchy, one answer per question** · *BETA* · after `PQ-137`, `PQ-151`
+
+The Chart already answers routes, risk, prices, pressure, dossiers and route comparison. It still renders the same four navigation answers twice, gives nine tabs one size, keeps ~80 sub-12 px nodes, and has no traffic layer, so the living world the map is supposed to show is invisible on it. This packet finishes it: traffic density and convoys as a layer, heat (PQ-151) and contract pins as layers, one hierarchy, one inspector.
+
+- **Gap:** J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. **Reference:** Starsector map, Endless Sky map, Highfleet strategic layer.
+- **Exists:** src/ui/galaxyMap.js (routes, waypoints, risk, prices, layers, dossiers, comparison), src/ui/map/mapNavContext.js, mapAuthority.js, design/frontend/reviews/CHART_POLISH_REVIEW_2026-08-23.md, state.traffic (350 KB read by 0 UI files).
+- **Routes through:** §11 J12/J12b; RV-MAP; WI-NAV-PLACES; GDX-A10/A27.
+- **Writes:** `src/ui/galaxyMap.js`, `src/ui/map/`, `src/ui/mapAuthority.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Traffic and heat layers.** Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. | Toggling layers shows live traffic; layer state persists (screen memory). |
+| `.01` | **One answer per question.** Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. | Zero duplicated answers; smallest text 12 px; cold review verdict. |
+
+- **Not:** No second map; no fog-of-war rewrite.
+
+**`PQ-158` — Audio direction: the game that sounds heavy** · *RELEASE* · after `PQ-141`, `PQ-139`
+
+The game currently ships muted by default because every sound is synthesised and the team knew it. The bus topology, adaptive-music matrix, ducking, voice cap and determinism isolation are already A-list; this packet supplies the content: a recorded/designed sample library for every cue family, an impact ladder (hull/rock/station × light/medium/heavy), the Massline as an instrument (tension to pitch, release snap, reel whine), boost stop, composed themes for the four states plus per-sector and per-faction identity through the Band, voice for the barks (eight faction registers), a convolver reverb bus so a hangar and a void differ, and a mix that ducks music under weight.
+
+- **Gap:** Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. **Reference:** Hades, Deep Rock Galactic, Everspace 2, Rebel Galaxy Outlaw, Sea of Thieves mix.
+- **Exists:** `src/audio/audioSystem.js` (8 buses, limiter, 68 subscriptions, 4-state stem matrix), `cuePriorityBus.js`, `audioActiveSet.js`, `bandBeds.js`, `src/data/audioRecipes.js` (171), `barks.js` (271 lines), settings 8 sliders; dead `reverbMix` params.
+- **Routes through:** S2-07 audio identity; SPEC3-39 procedural audio; GDX-A26; PQ-139.01 sound by mass.
+- **Writes:** `src/audio/`, `src/data/audioRecipes.js`, `assets/audio/`, `src/ui/screens/settings.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The sample library pipeline.** A licensed/authored sample library (recorded or designed offline) per cue family, encoded and residency-gated like assets; recipes become sample+synth hybrids. | ≥ 120 cues sample-backed; default unmute; frame-sleep counters unchanged. |
+| `.01` (after PQ-139.01) | **The impact ladder, sample-backed.** Extends PQ-139.01 (which chooses pitch and gain from dp and mass on the synth path): the same 3×3 ladder (hull/rock/station × light/medium/heavy) gets layered transient/body/tail samples; scout-on-rock vs freighter-on-station stays ≥ 1 octave and ≥ 12 dB apart. | B9b table test; A/B capture. |
+| `.02` | **The Massline as an instrument.** Tension to pitch, strain to grit, reel whine, release snap distinct from break, bridle chord. | All massline events audible and distinct; captions name them. |
+| `.03` | **Composed themes.** Four state themes with motifs, per-sector beds, faction stings via the Band; the adaptive matrix drives authored stems. | A stranger hums the travel theme; per-sector bed identified blind. |
+| `.04` | **Voice for the barks.** Eight faction registers recorded or synthesised-with-direction, radio-processed; captions; the mechanic's voice. | All 271 lines delivered; subtitles; determinism untouched. |
+| `.05` | **Space and mix.** Convolver reverb bus per environment class; weight-first ducking; audio cues for visual events (accessibility). | Hangar vs void audibly different; ducking table test. |
+
+- **Not:** No audio in the sim; no cue without a cause.
+
+**`PQ-159` — Camera as art direction, and a photo mode** · *RELEASE* · after `PQ-141`, `PQ-139`
+
+The camera is part of the art direction. Exceptional speed opens it toward 3× (B3); impacts kick in proportion to delta-V, not damage; a taut line between two bodies frames both; a rated moment gets a 150 ms beat and a bass drop; death gets a cam; photo mode with free camera, filters off by default and the composition ramp tuned so every screenshot sells the game.
+
+- **Gap:** Speed zoom tops out at 1.55×; kicks are damage-driven; no auto-framing for two-body moments; no photo mode. **Reference:** Rocket League replay cam, Just Cause, Hades death cam, Everspace 2 photo mode.
+- **Exists:** `src/render/camera.js`, `cameraDirector.js`, `velocityLanguage.js`, `feel.js` (FOV punch, trauma), `masslineReleaseArc.js`, `bulletTime.js`.
+- **Routes through:** SPEC3-18 camera & juice; S2-02; PQ-139.00; PQ-146.03 moment detector.
+- **Writes:** `src/render/camera.js`, `src/render/cameraDirector.js`, `src/render/feel.js`, `src/ui/screens/pause.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.03) | **Impacts kick and reduced motion holds.** Extends PQ-137.03 (which owns the speed-opens zoom curve): kick and trauma from exchanged momentum rather than damage, rate-limited, honouring reduce-motion; the zoom curve is not re-tuned here. | Kick magnitude table by momentum; reduce-motion capture shows none. |
+| `.01` | **Two-body framing.** When a line is taut or a bridle exists, frame both bodies with the line as the diagonal. | Capture of a swing shows both bodies ≥ 90 % of the time. |
+| `.02` | **The beat.** Rated moments get a 150 ms time dip, a camera hold, and a stinger; death gets a cam. | Fires on the moment detector only; headless sims unchanged. |
+| `.03` | **Photo mode.** Pause, free camera, hide HUD, exposure, no filters by default; a capture path for store assets. | Reachable from pause; captures are used for the store page. |
+
+- **Not:** No shake as feel; no cinematic camera in ordinary flight.
+
+**`PQ-160` — Replay, clips and sharing** · *RELEASE* · after `PQ-141`, `PQ-146`
+
+Because the sim is deterministic, the last thirty seconds can be replayed from the input tape with a free camera. Rated moments (PQ-146) become clips automatically; the player exports a GIF or MP4; Crucible runs share a seed code and a ghost. This is the marketing engine and the community engine, and it costs little because determinism is already paid for.
+
+- **Gap:** Replay exists only in the lab; no photo, clip or share surface. **Reference:** Rocket League, Halo theatre, Trackmania ghosts.
+- **Exists:** `src/testing/lab/differentialReplay.js`, `src/core/simSnapshot.js`, input command snapshot, `survivalRecords.js` build codes, Electron packaging.
+- **Routes through:** GDX-A30 determinism; §12 Crucible.
+- **Writes:** `src/core/simSnapshot.js`, `src/core/inputCommandSnapshot.js`, `src/testing/lab/differentialReplay.js`, `src/ui/screens/`, `electron/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Ring buffer and replay.** Keep 30 s of snapshots + inputs; replay in-game with the photo-mode camera. | Replay matches live to the hash; UI reachable from pause. |
+| `.01` | **Auto-clip.** Moment detector marks a window; the clip list shows it; export GIF/MP4 via the packaged host. | A bolas kill produces an exportable clip in Electron and a downloadable one in browser. |
+| `.02` | **Seeds and ghosts.** Crucible runs export a seed/build code; a ghost of a shared run renders as a translucent hull. | Two machines reproduce the same run from the code. |
+
+- **Not:** No cloud service; sharing is files and codes.
+
+#### Pillar E · First hour, UX, platform
+
+**`PQ-163` — The first ten minutes: the power fantasy, honest** · *ALPHA* · after `PQ-137`
+
+The onboarding rail already teaches thrust, brake, latch, winch, cut and dock in-world with a verb-then-silence rhythm; it never teaches boost, draw-to-fly or wells, and the first shove is impossible with the starter gun. This packet re-cuts the opening around the store-page sentence — light ships are ammunition, swing a rock, keep the speed — as a scripted-but-honest rescue: you are a tow rig, a scout is chasing a tug, you swing a rock into a derelict for scrap, fling the scout into an asteroid, grab the pod and run. Then the 47-A scene plays as the climax it already is.
+
+- **Gap:** Boost/draw-to-fly/wells untaught; starter gun cannot shove; the quality cliff after 47-A. **Reference:** Portal, Half-Life, Doom (2016) intro, Subnautica.
+- **Exists:** `src/onboarding/flightDrill.js`, `src/systems/onboarding.js`, `src/ui/hudAttention.js` hints, `src/ui/screens/range.js`, `scripts/check-first-15-runtime.mjs`, 47-A scenario.
+- **Routes through:** S2-03 first hour; M3-CAREERS/M3-NAV-HUD; GDX-S03/A28; PQ-137.05 starter force.
+- **Writes:** `src/onboarding/`, `src/systems/onboarding.js`, `src/ui/hudAttention.js`, `src/ui/screens/range.js`, `src/data/scenarios/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.05) | **The rescue.** A tow-rig opening at the reference site with one swing-release, one shove, one grab-and-run, in play, no walls. | ≥ 80 % of unaided testers complete it in ≤ 10 min; telemetry funnel. |
+| `.01` | **The Range is the door.** Onboarding points at the Range (F4) after the first latch; the SWING, DO NOT PULL rung is the first drill; the empty Power Rail slots explain themselves. | Funnel shows ≥ 60 % of new players open the Range in hour one. |
+| `.02` | **Teach the missing three.** Boost, draw-to-fly and the well enter the rail in the first hour, each as a verb-then-silence beat with a Range fallback. | Funnel shows each used unprompted within the hour by ≥ 70 %. |
+| `.03` | **The sentence, proven.** The store-page sentence is shown once and each clause is performed by the player before minute ten. | A stranger states the fantasy back correctly after playing. |
+| `.04` | **The cliff.** Beat 1 after 47-A is a set piece (PQ-152), never an errand. | Session-2 retention in playtests ≥ 60 %. |
+
+- **Not:** No mentor dialogue; no tutorial text longer than one line.
+
+**`PQ-167` — Telemetry funnels and the weekly playtest loop** · *ALPHA* · after nothing
+
+Telemetry already captures onboarding milestones, kills, deaths by cause, trade and credits locally; nobody can read it. This packet exports a session report (funnel: first flight, first swing, first shove, first dock, first heat; session length; death causes; verbs used per hour), runs a weekly owner playtest with captures and a one-page findings sheet, and makes the ALPHA/BETA gates in §15.1 computable from it.
+
+- **Gap:** Telemetry is local-only, reachable via a window global; no export, no funnel, no playtest ritual. **Reference:** Any shipped indie's playtest cadence; Supergiant's weekly plays.
+- **Exists:** `src/systems/telemetry.js`, `src/observability/sessionObserver.js` (unwired), `motionTelemetry.js`, receipts machinery.
+- **Routes through:** SPEC3-41; PROD-OBS-CAP; §1A observability.
+- **Writes:** `src/systems/telemetry.js`, `src/observability/`, `scripts/`, `design/program/roadmap/receipts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Session report.** Export a JSON + one-page Markdown report per session from the existing aggregates; opt-in upload later. | Report renders for any saved session; funnel fields present. |
+| `.01` | **The weekly playtest.** A protocol: owner plays 45 minutes on a clean build, capture + report + three findings routed to packets. | Four consecutive weeks recorded in receipts. |
+| `.02` | **Gates from data.** ALPHA/BETA numeric gates computed from reports (completion %, verbs/hour, session-2 return). | `check:playtest:gates` prints the §15.1 rows. |
+
+- **Not:** No PII, no network without opt-in.
+
+**`PQ-164` — Input truth: controller, Deck, trackpad, haptics** · *RELEASE* · after `PQ-141`
+
+Every player verb and every screen works on gamepad with glyphs that follow the active device; remapping persists; Steam Deck is verified at its resolution; the trackpad (the owner's stated hand) has honest gestures for the Massline and draw-to-fly; haptics carry line tension and slams.
+
+- **Gap:** Fixed pad map, no remap, keyboard-only glyphs, menu coverage unverified per screen, no Deck work. **Reference:** Hades controller parity, Steam Deck Verified.
+- **Exists:** `src/systems/gamepad.js`, `touch.js`, `src/ui/input.js` roving focus, `bindings.js` promptLabel, settings 24-action rebind.
+- **Routes through:** GDX-A28; S2-08 input completeness.
+- **Writes:** `src/systems/gamepad.js`, `src/systems/touch.js`, `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/screens/settings.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Every screen on a pad.** Per-screen verified navigation for all 27 screens and the station; a check walks them. | `check:gamepad:screens` green. |
+| `.01` | **Glyphs and remap.** Device-aware prompt glyphs; gamepad remapping with conflict detection; persists through save/profile. | Settings-profile check green; capture on both devices. |
+| `.02` | **Deck and trackpad.** Deck resolution/scale verified; trackpad gestures for latch/reel/throw and stroke. | Deck capture at 1280×800; trackpad route completes the first ten minutes. |
+| `.03` | **Haptics.** Line tension, slams and boost on gamepad rumble/triggers; off by default in reduce-motion. | Table test of intensity by momentum. |
+
+- **Not:** No touch-only UI path.
+
+**`PQ-165` — Accessibility and options depth** · *RELEASE* · after `PQ-141`
+
+One-click Low/Medium/High presets and a frame cap join the existing per-toggle settings; every voice line has captions; visual events have audio cues; assists (auto-aim as accessibility, release assist, orbit assist) are discoverable; colourblind, motion, flash, dyslexia and UI-scale options already exist and are verified on every screen.
+
+- **Gap:** No presets or frame cap; no subtitles for audio; no audio cues for visual events; gamepad remap missing (PQ-164). **Reference:** Celeste assist mode, Hades accessibility, Xbox Accessibility Guidelines.
+- **Exists:** `src/ui/screens/settings.js` (5 tabs, colourblind/contrast/flash/dyslexia/captions/UI-scale), `adaptiveQuality.js`, `check-wcag-contrast.mjs`, `check-ui-a11y.mjs`.
+- **Routes through:** GDX-A29; RV-POLISH; S2-06.
+- **Writes:** `src/ui/screens/settings.js`, `src/render/adaptiveQuality.js`, `src/audio/audioSystem.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Presets and frame cap.** Low/Medium/High map to the adaptive-quality tiers; frame cap 30/60/120/off; VSync honoured. | Preset switch captured; frame cap measured. |
+| `.01` | **Captions and audio cues.** Captions for all voice; audio cues for wells, tethers taut, telegraphs when 'audio cues' is on. | Every voiced bark captioned; cue table test. |
+| `.02` | **The checklist.** An accessibility statement in-app and the checklist (contrast, motion, remap, text scale, assists, captions) verified per screen. | Checklist green; statement reachable from settings. |
+
+- **Not:** No universal visual style; accessibility does not flatten the art.
+
+**`PQ-166` — Localization at launch: five languages and the growth test** · *RELEASE* · after `PQ-141`
+
+Localization is ahead of a typical indie already: a real runtime, a generated catalog and a pseudo-locale in CI. This packet ships it: five languages (EN, FR, DE, ES, PT-BR or per market data), a language setting, font fallback for the display face, and a +40 % growth pass that clips nothing.
+
+- **Gap:** Locale only via URL; default route English-only by assertion; no language setting; growth unverified on the station. **Reference:** Standard Steam launch matrix.
+- **Exists:** `src/localization/gameLocalization.js`, pseudo-locale, placeholder-parity tests, `test/localization-reachability.test.mjs`.
+- **Routes through:** §11.11 #9.
+- **Writes:** `src/localization/`, `src/ui/screens/settings.js`, `test/localization-reachability.test.mjs`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Language setting and default-route bridge.** Settings language picker; the DOM bridge installs for any locale; the reachability test flips to 'default stays English unless chosen'. | Switching language live re-renders every screen. |
+| `.01` | **Growth pass.** Pseudo-locale at +40 % on every screen and the HUD; fix clipping by layout. | Zero clipped strings in the capture sweep. |
+| `.02` | **Five languages.** Translation pipeline (machine first, human review for the bark corpus and store copy); fonts. | Five catalogs ship; store page in five languages. |
+
+- **Not:** No VO localization at launch; captions only.
+
+**`PQ-033` — Final platform, save, performance, accessibility, legal and store closeout** · *RELEASE* · after `PQ-141`, `PQ-158`, `PQ-164`, `PQ-165`, `PQ-166`
+
+The game ships. There is a LICENSE, third-party notices and a credits screen (three.js and Rapier notices are required; asset licenses exist on disk but are not packaged); the Electron build reports crashes, updates itself, and shows its version; min-spec floors are met (60 fps median, ≤ 1 hitch > 50 ms per minute, boot ≤ 10 s, heap growth < 30 MB / 30 min); a two-hour crash-free soak passes on both hosts; save/continue never dead-ends over 200 cycles; store page, trailer and screenshots exist.
+
+- **Gap:** No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). **Reference:** spec2/08 release readiness; Steam launch checklist.
+- **Exists:** electron-builder targets, `build/web/spaceface-release-build.json` (unread), save system (5 slots, checksum, migration, rollback), `check:all`, runtime witness, adaptive quality.
+- **Routes through:** S2-08; M6-PERFORMANCE/M6-RELEASE; §8; PQ-144; retired plan superseded by this packet: design/program/roadmap/retired/PQ-033.md.
+- **Writes:** `electron/`, `package.json`, `build/`, `src/ui/screens/mainMenu.js`, `src/ui/screens/pause.js`, `LICENSE`, `NOTICE`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Legal and credits.** Root LICENSE, third-party NOTICE bundled into the packaged files list, an in-app credits screen, privacy and accessibility statements. | Packaged build contains every required notice; credits reachable from the title. |
+| `.01` | **Crash reporting, auto-update, version.** Electron crashReporter to a store or file, electron-updater, version/build string in the title and pause screens. | A forced crash produces a report with the build hash; an update applies. |
+| `.02` | **Min-spec floors and soak.** Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. | Floors green on min-spec; soak logs attached. |
+| `.03` | **Store readiness.** Steam build, cloud saves, achievements (from telemetry aggregates and survivalRecords), store page assets from PQ-159/160. | Store page live in test; achievements unlock in a session. |
+
+- **Not:** No feature work inside the gate; a measured blocker is repaired, never hidden.
+
+#### Pillar F · Modes and replayability
+
+**`PQ-169` — Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home** · *BETA* · after `PQ-133`, `PQ-146`
+
+The Crucible becomes the one-more-run surface: a daily seed everyone plays, local and Steam leaderboards, ghost replays of shared runs, weekly mutators (three wells bend the arena; heavy-only; no guns), stunt scoring from PQ-146, and draft unlocks that carry cosmetics and toys home under §12.2's rule.
+
+- **Gap:** Records and build codes exist; no daily, no board, no ghosts, no stunt score. **Reference:** Spelunky daily, Slay the Spire, Vampire Survivors, Trackmania.
+- **Exists:** `survivalRecords.js`, `survivalMutators.js`, `survivalDraft.js`, `survivalSwarm.js`, `survivalUnlocks.js`, build codes.
+- **Routes through:** §12 PQ-133; PQ-135; PQ-146; PQ-160 ghosts.
+- **Writes:** `src/systems/survivalRecords.js`, `src/systems/survivalMutators.js`, `src/systems/survivalDraft.js`, `src/systems/survivalUnlocks.js`, `src/ui/screens/crucible.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Daily seed and board.** Date-seeded run; local board; Steam board when PQ-033 lands. | Two machines get the same daily; board persists. |
+| `.01` | **Ghosts.** A shared run's input tape renders as a translucent ghost hull in your run. | Ghost matches the shared hash. |
+| `.02` | **Weekly mutators.** Gravity slalom, heavies only, weapons cold, reef arena; rotate by week. | Four mutators live; each changes the top strategy (telemetry). |
+| `.03` | **The hangar feed (cosmetics only unless the owner overrides §12.2).** Draft unlocks carry cosmetics into adventure; adventure titles show in the Crucible. Carrying toy AVAILABILITY into adventure is a §12.2 override (no campaign material reward in v1) and ships only on the owner's explicit decision. | One cosmetic round-trips; §12.2 respected; the override, if any, is recorded as the owner's. |
+
+- **Not:** No online multiplayer; asynchronous only.
+
+**`PQ-171` — Content grammar and the anti-repetition budget** · *BETA* · after `PQ-138`
+
+Depth from combination, not count: an encounter grammar (situation × place × twist × actor) with variation axes, the 58-microevent catalogue and eight chance encounters scheduled by the storyteller, and a repetition meter over telemetry that flags any encounter shape seen more than N times per hour. The warehouse-of-features guard is a check.
+
+- **Gap:** Ten verbs and 65 one-shots; nothing measures repetition. **Reference:** Spelunky level grammar, Hades encounter variety, Sea of Thieves world events.
+- **Exists:** microevent library (58), `encounterScripts.js`, `encounters/` (48), `chanceEncounters` (8), `ambushSignatures.js`, `attackTraits.js`.
+- **Routes through:** GDX-A23; depth E1; SPEC3-29.
+- **Writes:** `src/data/encounters/`, `src/systems/encounterScripts.js`, `design/incubator/microevent_library/`, `scripts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The grammar.** Document + data: axes and constraints; every encounter declares its shape. | All encounter files carry a shape; validator green. |
+| `.01` | **The repetition meter.** Telemetry counts shapes per hour; a check fails when any shape exceeds its budget over a 10-hour sim. | `check:content:repetition` green. |
+
+- **Not:** No procedural sprawl.
+
+**`PQ-170` — Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth** · *POST* · after `PQ-033`
+
+The post-ending sandbox has pulls that are verbs: territory wars where your wrecking-ball and blockade skills tilt fronts; two mega-heists at the campaign's craft level; capital bosses as physics puzzles; legendary Massline heads with a lineage; and the two vision promises with no system yet — a station that visibly expands because of you, and a faction that depends on something you built.
+
+- **Gap:** No faction endgame; no station growth; no faction dependency; post-ending chains reuse ten verbs. **Reference:** Starsector late game, Mount & Blade wars, Hades heat.
+- **Exists:** `factions.js` wars without the player, `conflictReactions.js` (2 sets), `claims.js` convoys, `postEndingReplayChains.js`, SPEC3-F6 territory, SPEC3-22 bosses, unique wrecks.
+- **Routes through:** S3-F6-BASES; RV-BASES; WB-WORLD-AFTER; PQ-145.
+- **Writes:** `src/systems/factions.js`, `src/data/conflictReactions.js`, `src/systems/claims.js`, `src/data/postEndingReplayChains.js`, `src/data/sectors.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Fronts you can tilt.** War fronts as physical situations (blockade lanes, siege a bastion by wrecking ball) with visible ownership change. | A player action flips one sector's owner in a scenario; reactions for 8 factions (not 2). |
+| `.01` | **Station growth and dependency.** A station gains a module because of player-supplied throughput; a faction's patrols depend on your depot. | Both visible on the route within one session of play; save round-trip. |
+| `.02` | **Two mega-heists and two capital bosses.** Authored at 47-A craft; physics-solvable. | Owner verdict per piece. |
+| `.03` | **Legendary lines.** Ace trophy heads with lineage and recognition. | One trophy head per ace tier; NPCs bark about it. |
+
+- **Not:** No empire spreadsheet; numbers measure, never replace.
+
+**`PQ-172` — Mods and data-driven content** · *POST* · after `PQ-033`
+
+The community can add a ship, a weapon, an encounter or a sector by dropping JSON that the same validators check; determinism and save schema are protected by the loader. Workshop integration follows the Steam build.
+
+- **Gap:** All content is compiled ES modules; one JSON scenario. **Reference:** Starsector, RimWorld modding.
+- **Exists:** `src/data/` (135 modules), `47a.scenario.json`, data validators (`check-data.mjs`, `check-data-refs.mjs`).
+- **Routes through:** GDX-A23; S3-F9.
+- **Writes:** `src/data/`, `scripts/check-data.mjs`, `src/main.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **JSON content loader.** Weapons, modules, encounters and places load from a user content directory through the existing validators; mods are listed in-app. | A sample mod adds a weapon and an encounter; determinism hash unaffected without the mod. |
+| `.01` | **Workshop.** Steam Workshop publish/subscribe for the same directory. | One mod round-trips through Workshop. |
+
+- **Not:** No script mods at launch.
+
+### 15.5 The toy chest — the funnest things this premise can do that it does not do yet
+
+Each toy is a combination of verbs that already exist or are in `PQ-137`; none needs a new system.
+The physics that makes it work and the story it produces are the acceptance test: if a toy cannot be
+described as "I did X and Y happened, so then Z", it is content, not a toy. Owner of each is named.
+
+| # | Toy | The physics | The story it produces | Owner |
+|---|---|---|---|---|
+| T1 | **The bolas** | Twin Bridle ties two light hostiles; their coupled inertia makes them orbit each other; the pair lawn-darts into the nearest rock. | "I solved a three-on-one with one throw." | `PQ-031` |
+| T2 | **The wrecking ball** | Rope a house-sized rock, two orbits of spin-up (reel in to speed up), release into a pirate outpost or a capital's flank. | The belt's favourite tall tale; a scripted contract and an emergent habit. | `PQ-137.07`, `PQ-152` |
+| T3 | **The clothesline** | Anchor a line across a seam chokepoint (anchor bolt head); a pursuer at full burn clotheslines it. | Geometry as a weapon, zero ammo spent. | `PQ-029`, `PQ-027` |
+| T4 | **Anchor ski / convoy parasite** | Latch a heavy hauler, kill thrust, ride through its escort screen; release into a slingshot attack; or tether two haulers so their autopilots fight the coupling and the convoy jackknifes. | Hitchhiker piracy without firing a shot. | `PQ-137.09`, `PQ-031` |
+| T5 | **Well golf / gravity bowling** | Drop a well behind a fleeing target so its escape vector curves into your minefield; or shove an asteroid into a well's centre so it accelerates through a cluster. | "He escaped straight into my trap." | `PQ-147`, `PQ-137.09` |
+| T6 | **Ore shotgun / cargo as ammunition** | Concussion-shove a full cargo pod; its mass makes it a scattergun shell. Volatile cargo detonates, corrodes, or drags. | The cargo you were hired to protect is what killed the pirates. | `PQ-148` |
+| T7 | **The ore-crusher trap / station-door jam** | Pull a latched target backward into an excavator's jaws; shove a burning hull into a station's hangar aperture to jam reinforcements. | Industrial machinery finishes what you started. | `PQ-027` |
+| T8 | **Momentum-bungee joust / ram-plate duels** | Momentum sink on a rock, burn away until the line is critical, release: you slingshot back through the pursuer at triple engine speed; named aces answer with head-on ram passes. | A duel the radio talks about for days. | `PQ-026`, `PQ-150` |
+| T9 | **Dead man's mass** | Wrecks keep momentum; shove a fresh kill's hulk into its own reinforcements. | "His own wingman finished him." | `PQ-138.03`, `PQ-154` |
+| T10 | **Pod rescue under fire** | Survivor pods drift through a live firefight; tow them out while their inertia betrays you; rescue the faction that wants you and watch heat decay. | The save you brag about. | `PQ-138`, `PQ-151` |
+| T11 | **The long tow** | Haul a derelict capital hulk across two sectors for salvage rights; its mass attracts pirates the whole way. | The slowest, tensest hour in the game. | `PQ-152`, `PQ-154` |
+| T12 | **Mine pinball** | Radial mines chained in a debris reef; one detonation cascades the reef into a kill-box. | "Twenty minutes to set up and worth it." | `PQ-137.09`, `PQ-027` |
+| T13 | **Ace's trophy line** | Beat a named ace and salvage their reinforced Massline head; it holds heavier loads and NPCs recognise it. | Your rope has a lineage. | `PQ-150`, `PQ-142` |
+| T14 | **Draw-path ambush** | Sketch a loop around a rock, release the autopilot, man the guns while the ship flies the trick; towing a rock while doing it makes the rock a moving shield. | You choreograph the kill; the sim performs it. | `PQ-137.08` |
+| T15 | **Decoy pod / contraband drop-kick** | Jettison a pod packed with an impulse mine for a greedy ace; or decouple contraband at cruise and ram-plate it through a customs cone into an outlaw station's catch net. | Smuggling as physics. | `PQ-148`, `PQ-151` |
+
+### 15.6 The collisions — existing systems that should talk (the cheapest depth in the game)
+
+`PQ-138` owns the first three (audited zero-listener events). The rest are assigned below; each is a
+listener and a rule, never a new system. The trigger and the consequence are the acceptance test.
+
+| # | Collision | Trigger → consequence | Owner |
+|---|---|---|---|
+| C1 | Law × spilled cargo | A hauler breaks up in a firefight → the patrol prioritises securing the spill over chasing you; an escape vector opens. | `PQ-138.00/.01` |
+| C2 | Wreck × scavenger | A wreck appears → scavenger jobs dispatch on the event; mines on a wreck become an emergent ambush. | `PQ-138.01`, `PQ-154` |
+| C3 | Violence × civilians | Gunfire within 300 WU → haulers flee/re-route, workers hold, a tug keeps its tow. | `PQ-138.02` |
+| C4 | Ace memory × tether abuse | Your third fling-kill of a faction → its ace spawns with line-cutters and a momentum sink, and says so. | `PQ-150` |
+| C5 | Well × route hauler | A well on a lane pulls a heavy off-axis → escort pile-up → the station's trade volume dips for a day. | `PQ-147`, `PQ-155` |
+| C6 | Mass slam × station | A shoved wreck through a docking ring → dock fines, repair services down ten minutes, insurance premium up. | `PQ-151`, `PQ-138.05` |
+| C7 | Pods × pirate hunt | Damaged pirates break off to capture ejected pods for ransom → sacrificing a pod drops aggro. | `PQ-150`, `PQ-138` |
+| C8 | Economy × seam smashing | Shatter a platinum seam with a slam → local ore floods, metal prices drop, haulers reroute. | `PQ-155` |
+| C9 | Draw-path × towing | Sketch while towing → the follower accounts for the coupled mass; the rock becomes a perimeter shield. | `PQ-137.08` |
+| C10 | Tumble × faction battle line | Tumble a destroyer → its point defence rakes its own fleet for the duration. | `PQ-140.01`, `PQ-137.04` |
+| C11 | Heat × contracts | WANTED → the board offers double-pay deniable jobs with ambush clauses. | `PQ-151`, `PQ-138.04` |
+| C12 | Mining × pirates | A depleted seam's output drops → ambush frequency on that route rises with scarcity. | `PQ-149`, `PQ-155` |
+
+### 15.7 What this game will NOT build (PROPOSED refusals — binding once the owner ratifies)
+
+Both outside designers and the audit converged on these; the owner has not yet ruled. Until a veto
+arrives, no packet in this section may spend work on any of them. Each is tempting and each would
+spend the studio on a second game.
+
+- **Multiplayer or netcode of any kind.** Coupled-mass physics over a network is a year of pain for a
+  fantasy local chaos already delivers. Async only: daily seeds, ghosts, clips.
+- **Walking, interiors, or planetary landing.** The ship is the character.
+- **Full 3D / six-degree flight.** Top-down keeps trajectories, tethers, and billiards readable on a
+  trackpad; the 3D tumble is presentation, the sim stays on the plane.
+- **Infinite procedural sectors.** Six dense, mean, authored sectors beat sixty empty ones.
+- **RTS fleet or wingman command layers.** Wingmen stay companions with one order verb, not a unit
+  roster.
+- **HP sponges, level-scaled damage, or knockback scaled by victim HP.** Mass and impulse decide;
+  positioning is the scarce resource.
+- **Crafting-material treadmills and rarity loot.** Progression is verbs.
+- **Dialogue trees and RPG companions.** The universe talks through comms, contracts, and
+  consequences.
+- **Camera shake or particle showcases as a substitute for a real event.**
+- **A second architecture for any mode.** Crucible, Sandbox, campaign: one game path.
+
+### 15.8 Session shape (what pulls the player forward, by hour)
+
+| Window | What happens | The pull |
+|---|---|---|
+| **0–10 min** | Wake in a tow rig with a Massline. A scripted-but-honest rescue makes you swing a rock into a derelict, grab the scrap, and fling a pursuing scout into an asteroid. Credits land; the hangar opens. No exposition. (`PQ-163`) | "The rope is real and I want more." |
+| **10–60 min** | Three verbs mastered (line, shove, tow); first paid contract; first accidental heat; first scar on the hull; the map opens; the rap sheet begins. (`PQ-163`, `PQ-155`, `PQ-151`) | The map and the rap sheet. |
+| **1–10 h** | Hull two; two sector biomes; first ace rivalry; first capital tow; the Crucible unlocks at hour three as the one-more-run slot; stronger lines, heavier ram plates, deployable wells — never "+10 %". (`PQ-153`, `PQ-150`, `PQ-142`, `PQ-169`) | Rivalry and gear lineage. |
+| **10–25 h** | Heavy-class verbs (moving terrain, fields), faction wars you tilt, a campaign climax built from the toys, an ending that changes the sandbox's facts. (`PQ-032`, `PQ-152`, `PQ-170`) | Legacy and mastery. |
+| **After** | The post-ending sandbox with your scarred hull and notoriety; Crucible seasons; territory. (`WB-WORLD-AFTER`, `PQ-170`, `PQ-172`) | "So then…" |
+
+Three modes, one save identity: the campaign ends with a set piece you built toward and unlocks the
+post-war sandbox state rather than replacing it; Crucible drafts feed the hangar with possibility, never
+stats (§12.2 stands).
+
+### 15.9 Outside opinions, graded (2026-09-03)
+
+Gemini 3.8 Flash and Kimi K3 were asked, independently, what an A-list version of this game has that
+this build lacks, the funnest toys, the collisions, the session shape, and what not to build.
+
+- **Agreement with the audit (adopted):** hitstop and an impact-sound ladder by mass are the highest-
+  ROI presentation fixes (both #1/#2); the world must flinch (patrol chooses, civilians scatter,
+  scavengers swarm spills); cargo as physics; aces as recurring rivals with counter-loadouts; six dense
+  authored sectors over procedural sprawl; a first ten minutes that hands the player a Massline kill;
+  wrecks as terrain; a death economy that seeds your wreck, pod, and reputation; readable telegraphs;
+  the refusals list. Both graded **strong**.
+- **Adopted with a guard:** Gemini's trajectory/force-vector ghost ribbons — only as a Range/teaching
+  overlay and the draw-to-fly preview, never a permanent HUD layer (`VISION`: if you cannot see the
+  state it does not exist, but a diagram is not the state). Gemini's DualSense haptics — after
+  controller parity, not before. Kimi's "Crucible drafts feed the hangar" — cosmetics and possibility
+  only, §12.2's "never permanent stats" holds.
+- **Declined:** Gemini's "pressurised hull vs void sound dampening" (there is no interior); Gemini's
+  procedural multi-part fracture as a system (wrecks fracture along a few authored seams in
+  `PQ-154`, not a solver); Kimi's mentor-character tutorial as a dialogue vehicle (the rescue is
+  fiction, the teaching stays in play).
+- **The one thing they both said that the map had not:** the game needs a **12-word fantasy the store
+  page promises and hour one proves** — "light ships are ammunition; swing a rock; keep the speed" —
+  and `PQ-163`'s done-when is that sentence, verified by a stranger.
+
+### 15.10 Dispatch
+
+- **Numbering:** `PQ-157` is deliberately unassigned (its draft, player bases and territory, folded into `PQ-170` and the existing `S3-F6-BASES` / `RV-BASES` rows). Do not fill it.
+- **Door:** "finish the game / what's next for release / professional bar" → this section →
+  `node scripts/program-dispatch.mjs --id PQ-146` (or any ID in §15.2). The eight reactivated packets
+  (`PQ-026`–`PQ-033`) are `ready` with fresh leaves; their old one-line briefs are superseded by their
+  packet files.
+- Every packet here closes on the same law as §13C: **numbers in player units, measured at the
+  shipping camera, before and after.** A packet that adds content without naming the gate row it
+  moves is not admitted.
+- Feel before content; surface before invent; collide before add.

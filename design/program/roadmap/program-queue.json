@@ -1443,8 +1443,8 @@
     {
       "id": "PQ-026",
       "priority": 26,
-      "title": "Mass-coupling tactics",
-      "state": "deferred",
+      "title": "Mass-coupling tactics: inertial shunt, gravity mark, momentum sink",
+      "state": "ready",
       "canonical": [
         "PROPOSED-T22"
       ],
@@ -1452,15 +1452,17 @@
         "SF-13"
       ],
       "dependsOn": [
-        "PQ-012",
-        "PQ-025"
+        "PQ-137"
       ],
       "mutexes": [
         "physics-authority",
         "renderer"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:sim:compare"
@@ -1469,13 +1471,13 @@
         "public-route",
         "counterplay"
       ],
-      "brief": "Add inertial shunt, gravity mark, and momentum sink only after the base physics tools and corridor are accepted."
+      "brief": "Reactivated. The three mass tools in the data become readable tactics with the momentum-bungee joust as the showcase. Gap: `wpn_gravity_marker_s` and `wpn_momentum_sink_s` exist in weapons data with status effects and no play arc. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-026.md."
     },
     {
       "id": "PQ-027",
       "priority": 27,
-      "title": "Environmental machinery and timed hazards",
-      "state": "deferred",
+      "title": "Environment as weapon: machinery and timed hazards that participate",
+      "state": "ready",
       "canonical": [
         "PROPOSED-W21"
       ],
@@ -1483,8 +1485,8 @@
         "SF-22"
       ],
       "dependsOn": [
-        "PQ-017",
-        "PQ-025"
+        "PQ-137",
+        "PQ-147"
       ],
       "mutexes": [
         "physics-authority",
@@ -1492,7 +1494,10 @@
         "asset-manifest"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:sim:compare",
@@ -1502,13 +1507,13 @@
         "public-route",
         "accessibility"
       ],
-      "brief": "Add machinery, debris currents, and timed access hazards as world-site consumers after the corridor."
+      "brief": "Reactivated. Crushers, furnaces, conveyors, mass drivers, debris currents, storms and timed access become physical actors the player can feed enemies into. Gap: `environmentalMachinery.js` exists as a system with dressing; nothing in it takes a hull. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-027.md."
     },
     {
       "id": "PQ-028",
       "priority": 28,
-      "title": "Manufactured travel and physics infrastructure",
-      "state": "deferred",
+      "title": "Manufactured travel and physics infrastructure you can ride",
+      "state": "ready",
       "canonical": [
         "A15",
         "W17"
@@ -1517,8 +1522,8 @@
         "SF-26"
       ],
       "dependsOn": [
-        "PQ-024",
-        "PQ-025"
+        "PQ-137",
+        "PQ-145"
       ],
       "mutexes": [
         "atlas",
@@ -1527,7 +1532,10 @@
         "save-schema"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:atlas",
@@ -1538,13 +1546,13 @@
         "save",
         "performance"
       ],
-      "brief": "Add one manufactured acceleration or sling structure after the industrial claim exists; do not rebuild travel already supplied by Atlas."
+      "brief": "Reactivated. One sling ring or mass driver per region that launches ships (and thrown enemies) — the anchor-ski and catapult toys. Gap: Travel between sectors is Atlas; nothing in a sector launches mass. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-028.md."
     },
     {
       "id": "PQ-029",
       "priority": 29,
-      "title": "Practical specialized Massline heads",
-      "state": "deferred",
+      "title": "Practical Massline heads as toys: tractor, elastic whip, frame coupler",
+      "state": "ready",
       "canonical": [
         "T11",
         "T12",
@@ -1554,14 +1562,17 @@
         "SF-27"
       ],
       "dependsOn": [
-        "PQ-025"
+        "PQ-137"
       ],
       "mutexes": [
         "input",
         "physics-authority"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:massline",
@@ -1571,13 +1582,13 @@
         "public-route",
         "save"
       ],
-      "brief": "Add tractor, Elastic Whip, and Frame Coupler only after the baseline spool is excellent."
+      "brief": "Reactivated. The three practical heads already in the data become unlockable toys with a Range drill, a sentence, and NPC use. Gap: Seven heads exist as ordinary purchasable modules with no arc; a player can finish the campaign using the rope as a tractor beam only. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-029.md."
     },
     {
       "id": "PQ-030",
       "priority": 30,
-      "title": "Advanced Massline combat heads",
-      "state": "deferred",
+      "title": "Advanced Massline combat heads: monofilament sweep, transverse snare",
+      "state": "ready",
       "canonical": [
         "T08",
         "T09"
@@ -1586,8 +1597,8 @@
         "SF-28"
       ],
       "dependsOn": [
-        "PQ-010",
-        "PQ-025"
+        "PQ-137",
+        "PQ-140"
       ],
       "mutexes": [
         "input",
@@ -1595,7 +1606,10 @@
         "renderer"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:massline",
@@ -1606,13 +1620,13 @@
         "counterplay",
         "accessibility"
       ],
-      "brief": "Add monofilament sweep and transverse snare after the base physical-combat loop is proven."
+      "brief": "Reactivated. The two combat heads become late-game toys with counterplay and a specialist enemy that carries them. Gap: Combat heads exist in data with no arc, no enemy use, no drill. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-030.md."
     },
     {
       "id": "PQ-031",
       "priority": 31,
-      "title": "Twin Bridle object-to-object tether",
-      "state": "deferred",
+      "title": "Twin Bridle: the bolas and tether-two",
+      "state": "ready",
       "canonical": [
         "PROPOSED-T23"
       ],
@@ -1620,9 +1634,7 @@
         "SF-29"
       ],
       "dependsOn": [
-        "PQ-017",
-        "PQ-025",
-        "PQ-029"
+        "PQ-137"
       ],
       "mutexes": [
         "input",
@@ -1630,7 +1642,10 @@
         "save-schema"
       ],
       "sources": [
-        "design/program/06_RETAINED_FUTURE_BACKLOG.md"
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
       ],
       "checks": [
         "npm run check:massline",
@@ -1641,13 +1656,13 @@
         "save",
         "performance"
       ],
-      "brief": "Add bounded object-to-object tethering only after mature acquisition, sites, and specialized heads."
+      "brief": "Reactivated. Object-to-object tether as the signature abuse: tie two enemies together and watch physics finish the fight. Gap: Twin Bridle exists behind a flag with setup time and no gameplay arc; the most-requested verb in the vision ('tether them together so they yank each other') is unreachable in practice. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-031.md."
     },
     {
       "id": "PQ-032",
       "priority": 32,
-      "title": "Embodied story, ownership, endings, and sandbox",
-      "state": "deferred",
+      "title": "Campaign spine with an ending the player built toward",
+      "state": "ready",
       "canonical": [
         "W12",
         "W13",
@@ -1662,8 +1677,9 @@
         "SF-34"
       ],
       "dependsOn": [
-        "PQ-021",
-        "PQ-025"
+        "PQ-137",
+        "PQ-143",
+        "PQ-152"
       ],
       "mutexes": [
         "save-schema",
@@ -1672,7 +1688,11 @@
       ],
       "sources": [
         "design/depth-program/BUILD_PLAN.md",
-        "design/spec3/SPEC3-F7-living-universe.md"
+        "design/spec3/SPEC3-F7-living-universe.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md",
+        "design/program/roadmap/retired/PQ-032.md"
       ],
       "checks": [
         "npm run check:sim:compare"
@@ -1682,13 +1702,13 @@
         "public-route",
         "five-endings"
       ],
-      "brief": "Close B0-B7 embodiment, visible ownership, five endings, and post-ending continuity after the corridor world is proven."
+      "brief": "Reactivated. The eight-beat spine becomes a 20–25 hour arc: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. Gap: Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-032.md."
     },
     {
       "id": "PQ-033",
       "priority": 33,
-      "title": "Final platform, save, performance, accessibility, and store closeout",
-      "state": "deferred",
+      "title": "Final platform, save, performance, accessibility, legal and store closeout",
+      "state": "ready",
       "canonical": [
         "R11",
         "R12",
@@ -1703,13 +1723,11 @@
         "SF-35"
       ],
       "dependsOn": [
-        "PQ-026",
-        "PQ-027",
-        "PQ-028",
-        "PQ-029",
-        "PQ-030",
-        "PQ-031",
-        "PQ-032"
+        "PQ-141",
+        "PQ-158",
+        "PQ-164",
+        "PQ-165",
+        "PQ-166"
       ],
       "mutexes": [
         "git-index",
@@ -1719,7 +1737,11 @@
       ],
       "sources": [
         "design/spec2/08_RELEASE_READINESS.md",
-        "design/program/roadmap/04_WORLD_CONTENT_RELEASE.md"
+        "design/program/roadmap/04_WORLD_CONTENT_RELEASE.md",
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md",
+        "design/program/roadmap/retired/PQ-033.md"
       ],
       "checks": [
         "npm run check:launch-policy",
@@ -1734,7 +1756,7 @@
         "accessibility",
         "store-media"
       ],
-      "brief": "Run the final release matrix only after feature churn ends; repair measured blockers without hiding them or lowering authored quality."
+      "brief": "Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. Gap: No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-033.md."
     },
     {
       "id": "PQ-034",
@@ -2848,6 +2870,642 @@
       "checks": [],
       "evidence": [],
       "brief": "A player-built depot creates persistent NPC traffic and the crime that follows it; a region shows the player history. Section 13C."
+    },
+    {
+      "id": "PQ-146",
+      "priority": 68,
+      "title": "Stunt grammar and the trick economy",
+      "state": "ready",
+      "canonical": [
+        "STUNT-GRAMMAR"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137"
+      ],
+      "mutexes": [
+        "stunt-grammar"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Named tricks detected from physics receipts, a combo meter, style titles, and the moment detector that feeds clips and slow-mo. Gap: Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-146.md."
+    },
+    {
+      "id": "PQ-147",
+      "priority": 69,
+      "title": "The field toy chest and the Power Bar filled",
+      "state": "ready",
+      "canonical": [
+        "FIELD-TOY-CHEST"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-139"
+      ],
+      "mutexes": [
+        "field-toys"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "All five number-key powers become real, physical, legible toys with NPC counterplay; the Power Bar is the progression display. Gap: The Power Bar (§11.4) is half-built at the input layer; the powers themselves are uneven and unteachable. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-147.md."
+    },
+    {
+      "id": "PQ-148",
+      "priority": 70,
+      "title": "Cargo is physics: pods with mass, volatility and a story",
+      "state": "ready",
+      "canonical": [
+        "CARGO-IS-PHYSICS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-138"
+      ],
+      "mutexes": [
+        "cargo-physics"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Spilled cargo is real mass on the field: shield, projectile, prize; volatile cargo detonates, corrodes or drags; smuggling is a physics problem. Gap: Cargo spills exist as TTL pickups that NPCs ignore; mass on the field is inventory. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-148.md."
+    },
+    {
+      "id": "PQ-149",
+      "priority": 71,
+      "title": "The storyteller: a session-rhythm director over the directors that exist",
+      "state": "ready",
+      "canonical": [
+        "STORYTELLER-DIRECTOR"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138"
+      ],
+      "mutexes": [
+        "director"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. Gap: Three directors exist (encounter, campaign pressure decks, station side events) with no owner of rhythm; ambient tier exists but nothing guarantees quiet or seeds escalation. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-149.md."
+    },
+    {
+      "id": "PQ-150",
+      "priority": 72,
+      "title": "People who remember: aces, rivals, the mechanic, the radio",
+      "state": "ready",
+      "canonical": [
+        "PEOPLE-WHO-REMEMBER"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138",
+        "PQ-149"
+      ],
+      "mutexes": [
+        "people"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. Gap: Aces and memory exist; nothing escalates against the player's style, no character lives anywhere, and barks are text after a squelch. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-150.md."
+    },
+    {
+      "id": "PQ-151",
+      "priority": 73,
+      "title": "Crime is a game: the WANTED loop with a physical escape at every tier",
+      "state": "ready",
+      "canonical": [
+        "WANTED-LOOP"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138",
+        "PQ-149"
+      ],
+      "mutexes": [
+        "law"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. Gap: Heat is a decaying scalar; incidents chase always; custody/surrender/recovery systems (54 KB) are rich but unadvertised; no tiers, no nets, no laundering. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-151.md."
+    },
+    {
+      "id": "PQ-152",
+      "priority": 74,
+      "title": "Set pieces built from verbs: ten missions whose headline is physical",
+      "state": "ready",
+      "canonical": [
+        "SET-PIECE-VERBS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-138"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. Gap: Ten procedural verbs, eight are fly-there; physical play lives only in optional clauses (`no_slack` applies to bulk_haul only). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-152.md."
+    },
+    {
+      "id": "PQ-153",
+      "priority": 75,
+      "title": "Six sectors with a way of life (the authored core, then the frontier as texture)",
+      "state": "ready",
+      "canonical": [
+        "SIX-SECTORS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-143"
+      ],
+      "mutexes": [
+        "places"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy; the fourteen frontier sectors stay texture. Gap: 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-153.md."
+    },
+    {
+      "id": "PQ-154",
+      "priority": 76,
+      "title": "Wrecks as terrain and the death economy",
+      "state": "ready",
+      "canonical": [
+        "WRECKS-AS-TERRAIN"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138"
+      ],
+      "mutexes": [
+        "wrecks"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. Gap: Wrecks spawn flat and static; fracture is a swap; unique wrecks exist as one-shots. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-154.md."
+    },
+    {
+      "id": "PQ-155",
+      "priority": 77,
+      "title": "Money means toys: the economy tuned as a verb curve",
+      "state": "ready",
+      "canonical": [
+        "ECONOMY-VERB-CURVE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-142"
+      ],
+      "mutexes": [
+        "economy-curve"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. Gap: Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-155.md."
+    },
+    {
+      "id": "PQ-156",
+      "priority": 78,
+      "title": "Three starters, three verbs, and a save-file identity",
+      "state": "ready",
+      "canonical": [
+        "THREE-STARTERS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-142"
+      ],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. Gap: One starter; the load screen is a list. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-156.md."
+    },
+    {
+      "id": "PQ-158",
+      "priority": 79,
+      "title": "Audio direction: the game that sounds heavy",
+      "state": "ready",
+      "canonical": [
+        "AUDIO-DIRECTION"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141",
+        "PQ-139"
+      ],
+      "mutexes": [
+        "audio"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Authored samples replace the oscillator stack, an impact ladder by mass and speed, the Massline as an instrument, composed adaptive themes, voice for the 271-line script, a reverb bus, and a weight-first mix. Gap: Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-158.md."
+    },
+    {
+      "id": "PQ-159",
+      "priority": 80,
+      "title": "Camera as art direction, and a photo mode",
+      "state": "ready",
+      "canonical": [
+        "CAMERA-ART-DIRECTION"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141",
+        "PQ-139"
+      ],
+      "mutexes": [
+        "camera"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Speed opens the frame, impacts kick by delta-V, two-body moments auto-frame as tension diagrams, signature kills get a beat, and a photo mode sells the game. Gap: Speed zoom tops out at 1.55×; kicks are damage-driven; no auto-framing for two-body moments; no photo mode. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-159.md."
+    },
+    {
+      "id": "PQ-160",
+      "priority": 81,
+      "title": "Replay, clips and sharing",
+      "state": "ready",
+      "canonical": [
+        "REPLAY-CLIPS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141",
+        "PQ-146"
+      ],
+      "mutexes": [
+        "replay"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. Gap: Replay exists only in the lab; no photo, clip or share surface. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-160.md."
+    },
+    {
+      "id": "PQ-161",
+      "priority": 82,
+      "title": "Readable at max zoom: silhouettes, telegraphs, force colours",
+      "state": "ready",
+      "canonical": [
+        "READABLE-AT-ZOOM"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-140"
+      ],
+      "mutexes": [
+        "readability"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Role-readable hulls and liveries, danger telegraphs you die to on purpose, a colourblind-safe force palette, and a teaching-only trajectory overlay. Gap: Silhouette identity routes through asset programs; telegraphs and force palette have no owner. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-161.md."
+    },
+    {
+      "id": "PQ-163",
+      "priority": 83,
+      "title": "The first ten minutes: the power fantasy, honest",
+      "state": "ready",
+      "canonical": [
+        "FIRST-TEN-MINUTES"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137"
+      ],
+      "mutexes": [
+        "onboarding"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. Gap: Boost/draw-to-fly/wells untaught; starter gun cannot shove; the quality cliff after 47-A. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-163.md."
+    },
+    {
+      "id": "PQ-164",
+      "priority": 84,
+      "title": "Input truth: controller, Deck, trackpad, haptics",
+      "state": "ready",
+      "canonical": [
+        "INPUT-TRUTH"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141"
+      ],
+      "mutexes": [
+        "input"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. Gap: Fixed pad map, no remap, keyboard-only glyphs, menu coverage unverified per screen, no Deck work. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-164.md."
+    },
+    {
+      "id": "PQ-165",
+      "priority": 85,
+      "title": "Accessibility and options depth",
+      "state": "ready",
+      "canonical": [
+        "ACCESSIBILITY-OPTIONS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141"
+      ],
+      "mutexes": [
+        "options"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. Gap: No presets or frame cap; no subtitles for audio; no audio cues for visual events; gamepad remap missing (PQ-164). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-165.md."
+    },
+    {
+      "id": "PQ-166",
+      "priority": 86,
+      "title": "Localization at launch: five languages and the growth test",
+      "state": "ready",
+      "canonical": [
+        "LOCALIZATION-LAUNCH"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-141"
+      ],
+      "mutexes": [
+        "localization"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. Gap: Locale only via URL; default route English-only by assertion; no language setting; growth unverified on the station. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-166.md."
+    },
+    {
+      "id": "PQ-167",
+      "priority": 87,
+      "title": "Telemetry funnels and the weekly playtest loop",
+      "state": "ready",
+      "canonical": [
+        "PLAYTEST-LOOP"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "telemetry"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Designer-readable funnels from the telemetry that already exists, a weekly owner playtest with captured sessions, and the numbers that gate ALPHA and BETA. Gap: Telemetry is local-only, reachable via a window global; no export, no funnel, no playtest ritual. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-167.md."
+    },
+    {
+      "id": "PQ-169",
+      "priority": 88,
+      "title": "Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home",
+      "state": "ready",
+      "canonical": [
+        "CRUCIBLE-REPLAY-SURFACE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-133",
+        "PQ-146"
+      ],
+      "mutexes": [
+        "crucible-meta"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring, and drafts that feed the hangar with possibility, never stats. Gap: Records and build codes exist; no daily, no board, no ghosts, no stunt score. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-169.md."
+    },
+    {
+      "id": "PQ-170",
+      "priority": 89,
+      "title": "Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth",
+      "state": "ready",
+      "canonical": [
+        "ENDGAME-PULLS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-033"
+      ],
+      "mutexes": [
+        "endgame"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. Gap: No faction endgame; no station growth; no faction dependency; post-ending chains reuse ten verbs. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-170.md."
+    },
+    {
+      "id": "PQ-171",
+      "priority": 90,
+      "title": "Content grammar and the anti-repetition budget",
+      "state": "ready",
+      "canonical": [
+        "CONTENT-GRAMMAR"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138"
+      ],
+      "mutexes": [
+        "content-grammar"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. Gap: Ten verbs and 65 one-shots; nothing measures repetition. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-171.md."
+    },
+    {
+      "id": "PQ-172",
+      "priority": 91,
+      "title": "Mods and data-driven content",
+      "state": "ready",
+      "canonical": [
+        "MODS-DATA-DRIVEN"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-033"
+      ],
+      "mutexes": [
+        "mods"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. Gap: All content is compiled ES modules; one JSON scenario. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-172.md."
+    },
+    {
+      "id": "PQ-162",
+      "priority": 92,
+      "title": "The station as a place: the redesign the flatten was waiting for",
+      "state": "ready",
+      "canonical": [
+        "STATION-REDESIGN"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137"
+      ],
+      "mutexes": [
+        "station-ui"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md."
+    },
+    {
+      "id": "PQ-168",
+      "priority": 93,
+      "title": "The Chart finished: traffic layer, hierarchy, one answer per question",
+      "state": "ready",
+      "canonical": [
+        "CHART-FINISHED"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-151"
+      ],
+      "mutexes": [
+        "chart"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md."
     }
   ],
   "dispatchUnits": [
@@ -8641,7 +9299,7 @@
       "priority": 368,
       "title": "Ten-wave shell (Phase 2)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-133.01"
       ],
@@ -8664,7 +9322,9 @@
         "npm run check:combat",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-133.02.md"
+      ],
       "brief": "Complete replayable ten-wave run with existing weapons, enemies, fields, pickups and one greybox arena: pure wave schema + planner (CRU-009/010), survivalRun phase machine (CRU-011), spawn materialization bridge through spawnBudget (CRU-012), completion/cleanup (CRU-013), run wallet + XP (CRU-014), physical credit pickup + sweep (CRU-015), seeded three-choice draft v0 (CRU-016), refit transaction through canonical fit APIs (CRU-017), results + causal death summary + same-seed restart (CRU-018). Campaign-contamination test A.8 is mandatory."
     },
     {
@@ -10228,6 +10888,3065 @@
       ],
       "receiptRefs": [],
       "brief": "Placing a depot/claim spawns real hauler jobs to and from it; the route shows on the map; pirates begin to watch it; traffic persists across sessions."
+    },
+    {
+      "id": "PQ-146.00",
+      "parentId": "PQ-146",
+      "priority": 432,
+      "title": "Trick taxonomy and detectors",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "stunt-grammar"
+      ],
+      "paths": [
+        "src/combat/",
+        "src/systems/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "One pure module turns the receipt stream into named tricks with a cause chain (who threw, what hit, what it hit next): bolas, wrecking ball, clothesline, collateral ×N, near-miss, tow-kill, rock discovery, well golf, dead man's mass, razor release. DONE WHEN: ≥ 12 tricks detected deterministically in scenarios; false-positive rate < 5 % on ordinary flight tapes."
+    },
+    {
+      "id": "PQ-146.01",
+      "parentId": "PQ-146",
+      "priority": 433,
+      "title": "Combo meter and scoring in the Crucible",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "stunt-grammar"
+      ],
+      "paths": [
+        "src/systems/survivalRun.js",
+        "src/systems/survivalResults.js",
+        "src/ui/screens/crucible.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "Chain window, multiplier by trick rarity and mass ratio, banked on quiet; scoring feeds survivalRecords and the results screen. DONE WHEN: A physics run outscores a gun run of equal kills by ≥ 2×; the free Pulse cannot top the board."
+    },
+    {
+      "id": "PQ-146.02",
+      "parentId": "PQ-146",
+      "priority": 434,
+      "title": "Titles and ledger entries in adventure",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "stunt-grammar"
+      ],
+      "paths": [
+        "src/systems/titles.js",
+        "src/systems/shipLedger.js",
+        "src/systems/barkDirector.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Tricks write ledger lines and earn titles NPCs use in barks; the rap sheet cites them. DONE WHEN: A witnessed bolas kill produces a ledger line and a bark within one session; save round-trips."
+    },
+    {
+      "id": "PQ-146.03",
+      "parentId": "PQ-146",
+      "priority": 435,
+      "title": "The moment detector",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-139.00"
+      ],
+      "mutexes": [
+        "stunt-grammar"
+      ],
+      "paths": [
+        "src/systems/bulletTime.js",
+        "src/render/feel.js"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "A rated 'holy shit' event (rarity × momentum × collateral) exposed on the bus for slow-mo (bulletTime), camera, audio stingers and the clip recorder. DONE WHEN: Fires on ≥ 3 distinct moments in the 60-second proof scenario and never on ordinary traffic."
+    },
+    {
+      "id": "PQ-029.00",
+      "parentId": "PQ-029",
+      "priority": 436,
+      "title": "Tractor head as a throw toy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/ui/screens/range.js",
+        "src/systems/npcJobsRuntime.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Pick up, spin, throw with the release rating; works on cargo, debris, drones, light hulls. DONE WHEN: A Range drill teaches it in ≤ 60 s; throw speed ≥ 1.2× cruise on a light payload."
+    },
+    {
+      "id": "PQ-029.01",
+      "parentId": "PQ-029",
+      "priority": 437,
+      "title": "Elastic whip as stored energy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/ui/screens/range.js",
+        "src/systems/npcJobsRuntime.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Stretch stores energy, release snaps the payload or the player; readable strain glow; break by load. DONE WHEN: A whip snap moves a light hostile ≥ 40 % of its cruise; the drill exists."
+    },
+    {
+      "id": "PQ-029.02",
+      "parentId": "PQ-029",
+      "priority": 438,
+      "title": "Frame coupler as the tow you can trust",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/ui/screens/range.js",
+        "src/systems/npcJobsRuntime.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Rigid tow for the long haul; the coupled pair reads as one body in the physics and the camera. DONE WHEN: A 200-mass tow holds through a 180° turn at 60 % cruise without oscillation."
+    },
+    {
+      "id": "PQ-029.03",
+      "parentId": "PQ-029",
+      "priority": 439,
+      "title": "NPCs use the heads",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/ui/screens/range.js",
+        "src/systems/npcJobsRuntime.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. DONE WHEN: Each head is seen in ordinary traffic within 10 minutes at the reference site."
+    },
+    {
+      "id": "PQ-030.00",
+      "parentId": "PQ-030",
+      "priority": 440,
+      "title": "Monofilament sweep",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/systems/masslineThreats.js",
+        "src/systems/masslineSnares.js",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. DONE WHEN: Cuts an NPC tether in one pass; scenario + capture."
+    },
+    {
+      "id": "PQ-030.01",
+      "parentId": "PQ-030",
+      "priority": 441,
+      "title": "Transverse snare",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/systems/masslineThreats.js",
+        "src/systems/masslineSnares.js",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "A line across a lane catches the first crosser and yanks it into the anchor; the clothesline toy. DONE WHEN: A pursuer at full burn is caught and tumbled (B11) in the scenario."
+    },
+    {
+      "id": "PQ-030.02",
+      "parentId": "PQ-030",
+      "priority": 442,
+      "title": "The counter arrives first",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/data/modules.js",
+        "src/systems/tetherGameplay.js",
+        "src/systems/masslineThreats.js",
+        "src/systems/masslineSnares.js",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "The tether-cutter specialist uses the sweep against the player two hours before the head unlocks. DONE WHEN: Blind reviewer names the specialist's threat from silhouette and behaviour."
+    },
+    {
+      "id": "PQ-031.00",
+      "parentId": "PQ-031",
+      "priority": 443,
+      "title": "Bolas throw in one input",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/tumbleStates.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Setup time drops to a throw: latch A, latch B, the bridle exists; setup ≤ 2 s at combat range. DONE WHEN: Two lights bridled within 3 s of the first latch in a scenario; the pair tumbles (B11)."
+    },
+    {
+      "id": "PQ-031.01",
+      "parentId": "PQ-031",
+      "priority": 444,
+      "title": "Coupled-pair physics",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/tumbleStates.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Shared inertia, shared helm loss, bounded line load, break by load rating; the pair reads as one system in the camera. DONE WHEN: Pair orbits and impacts terrain in ≥ 4 of 5 seeds."
+    },
+    {
+      "id": "PQ-031.02",
+      "parentId": "PQ-031",
+      "priority": 445,
+      "title": "NPC counterplay",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "massline-heads"
+      ],
+      "paths": [
+        "src/systems/tetherGameplay.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/tumbleStates.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Aces cut bridles; heavies ignore them; the specialist carries a line-cutter. DONE WHEN: Scenario shows one cut and one ignore."
+    },
+    {
+      "id": "PQ-026.00",
+      "parentId": "PQ-026",
+      "priority": 446,
+      "title": "Momentum sink as the bungee",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/weapons.js",
+        "src/data/combatDefs.js",
+        "src/systems/weapons.js",
+        "src/render/momentumSinkVfx.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Plant, tension, release: the player exits at ≥ 2× cruise (earned speed kept, B1). DONE WHEN: Scenario measures exit speed ≥ 2× cruise; capture."
+    },
+    {
+      "id": "PQ-026.01",
+      "parentId": "PQ-026",
+      "priority": 447,
+      "title": "Gravity mark as a field multiplier",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/weapons.js",
+        "src/data/combatDefs.js",
+        "src/systems/weapons.js",
+        "src/render/momentumSinkVfx.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "A marked target is pulled 3× harder by wells and sinks; marked heavies bend toward wells they would ignore. DONE WHEN: Well golf on a marked medium works in the scenario."
+    },
+    {
+      "id": "PQ-026.02",
+      "parentId": "PQ-026",
+      "priority": 448,
+      "title": "Inertial shunt",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/weapons.js",
+        "src/data/combatDefs.js",
+        "src/systems/weapons.js",
+        "src/render/momentumSinkVfx.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "On contact, swap momentum with the target (bounded by mass ratio); the ram that stops you and launches them. DONE WHEN: A shunt ram on a light hostile sends it ≥ 1 screen; the player stops within 20 WU."
+    },
+    {
+      "id": "PQ-147.00",
+      "parentId": "PQ-147",
+      "priority": 449,
+      "title": "Five powers, five sentences, five drills",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/fields.js",
+        "src/systems/fields.js",
+        "src/core/fields/",
+        "src/ui/powerRail.js",
+        "src/ui/screens/range.js",
+        "src/ai/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "Each power gets its fitting-screen sentence, a Range drill, and a legible field volume (cone/ring/sheet, never a sphere). DONE WHEN: All five appear on the rail with real state; drills exist; VFX grammar test covers them."
+    },
+    {
+      "id": "PQ-147.01",
+      "parentId": "PQ-147",
+      "priority": 450,
+      "title": "Fields participate in physics for everyone",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/fields.js",
+        "src/systems/fields.js",
+        "src/core/fields/",
+        "src/ui/powerRail.js",
+        "src/ui/screens/range.js",
+        "src/ai/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "NPCs, cargo, debris and wrecks obey fields; NPCs deploy them (an anchor specialist wells, a scavenger cones). DONE WHEN: A well bends ≥ 5 bodies in the scenario; one NPC role deploys a field in ordinary traffic."
+    },
+    {
+      "id": "PQ-147.02",
+      "parentId": "PQ-147",
+      "priority": 451,
+      "title": "Counterplay",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/fields.js",
+        "src/systems/fields.js",
+        "src/core/fields/",
+        "src/ui/powerRail.js",
+        "src/ui/screens/range.js",
+        "src/ai/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "Fly out, cut the emitter, mark it, or out-mass it; the player is never trapped without a verb. DONE WHEN: Each field has one deterministic escape in a scenario."
+    },
+    {
+      "id": "PQ-147.03",
+      "parentId": "PQ-147",
+      "priority": 452,
+      "title": "Cluster and detonate",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.09"
+      ],
+      "mutexes": [
+        "field-toys"
+      ],
+      "paths": [
+        "src/data/fields.js",
+        "src/systems/fields.js",
+        "src/core/fields/",
+        "src/ui/powerRail.js",
+        "src/ui/screens/range.js",
+        "src/ai/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "A well plus a primed light (PQ-137.09) produces the chain; the moment detector rates it. DONE WHEN: ≥ 3 secondary consequences from one action in 4 of 5 seeds."
+    },
+    {
+      "id": "PQ-027.00",
+      "parentId": "PQ-027",
+      "priority": 453,
+      "title": "Three machines that kill",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/environmentalMachinery.js",
+        "src/data/environmentalMachinery.js",
+        "src/data/hazardLanguage.js",
+        "src/systems/terrainAnchors.js",
+        "src/systems/world.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). DONE WHEN: A shoved light dies in each; a capture per machine."
+    },
+    {
+      "id": "PQ-027.01",
+      "parentId": "PQ-027",
+      "priority": 454,
+      "title": "Debris currents and reefs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/environmentalMachinery.js",
+        "src/data/environmentalMachinery.js",
+        "src/data/hazardLanguage.js",
+        "src/systems/terrainAnchors.js",
+        "src/systems/world.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "Authored flows that carry loose mass; mines and pods ride them; the reef pinball. DONE WHEN: Mine pinball cascades in a scenario."
+    },
+    {
+      "id": "PQ-027.02",
+      "parentId": "PQ-027",
+      "priority": 455,
+      "title": "Weather that shapes fights",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/environmentalMachinery.js",
+        "src/data/environmentalMachinery.js",
+        "src/data/hazardLanguage.js",
+        "src/systems/terrainAnchors.js",
+        "src/systems/world.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "One storm and one radiation belt per affected sector: shots bend, sensors shrink, fields amplify; ordinary traffic avoids them. DONE WHEN: Blind reviewer names the hazard from motion alone."
+    },
+    {
+      "id": "PQ-027.03",
+      "parentId": "PQ-027",
+      "priority": 456,
+      "title": "Timed access",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/environmentalMachinery.js",
+        "src/data/environmentalMachinery.js",
+        "src/data/hazardLanguage.js",
+        "src/systems/terrainAnchors.js",
+        "src/systems/world.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "Gates, locks and doors on schedules; the station-door jam. DONE WHEN: A jammed aperture holds reinforcements for ≥ 20 s in the scenario."
+    },
+    {
+      "id": "PQ-028.00",
+      "parentId": "PQ-028",
+      "priority": 457,
+      "title": "One authored sling ring",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/travelLanes.js",
+        "src/systems/orbitNodeRuntime.js",
+        "src/ui/screens/base.js",
+        "src/systems/claims.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "A ring on the reference site's route that accelerates aligned bodies; NPC haulers use it on schedule. DONE WHEN: Player exit speed ≥ 2× cruise and kept (B1); haulers ride it in ordinary traffic."
+    },
+    {
+      "id": "PQ-028.01",
+      "parentId": "PQ-028",
+      "priority": 458,
+      "title": "Throw something into it",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/travelLanes.js",
+        "src/systems/orbitNodeRuntime.js",
+        "src/ui/screens/base.js",
+        "src/systems/claims.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "Bodies entering off-axis are flung; a thrown enemy becomes a long-range projectile. DONE WHEN: Scenario: a thrown light exits the ring at ≥ 3× cruise and slams terrain (B6)."
+    },
+    {
+      "id": "PQ-028.02",
+      "parentId": "PQ-028",
+      "priority": 459,
+      "title": "The player-built sling",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-machinery"
+      ],
+      "paths": [
+        "src/systems/travelLanes.js",
+        "src/systems/orbitNodeRuntime.js",
+        "src/ui/screens/base.js",
+        "src/systems/claims.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "`mod_throughline_sling` becomes this structure at a claim, creating NPC traffic (PQ-145). DONE WHEN: A built sling is used by ≥ 1 NPC route within one session."
+    },
+    {
+      "id": "PQ-148.00",
+      "parentId": "PQ-148",
+      "priority": 460,
+      "title": "Pods are bodies",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "cargo-physics"
+      ],
+      "paths": [
+        "src/systems/cargo.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/jettisonImpulse.js",
+        "src/systems/lootShards.js",
+        "src/data/commodities.js",
+        "src/systems/lawSecurity.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Every spilled/jettisoned pod is a dynamic body with mass by contents, inherits velocity, collides, can be tethered and shoved. DONE WHEN: Ore shotgun: a shoved pod moves a light hostile ≥ 30 % cruise; pods persist across save."
+    },
+    {
+      "id": "PQ-148.01",
+      "parentId": "PQ-148",
+      "priority": 461,
+      "title": "Volatile classes",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "cargo-physics"
+      ],
+      "paths": [
+        "src/systems/cargo.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/jettisonImpulse.js",
+        "src/systems/lootShards.js",
+        "src/data/commodities.js",
+        "src/systems/lawSecurity.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Explosive (radial impulse on slam), corrosive (hull tick on contact), superdense (pull on fields, cannot be thrown far). DONE WHEN: Three scenarios, three distinct outcomes, readable by silhouette/lamp."
+    },
+    {
+      "id": "PQ-148.02",
+      "parentId": "PQ-148",
+      "priority": 462,
+      "title": "Smuggling physics",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "cargo-physics"
+      ],
+      "paths": [
+        "src/systems/cargo.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/jettisonImpulse.js",
+        "src/systems/lootShards.js",
+        "src/data/commodities.js",
+        "src/systems/lawSecurity.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Customs scan cones; contraband hidden in a hauler's blind spot or drop-kicked at cruise through a cone into an outlaw catch net. DONE WHEN: A drop-kick through a cone succeeds in the scenario; a scanned pod raises heat (PQ-151)."
+    },
+    {
+      "id": "PQ-148.03",
+      "parentId": "PQ-148",
+      "priority": 463,
+      "title": "Cargo with a name",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "cargo-physics"
+      ],
+      "paths": [
+        "src/systems/cargo.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/jettisonImpulse.js",
+        "src/systems/lootShards.js",
+        "src/data/commodities.js",
+        "src/systems/lawSecurity.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Pods carry origin/destination/owner; a spilled pod's owner reacts (restitution, bounty, thanks). DONE WHEN: Ledger and bark cite the owner after a spill."
+    },
+    {
+      "id": "PQ-149.00",
+      "parentId": "PQ-149",
+      "priority": 464,
+      "title": "The rhythm model",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "director"
+      ],
+      "paths": [
+        "src/systems/encounterDirector.js",
+        "src/ai/director.js",
+        "src/systems/stationSideEventDirector.js",
+        "src/systems/shipLedger.js",
+        "src/systems/telemetry.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "A phase machine (work, travel, curiosity, opportunity, tension, violence, aftermath, quiet) with dwell budgets and telegraphs, read by the existing directors as a gate. DONE WHEN: A 90-minute unaided session shows every phase and no phase > 12 min; telemetry prints the timeline."
+    },
+    {
+      "id": "PQ-149.01",
+      "parentId": "PQ-149",
+      "priority": 465,
+      "title": "Escalation seeds",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "director"
+      ],
+      "paths": [
+        "src/systems/encounterDirector.js",
+        "src/ai/director.js",
+        "src/systems/stationSideEventDirector.js",
+        "src/systems/shipLedger.js",
+        "src/systems/telemetry.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Consequence tokens from PQ-138 (witness, spill, flee) become future beats: a bounty, an ace, a shortage, a rumor; each with a delay and a place. DONE WHEN: ≥ 3 escalations traceable to player acts per session; each cites its cause in the ledger."
+    },
+    {
+      "id": "PQ-149.02",
+      "parentId": "PQ-149",
+      "priority": 466,
+      "title": "Guaranteed ordinary life",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "director"
+      ],
+      "paths": [
+        "src/systems/encounterDirector.js",
+        "src/ai/director.js",
+        "src/systems/stationSideEventDirector.js",
+        "src/systems/shipLedger.js",
+        "src/systems/telemetry.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Quiet phases spawn routine work (inspections, transfers, repair, waiting, a slow tug) at the camera. DONE WHEN: 5-minute quiet capture shows ≥ 4 routine behaviours; activity telemetry confirms."
+    },
+    {
+      "id": "PQ-149.03",
+      "parentId": "PQ-149",
+      "priority": 467,
+      "title": "Story so far",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "director"
+      ],
+      "paths": [
+        "src/systems/encounterDirector.js",
+        "src/ai/director.js",
+        "src/systems/stationSideEventDirector.js",
+        "src/systems/shipLedger.js",
+        "src/systems/telemetry.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The ledger renders the session as 'I was doing X, then Y, so I Z' with the causes. DONE WHEN: Blind reader retells the session correctly from the ledger alone."
+    },
+    {
+      "id": "PQ-150.00",
+      "parentId": "PQ-150",
+      "priority": 468,
+      "title": "Aces escalate against your style",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "people"
+      ],
+      "paths": [
+        "src/data/namedAces.js",
+        "src/systems/aceMemory.js",
+        "src/systems/barkDirector.js",
+        "src/data/barks.js",
+        "src/systems/bandRadio.js",
+        "src/ui/station/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative"
+      ],
+      "receiptRefs": [],
+      "brief": "Ace memory reads the stunt grammar: fling-kills bring line-cutters and sinks, gun-kills bring armour, rock-kills bring rock-avoiders; they taunt the specific act. DONE WHEN: Third same-style kill changes the ace's next loadout deterministically; bark names the act."
+    },
+    {
+      "id": "PQ-150.01",
+      "parentId": "PQ-150",
+      "priority": 469,
+      "title": "The mechanic",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "people"
+      ],
+      "paths": [
+        "src/data/namedAces.js",
+        "src/systems/aceMemory.js",
+        "src/systems/barkDirector.js",
+        "src/data/barks.js",
+        "src/systems/bandRadio.js",
+        "src/ui/station/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative"
+      ],
+      "receiptRefs": [],
+      "brief": "A named voice at the home berth who reads scars, repairs, and rap sheet back as one line each; the ship becomes 'my fucking ship' through them. DONE WHEN: Every scar class has a line; the berth screen shows the mechanic with the hull."
+    },
+    {
+      "id": "PQ-150.02",
+      "parentId": "PQ-150",
+      "priority": 470,
+      "title": "Radio that reacts",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "people"
+      ],
+      "paths": [
+        "src/data/namedAces.js",
+        "src/systems/aceMemory.js",
+        "src/systems/barkDirector.js",
+        "src/data/barks.js",
+        "src/systems/bandRadio.js",
+        "src/ui/station/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative"
+      ],
+      "receiptRefs": [],
+      "brief": "The Band and comms chatter keyed to world events and player acts: haulers whine, pirates negotiate, patrols threaten, stations report. DONE WHEN: ≥ 8 distinct reactive chatter classes audible in a session; captions on."
+    },
+    {
+      "id": "PQ-150.03",
+      "parentId": "PQ-150",
+      "priority": 471,
+      "title": "Fifteen people, placed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "people"
+      ],
+      "paths": [
+        "src/data/namedAces.js",
+        "src/systems/aceMemory.js",
+        "src/systems/barkDirector.js",
+        "src/data/barks.js",
+        "src/systems/bandRadio.js",
+        "src/ui/station/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative"
+      ],
+      "receiptRefs": [],
+      "brief": "The depth program's named NPCs live at places, with a sentence and a reaction set. DONE WHEN: All fifteen reachable on the route with ≥ 1 reaction each."
+    },
+    {
+      "id": "PQ-151.00",
+      "parentId": "PQ-151",
+      "priority": 472,
+      "title": "Four tiers with a verb each",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "law"
+      ],
+      "paths": [
+        "src/systems/lawSecurity.js",
+        "src/systems/heat.js",
+        "src/systems/custodyConsequences.js",
+        "src/systems/surrenderRecovery.js",
+        "src/systems/pirateDisguise.js",
+        "src/data/bountyHunters.js",
+        "src/ui/galaxyMap.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:faction-standings"
+      ],
+      "receiptRefs": [],
+      "brief": "Fine/scan, bounty/hunters, nets/wedges, impound/heist; heat shown on the chart; each tier's escape is physical. DONE WHEN: Scenario per tier with a deterministic escape; blind reviewer names the tier from the world."
+    },
+    {
+      "id": "PQ-151.01",
+      "parentId": "PQ-151",
+      "priority": 473,
+      "title": "Patrol nets and checkpoints",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "law"
+      ],
+      "paths": [
+        "src/systems/lawSecurity.js",
+        "src/systems/heat.js",
+        "src/systems/custodyConsequences.js",
+        "src/systems/surrenderRecovery.js",
+        "src/systems/pirateDisguise.js",
+        "src/data/bountyHunters.js",
+        "src/ui/galaxyMap.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:faction-standings"
+      ],
+      "receiptRefs": [],
+      "brief": "Tether-net roadblocks and scan cones on lanes; break them by mass, speed, or a thrown decoy. DONE WHEN: Three break methods verified in scenarios."
+    },
+    {
+      "id": "PQ-151.02",
+      "parentId": "PQ-151",
+      "priority": 474,
+      "title": "Corrupt ports and laundering",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "law"
+      ],
+      "paths": [
+        "src/systems/lawSecurity.js",
+        "src/systems/heat.js",
+        "src/systems/custodyConsequences.js",
+        "src/systems/surrenderRecovery.js",
+        "src/systems/pirateDisguise.js",
+        "src/data/bountyHunters.js",
+        "src/ui/galaxyMap.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:faction-standings"
+      ],
+      "receiptRefs": [],
+      "brief": "Outlaw stations launder cargo and heat for a cut; reputation pays the cut down. DONE WHEN: A laundered pod clears a scan; the ledger records the cut."
+    },
+    {
+      "id": "PQ-151.03",
+      "parentId": "PQ-151",
+      "priority": 475,
+      "title": "Insurance, restitution, impound recovery",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "law"
+      ],
+      "paths": [
+        "src/systems/lawSecurity.js",
+        "src/systems/heat.js",
+        "src/systems/custodyConsequences.js",
+        "src/systems/surrenderRecovery.js",
+        "src/systems/pirateDisguise.js",
+        "src/data/bountyHunters.js",
+        "src/ui/galaxyMap.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:faction-standings"
+      ],
+      "receiptRefs": [],
+      "brief": "Collateral has a bill; paying, working it off, or stealing the ship back are all play. DONE WHEN: Each path completes in a scenario; save round-trips mid-path."
+    },
+    {
+      "id": "PQ-032.00",
+      "parentId": "PQ-032",
+      "priority": 476,
+      "title": "Beats 1–3 become set pieces",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/story/",
+        "src/core/newGamePlus.js",
+        "src/data/postEndingReplayChains.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "honest_work → the wrecking-ball contract; first_blood → pod rescue under fire; bigger_boat → the long tow. DONE WHEN: Each beat is a PQ-152 set piece with a physical headline verb."
+    },
+    {
+      "id": "PQ-032.01",
+      "parentId": "PQ-032",
+      "priority": 477,
+      "title": "The gate moves and widens",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/story/",
+        "src/core/newGamePlus.js",
+        "src/data/postEndingReplayChains.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake. DONE WHEN: A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry."
+    },
+    {
+      "id": "PQ-032.02",
+      "parentId": "PQ-032",
+      "priority": 478,
+      "title": "The climax is a toy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/story/",
+        "src/core/newGamePlus.js",
+        "src/data/postEndingReplayChains.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). DONE WHEN: Owner plays each ending's climax; verdict recorded."
+    },
+    {
+      "id": "PQ-032.03",
+      "parentId": "PQ-032",
+      "priority": 479,
+      "title": "NG+ carries a legacy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/story/",
+        "src/core/newGamePlus.js",
+        "src/data/postEndingReplayChains.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. DONE WHEN: Save migration test; the mechanic names the carried history."
+    },
+    {
+      "id": "PQ-152.00",
+      "parentId": "PQ-152",
+      "priority": 480,
+      "title": "Three physical procedural types",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/data/missionConditions.js",
+        "src/systems/missions.js",
+        "src/systems/heistFacilities.js",
+        "src/data/encounters/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:mission-receipts",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "tow_recovery, demolition, rescue_under_fire join the OFFER_MIX with station-type weights. DONE WHEN: Each appears on boards on the route; each completes in a scenario by two methods."
+    },
+    {
+      "id": "PQ-152.01",
+      "parentId": "PQ-152",
+      "priority": 481,
+      "title": "Ten authored set pieces",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/data/missionConditions.js",
+        "src/systems/missions.js",
+        "src/systems/heistFacilities.js",
+        "src/data/encounters/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:mission-receipts",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. DONE WHEN: Ten playable on the route; owner verdict per piece."
+    },
+    {
+      "id": "PQ-152.02",
+      "parentId": "PQ-152",
+      "priority": 482,
+      "title": "The capital boss",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/data/missionConditions.js",
+        "src/systems/missions.js",
+        "src/systems/heistFacilities.js",
+        "src/data/encounters/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:mission-receipts",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. DONE WHEN: Killable by physics alone in a scenario; the tumble law applies to its sub-systems."
+    },
+    {
+      "id": "PQ-152.03",
+      "parentId": "PQ-152",
+      "priority": 483,
+      "title": "Clauses that twist",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/data/missionConditions.js",
+        "src/systems/missions.js",
+        "src/systems/heistFacilities.js",
+        "src/data/encounters/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:mission-receipts",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). DONE WHEN: ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04)."
+    },
+    {
+      "id": "PQ-153.00",
+      "parentId": "PQ-153",
+      "priority": 484,
+      "title": "Choose the six",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places"
+      ],
+      "paths": [
+        "src/data/sectors.js",
+        "src/data/frontierRegions/",
+        "src/data/authoredPlaces.js",
+        "src/systems/regionalEcology.js",
+        "design/world-identity/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "A table: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy; owner approves. DONE WHEN: Table committed; owner verdict recorded."
+    },
+    {
+      "id": "PQ-153.01",
+      "parentId": "PQ-153",
+      "priority": 485,
+      "title": "Hazard geometry per sector",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places"
+      ],
+      "paths": [
+        "src/data/sectors.js",
+        "src/data/frontierRegions/",
+        "src/data/authoredPlaces.js",
+        "src/systems/regionalEcology.js",
+        "design/world-identity/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). DONE WHEN: Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6."
+    },
+    {
+      "id": "PQ-153.02",
+      "parentId": "PQ-153",
+      "priority": 486,
+      "title": "Landmarks fielded",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places"
+      ],
+      "paths": [
+        "src/data/sectors.js",
+        "src/data/frontierRegions/",
+        "src/data/authoredPlaces.js",
+        "src/systems/regionalEcology.js",
+        "design/world-identity/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. DONE WHEN: Six landmarks reachable; still review passes."
+    },
+    {
+      "id": "PQ-153.03",
+      "parentId": "PQ-153",
+      "priority": 487,
+      "title": "The frontier as texture",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places"
+      ],
+      "paths": [
+        "src/data/sectors.js",
+        "src/data/frontierRegions/",
+        "src/data/authoredPlaces.js",
+        "src/systems/regionalEcology.js",
+        "design/world-identity/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Fourteen frontier sectors get rumours, one texture one-off each, and no story promise; the stale 'not wired' comment corrected. DONE WHEN: Atlas integrity green; each frontier sector has one memorable object."
+    },
+    {
+      "id": "PQ-154.00",
+      "parentId": "PQ-154",
+      "priority": 488,
+      "title": "Authored fracture seams",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "wrecks"
+      ],
+      "paths": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/survivorPod.js",
+        "src/render/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema",
+        "npm run check:perf"
+      ],
+      "receiptRefs": [],
+      "brief": "Three to five seams per hull class; a slam above a threshold splits along one; pieces inherit motion and mass. DONE WHEN: A wrecking-ball hit on a medium produces ≥ 2 pieces in the scenario; frame budget unchanged."
+    },
+    {
+      "id": "PQ-154.01",
+      "parentId": "PQ-154",
+      "priority": 489,
+      "title": "Wreck ecology",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "wrecks"
+      ],
+      "paths": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/survivorPod.js",
+        "src/render/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema",
+        "npm run check:perf"
+      ],
+      "receiptRefs": [],
+      "brief": "Persistent wrecks attract scavengers (PQ-138.01), squatters, and traps; the field is an encounter place. DONE WHEN: A wreck field older than one day has ≥ 2 inhabitants on the route."
+    },
+    {
+      "id": "PQ-154.02",
+      "parentId": "PQ-154",
+      "priority": 490,
+      "title": "Your own wreck",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "wrecks"
+      ],
+      "paths": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/survivorPod.js",
+        "src/render/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema",
+        "npm run check:perf"
+      ],
+      "receiptRefs": [],
+      "brief": "Death leaves your hull and pod; recovery, surrender and custody paths reach them; NG+ can find them. DONE WHEN: Save round-trip of the player wreck; one encounter references it."
+    },
+    {
+      "id": "PQ-155.00",
+      "parentId": "PQ-155",
+      "priority": 491,
+      "title": "The verb ladder",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "economy-curve"
+      ],
+      "paths": [
+        "src/data/tech.js",
+        "src/data/modules.js",
+        "src/data/ships.js",
+        "src/data/killRewards.js",
+        "src/systems/economy.js",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:balance",
+        "npm run check:economy:regional-supply"
+      ],
+      "receiptRefs": [],
+      "brief": "A table of hour → verb → cost → gate; every tech node either unlocks a verb or is folded. DONE WHEN: Table committed; ≤ 12 stat-only nodes remain, each justified."
+    },
+    {
+      "id": "PQ-155.01",
+      "parentId": "PQ-155",
+      "priority": 492,
+      "title": "The ten-hour simulation",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "economy-curve"
+      ],
+      "paths": [
+        "src/data/tech.js",
+        "src/data/modules.js",
+        "src/data/ships.js",
+        "src/data/killRewards.js",
+        "src/systems/economy.js",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:balance",
+        "npm run check:economy:regional-supply"
+      ],
+      "receiptRefs": [],
+      "brief": "Headless economy sim with three player archetypes prints net worth, verbs unlocked and sinks per hour; a check asserts the ladder. DONE WHEN: `check:economy:curve` green for all three archetypes."
+    },
+    {
+      "id": "PQ-155.02",
+      "parentId": "PQ-155",
+      "priority": 493,
+      "title": "Sinks that tell stories",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "economy-curve"
+      ],
+      "paths": [
+        "src/data/tech.js",
+        "src/data/modules.js",
+        "src/data/ships.js",
+        "src/data/killRewards.js",
+        "src/systems/economy.js",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:balance",
+        "npm run check:economy:regional-supply"
+      ],
+      "receiptRefs": [],
+      "brief": "Repairs, fines, insurance, restitution, impound: each a receipt with a cause. DONE WHEN: Each sink appears in a session ledger with its cause."
+    },
+    {
+      "id": "PQ-155.03",
+      "parentId": "PQ-155",
+      "priority": 494,
+      "title": "Stunts pay",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "economy-curve"
+      ],
+      "paths": [
+        "src/data/tech.js",
+        "src/data/modules.js",
+        "src/data/ships.js",
+        "src/data/killRewards.js",
+        "src/systems/economy.js",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:balance",
+        "npm run check:economy:regional-supply"
+      ],
+      "receiptRefs": [],
+      "brief": "Trick receipts pay in reputation and salvage rights, never in raw credits (no grind-by-stunt). DONE WHEN: A physics run earns ≥ the reputation of a gun run; credits equal."
+    },
+    {
+      "id": "PQ-156.00",
+      "parentId": "PQ-156",
+      "priority": 495,
+      "title": "Three starters",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "paths": [
+        "src/data/newGameDefaults.js",
+        "src/data/ships.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:new-game-first-run",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Hitch (skater), a tug variant of Pelican, a brawler variant of Wasp; each with a kit and a sentence. DONE WHEN: Three New Game routes complete the first ten minutes with distinct verbs; telemetry shows distinct funnels."
+    },
+    {
+      "id": "PQ-156.01",
+      "parentId": "PQ-156",
+      "priority": 496,
+      "title": "The save portrait",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "paths": [
+        "src/data/newGameDefaults.js",
+        "src/data/ships.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:new-game-first-run",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Load screen renders hull + scars + titles + rap sheet + grudge. DONE WHEN: Capture; save round-trip."
+    },
+    {
+      "id": "PQ-158.00",
+      "parentId": "PQ-158",
+      "priority": 497,
+      "title": "The sample library pipeline",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "A licensed/authored sample library (recorded or designed offline) per cue family, encoded and residency-gated like assets; recipes become sample+synth hybrids. DONE WHEN: ≥ 120 cues sample-backed; default unmute; frame-sleep counters unchanged."
+    },
+    {
+      "id": "PQ-158.01",
+      "parentId": "PQ-158",
+      "priority": 498,
+      "title": "The impact ladder, sample-backed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-139.01"
+      ],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Extends PQ-139.01 (which chooses pitch and gain from dp and mass on the synth path): the same 3×3 ladder (hull/rock/station × light/medium/heavy) gets layered transient/body/tail samples; scout-on-rock vs freighter-on-station stays ≥ 1 octave and ≥ 12 dB apart. DONE WHEN: B9b table test; A/B capture."
+    },
+    {
+      "id": "PQ-158.02",
+      "parentId": "PQ-158",
+      "priority": 499,
+      "title": "The Massline as an instrument",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Tension to pitch, strain to grit, reel whine, release snap distinct from break, bridle chord. DONE WHEN: All massline events audible and distinct; captions name them."
+    },
+    {
+      "id": "PQ-158.03",
+      "parentId": "PQ-158",
+      "priority": 500,
+      "title": "Composed themes",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Four state themes with motifs, per-sector beds, faction stings via the Band; the adaptive matrix drives authored stems. DONE WHEN: A stranger hums the travel theme; per-sector bed identified blind."
+    },
+    {
+      "id": "PQ-158.04",
+      "parentId": "PQ-158",
+      "priority": 501,
+      "title": "Voice for the barks",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Eight faction registers recorded or synthesised-with-direction, radio-processed; captions; the mechanic's voice. DONE WHEN: All 271 lines delivered; subtitles; determinism untouched."
+    },
+    {
+      "id": "PQ-158.05",
+      "parentId": "PQ-158",
+      "priority": 502,
+      "title": "Space and mix",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "audio"
+      ],
+      "paths": [
+        "src/audio/",
+        "src/data/audioRecipes.js",
+        "assets/audio/",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:presentation"
+      ],
+      "receiptRefs": [],
+      "brief": "Convolver reverb bus per environment class; weight-first ducking; audio cues for visual events (accessibility). DONE WHEN: Hangar vs void audibly different; ducking table test."
+    },
+    {
+      "id": "PQ-159.00",
+      "parentId": "PQ-159",
+      "priority": 503,
+      "title": "Impacts kick and reduced motion holds",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03"
+      ],
+      "mutexes": [
+        "camera"
+      ],
+      "paths": [
+        "src/render/camera.js",
+        "src/render/cameraDirector.js",
+        "src/render/feel.js",
+        "src/ui/screens/pause.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:camera"
+      ],
+      "receiptRefs": [],
+      "brief": "Extends PQ-137.03 (which owns the speed-opens zoom curve): kick and trauma from exchanged momentum rather than damage, rate-limited, honouring reduce-motion; the zoom curve is not re-tuned here. DONE WHEN: Kick magnitude table by momentum; reduce-motion capture shows none."
+    },
+    {
+      "id": "PQ-159.01",
+      "parentId": "PQ-159",
+      "priority": 504,
+      "title": "Two-body framing",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "camera"
+      ],
+      "paths": [
+        "src/render/camera.js",
+        "src/render/cameraDirector.js",
+        "src/render/feel.js",
+        "src/ui/screens/pause.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:camera"
+      ],
+      "receiptRefs": [],
+      "brief": "When a line is taut or a bridle exists, frame both bodies with the line as the diagonal. DONE WHEN: Capture of a swing shows both bodies ≥ 90 % of the time."
+    },
+    {
+      "id": "PQ-159.02",
+      "parentId": "PQ-159",
+      "priority": 505,
+      "title": "The beat",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "camera"
+      ],
+      "paths": [
+        "src/render/camera.js",
+        "src/render/cameraDirector.js",
+        "src/render/feel.js",
+        "src/ui/screens/pause.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:camera"
+      ],
+      "receiptRefs": [],
+      "brief": "Rated moments get a 150 ms time dip, a camera hold, and a stinger; death gets a cam. DONE WHEN: Fires on the moment detector only; headless sims unchanged."
+    },
+    {
+      "id": "PQ-159.03",
+      "parentId": "PQ-159",
+      "priority": 506,
+      "title": "Photo mode",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "camera"
+      ],
+      "paths": [
+        "src/render/camera.js",
+        "src/render/cameraDirector.js",
+        "src/render/feel.js",
+        "src/ui/screens/pause.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:camera"
+      ],
+      "receiptRefs": [],
+      "brief": "Pause, free camera, hide HUD, exposure, no filters by default; a capture path for store assets. DONE WHEN: Reachable from pause; captures are used for the store page."
+    },
+    {
+      "id": "PQ-160.00",
+      "parentId": "PQ-160",
+      "priority": 507,
+      "title": "Ring buffer and replay",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "replay"
+      ],
+      "paths": [
+        "src/core/simSnapshot.js",
+        "src/core/inputCommandSnapshot.js",
+        "src/testing/lab/differentialReplay.js",
+        "src/ui/screens/",
+        "electron/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Keep 30 s of snapshots + inputs; replay in-game with the photo-mode camera. DONE WHEN: Replay matches live to the hash; UI reachable from pause."
+    },
+    {
+      "id": "PQ-160.01",
+      "parentId": "PQ-160",
+      "priority": 508,
+      "title": "Auto-clip",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "replay"
+      ],
+      "paths": [
+        "src/core/simSnapshot.js",
+        "src/core/inputCommandSnapshot.js",
+        "src/testing/lab/differentialReplay.js",
+        "src/ui/screens/",
+        "electron/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Moment detector marks a window; the clip list shows it; export GIF/MP4 via the packaged host. DONE WHEN: A bolas kill produces an exportable clip in Electron and a downloadable one in browser."
+    },
+    {
+      "id": "PQ-160.02",
+      "parentId": "PQ-160",
+      "priority": 509,
+      "title": "Seeds and ghosts",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "replay"
+      ],
+      "paths": [
+        "src/core/simSnapshot.js",
+        "src/core/inputCommandSnapshot.js",
+        "src/testing/lab/differentialReplay.js",
+        "src/ui/screens/",
+        "electron/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:compare"
+      ],
+      "receiptRefs": [],
+      "brief": "Crucible runs export a seed/build code; a ghost of a shared run renders as a translucent hull. DONE WHEN: Two machines reproduce the same run from the code."
+    },
+    {
+      "id": "PQ-161.00",
+      "parentId": "PQ-161",
+      "priority": 510,
+      "title": "Role silhouettes",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "readability"
+      ],
+      "paths": [
+        "src/data/palettes.js",
+        "src/data/factionPaletteClaims.js",
+        "src/ui/threatHalo.js",
+        "src/render/",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:colour-tokens",
+        "npm run check:art"
+      ],
+      "receiptRefs": [],
+      "brief": "Nine occupational roles with distinct silhouette rules checked at the shipping camera; livery per faction. DONE WHEN: Blind reviewer names 8 of 9 roles from stills."
+    },
+    {
+      "id": "PQ-161.01",
+      "parentId": "PQ-161",
+      "priority": 511,
+      "title": "Telegraphs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "readability"
+      ],
+      "paths": [
+        "src/data/palettes.js",
+        "src/data/factionPaletteClaims.js",
+        "src/ui/threatHalo.js",
+        "src/render/",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:colour-tokens",
+        "npm run check:art"
+      ],
+      "receiptRefs": [],
+      "brief": "Every lethal thing announces itself 0.5–1 s ahead in motion, light or sound. DONE WHEN: Death-cause telemetry shows ≥ 90 % of deaths preceded by a telegraph."
+    },
+    {
+      "id": "PQ-161.02",
+      "parentId": "PQ-161",
+      "priority": 512,
+      "title": "Force palette",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "readability"
+      ],
+      "paths": [
+        "src/data/palettes.js",
+        "src/data/factionPaletteClaims.js",
+        "src/ui/threatHalo.js",
+        "src/render/",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:colour-tokens",
+        "npm run check:art"
+      ],
+      "receiptRefs": [],
+      "brief": "Rope, wells, repulsors, impulses, shields: five hues distinct under deuteranopia/protanopia/tritanopia; brightness order preserved. DONE WHEN: Contrast check green under all three simulations."
+    },
+    {
+      "id": "PQ-161.03",
+      "parentId": "PQ-161",
+      "priority": 513,
+      "title": "Teaching overlay",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "readability"
+      ],
+      "paths": [
+        "src/data/palettes.js",
+        "src/data/factionPaletteClaims.js",
+        "src/ui/threatHalo.js",
+        "src/render/",
+        "src/ui/screens/range.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:colour-tokens",
+        "npm run check:art"
+      ],
+      "receiptRefs": [],
+      "brief": "Trajectory and force ribbons in the Range and the stroke preview only. DONE WHEN: Never rendered in ordinary flight (test)."
+    },
+    {
+      "id": "PQ-163.00",
+      "parentId": "PQ-163",
+      "priority": 514,
+      "title": "The rescue",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.05"
+      ],
+      "mutexes": [
+        "onboarding"
+      ],
+      "paths": [
+        "src/onboarding/",
+        "src/systems/onboarding.js",
+        "src/ui/hudAttention.js",
+        "src/ui/screens/range.js",
+        "src/data/scenarios/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:first-15-runtime",
+        "npm run check:new-game-first-run"
+      ],
+      "receiptRefs": [],
+      "brief": "A tow-rig opening at the reference site with one swing-release, one shove, one grab-and-run, in play, no walls. DONE WHEN: ≥ 80 % of unaided testers complete it in ≤ 10 min; telemetry funnel."
+    },
+    {
+      "id": "PQ-163.01",
+      "parentId": "PQ-163",
+      "priority": 515,
+      "title": "The Range is the door",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "onboarding"
+      ],
+      "paths": [
+        "src/onboarding/",
+        "src/systems/onboarding.js",
+        "src/ui/hudAttention.js",
+        "src/ui/screens/range.js",
+        "src/data/scenarios/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:first-15-runtime",
+        "npm run check:new-game-first-run"
+      ],
+      "receiptRefs": [],
+      "brief": "Onboarding points at the Range (F4) after the first latch; the SWING, DO NOT PULL rung is the first drill; the empty Power Rail slots explain themselves. DONE WHEN: Funnel shows ≥ 60 % of new players open the Range in hour one."
+    },
+    {
+      "id": "PQ-163.02",
+      "parentId": "PQ-163",
+      "priority": 516,
+      "title": "Teach the missing three",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "onboarding"
+      ],
+      "paths": [
+        "src/onboarding/",
+        "src/systems/onboarding.js",
+        "src/ui/hudAttention.js",
+        "src/ui/screens/range.js",
+        "src/data/scenarios/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:first-15-runtime",
+        "npm run check:new-game-first-run"
+      ],
+      "receiptRefs": [],
+      "brief": "Boost, draw-to-fly and the well enter the rail in the first hour, each as a verb-then-silence beat with a Range fallback. DONE WHEN: Funnel shows each used unprompted within the hour by ≥ 70 %."
+    },
+    {
+      "id": "PQ-163.03",
+      "parentId": "PQ-163",
+      "priority": 517,
+      "title": "The sentence, proven",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "onboarding"
+      ],
+      "paths": [
+        "src/onboarding/",
+        "src/systems/onboarding.js",
+        "src/ui/hudAttention.js",
+        "src/ui/screens/range.js",
+        "src/data/scenarios/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:first-15-runtime",
+        "npm run check:new-game-first-run"
+      ],
+      "receiptRefs": [],
+      "brief": "The store-page sentence is shown once and each clause is performed by the player before minute ten. DONE WHEN: A stranger states the fantasy back correctly after playing."
+    },
+    {
+      "id": "PQ-163.04",
+      "parentId": "PQ-163",
+      "priority": 518,
+      "title": "The cliff",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "onboarding"
+      ],
+      "paths": [
+        "src/onboarding/",
+        "src/systems/onboarding.js",
+        "src/ui/hudAttention.js",
+        "src/ui/screens/range.js",
+        "src/data/scenarios/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:first-15-runtime",
+        "npm run check:new-game-first-run"
+      ],
+      "receiptRefs": [],
+      "brief": "Beat 1 after 47-A is a set piece (PQ-152), never an errand. DONE WHEN: Session-2 retention in playtests ≥ 60 %."
+    },
+    {
+      "id": "PQ-164.00",
+      "parentId": "PQ-164",
+      "priority": 519,
+      "title": "Every screen on a pad",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "input"
+      ],
+      "paths": [
+        "src/systems/gamepad.js",
+        "src/systems/touch.js",
+        "src/ui/input.js",
+        "src/ui/bindings.js",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:settings-profile",
+        "npm run check:controls-discoverability"
+      ],
+      "receiptRefs": [],
+      "brief": "Per-screen verified navigation for all 27 screens and the station; a check walks them. DONE WHEN: `check:gamepad:screens` green."
+    },
+    {
+      "id": "PQ-164.01",
+      "parentId": "PQ-164",
+      "priority": 520,
+      "title": "Glyphs and remap",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "input"
+      ],
+      "paths": [
+        "src/systems/gamepad.js",
+        "src/systems/touch.js",
+        "src/ui/input.js",
+        "src/ui/bindings.js",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:settings-profile",
+        "npm run check:controls-discoverability"
+      ],
+      "receiptRefs": [],
+      "brief": "Device-aware prompt glyphs; gamepad remapping with conflict detection; persists through save/profile. DONE WHEN: Settings-profile check green; capture on both devices."
+    },
+    {
+      "id": "PQ-164.02",
+      "parentId": "PQ-164",
+      "priority": 521,
+      "title": "Deck and trackpad",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "input"
+      ],
+      "paths": [
+        "src/systems/gamepad.js",
+        "src/systems/touch.js",
+        "src/ui/input.js",
+        "src/ui/bindings.js",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:settings-profile",
+        "npm run check:controls-discoverability"
+      ],
+      "receiptRefs": [],
+      "brief": "Deck resolution/scale verified; trackpad gestures for latch/reel/throw and stroke. DONE WHEN: Deck capture at 1280×800; trackpad route completes the first ten minutes."
+    },
+    {
+      "id": "PQ-164.03",
+      "parentId": "PQ-164",
+      "priority": 522,
+      "title": "Haptics",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "input"
+      ],
+      "paths": [
+        "src/systems/gamepad.js",
+        "src/systems/touch.js",
+        "src/ui/input.js",
+        "src/ui/bindings.js",
+        "src/ui/screens/settings.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:settings-profile",
+        "npm run check:controls-discoverability"
+      ],
+      "receiptRefs": [],
+      "brief": "Line tension, slams and boost on gamepad rumble/triggers; off by default in reduce-motion. DONE WHEN: Table test of intensity by momentum."
+    },
+    {
+      "id": "PQ-165.00",
+      "parentId": "PQ-165",
+      "priority": 523,
+      "title": "Presets and frame cap",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "options"
+      ],
+      "paths": [
+        "src/ui/screens/settings.js",
+        "src/render/adaptiveQuality.js",
+        "src/audio/audioSystem.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "Low/Medium/High map to the adaptive-quality tiers; frame cap 30/60/120/off; VSync honoured. DONE WHEN: Preset switch captured; frame cap measured."
+    },
+    {
+      "id": "PQ-165.01",
+      "parentId": "PQ-165",
+      "priority": 524,
+      "title": "Captions and audio cues",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "options"
+      ],
+      "paths": [
+        "src/ui/screens/settings.js",
+        "src/render/adaptiveQuality.js",
+        "src/audio/audioSystem.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "Captions for all voice; audio cues for wells, tethers taut, telegraphs when 'audio cues' is on. DONE WHEN: Every voiced bark captioned; cue table test."
+    },
+    {
+      "id": "PQ-165.02",
+      "parentId": "PQ-165",
+      "priority": 525,
+      "title": "The checklist",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "options"
+      ],
+      "paths": [
+        "src/ui/screens/settings.js",
+        "src/render/adaptiveQuality.js",
+        "src/audio/audioSystem.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "An accessibility statement in-app and the checklist (contrast, motion, remap, text scale, assists, captions) verified per screen. DONE WHEN: Checklist green; statement reachable from settings."
+    },
+    {
+      "id": "PQ-166.00",
+      "parentId": "PQ-166",
+      "priority": 526,
+      "title": "Language setting and default-route bridge",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "localization"
+      ],
+      "paths": [
+        "src/localization/",
+        "src/ui/screens/settings.js",
+        "test/localization-reachability.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:player-facing-labels"
+      ],
+      "receiptRefs": [],
+      "brief": "Settings language picker; the DOM bridge installs for any locale; the reachability test flips to 'default stays English unless chosen'. DONE WHEN: Switching language live re-renders every screen."
+    },
+    {
+      "id": "PQ-166.01",
+      "parentId": "PQ-166",
+      "priority": 527,
+      "title": "Growth pass",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "localization"
+      ],
+      "paths": [
+        "src/localization/",
+        "src/ui/screens/settings.js",
+        "test/localization-reachability.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:player-facing-labels"
+      ],
+      "receiptRefs": [],
+      "brief": "Pseudo-locale at +40 % on every screen and the HUD; fix clipping by layout. DONE WHEN: Zero clipped strings in the capture sweep."
+    },
+    {
+      "id": "PQ-166.02",
+      "parentId": "PQ-166",
+      "priority": 528,
+      "title": "Five languages",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "localization"
+      ],
+      "paths": [
+        "src/localization/",
+        "src/ui/screens/settings.js",
+        "test/localization-reachability.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:player-facing-labels"
+      ],
+      "receiptRefs": [],
+      "brief": "Translation pipeline (machine first, human review for the bark corpus and store copy); fonts. DONE WHEN: Five catalogs ship; store page in five languages."
+    },
+    {
+      "id": "PQ-033.00",
+      "parentId": "PQ-033",
+      "priority": 529,
+      "title": "Legal and credits",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "release"
+      ],
+      "paths": [
+        "electron/",
+        "package.json",
+        "build/",
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/pause.js",
+        "LICENSE",
+        "NOTICE"
+      ],
+      "checks": [
+        "npm run check:all",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Root LICENSE, third-party NOTICE bundled into the packaged files list, an in-app credits screen, privacy and accessibility statements. DONE WHEN: Packaged build contains every required notice; credits reachable from the title."
+    },
+    {
+      "id": "PQ-033.01",
+      "parentId": "PQ-033",
+      "priority": 530,
+      "title": "Crash reporting, auto-update, version",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "release"
+      ],
+      "paths": [
+        "electron/",
+        "package.json",
+        "build/",
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/pause.js",
+        "LICENSE",
+        "NOTICE"
+      ],
+      "checks": [
+        "npm run check:all",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Electron crashReporter to a store or file, electron-updater, version/build string in the title and pause screens. DONE WHEN: A forced crash produces a report with the build hash; an update applies."
+    },
+    {
+      "id": "PQ-033.02",
+      "parentId": "PQ-033",
+      "priority": 531,
+      "title": "Min-spec floors and soak",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "release"
+      ],
+      "paths": [
+        "electron/",
+        "package.json",
+        "build/",
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/pause.js",
+        "LICENSE",
+        "NOTICE"
+      ],
+      "checks": [
+        "npm run check:all",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. DONE WHEN: Floors green on min-spec; soak logs attached."
+    },
+    {
+      "id": "PQ-033.03",
+      "parentId": "PQ-033",
+      "priority": 532,
+      "title": "Store readiness",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "release"
+      ],
+      "paths": [
+        "electron/",
+        "package.json",
+        "build/",
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/pause.js",
+        "LICENSE",
+        "NOTICE"
+      ],
+      "checks": [
+        "npm run check:all",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Steam build, cloud saves, achievements (from telemetry aggregates and survivalRecords), store page assets from PQ-159/160. DONE WHEN: Store page live in test; achievements unlock in a session."
+    },
+    {
+      "id": "PQ-167.00",
+      "parentId": "PQ-167",
+      "priority": 533,
+      "title": "Session report",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "telemetry"
+      ],
+      "paths": [
+        "src/systems/telemetry.js",
+        "src/observability/",
+        "scripts/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Export a JSON + one-page Markdown report per session from the existing aggregates; opt-in upload later. DONE WHEN: Report renders for any saved session; funnel fields present."
+    },
+    {
+      "id": "PQ-167.01",
+      "parentId": "PQ-167",
+      "priority": 534,
+      "title": "The weekly playtest",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "telemetry"
+      ],
+      "paths": [
+        "src/systems/telemetry.js",
+        "src/observability/",
+        "scripts/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "A protocol: owner plays 45 minutes on a clean build, capture + report + three findings routed to packets. DONE WHEN: Four consecutive weeks recorded in receipts."
+    },
+    {
+      "id": "PQ-167.02",
+      "parentId": "PQ-167",
+      "priority": 535,
+      "title": "Gates from data",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "telemetry"
+      ],
+      "paths": [
+        "src/systems/telemetry.js",
+        "src/observability/",
+        "scripts/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "ALPHA/BETA numeric gates computed from reports (completion %, verbs/hour, session-2 return). DONE WHEN: `check:playtest:gates` prints the §15.1 rows."
+    },
+    {
+      "id": "PQ-169.00",
+      "parentId": "PQ-169",
+      "priority": 536,
+      "title": "Daily seed and board",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-meta"
+      ],
+      "paths": [
+        "src/systems/survivalRecords.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalUnlocks.js",
+        "src/ui/screens/crucible.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Date-seeded run; local board; Steam board when PQ-033 lands. DONE WHEN: Two machines get the same daily; board persists."
+    },
+    {
+      "id": "PQ-169.01",
+      "parentId": "PQ-169",
+      "priority": 537,
+      "title": "Ghosts",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-meta"
+      ],
+      "paths": [
+        "src/systems/survivalRecords.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalUnlocks.js",
+        "src/ui/screens/crucible.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "A shared run's input tape renders as a translucent ghost hull in your run. DONE WHEN: Ghost matches the shared hash."
+    },
+    {
+      "id": "PQ-169.02",
+      "parentId": "PQ-169",
+      "priority": 538,
+      "title": "Weekly mutators",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-meta"
+      ],
+      "paths": [
+        "src/systems/survivalRecords.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalUnlocks.js",
+        "src/ui/screens/crucible.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Gravity slalom, heavies only, weapons cold, reef arena; rotate by week. DONE WHEN: Four mutators live; each changes the top strategy (telemetry)."
+    },
+    {
+      "id": "PQ-169.03",
+      "parentId": "PQ-169",
+      "priority": 539,
+      "title": "The hangar feed (cosmetics only unless the owner overrides §12.2)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "crucible-meta"
+      ],
+      "paths": [
+        "src/systems/survivalRecords.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalUnlocks.js",
+        "src/ui/screens/crucible.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Draft unlocks carry cosmetics into adventure; adventure titles show in the Crucible. Carrying toy AVAILABILITY into adventure is a §12.2 override (no campaign material reward in v1) and ships only on the owner's explicit decision. DONE WHEN: One cosmetic round-trips; §12.2 respected; the override, if any, is recorded as the owner's."
+    },
+    {
+      "id": "PQ-170.00",
+      "parentId": "PQ-170",
+      "priority": 540,
+      "title": "Fronts you can tilt",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "endgame"
+      ],
+      "paths": [
+        "src/systems/factions.js",
+        "src/data/conflictReactions.js",
+        "src/systems/claims.js",
+        "src/data/postEndingReplayChains.js",
+        "src/data/sectors.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:faction-standings",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "War fronts as physical situations (blockade lanes, siege a bastion by wrecking ball) with visible ownership change. DONE WHEN: A player action flips one sector's owner in a scenario; reactions for 8 factions (not 2)."
+    },
+    {
+      "id": "PQ-170.01",
+      "parentId": "PQ-170",
+      "priority": 541,
+      "title": "Station growth and dependency",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "endgame"
+      ],
+      "paths": [
+        "src/systems/factions.js",
+        "src/data/conflictReactions.js",
+        "src/systems/claims.js",
+        "src/data/postEndingReplayChains.js",
+        "src/data/sectors.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:faction-standings",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "A station gains a module because of player-supplied throughput; a faction's patrols depend on your depot. DONE WHEN: Both visible on the route within one session of play; save round-trip."
+    },
+    {
+      "id": "PQ-170.02",
+      "parentId": "PQ-170",
+      "priority": 542,
+      "title": "Two mega-heists and two capital bosses",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "endgame"
+      ],
+      "paths": [
+        "src/systems/factions.js",
+        "src/data/conflictReactions.js",
+        "src/systems/claims.js",
+        "src/data/postEndingReplayChains.js",
+        "src/data/sectors.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:faction-standings",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Authored at 47-A craft; physics-solvable. DONE WHEN: Owner verdict per piece."
+    },
+    {
+      "id": "PQ-170.03",
+      "parentId": "PQ-170",
+      "priority": 543,
+      "title": "Legendary lines",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "endgame"
+      ],
+      "paths": [
+        "src/systems/factions.js",
+        "src/data/conflictReactions.js",
+        "src/systems/claims.js",
+        "src/data/postEndingReplayChains.js",
+        "src/data/sectors.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:faction-standings",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Ace trophy heads with lineage and recognition. DONE WHEN: One trophy head per ace tier; NPCs bark about it."
+    },
+    {
+      "id": "PQ-171.00",
+      "parentId": "PQ-171",
+      "priority": 544,
+      "title": "The grammar",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "content-grammar"
+      ],
+      "paths": [
+        "src/data/encounters/",
+        "src/systems/encounterScripts.js",
+        "design/incubator/microevent_library/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:long"
+      ],
+      "receiptRefs": [],
+      "brief": "Document + data: axes and constraints; every encounter declares its shape. DONE WHEN: All encounter files carry a shape; validator green."
+    },
+    {
+      "id": "PQ-171.01",
+      "parentId": "PQ-171",
+      "priority": 545,
+      "title": "The repetition meter",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "content-grammar"
+      ],
+      "paths": [
+        "src/data/encounters/",
+        "src/systems/encounterScripts.js",
+        "design/incubator/microevent_library/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:long"
+      ],
+      "receiptRefs": [],
+      "brief": "Telemetry counts shapes per hour; a check fails when any shape exceeds its budget over a 10-hour sim. DONE WHEN: `check:content:repetition` green."
+    },
+    {
+      "id": "PQ-172.00",
+      "parentId": "PQ-172",
+      "priority": 546,
+      "title": "JSON content loader",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "mods"
+      ],
+      "paths": [
+        "src/data/",
+        "scripts/check-data.mjs",
+        "src/main.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-data.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Weapons, modules, encounters and places load from a user content directory through the existing validators; mods are listed in-app. DONE WHEN: A sample mod adds a weapon and an encounter; determinism hash unaffected without the mod."
+    },
+    {
+      "id": "PQ-172.01",
+      "parentId": "PQ-172",
+      "priority": 547,
+      "title": "Workshop",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "mods"
+      ],
+      "paths": [
+        "src/data/",
+        "scripts/check-data.mjs",
+        "src/main.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-data.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Steam Workshop publish/subscribe for the same directory. DONE WHEN: One mod round-trips through Workshop."
+    },
+    {
+      "id": "PQ-162.00",
+      "parentId": "PQ-162",
+      "priority": 548,
+      "title": "Skeleton and data states adopted",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "station-ui"
+      ],
+      "paths": [
+        "src/ui/station/",
+        "styles/station-workbench.css",
+        "src/ui/screens/stationHub.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:station-tabs",
+        "npm run check:command-deck-ui",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). DONE WHEN: check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js."
+    },
+    {
+      "id": "PQ-162.01",
+      "parentId": "PQ-162",
+      "priority": 549,
+      "title": "Hierarchy and colour discipline",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "station-ui"
+      ],
+      "paths": [
+        "src/ui/station/",
+        "styles/station-workbench.css",
+        "src/ui/screens/stationHub.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:station-tabs",
+        "npm run check:command-deck-ui",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. DONE WHEN: A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt."
+    },
+    {
+      "id": "PQ-162.02",
+      "parentId": "PQ-162",
+      "priority": 550,
+      "title": "Arriving somewhere",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "station-ui"
+      ],
+      "paths": [
+        "src/ui/station/",
+        "styles/station-workbench.css",
+        "src/ui/screens/stationHub.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:station-tabs",
+        "npm run check:command-deck-ui",
+        "npm run check:ui-effects"
+      ],
+      "receiptRefs": [],
+      "brief": "Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. DONE WHEN: Blind reviewer names the station from the docked view; capture."
+    },
+    {
+      "id": "PQ-168.00",
+      "parentId": "PQ-168",
+      "priority": 551,
+      "title": "Traffic and heat layers",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "chart"
+      ],
+      "paths": [
+        "src/ui/galaxyMap.js",
+        "src/ui/map/",
+        "src/ui/mapAuthority.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:map-authority",
+        "npm run check:starmap-objective"
+      ],
+      "receiptRefs": [],
+      "brief": "Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory)."
+    },
+    {
+      "id": "PQ-168.01",
+      "parentId": "PQ-168",
+      "priority": 552,
+      "title": "One answer per question",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "chart"
+      ],
+      "paths": [
+        "src/ui/galaxyMap.js",
+        "src/ui/map/",
+        "src/ui/mapAuthority.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:map-authority",
+        "npm run check:starmap-objective"
+      ],
+      "receiptRefs": [],
+      "brief": "Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict."
     }
   ]
 }
