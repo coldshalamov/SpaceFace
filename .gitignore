@@ -8,6 +8,7 @@ dist/
 # Root-local agent scratch, transcripts, diagnostics, and temporary comparison trees.
 # Durable conclusions belong in maintained docs/evidence records; prior tracked copies remain in Git history.
 /.tmp*
+/.dev/
 /.grok-scratch/
 /terminals/
 /agent-tools/
