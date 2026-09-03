@@ -472,6 +472,7 @@ export function createDynamicBufferCoordinator(scene) {
     epoch: 0,
     active: false,
     inSceneHook: false,
+    disposed: false,
     priorHook: null,
     priorHookHadOwnProperty: false,
   };
@@ -505,6 +506,7 @@ export function createDynamicBufferCoordinator(scene) {
   coordinator.wrapper = wrapper;
 
   coordinator.setProbeForceFullUploads = (on) => {
+    if (coordinator.disposed) throw new Error('dynamic buffer coordinator is disposed');
     if (coordinator.active) {
       throw new Error('dynamic buffer probe mode cannot change while a renderer epoch is active');
     }
@@ -519,6 +521,7 @@ export function createDynamicBufferCoordinator(scene) {
   });
 
   coordinator.arm = () => {
+    if (coordinator.disposed) throw new Error('dynamic buffer coordinator is disposed');
     if (coordinator.active) {
       diagnostics.hookViolations++;
       diagnostics.lastError = 'dynamic buffer renderer epoch re-entered';
@@ -556,6 +559,7 @@ export function createDynamicBufferCoordinator(scene) {
   };
 
   coordinator.handleContextLost = () => {
+    if (coordinator.disposed) return;
     diagnostics.contextLosses++;
     for (let index = 0; index < coordinator.owners.length; index++) {
       const owner = coordinator.owners[index];
@@ -567,6 +571,7 @@ export function createDynamicBufferCoordinator(scene) {
   };
 
   coordinator.handleContextRestored = () => {
+    if (coordinator.disposed) return;
     diagnostics.contextRestores++;
     for (let index = 0; index < coordinator.owners.length; index++) {
       const owner = coordinator.owners[index];
@@ -578,13 +583,14 @@ export function createDynamicBufferCoordinator(scene) {
   };
 
   coordinator.getDiagnostics = () => diagnostics;
+  coordinator.dispose = () => disposeDynamicBufferCoordinator(coordinator);
   COORDINATORS.set(scene, coordinator);
   return coordinator;
 }
 
 export function registerDynamicBufferOwner(scene, spec) {
   const coordinator = scene && COORDINATORS.get(scene);
-  if (!coordinator) return null;
+  if (!coordinator || coordinator.disposed) return null;
   const id = String(spec && spec.id || 'dynamic-buffer-owner');
   const mesh = spec && spec.mesh;
   const attributes = spec && spec.attributes;
@@ -604,6 +610,7 @@ export function registerDynamicBufferOwner(scene, spec) {
     publishedEpoch: 0,
     touched: false,
     invalid: false,
+    disposed: false,
     diagnostics: {
       id,
       activeCount: mesh.count || 0,
@@ -624,9 +631,11 @@ export function registerDynamicBufferOwner(scene, spec) {
       processingEligibilitySkips: 0,
       drawEligibilitySkips: 0,
       invalid: false,
+      disposed: false,
       lastError: null,
     },
   };
+  owner.release = () => releaseDynamicBufferOwner(owner);
 
   const plannedBindings = [];
   const plannedAttributes = new Set();
@@ -701,7 +710,20 @@ function diagnosticsAddOwner(coordinator, owner) {
 }
 
 export function unregisterDynamicBufferOwner(owner) {
-  if (!owner || !owner.coordinator) return false;
+  if (!owner || owner.disposed) return false;
+  if (!owner.coordinator) {
+    detachOwnerUploadCallbacks(owner);
+    if (Array.isArray(owner.bindings)) owner.bindings.length = 0;
+    else owner.bindings = [];
+    owner.mesh = null;
+    owner.capacity = 0;
+    owner.disposed = true;
+    if (owner.diagnostics) {
+      owner.diagnostics.activeCount = 0;
+      owner.diagnostics.disposed = true;
+    }
+    return true;
+  }
   assertDynamicBufferOwnerLifecycleSafe(owner);
   const coordinator = owner.coordinator;
   const ownerIndex = coordinator.owners.indexOf(owner);
@@ -716,6 +738,52 @@ export function unregisterDynamicBufferOwner(owner) {
   }
   owner.coordinator = null;
   coordinator.diagnostics.registeredOwners = coordinator.owners.length;
+  owner.bindings.length = 0;
+  owner.mesh = null;
+  owner.capacity = 0;
+  owner.touched = false;
+  owner.disposed = true;
+  owner.diagnostics.activeCount = 0;
+  owner.diagnostics.disposed = true;
+  return true;
+}
+
+/**
+ * Release an owner and all callback/range references held by the coordinator.
+ * The owner does not own the BufferAttribute itself; callers that created an attribute
+ * must dispose that attribute separately (for example, an InstancedMesh instanceMatrix).
+ */
+export function releaseDynamicBufferOwner(owner) {
+  return unregisterDynamicBufferOwner(owner);
+}
+
+export const disposeDynamicBufferOwner = releaseDynamicBufferOwner;
+
+/**
+ * Dispose a coordinator and release every owner it registered. Idempotent so teardown paths
+ * may race with a second cleanup attempt without retaining the scene hook or callback state.
+ */
+export function disposeDynamicBufferCoordinator(coordinator) {
+  if (!coordinator || coordinator.disposed) return false;
+  const scene = coordinator.scene;
+  if (coordinator.active) coordinator.disarm(coordinator.epoch);
+  if (scene && coordinator.wrapper && scene.onBeforeRender === coordinator.wrapper) {
+    if (coordinator.priorHookHadOwnProperty) scene.onBeforeRender = coordinator.priorHook;
+    else delete scene.onBeforeRender;
+  }
+  for (const owner of [...coordinator.owners]) releaseDynamicBufferOwner(owner);
+  if (scene) COORDINATORS.delete(scene);
+  coordinator.owners.length = 0;
+  coordinator.diagnostics.owners.length = 0;
+  coordinator.diagnostics.registeredOwners = 0;
+  coordinator.disposed = true;
+  coordinator.active = false;
+  coordinator.inSceneHook = false;
+  coordinator.priorHook = null;
+  coordinator.priorHookHadOwnProperty = false;
+  coordinator.attributeOwners = new WeakMap();
+  coordinator.scene = null;
+  coordinator.wrapper = null;
   return true;
 }
 
@@ -734,12 +802,12 @@ function assertDynamicBufferOwnerLifecycleSafe(owner) {
 }
 
 export function assertDynamicBufferOwnerWritable(owner) {
-  if (!owner || owner.invalid) return;
+  if (!owner || owner.invalid || owner.disposed) return;
   assertDynamicBufferOwnerLifecycleSafe(owner);
 }
 
 export function markDynamicBufferItems(owner, bindingIndex, itemStart, itemCount = 1) {
-  if (!owner || owner.invalid) return;
+  if (!owner || owner.invalid || owner.disposed) return;
   const binding = owner.bindings[bindingIndex];
   if (!binding) throw new RangeError(`${owner.id} has no tracked attribute ${bindingIndex}`);
   if (integer(itemStart) < 0 || integer(itemCount) < 0 || itemStart + itemCount > binding.itemCapacity) {
@@ -755,7 +823,7 @@ export function markDynamicBufferItems(owner, bindingIndex, itemStart, itemCount
 }
 
 export function commitDynamicBufferOwner(owner, activeCount) {
-  if (!owner) return false;
+  if (!owner || owner.disposed) return false;
   if (owner.invalid) {
     if (integer(activeCount) >= 0 && owner.mesh) owner.mesh.count = activeCount;
     for (let index = 0; index < owner.bindings.length; index++) {
@@ -794,7 +862,7 @@ export function commitDynamicBufferOwner(owner, activeCount) {
 }
 
 export function replaceDynamicBufferAttribute(owner, bindingIndex, attribute, reason = 'replacement') {
-  if (!owner || owner.invalid) return;
+  if (!owner || owner.invalid || owner.disposed) return;
   assertDynamicBufferOwnerWritable(owner);
   const binding = owner && owner.bindings[bindingIndex];
   if (!binding) throw new RangeError(`${owner && owner.id || 'owner'} has no tracked attribute ${bindingIndex}`);

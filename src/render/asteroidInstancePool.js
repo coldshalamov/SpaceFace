@@ -11,7 +11,7 @@ import {
   commitDynamicBufferOwner,
   markDynamicBufferItems,
   registerDynamicBufferOwner,
-  unregisterDynamicBufferOwner,
+  releaseDynamicBufferOwner,
 } from './dynamicBufferRanges.js';
 
 export const ASTEROID_INSTANCE_TYPE_ID = 'ast_common_rock';
@@ -43,7 +43,7 @@ export function createAsteroidInstancePool(scene) {
     };
     variantStats[variant] = createVariantStats(variant);
   }
-  return {
+  const pool = {
     scene,
     variants,
     byEntity: new Map(),
@@ -57,22 +57,25 @@ export function createAsteroidInstancePool(scene) {
       variants: variantStats,
     },
     dirty: true,
+    disposed: false,
     cameraState: {
       view: createCameraState(),
       shadow: createCameraState(),
     },
   };
+  pool.dispose = () => disposeAsteroidInstancePool(pool);
+  return pool;
 }
 
 export function collectAsteroidInstancePoolRoots(pool) {
-  if (!pool || !Array.isArray(pool.variants)) return [];
+  if (!pool || pool.disposed || !Array.isArray(pool.variants)) return [];
   return pool.variants
     .map((bucket) => bucket && bucket.mesh)
     .filter((mesh) => mesh && mesh.visible !== false && mesh.count > 0);
 }
 
 export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
-  if (!pool || !entity || !ownerRoot || entity.type !== 'asteroid') return false;
+  if (!pool || pool.disposed || !entity || !ownerRoot || entity.type !== 'asteroid') return false;
   if (pool.byEntity.has(entity.id)) return true;
   const leaf = ownerRoot.userData && ownerRoot.userData.asteroidInstanceBody;
   const info = leaf && leaf.userData;
@@ -108,7 +111,7 @@ export function isBorrowedAsteroidInstanceResource(object) {
 }
 
 export function releaseAsteroidInstancesForEntity(pool, entityId) {
-  const owned = pool && pool.byEntity.get(entityId);
+  const owned = pool && !pool.disposed && pool.byEntity.get(entityId);
   if (!owned) return false;
   const { bucket, record } = owned;
   const index = bucket.records.indexOf(record);
@@ -123,11 +126,12 @@ export function releaseAsteroidInstancesForEntity(pool, entityId) {
 }
 
 export function invalidateAsteroidInstancePool(pool) {
-  if (pool) pool.dirty = true;
+  if (pool && !pool.disposed) pool.dirty = true;
 }
 
 export function syncAsteroidInstancePool(pool, options = {}) {
-  if (!pool) return null;
+  if (!pool || pool.disposed) return null;
+  if (!pool.cameraState) return null;
   const classifiedRecords = Array.isArray(options.records) ? options.records : null;
   const viewCameraDirty = cameraStateChanged(options.camera, pool.cameraState.view);
   const shadowCameraDirty = cameraStateChanged(options.shadowCamera, pool.cameraState.shadow);
@@ -248,7 +252,7 @@ export function syncAsteroidInstancePool(pool, options = {}) {
 }
 
 export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
-  if (!pool || !object || !object.userData || !object.userData.asteroidInstancePool) return null;
+  if (!pool || pool.disposed || !object || !object.userData || !object.userData.asteroidInstancePool) return null;
   const variant = object.userData.asteroidInstanceVariant | 0;
   const bucket = pool.variants[variant];
   if (!bucket || !Number.isInteger(instanceId) || instanceId < 0) return null;
@@ -258,7 +262,7 @@ export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
 // Read-only acceptance surface for diagnosing source-mesh/instance handoff stability. It identifies
 // both ownership sides and the submitted slot without changing matrices, culling, or residency.
 export function asteroidInstanceMembership(pool, entityId) {
-  const owned = pool && pool.byEntity.get(entityId);
+  const owned = pool && !pool.disposed && pool.byEntity.get(entityId);
   if (!owned) return {
     entityId,
     registered: false,
@@ -284,7 +288,7 @@ export function asteroidInstanceMembership(pool, entityId) {
 }
 
 export function clearAsteroidInstancePool(pool) {
-  if (!pool) return;
+  if (!pool || pool.disposed) return;
   for (const bucket of pool.variants) {
     for (const record of bucket.records) {
       if (!record.leaf) continue;
@@ -304,20 +308,40 @@ export function clearAsteroidInstancePool(pool) {
 }
 
 export function disposeAsteroidInstancePool(pool) {
-  if (!pool) return;
+  if (!pool || pool.disposed) return false;
   clearAsteroidInstancePool(pool);
+  const scene = pool.scene;
   for (const bucket of pool.variants) {
     const mesh = bucket.mesh;
-    if (!mesh) continue;
-    if (mesh.parent) mesh.parent.remove(mesh);
-    unregisterDynamicBufferOwner(bucket.dynamicBufferOwner);
+    if (mesh) disposeOwnedInstanceMesh(mesh, bucket.dynamicBufferOwner, scene);
+    else if (bucket.dynamicBufferOwner) releaseDynamicBufferOwner(bucket.dynamicBufferOwner);
     bucket.dynamicBufferOwner = null;
-    mesh.geometry = null;
-    mesh.material = null;
-    if (typeof mesh.dispose === 'function') mesh.dispose();
+    bucket.geometry = null;
+    bucket.material = null;
     bucket.mesh = null;
     bucket.capacity = 0;
+    bucket.records.length = 0;
+    bucket.entityIds.length = 0;
   }
+  pool.byEntity.clear();
+  pool.stats.registered = 0;
+  pool.stats.submitted = 0;
+  pool.stats.visibleBatches = 0;
+  pool.stats.matrixUploads = 0;
+  pool.stats.matrixReuses = 0;
+  pool.stats.matrixEvaluations = 0;
+  for (const variantStats of pool.stats.variants) {
+    variantStats.registered = 0;
+    variantStats.submitted = 0;
+    variantStats.capacity = 0;
+    variantStats.uploads = 0;
+    variantStats.reuses = 0;
+  }
+  pool.dirty = false;
+  pool.disposed = true;
+  pool.cameraState = null;
+  pool.scene = null;
+  return true;
 }
 
 export function getAsteroidInstancePoolDiagnostics(pool) {
@@ -366,11 +390,7 @@ function ensureCapacity(pool, bucket, required) {
     producer: 'asteroid-instance-pool',
   });
   if (previous) {
-    unregisterDynamicBufferOwner(previousOwner);
-    if (previous.parent) previous.parent.remove(previous);
-    previous.geometry = null;
-    previous.material = null;
-    if (typeof previous.dispose === 'function') previous.dispose();
+    disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
   }
   bucket.mesh = mesh;
   bucket.capacity = capacity;
@@ -381,6 +401,25 @@ function ensureCapacity(pool, bucket, required) {
     mesh,
     attributes: [{ name: 'instanceMatrix', attribute: mesh.instanceMatrix }],
   });
+}
+
+function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
+  if (!mesh) return;
+  // The pool creates instanceMatrix; source geometry/material belong to the borrowed leaf and
+  // must never be disposed here. Release the dynamic callback owner before the attribute event.
+  if (dynamicBufferOwner) releaseDynamicBufferOwner(dynamicBufferOwner);
+  else if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function') {
+    mesh.instanceMatrix.dispose();
+  }
+  if (mesh.parent === scene) scene.remove(mesh);
+  if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function' && dynamicBufferOwner) {
+    mesh.instanceMatrix.dispose();
+  }
+  mesh.instanceMatrix = null;
+  mesh.geometry = null;
+  mesh.material = null;
+  if (typeof mesh.dispose === 'function') mesh.dispose();
+  if (mesh.userData) mesh.userData = {};
 }
 
 function nextPowerOfTwo(value) {
