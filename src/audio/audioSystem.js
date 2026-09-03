@@ -1018,6 +1018,11 @@ export const audio = {
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_explosion_small', { position: p && p.pos, gain: 0.7 }));
+    // Ceres living-work stamps already carry the calving on lamp/text channels; audio joins for
+    // the rock's two own beats only (groan before the split, the split itself). The receipt has no
+    // position — the bound actor is resolved read-only from the live cast, and play() culls
+    // anything past world-hearing range, so a pocket the player left stays silent.
+    bus.on('traffic:ceresCausalChain', (p) => this._onCeresCausalChain(p));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
@@ -2000,6 +2005,37 @@ export const audio = {
   _onPickupCollected(p) {
     if (successfulPickupAmount(p) <= 0) return;
     this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
+  },
+
+  // The rock calving's two audible beats, keyed off the chain's own phase receipts. One family:
+  // groan (the seam flexing before the split) and calve (the split). Everything else the chain
+  // emits stays on the lamp/text channels.
+  _onCeresCausalChain(p) {
+    if (!p || p.schema !== 'spaceface.ceresCausalChain.v1' || p.kind !== 'phase') return;
+    if (p.eventId !== 'ev_rock_calving') return;
+    const recipeId = p.phase === 'groan' ? 'sfx_ambient_rock_groan'
+      : p.phase === 'calve' ? 'sfx_ambient_rock_calve'
+        : null;
+    if (!recipeId) return;
+    const position = this._ceresCausalActorPosition(p.actorSlotIds);
+    if (!position) return;
+    this.play(recipeId, { position, gain: p.phase === 'calve' ? 1 : 0.8 });
+  },
+
+  _ceresCausalActorPosition(actorSlotIds) {
+    const slotId = Array.isArray(actorSlotIds) ? actorSlotIds[0] : null;
+    if (typeof slotId !== 'string' || !slotId) return null;
+    const entityList = this.state && this.state.entityList;
+    if (Array.isArray(entityList)) {
+      for (let i = 0; i < entityList.length; i++) {
+        const candidate = entityList[i];
+        if (candidate && candidate.alive !== false && candidate.data
+          && candidate.data.activityActorSlotId === slotId && candidate.pos) {
+          return { x: candidate.pos.x, z: candidate.pos.z };
+        }
+      }
+    }
+    return null;
   },
 
   _onPlayerDeath(p) {
