@@ -6,6 +6,45 @@ import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { resolveWeaponImpulseForHit } from '../../../src/combat/impulseKernel.js';
 import { computeRunHash } from './runHash.mjs';
 import { KNOCK_MODEL_CONSTANTS, planKnockEncounters, resolveContactKnock } from './knockModel.mjs';
+import { readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// Scenario modules are auto-discovered from ./scenarios/*.mjs (see scenarios/README.md for the
+// contract). A module whose id matches an inline scenario below REPLACES it, so a real-path port of
+// an inline stand-in lands in its own file and never edits this one.
+const SCENARIOS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'scenarios');
+let discoveredScenarioCache = null;
+
+export async function discoverScenarioModules() {
+  if (discoveredScenarioCache) return discoveredScenarioCache;
+  const found = new Map();
+  let names = [];
+  try {
+    names = readdirSync(SCENARIOS_DIR).filter((name) => name.endsWith('.mjs')).sort();
+  } catch {
+    names = [];
+  }
+  for (const name of names) {
+    const mod = await import(pathToFileURL(join(SCENARIOS_DIR, name)).href);
+    const spec = mod.scenario || mod.default;
+    if (!spec || typeof spec.id !== 'string' || typeof spec.run !== 'function') {
+      throw new Error(`verb scenario module ${name} must export { id, label, run(seed) }`);
+    }
+    if (found.has(spec.id)) throw new Error(`duplicate verb scenario id ${spec.id} in ${name}`);
+    found.set(spec.id, { id: spec.id, label: spec.label || spec.id, run: spec.run, module: name });
+  }
+  discoveredScenarioCache = found;
+  return found;
+}
+
+/** Inline scenarios merged with discovered modules (modules override by id; new ids append, sorted by file name). */
+export async function listVerbScenarios() {
+  const discovered = await discoverScenarioModules();
+  const merged = VERB_BENCH_SCENARIOS.map((s) => (discovered.has(s.id) ? { ...s, ...discovered.get(s.id) } : s));
+  for (const [id, spec] of discovered) if (!merged.some((s) => s.id === id)) merged.push(spec);
+  return merged;
+}
 
 export const VERB_BENCH_SCENARIOS = [
   { id: 'feel.rope_swing_release', label: 'B7 Rope Swing & Tangential Speed Retention' },
@@ -32,16 +71,19 @@ export async function runVerbBench({
   verbose = false,
 } = {}) {
   const startedAt = Date.now();
+  const allScenarios = await listVerbScenarios();
   const scenariosToRun = scenarioIds
-    ? VERB_BENCH_SCENARIOS.filter((s) => scenarioIds.includes(s.id))
-    : VERB_BENCH_SCENARIOS;
+    ? allScenarios.filter((s) => scenarioIds.includes(s.id))
+    : allScenarios;
 
   const results = [];
   for (const seed of seeds) {
     for (const scenario of scenariosToRun) {
       if (verbose) console.log(`[verb-bench] running ${scenario.id} (seed ${seed})...`);
       const t0 = Date.now();
-      const runResult = await executeVerbScenario(scenario.id, seed);
+      const runResult = typeof scenario.run === 'function'
+        ? await scenario.run(seed)
+        : await executeVerbScenario(scenario.id, seed);
       const durationMs = Date.now() - t0;
 
       const { runHash, runManifest } = computeRunHash({

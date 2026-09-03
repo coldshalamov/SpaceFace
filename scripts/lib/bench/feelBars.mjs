@@ -153,6 +153,7 @@ export const FEEL_BARS = [
 export function evaluateBars(runs) {
   const list = Array.isArray(runs) ? runs.filter((run) => run && typeof run === "object") : [];
   const bars = FEEL_BARS.map((bar) => (BAR_EVALUATORS[bar.id] || evaluateUnreachable)(bar, list));
+  for (const bar of bars) mergeRunProvidedBars(bar, list);
   const summary = {
     reachable: bars.filter((bar) => bar.reachable).length,
     met: bars.filter((bar) => bar.met === true).length,
@@ -160,6 +161,37 @@ export function evaluateBars(runs) {
     unreachable: bars.filter((bar) => !bar.reachable).length,
   };
   return { bars, summary };
+}
+
+/**
+ * Generic feed seam (single-writer rule): a run whose metrics.bars lists entries for a bar
+ * contributes them directly — { bar: "B2" | "feel.reversal_course", label, value, unit, met, note? }.
+ * Scenario modules under scripts/lib/bench/scenarios/ use this instead of editing this file.
+ */
+function mergeRunProvidedBars(bar, list) {
+  const provided = [];
+  const fedBy = [];
+  const notes = [];
+  for (const run of list) {
+    const entries = run && run.metrics && Array.isArray(run.metrics.bars) ? run.metrics.bars : [];
+    for (const item of entries) {
+      if (!item || (item.bar !== bar.id && item.bar !== bar.key)) continue;
+      const value = entry(item.label || bar.id, Number(item.value), item.unit || "", item.met === true);
+      if (!value) continue;
+      provided.push(value);
+      const ref = fedByOf(run);
+      if (!fedBy.includes(ref)) fedBy.push(ref);
+      if (item.note) notes.push(String(item.note));
+    }
+  }
+  if (!provided.length) return;
+  bar.values = [...(bar.values || []), ...provided];
+  const existingFed = bar.fedBy || [];
+  bar.fedBy = [...existingFed, ...fedBy.filter((ref) => !existingFed.includes(ref))];
+  bar.reachable = true;
+  if (bar.coverage !== "full") bar.coverage = "partial";
+  bar.met = verdictFromValues(bar.values);
+  if (notes.length) bar.notes = [bar.notes, ...notes].filter(Boolean).join(" ");
 }
 
 function finish(bar, { values = [], coverage = "none", notes = [], fedBy = [], met } = {}) {
