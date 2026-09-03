@@ -245,30 +245,36 @@ export const swarmArena = {
     if (!state || !Array.isArray(state.entityList)) return;
     const anchor = playerAnchor(state);
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const wrecks = [];
+    const deadline = now + SWARM_WRECK_RELEASE_S;
+    // Anything already on a release clock is ON ITS WAY OUT and must not be counted as part of the
+    // battlefield being kept. Counting them was a real under-cull: the excess was computed over
+    // everything, the loop then skipped the already-marked ones, and each pass released far fewer
+    // than it meant to — a walk to wave 13 held at ~145 wrecks instead of the intended forty.
+    const standing = [];
     for (const entity of state.entityList) {
       if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
-      // Only ones already on a release clock this system set, or with no clock at all. A wreck that
-      // some other owner gave a deadline to keeps the deadline it was given.
+      const already = entity.data && Number.isFinite(entity.data.despawnAt)
+        && entity.data.despawnAt <= deadline;
+      if (already) continue;
       const dx = entity.pos.x - anchor.x;
       const dz = entity.pos.z - anchor.z;
-      wrecks.push({ entity, distSq: dx * dx + dz * dz });
+      standing.push({ entity, distSq: dx * dx + dz * dz });
     }
-    if (wrecks.length <= SWARM_WRECK_KEEP) return;
+    if (standing.length <= SWARM_WRECK_KEEP) return;
     // Furthest first: what is released is always the wreckage nobody can see.
-    wrecks.sort((a, b) => b.distSq - a.distSq);
-    const excess = wrecks.length - SWARM_WRECK_KEEP;
+    standing.sort((a, b) => b.distSq - a.distSq);
+    const excess = standing.length - SWARM_WRECK_KEEP;
     let released = 0;
     for (let i = 0; i < excess; i++) {
-      const entity = wrecks[i].entity;
+      const entity = standing[i].entity;
       if (!entity.data) entity.data = {};
-      const deadline = now + SWARM_WRECK_RELEASE_S;
-      if (Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= deadline) continue;
       entity.data.despawnAt = deadline;
       released++;
     }
     if (released > 0) {
-      this._emit('swarmArena:wrecksReleased', { released, kept: SWARM_WRECK_KEEP, total: wrecks.length });
+      this._emit('swarmArena:wrecksReleased', {
+        released, kept: SWARM_WRECK_KEEP, standing: standing.length,
+      });
     }
   },
 

@@ -230,6 +230,39 @@ test('the battlefield is let go of — wrecks do not pile up forever in an endle
   assert.ok(nearestDoomed > furthestSpared, 'everything kept is closer than everything released');
 });
 
+test('a second cull releases the NEW excess, not a re-count of what is already going', () => {
+  // Under-cull found live: the excess was computed over every wreck including ones already on a
+  // release clock, so each pass marked far fewer than it meant to and a run held at ~145 instead
+  // of forty.
+  const h = boot();
+  h.state.simTime = 500;
+  const add = (n, from) => {
+    for (let i = 0; i < n; i++) {
+      const id = h.state.nextEntityId++;
+      const e = {
+        id, alive: true, type: 'wreck',
+        pos: { x: h.player.pos.x + (from + i) * 20, z: h.player.pos.z }, data: {},
+      };
+      h.state.entities.set(id, e);
+      h.state.entityList.push(e);
+    }
+  };
+  const standing = () => h.state.entityList.filter(
+    (e) => e.alive !== false && e.type === 'wreck'
+      && !(e.data && Number.isFinite(e.data.despawnAt) && e.data.despawnAt <= h.state.simTime + 6),
+  ).length;
+
+  add(SWARM_WRECK_KEEP * 2, 0);
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  assert.equal(standing(), SWARM_WRECK_KEEP, 'first pass trims to the keep count');
+
+  // A wave's worth of new wreckage arrives; the marked ones have not been swept yet.
+  h.state.simTime += 2;
+  add(30, 500);
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  assert.equal(standing(), SWARM_WRECK_KEEP, 'and the second pass trims the NEW excess too');
+});
+
 test('a wreck someone else already put a shorter clock on keeps its own deadline', () => {
   const h = boot();
   h.state.simTime = 500;
