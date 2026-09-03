@@ -14,7 +14,9 @@ export const trigger = deepFreeze({
   pressureCost: 30,
   cooldownS: 480,
   proximity: true,
-  gates: {},
+  // The reaver anchor reinforcement-calls wasp cutters, so an ungated pack reaches 3-5 effective
+  // hulls — the same gate its template 020 carries keeps 'first15' tier honest for new players.
+  gates: { minSectorTier: 2 },
 });
 
 export default defineEncounter(trigger, {

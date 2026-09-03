@@ -58,7 +58,7 @@
       "fallback": "Wreck despawns: scavengers scatter immediately (their reason left)",
       "tier": "first15",
       "blockedOn": null,
-      "notes": "INFERENCE U8: LIVE as the scavengers_fresh_wreck encounter (derelict_field zones, ambush script, proximity spring at 900wu; reaver_pirate anchor + wasp cutters, faction_reach scavenger doctrine). The catalog's patrol-responder leg (law arriving on the scavengers) stays UNWIRED - no patrol-responder seam exists in the ambush script yet; the player is the responder today."
+      "notes": "INFERENCE U8: LIVE as the scavengers_fresh_wreck encounter (derelict_field zones, ambush script, proximity spring at 900wu, minSectorTier 2; reaver_pirate anchor + wasp cutters, faction_reach scavenger doctrine). WIRED: the spring-and-fight party on the salvage. INVERTED/deferred: the catalog's scatter-when-law-approaches beat (the ambush script springs hostile and resolves by cleared/escaped - the player is treated as the law) and the patrol-responder leg (no patrol-responder seam in the ambush script). 'Fresh wreck' is flavor, not modeled: the squad spawns in the derelict field, not anchored to a salvage-owned wreck entity."
     },
     {
       "id": "ev_smuggler_dumps_cache",

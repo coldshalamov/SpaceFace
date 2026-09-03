@@ -23,6 +23,8 @@ test('scavengers_at_fresh_wreck registers as a reachable derelict-field ambush',
     'reachable from derelict field zones');
   assert.ok(trigger.weight > 0, 'the ambient deck can actually draw it');
   assert.ok(trigger.cooldownS >= 300, 'a scavenger party does not re-form instantly');
+  assert.deepEqual(trigger.gates, { minSectorTier: 2 },
+    'the reaver-anchored pack is gated off fresh players like its template 020');
 });
 
 test('the wreck party is an anchored scavenger squad on the ambush spring', () => {
