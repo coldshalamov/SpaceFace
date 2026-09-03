@@ -67,10 +67,69 @@ export function isUnsellableCargo(state, commodityId) {
   return false;
 }
 
-// Module-level bus reference so the exported helpers can emit cargo:changed when called
-// from outside the system instance (economy/mining/salvage). Stays null in unit tests → silent.
-let busRef = null;
+// Exported addCargo/removeCargo calls need their state-local bus without relying on whichever
+// system instance initialized most recently. Bindings are weakly keyed by state so isolated
+// runtimes cannot cross-talk and disposed states do not stay alive through this module.
+const stateBindings = new WeakMap();
+const ownerBindings = new WeakMap();
 let _moduleSeq = 0n;
+
+function detachBinding(binding) {
+  if (!binding) return;
+  for (const unsubscribe of binding.unsubs || []) {
+    if (typeof unsubscribe === 'function') unsubscribe();
+  }
+  binding.unsubs.length = 0;
+  if (stateBindings.get(binding.state) === binding) stateBindings.delete(binding.state);
+  const owned = ownerBindings.get(binding.owner);
+  if (owned) {
+    owned.delete(binding);
+    if (owned.size === 0) ownerBindings.delete(binding.owner);
+  }
+  if (binding.owner && binding.owner._binding === binding) {
+    binding.owner._binding = null;
+    binding.owner._unsubs = [];
+  }
+}
+
+function attachBinding(state, bus, owner) {
+  const existingBindings = ownerBindings.get(owner);
+  if (existingBindings) {
+    for (const binding of [...existingBindings]) detachBinding(binding);
+  }
+  const prior = stateBindings.get(state);
+  if (prior) detachBinding(prior);
+  const binding = {
+    state,
+    bus,
+    owner,
+    unsubs: [],
+    dirty: false,
+    massDirty: false,
+  };
+  stateBindings.set(state, binding);
+  let owned = ownerBindings.get(owner);
+  if (!owned) {
+    owned = new Set();
+    ownerBindings.set(owner, owned);
+  }
+  owned.add(binding);
+  return binding;
+}
+
+function subscribe(binding, event, handler) {
+  if (!binding || !binding.bus || typeof binding.bus.on !== 'function') return;
+  const unsubscribe = binding.bus.on(event, handler);
+  if (typeof unsubscribe === 'function') binding.unsubs.push(unsubscribe);
+  else if (typeof binding.bus.off === 'function') {
+    binding.unsubs.push(() => binding.bus.off(event, handler));
+  }
+}
+
+function busForState(state) {
+  const binding = state && typeof state === 'object' ? stateBindings.get(state) : null;
+  return binding && binding.bus && typeof binding.bus.emit === 'function' ? binding.bus : null;
+}
 
 function nextLooseModuleInstanceId(state) {
   // Continue may restore legacy mi_N inventory into a fresh process. Rebase before every allocation
@@ -89,8 +148,9 @@ function nextLooseModuleInstanceId(state) {
   return `mi_${_moduleSeq}`;
 }
 
-function emitChanged(cargo) {
-  if (busRef) busRef.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
+function emitChanged(state, cargo) {
+  const bus = busForState(state);
+  if (bus) bus.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
 }
 
 function richLotSource(source, commodityId, qty) {
@@ -186,9 +246,10 @@ export function addCargo(state, commodityId, qty, lotSource = null) {
     cargo.usedVolume += accepted * volPerU;
     cargo.usedMass += accepted * def.mass;
     if (lotSource) appendRichLot(cargo, lotSource, commodityId, accepted);
-    emitChanged(cargo);
+    emitChanged(state, cargo);
   }
-  if (accepted < requested && busRef) busRef.emit('cargo:full', { commodityId });
+  const bus = busForState(state);
+  if (accepted < requested && bus) bus.emit('cargo:full', { commodityId });
   return accepted;
 }
 
@@ -209,7 +270,7 @@ export function removeCargo(state, commodityId, qty) {
   decrementRichLots(cargo, commodityId, removed);
   if (cargo.usedVolume < 0) cargo.usedVolume = 0;
   if (cargo.usedMass < 0) cargo.usedMass = 0;
-  emitChanged(cargo);
+  emitChanged(state, cargo);
   return removed;
 }
 
@@ -219,18 +280,23 @@ export const cargo = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
-    busRef = ctx.bus;
+    const binding = attachBinding(this.state, this.bus, this);
+    this._binding = binding;
+    this._unsubs = binding.unsubs;
     this._dirty = false;
     this._massDirty = false;
 
-    const state = this.state, bus = this.bus;
+    const state = this.state;
     // Collapse any number of synchronous cargo mutations into one settled mass receipt during
     // cargo's registered simulation update. Consumers can refresh physics once per tick without
     // delaying or weakening the authoritative cargo:changed UI/data signal.
-    bus.on('cargo:changed', () => { this._massDirty = true; });
+    subscribe(binding, 'cargo:changed', () => {
+      binding.massDirty = true;
+      if (this._binding === binding) this._massDirty = true;
+    });
 
     // Ejected ore / dropped cargo / loose modules collected by the player ship → hold or inventory.
-    bus.on('pickup:collected', (payload) => {
+    subscribe(binding, 'pickup:collected', (payload) => {
       if (!payload || payload.collectorId !== state.playerId) return; // NPC/drone collection is not the player hold
       const { kind, commodityId } = payload;
       const qty = finiteWholePickupAmount(payload.amount);
@@ -277,11 +343,14 @@ export const cargo = {
       if (typeof cargoCap === 'number' && cargoCap >= 0) {
         if (state.player.cargo.capVolume === cargoCap) return;
         state.player.cargo.capVolume = cargoCap;
-        this._dirty = true; // backstop recompute (a cap *decrease* leaves used > cap until volume drops)
+        binding.dirty = true;
+        if (this._binding === binding) {
+          this._dirty = true; // backstop recompute (a cap decrease leaves used > cap until volume drops)
+        }
       }
     };
-    bus.on('ship:cargoCapChanged', ({ shipId, cargoCap }) => setCap(shipId, cargoCap));
-    bus.on('ship:statsChanged', ({ shipId, derived }) => {
+    subscribe(binding, 'ship:cargoCapChanged', ({ shipId, cargoCap }) => setCap(shipId, cargoCap));
+    subscribe(binding, 'ship:statsChanged', ({ shipId, derived }) => {
       if (derived && typeof derived.cargoCap === 'number') setCap(shipId, derived.cargoCap);
     });
 
@@ -289,17 +358,27 @@ export const cargo = {
   },
 
   update(dt, state) {
-    if (this._dirty) { this.recompute(); this._dirty = false; }
-    if (this._massDirty) {
+    const binding = stateBindings.get(state);
+    const dirty = binding ? binding.dirty : this._dirty;
+    const massDirty = binding ? binding.massDirty : this._massDirty;
+    if (dirty) {
+      this.recompute(state);
+      if (binding) binding.dirty = false;
+      this._dirty = false;
+    }
+    if (massDirty) {
+      if (binding) binding.massDirty = false;
       this._massDirty = false;
       const c = state.player.cargo;
-      this.bus.emit('cargo:massSettled', { cargo: c, usedU: c.usedVolume, massT: c.usedMass });
+      const bus = binding && binding.bus ? binding.bus : this.bus;
+      if (bus && typeof bus.emit === 'function') {
+        bus.emit('cargo:massSettled', { cargo: c, usedU: c.usedVolume, massT: c.usedMass });
+      }
     }
   },
 
   /** Authoritative full recompute of usedVolume/usedMass from items (drift backstop). */
-  recompute() {
-    const state = this.state;
+  recompute(state = this.state) {
     const cargo = state.player.cargo;
     let vol = 0, mass = 0;
     for (const id in cargo.items) {
@@ -323,7 +402,7 @@ export const cargo = {
         })
         .filter((lot) => lot.qty > 0);
     }
-    emitChanged(cargo);
+    emitChanged(state, cargo);
   },
 
   addCargo(commodityId, qty, lotSource = null) {
@@ -332,6 +411,20 @@ export const cargo = {
 
   removeCargo(commodityId, qty) {
     return removeCargo(this.state, commodityId, qty);
+  },
+
+  destroy() {
+    const owned = ownerBindings.get(this);
+    if (owned) {
+      for (const binding of [...owned]) detachBinding(binding);
+    }
+    this._binding = null;
+    this._unsubs = [];
+    this.state = null;
+    this.bus = null;
+    this.helpers = null;
+    this._dirty = false;
+    this._massDirty = false;
   },
 
   /** Dump up to `qty` units of `commodityId` into space as recoverable pickups. Returns amount dumped. */
