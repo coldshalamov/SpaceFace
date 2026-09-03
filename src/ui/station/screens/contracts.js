@@ -422,7 +422,7 @@ export function createContractsScreen(ctx) {
               : `${firstHour ? `<b>${escapeHtml(firstHour.label)}</b> · ` : ''}${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
           `</span>` +
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
-          `<span class="sx-ct-row__risk">${filing ? 'FINAL' : `${RISK_LABEL[Math.min(r, 5)]} ${riskPips(r, 'xs')}`}</span>` +
+          `<span class="sx-ct-row__risk">${filing ? 'FINAL' : riskPips(r, 'xs')}</span>` +
           `<span class="sx-ct-row__rew">${filing ? `REVIEW<i> choice ${escapeHtml(filing.choiceId)}</i>` : `${reward(m).toLocaleString('en-US')}<i> cr</i>`}</span>` +
           (needs ? `<span class="sx-ct-row__flag">ACT</span>` : '') +
         `</button>`

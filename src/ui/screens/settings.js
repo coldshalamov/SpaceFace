@@ -40,6 +40,8 @@ function injectStyle() {
     border:1px solid var(--mf-line-2) !important;
     border-radius:3px !important;
     padding:6px 12px !important;
+    white-space:nowrap !important; /* "L-SHIFT / R-SHIFT" must not wrap: a two-line key chip breaks the row rhythm */
+    font-size:11px !important;
   }
   .sf-bind-btn:hover:not(:disabled) {
     border-color:rgba(78,195,230,.45) !important;
@@ -75,13 +77,24 @@ let controlId = 0;
 function nextControlId() { controlId += 1; return `sf-settings-control-${controlId}`; }
 
 export function bindCommittedRange(input, valueLabel, fmt, onValue) {
+  // Track fill: the CSS track reads --sf-range-fill so the value is visible at a glance,
+  // not just in the numeric readout.
+  const paint = () => {
+    const min = Number(input.min) || 0;
+    const max = Number(input.max);
+    const span = Number.isFinite(max) && max > min ? max - min : 100;
+    const pct = ((parseFloat(input.value) - min) / span) * 100;
+    input.style.setProperty('--sf-range-fill', `${Math.max(0, Math.min(100, pct)).toFixed(1)}%`);
+  };
   const publish = (persist) => {
+    paint();
     const value = parseFloat(input.value);
     onValue(value, persist);
     valueLabel.textContent = fmt(value);
   };
   input.addEventListener('input', () => publish(false));
   input.addEventListener('change', () => publish(true));
+  paint();
 }
 
 // --- Key rebinding (V2 §12) ---

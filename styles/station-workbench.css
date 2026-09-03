@@ -543,7 +543,9 @@ button.sx-fab-in { cursor:pointer; }
 .sx-fac-decisions em { color:#74756f; font:400 13px/1.3 var(--sx-ui); font-style:normal; }
 
 .sx-fac-network { overflow:hidden; }
-.sx-fac-network > header { position:absolute; z-index:3; top:13px; left:15px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
+.sx-fac-network > header { position:absolute; z-index:3; top:13px; left:160px; display:flex; flex-direction:column; gap:4px; pointer-events:none; }
+/* left:160px (network-local) clears the standing-pulse overlay, which reaches 130px into the
+   network from the left; at 15px the header's first ~135px rendered beneath it. */
 .sx-fac-network > header span { color:color-mix(in srgb, var(--sf-calm) 78%, var(--sf-paper)); font:600 12px/1 var(--sx-ui); letter-spacing:var(--sf-track-micro); }
 .sx-fac-network > header b { color:var(--ink-dim); font:400 13px/1.2 var(--sx-ui); }
 .sx-fac-network > svg { position:absolute; z-index:0; inset:0; width:100%; height:100%; overflow:visible; }
@@ -672,6 +674,14 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ct__active > .sx-panel__head { flex:0 0 145px; min-width:0; display:flex; margin:0; padding:11px 13px; border-right:1px solid #303230; color:#aaa79e; }
 .sx-ct__count { border-radius:0; background:#252522; }
 .sx-job { flex:0 0 220px; min-width:0; display:grid; padding:8px 10px; border-right:1px solid #292c2b; border-radius:0; }
+/* In the horizontal strip the flag + track chips shared one 220px row with the title and
+   squeezed the body to a sliver ("420 cr · Destination berth" clipped to "0 C…"). Give each
+   job card a second lane: title/meta on top, flag + track beneath. */
+.sx-ct__active .sx-job { flex:0 0 250px; grid-template-columns:auto 1fr auto; grid-template-rows:minmax(0,auto) auto; gap:3px 8px; align-items:center; }
+.sx-ct__active .sx-job__body { grid-column:2; grid-row:1; }
+.sx-ct__active .sx-job__flag { grid-column:1/3; grid-row:2; justify-self:start; }
+.sx-ct__active .sx-job__track { grid-column:3; grid-row:2; justify-self:end; }
+.sx-ct__active .sx-job__meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sx-job:hover { background:#181b1a; }
 .sx-job.is-tracked { background:#201d17; box-shadow:inset 0 -1px var(--sf-edge); }
 .sx-job__title { font-size:13px; }
@@ -1657,6 +1667,10 @@ button.sx-fab-in { cursor:pointer; }
   min-width:0; min-height:0; display:flex; align-items:stretch; gap:6px; padding:2px 1px 4px;
   overflow-x:auto; overflow-y:hidden; overscroll-behavior-inline:contain; scroll-snap-type:x proximity;
   scroll-behavior:smooth; scrollbar-width:none;
+  /* the partially-scrolled card was sliced mid-glyph ("SATURATIN"); a soft edge fade reads as
+     "continues" instead of "broken" (44px so a full word visibly dissolves, not just a letter) */
+  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 44px),transparent);
+  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 44px),transparent);
 }
 .sx-mkt-browser__rail::-webkit-scrollbar { display:none; width:0; height:0; }
 .sx-mkt-browser__step {
@@ -2001,7 +2015,10 @@ button.sx-fab-in { cursor:pointer; }
 .sx-ct-row__route b { height:1px; background:linear-gradient(90deg,var(--signal),rgba(148,163,184,.22)); }
 .sx-ct-row__risk { grid-column:3; grid-row:2; justify-self:end; color:#789397; font:500 12px/1 var(--sx-mono); letter-spacing:var(--sf-track-micro); white-space:nowrap; }
 .sx-ct-row__risk .sx-pips { margin-left:3px; }
-.sx-ct-row__rew { position:static; grid-column:4; grid-row:2; width:auto; max-width:none; padding:0; opacity:1; transform:none; color:var(--sx-worklight); font:600 13px/1 var(--sf-data-face); white-space:nowrap; }
+/* 5px diamonds alias into a blurry row at 1x; the card's bottom lane is only 18px tall,
+   so keep the tier pips readable and let the dossier carry the risk word. */
+.sx-ct-row__risk .sx-pips--xs i { width:7px; height:7px; }
+.sx-ct-row__rew { position:static; grid-column:4; grid-row:2; width:auto; max-width:none; padding:0 0 0 8px; opacity:1; transform:none; color:var(--sx-worklight); font:600 13px/1 var(--sf-data-face); white-space:nowrap; }
 .sx-ct-row__rew i { font-size:13px; font-style:normal; }
 
 /* The selected route must read as an operation, not a hairline across dead space. */
@@ -2085,6 +2102,9 @@ button.sx-fab-in { cursor:pointer; }
     minmax(210px, 1fr)
     minmax(min(110px, calc(100% - 210px)), min(49vh, calc(100% - 210px)));
 }
+/* Apron scroll-under is softened by the sticky LOADOUT PRESETS band's dissolve veil
+   (see .sx-sw-band--presets::before); a bottom fade here would instead fade the pinned
+   band's own slots, which must stay fully rendered. */
 .sx-sw__stage {
   overflow: hidden;
   container: stage / size;
@@ -2428,6 +2448,18 @@ button.sx-fab-in { cursor:pointer; }
   bottom: 0;
   z-index: 2;
   background: var(--sf-surface);
+}
+/* Content scrolling beneath the pinned band hit its top border as a hard slice (the POWER row
+   read as torn). A dissolve veil above the band fades the pass-under content into it. */
+.sx-sw-band--presets::before {
+  content: "";
+  position: absolute;
+  left: -15px;
+  right: -15px;
+  top: -28px;
+  height: 28px;
+  background: linear-gradient(180deg, transparent, rgba(5, 14, 21, 0.95) 78%);
+  pointer-events: none;
 }
 .sx-sw-preset__meta {
   color: var(--sf-calm);

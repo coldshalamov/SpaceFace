@@ -382,7 +382,9 @@
 .screen.sf-menu input[type=range]::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 60%, transparent) var(--sf-range-fill, 0%),
+    color-mix(in srgb, var(--panel) 90%, transparent) var(--sf-range-fill, 0%));
   border: 1px solid rgba(148, 178, 205, .2);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
 }
@@ -414,6 +416,11 @@
   border-radius: 3px;
   background: color-mix(in srgb, var(--panel) 90%, transparent);
   border: 1px solid rgba(148, 178, 205, .2);
+}
+.screen.sf-menu input[type=range]::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .screen.sf-menu input[type=range]::-moz-range-thumb {
   width: 16px;
@@ -524,6 +531,12 @@
   border-color: var(--accent-3);
   font-weight: 600;
   box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+/* An ON/OFF toggle is a control state, not a disabled one: keep OFF legible
+   (the tab-strip default --ink-mute read as a dead button in Settings/Access). */
+.screen.sf-menu button.sf-tab[aria-pressed="false"] {
+  color: var(--ink-dim);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
 }
 
 /* Slots (pause flight brief, save slots, help cards): readout cards. */

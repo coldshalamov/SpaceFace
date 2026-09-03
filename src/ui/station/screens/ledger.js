@@ -23,7 +23,7 @@ function injectStyle() {
 // Named LEDGER_CSS, not CSS — a module binding named CSS would shadow the global CSS object
 // (the global is what CSS.escape lives on).
 const LEDGER_CSS = `
-.sx-app .sx-ledger { min-height: 0; padding: 14px 20px 22px; overflow: auto;  justify-content:center; }
+.sx-app .sx-ledger { min-height: 0; padding: 14px 20px 22px; overflow: auto; display: flex; justify-content: center; }
 .sx-app .sx-ledger .st-panel.st-ledger {
   max-width: 920px;
   padding: 16px 22px 20px;

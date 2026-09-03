@@ -75,8 +75,10 @@ const BAR_CSS = `
   background: color-mix(in srgb, var(--accent, #4f8fdd) 55%, transparent);
 }
 .sx-bar canvas.sx-portrait { filter: grayscale(1) contrast(1.05) brightness(.94); }
-.sx-bar .sx-talk:has(.sx-talk__reply.is-idle) { grid-template-rows: auto auto minmax(0, 1fr); }
-.sx-bar .sx-talk__reply.is-idle { padding: 26px clamp(30px, 5vw, 78px) 10px; align-content: center; }
+/* Idle stage keeps the live layout (tall reply area, prompts anchored below): the old
+   auto/1fr swap shrank the reply to its content, overlapping the kicker and leaving a
+   dead band under the prompts. */
+.sx-bar .sx-talk__reply.is-idle { padding: 40px clamp(30px, 5vw, 78px) 18px; align-content: center; }
 .sx-bar .sx-talk__reply.is-idle::before { content: "TRANSCRIPT / NO LINES YET"; }
 .sx-bar .sx-talk__reply.is-idle .sx-talk__quote { font-size: 44px; opacity: .2; }
 .sx-bar .sx-talk__reply.is-idle p { color: var(--sf-calm, #9aa4b0); font-size: clamp(16px, 1.35vw, 19px); }

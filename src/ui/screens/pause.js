@@ -121,7 +121,7 @@ function deadlineText(state, mission) {
   const deadline = Number(mission && mission.deadline_s);
   const now = Number(state && state.simTime) || 0;
   if (!Number.isFinite(deadline) || deadline <= now) return '';
-  return ' - ' + fmtTime(deadline - now) + ' left';
+  return ' · ' + fmtTime(deadline - now) + ' left';
 }
 
 function missionDestination(m) {
@@ -298,7 +298,7 @@ export function pauseStatusLines(state) {
   const tracked = trackedId ? active.find((m) => missionId(m) === trackedId) : null;
   if (tracked) {
     return {
-      objective: 'TRACKED - ' + missionTitle(tracked) + ' - ' + missionProgress(tracked) + deadlineText(state, tracked),
+      objective: 'TRACKED · ' + missionTitle(tracked) + ' · ' + missionProgress(tracked) + deadlineText(state, tracked),
       next: missionNextStep(tracked),
       save: saveLine(state),
     };
@@ -306,7 +306,7 @@ export function pauseStatusLines(state) {
   if (active.length) {
     const candidate = active[0];
     return {
-      objective: 'UNTRACKED CONTRACT - ' + missionTitle(candidate) + ' - ' + missionProgress(candidate) + deadlineText(state, candidate),
+      objective: 'UNTRACKED CONTRACT · ' + missionTitle(candidate) + ' · ' + missionProgress(candidate) + deadlineText(state, candidate),
       next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
       save: saveLine(state),
     };
@@ -315,7 +315,7 @@ export function pauseStatusLines(state) {
   if (wp) {
     const mapAction = pauseMapAction(state);
     return {
-      objective: ((mapAction && mapAction.objectiveLabel) || 'NAV SET') + ' - ' + waypointText(wp),
+      objective: ((mapAction && mapAction.objectiveLabel) || 'NAV SET') + ' · ' + waypointText(wp),
       next: 'Next: ' + routeNextText(mapAction),
       save: saveLine(state),
     };

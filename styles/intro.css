@@ -174,7 +174,9 @@
   font-size: 12px;
   letter-spacing:.06em;
   text-transform: uppercase;
-  color: var(--ink-mute);
+  color: var(--ink-dim);
+  /* The glitch-art field behind it is loud; without a scrim the hint drowned. */
+  text-shadow: 0 1px 3px rgba(3, 8, 14, .95), 0 0 8px rgba(3, 8, 14, .9);
   opacity: 0;
   animation: boot-skip-in .6s ease-out 4s forwards;
   pointer-events: none;
@@ -343,13 +345,16 @@
   letter-spacing: .06em;
   text-indent: .42em;
   text-transform: uppercase;
-  color: #8296a4;
+  color: #a9bfcd;
+  /* The prompt sits over the bright stargate art; without a scrim it vanished at the
+     dim end of its pulse. */
+  text-shadow: 0 1px 3px rgba(3, 8, 14, .95), 0 0 10px rgba(3, 8, 14, .85);
   opacity: 0;
   animation:
     cine-rise .8s ease-out 2.35s forwards,
     cine-begin-pulse 2.9s ease-in-out 3.3s infinite;
 }
-@keyframes cine-begin-pulse { 0%, 100% { opacity: .42; } 50% { opacity: .95; } }
+@keyframes cine-begin-pulse { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
 
 @keyframes cine-rise {
   from { opacity: 0; transform: translateY(8px); }

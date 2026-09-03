@@ -3747,7 +3747,10 @@ export function createHud(ctx, alerts) {
     if (rec.icon !== iff.icon) { rec.iffIcon.innerHTML = glyphSvg(iff.icon, 11); rec.icon = iff.icon; }
     if (rec.glyph !== glyph) { rec.glyphEl.innerHTML = glyphSvg(glyph, 13); rec.glyph = glyph; }
     if (rec.name !== name) { rec.nameEl.textContent = name; rec.name = name; }
-    if (rec.stateWord !== sword) { rec.stateEl.textContent = sword; rec.stateWord = sword; }
+    // A contact whose only name IS its state ("Derelict" + "DERELICT") reads as a stutter;
+    // keep the state class for colour, drop the duplicated word.
+    const shownSword = sword && sword.toLowerCase() === String(name).toLowerCase() ? '' : sword;
+    if (rec.stateWord !== shownSword) { rec.stateEl.textContent = shownSword; rec.stateWord = shownSword; }
     if (rec.stateCls !== stateCls) {
       // Rewrite the whole className: add-only would leave a stale sf-cs--<old> beside the new one.
       rec.stateEl.className = `sf-overview-row__state sf-cs--${stateCls}`;

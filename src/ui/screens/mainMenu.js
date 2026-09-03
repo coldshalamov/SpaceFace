@@ -176,7 +176,14 @@ function shipLabel(id) {
 }
 
 function saveSummaryText(slot, meta) {
+  // Scan order: which save, how fresh, where, who, what next. ' · ' separators (house style)
+  // instead of hyphens so save fields never read as one hyphenated run-on.
   const parts = [slotLabel(slot)];
+  const when = meta && (meta.savedAt || meta.lastSavedAt);
+  if (when) {
+    const d = new Date(when);
+    if (Number.isFinite(d.getTime())) parts.push('saved ' + d.toLocaleString());
+  }
   if (meta && meta.recoveryAvailable) parts.push('Recovery copy');
   if (meta && meta.sectorName) parts.push(meta.sectorName);
   if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
@@ -186,12 +193,7 @@ function saveSummaryText(slot, meta) {
   if (playtime) parts.push(playtime);
   const credits = fmtCredits(meta && meta.credits);
   if (credits) parts.push(credits);
-  const when = meta && (meta.savedAt || meta.lastSavedAt);
-  if (when) {
-    const d = new Date(when);
-    if (Number.isFinite(d.getTime())) parts.push('saved ' + d.toLocaleString());
-  }
-  return parts.filter(Boolean).join(' - ');
+  return parts.filter(Boolean).join(' · ');
 }
 
 function objectiveSummaryText(meta) {

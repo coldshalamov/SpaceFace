@@ -82,6 +82,9 @@ function text(value, fallback = 'unfiled') {
 function humanizeId(value, fallback = 'unnamed') {
   return text(value, fallback)
     .replace(/^(?:cmdty|sector|station|ship|wreck|depth)_/, '')
+    // Dotted ids ("news.tragedy_at_helios") are filenames, not prose; a raw dot in a
+    // sentence reads as a formatting bug in the ledger line.
+    .replace(/\./g, ' ')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

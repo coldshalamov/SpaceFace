@@ -717,9 +717,12 @@ button:active { translate: 0 1px; }
   background: color-mix(in srgb, var(--sf-surface) 40%, transparent);
   color: var(--ink-mute);
   text-align: center;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.25;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Auto-target draw-to-fly route; target diamonds and lead pips remain weapon feedback. */
@@ -1119,6 +1122,9 @@ button:active { translate: 0 1px; }
 .sf-ship .sx-sw { width: min(100%, var(--sf-stage-max)); margin-inline: auto; }
 .sf-ship .sx-sw--flight .sx-seg { display: none; }
 .sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
+/* With the commerce segment hidden, the rail kept the station host's 190px left reservation —
+   the lone hull card floated beside a dead gap and rode the viewport top edge. */
+.sf-ship .sx-sw--flight .sx-sw__rail { padding: 8px 8px 10px 12px; }
 /* 12a ─ THE RANGE (F4) : playable teaching box ---------------------------------------------------
    Own-room flat backdrop + boundary rectangle, one canvas stage, one left-edge drawer. */
 #screens:has(> .screen[data-screen="range"].sf-screen--visible),

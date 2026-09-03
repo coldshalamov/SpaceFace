@@ -2300,10 +2300,11 @@ const CSS = `
 .sf-mlog-rec-body { font-family: var(--sf-body-face); font-size: 14px; line-height: 1.4; color: var(--sf-calm); overflow-wrap: anywhere; }
 .sf-mlog-command-brief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
 .sf-mlog-command-fact {
-  min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--sp-2);
+  min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--sp-2);
   align-items: start; padding-top: var(--sp-1); border-top: 1px solid var(--sf-edge);
   font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; color: var(--sf-calm); overflow-wrap: anywhere;
 }
+.sf-mlog-command-fact b { white-space: nowrap; }
 .sf-mlog-command-fact:nth-child(5) span { color: var(--sf-you); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
 .sf-mlog-command-fact:nth-child(6) span { color: var(--sf-foe); }
 .sf-mlog-rec-meta { margin-top: var(--sp-2); color: var(--sf-you); overflow-wrap: anywhere; }
