@@ -14,6 +14,7 @@ the named outcome of the job you were given, then stop — the full working agre
 
 | Task | Start here |
 |---|---|
+| **No instruction, "next", "go", or "make it better"** | **`CANONICAL_BUILD_MAP.md` §1** — the one procedure: `node scripts/program-dispatch.mjs --next`, read the packet's "How agents get this wrong", finish the unit to its done-when in player units, report in §1.4 words, take the next |
 | Program map, "what next" / multi-plan work, check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
 | Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
 | The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first; do not cut quality |

@@ -3528,6 +3528,295 @@
       "checks": [],
       "evidence": [],
       "brief": "The tooling that makes \"MAKE IT BETTER\" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. Gap: Nineteen deterministic scenarios, a sixty-second capture script, a fixed-seed Crucible route check and a manager loop exist; nothing chains them into play → measure → judge → fix → compare → report, and no fun metric is printed anywhere. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-173.md."
+    },
+    {
+      "id": "PQ-174",
+      "priority": 95,
+      "title": "Swarm mode fun contract: the Crucible plays optimally",
+      "state": "ready",
+      "canonical": [
+        "SWARM-FUN-CONTRACT"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-173"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The Crucible becomes the game's best fifteen minutes: bars for pacing, verbs, moments, deaths and builds; the physics kit is the strongest kit; every arena and boss is a physics problem. Gap: Phases 0–12 of the Crucible are engineering-complete and the swarm ruleset exists; nothing measures whether a run is fun, the free Pulse out-damages the physics kit (owner ruling recorded in the Crucible memory), and the owner's verdict is that combat 'just sucks'. See CANONICAL_BUILD_MAP.md section 16 and design/program/roadmap/active/PQ-174.md."
+    },
+    {
+      "id": "PQ-175",
+      "priority": 96,
+      "title": "Swarm mode content at craft: waves, arenas, drafts and mutators that create decisions",
+      "state": "ready",
+      "canonical": [
+        "SWARM-CONTENT-CRAFT"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-174"
+      ],
+      "mutexes": [
+        "crucible-content"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Thirty waves that each ask a different physical question, five arenas whose props participate, drafts that change how you fly (never only how hard you hit), and mutators that are new games. Gap: Waves are pinned recipes with roles; drafts include stat modifiers; arena props are mostly dressing; mutators exist as a list. See CANONICAL_BUILD_MAP.md section 16 and design/program/roadmap/active/PQ-175.md."
+    },
+    {
+      "id": "PQ-176",
+      "priority": 97,
+      "title": "Customization with consequences: a fit you can feel and predict",
+      "state": "ready",
+      "canonical": [
+        "CUSTOMIZATION-CONSEQUENCES"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-142"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Mass is the law, budgets have shape, drives and thrusters split, mounts gate by size, every module is visible and has a sentence, and the fit screen predicts handling before you commit. Gap: Six-type slot grid; module mass barely matters; nothing makes a max-gun build feel different in the hands; the ship screen shows six of thirty-five derived fields; the signature mechanic's ceiling sits behind a 2.5 M tech. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-176.md."
+    },
+    {
+      "id": "PQ-177",
+      "priority": 98,
+      "title": "An economy you can read and play: ticker, charts, forecasts, contracts that twist, a black market",
+      "state": "ready",
+      "canonical": [
+        "ECONOMY-READ-PLAY"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138",
+        "PQ-155"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The living economy becomes a strategy surface: a one-line ticker of real events, per-commodity charts with a forecast cone, supply-chain glyphs, event cards on arrival, profit felt on sale, contracts whose clauses twist, and a black market reached by smuggling physics. Gap: Price cycles are computed but chartless; events fire silently; the production graph exists only as data; forecasts exist and are never drawn; contract twists exist only as static clauses. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-177.md."
+    },
+    {
+      "id": "PQ-178",
+      "priority": 99,
+      "title": "The story pipeline: one linear spine, produced by agents at 47-A craft",
+      "state": "ready",
+      "canonical": [
+        "STORY-PIPELINE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-152"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "How agents write, voice and stage the linear story: canon sheets, faction registers, one-line barks, set-piece scripts with physical headline verbs, synthetic voice, and a craft bar equal to the 47-A opener. Gap: 47-A is bespoke and everything after it is thinner; there is no written standard for how an agent produces a beat, so quality falls off a cliff at minute twelve. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-178.md."
+    },
+    {
+      "id": "PQ-180",
+      "priority": 100,
+      "title": "The frontend definition of done, applied to every surface: the grammar matrix",
+      "state": "ready",
+      "canonical": [
+        "FRONTEND-GRAMMAR-MATRIX"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-matrix"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "One generated matrix: every 2D surface × every rule of the instrument grammar and the A-list standards, with a check that fails any surface below the floor; the list of what 'brought into the newest version' means, surface by surface. Gap: The grammar exists and sixteen jobs landed for the four instruments and the HUD, but the station, Crucible screens, Asteroid Works, the meta shell and the legacy modules were never held to it; nothing measures adoption per surface. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-180.md."
+    },
+    {
+      "id": "PQ-181",
+      "priority": 101,
+      "title": "The meta shell: title, new game, load, settings, pause, game over, credits, statistics, photo mode, version",
+      "state": "ready",
+      "canonical": [
+        "META-SHELL"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-180"
+      ],
+      "mutexes": [
+        "meta-shell"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md."
+    },
+    {
+      "id": "PQ-182",
+      "priority": 102,
+      "title": "Crucible screens to the grammar: door, draft, refit, results, lab",
+      "state": "ready",
+      "canonical": [
+        "CRUCIBLE-SCREENS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-180",
+        "PQ-174"
+      ],
+      "mutexes": [
+        "crucible-ui"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md."
+    },
+    {
+      "id": "PQ-183",
+      "priority": 103,
+      "title": "Everything is a link, the watch list, global find: the game feels like one system",
+      "state": "ready",
+      "canonical": [
+        "EVERYTHING-IS-A-LINK"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-180",
+        "PQ-162"
+      ],
+      "mutexes": [
+        "entity-links"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Every entity name anywhere opens its dossier in place; a watch list pins prices, rivals, deadlines and factions onto the HUD; global find jumps to anything; the chart takes player notes. Gap: The resolver and drawer exist with seventeen adopters; the station and legacy screens have zero; no watch list, no global find, no notes. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-183.md."
+    },
+    {
+      "id": "PQ-184",
+      "priority": 104,
+      "title": "UI performance and optimisation: frame budget, virtualisation, DOM and layout discipline, the legacy refactor",
+      "state": "ready",
+      "canonical": [
+        "UI-PERFORMANCE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-180"
+      ],
+      "mutexes": [
+        "ui-perf"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Every surface inside a 2 ms UI frame budget and a DOM node budget; long lists virtualised; layout thrash and per-frame allocations removed; the four-thousand-line legacy station hub lifted out; measured by the matrix. Gap: One breakpoint until recently; no list virtualisation; no UI frame budget enforced per surface; a 4,057-line legacy hub still imported for helpers; the chart carries ~80 sub-12 px nodes. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-184.md."
+    },
+    {
+      "id": "PQ-185",
+      "priority": 105,
+      "title": "Asteroid Works to the grammar and the owner's design law, accepted",
+      "state": "ready",
+      "canonical": [
+        "ASTEROID-WORKS-ACCEPTED"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-180"
+      ],
+      "mutexes": [
+        "asteroid-works-ui"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md."
+    },
+    {
+      "id": "PQ-186",
+      "priority": 106,
+      "title": "The regression fortress: every bar, every ruling and every refusal becomes a check",
+      "state": "ready",
+      "canonical": [
+        "REGRESSION-FORTRESS"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "regression"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Every feel bar, owner ruling and refusal in this map is encoded as a deterministic check with the vision sentence in its assertion, so a future agent cannot quietly undo the game. Gap: The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. See CANONICAL_BUILD_MAP.md section 19 and design/program/roadmap/active/PQ-186.md."
     }
   ],
   "dispatchUnits": [
@@ -10034,7 +10323,7 @@
     {
       "id": "PQ-137.00",
       "parentId": "PQ-137",
-      "priority": 395,
+      "priority": 40,
       "title": "Earned speed is kept in the default mode",
       "kind": "implementation",
       "state": "done",
@@ -10058,7 +10347,7 @@
     {
       "id": "PQ-137.01",
       "parentId": "PQ-137",
-      "priority": 396,
+      "priority": 41,
       "title": "Given momentum survives the NPC speed cap",
       "kind": "implementation",
       "state": "done",
@@ -10080,7 +10369,7 @@
     {
       "id": "PQ-137.02",
       "parentId": "PQ-137",
-      "priority": 397,
+      "priority": 42,
       "title": "Hard terrain and structure slams take the helm",
       "kind": "implementation",
       "state": "done",
@@ -10105,7 +10394,7 @@
     {
       "id": "PQ-137.03",
       "parentId": "PQ-137",
-      "priority": 398,
+      "priority": 43,
       "title": "The nimble regime: thrust vs fighting speed vs camera",
       "kind": "implementation",
       "state": "ready",
@@ -10132,7 +10421,7 @@
     {
       "id": "PQ-137.04",
       "parentId": "PQ-137",
-      "priority": 399,
+      "priority": 44,
       "title": "One hitstun law for every impulse source",
       "kind": "implementation",
       "state": "ready",
@@ -10159,7 +10448,7 @@
     {
       "id": "PQ-137.05",
       "parentId": "PQ-137",
-      "priority": 400,
+      "priority": 45,
       "title": "Weapons have force, including the starter; the Crucible starts with a shove",
       "kind": "implementation",
       "state": "ready",
@@ -10184,7 +10473,7 @@
     {
       "id": "PQ-137.06",
       "parentId": "PQ-137",
-      "priority": 401,
+      "priority": 46,
       "title": "Terrain is lethal: damage from pre-solve closing speed",
       "kind": "implementation",
       "state": "ready",
@@ -10207,7 +10496,7 @@
     {
       "id": "PQ-137.07",
       "parentId": "PQ-137",
-      "priority": 402,
+      "priority": 47,
       "title": "The rope is a rope",
       "kind": "implementation",
       "state": "ready",
@@ -10229,7 +10518,7 @@
     {
       "id": "PQ-137.08",
       "parentId": "PQ-137",
-      "priority": 403,
+      "priority": 48,
       "title": "Draw-to-fly rips: a pilot reinterpretation of the ink",
       "kind": "implementation",
       "state": "ready",
@@ -10252,7 +10541,7 @@
     {
       "id": "PQ-137.09",
       "parentId": "PQ-137",
-      "priority": 404,
+      "priority": 49,
       "title": "Chains go off: tether-two, primed ships, wells",
       "kind": "implementation",
       "state": "ready",
@@ -10278,7 +10567,7 @@
     {
       "id": "PQ-137.10",
       "parentId": "PQ-137",
-      "priority": 405,
+      "priority": 50,
       "title": "The bars are measured on the route (Motion Lab scenarios)",
       "kind": "implementation",
       "state": "ready",
@@ -10302,7 +10591,7 @@
     {
       "id": "PQ-138.00",
       "parentId": "PQ-138",
-      "priority": 406,
+      "priority": 66,
       "title": "The witness has a choice",
       "kind": "implementation",
       "state": "ready",
@@ -10323,7 +10612,7 @@
     {
       "id": "PQ-138.01",
       "parentId": "PQ-138",
-      "priority": 407,
+      "priority": 67,
       "title": "Spilled cargo is noticed",
       "kind": "implementation",
       "state": "ready",
@@ -10344,7 +10633,7 @@
     {
       "id": "PQ-138.02",
       "parentId": "PQ-138",
-      "priority": 408,
+      "priority": 68,
       "title": "Civilians react to nearby violence",
       "kind": "implementation",
       "state": "ready",
@@ -10365,7 +10654,7 @@
     {
       "id": "PQ-138.03",
       "parentId": "PQ-138",
-      "priority": 409,
+      "priority": 69,
       "title": "Wrecks drift and tumble",
       "kind": "implementation",
       "state": "ready",
@@ -10386,7 +10675,7 @@
     {
       "id": "PQ-138.04",
       "parentId": "PQ-138",
-      "priority": 410,
+      "priority": 70,
       "title": "Failure mutates the mission",
       "kind": "implementation",
       "state": "ready",
@@ -10408,7 +10697,7 @@
     {
       "id": "PQ-138.05",
       "parentId": "PQ-138",
-      "priority": 411,
+      "priority": 71,
       "title": "The evidence ledger at one site",
       "kind": "implementation",
       "state": "ready",
@@ -10434,7 +10723,7 @@
     {
       "id": "PQ-139.00",
       "parentId": "PQ-139",
-      "priority": 412,
+      "priority": 60,
       "title": "Collisions answer: hitstop and trauma by momentum; the release snaps",
       "kind": "implementation",
       "state": "ready",
@@ -10456,7 +10745,7 @@
     {
       "id": "PQ-139.01",
       "parentId": "PQ-139",
-      "priority": 413,
+      "priority": 61,
       "title": "Sound tells weight",
       "kind": "implementation",
       "state": "ready",
@@ -10477,7 +10766,7 @@
     {
       "id": "PQ-139.02",
       "parentId": "PQ-139",
-      "priority": 414,
+      "priority": 62,
       "title": "Death is sized to mass and cause",
       "kind": "implementation",
       "state": "ready",
@@ -10499,7 +10788,7 @@
     {
       "id": "PQ-139.03",
       "parentId": "PQ-139",
-      "priority": 415,
+      "priority": 63,
       "title": "Impulse hits are cones, not spheres",
       "kind": "implementation",
       "state": "ready",
@@ -10522,7 +10811,7 @@
     {
       "id": "PQ-139.04",
       "parentId": "PQ-139",
-      "priority": 416,
+      "priority": 64,
       "title": "Tumbling ships corkscrew their trail",
       "kind": "implementation",
       "state": "ready",
@@ -10544,7 +10833,7 @@
     {
       "id": "PQ-139.05",
       "parentId": "PQ-139",
-      "priority": 417,
+      "priority": 65,
       "title": "Wells bend space",
       "kind": "implementation",
       "state": "ready",
@@ -10567,7 +10856,7 @@
     {
       "id": "PQ-140.00",
       "parentId": "PQ-140",
-      "priority": 418,
+      "priority": 72,
       "title": "Interceptor is a positioning problem",
       "kind": "implementation",
       "state": "ready",
@@ -10591,7 +10880,7 @@
     {
       "id": "PQ-140.01",
       "parentId": "PQ-140",
-      "priority": 419,
+      "priority": 73,
       "title": "Heavy is moving terrain",
       "kind": "implementation",
       "state": "ready",
@@ -10616,7 +10905,7 @@
     {
       "id": "PQ-140.02",
       "parentId": "PQ-140",
-      "priority": 420,
+      "priority": 74,
       "title": "Four specialists, one plan each",
       "kind": "implementation",
       "state": "ready",
@@ -10642,7 +10931,7 @@
     {
       "id": "PQ-140.03",
       "parentId": "PQ-140",
-      "priority": 421,
+      "priority": 75,
       "title": "Fodder is ammunition",
       "kind": "implementation",
       "state": "ready",
@@ -10667,7 +10956,7 @@
     {
       "id": "PQ-141.00",
       "parentId": "PQ-141",
-      "priority": 422,
+      "priority": 92,
       "title": "Deterministic scenario proof.sixty_seconds",
       "kind": "implementation",
       "state": "ready",
@@ -10699,7 +10988,7 @@
     {
       "id": "PQ-141.01",
       "parentId": "PQ-141",
-      "priority": 423,
+      "priority": 93,
       "title": "Headed capture at the shipping camera and owner review",
       "kind": "implementation",
       "state": "ready",
@@ -10721,7 +11010,7 @@
     {
       "id": "PQ-141.02",
       "parentId": "PQ-141",
-      "priority": 424,
+      "priority": 94,
       "title": "Every actor has a sentence (blind legibility review)",
       "kind": "implementation",
       "state": "ready",
@@ -10744,7 +11033,7 @@
     {
       "id": "PQ-142.00",
       "parentId": "PQ-142",
-      "priority": 425,
+      "priority": 180,
       "title": "Capabilities, not percentages",
       "kind": "implementation",
       "state": "ready",
@@ -10770,7 +11059,7 @@
     {
       "id": "PQ-142.01",
       "parentId": "PQ-142",
-      "priority": 426,
+      "priority": 181,
       "title": "Ship history: scars, repairs, recognition",
       "kind": "implementation",
       "state": "ready",
@@ -10793,7 +11082,7 @@
     {
       "id": "PQ-143.00",
       "parentId": "PQ-143",
-      "priority": 427,
+      "priority": 265,
       "title": "Sector identity table, made true on the route",
       "kind": "implementation",
       "state": "ready",
@@ -10816,7 +11105,7 @@
     {
       "id": "PQ-143.01",
       "parentId": "PQ-143",
-      "priority": 428,
+      "priority": 266,
       "title": "Ordinary-life rhythm",
       "kind": "implementation",
       "state": "ready",
@@ -10841,7 +11130,7 @@
     {
       "id": "PQ-143.02",
       "parentId": "PQ-143",
-      "priority": 429,
+      "priority": 267,
       "title": "Six texture one-offs",
       "kind": "implementation",
       "state": "ready",
@@ -10863,7 +11152,7 @@
     {
       "id": "PQ-144.00",
       "parentId": "PQ-144",
-      "priority": 430,
+      "priority": 437,
       "title": "The three density layers as a budget table",
       "kind": "implementation",
       "state": "ready",
@@ -10886,7 +11175,7 @@
     {
       "id": "PQ-145.00",
       "parentId": "PQ-145",
-      "priority": 431,
+      "priority": 268,
       "title": "A player-built depot creates persistent traffic",
       "kind": "implementation",
       "state": "ready",
@@ -10914,7 +11203,7 @@
     {
       "id": "PQ-146.00",
       "parentId": "PQ-146",
-      "priority": 432,
+      "priority": 76,
       "title": "Trick taxonomy and detectors",
       "kind": "implementation",
       "state": "ready",
@@ -10940,7 +11229,7 @@
     {
       "id": "PQ-146.01",
       "parentId": "PQ-146",
-      "priority": 433,
+      "priority": 77,
       "title": "Combo meter and scoring in the Crucible",
       "kind": "implementation",
       "state": "ready",
@@ -10967,7 +11256,7 @@
     {
       "id": "PQ-146.02",
       "parentId": "PQ-146",
-      "priority": 434,
+      "priority": 78,
       "title": "Titles and ledger entries in adventure",
       "kind": "implementation",
       "state": "ready",
@@ -10994,7 +11283,7 @@
     {
       "id": "PQ-146.03",
       "parentId": "PQ-146",
-      "priority": 435,
+      "priority": 79,
       "title": "The moment detector",
       "kind": "implementation",
       "state": "ready",
@@ -11020,7 +11309,7 @@
     {
       "id": "PQ-029.00",
       "parentId": "PQ-029",
-      "priority": 436,
+      "priority": 99,
       "title": "Tractor head as a throw toy",
       "kind": "implementation",
       "state": "ready",
@@ -11049,7 +11338,7 @@
     {
       "id": "PQ-029.01",
       "parentId": "PQ-029",
-      "priority": 437,
+      "priority": 119,
       "title": "Elastic whip as stored energy",
       "kind": "implementation",
       "state": "ready",
@@ -11078,7 +11367,7 @@
     {
       "id": "PQ-029.02",
       "parentId": "PQ-029",
-      "priority": 438,
+      "priority": 120,
       "title": "Frame coupler as the tow you can trust",
       "kind": "implementation",
       "state": "ready",
@@ -11107,7 +11396,7 @@
     {
       "id": "PQ-029.03",
       "parentId": "PQ-029",
-      "priority": 439,
+      "priority": 121,
       "title": "NPCs use the heads",
       "kind": "implementation",
       "state": "ready",
@@ -11136,7 +11425,7 @@
     {
       "id": "PQ-030.00",
       "parentId": "PQ-030",
-      "priority": 440,
+      "priority": 122,
       "title": "Monofilament sweep",
       "kind": "implementation",
       "state": "ready",
@@ -11167,7 +11456,7 @@
     {
       "id": "PQ-030.01",
       "parentId": "PQ-030",
-      "priority": 441,
+      "priority": 123,
       "title": "Transverse snare",
       "kind": "implementation",
       "state": "ready",
@@ -11198,7 +11487,7 @@
     {
       "id": "PQ-030.02",
       "parentId": "PQ-030",
-      "priority": 442,
+      "priority": 124,
       "title": "The counter arrives first",
       "kind": "implementation",
       "state": "ready",
@@ -11229,7 +11518,7 @@
     {
       "id": "PQ-031.00",
       "parentId": "PQ-031",
-      "priority": 443,
+      "priority": 125,
       "title": "Bolas throw in one input",
       "kind": "implementation",
       "state": "ready",
@@ -11256,7 +11545,7 @@
     {
       "id": "PQ-031.01",
       "parentId": "PQ-031",
-      "priority": 444,
+      "priority": 126,
       "title": "Coupled-pair physics",
       "kind": "implementation",
       "state": "ready",
@@ -11283,7 +11572,7 @@
     {
       "id": "PQ-031.02",
       "parentId": "PQ-031",
-      "priority": 445,
+      "priority": 127,
       "title": "NPC counterplay",
       "kind": "implementation",
       "state": "ready",
@@ -11310,7 +11599,7 @@
     {
       "id": "PQ-026.00",
       "parentId": "PQ-026",
-      "priority": 446,
+      "priority": 128,
       "title": "Momentum sink as the bungee",
       "kind": "implementation",
       "state": "ready",
@@ -11338,7 +11627,7 @@
     {
       "id": "PQ-026.01",
       "parentId": "PQ-026",
-      "priority": 447,
+      "priority": 129,
       "title": "Gravity mark as a field multiplier",
       "kind": "implementation",
       "state": "ready",
@@ -11366,7 +11655,7 @@
     {
       "id": "PQ-026.02",
       "parentId": "PQ-026",
-      "priority": 448,
+      "priority": 130,
       "title": "Inertial shunt",
       "kind": "implementation",
       "state": "ready",
@@ -11394,7 +11683,7 @@
     {
       "id": "PQ-147.00",
       "parentId": "PQ-147",
-      "priority": 449,
+      "priority": 131,
       "title": "Five powers, five sentences, five drills",
       "kind": "implementation",
       "state": "ready",
@@ -11427,7 +11716,7 @@
     {
       "id": "PQ-147.01",
       "parentId": "PQ-147",
-      "priority": 450,
+      "priority": 132,
       "title": "Fields participate in physics for everyone",
       "kind": "implementation",
       "state": "ready",
@@ -11460,7 +11749,7 @@
     {
       "id": "PQ-147.02",
       "parentId": "PQ-147",
-      "priority": 451,
+      "priority": 133,
       "title": "Counterplay",
       "kind": "implementation",
       "state": "ready",
@@ -11493,7 +11782,7 @@
     {
       "id": "PQ-147.03",
       "parentId": "PQ-147",
-      "priority": 452,
+      "priority": 134,
       "title": "Cluster and detonate",
       "kind": "implementation",
       "state": "ready",
@@ -11527,7 +11816,7 @@
     {
       "id": "PQ-027.00",
       "parentId": "PQ-027",
-      "priority": 453,
+      "priority": 135,
       "title": "Three machines that kill",
       "kind": "implementation",
       "state": "ready",
@@ -11557,7 +11846,7 @@
     {
       "id": "PQ-027.01",
       "parentId": "PQ-027",
-      "priority": 454,
+      "priority": 136,
       "title": "Debris currents and reefs",
       "kind": "implementation",
       "state": "ready",
@@ -11587,7 +11876,7 @@
     {
       "id": "PQ-027.02",
       "parentId": "PQ-027",
-      "priority": 455,
+      "priority": 137,
       "title": "Weather that shapes fights",
       "kind": "implementation",
       "state": "ready",
@@ -11617,7 +11906,7 @@
     {
       "id": "PQ-027.03",
       "parentId": "PQ-027",
-      "priority": 456,
+      "priority": 138,
       "title": "Timed access",
       "kind": "implementation",
       "state": "ready",
@@ -11647,7 +11936,7 @@
     {
       "id": "PQ-028.00",
       "parentId": "PQ-028",
-      "priority": 457,
+      "priority": 139,
       "title": "One authored sling ring",
       "kind": "implementation",
       "state": "ready",
@@ -11676,7 +11965,7 @@
     {
       "id": "PQ-028.01",
       "parentId": "PQ-028",
-      "priority": 458,
+      "priority": 140,
       "title": "Throw something into it",
       "kind": "implementation",
       "state": "ready",
@@ -11705,7 +11994,7 @@
     {
       "id": "PQ-028.02",
       "parentId": "PQ-028",
-      "priority": 459,
+      "priority": 141,
       "title": "The player-built sling",
       "kind": "implementation",
       "state": "ready",
@@ -11734,7 +12023,7 @@
     {
       "id": "PQ-148.00",
       "parentId": "PQ-148",
-      "priority": 460,
+      "priority": 142,
       "title": "Pods are bodies",
       "kind": "implementation",
       "state": "ready",
@@ -11767,7 +12056,7 @@
     {
       "id": "PQ-148.01",
       "parentId": "PQ-148",
-      "priority": 461,
+      "priority": 143,
       "title": "Volatile classes",
       "kind": "implementation",
       "state": "ready",
@@ -11800,7 +12089,7 @@
     {
       "id": "PQ-148.02",
       "parentId": "PQ-148",
-      "priority": 462,
+      "priority": 144,
       "title": "Smuggling physics",
       "kind": "implementation",
       "state": "ready",
@@ -11833,7 +12122,7 @@
     {
       "id": "PQ-148.03",
       "parentId": "PQ-148",
-      "priority": 463,
+      "priority": 145,
       "title": "Cargo with a name",
       "kind": "implementation",
       "state": "ready",
@@ -11866,7 +12155,7 @@
     {
       "id": "PQ-149.00",
       "parentId": "PQ-149",
-      "priority": 464,
+      "priority": 146,
       "title": "The rhythm model",
       "kind": "implementation",
       "state": "ready",
@@ -11896,7 +12185,7 @@
     {
       "id": "PQ-149.01",
       "parentId": "PQ-149",
-      "priority": 465,
+      "priority": 147,
       "title": "Escalation seeds",
       "kind": "implementation",
       "state": "ready",
@@ -11926,7 +12215,7 @@
     {
       "id": "PQ-149.02",
       "parentId": "PQ-149",
-      "priority": 466,
+      "priority": 148,
       "title": "Guaranteed ordinary life",
       "kind": "implementation",
       "state": "ready",
@@ -11956,7 +12245,7 @@
     {
       "id": "PQ-149.03",
       "parentId": "PQ-149",
-      "priority": 467,
+      "priority": 149,
       "title": "Story so far",
       "kind": "implementation",
       "state": "ready",
@@ -11986,7 +12275,7 @@
     {
       "id": "PQ-150.00",
       "parentId": "PQ-150",
-      "priority": 468,
+      "priority": 150,
       "title": "Aces escalate against your style",
       "kind": "implementation",
       "state": "ready",
@@ -12017,7 +12306,7 @@
     {
       "id": "PQ-150.01",
       "parentId": "PQ-150",
-      "priority": 469,
+      "priority": 151,
       "title": "The mechanic",
       "kind": "implementation",
       "state": "ready",
@@ -12048,7 +12337,7 @@
     {
       "id": "PQ-150.02",
       "parentId": "PQ-150",
-      "priority": 470,
+      "priority": 152,
       "title": "Radio that reacts",
       "kind": "implementation",
       "state": "ready",
@@ -12079,7 +12368,7 @@
     {
       "id": "PQ-150.03",
       "parentId": "PQ-150",
-      "priority": 471,
+      "priority": 153,
       "title": "Fifteen people, placed",
       "kind": "implementation",
       "state": "ready",
@@ -12110,7 +12399,7 @@
     {
       "id": "PQ-151.00",
       "parentId": "PQ-151",
-      "priority": 472,
+      "priority": 154,
       "title": "Four tiers with a verb each",
       "kind": "implementation",
       "state": "ready",
@@ -12143,7 +12432,7 @@
     {
       "id": "PQ-151.01",
       "parentId": "PQ-151",
-      "priority": 473,
+      "priority": 155,
       "title": "Patrol nets and checkpoints",
       "kind": "implementation",
       "state": "ready",
@@ -12176,7 +12465,7 @@
     {
       "id": "PQ-151.02",
       "parentId": "PQ-151",
-      "priority": 474,
+      "priority": 156,
       "title": "Corrupt ports and laundering",
       "kind": "implementation",
       "state": "ready",
@@ -12209,7 +12498,7 @@
     {
       "id": "PQ-151.03",
       "parentId": "PQ-151",
-      "priority": 475,
+      "priority": 157,
       "title": "Insurance, restitution, impound recovery",
       "kind": "implementation",
       "state": "ready",
@@ -12242,7 +12531,7 @@
     {
       "id": "PQ-032.00",
       "parentId": "PQ-032",
-      "priority": 476,
+      "priority": 192,
       "title": "Beats 1–3 become set pieces",
       "kind": "implementation",
       "state": "ready",
@@ -12273,7 +12562,7 @@
     {
       "id": "PQ-032.01",
       "parentId": "PQ-032",
-      "priority": 477,
+      "priority": 193,
       "title": "The gate moves and widens",
       "kind": "implementation",
       "state": "ready",
@@ -12304,7 +12593,7 @@
     {
       "id": "PQ-032.02",
       "parentId": "PQ-032",
-      "priority": 478,
+      "priority": 194,
       "title": "The climax is a toy",
       "kind": "implementation",
       "state": "ready",
@@ -12335,7 +12624,7 @@
     {
       "id": "PQ-032.03",
       "parentId": "PQ-032",
-      "priority": 479,
+      "priority": 195,
       "title": "NG+ carries a legacy",
       "kind": "implementation",
       "state": "ready",
@@ -12366,7 +12655,7 @@
     {
       "id": "PQ-152.00",
       "parentId": "PQ-152",
-      "priority": 480,
+      "priority": 196,
       "title": "Three physical procedural types",
       "kind": "implementation",
       "state": "ready",
@@ -12399,7 +12688,7 @@
     {
       "id": "PQ-152.01",
       "parentId": "PQ-152",
-      "priority": 481,
+      "priority": 197,
       "title": "Ten authored set pieces",
       "kind": "implementation",
       "state": "ready",
@@ -12432,7 +12721,7 @@
     {
       "id": "PQ-152.02",
       "parentId": "PQ-152",
-      "priority": 482,
+      "priority": 198,
       "title": "The capital boss",
       "kind": "implementation",
       "state": "ready",
@@ -12465,7 +12754,7 @@
     {
       "id": "PQ-152.03",
       "parentId": "PQ-152",
-      "priority": 483,
+      "priority": 199,
       "title": "Clauses that twist",
       "kind": "implementation",
       "state": "ready",
@@ -12498,8 +12787,8 @@
     {
       "id": "PQ-153.00",
       "parentId": "PQ-153",
-      "priority": 484,
-      "title": "Choose the six",
+      "priority": 252,
+      "title": "Confirm the six and their sentences",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -12524,12 +12813,12 @@
         "npm run check:playable"
       ],
       "receiptRefs": [],
-      "brief": "A table: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy; owner approves. DONE WHEN: Table committed; owner verdict recorded."
+      "brief": "Proposed: Helios Prime (the harbour: law, tutorial, calm), Ceres Belt (the working belt: mining, haulers, the Cathedral), Tethys Junction (the trade hub: traffic, customs, the black market), Vesta Forge (the foundry: furnace hazards, industry), Pallas Drift (the debris reef: wrecks, scavengers, reef pinball), Sker Haven (the outlaw port: the wanted loop's home, corrupt docks). A table per sector: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy. DONE WHEN: Table committed; the owner may swap any of the last three by name."
     },
     {
       "id": "PQ-153.01",
       "parentId": "PQ-153",
-      "priority": 485,
+      "priority": 262,
       "title": "Hazard geometry per sector",
       "kind": "implementation",
       "state": "ready",
@@ -12560,7 +12849,7 @@
     {
       "id": "PQ-153.02",
       "parentId": "PQ-153",
-      "priority": 486,
+      "priority": 263,
       "title": "Landmarks fielded",
       "kind": "implementation",
       "state": "ready",
@@ -12591,7 +12880,7 @@
     {
       "id": "PQ-153.03",
       "parentId": "PQ-153",
-      "priority": 487,
+      "priority": 264,
       "title": "The frontier as texture",
       "kind": "implementation",
       "state": "ready",
@@ -12622,7 +12911,7 @@
     {
       "id": "PQ-154.00",
       "parentId": "PQ-154",
-      "priority": 488,
+      "priority": 158,
       "title": "Authored fracture seams",
       "kind": "implementation",
       "state": "ready",
@@ -12652,7 +12941,7 @@
     {
       "id": "PQ-154.01",
       "parentId": "PQ-154",
-      "priority": 489,
+      "priority": 159,
       "title": "Wreck ecology",
       "kind": "implementation",
       "state": "ready",
@@ -12682,7 +12971,7 @@
     {
       "id": "PQ-154.02",
       "parentId": "PQ-154",
-      "priority": 490,
+      "priority": 160,
       "title": "Your own wreck",
       "kind": "implementation",
       "state": "ready",
@@ -12712,7 +13001,7 @@
     {
       "id": "PQ-155.00",
       "parentId": "PQ-155",
-      "priority": 491,
+      "priority": 174,
       "title": "The verb ladder",
       "kind": "implementation",
       "state": "ready",
@@ -12744,7 +13033,7 @@
     {
       "id": "PQ-155.01",
       "parentId": "PQ-155",
-      "priority": 492,
+      "priority": 175,
       "title": "The ten-hour simulation",
       "kind": "implementation",
       "state": "ready",
@@ -12776,7 +13065,7 @@
     {
       "id": "PQ-155.02",
       "parentId": "PQ-155",
-      "priority": 493,
+      "priority": 176,
       "title": "Sinks that tell stories",
       "kind": "implementation",
       "state": "ready",
@@ -12808,7 +13097,7 @@
     {
       "id": "PQ-155.03",
       "parentId": "PQ-155",
-      "priority": 494,
+      "priority": 177,
       "title": "Stunts pay",
       "kind": "implementation",
       "state": "ready",
@@ -12840,7 +13129,7 @@
     {
       "id": "PQ-156.00",
       "parentId": "PQ-156",
-      "priority": 495,
+      "priority": 178,
       "title": "Three starters",
       "kind": "implementation",
       "state": "ready",
@@ -12870,7 +13159,7 @@
     {
       "id": "PQ-156.01",
       "parentId": "PQ-156",
-      "priority": 496,
+      "priority": 179,
       "title": "The save portrait",
       "kind": "implementation",
       "state": "ready",
@@ -12900,7 +13189,7 @@
     {
       "id": "PQ-158.00",
       "parentId": "PQ-158",
-      "priority": 497,
+      "priority": 414,
       "title": "The sample library pipeline",
       "kind": "implementation",
       "state": "ready",
@@ -12929,7 +13218,7 @@
     {
       "id": "PQ-158.01",
       "parentId": "PQ-158",
-      "priority": 498,
+      "priority": 415,
       "title": "The impact ladder, sample-backed",
       "kind": "implementation",
       "state": "ready",
@@ -12958,7 +13247,7 @@
     {
       "id": "PQ-158.02",
       "parentId": "PQ-158",
-      "priority": 499,
+      "priority": 416,
       "title": "The Massline as an instrument",
       "kind": "implementation",
       "state": "ready",
@@ -12987,7 +13276,7 @@
     {
       "id": "PQ-158.03",
       "parentId": "PQ-158",
-      "priority": 500,
+      "priority": 417,
       "title": "Composed themes",
       "kind": "implementation",
       "state": "ready",
@@ -13016,7 +13305,7 @@
     {
       "id": "PQ-158.04",
       "parentId": "PQ-158",
-      "priority": 501,
+      "priority": 418,
       "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
       "state": "ready",
@@ -13045,7 +13334,7 @@
     {
       "id": "PQ-158.05",
       "parentId": "PQ-158",
-      "priority": 502,
+      "priority": 419,
       "title": "Space and mix",
       "kind": "implementation",
       "state": "ready",
@@ -13074,7 +13363,7 @@
     {
       "id": "PQ-159.00",
       "parentId": "PQ-159",
-      "priority": 503,
+      "priority": 420,
       "title": "Impacts kick and reduced motion holds",
       "kind": "implementation",
       "state": "ready",
@@ -13104,7 +13393,7 @@
     {
       "id": "PQ-159.01",
       "parentId": "PQ-159",
-      "priority": 504,
+      "priority": 421,
       "title": "Two-body framing",
       "kind": "implementation",
       "state": "ready",
@@ -13133,7 +13422,7 @@
     {
       "id": "PQ-159.02",
       "parentId": "PQ-159",
-      "priority": 505,
+      "priority": 422,
       "title": "The beat",
       "kind": "implementation",
       "state": "ready",
@@ -13162,7 +13451,7 @@
     {
       "id": "PQ-159.03",
       "parentId": "PQ-159",
-      "priority": 506,
+      "priority": 423,
       "title": "Photo mode",
       "kind": "implementation",
       "state": "ready",
@@ -13191,7 +13480,7 @@
     {
       "id": "PQ-160.00",
       "parentId": "PQ-160",
-      "priority": 507,
+      "priority": 424,
       "title": "Ring buffer and replay",
       "kind": "implementation",
       "state": "ready",
@@ -13220,7 +13509,7 @@
     {
       "id": "PQ-160.01",
       "parentId": "PQ-160",
-      "priority": 508,
+      "priority": 425,
       "title": "Auto-clip",
       "kind": "implementation",
       "state": "ready",
@@ -13249,7 +13538,7 @@
     {
       "id": "PQ-160.02",
       "parentId": "PQ-160",
-      "priority": 509,
+      "priority": 426,
       "title": "Seeds and ghosts",
       "kind": "implementation",
       "state": "ready",
@@ -13278,7 +13567,7 @@
     {
       "id": "PQ-161.00",
       "parentId": "PQ-161",
-      "priority": 510,
+      "priority": 161,
       "title": "Role silhouettes",
       "kind": "implementation",
       "state": "ready",
@@ -13309,7 +13598,7 @@
     {
       "id": "PQ-161.01",
       "parentId": "PQ-161",
-      "priority": 511,
+      "priority": 162,
       "title": "Telegraphs",
       "kind": "implementation",
       "state": "ready",
@@ -13340,7 +13629,7 @@
     {
       "id": "PQ-161.02",
       "parentId": "PQ-161",
-      "priority": 512,
+      "priority": 163,
       "title": "Force palette",
       "kind": "implementation",
       "state": "ready",
@@ -13371,7 +13660,7 @@
     {
       "id": "PQ-161.03",
       "parentId": "PQ-161",
-      "priority": 513,
+      "priority": 164,
       "title": "Teaching overlay",
       "kind": "implementation",
       "state": "ready",
@@ -13402,7 +13691,7 @@
     {
       "id": "PQ-163.00",
       "parentId": "PQ-163",
-      "priority": 514,
+      "priority": 87,
       "title": "The rescue",
       "kind": "implementation",
       "state": "ready",
@@ -13432,7 +13721,7 @@
     {
       "id": "PQ-163.01",
       "parentId": "PQ-163",
-      "priority": 515,
+      "priority": 88,
       "title": "The Range is the door",
       "kind": "implementation",
       "state": "ready",
@@ -13462,7 +13751,7 @@
     {
       "id": "PQ-163.02",
       "parentId": "PQ-163",
-      "priority": 516,
+      "priority": 89,
       "title": "Teach the missing three",
       "kind": "implementation",
       "state": "ready",
@@ -13492,7 +13781,7 @@
     {
       "id": "PQ-163.03",
       "parentId": "PQ-163",
-      "priority": 517,
+      "priority": 90,
       "title": "The sentence, proven",
       "kind": "implementation",
       "state": "ready",
@@ -13522,7 +13811,7 @@
     {
       "id": "PQ-163.04",
       "parentId": "PQ-163",
-      "priority": 518,
+      "priority": 91,
       "title": "The cliff",
       "kind": "implementation",
       "state": "ready",
@@ -13552,7 +13841,7 @@
     {
       "id": "PQ-164.00",
       "parentId": "PQ-164",
-      "priority": 519,
+      "priority": 427,
       "title": "Every screen on a pad",
       "kind": "implementation",
       "state": "ready",
@@ -13581,7 +13870,7 @@
     {
       "id": "PQ-164.01",
       "parentId": "PQ-164",
-      "priority": 520,
+      "priority": 428,
       "title": "Glyphs and remap",
       "kind": "implementation",
       "state": "ready",
@@ -13610,7 +13899,7 @@
     {
       "id": "PQ-164.02",
       "parentId": "PQ-164",
-      "priority": 521,
+      "priority": 429,
       "title": "Deck and trackpad",
       "kind": "implementation",
       "state": "ready",
@@ -13639,7 +13928,7 @@
     {
       "id": "PQ-164.03",
       "parentId": "PQ-164",
-      "priority": 522,
+      "priority": 430,
       "title": "Haptics",
       "kind": "implementation",
       "state": "ready",
@@ -13668,7 +13957,7 @@
     {
       "id": "PQ-165.00",
       "parentId": "PQ-165",
-      "priority": 523,
+      "priority": 431,
       "title": "Presets and frame cap",
       "kind": "implementation",
       "state": "ready",
@@ -13694,7 +13983,7 @@
     {
       "id": "PQ-165.01",
       "parentId": "PQ-165",
-      "priority": 524,
+      "priority": 432,
       "title": "Captions and audio cues",
       "kind": "implementation",
       "state": "ready",
@@ -13720,7 +14009,7 @@
     {
       "id": "PQ-165.02",
       "parentId": "PQ-165",
-      "priority": 525,
+      "priority": 433,
       "title": "The checklist",
       "kind": "implementation",
       "state": "ready",
@@ -13746,7 +14035,7 @@
     {
       "id": "PQ-166.00",
       "parentId": "PQ-166",
-      "priority": 526,
+      "priority": 434,
       "title": "Language setting and default-route bridge",
       "kind": "implementation",
       "state": "ready",
@@ -13772,7 +14061,7 @@
     {
       "id": "PQ-166.01",
       "parentId": "PQ-166",
-      "priority": 527,
+      "priority": 435,
       "title": "Growth pass",
       "kind": "implementation",
       "state": "ready",
@@ -13798,7 +14087,7 @@
     {
       "id": "PQ-166.02",
       "parentId": "PQ-166",
-      "priority": 528,
+      "priority": 436,
       "title": "Five languages",
       "kind": "implementation",
       "state": "ready",
@@ -13824,7 +14113,7 @@
     {
       "id": "PQ-033.00",
       "parentId": "PQ-033",
-      "priority": 529,
+      "priority": 438,
       "title": "Legal and credits",
       "kind": "implementation",
       "state": "ready",
@@ -13858,7 +14147,7 @@
     {
       "id": "PQ-033.01",
       "parentId": "PQ-033",
-      "priority": 530,
+      "priority": 439,
       "title": "Crash reporting, auto-update, version",
       "kind": "implementation",
       "state": "ready",
@@ -13892,7 +14181,7 @@
     {
       "id": "PQ-033.02",
       "parentId": "PQ-033",
-      "priority": 531,
+      "priority": 440,
       "title": "Min-spec floors and soak",
       "kind": "implementation",
       "state": "ready",
@@ -13926,7 +14215,7 @@
     {
       "id": "PQ-033.03",
       "parentId": "PQ-033",
-      "priority": 532,
+      "priority": 441,
       "title": "Store readiness",
       "kind": "implementation",
       "state": "ready",
@@ -13960,7 +14249,7 @@
     {
       "id": "PQ-167.00",
       "parentId": "PQ-167",
-      "priority": 533,
+      "priority": 37,
       "title": "Session report",
       "kind": "implementation",
       "state": "ready",
@@ -13983,7 +14272,7 @@
     {
       "id": "PQ-167.01",
       "parentId": "PQ-167",
-      "priority": 534,
+      "priority": 38,
       "title": "The weekly playtest",
       "kind": "implementation",
       "state": "ready",
@@ -14006,7 +14295,7 @@
     {
       "id": "PQ-167.02",
       "parentId": "PQ-167",
-      "priority": 535,
+      "priority": 39,
       "title": "Gates from data",
       "kind": "implementation",
       "state": "ready",
@@ -14029,7 +14318,7 @@
     {
       "id": "PQ-169.00",
       "parentId": "PQ-169",
-      "priority": 536,
+      "priority": 165,
       "title": "Daily seed and board",
       "kind": "implementation",
       "state": "ready",
@@ -14057,7 +14346,7 @@
     {
       "id": "PQ-169.01",
       "parentId": "PQ-169",
-      "priority": 537,
+      "priority": 166,
       "title": "Ghosts",
       "kind": "implementation",
       "state": "ready",
@@ -14085,7 +14374,7 @@
     {
       "id": "PQ-169.02",
       "parentId": "PQ-169",
-      "priority": 538,
+      "priority": 167,
       "title": "Weekly mutators",
       "kind": "implementation",
       "state": "ready",
@@ -14113,7 +14402,7 @@
     {
       "id": "PQ-169.03",
       "parentId": "PQ-169",
-      "priority": 539,
+      "priority": 168,
       "title": "The hangar feed (optional; cosmetics only)",
       "kind": "implementation",
       "state": "ready",
@@ -14141,7 +14430,7 @@
     {
       "id": "PQ-170.00",
       "parentId": "PQ-170",
-      "priority": 540,
+      "priority": 442,
       "title": "Fronts you can tilt",
       "kind": "implementation",
       "state": "ready",
@@ -14169,7 +14458,7 @@
     {
       "id": "PQ-170.01",
       "parentId": "PQ-170",
-      "priority": 541,
+      "priority": 443,
       "title": "Station growth and dependency",
       "kind": "implementation",
       "state": "ready",
@@ -14197,7 +14486,7 @@
     {
       "id": "PQ-170.02",
       "parentId": "PQ-170",
-      "priority": 542,
+      "priority": 444,
       "title": "Two mega-heists and two capital bosses",
       "kind": "implementation",
       "state": "ready",
@@ -14225,7 +14514,7 @@
     {
       "id": "PQ-170.03",
       "parentId": "PQ-170",
-      "priority": 543,
+      "priority": 445,
       "title": "Legendary lines",
       "kind": "implementation",
       "state": "ready",
@@ -14253,7 +14542,7 @@
     {
       "id": "PQ-171.00",
       "parentId": "PQ-171",
-      "priority": 544,
+      "priority": 269,
       "title": "The grammar",
       "kind": "implementation",
       "state": "ready",
@@ -14281,7 +14570,7 @@
     {
       "id": "PQ-171.01",
       "parentId": "PQ-171",
-      "priority": 545,
+      "priority": 276,
       "title": "The repetition meter",
       "kind": "implementation",
       "state": "ready",
@@ -14309,7 +14598,7 @@
     {
       "id": "PQ-172.00",
       "parentId": "PQ-172",
-      "priority": 546,
+      "priority": 446,
       "title": "JSON content loader",
       "kind": "implementation",
       "state": "ready",
@@ -14334,7 +14623,7 @@
     {
       "id": "PQ-172.01",
       "parentId": "PQ-172",
-      "priority": 547,
+      "priority": 447,
       "title": "Workshop",
       "kind": "implementation",
       "state": "ready",
@@ -14359,7 +14648,7 @@
     {
       "id": "PQ-162.00",
       "parentId": "PQ-162",
-      "priority": 548,
+      "priority": 277,
       "title": "Skeleton and data states adopted",
       "kind": "implementation",
       "state": "ready",
@@ -14388,7 +14677,7 @@
     {
       "id": "PQ-162.01",
       "parentId": "PQ-162",
-      "priority": 549,
+      "priority": 278,
       "title": "Hierarchy and colour discipline",
       "kind": "implementation",
       "state": "ready",
@@ -14417,7 +14706,7 @@
     {
       "id": "PQ-162.02",
       "parentId": "PQ-162",
-      "priority": 550,
+      "priority": 279,
       "title": "Arriving somewhere",
       "kind": "implementation",
       "state": "ready",
@@ -14446,7 +14735,7 @@
     {
       "id": "PQ-168.00",
       "parentId": "PQ-168",
-      "priority": 551,
+      "priority": 395,
       "title": "Traffic and heat layers",
       "kind": "implementation",
       "state": "ready",
@@ -14475,7 +14764,7 @@
     {
       "id": "PQ-168.01",
       "parentId": "PQ-168",
-      "priority": 552,
+      "priority": 396,
       "title": "One answer per question",
       "kind": "implementation",
       "state": "ready",
@@ -14504,7 +14793,7 @@
     {
       "id": "PQ-137.11",
       "parentId": "PQ-137",
-      "priority": 553,
+      "priority": 51,
       "title": "The player is never knocked around (knock budget, bar B13)",
       "kind": "implementation",
       "state": "ready",
@@ -14528,7 +14817,7 @@
     {
       "id": "PQ-173.00",
       "parentId": "PQ-173",
-      "priority": 554,
+      "priority": 33,
       "title": "The bench",
       "kind": "implementation",
       "state": "ready",
@@ -14553,7 +14842,7 @@
     {
       "id": "PQ-173.01",
       "parentId": "PQ-173",
-      "priority": 555,
+      "priority": 34,
       "title": "The measurer",
       "kind": "implementation",
       "state": "ready",
@@ -14578,7 +14867,7 @@
     {
       "id": "PQ-173.02",
       "parentId": "PQ-173",
-      "priority": 556,
+      "priority": 35,
       "title": "The critic",
       "kind": "implementation",
       "state": "ready",
@@ -14603,7 +14892,7 @@
     {
       "id": "PQ-173.03",
       "parentId": "PQ-173",
-      "priority": 557,
+      "priority": 36,
       "title": "The report and the translator",
       "kind": "implementation",
       "state": "ready",
@@ -14624,6 +14913,1606 @@
       ],
       "receiptRefs": [],
       "brief": "Render the one-page owner report (found / changed / what you will feel / numbers / frames / next) and encode the verdict-to-bar translator protocol as a checklist the agent must fill before touching code. DONE WHEN: One real cycle run end to end and committed with its report; the owner reads it without asking what a term means."
+    },
+    {
+      "id": "PQ-174.00",
+      "parentId": "PQ-174",
+      "priority": 52,
+      "title": "The swarm bars, printed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-173.01",
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "With PQ-173's bench: time-to-first-kill, verbs per minute, moments per minute, nothing-happened seconds, deaths by cause with telegraph flag, build identity per run, wave duration, menu frequency, run length to first death — printed per seed for the three loadouts. DONE WHEN: Every bar below has a number on three seeds before any tuning; the numbers are committed as the before."
+    },
+    {
+      "id": "PQ-174.01",
+      "parentId": "PQ-174",
+      "priority": 53,
+      "title": "Pacing: the first minute and the wave curve",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "First hostile within 8 s of launch, first kill possible within 20 s with the starter kit, waves 45–90 s, cleanup ≤ 4 s, a menu at most every fifth wave, the quota curve rising by count and geometry, never by hit points. DONE WHEN: Time-to-first-kill ≤ 20 s on all seeds; wave durations inside the band; menu frequency ≤ 0.2 per wave."
+    },
+    {
+      "id": "PQ-174.02",
+      "parentId": "PQ-174",
+      "priority": 54,
+      "title": "The physics kit wins",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.05",
+        "PQ-146.01",
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "With PQ-137.05's force table landed in the Crucible first: a shove-and-rock run outscores a gun-only run of equal skill by ≥ 2× (stunt scoring, PQ-146.01); the free Pulse cannot top the board; the starter kit includes a shove. DONE WHEN: Telemetry over 20 seeded runs per kit; the balance dashboard shows the ordering."
+    },
+    {
+      "id": "PQ-174.03",
+      "parentId": "PQ-174",
+      "priority": 55,
+      "title": "Roles in the swarm are physical problems",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-140.02",
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "Support/Anchor/Disruptor/Elite each pose a positioning problem the player solves with a verb (rope the anchor, shove the disruptor into the elite, well the support cluster); the cohort flows and stays throwable (PQ-135.05). DONE WHEN: Blind reviewer names each role's counter from a 12 s strip; median time-to-resolve a light under physics ≤ under guns."
+    },
+    {
+      "id": "PQ-174.04",
+      "parentId": "PQ-174",
+      "priority": 56,
+      "title": "Arena laws change the top strategy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "Each of the five arenas measurably changes which build and which verbs win (telemetry over seeds): the gravity arena rewards wells and slings, the current arena rewards riding, the foundry rewards banks and machinery kills. DONE WHEN: For each arena, the top build differs from the Foundry's; the difference is visible in the results screen."
+    },
+    {
+      "id": "PQ-174.05",
+      "parentId": "PQ-174",
+      "priority": 57,
+      "title": "Boss waves are physics puzzles",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "Wave 10/20/30 bosses die to thrown mass, machinery or their own tumbling sub-systems; guns alone are the slow way, never the only way; no immunity theatre. DONE WHEN: Each boss killed in a scenario by physics alone within 90 s; capture."
+    },
+    {
+      "id": "PQ-174.06",
+      "parentId": "PQ-174",
+      "priority": 58,
+      "title": "Death, retry, and the story",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "Death names its cause and the telegraph the player missed, retry on the same seed in ≤ 5 s, and the results screen tells the run as a story: the tricks, the moments, the best chain, the build code. DONE WHEN: Session-2 return in playtests ≥ 60 %; results capture reviewed."
+    },
+    {
+      "id": "PQ-174.07",
+      "parentId": "PQ-174",
+      "priority": 59,
+      "title": "Difficulty by geometry, verified",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-173.01"
+      ],
+      "mutexes": [
+        "crucible-feel"
+      ],
+      "paths": [
+        "src/systems/survivalSwarm.js",
+        "src/systems/survivalWavePlanner.js",
+        "src/data/survivalWaves.js",
+        "src/data/swarmMode.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalResults.js",
+        "src/systems/survivalRun.js",
+        "src/data/survivalArenas.js",
+        "src/systems/swarmArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:crucible:run",
+        "npm run check:crucible:arc"
+      ],
+      "receiptRefs": [],
+      "brief": "Wave N+10 has the same enemy hull values as wave N and is harder because of count, mass, anchors, hazards and angles; a check asserts no HP inflation across the arc. DONE WHEN: `check:crucible:arc` gains the no-inflation assertion; it fails when a wave recipe raises hull values."
+    },
+    {
+      "id": "PQ-175.00",
+      "parentId": "PQ-175",
+      "priority": 95,
+      "title": "Every wave asks a question",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-content"
+      ],
+      "paths": [
+        "src/data/survivalWaves.js",
+        "src/data/survivalActs.js",
+        "src/data/arenaModuleLibrary.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/lagrangeCrucible.js",
+        "src/systems/cinderSluiceArena.js",
+        "src/systems/cryoDriftArena.js",
+        "src/systems/stormLatticeArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:arc",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Each of the thirty wave recipes declares its physical question and the verb that answers it; the planner never schedules two consecutive waves with the same question. DONE WHEN: Validator asserts a question per recipe and no repeats in a row; a blind reviewer names the question from a strip for 8 of 10 waves."
+    },
+    {
+      "id": "PQ-175.01",
+      "parentId": "PQ-175",
+      "priority": 96,
+      "title": "Props are toys",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-027.00",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-content"
+      ],
+      "paths": [
+        "src/data/survivalWaves.js",
+        "src/data/survivalActs.js",
+        "src/data/arenaModuleLibrary.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/lagrangeCrucible.js",
+        "src/systems/cinderSluiceArena.js",
+        "src/systems/cryoDriftArena.js",
+        "src/systems/stormLatticeArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:arc",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Each arena's props participate: shutters cut lines, plates bank shots, crushers kill, relays conduct, currents carry; at least three throwable or usable props per arena. DONE WHEN: Per arena, three props used in a scenario to kill or escape; capture."
+    },
+    {
+      "id": "PQ-175.02",
+      "parentId": "PQ-175",
+      "priority": 97,
+      "title": "Drafts change verbs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-content"
+      ],
+      "paths": [
+        "src/data/survivalWaves.js",
+        "src/data/survivalActs.js",
+        "src/data/arenaModuleLibrary.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/lagrangeCrucible.js",
+        "src/systems/cinderSluiceArena.js",
+        "src/systems/cryoDriftArena.js",
+        "src/systems/stormLatticeArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:arc",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "At most one card in three is a number; every other card changes a verb's shape (line load, well radius, reel speed, ram plate, whip snap); cards are legible in one line. DONE WHEN: Draft catalog audit: ≥ 66 % verb cards; a playtester describes each card's effect after one use."
+    },
+    {
+      "id": "PQ-175.03",
+      "parentId": "PQ-175",
+      "priority": 98,
+      "title": "Mutators are games",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-169.02",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-content"
+      ],
+      "paths": [
+        "src/data/survivalWaves.js",
+        "src/data/survivalActs.js",
+        "src/data/arenaModuleLibrary.js",
+        "src/systems/survivalMutators.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/lagrangeCrucible.js",
+        "src/systems/cinderSluiceArena.js",
+        "src/systems/cryoDriftArena.js",
+        "src/systems/stormLatticeArena.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:arc",
+        "npm run check:crucible:meta"
+      ],
+      "receiptRefs": [],
+      "brief": "Four weekly mutators shipped as distinct games with their own best build (telemetry): gravity slalom, heavies only, weapons cold, reef. DONE WHEN: Top strategy differs per mutator over 10 seeds each."
+    },
+    {
+      "id": "PQ-176.00",
+      "parentId": "PQ-176",
+      "priority": 169,
+      "title": "Nested budgets and mass as the law",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "paths": [
+        "src/data/ships.js",
+        "src/data/modules.js",
+        "src/data/weapons.js",
+        "src/systems/ships.js",
+        "src/ui/screens/outfitting.js",
+        "src/ui/ship/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:outfitting-buy-fit",
+        "npm run check:save-schema",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "Master pool plus weapon and engine sub-pools per hull; ship mass = hull + modules + current cargo, fed to the propulsion profile; a migration check proves every current default fit still fits. DONE WHEN: A full-gun fit and a full-cargo fit of the same hull differ in reversal time by ≥ 25 % on the flight bench; migration check green."
+    },
+    {
+      "id": "PQ-176.01",
+      "parentId": "PQ-176",
+      "priority": 170,
+      "title": "Drive and thruster split",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "paths": [
+        "src/data/ships.js",
+        "src/data/modules.js",
+        "src/data/weapons.js",
+        "src/systems/ships.js",
+        "src/ui/screens/outfitting.js",
+        "src/ui/ship/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:outfitting-buy-fit",
+        "npm run check:save-schema",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "Drive owns forward thrust and top speed; manoeuvring thrusters own turn torque, strafe and brake; each hull gets a default thruster part. DONE WHEN: Two builds of one hull: fast-clumsy and nimble-slow, both viable on the Crucible bench; numbers printed."
+    },
+    {
+      "id": "PQ-176.02",
+      "parentId": "PQ-176",
+      "priority": 171,
+      "title": "Mounts gate by size and type; fixed vs turret",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "paths": [
+        "src/data/ships.js",
+        "src/data/modules.js",
+        "src/data/weapons.js",
+        "src/systems/ships.js",
+        "src/ui/screens/outfitting.js",
+        "src/ui/ship/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:outfitting-buy-fit",
+        "npm run check:save-schema",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "S/M/L mounts with type classes; fixed hardpoints get more output than turrets so aim skill is paid. DONE WHEN: Fit screen refuses illegal mounts with a sentence; a fixed-mount build out-damages its turret twin by the authored margin."
+    },
+    {
+      "id": "PQ-176.03",
+      "parentId": "PQ-176",
+      "priority": 172,
+      "title": "Flows on the fit screen",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "paths": [
+        "src/data/ships.js",
+        "src/data/modules.js",
+        "src/data/weapons.js",
+        "src/systems/ships.js",
+        "src/ui/screens/outfitting.js",
+        "src/ui/ship/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:outfitting-buy-fit",
+        "npm run check:save-schema",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "Energy draw, heat and cooling as sustained-fire margin; the screen predicts turn radius, reversal time, top speed and tow class before commit; every module has a one-line sentence. DONE WHEN: Blind test: a player predicts handling from the screen and is right within 20 % on the bench."
+    },
+    {
+      "id": "PQ-176.04",
+      "parentId": "PQ-176",
+      "priority": 173,
+      "title": "Visible builds",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
+      "mutexes": [
+        "outfitting"
+      ],
+      "paths": [
+        "src/data/ships.js",
+        "src/data/modules.js",
+        "src/data/weapons.js",
+        "src/systems/ships.js",
+        "src/ui/screens/outfitting.js",
+        "src/ui/ship/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:outfitting-buy-fit",
+        "npm run check:save-schema",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. DONE WHEN: Stills at the shipping camera show the build; the asset reachability check stays green."
+    },
+    {
+      "id": "PQ-177.00",
+      "parentId": "PQ-177",
+      "priority": 182,
+      "title": "The ticker and event cards",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. DONE WHEN: Every ticker line traces to a sim event; capture of a blockade line and its card."
+    },
+    {
+      "id": "PQ-177.01",
+      "parentId": "PQ-177",
+      "priority": 183,
+      "title": "Charts with a forecast cone",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "Per-commodity sparkline of the last ten minutes plus the forecast band and regime label; profit readout on sale from cost basis. DONE WHEN: A player who reads the cone beats one who does not by ≥ 30 % profit over a seeded hour (telemetry archetypes)."
+    },
+    {
+      "id": "PQ-177.02",
+      "parentId": "PQ-177",
+      "priority": 184,
+      "title": "Supply-chain glyphs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. DONE WHEN: Blind test: a player names where to sell ore and why after one screen."
+    },
+    {
+      "id": "PQ-177.03",
+      "parentId": "PQ-177",
+      "priority": 185,
+      "title": "Contracts that twist",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.04",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). DONE WHEN: ≥ 5 twist clauses live on boards; each has a scenario."
+    },
+    {
+      "id": "PQ-177.04",
+      "parentId": "PQ-177",
+      "priority": 186,
+      "title": "The black market",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-148.02",
+        "PQ-151.02",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "Reached by a smuggling run (PQ-148.02 physics), sells what stations refuse, launders heat for a cut (PQ-151.02); prices move with your own supply. DONE WHEN: A seeded smuggling loop completes; laundering shows in the ledger."
+    },
+    {
+      "id": "PQ-177.05",
+      "parentId": "PQ-177",
+      "priority": 187,
+      "title": "Interesting decisions per hour",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-173.01",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-155.00"
+      ],
+      "mutexes": [
+        "economy-legibility"
+      ],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/economyCycles.js",
+        "src/data/newsTemplates.js",
+        "src/ui/screens/market.js",
+        "src/ui/hud.js",
+        "src/data/contractClauses.js",
+        "src/systems/missions.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:market-first-loop",
+        "npm run check:economy:regional-supply",
+        "npm run check:price-memory"
+      ],
+      "receiptRefs": [],
+      "brief": "Telemetry counts decisions with ≥ 2 viable options and a visible tradeoff; the bar is ≥ 6 per hour in adventure. DONE WHEN: Metric printed by the fun-loop measurer; ≥ 6 on the reference route."
+    },
+    {
+      "id": "PQ-178.00",
+      "parentId": "PQ-178",
+      "priority": 188,
+      "title": "The beat standard",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-152.00"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "docs/worldbuilding/",
+        "src/data/scenarios/",
+        "src/data/narrative.js",
+        "src/data/barks.js",
+        "src/story/",
+        "design/program/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative",
+        "node scripts/check-codex-narrative.mjs",
+        "npm run check:mission-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "A written standard and a template: canon sheet, register sheet, set-piece script (place, actors, headline verb, twist, two solutions, the frame that proves it), bark rules (one line, one consequence), voice direction notes; a validator checks the template. DONE WHEN: Standard committed; the 47-A opener re-expressed in the template without loss."
+    },
+    {
+      "id": "PQ-178.01",
+      "parentId": "PQ-178",
+      "priority": 189,
+      "title": "Beats 1–3 re-cut in the standard",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-152.01",
+        "PQ-152.00"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "docs/worldbuilding/",
+        "src/data/scenarios/",
+        "src/data/narrative.js",
+        "src/data/barks.js",
+        "src/story/",
+        "design/program/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative",
+        "node scripts/check-codex-narrative.mjs",
+        "npm run check:mission-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "The wrecking-ball contract, pod rescue under fire, the long tow — written, staged, seeded, captured (PQ-152). DONE WHEN: Three beats at 47-A density; owner verdict per beat."
+    },
+    {
+      "id": "PQ-178.02",
+      "parentId": "PQ-178",
+      "priority": 190,
+      "title": "Registers and voice",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-158.04",
+        "PQ-152.00"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "docs/worldbuilding/",
+        "src/data/scenarios/",
+        "src/data/narrative.js",
+        "src/data/barks.js",
+        "src/story/",
+        "design/program/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative",
+        "node scripts/check-codex-narrative.mjs",
+        "npm run check:mission-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "Eight faction registers as writing rules with examples; the synthetic-voice direction sheet per register (PQ-158.04). DONE WHEN: A blind reader assigns a bark to its faction 7 of 8 times."
+    },
+    {
+      "id": "PQ-178.03",
+      "parentId": "PQ-178",
+      "priority": 191,
+      "title": "The story ledger",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-152.00"
+      ],
+      "mutexes": [
+        "story"
+      ],
+      "paths": [
+        "docs/worldbuilding/",
+        "src/data/scenarios/",
+        "src/data/narrative.js",
+        "src/data/barks.js",
+        "src/story/",
+        "design/program/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:bar:narrative",
+        "node scripts/check-codex-narrative.mjs",
+        "npm run check:mission-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "The session and the campaign read back as 'I was doing X, then Y, so I Z', from receipts, with the mechanic's voice at the berth. DONE WHEN: Blind reader retells the campaign so far from the ledger alone."
+    },
+    {
+      "id": "PQ-180.00",
+      "parentId": "PQ-180",
+      "priority": 83,
+      "title": "The surface manifest",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-matrix"
+      ],
+      "paths": [
+        "scripts/",
+        "test/",
+        "design/frontend/",
+        "src/ui/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects",
+        "npm run check:ui:perf",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "A data file listing every surface with its entry route, owner file, archetype and the checks that can reach it; the matrix script boots the game, opens each surface and measures the rules it can measure (smallest font, numeral face, data states present, memory restored, safe-frame at three widths, pseudo-loc clipping, contrast, reduce-motion, DOM node count, frame cost). DONE WHEN: `check:ui:grammar-matrix` prints the matrix for ≥ 30 surfaces and fails any below the floor; committed baseline."
+    },
+    {
+      "id": "PQ-180.01",
+      "parentId": "PQ-180",
+      "priority": 84,
+      "title": "The floor, written",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-matrix"
+      ],
+      "paths": [
+        "scripts/",
+        "test/",
+        "design/frontend/",
+        "src/ui/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects",
+        "npm run check:ui:perf",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "The exact thresholds per rule (12 px, +40 %, 1280/1920/2560, ≤ 1,500 DOM nodes per surface, ≤ 2 ms UI frame cost, four data states named) recorded once in the grammar and read by the check. DONE WHEN: Thresholds live in one file; the check reads them; a deliberate violation goes red."
+    },
+    {
+      "id": "PQ-180.02",
+      "parentId": "PQ-180",
+      "priority": 85,
+      "title": "Ownership and order",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-matrix"
+      ],
+      "paths": [
+        "scripts/",
+        "test/",
+        "design/frontend/",
+        "src/ui/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects",
+        "npm run check:ui:perf",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
+    },
+    {
+      "id": "PQ-180.03",
+      "parentId": "PQ-180",
+      "priority": 86,
+      "title": "Reference frames for every surface",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-matrix"
+      ],
+      "paths": [
+        "scripts/",
+        "test/",
+        "design/frontend/",
+        "src/ui/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-effects",
+        "npm run check:ui:perf",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
+    },
+    {
+      "id": "PQ-181.00",
+      "parentId": "PQ-181",
+      "priority": 397,
+      "title": "Title, credits, version",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "meta-shell"
+      ],
+      "paths": [
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js",
+        "src/ui/screens/settings.js",
+        "src/ui/screens/pause.js",
+        "src/ui/screens/gameOver.js",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:title-continue-runtime",
+        "npm run check:save-load-slot-trust",
+        "npm run check:settings-profile",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Title to the grammar; credits screen with third-party notices (PQ-033.00); version and build hash visible. DONE WHEN: Matrix green for title and credits; version visible in a capture."
+    },
+    {
+      "id": "PQ-181.01",
+      "parentId": "PQ-181",
+      "priority": 398,
+      "title": "New Game and Load",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-156.00",
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "meta-shell"
+      ],
+      "paths": [
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js",
+        "src/ui/screens/settings.js",
+        "src/ui/screens/pause.js",
+        "src/ui/screens/gameOver.js",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:title-continue-runtime",
+        "npm run check:save-load-slot-trust",
+        "npm run check:settings-profile",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture."
+    },
+    {
+      "id": "PQ-181.02",
+      "parentId": "PQ-181",
+      "priority": 399,
+      "title": "Settings depth",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-165.00",
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "meta-shell"
+      ],
+      "paths": [
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js",
+        "src/ui/screens/settings.js",
+        "src/ui/screens/pause.js",
+        "src/ui/screens/gameOver.js",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:title-continue-runtime",
+        "npm run check:save-load-slot-trust",
+        "npm run check:settings-profile",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check."
+    },
+    {
+      "id": "PQ-181.03",
+      "parentId": "PQ-181",
+      "priority": 400,
+      "title": "Pause, Game Over, digest, statistics",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "meta-shell"
+      ],
+      "paths": [
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/screens/saveLoad.js",
+        "src/ui/screens/settings.js",
+        "src/ui/screens/pause.js",
+        "src/ui/screens/gameOver.js",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:title-continue-runtime",
+        "npm run check:save-load-slot-trust",
+        "npm run check:settings-profile",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry."
+    },
+    {
+      "id": "PQ-182.00",
+      "parentId": "PQ-182",
+      "priority": 401,
+      "title": "The door",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-ui"
+      ],
+      "paths": [
+        "src/ui/screens/crucible.js",
+        "src/ui/screens/crucibleDraft.js",
+        "src/ui/screens/crucibleLabControls.js",
+        "src/ui/screens/crucibleLabTelemetry.js",
+        "src/ui/screens/crucibleResults.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading."
+    },
+    {
+      "id": "PQ-182.01",
+      "parentId": "PQ-182",
+      "priority": 402,
+      "title": "Draft and refit",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-ui"
+      ],
+      "paths": [
+        "src/ui/screens/crucible.js",
+        "src/ui/screens/crucibleDraft.js",
+        "src/ui/screens/crucibleLabControls.js",
+        "src/ui/screens/crucibleLabTelemetry.js",
+        "src/ui/screens/crucibleResults.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use."
+    },
+    {
+      "id": "PQ-182.02",
+      "parentId": "PQ-182",
+      "priority": 403,
+      "title": "Results as a story",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-146.01",
+        "PQ-180.00",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-ui"
+      ],
+      "paths": [
+        "src/ui/screens/crucible.js",
+        "src/ui/screens/crucibleDraft.js",
+        "src/ui/screens/crucibleLabControls.js",
+        "src/ui/screens/crucibleLabTelemetry.js",
+        "src/ui/screens/crucibleResults.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s."
+    },
+    {
+      "id": "PQ-182.03",
+      "parentId": "PQ-182",
+      "priority": 404,
+      "title": "The lab is a toy",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00",
+        "PQ-174.01",
+        "PQ-174.02"
+      ],
+      "mutexes": [
+        "crucible-ui"
+      ],
+      "paths": [
+        "src/ui/screens/crucible.js",
+        "src/ui/screens/crucibleDraft.js",
+        "src/ui/screens/crucibleLabControls.js",
+        "src/ui/screens/crucibleLabTelemetry.js",
+        "src/ui/screens/crucibleResults.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Lab controls to the grammar with the range's teaching voice; telemetry overlay is an instrument, not a debug dump. DONE WHEN: Matrix green; frame cost ≤ 2 ms."
+    },
+    {
+      "id": "PQ-183.00",
+      "parentId": "PQ-183",
+      "priority": 405,
+      "title": "Every mention is a door",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-162.00",
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "entity-links"
+      ],
+      "paths": [
+        "src/ui/entityResolver.js",
+        "src/ui/whyReveal.js",
+        "src/ui/hud.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/station/",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:entity-links",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Entity links adopted on every surface in the manifest, including the station and legacy modules; the check fails an unlinked entity name. DONE WHEN: `check:entity-links` covers ≥ 30 surfaces with zero unlinked mentions."
+    },
+    {
+      "id": "PQ-183.01",
+      "parentId": "PQ-183",
+      "priority": 406,
+      "title": "The watch list",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00",
+        "PQ-162.00"
+      ],
+      "mutexes": [
+        "entity-links"
+      ],
+      "paths": [
+        "src/ui/entityResolver.js",
+        "src/ui/whyReveal.js",
+        "src/ui/hud.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/station/",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:entity-links",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "Pin a price, a rival, a deadline, a faction standing; pins render on the HUD in the receipts channel within the attention rules. DONE WHEN: Three pin types live; HUD attention contract still green."
+    },
+    {
+      "id": "PQ-183.02",
+      "parentId": "PQ-183",
+      "priority": 407,
+      "title": "Global find and chart notes",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00",
+        "PQ-162.00"
+      ],
+      "mutexes": [
+        "entity-links"
+      ],
+      "paths": [
+        "src/ui/entityResolver.js",
+        "src/ui/whyReveal.js",
+        "src/ui/hud.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/station/",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:entity-links",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "One key opens find across entities and screens; the chart accepts player notes that persist per save. DONE WHEN: Find reaches every entity class; notes round-trip through save."
+    },
+    {
+      "id": "PQ-184.00",
+      "parentId": "PQ-184",
+      "priority": 408,
+      "title": "The budgets, measured",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "ui-perf"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui:perf",
+        "npm run check:ui-effects",
+        "node scripts/check-ui-screen-imports.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Per-surface UI frame cost and DOM node count in the matrix; thresholds in the grammar; regression fails red. DONE WHEN: Matrix columns live; baseline committed."
+    },
+    {
+      "id": "PQ-184.01",
+      "parentId": "PQ-184",
+      "priority": 409,
+      "title": "Virtualise the long lists",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "ui-perf"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui:perf",
+        "npm run check:ui-effects",
+        "node scripts/check-ui-screen-imports.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Market, contracts, ledger, codex and results lists render only visible rows. DONE WHEN: A 2,000-row list stays under budget; keyboard navigation still reaches every row."
+    },
+    {
+      "id": "PQ-184.02",
+      "parentId": "PQ-184",
+      "priority": 410,
+      "title": "No per-frame allocation, no layout thrash",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "ui-perf"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui:perf",
+        "npm run check:ui-effects",
+        "node scripts/check-ui-screen-imports.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Audit hot surfaces (HUD, chart, station) for per-frame DOM writes and forced reflows; fix by batching and state variables. DONE WHEN: Frame cost under budget on all three; frame-sleep counters 0 when idle."
+    },
+    {
+      "id": "PQ-184.03",
+      "parentId": "PQ-184",
+      "priority": 411,
+      "title": "Lift the legacy hub",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "ui-perf"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui:perf",
+        "npm run check:ui-effects",
+        "node scripts/check-ui-screen-imports.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Shared logic out of stationHub.js, market.js, bar.js, services.js, shipLedger.js, factions.js into modules; delete dead renderers; the import check confirms. DONE WHEN: stationHub.js gone or < 300 lines of pure helpers; check:ui-screen-imports green."
+    },
+    {
+      "id": "PQ-185.00",
+      "parentId": "PQ-185",
+      "priority": 412,
+      "title": "Design-law checklist as a check",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "asteroid-works-ui"
+      ],
+      "paths": [
+        "src/ui/screens/drill.js",
+        "src/render/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:asteroid-works-render",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet."
+    },
+    {
+      "id": "PQ-185.01",
+      "parentId": "PQ-185",
+      "priority": 413,
+      "title": "Matrix and acceptance",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-180.00"
+      ],
+      "mutexes": [
+        "asteroid-works-ui"
+      ],
+      "paths": [
+        "src/ui/screens/drill.js",
+        "src/render/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:asteroid-works-render",
+        "npm run check:visual-regression"
+      ],
+      "receiptRefs": [],
+      "brief": "The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green."
+    },
+    {
+      "id": "PQ-186.00",
+      "parentId": "PQ-186",
+      "priority": 80,
+      "title": "Bars as checks",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.10"
+      ],
+      "mutexes": [
+        "regression"
+      ],
+      "paths": [
+        "test/",
+        "scripts/",
+        "src/testing/lab/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:all:smoke"
+      ],
+      "receiptRefs": [],
+      "brief": "One check per FEEL_CONTRACT bar the lab can reach, assertion message = the bar's sentence; wired into check:all:smoke. DONE WHEN: Every reachable bar has a check; injecting the old governor brake turns B1 red."
+    },
+    {
+      "id": "PQ-186.01",
+      "parentId": "PQ-186",
+      "priority": 81,
+      "title": "Rulings as guards",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "regression"
+      ],
+      "paths": [
+        "test/",
+        "scripts/",
+        "src/testing/lab/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:all:smoke"
+      ],
+      "receiptRefs": [],
+      "brief": "Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. DONE WHEN: Each guard has a fixture that fails it; all green on master."
+    },
+    {
+      "id": "PQ-186.02",
+      "parentId": "PQ-186",
+      "priority": 82,
+      "title": "Anti-vision assertion lint",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "regression"
+      ],
+      "paths": [
+        "test/",
+        "scripts/",
+        "src/testing/lab/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:all:smoke"
+      ],
+      "receiptRefs": [],
+      "brief": "A lint over test assertion messages against a banned-phrase list ('should decay toward the cap', 'must not stagger', 'brake survives'), maintained in the feel contract. DONE WHEN: Lint green; the 2026-09-02 phrases would have been caught."
     }
   ]
 }

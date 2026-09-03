@@ -12,6 +12,12 @@ These prompts are intentionally plain. The agent obtains technical detail from t
 live board, queue row, packet, code owners, and tests. Give one prompt to one thread. A thread finishes
 one task and stops; it does not start an open-ended campaign.
 
+## Prompt 0 — the default (no scope words)
+
+```text
+Read CANONICAL_BUILD_MAP.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit; read its packet, especially "How agents get this wrong"; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then take the next unit. Stop only for a section 1.5 stop condition, and say which.
+```
+
 ## Which door? Exact task vs. develop the game
 
 - **Finish a known exact task** → use Prompts A/B/C below, or
@@ -140,12 +146,12 @@ RESULT: DONE when every inventory row is an authored, reviewed, wired asset on m
 This is a campaign, not one task. Start at CANONICAL_BUILD_MAP.md. Do not use
 INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFERENCE.
 
-Default unfinished campaign is PQ-050. Run
+The fleet remaster campaign is PQ-050 (its packet owns its law). Run
 `node scripts/program-dispatch.mjs --id PQ-050`, take the first claimable ship, follow
 ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md.
-Each ship: at least five full-job cycles; three valid chase-camera stills per cycle
+Each ship: follow design/program/roadmap/active/PQ-050.md (its cycle and review law).
 (play_chase D=144, play_chase_abeam, play_chase_close D=58 from
-tools/blender/spaceface_chase_camera.py); three subagent reviews that list every
+tools/blender/spaceface_chase_camera.py); reviews as PQ-050.md prescribes.
 obvious defect at play size; implement all revises that read on the chase camera;
 then do the whole ship again. Zoomed gray plates, studio three-quarters, and seats
 do not count. Clean up old stills before commit. Wire only that ship, then the next.
