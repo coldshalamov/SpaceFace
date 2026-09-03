@@ -3,7 +3,7 @@ packetId: PQ-173
 leafId: PQ-173.01
 acceptance: focused_green
 disposition: PASS
-candidateCommit: PENDING-INTEGRATION
+candidateCommit: b4401771066cfd60165419f36be48e07e4756930
 -->
 
 # PQ-173.01 — The measurer: every §B bar and the fun metrics, printed, with a before/after diff
@@ -11,7 +11,7 @@ candidateCommit: PENDING-INTEGRATION
 ```yaml
 packet: PQ-173
 dispatchUnit: PQ-173.01
-candidateCommit: PENDING-INTEGRATION
+candidateCommit: b4401771066cfd60165419f36be48e07e4756930
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
 disposition: PASS
