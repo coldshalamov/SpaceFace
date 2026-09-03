@@ -6565,10 +6565,11 @@ export const traffic = {
     if (!live) return null;
     // The strike opens the seam's primary window; a calving that actually reached its calve phase
     // re-arms the window as the catalog's fresh-face aftermath ("fresh faces are visibly brighter
-    // ore") once the prior window has resolved. An interrupted calving never visibly happened, so
-    // it opens nothing — exactly the seeded/not-seeded distinction the chain ledger already keeps.
+    // ore") once the prior window has resolved. Keyed on phaseSeeded — the natural seed-at-phase
+    // flag — because the completion path force-sets `seeded` on interrupts, and an aborted calving
+    // never visibly happened, so it must open nothing.
     const isStrike = live.eventId === 'ev_rich_seam_strike';
-    const isCalving = live.eventId === 'ev_rock_calving' && live.seeded === true;
+    const isCalving = live.eventId === 'ev_rock_calving' && live.phaseSeeded === true;
     if (!isStrike && !isCalving) return null;
     const cycle = this._ceresCausal && this._ceresCausal.cycle || 0;
     const rec = openRichSeamOpportunity(this.state, {
@@ -6810,6 +6811,10 @@ export const traffic = {
     if (!def || !live || live.seeded || !this._ceresCausal) return;
     if (live.phase !== def.seedAtPhase) return;
     live.seeded = true;
+    // Marks the NATURAL seed-at-phase path (vs _completeCeresCausalEvent's anti-softlock forced
+    // seed, which fakes seeded on interrupts). The calving's fresh-face re-arm keys on this flag:
+    // only a calving that actually reached its calve phase may re-arm the seam window.
+    live.phaseSeeded = true;
     this._plantCeresCausalSeeds(def);
     this._openCeresRichSeamOpportunity(live);
     this._applyCeresCausalPhaseEffects(def, live, live.phase);

@@ -804,10 +804,10 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.equal(strikeWindow.sourceEventId, 'ev_rich_seam_strike');
 
   // A calving that reached its calve phase cannot preempt the live strike window...
-  const preempt = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: true });
+  const preempt = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: true });
   assert.equal(preempt.opportunityId, strikeWindow.opportunityId);
   // ...and an interrupted calving (calve phase never reached) opens nothing at all.
-  assert.equal(traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: false }), null);
+  assert.equal(traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: false }), null);
   assert.equal(richSeamOpportunityForEntity(state, asteroid).opportunityId, strikeWindow.opportunityId);
 
   // Work the strike window through the extraction owner; the calved fresh face then re-arms it.
@@ -816,7 +816,7 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
   assert.equal(work.applied, true);
   assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
-  const rearmed = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', seeded: true });
+  const rearmed = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: true });
   assert.ok(rearmed, 'the seeded calving re-arms the resolved seam window');
   assert.equal(rearmed.state, 'open');
   assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
@@ -826,6 +826,40 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.equal(readout.state, 'open');
   assert.equal(readout.opportunityId, rearmed.opportunityId);
   void miner;
+});
+
+test('calving interrupted before its calve phase opens no fresh-face window', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepTo(traffic, state, 24); // strike seeded
+  const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
+  assert.equal(work.applied, true);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
+
+  // Drive the PRODUCTION interrupt path: start the real calving link, then terminally destroy its
+  // only bound actor during groan — before seedAtPhase 'calve' — and let the chain fall back.
+  const calvingDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_rock_calving');
+  assert.ok(calvingDef);
+  const live = traffic._startCeresCausalEvent(calvingDef, state.simTime);
+  assert.ok(live);
+  assert.equal(live.phase, 'groan');
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  miner.alive = false;
+  state.world.records.byId[miner.data.worldRecordId] = {
+    recordId: miner.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  stepTo(traffic, state, state.simTime + 2);
+  // The completion path force-sets live.seeded for anti-softlock; the fresh-face gate must still
+  // hold: a rock that never split does not light a RICH SEAM window.
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(snap.completed.includes('ev_rock_calving'), 'interrupted calving leaves the cycle');
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked',
+    'no phantom fresh-face window after an interrupted calving');
 });
 
 test('explicit HELP reserves the seam for the NPC owner and changes the resolved lot', () => {
