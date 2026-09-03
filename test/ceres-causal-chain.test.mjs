@@ -484,17 +484,18 @@ test('full chain reaches a believable terminal outcome after authored miner work
   assert.equal(seedKinds.some((r) => r.seeds && r.seeds.aftermath_open === true), false,
     'the repaired miner does not open aftermath');
 
-  // The calving coda ran its authored environmental phases on the shared cue vocabulary.
-  for (const [phase, cue] of [
-    ['groan', 'blind_cone'],
-    ['calve', 'breaking_the_pattern'],
-    ['drift', 'stacking'],
+  // The calving coda ran its authored environmental phases on the shared cue vocabulary. The
+  // groan (phase 0) reaches the bus only as event_start — phase receipts fire on transitions —
+  // which the audio family keys on; this pins that contract from the emitter side.
+  for (const [phase, cue, kind] of [
+    ['groan', 'blind_cone', 'event_start'],
+    ['calve', 'breaking_the_pattern', 'phase'],
+    ['drift', 'stacking', 'phase'],
   ]) {
     assert.ok(
-      receipts.some((r) => r.eventId === 'ev_rock_calving'
-        && (r.kind === 'phase' || r.kind === 'event_start')
+      receipts.some((r) => r.eventId === 'ev_rock_calving' && r.kind === kind
         && r.phase === phase && r.cue === cue),
-      `missing calving phase receipt ${phase}/${cue}`,
+      `missing calving ${kind} receipt ${phase}/${cue}`,
     );
   }
 });

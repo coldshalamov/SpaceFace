@@ -1498,25 +1498,26 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.18 },
     filterType: 'bandpass', filterFreq: 900, filterQ: 1.5,
   },
-  // The seam rock announcing itself before it splits — a slow, deep flex, not a weapon sound.
+  // The seam rock announcing itself before it splits — a slow, deep flex with enough harmonic
+  // content (triangle, not sine) to survive small speakers. Not a weapon sound.
   {
     id: 'sfx_ambient_rock_groan',
     category: 'ambient',
     type: 'oscillator',
-    wave: 'sine',
+    wave: 'triangle',
     baseFreq: 46, freqSweep: [38, 52], sweepTimeS: 1.6,
     gainEnvelope: { attack: 0.45, sustain: 0.9, release: 1.1 },
-    filterType: 'lowpass', filterFreq: 180, filterQ: 0.9,
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
     lfoRate: 2.2, lfoDepth: 0.14,
   },
-  // The split itself: a broadband crack with a long low tail — mass parting, not an explosion.
+  // The split: a muffled band-limited crack with a short tail — mass parting, not an explosion.
+  // (The synth has one shared white-noise buffer; noiseColor is not consumed, so it stays off.)
   {
     id: 'sfx_ambient_rock_calve',
     category: 'ambient',
     type: 'noise_burst',
-    noiseColor: 'pink',
-    gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.9 },
-    filterType: 'lowpass', filterFreq: 320, filterQ: 1.0,
+    gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.6 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 0.9,
   },
 ];
 

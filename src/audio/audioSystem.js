@@ -2007,11 +2007,13 @@ export const audio = {
     this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
   },
 
-  // The rock calving's two audible beats, keyed off the chain's own phase receipts. One family:
-  // groan (the seam flexing before the split) and calve (the split). Everything else the chain
-  // emits stays on the lamp/text channels.
+  // The rock calving's two audible beats, keyed off the chain's own receipts. One family: groan
+  // (the seam flexing before the split) and calve (the split). The chain announces phase 0 through
+  // the event_start receipt and later phases through phase transitions, so both kinds map here.
+  // Everything else the chain emits stays on the lamp/text channels.
   _onCeresCausalChain(p) {
-    if (!p || p.schema !== 'spaceface.ceresCausalChain.v1' || p.kind !== 'phase') return;
+    if (!p || p.schema !== 'spaceface.ceresCausalChain.v1') return;
+    if (p.kind !== 'event_start' && p.kind !== 'phase') return;
     if (p.eventId !== 'ev_rock_calving') return;
     const recipeId = p.phase === 'groan' ? 'sfx_ambient_rock_groan'
       : p.phase === 'calve' ? 'sfx_ambient_rock_calve'

@@ -10,10 +10,14 @@ import { audio } from '../src/audio/audioSystem.js';
 
 const CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
 
+// Pins the REAL emitter contract from traffic._emitCeresCausalReceipt: phase 0 (groan) reaches the
+// bus only as kind 'event_start' (phase receipts fire on transitions, and index 0 has no
+// transition); calve/drift arrive as kind 'phase'. Building a kind:'phase' + groan payload here
+// would characterize a shape the bus never sends.
 function calvingReceipt(phase, actorSlotIds = ['ceres_seam_miner']) {
   return {
     schema: CHAIN_SCHEMA,
-    kind: 'phase',
+    kind: phase === 'groan' ? 'event_start' : 'phase',
     eventId: 'ev_rock_calving',
     phase,
     cue: phase === 'groan' ? 'blind_cone' : phase === 'calve' ? 'breaking_the_pattern' : 'stacking',
@@ -57,12 +61,13 @@ test('groan and calve phases play their own beat at the bound actor position', (
   assert.equal(played[1].opts.gain, 1);
 });
 
-test('non-calving chain traffic, non-phase receipts, and missing actors stay silent', () => {
+test('non-calving chain traffic, wrong-kind receipts, and missing actors stay silent', () => {
   const played = [];
   const host = hostWith({ entityList: CAST.slice() }, played);
   // Other events ride lamp/text channels only.
   host._onCeresCausalChain({ ...calvingReceipt('calve'), eventId: 'ev_rich_seam_strike' });
   host._onCeresCausalChain({ ...calvingReceipt('calve'), kind: 'seed' });
+  host._onCeresCausalChain({ ...calvingReceipt('calve'), kind: 'event_complete' });
   host._onCeresCausalChain({ ...calvingReceipt('calve'), schema: 'other.v1' });
   host._onCeresCausalChain({ ...calvingReceipt('calve'), phase: 'drift' });
   host._onCeresCausalChain(calvingReceipt('groan', []));
