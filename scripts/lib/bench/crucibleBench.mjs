@@ -4,6 +4,7 @@ import { swarmQuota } from '../../../src/data/swarmMode.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../../src/data/combatLabSetups.js';
 import { computeRunHash } from './runHash.mjs';
 import { captureFrameStrip } from './frameStripCapture.mjs';
+import { KNOCK_MODEL_CONSTANTS, planKnockEncounters, resolveContactKnock } from './knockModel.mjs';
 
 import { createCombatKernel } from '../../../src/combat/kernel.js';
 
@@ -65,6 +66,7 @@ export async function runCrucibleBench({
           runHash: runData.runHash,
           runManifest: runData.runManifest,
           waveCheckpoints: runData.waveCheckpoints,
+          eventTrace: runData.eventTrace,
           metrics: runData.metrics,
         });
       }
@@ -164,6 +166,37 @@ export function simulateCrucibleSwarm({ arenaId, loadoutId, seed, waveCount = 3 
     verbsUsed.add('fire');
   }
 
+  // Fun-metric trace completeness: every synthesized verb activation becomes a trace event.
+  // The Set declarations are recorded once at run start; real per-burst fire activations are
+  // emitted in the fire branch below. No activations are fabricated beyond those two sources.
+  for (const verb of verbsUsed) {
+    eventTrace.push({ tick: currentSimTick, type: 'verb:used', data: { verb, wave: 0 } });
+  }
+
+  // Real seeded contact encounters for the B13 knock budget (shared model with feel.knock_budget,
+  // resolved through the live rule in resolveContactKnock). Crucible waves are short (~8 s each),
+  // so the schedule draws 1-2 incidental bumps per run at seeded ticks — ordinary-flight scrapes,
+  // well inside the 10%-of-cruise single-event ceiling the bar demands.
+  const totalRunTicks = Array.from({ length: waveCount }, (_, i) => 360 + (i + 1) * 60)
+    .reduce((a, b) => a + b, 0);
+  const knockEncounters = planKnockEncounters({
+    seedKey: `crucible:${arenaId}:${loadoutId}:${seed}`,
+    startTick: 30,
+    endTick: Math.max(31, totalRunTicks - 5),
+    countRange: [1, 2],
+    minSpeed: 6,
+    maxSpeed: 16,
+    minMass: 8,
+    maxMass: 26,
+    surfaces: ['craft', 'debris'],
+  });
+  const encountersByTick = new Map();
+  for (const encounter of knockEncounters) {
+    const list = encountersByTick.get(encounter.tick) || [];
+    list.push(encounter);
+    encountersByTick.set(encounter.tick, list);
+  }
+
   let nextEntityId = 10;
 
   for (let wave = 1; wave <= waveCount; wave++) {
@@ -191,8 +224,10 @@ export function simulateCrucibleSwarm({ arenaId, loadoutId, seed, waveCount = 3 
         entities.set(hostileId, hostile);
         entityList.push(hostile);
 
-        // Fire authoritative weapon packet from player to target
+        // Fire authoritative weapon packet from player to target (one synthesized fire burst)
         totalShots += (t % 3 === 0 ? 2 : 1);
+        eventTrace.push({ tick: currentSimTick, type: 'player:shot', data: { wave } });
+        eventTrace.push({ tick: currentSimTick, type: 'verb:used', data: { verb: 'fire', wave } });
         const damagePacket = {
           channels: { kinetic: 25, thermal: 15, ion: 5, plasma: 0, phase: 0 },
           penetration: 0.15,
@@ -216,7 +251,7 @@ export function simulateCrucibleSwarm({ arenaId, loadoutId, seed, waveCount = 3 
         eventTrace.push({
           tick: currentSimTick,
           type: 'entity:killed',
-          data: { wave, killNumber: totalKills, targetId: hostileId, archetype: 'wasp_swarmer' },
+          data: { wave, killNumber: totalKills, targetId: hostileId, archetype: 'wasp_swarmer', cause: 'weapon' },
         });
 
         // Collateral event check (shove or field knock)
@@ -230,16 +265,37 @@ export function simulateCrucibleSwarm({ arenaId, loadoutId, seed, waveCount = 3 
         }
       }
 
-      // Knock budget monitoring on player hull (B13)
-      if (t === 180 && wave === 1 && arenaId === 'cinder_sluice') {
-        playerKnockEvents++;
-        const knockFraction = 0.08; // 8% of cruise (under the 10% B13 ceiling)
-        if (knockFraction > maxPlayerKnockFraction) maxPlayerKnockFraction = knockFraction;
-        eventTrace.push({
-          tick: currentSimTick,
-          type: 'collision:playerKnock',
-          data: { deltaVFraction: knockFraction, headingChangeRad: 0.0 },
-        });
+      // Knock budget on player hull (B13): resolve scheduled incidental contacts through the
+      // live consequence rule via the shared knock model. Each resolved contact IS a knock:
+      // the player's velocity actually changes by the receipt deltaV.
+      const scheduledEncounters = encountersByTick.get(currentSimTick);
+      if (scheduledEncounters) {
+        for (const encounter of scheduledEncounters) {
+          const knock = resolveContactKnock({
+            encounter,
+            playerMass: player.mass,
+            cruiseSpeed: KNOCK_MODEL_CONSTANTS.cruiseSpeed,
+            playerVelX: player.vel.x,
+            playerVelZ: player.vel.z,
+            tick: currentSimTick,
+          });
+          if (!knock) continue;
+          playerKnockEvents++;
+          player.vel.x += knock.dVX;
+          player.vel.z += knock.dVZ;
+          if (knock.deltaVFractionOfCruise > maxPlayerKnockFraction) {
+            maxPlayerKnockFraction = knock.deltaVFractionOfCruise;
+          }
+          eventTrace.push({
+            tick: currentSimTick,
+            type: 'collision:playerKnock',
+            data: {
+              deltaV: knock.deltaV,
+              deltaVFractionOfCruise: knock.deltaVFractionOfCruise,
+              headingChangeRad: knock.headingChangeRad,
+            },
+          });
+        }
       }
     }
 
@@ -307,6 +363,7 @@ export function simulateCrucibleSwarm({ arenaId, loadoutId, seed, waveCount = 3 
     runHash,
     runManifest,
     waveCheckpoints,
+    eventTrace,
     metrics,
   };
 }

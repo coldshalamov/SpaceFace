@@ -65,13 +65,13 @@ test('runFlightBench executes all 4 motion lab scenarios and hashes identically'
   }
 });
 
-test('runVerbBench executes all 6 verb scenarios and hashes identically', async () => {
+test('runVerbBench executes all 7 verb scenarios and hashes identically', async () => {
   const result1 = await runVerbBench({ seeds: [4242] });
   const result2 = await runVerbBench({ seeds: [4242] });
 
   assert.equal(result1.ok, true);
   assert.equal(result2.ok, true);
-  assert.equal(result1.runs.length, 6);
+  assert.equal(result1.runs.length, 7);
 
   for (let i = 0; i < result1.runs.length; i++) {
     const r1 = result1.runs[i];
@@ -79,4 +79,87 @@ test('runVerbBench executes all 6 verb scenarios and hashes identically', async 
     assert.equal(r1.runHash, r2.runHash, `${r1.scenarioId} must produce identical hash on repeat`);
     assert.deepEqual(r1.metrics, r2.metrics, `${r1.scenarioId} metrics must match`);
   }
+});
+
+test('feel.knock_budget is deterministic: metrics deepEqual and identical runHash across repeats', async () => {
+  const result1 = await runVerbBench({ seeds: [4242], scenarioIds: ['feel.knock_budget'] });
+  const result2 = await runVerbBench({ seeds: [4242], scenarioIds: ['feel.knock_budget'] });
+
+  assert.equal(result1.ok, true);
+  assert.equal(result2.ok, true);
+  assert.equal(result1.runs.length, 1);
+  assert.equal(result1.runs[0].scenarioId, 'feel.knock_budget');
+  assert.equal(result1.runs[0].runHash.length, 64, 'Run hash must be 64-character hex SHA-256');
+  assert.deepEqual(result1.runs[0].metrics, result2.runs[0].metrics, 'Knock metrics must match on repeat');
+  assert.equal(
+    result1.runs[0].runHash,
+    result2.runs[0].runHash,
+    'Knock scenario must hash identically on repeat (computeRunHash over identical trace+metrics)',
+  );
+});
+
+test('feel.knock_budget metrics are finite, non-negative, and barMet matches the B13 threshold formula', async () => {
+  const result = await runVerbBench({ seeds: [4242], scenarioIds: ['feel.knock_budget'] });
+  const m = result.runs[0].metrics;
+
+  for (const key of [
+    'cruiseSpeed',
+    'playerMass',
+    'simSeconds',
+    'contactEncounters',
+    'knockEventsPerMinute',
+    'maxKnockDeltaVFractionOfCruise',
+    'headingChangeEvents',
+  ]) {
+    assert.equal(typeof m[key], 'number', `${key} must be a number`);
+    assert.ok(Number.isFinite(m[key]), `${key} must be a finite number`);
+  }
+  assert.equal(m.simSeconds, 600);
+  assert.ok(m.knockEventsPerMinute >= 0, 'knockEventsPerMinute must be >= 0');
+  assert.ok(m.maxKnockDeltaVFractionOfCruise >= 0, 'maxKnockDeltaVFractionOfCruise must be >= 0');
+  assert.ok(m.headingChangeEvents >= 0, 'headingChangeEvents must be >= 0');
+  assert.equal(typeof m.barMet, 'boolean', 'barMet must be a boolean');
+  assert.equal(
+    m.barMet,
+    m.knockEventsPerMinute <= 2 && m.maxKnockDeltaVFractionOfCruise <= 0.10 && m.headingChangeEvents === 0,
+    'barMet must equal the pinned B13 threshold formula',
+  );
+});
+
+test('simulateCrucibleSwarm exposes eventTrace with weapon kill causes, real knock events, and traced player actions', () => {
+  let knockEventsSeen = 0;
+  let firstKnock = null;
+  for (const arena of CRUCIBLE_ARENAS) {
+    for (const loadout of CRUCIBLE_LOADOUTS) {
+      const run = simulateCrucibleSwarm({ arenaId: arena.id, loadoutId: loadout.id, seed: 4242, waveCount: 3 });
+
+      assert.ok(Array.isArray(run.eventTrace), `${arena.id}/${loadout.id} run must expose an eventTrace array`);
+      assert.ok(run.eventTrace.length > 0, 'eventTrace must not be empty');
+      assert.ok(
+        run.eventTrace.some((e) => e.type === 'player:shot'),
+        'fire bursts must be traced as player:shot events',
+      );
+      assert.ok(
+        run.eventTrace.some((e) => e.type === 'verb:used'),
+        'verb activations must be traced as verb:used events',
+      );
+
+      for (const event of run.eventTrace) {
+        if (event.type === 'entity:killed') {
+          assert.equal(event.data.cause, 'weapon', 'routed bench fire kills must carry data.cause weapon');
+        }
+      }
+
+      const knocks = run.eventTrace.filter((e) => e.type === 'collision:playerKnock');
+      knockEventsSeen += knocks.length;
+      if (!firstKnock && knocks.length > 0) firstKnock = knocks[0];
+    }
+  }
+
+  assert.ok(knockEventsSeen > 0, 'at least one collision:playerKnock across the default arena sweep');
+  assert.ok(firstKnock, 'a knock event must be available for shape checks');
+  assert.ok(Object.hasOwn(firstKnock.data, 'deltaVFractionOfCruise'), 'knock data must carry deltaVFractionOfCruise');
+  assert.ok(Object.hasOwn(firstKnock.data, 'headingChangeRad'), 'knock data must carry headingChangeRad');
+  assert.equal(typeof firstKnock.data.deltaVFractionOfCruise, 'number');
+  assert.equal(typeof firstKnock.data.headingChangeRad, 'number');
 });

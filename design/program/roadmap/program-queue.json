@@ -14853,7 +14853,7 @@
       "priority": 34,
       "title": "The measurer",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "fun-loop"
@@ -14869,7 +14869,9 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/fun-loop/PQ-173-01-REPORT.md"
+      ],
       "brief": "Prints every reachable FEEL_CONTRACT bar and the fun metrics per run as JSON + Markdown; a before/after diff mode compares two runs on the same seeds. DONE WHEN: Every §B bar the bench can reach appears with a number; the knock budget on the player is measured."
     },
     {
