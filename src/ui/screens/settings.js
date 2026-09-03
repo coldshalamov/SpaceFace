@@ -54,6 +54,7 @@ function injectStyle() {
     box-shadow:0 0 14px rgba(78,195,230,.6) !important;
     animation:sf-bind-pulse 0.9s ease-in-out infinite alternate !important;
   }
+  .sf-bind-btn--digit { font-family:var(--mf-ui, inherit) !important; letter-spacing:.02em !important; }
   @keyframes sf-bind-pulse { 0%{opacity:1; transform:scale(1);} 100%{opacity:.75; transform:scale(0.98);} }
   `;
   document.head.appendChild(s);
@@ -547,7 +548,10 @@ export const settingsScreen = {
       const btn = el('button', 'sf-btn sf-bind-btn');
       btn.style.minWidth = '120px';
       const codes = live[action] || [];
-      btn.textContent = codes.map(humanizeCode).join(' / ') || '—';
+      const keyText = codes.map(humanizeCode).join(' / ') || '—';
+      // A bare digit in the mono face reads as "Θ" at this size; use the UI face for digit keys.
+      if (/^\d$/.test(keyText)) btn.classList.add('sf-bind-btn--digit');
+      btn.textContent = keyText;
       btn.addEventListener('click', () => this._capture(ctx, btn, action, live, grid, base));
       grid.appendChild(label);
       grid.appendChild(btn);

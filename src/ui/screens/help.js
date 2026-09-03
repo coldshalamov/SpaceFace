@@ -340,7 +340,11 @@ export const helpScreen = {
       this._body.appendChild(el('h2', null, heading));
       const grid = el('div', 'sf-grid2');
       rows.forEach(([label, action, def]) => {
-        grid.appendChild(el('div', 'k', keyLabel(binds, action, def)));
+        const keyText = keyLabel(binds, action, def);
+        // A bare digit in the mono face reads as "Θ" at 12px (slashed zero); render digit keys
+        // in the UI face so "0" stays a zero.
+        const keyCls = 'k' + (/^\d$/.test(keyText) ? ' k--digit' : '');
+        grid.appendChild(el('div', keyCls, keyText));
         grid.appendChild(el('div', 'v', label));
       });
       this._body.appendChild(grid);

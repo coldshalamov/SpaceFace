@@ -55,6 +55,10 @@ function injectStyle() {
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
   .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
+  /* The stage must be the scroller: as a plain flex child it shrank to the leftover space and its
+     overflow painted UNDER the apron, so the launch bar sliced the scenario cards mid-row and the
+     fine-tune section below the tiles was unreachable. */
+  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
   .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
   .sf-sandbox.sf-menu h1 {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;

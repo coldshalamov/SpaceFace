@@ -479,6 +479,8 @@
   font-size: 13px;
 }
 .screen.sf-menu .sf-grid2 .k { color: var(--accent-2); font-family: var(--mono); letter-spacing: .05em; font-size: 12px; }
+/* Bare digit keys: the mono face's slashed zero reads as "Θ" at 12px. */
+.screen.sf-menu .sf-grid2 .k--digit { font-family: var(--mf-ui, inherit); letter-spacing: .02em; }
 .screen.sf-menu .sf-grid2 .v { color: var(--ink); }
 .screen.sf-menu .sf-foot {
   display: flex;

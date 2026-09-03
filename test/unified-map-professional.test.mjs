@@ -159,6 +159,22 @@ test('label anchors quantize tiny movement and radar goal plates stay inside sup
   }
 });
 
+test('a goal label whose default offset is occupied takes the least-colliding offset, not the first', () => {
+  // Objective anchored at (240, 240); a reserved band covers every candidate offset EXCEPT the
+  // far-below slot (top = 240 + 19 + 17 + 3 = 279). The fallback used to pin the first (right)
+  // rect straight into the band; it must now route to the one free offset and stay visible.
+  const placements = layoutMapLabels(
+    [{ id: 'goal', kind: 'objective', objective: true, text: 'GOAL · SAMPLE', x: 240, y: 240, width: 96, height: 17, anchorRadius: 16 }],
+    { width: 480, height: 360 },
+    { reserved: [{ x: 0, y: 0, width: 480, height: 270 }] },
+  );
+  const goal = placements.find((entry) => entry.id === 'goal');
+  assert.equal(goal.visible, true, 'the goal label is never suppressed');
+  assert.equal(goal.y, 279, 'the goal label takes the only free offset (far below)');
+  assert.equal(overlaps(goal, { x: 0, y: 0, width: 480, height: 270 }), false,
+    'the goal label clears the occupied band instead of overlapping it');
+});
+
 test('inspector target persists across scale changes and refreshes', () => {
   const selected = { id: 'station_helios', kind: 'station', name: 'Helios' };
   galaxyMapScreen._selectedTarget = selected;

@@ -404,12 +404,27 @@ export function layoutMapLabels(candidates, viewport, options = {}) {
       break;
     }
     if (!placed && candidate.objective === true) {
-      const fallback = candidateLabelRects(candidate, width, height, collisionGap)[0];
-      placed = {
-        ...fallback,
-        x: Math.max(padding, Math.min(fallback.x, viewportWidth - padding - width)),
-        y: Math.max(padding, Math.min(fallback.y, viewportHeight - padding - height)),
-      };
+      // A goal label must stay visible, but "visible" used to mean "pinned to the first offset
+      // even when that rect sits on another label or marker". Score every candidate offset and
+      // take the least-colliding one; the stable sort keeps the classic right-side placement on
+      // ties, so uncluttered charts render exactly as before.
+      const proposals = candidateLabelRects(candidate, width, height, collisionGap).map((proposed) => {
+        const rect = {
+          ...proposed,
+          x: Math.max(padding, Math.min(proposed.x, viewportWidth - padding - width)),
+          y: Math.max(padding, Math.min(proposed.y, viewportHeight - padding - height)),
+        };
+        let score = 0;
+        for (const box of occupied) {
+          if (rectsOverlap(rect, box, collisionGap)) score += 1;
+        }
+        for (const box of blockers) {
+          if (rectsOverlap(rect, box, 1)) score += 1;
+        }
+        return { rect, score };
+      });
+      proposals.sort((a, b) => a.score - b.score);
+      placed = proposals[0].rect;
     }
     if (!placed) {
       placements.push({ ...publicCandidate, visible: false, reason: 'collision' });
