@@ -195,6 +195,14 @@ export const survivalHud = {
       dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
     }
 
+    // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
+    // you vary the cause, so it belongs beside the score it is multiplying.
+    const styleMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
+    const showStyle = styleMult > 1.05;
+    dom.styleWord.hidden = !showStyle;
+    dom.styleFig.hidden = !showStyle;
+    if (showStyle) this._setText(dom.styleFig, `${styleMult.toFixed(1)}x`);
+
     this._setText(dom.score, num(run.score));
     this._setText(dom.credits, num(run.credits));
     this._setText(dom.level, `LV ${Math.max(1, run.level || 1)}`);
@@ -323,6 +331,20 @@ export const survivalHud = {
     const credits = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
     const level = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
 
+    // THE STYLE MULTIPLIER, ON GLASS.
+    //
+    // survivalStyle.js has always rewarded VARIETY of kill cause — a terrain kill, an explosive
+    // kill and a direct kill in a row score far better than three of the same — and the player
+    // could never see it. In a mode whose premise is that the arena is a weapon, the number that
+    // says "using the room is worth more" has to be visible or the loop never closes. It appears
+    // only while it is above 1x, so a plain fight is not carrying a permanent "1.0x" it has not
+    // earned. The word travels with the figure: colour is never the only channel.
+    const styleWord = make('span', 'sf-crun__word', figures);
+    styleWord.textContent = 'STYLE';
+    const styleFig = make('span', 'sf-crun__fig sf-crun__fig--goal', figures);
+    styleWord.hidden = true;
+    styleFig.hidden = true;
+
     const xpTrack = make('div', 'sf-crun__track sf-crun__track--xp', root);
     const xpFill = make('span', 'sf-crun__fill sf-crun__fill--you', xpTrack);
 
@@ -332,7 +354,7 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
-      score, credits, level, xpFill, earn,
+      score, credits, level, styleWord, styleFig, xpFill, earn,
     };
     return this._dom;
   },
@@ -367,6 +389,7 @@ export const survivalHud = {
   .sf-crun__fig { font-family:var(--sf-data-face); font-weight:500; font-size:13px;
     font-variant-numeric:tabular-nums; color:var(--sf-paper); }
   .sf-crun__fig--you { color:var(--sf-you); }
+  .sf-crun__fig--goal { color:var(--sf-goal, #e3a13d); }
   .sf-crun__earn { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--sf-you); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */

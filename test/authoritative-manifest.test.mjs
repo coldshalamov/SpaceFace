@@ -26,9 +26,9 @@ test('production init + update order lengths match the live browser baseline', (
   // 135 -> 142 and 101 -> 103: the Crucible (PQ-133) adds seven systems. Six are event-driven
   // owners that never tick (runSession-adjacent: survivalWave and survivalHud are the only two
   // that joined the update order), so the two figures move by different amounts on purpose.
-  // 142 -> 143: swarmArena (PQ-135) maintains the Crucible's debris field. It is event-driven on
-  // run:wavePlanned and never ticks, so only the init figure moves.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 143);
+  // 142 -> 144: swarmArena maintains the Crucible's debris field and swarmSupply drops its repair
+  // cells (PQ-135). Both are event-driven and never tick, so only the init figure moves.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 144);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 103);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
@@ -141,9 +141,9 @@ test('browser production system set is unchanged vs production manifest constant
   const state = createGameState(13);
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
-  // Full init list length and terminal platform systems preserved. 143 since PQ-135 added
-  // swarmArena, the Crucible debris field owner.
-  assert.equal(registry.systems.length, 143);
+  // Full init list length and terminal platform systems preserved. 144 since PQ-135 added
+  // swarmArena (the debris field) and swarmSupply (repair cells).
+  assert.equal(registry.systems.length, 144);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

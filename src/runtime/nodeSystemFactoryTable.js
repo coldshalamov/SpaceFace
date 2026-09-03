@@ -9,6 +9,8 @@ import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
+import { swarmArena } from '../systems/swarmArena.js';
+import { swarmSupply } from '../systems/swarmSupply.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -166,6 +168,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['survivalResults', survivalResults],
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
+    ['swarmArena', swarmArena],
+    ['swarmSupply', swarmSupply],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],

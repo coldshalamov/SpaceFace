@@ -208,9 +208,14 @@ export function swarmRosterFor(wave) {
   return SWARM_ROSTER.filter((entry) => w >= entry.fromWave);
 }
 
-/** The archetype that first becomes legal on exactly this wave, or null. Used for the wave banner. */
+/**
+ * The archetype that first becomes legal on exactly this wave, or null. Used for the wave banner.
+ * Wave 1 has no newcomer by definition — on the first wave everything is new, so calling the wasp
+ * out would be noise rather than a warning.
+ */
 export function swarmNewcomerFor(wave) {
   const w = swarmWaveOf(wave);
+  if (w <= 1) return null;
   return SWARM_ROSTER.find((entry) => entry.fromWave === w) || null;
 }
 
@@ -268,7 +273,9 @@ export function swarmRewards(wave) {
   const w = swarmWaveOf(wave);
   return {
     xp: 40 + w * 14,
-    credits: 8 + w * 4 + (isSwarmBossWave(w) ? 40 : 0),
+    // Priced off the QUOTA, not the wave number, so one body is worth a whole, legible 2 credits
+    // exactly as it is on the arc — the purse follows how much work the wave actually asks for.
+    credits: swarmQuota(w) * 2 + (isSwarmBossWave(w) ? 40 : 0),
   };
 }
 

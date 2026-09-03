@@ -39,7 +39,13 @@ export function chipValueForPlan(plan) {
   const rewards = plan && plan.rewards;
   const credits = rewards && Number.isInteger(rewards.credits) ? rewards.credits : 0;
   if (credits <= 0) return 0;
-  const bodies = peakConcurrentDemand(plan && plan.packages);
+  // A swarm wave's packages are only its OPENING burst; the bodies that actually die over the wave
+  // are its kill quota. Splitting the purse by the burst would pay two or three times the authored
+  // figure, so the swarm divides by the number the wave is really asking for.
+  const swarm = plan && plan.swarm;
+  const bodies = swarm && Number.isInteger(swarm.quota) && swarm.quota > 0
+    ? swarm.quota
+    : peakConcurrentDemand(plan && plan.packages);
   if (bodies <= 0) return credits;
   return Math.max(1, Math.round(credits / bodies));
 }
@@ -118,11 +124,22 @@ export const survivalRewards = {
     if (!run) return;
     const id = payload && payload.id;
     if (id == null) return;
-    if (payload.killerId !== this.state.playerId) return;
     const victim = this._entity(id);
     // The marker rides on the victim, so ambient traffic the player happens to shoot inside an
     // arena still settles through the campaign path and never pays the run.
     if (!runOwnsReward(victim)) return;
+    // THE ROOM'S KILLS PAY TOO.
+    //
+    // This used to require `killerId === playerId`, which quietly made the environment the WORST
+    // way to kill anything: a hostile that wandered into an arena mine, or that another hostile
+    // shot, or that the room's current put through a rock, dropped no chip, paid no XP and moved
+    // no score. A live browser walk found 7 of 113 kills in that hole. In a mode whose whole
+    // premise is that the arena is a weapon, "the wall got it, so you get nothing" is exactly
+    // backwards — and the style multiplier below is built to reward precisely those causes.
+    //
+    // Everything on the board is here because the run put it here, so everything on the board
+    // pays the run when it dies. `runOwnsReward` above is still the only gate: ambient traffic
+    // carries no cohort mark and is untouched.
     const level = this._levelOf(victim);
     const cause = styleCauseFromKill(payload);
     const style = run.style && typeof run.style === 'object'

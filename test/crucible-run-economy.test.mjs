@@ -163,9 +163,18 @@ test('a cohort kill pays run XP and score; a bystander kill inside the arena pay
   assert.equal(harness.state.run.xp, killXpFor(2), 'ambient traffic does not pay the run');
   assert.equal(harness.state.run.score, killScoreFor(2));
 
-  const npcOnNpc = spawnCohortEnemy(harness, { level: 2 });
-  killIt(harness, npcOnNpc, 999);
-  assert.equal(harness.state.run.xp, killXpFor(2), 'a kill the player did not make pays nothing');
+  // THE ROOM'S KILLS PAY (PQ-135). A cohort body that dies to an arena mine, to another hostile,
+  // or to the wall the player threw it into is still the run's body and still pays the run. The
+  // gate is the COHORT MARK, not who pulled the trigger — the bystander case above is what the
+  // marker exists to exclude, and it still pays nothing.
+  const xpBefore = harness.state.run.xp;
+  const roomKill = spawnCohortEnemy(harness, { level: 2 });
+  killIt(harness, roomKill, 999);
+  assert.equal(
+    harness.state.run.xp,
+    xpBefore + killXpFor(2),
+    'a kill the ROOM made still pays the run — the environment is a weapon, not a tax',
+  );
 });
 
 test('clearing a wave pays the authored XP purse for exactly that wave', () => {

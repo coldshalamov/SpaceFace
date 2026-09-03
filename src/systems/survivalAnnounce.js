@@ -165,6 +165,32 @@ export function waveOpeningLine(wave, plan) {
   const packages = packagesOf(plan);
   if (!Number.isInteger(wave) || wave < 1 || packages.length === 0) return null;
 
+  // A SWARM WAVE IS NOT A BODY COUNT.
+  //
+  // The arc's line names how many hostiles arrive, because on the arc that number is the whole
+  // wave. In a swarm wave the arrivals are only the opening burst — the room keeps refilling — so
+  // announcing "nine hostiles" would be a promise the wave immediately breaks. What the player
+  // actually needs is the number that ENDS the wave (the kill quota) and, on the wave that
+  // introduces one, the name of the silhouette they have not seen before.
+  const swarm = plan && plan.swarm;
+  if (swarm && Number.isInteger(swarm.quota) && swarm.quota > 0) {
+    const bearings = [];
+    for (const pkg of packages) {
+      const word = BEARING_WORD[pkg && pkg.gateGroup];
+      if (word && !bearings.includes(word)) bearings.push(word);
+    }
+    const where = joinBearings(bearings);
+    const arrival = where ? `Contact ${where}.` : 'Contact on every bearing.';
+    const newcomer = swarm.newcomer && swarm.newcomer.name ? swarm.newcomer.name : null;
+    if (swarm.boss) {
+      const lead = leadPackage(packages);
+      const bossName = lead ? displayName(lead.enemyId) : 'A capital hull';
+      return `Wave ${wave}. ${arrival} ${bossName} leads. Kill it and put down ${swarm.quota}.`;
+    }
+    const namecheck = newcomer ? ` ${newcomer} is new.` : '';
+    return `Wave ${wave}. ${arrival}${namecheck} Put down ${swarm.quota}.`;
+  }
+
   let bodies = 0;
   const bearings = [];
   for (const pkg of packages) {
