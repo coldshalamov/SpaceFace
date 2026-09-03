@@ -1124,6 +1124,7 @@ export const stationHub = {
    *
    *  Station OS layout (design/STATION_SHELL_CONTRACT.md — the Berth Ledger):
    *    top deck   — station identity · live vitals (credits/fuel/hull/hold) · Briefing (Meta) · Undock
+   *    arrival    — dock-moment local intel strip (news · berth traffic · paperwork), hidden when quiet
    *    berth      — Service Dock strip: live readiness badges, hover = quote, click = ACT
    *    handoff    — one dismissible first-dock strip (early game only)
    *    body       — nav rail | full-height tool workspace | Briefing drawer (collapsed by default)
@@ -1158,9 +1159,9 @@ export const stationHub = {
         'title="Open the station briefing: purpose, standing, and local advisories.">Briefing</button>' +
       '<button class="st-undock">⏏ UNDOCK</button>';
     screen.appendChild(topbar);
-    // ── Arrival strip: where you are and what to do next, one glance on dock. ──
-    // Sourced from the pure dock-arrival presenter (local news, berth traffic, paperwork advisories);
-    // it renders nothing when the station has nothing to say.
+    // ── Arrival strip: local intel at the dock moment — news, berth traffic, paperwork. ──
+    // Sourced from the pure dock-arrival presenter; it renders nothing when the station has
+    // nothing to say (the presenter's primary-action line is the rail's job, not this strip's).
     this._arrivalEl = document.createElement('div');
     this._arrivalEl.className = 'st-arrival';
     this._arrivalEl.hidden = true;

@@ -255,6 +255,8 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'patrol_scan.ran':         'SCAN REFUSED — Concord flagged your transponder.',
   'ambush_snare.cleared':    'AMBUSH BROKEN — Reach pack destroyed.',
   'ambush_snare.escaped':    'AMBUSH EVADED — they wait for slower prey.',
+  'scavengers_fresh_wreck.cleared': 'WRECK RECLAIMED — the scavenger party scattered for good.',
+  'scavengers_fresh_wreck.escaped': 'SCAVENGERS SLIP AWAY — the wreck stays theirs for now.',
   'distress_call.rescued':   'RESCUE COMPLETE — {faction} remembers. {pay} cr.',
   'distress_call.lost':      'SIGNAL LOST — you were too late.',
   'distress_call.bait_broken':'BAIT BROKEN — Reach ambush undone.',
