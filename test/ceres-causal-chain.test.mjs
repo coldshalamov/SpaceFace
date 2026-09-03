@@ -810,21 +810,25 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.equal(traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: false }), null);
   assert.equal(richSeamOpportunityForEntity(state, asteroid).opportunityId, strikeWindow.opportunityId);
 
-  // Work the strike window through the extraction owner; the calved fresh face then re-arms it.
+  // Work the strike window through the extraction owner; the calved fresh face then re-arms it —
+  // via the PRODUCTION completion path (the calve seed was refused while the window was live, so
+  // completion retries the opener once).
   const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
   const miner = state.entities.get(minerRec.id);
   const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
   assert.equal(work.applied, true);
   assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
-  const rearmed = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: true });
-  assert.ok(rearmed, 'the seeded calving re-arms the resolved seam window');
-  assert.equal(rearmed.state, 'open');
+  traffic._completeCeresCausalEvent({
+    eventId: 'ev_rock_calving',
+    seeded: true,
+    phaseSeeded: true,
+    actorSlotIds: ['ceres_seam_miner'],
+  }, 'complete');
+  const rearmed = richSeamOpportunityForEntity(state, asteroid);
+  assert.ok(rearmed.state === 'open', 'completion retries the refused fresh-face open');
   assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
   assert.equal(rearmed.attempt, 1);
   assert.equal(rearmed.bonusU, 8);
-  const readout = richSeamOpportunityForEntity(state, asteroid);
-  assert.equal(readout.state, 'open');
-  assert.equal(readout.opportunityId, rearmed.opportunityId);
   void miner;
 });
 

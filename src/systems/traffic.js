@@ -6838,6 +6838,12 @@ export const traffic = {
         seeded: Array.isArray(seeded) ? seeded.slice() : [],
         forced: outcome !== 'complete',
       });
+    } else if (live.phaseSeeded === true && live.eventId === 'ev_rock_calving') {
+      // Single-shot loss edge: if the strike window was still live at the calve seed, the fresh-face
+      // open was refused and latched off above. Retry once at completion — the opener is a no-op
+      // while any window is live, so this fires only when the prior window has since resolved.
+      // A calving interrupted AFTER its calve phase also qualifies: the rock did split.
+      this._openCeresRichSeamOpportunity(live);
     }
     this._restoreCeresCausalJobs(live);
     this._stampCeresCausalCue(live, false);
