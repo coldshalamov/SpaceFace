@@ -14826,7 +14826,7 @@
       "priority": 33,
       "title": "The bench",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "fun-loop"
@@ -14842,7 +14842,9 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/fun-loop/PQ-173-00-REPORT.md"
+      ],
       "brief": "One command runs the Crucible feel bench (swarm ruleset, three arenas × three loadouts incl. the shove weapon and the rope kit, first three waves, three fixed seeds each), the flight bench and the verb benches, headless; a --headed flag records frame strips at the shipping camera with HUD text off. DONE WHEN: Two runs of the same seed hash identical; strips land under receipts/fun-loop/."
     },
     {

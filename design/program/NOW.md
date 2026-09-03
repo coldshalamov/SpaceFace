@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-03
-baseCommit: 28409eebbc9654fef3678af9dff6baacaf11a4a4
+baseCommit: 5da21918461940f0a69962d04533bf4b649ca249
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -42,7 +42,6 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | HARDENING: async render asset teardown | codex-root/render-async-disposal | MUTATING 2026-09-03 | `src/render/pipelineReadiness.js`, `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/render/assetResidency.js`, `test/render-async-disposal.test.mjs` | cancellation/re-init lifecycle tests green → controller review → commit → delete row |
-| PUBLISHING: PQ-133.02 ten-wave shell completion | pq133-02-shell | PUBLISHING 2026-09-03 | commit + push, then delete this row |
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
 not active leases and do not prevent other tasks from proceeding.
 

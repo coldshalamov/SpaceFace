@@ -1,0 +1,73 @@
+{
+  "schema": "spaceface.frameStripManifest.v1",
+  "bench": "crucible",
+  "scenarioId": "lagrange_crucible-massline_rig",
+  "seed": 4242,
+  "camera": "shipping_chase",
+  "hudText": "off",
+  "cadenceFps": 4,
+  "framesCount": 12,
+  "capturedAt": "2026-09-03T16:34:46.284Z",
+  "frames": [
+    {
+      "index": 0,
+      "timestampS": "0.00",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_000.png"
+    },
+    {
+      "index": 1,
+      "timestampS": "0.25",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_001.png"
+    },
+    {
+      "index": 2,
+      "timestampS": "0.50",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_002.png"
+    },
+    {
+      "index": 3,
+      "timestampS": "0.75",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_003.png"
+    },
+    {
+      "index": 4,
+      "timestampS": "1.00",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_004.png"
+    },
+    {
+      "index": 5,
+      "timestampS": "1.25",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_005.png"
+    },
+    {
+      "index": 6,
+      "timestampS": "1.50",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_006.png"
+    },
+    {
+      "index": 7,
+      "timestampS": "1.75",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_007.png"
+    },
+    {
+      "index": 8,
+      "timestampS": "2.00",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_008.png"
+    },
+    {
+      "index": 9,
+      "timestampS": "2.25",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_009.png"
+    },
+    {
+      "index": 10,
+      "timestampS": "2.50",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_010.png"
+    },
+    {
+      "index": 11,
+      "timestampS": "2.75",
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\strips\\crucible\\lagrange_crucible-massline_rig-s4242\\frame_011.png"
+    }
+  ]
+}
