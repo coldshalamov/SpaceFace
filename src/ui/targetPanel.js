@@ -132,11 +132,14 @@ export function richSeamTargetReadout(target, state) {
     const opportunity = richSeamOpportunityForEntity(state, target);
     if (!opportunity) return null;
     if (opportunity.state === 'open') {
+      // A calved re-arm (attempt 1) names itself, so the player can tell why this window pays
+      // differently from the strike's.
+      const seamLabel = opportunity.attempt === 1 ? 'FRESH SEAM' : 'RICH SEAM';
       return Object.freeze({
         state: 'open',
         text: opportunity.reservationId
-          ? `RICH SEAM · NPC HELP LOCK · +${opportunity.bonusU}u`
-          : `RICH SEAM · +${opportunity.bonusU}u · HOT CUT`,
+          ? `${seamLabel} · NPC HELP LOCK · +${opportunity.bonusU}u`
+          : `${seamLabel} · +${opportunity.bonusU}u · HOT CUT`,
         opportunityId: opportunity.opportunityId,
       });
     }

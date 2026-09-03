@@ -6584,7 +6584,8 @@ export const traffic = {
       sourceCycle: cycle,
       attempt: isCalving ? 1 : 0,
       // The catalog's fresh faces are "visibly brighter ore": the calved window out-pays the
-      // strike's default bonus, and every readout/provenance consumer already renders bonusU.
+      // strike's default bonus through the same bonusU field the seam readouts already render
+      // (target panel names it FRESH SEAM; the Hold's lot row shows the seam bonus size).
       bonusU: isCalving ? CERES_CALVED_SEAM_BONUS_U : undefined,
       opportunityId: isCalving
         ? `rich-seam:f_ceres_1:${CERES_RICH_SEAM_OBJECT_SLOT_ID}:${cycle}:calved`

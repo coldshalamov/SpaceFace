@@ -841,6 +841,9 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
   assert.equal(rearmed.attempt, 1);
   assert.equal(rearmed.bonusU, 12, 'the calved fresh face out-pays the strike window (brighter ore)');
+  // The re-armed window names itself on the target readout so the richer pay is legible on sight.
+  const readout = richSeamTargetReadout(asteroid, state);
+  assert.equal(readout.text, 'FRESH SEAM · +12u · HOT CUT');
   void miner;
 });
 

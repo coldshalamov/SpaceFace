@@ -2892,7 +2892,10 @@ export function richLotReadoutHtml(lot = {}) {
   const opportunityId = String(lot.richOpportunityId || '');
   const lotLabel = String(lot.lotId || lot.richOpportunityId || 'LOT');
   const resolution = lot.resolution ? ` · ${String(lot.resolution).toUpperCase()}` : '';
-  return `<div class="st-row st-row--rich-lot"><span class="c-name">${escapeHtml(`RICH ORE · ${commodityName}`)}</span><span class="c-num">${qty}</span><span class="c-num" title="${escapeHtml(opportunityId)}">${escapeHtml(lotLabel)}</span><span class="c-num">${escapeHtml(resolution)}</span><span></span></div>`;
+  // Seam-bonus size rides the lot record; naming it here closes the "why did this pay more" gap.
+  const bonusU = Math.max(0, Math.floor(Number(lot.richBonusU) || 0));
+  const bonusLabel = bonusU > 0 ? ` · +${bonusU}u SEAM BONUS` : '';
+  return `<div class="st-row st-row--rich-lot"><span class="c-name">${escapeHtml(`RICH ORE · ${commodityName}${bonusLabel}`)}</span><span class="c-num">${qty}</span><span class="c-num" title="${escapeHtml(opportunityId)}">${escapeHtml(lotLabel)}</span><span class="c-num">${escapeHtml(resolution)}</span><span></span></div>`;
 }
 
 function plural(count, singular, pluralForm) {
